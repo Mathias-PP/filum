@@ -1,0 +1,104 @@
+# === Environnements et secrets ===
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+!.env.example
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.tox/
+venv/
+.venv/
+ENV/
+env/
+
+# === Node.js ===
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm
+.pnpm-debug.log*
+.eslintcache
+.svelte-kit/
+build/
+.vercel/
+.netlify/
+
+# === DuckDB ===
+*.duckdb
+*.duckdb.wal
+.duckdb/
+
+# === dbt ===
+target/
+dbt_packages/
+logs/
+.user.yml
+
+# === IDE ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# === OS ===
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+desktop.ini
+
+# === Logs et données locales ===
+*.log
+logs/
+data/
+uploads/
+
+# === Backups ===
+*.bak
+*.backup
+*.old
+
+# === Documentation générée ===
+docs/_build/
+site/
+
+# === Tests ===
+.coverage
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# === Autres ===
+.cache/
+*.tmp
+tmp/

@@ -1,0 +1,155 @@
+# Instructions pour Claude Code
+
+Ce fichier est lu automatiquement par Claude Code au démarrage de chaque session. Il contient les règles et conventions à respecter sur le projet Filum.
+
+---
+
+## Le projet en deux phrases
+
+Filum est une infrastructure ouverte qui permet aux créateurs de contenu (vulgarisateurs scientifiques d'abord, puis journalistes et chercheurs) de transformer leur bibliographie en une fiche publique navigable, avec sources horodatées et signées cryptographiquement. La vision long terme est de devenir la couche standard de citation du web à l'ère de l'IA générative.
+
+Pour le détail, lire dans cet ordre : [`README.md`](./README.md) → [`.docs/00-vision.md`](.docs/00-vision.md) → [`.docs/01-product-spec.md`](.docs/01-product-spec.md) → [`.docs/02-tech-architecture.md`](.docs/02-tech-architecture.md).
+
+---
+
+## Stack et choix techniques (non négociables sauf décision explicite)
+
+- **Backend** : Python 3.12, FastAPI, SQLAlchemy 2.x (mode async), Alembic pour migrations
+- **Bases de données** : PostgreSQL pour le transactionnel, DuckDB pour les analytics
+- **Transformations data** : dbt-core sur DuckDB
+- **Frontend** : SvelteKit (Svelte 5) en TypeScript, Tailwind CSS, pas de framework UI lourd
+- **Crypto** : `cryptography` (Python) — pas de `pycryptodome`
+- **Tests** : `pytest` côté backend, `vitest` côté frontend
+- **Lint et format** : `ruff` (backend), `prettier` + `eslint` (frontend)
+- **Package manager Python** : `uv` (très rapide, remplace pip)
+- **Package manager Node** : `pnpm`
+- **Déploiement cible MVP** : Railway pour le backend, Vercel ou Netlify pour le frontend
+
+Ne propose pas de changer de stack sans discussion. Si tu détectes un problème, signale-le et attends.
+
+---
+
+## Principes de code
+
+1. **Préférer la simplicité à l'élégance.** On est en pré-MVP, pas en architecture entreprise. Pas de patterns sur-conçus (factories à plusieurs niveaux, repositories en cascade, etc.). Du code direct, lisible.
+
+2. **Async par défaut côté backend.** Toutes les routes FastAPI sont async, toutes les sessions SQLAlchemy sont async. Pas de blocking I/O dans une route async.
+
+3. **Typage strict.** Côté Python, `from __future__ import annotations` + Pydantic v2 + type hints partout. Côté frontend, TypeScript strict.
+
+4. **Tests pour le code qui compte.** Pas de coverage 100% obsessif, mais tester systématiquement : les calculs de hash, la génération de signatures, les endpoints qui modifient des données, la logique d'extraction des sources.
+
+5. **Commits petits et descriptifs.** Conventional commits (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`). Pas plus de 50 caractères au titre.
+
+6. **Migrations versionnées.** Toute modification de schéma passe par Alembic. Jamais de `db.create_all()` sauf dans les tests.
+
+7. **Pas de secrets en dur.** Variables d'environnement via `.env` (jamais commit) et un `.env.example` complet et à jour.
+
+8. **Documentation au fil de l'eau.** Quand tu prends une décision technique non triviale, ajoute une entrée dans `DECISIONS.md`. Quand tu termines une feature, mets à jour `STATE.md`.
+
+---
+
+## Conventions de nommage
+
+- **Fichiers Python** : `snake_case.py`
+- **Fichiers Svelte** : `kebab-case.svelte` pour les composants partagés, `+page.svelte` pour les routes
+- **Modèles SQLAlchemy** : `PascalCase` (`User`, `BiblioCard`, `Source`)
+- **Tables Postgres** : `snake_case` au pluriel (`users`, `biblio_cards`, `sources`)
+- **Routes API** : `kebab-case`, REST, pluriel (`/api/biblio-cards`, `/api/sources`)
+- **Variables d'environnement** : `SCREAMING_SNAKE_CASE`
+- **Branches Git** : `feat/<sujet>`, `fix/<sujet>`, `docs/<sujet>`
+
+---
+
+## Structure attendue du projet
+
+```
+filum/
+├── README.md
+├── CLAUDE.md, AGENTS.md
+├── STATE.md, DECISIONS.md, CHANGELOG.md
+├── Makefile
+├── .docs/                       # specs (lecture seule pour Claude Code en pratique)
+├── .env.example
+├── apps/
+│   ├── backend/                 # FastAPI app
+│   │   ├── pyproject.toml
+│   │   ├── alembic.ini
+│   │   ├── src/filum_api/
+│   │   │   ├── main.py          # entry point FastAPI
+│   │   │   ├── config.py        # settings via pydantic-settings
+│   │   │   ├── db.py            # session SQLAlchemy async
+│   │   │   ├── models/          # SQLAlchemy models
+│   │   │   ├── schemas/         # Pydantic schemas
+│   │   │   ├── routes/          # routers FastAPI
+│   │   │   ├── services/        # logique métier
+│   │   │   ├── crypto/          # hash, signature, vérification
+│   │   │   └── extractors/      # extraction de métadonnées depuis URLs
+│   │   ├── tests/
+│   │   └── migrations/
+│   ├── frontend/                # SvelteKit app
+│   │   ├── package.json
+│   │   ├── src/
+│   │   │   ├── routes/
+│   │   │   ├── lib/
+│   │   │   │   ├── components/
+│   │   │   │   ├── stores/
+│   │   │   │   └── api/         # client API typé
+│   │   │   └── app.html, app.css
+│   │   └── tests/
+│   └── analytics/               # dbt project
+│       ├── dbt_project.yml
+│       ├── profiles.yml
+│       └── models/
+│           ├── staging/
+│           ├── marts/
+│           └── analytics/
+├── infra/                       # Docker, scripts de déploiement
+└── notebooks/                   # exploration data (Marimo ou Jupyter)
+```
+
+---
+
+## Choses à ne PAS faire
+
+- N'ajoute pas de dépendances sans le signaler. Une nouvelle lib = une justification dans la conversation.
+- Ne déploie pas. Le déploiement est manuel par le développeur.
+- Ne modifie pas `.docs/` sauf demande explicite. Ces fichiers sont les specs de référence.
+- Ne crée pas de fichiers de configuration redondants (par ex. plusieurs `.eslintrc`). Une seule source de vérité.
+- N'utilise pas de CSS-in-JS, de composants Material UI, ni de framework UI lourd. Tailwind + composants Svelte custom.
+- Ne génère pas de code obfusqué ou prématurément optimisé. Lisibilité d'abord.
+- Ne propose pas de fonctionnalités hors scope du MVP sans le mentionner explicitement.
+
+---
+
+## En cas de doute
+
+1. Lis le fichier `.docs/` pertinent (souvent `01-product-spec.md` ou `02-tech-architecture.md`)
+2. Si l'ambiguïté persiste, ajoute une entrée dans `.docs/07-open-questions.md` et choisis l'option la plus simple en l'attendant
+3. Mentionne-le explicitement dans ta réponse au développeur
+
+---
+
+## Format de réponse souhaité
+
+- Sois concis. Pas de paraphrase de la demande.
+- Quand tu modifies plusieurs fichiers, présente d'abord un plan en quelques lignes, puis exécute.
+- Quand tu lances des commandes, explique ce qu'elles font en une phrase.
+- Quand tu détectes un bug ou une incohérence, signale-le. Ne le contourne pas silencieusement.
+
+---
+
+## MCP servers utiles pour ce projet
+
+Si tu as accès à des MCP servers, ceux qui sont utiles pour ce projet :
+
+- **filesystem** : indispensable, lecture/écriture de fichiers
+- **git** : utile pour commits, branches, log
+- **gitmcp** : utile pour consulter des repos de référence (`c2pa-rs`, `internetarchive`, etc.)
+- **obsidian** : si l'auteur tient ses notes projet dans Obsidian, utile pour consulter le contexte
+
+Les autres (Docker Hub, Kubernetes, n8n, Notion) **ne sont pas pertinents** pour ce projet. Si ils sont actifs, ignore leurs tools.
+
+---
+
+*Ce fichier évolue avec le projet. Si une règle te paraît dépassée ou bloquante, signale-le.*
