@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -23,7 +24,9 @@ async def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
     return AuthService(db)
 
 
-async def get_current_user(request, auth_service: AuthService = Depends(get_auth_service)) -> User:
+async def get_current_user(
+    request, auth_service: AuthService = Depends(get_auth_service)
+) -> User:
     user = await auth_service.get_current_user(request)
     if not user:
         raise HTTPException(
@@ -98,7 +101,7 @@ async def update_source(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Source).where(Source.id == source_id).options())
+    result = await db.execute(select(Source).where(Source.id == source_id))
     source = result.scalar_one_or_none()
 
     if not source:
@@ -108,7 +111,7 @@ async def update_source(
         )
 
     result = await db.execute(select(BiblioCard).where(BiblioCard.id == source.biblio_card_id))
-    card: BiblioCard | None = result.scalar_one_or_none()
+    card = cast(BiblioCard | None, result.scalar_one_or_none())
 
     if not card:
         raise HTTPException(
@@ -157,7 +160,7 @@ async def delete_source(
         )
 
     result = await db.execute(select(BiblioCard).where(BiblioCard.id == source.biblio_card_id))
-    card: BiblioCard | None = result.scalar_one_or_none()
+    card = cast(BiblioCard | None, result.scalar_one_or_none())
 
     if not card:
         raise HTTPException(
