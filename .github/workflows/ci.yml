@@ -143,10 +143,10 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      DATABASE_URL: sqlite+aiosqlite:///./test.db
-      SESSION_SECRET: test-secret-for-ci-session-32chars
-      MASTER_ENCRYPTION_KEY: test-key-for-ci-encryption-32b
-      CI: "true"
+      database_url: sqlite+aiosqlite:///./test.db
+      session_secret: test-secret-for-ci-session-32chars
+      master_encryption_key: test-key-for-ci-encryption-32b
+      ci: "true"
 
     steps:
       - name: Checkout
