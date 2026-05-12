@@ -12,7 +12,7 @@ from app.core.config import get_settings
 from app.crypto.hashing import Canonicalizer, HashService, SigningService
 from app.crypto.keygen import KeyManager
 from app.models.biblio_card import BiblioCard, CardStatus
-from app.models.source import ArchiveStatus, SourceType
+from app.models.source import ArchiveStatus, Source, SourceType
 from app.models.user import User
 from app.schemas.biblio_card import CardCreate, CardStats
 
@@ -43,7 +43,7 @@ class CardService:
     async def get_card_by_id(self, card_id: UUID) -> BiblioCard | None:
         result = await self._db.execute(
             select(BiblioCard)
-            .options(selectinload(BiblioCard.sources))
+            .options(selectinload(BiblioCard.sources).selectinload(Source.excerpts))
             .options(selectinload(BiblioCard.user))
             .where(BiblioCard.id == card_id)
         )
@@ -59,7 +59,7 @@ class CardService:
 
         query = (
             select(BiblioCard)
-            .options(selectinload(BiblioCard.sources))
+            .options(selectinload(BiblioCard.sources).selectinload(Source.excerpts))
             .options(selectinload(BiblioCard.user))
             .where(BiblioCard.user_id == user.id, BiblioCard.slug == card_slug)
         )
@@ -83,7 +83,7 @@ class CardService:
             query = query.where(BiblioCard.status == status)
 
         query = (
-            query.options(selectinload(BiblioCard.sources))
+            query.options(selectinload(BiblioCard.sources).selectinload(Source.excerpts))
             .order_by(BiblioCard.created_at.desc())
             .limit(limit)
             .offset(offset)

@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,7 +26,13 @@ from app.crypto.keygen import KeyManager
 from app.db.database import async_session_maker
 from app.models.biblio_card import BiblioCard, CardStatus, ContentType, Platform
 from app.models.source import ArchiveStatus, AuthorityLevel, Source, SourceType
+from app.models.source_excerpt import SourceExcerpt
 from app.models.user import User
+
+
+def _utcnow_naive() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
+
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +102,18 @@ def _demo_sources() -> list[dict]:
             ),
             "is_pivot": True,
             "parent_index": None,
+            "citations_count": 12423,
+            "impact_factor": 49.8,
+            "excerpts": [
+                (
+                    "La mémoire à long terme requiert la synthèse de nouvelles protéines "
+                    "et un remodelage durable des connexions synaptiques."
+                ),
+                (
+                    "CREB agit comme un commutateur génétique reliant l'activité neuronale "
+                    "à l'expression de gènes de stabilisation synaptique."
+                ),
+            ],
         },
         {
             "url": "https://www.cell.com/current-biology/fulltext/S0960-9822(10)01007-0",
@@ -106,6 +124,8 @@ def _demo_sources() -> list[dict]:
             "annotation": "Démonstration du rôle sélectif de l'hippocampe pour les détails contextuels.",
             "is_pivot": True,
             "parent_index": None,
+            "citations_count": 987,
+            "impact_factor": 8.1,
         },
         {
             "url": "https://www.nature.com/articles/35021052",
@@ -119,6 +139,8 @@ def _demo_sources() -> list[dict]:
             ),
             "is_pivot": False,
             "parent_index": 1,
+            "citations_count": 4567,
+            "impact_factor": 50.5,
         },
         {
             "url": "https://www.nature.com/articles/nature11028",
@@ -132,6 +154,14 @@ def _demo_sources() -> list[dict]:
             ),
             "is_pivot": False,
             "parent_index": 2,
+            "citations_count": 2890,
+            "impact_factor": 50.5,
+            "excerpts": [
+                (
+                    "L'activation optogénétique d'un sous-ensemble de neurones du gyrus denté "
+                    "suffit à déclencher le rappel d'une mémoire de peur."
+                )
+            ],
         },
         {
             "url": "https://learnmem.cshlp.org/content/12/4/361.full",
@@ -142,6 +172,19 @@ def _demo_sources() -> list[dict]:
             "annotation": "Synthèse des 30 ans de recherche sur les faux souvenirs.",
             "is_pivot": False,
             "parent_index": None,
+            "citations_count": 3120,
+            "impact_factor": 3.3,
+            "conflict_of_interest": (
+                "L'auteure a témoigné comme experte rémunérée dans plusieurs procès "
+                "(défense, identification oculaire). Cette activité est documentée "
+                "publiquement et fait partie de son parcours académique."
+            ),
+            "excerpts": [
+                (
+                    "De simples mots après l'événement suffisent à introduire des détails "
+                    "qui n'existaient pas, sans que le témoin perçoive la moindre altération."
+                )
+            ],
         },
         # --- Tier 2 — Institutional ---
         {
@@ -153,6 +196,12 @@ def _demo_sources() -> list[dict]:
             "annotation": "Ressource pédagogique NIH sur le sommeil et son rôle dans la consolidation mnésique.",
             "is_pivot": False,
             "parent_index": None,
+            "excerpts": [
+                (
+                    "Le sommeil, en particulier les phases lentes profondes et le REM, "
+                    "joue un rôle actif dans la consolidation des apprentissages récents."
+                )
+            ],
         },
         {
             "url": "https://memorylab.stanford.edu/",
@@ -187,6 +236,12 @@ def _demo_sources() -> list[dict]:
             ),
             "is_pivot": False,
             "parent_index": 1,
+            "excerpts": [
+                (
+                    "Chaque souvenir rappelé est en partie reconstruit ; les neurosciences "
+                    "y voient moins un magnétoscope qu'un atelier d'assemblage."
+                )
+            ],
         },
         {
             "url": "https://www.lemonde.fr/sciences/article/2024/03/15/le-sommeil-gardien-de-la-memoire.html",
@@ -224,6 +279,12 @@ def _demo_sources() -> list[dict]:
             ),
             "is_pivot": False,
             "parent_index": 3,
+            "subscribers_count": 4_500_000,
+            "views_count": 2_300_000,
+            "conflict_of_interest": (
+                "Lex Fridman est un podcasteur indépendant financé par des sponsors. "
+                "Il n'est pas chercheur ; ses entretiens sont éditorialisés."
+            ),
         },
         {
             "url": "https://lea-marchand.filum.app/notes/tonegawa-tokyo-2024",
@@ -250,6 +311,16 @@ def _demo_sources() -> list[dict]:
             ),
             "is_pivot": False,
             "parent_index": None,
+            "conflict_of_interest": (
+                "Auteure également romancière à succès ; le livre est commercialisé "
+                "par un éditeur grand public, ce qui peut orienter le ton vulgarisateur."
+            ),
+            "excerpts": [
+                (
+                    "Oublier n'est pas un défaut du cerveau — c'est une fonction qui "
+                    "préserve l'essentiel en éliminant le bruit du quotidien."
+                )
+            ],
         },
     ]
 
@@ -307,9 +378,26 @@ async def _get_or_create_demo_card(
                 annotation=src["annotation"],
                 is_pivot=src["is_pivot"],
                 archive_status=ArchiveStatus.PENDING.value,
+                conflict_of_interest=src.get("conflict_of_interest"),
+                citations_count=src.get("citations_count"),
+                subscribers_count=src.get("subscribers_count"),
+                views_count=src.get("views_count"),
+                impact_factor=src.get("impact_factor"),
             )
             db.add(source)
             created_sources.append(source)
+        await db.flush()
+
+        for source, src in zip(created_sources, sources_spec, strict=True):
+            for excerpt_position, text in enumerate(src.get("excerpts", []) or []):
+                db.add(
+                    SourceExcerpt(
+                        source_id=source.id,
+                        position=excerpt_position,
+                        text=text,
+                        suggested_by_ai=False,
+                    )
+                )
         await db.flush()
 
         # Second pass: wire parent_source_id (1-based parent_index → 0-based
@@ -354,8 +442,8 @@ async def _get_or_create_demo_card(
 
     card.canonical_hash = content_hash
     card.signature = signature
-    card.signed_at = datetime.utcnow()
-    card.published_at = datetime.utcnow()
+    card.signed_at = _utcnow_naive()
+    card.published_at = _utcnow_naive()
     card.status = CardStatus.PUBLISHED.value
 
     await db.commit()
@@ -365,7 +453,7 @@ async def _get_or_create_demo_card(
     # cannot do sync lazy loads outside a greenlet context).
     refreshed = await db.execute(
         select(BiblioCard)
-        .options(selectinload(BiblioCard.sources))
+        .options(selectinload(BiblioCard.sources).selectinload(Source.excerpts))
         .options(selectinload(BiblioCard.user))
         .where(BiblioCard.id == card.id)
     )

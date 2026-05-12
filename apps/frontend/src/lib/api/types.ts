@@ -57,6 +57,13 @@ export interface CardCreate {
   content_type: ContentType
 }
 
+export interface SourceExcerpt {
+  id: string
+  position: number
+  text: string
+  suggested_by_ai: boolean
+}
+
 export interface Source {
   id: string
   url: string
@@ -71,6 +78,12 @@ export interface Source {
   archive_url: string | null
   archive_timestamp: string | null
   parent_source_id: string | null
+  conflict_of_interest: string | null
+  citations_count: number | null
+  subscribers_count: number | null
+  views_count: number | null
+  impact_factor: number | null
+  excerpts: SourceExcerpt[]
   created_at: string
   updated_at: string | null
 }

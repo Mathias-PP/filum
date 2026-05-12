@@ -9,6 +9,21 @@
 ## [Unreleased]
 
 ### Added
+- Itération 2 (ADR-017) : nouveau logo (arbre phylogénétique + graphe), badges « Source clé » + « Conflit d'intérêt déclaré », indicateurs typés (citations, impact factor, abonnés, vues), table `source_excerpts` avec extraits cités, plein écran sur le graphe, panneau de détail ancré au nœud cliqué (au lieu de coller au bord droit), SSR + JSON-LD + meta OG/Twitter/canonical sur la fiche publique pour le référencement classique et le GEO
+- Migration 004 : colonnes `conflict_of_interest`, `citations_count`, `subscribers_count`, `views_count`, `impact_factor` sur `sources`, et nouvelle table `source_excerpts(source_id CASCADE, position, text, suggested_by_ai)`
+- Section publique renommée « Sources citées » (ex « Liste éditoriale »), titres des sources calés à `text-base` pour rétablir la hiérarchie typographique
+- Spec mode privé + intégrations Zotero/Obsidian/Notion (`.docs/09-private-mode-and-integrations.md`)
+
+### Changed
+- Cartographie : labels d'auteurs au-dessus des nœuds, seuils de zoom (< 0.7 rien, ≥ 0.7 auteur, ≥ 1.5 auteur + début du titre), nœud central étiqueté par créateur + pictogramme du type de contenu (plus de label « Fiche »)
+
+### Removed
+- Affichage des badges « Autorité élevée/moyenne/faible » côté UI (la colonne `authority_level` est conservée en base pour compatibilité ; remplacée à l'écran par les indicateurs structurés)
+- Label « Fiche » sur le nœud central du graphe
+
+### Security
+- Aucune modification du `canonical_hash` payload : les nouveaux champs (indicateurs, excerpts, conflict_of_interest) sont volontairement hors signature, donc toutes les fiches déjà publiées restent vérifiables sans re-signature
+
 - Graphe interactif des sources sur la fiche publique (ADR-016) : D3 v7 force-directed, sources colorées par type, sources avec parent en périphérie (plus petites, arêtes pointillées), drag/zoom/pan, animation cascade
 - Panneau latéral détail au clic d'une source (slide-in droite desktop, bottom-sheet mobile, Escape, navigation vers le parent)
 - `Source.parent_source_id` : FK self-référente nullable indexée matérialisant le citation graph (migration 003)

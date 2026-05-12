@@ -5,7 +5,7 @@ from enum import Enum
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -13,6 +13,7 @@ from app.db.database import Base
 
 if TYPE_CHECKING:
     from app.models.biblio_card import BiblioCard
+    from app.models.source_excerpt import SourceExcerpt
 
 
 class SourceType(str, Enum):
@@ -70,6 +71,11 @@ class Source(Base):
         nullable=True,
         index=True,
     )
+    conflict_of_interest: Mapped[str | None] = mapped_column(Text, nullable=True)
+    citations_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    subscribers_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    views_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    impact_factor: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
@@ -81,6 +87,12 @@ class Source(Base):
         "Source",
         remote_side="Source.id",
         foreign_keys=[parent_source_id],
+    )
+    excerpts: Mapped[list[SourceExcerpt]] = relationship(
+        "SourceExcerpt",
+        back_populates="source",
+        cascade="all, delete-orphan",
+        order_by="SourceExcerpt.position",
     )
 
     def __repr__(self) -> str:

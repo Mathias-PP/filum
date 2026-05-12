@@ -17,10 +17,11 @@
 
   import type { CardDetail, Source } from '$lib/api'
   import { SOURCE_COLORS } from '$lib/utils/source-colors'
+  import SourceDetailPanel from './SourceDetailPanel.svelte'
 
   interface Props {
     card: CardDetail
-    onSelect: (source: Source) => void
+    onSelect?: (source: Source | null) => void
   }
 
   let { card, onSelect }: Props = $props()
@@ -58,8 +59,29 @@
   let zoomBehavior: ZoomBehavior<SVGSVGElement, unknown> | undefined
   let resizeObserver: ResizeObserver | undefined
   let hoveredId: string | null = $state(null)
+  let zoomLevel = $state(1)
+  let isFullscreen = $state(false)
+  let selectedSource = $state<Source | null>(null)
+  let panelAnchor = $state<{ x: number; y: number } | null>(null)
 
   const cardId = `card:${card.id}`
+
+  function truncate(text: string, max: number): string {
+    return text.length > max ? text.slice(0, max) + '…' : text
+  }
+
+  function authorLabel(s: Source): string {
+    if (s.authors && s.authors.trim().length > 0) return truncate(s.authors, 22)
+    return truncate(s.title ?? s.url, 22)
+  }
+
+  function platformIconPath(platform: string, contentType: string): string {
+    // Triangle play for video, document for article, mic for podcast, dot otherwise.
+    if (contentType === 'video' || platform === 'youtube') return 'M8 5v14l11-7z'
+    if (contentType === 'podcast' || platform === 'podcast')
+      return 'M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11z'
+    return 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 7V3.5L18.5 9H13z'
+  }
 
   function buildGraph(): { nodes: GraphNode[]; links: GraphLink[] } {
     const nodes: GraphNode[] = [
@@ -67,7 +89,7 @@
         id: cardId,
         kind: 'card',
         label: card.title,
-        radius: 26,
+        radius: 28,
         fill: '#1e293b',
         stroke: '#0f172a',
         tier: 'card'
@@ -121,11 +143,33 @@
       .attr('transform', (d) => `translate(${d.x ?? 0}, ${d.y ?? 0})`)
   }
 
+  function setAnchorFromNode(d: GraphNode) {
+    if (!container || !zoomBehavior) return
+    const k = zoomLevel
+    // Position in zoom-transformed coordinates ≈ container coordinates.
+    // Approximation: the zoom transform maps (x,y) → (k*x + tx, k*y + ty);
+    // we only need the visible point, which is what's currently rendered.
+    if (svgEl) {
+      const t = (svgEl as any).__zoom ?? null
+      const tx = t?.x ?? 0
+      const ty = t?.y ?? 0
+      panelAnchor = { x: (d.x ?? 0) * k + tx, y: (d.y ?? 0) * k + ty }
+    } else {
+      panelAnchor = { x: d.x ?? 0, y: d.y ?? 0 }
+    }
+  }
+
+  function selectSource(s: Source | null, d?: GraphNode) {
+    selectedSource = s
+    if (s && d) setAnchorFromNode(d)
+    else panelAnchor = null
+    onSelect?.(s)
+  }
+
   function mountGraph() {
     if (!svgEl) return
     const { nodes, links } = buildGraph()
 
-    // Anchor the card node at the geometric center.
     const cardNode = nodes[0]
     cardNode.fx = width / 2
     cardNode.fy = height / 2
@@ -134,10 +178,8 @@
     svg.selectAll('*').remove()
     svg.attr('viewBox', `0 0 ${width} ${height}`)
 
-    // Zoomable layer
     const root = svg.append('g').attr('class', 'graph-root')
 
-    // Links
     root
       .append('g')
       .attr('class', 'links')
@@ -150,7 +192,6 @@
       .attr('stroke-width', (d) => (d.kind === 'parent' ? 1 : 1.5))
       .attr('stroke-dasharray', (d) => (d.kind === 'parent' ? '4 3' : null))
 
-    // Nodes
     const nodeG = root
       .append('g')
       .attr('class', 'nodes')
@@ -158,10 +199,11 @@
       .data(nodes)
       .join('g')
       .attr('class', 'node')
-      .style('cursor', (d) => (d.kind === 'source' ? 'pointer' : 'default'))
+      .style('cursor', 'pointer')
       .style('opacity', 0)
       .on('click', (_event, d) => {
-        if (d.kind === 'source' && d.source) onSelect(d.source)
+        if (d.kind === 'source' && d.source) selectSource(d.source, d)
+        else if (d.kind === 'card') selectSource(null)
       })
       .on('mouseenter', (_event, d) => {
         hoveredId = d.id
@@ -196,16 +238,39 @@
       .attr('stroke', (d) => d.stroke)
       .attr('stroke-width', (d) => (d.kind === 'card' ? 3 : 2))
 
-    nodeG
+    // Card-node header (creator + content-type pictogram), above the node.
+    const cardHeader = nodeG
       .filter((d) => d.kind === 'card')
-      .append('text')
-      .attr('text-anchor', 'middle')
-      .attr('dy', 4)
-      .attr('fill', 'white')
-      .attr('font-size', 11)
-      .attr('font-weight', 700)
-      .text('Fiche')
+      .append('g')
+      .attr('class', 'card-header')
+      .attr('transform', (d) => `translate(0, ${-(d.radius + 14)})`)
 
+    cardHeader
+      .append('text')
+      .attr('text-anchor', 'end')
+      .attr('x', -6)
+      .attr('y', 4)
+      .attr('fill', '#0f172a')
+      .attr('font-size', 12)
+      .attr('font-weight', 600)
+      .text(card.creator.display_name ?? card.creator.slug)
+
+    cardHeader
+      .append('line')
+      .attr('x1', 0)
+      .attr('x2', 0)
+      .attr('y1', -6)
+      .attr('y2', 6)
+      .attr('stroke', '#94a3b8')
+      .attr('stroke-width', 1)
+
+    cardHeader
+      .append('path')
+      .attr('transform', 'translate(6, -6) scale(0.6)')
+      .attr('d', platformIconPath(card.platform, card.content_type))
+      .attr('fill', '#0f172a')
+
+    // Pivot star marker (now means "Source clé")
     nodeG
       .filter((d) => d.kind === 'source' && (d.source?.is_pivot ?? false))
       .append('circle')
@@ -216,18 +281,41 @@
       .attr('stroke', '#a16207')
       .attr('stroke-width', 0.5)
 
+    // Author label above each source node
+    nodeG
+      .filter((d) => d.kind === 'source')
+      .append('text')
+      .attr('class', 'author-label')
+      .attr('text-anchor', 'middle')
+      .attr('dy', (d) => -(d.radius + 6))
+      .attr('font-size', 11)
+      .attr('font-weight', 500)
+      .attr('fill', '#0f172a')
+      .style('pointer-events', 'none')
+      .text((d) => (d.source ? authorLabel(d.source) : ''))
+
+    // Title (shown only at higher zoom levels)
+    nodeG
+      .filter((d) => d.kind === 'source')
+      .append('text')
+      .attr('class', 'title-label')
+      .attr('text-anchor', 'middle')
+      .attr('dy', (d) => -(d.radius + 18))
+      .attr('font-size', 10)
+      .attr('fill', '#475569')
+      .style('pointer-events', 'none')
+      .text((d) => (d.source ? truncate(d.source.title ?? '', 40) : ''))
+
     nodeG
       .append('title')
       .text((d) => (d.kind === 'card' ? card.title : (d.source?.title ?? d.source?.url ?? '')))
 
-    // Cascade fade-in
     nodeG
       .transition()
       .delay((_d, i) => 50 * i)
       .duration(300)
       .style('opacity', 1)
 
-    // Force simulation
     simulation = forceSimulation<GraphNode>(nodes)
       .force(
         'link',
@@ -246,11 +334,11 @@
         if (svgEl) ticked(svgEl, nodes, links)
       })
 
-    // Zoom & pan
     zoomBehavior = zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.5, 3])
       .on('zoom', (event) => {
         root.attr('transform', event.transform.toString())
+        zoomLevel = event.transform.k
       })
     svg.call(zoomBehavior)
   }
@@ -264,6 +352,29 @@
   function zoomBy(factor: number) {
     if (!svgEl || !zoomBehavior) return
     select(svgEl).transition().duration(200).call(zoomBehavior.scaleBy, factor)
+  }
+
+  async function toggleFullscreen() {
+    if (!container) return
+    if (!document.fullscreenElement) {
+      try {
+        await container.requestFullscreen()
+      } catch {
+        // ignore
+      }
+    } else {
+      try {
+        await document.exitFullscreen()
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  function onFullscreenChange() {
+    isFullscreen = !!document.fullscreenElement
+    simulation?.alpha(0.3).restart()
+    selectSource(null)
   }
 
   onMount(() => {
@@ -280,7 +391,6 @@
         if (Math.abs(nextW - width) < 4 && Math.abs(nextH - height) < 4) continue
         width = nextW
         height = nextH
-        // Re-center the anchor and let the simulation settle.
         if (simulation) {
           simulation
             .force('center', forceCenter(width / 2, height / 2).strength(0.05))
@@ -291,14 +401,17 @@
       }
     })
     resizeObserver.observe(container)
+    document.addEventListener('fullscreenchange', onFullscreenChange)
   })
 
   onDestroy(() => {
     simulation?.stop()
     resizeObserver?.disconnect()
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('fullscreenchange', onFullscreenChange)
+    }
   })
 
-  // Reactive: when a node is hovered, dim others slightly via CSS class.
   $effect(() => {
     if (!svgEl) return
     const svg = select(svgEl)
@@ -317,9 +430,23 @@
         return src === hoveredId || tgt === hoveredId ? 1 : 0.2
       })
   })
+
+  // Zoom thresholds for labels
+  $effect(() => {
+    if (!svgEl) return
+    const svg = select(svgEl)
+    const showAuthor = zoomLevel >= 0.7
+    const showTitle = zoomLevel >= 1.5
+    svg
+      .selectAll<SVGTextElement, GraphNode>('text.author-label')
+      .style('display', showAuthor ? '' : 'none')
+    svg
+      .selectAll<SVGTextElement, GraphNode>('text.title-label')
+      .style('display', showTitle ? '' : 'none')
+  })
 </script>
 
-<div bind:this={container} class="relative w-full h-full">
+<div bind:this={container} class="relative w-full h-full bg-white">
   <svg
     bind:this={svgEl}
     class="w-full h-full block"
@@ -362,6 +489,28 @@
         <line x1="14" y1="14" x2="21" y2="21" />
       </svg>
     </button>
+    <button
+      onclick={toggleFullscreen}
+      class="w-8 h-8 rounded-md bg-white/95 border border-slate-200 shadow-sm hover:bg-slate-50 flex items-center justify-center text-slate-700"
+      aria-label={isFullscreen ? 'Quitter le plein écran' : 'Plein écran'}
+      title={isFullscreen ? 'Quitter le plein écran' : 'Plein écran'}
+    >
+      {#if isFullscreen}
+        <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 3v6H3" />
+          <path d="M15 3v6h6" />
+          <path d="M9 21v-6H3" />
+          <path d="M15 21v-6h6" />
+        </svg>
+      {:else}
+        <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 9V4h5" />
+          <path d="M20 9V4h-5" />
+          <path d="M4 15v5h5" />
+          <path d="M20 15v5h-5" />
+        </svg>
+      {/if}
+    </button>
   </div>
 
   <div
@@ -378,4 +527,14 @@
       </span>
     {/each}
   </div>
+
+  <SourceDetailPanel
+    source={selectedSource}
+    {card}
+    anchor={panelAnchor}
+    containerWidth={width}
+    containerHeight={height}
+    onClose={() => selectSource(null)}
+    onSelect={(s) => selectSource(s)}
+  />
 </div>
