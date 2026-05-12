@@ -25,7 +25,7 @@
           <Button href={loginUrl} variant="primary" size="lg">
             Créer ma première fiche
           </Button>
-          <Button href="/@example/filum-demo" variant="secondary" size="lg">
+          <Button href="/@example/memoire-et-cerveau" variant="secondary" size="lg">
             Voir un exemple
           </Button>
         </div>
