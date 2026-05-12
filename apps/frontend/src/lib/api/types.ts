@@ -70,6 +70,7 @@ export interface Source {
   archive_status: ArchiveStatus
   archive_url: string | null
   archive_timestamp: string | null
+  parent_source_id: string | null
   created_at: string
   updated_at: string | null
 }
