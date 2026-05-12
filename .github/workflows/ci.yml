@@ -236,6 +236,8 @@ jobs:
   dbt-check:
     name: Analytics Check
     runs-on: ubuntu-latest
+    env:
+      DUCKDB_PATH: ':memory:'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -251,8 +253,6 @@ jobs:
       - name: Compile dbt
         run: uvx dbt-duckdb compile --target ci
         working-directory: apps/analytics
-      env:
-        DUCKDB_PATH: ':memory:'
 
   summary:
     name: CI Summary
