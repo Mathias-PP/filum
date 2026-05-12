@@ -4,13 +4,13 @@ import re
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, StringConstraints
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 SlugPattern = re.compile(r"^[a-z0-9][a-z0-9-]{2,80}$")
 
 
 class UserBase(BaseModel):
-    username: str = StringConstraints(min_length=3, max_length=100, pattern=SlugPattern)
+    username: str = Field(min_length=3, max_length=100, pattern=SlugPattern)
     display_name: str | None = None
     bio: str | None = None
 

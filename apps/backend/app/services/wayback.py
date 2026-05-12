@@ -89,6 +89,6 @@ class WaybackService:
         tasks = [self.archive_url(source_id, url) for source_id, url in sources]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         return [
-            r if not isinstance(r, Exception) else {"status": "error", "error": str(r)}
+            r if not isinstance(r, Exception) else {"status": "error", "error": str(r)}  # type: ignore[misc]
             for r in results
         ]

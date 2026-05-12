@@ -37,5 +37,8 @@
   },
   "dependencies": {
     "d3": "^7.9.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
   }
 }

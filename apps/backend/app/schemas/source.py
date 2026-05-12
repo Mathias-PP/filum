@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class SourceType(str, Enum):
@@ -27,13 +27,13 @@ class ArchiveStatus(str, Enum):
 
 
 class SourceBase(BaseModel):
-    url: str = StringConstraints(min_length=1, max_length=2000)
-    title: str | None = StringConstraints(max_length=500)
-    authors: str | None = StringConstraints(max_length=500)
+    url: str = Field(min_length=1, max_length=2000)
+    title: str | None = Field(default=None, max_length=500)
+    authors: str | None = Field(default=None, max_length=500)
     published_at: datetime | None = None
     source_type: SourceType
     authority_level: AuthorityLevel = AuthorityLevel.MEDIUM
-    annotation: str | None = StringConstraints(max_length=500)
+    annotation: str | None = Field(default=None, max_length=500)
     is_pivot: bool = False
 
 

@@ -32,7 +32,7 @@ class AuthService:
             "exp": expire,
             "iat": datetime.now(UTC),
         }
-        return jwt.encode(payload, settings.session_secret, algorithm=ALGORITHM)
+        return jwt.encode(payload, settings.session_secret, algorithm=ALGORITHM)  # type: ignore[no-any-return]
 
     async def get_current_user(self, request: Request) -> User | None:
         token = request.cookies.get("filum_session")

@@ -61,6 +61,7 @@ class BiblioCard(Base):
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     content_type: Mapped[str] = mapped_column(String(50), nullable=False)
     content_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    platform: Mapped[str] = mapped_column(String(50), nullable=False, default="other")
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(
         String(20),

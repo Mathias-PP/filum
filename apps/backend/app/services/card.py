@@ -97,7 +97,7 @@ class CardService:
             {
                 "url": s.url,
                 "title": s.title,
-                "source_type": s.source_type.value,
+                "source_type": s.source_type,
                 "is_pivot": s.is_pivot,
                 "archive_url": s.archive_url,
             }
@@ -131,7 +131,7 @@ class CardService:
 
         return {
             "id": card.id,
-            "status": card.status.value,
+            "status": card.status,
             "canonical_hash": content_hash,
             "signature": signature,
             "signed_at": card.signed_at,
@@ -162,7 +162,7 @@ class CardService:
             {
                 "url": s.url,
                 "title": s.title,
-                "source_type": s.source_type.value,
+                "source_type": s.source_type,
                 "is_pivot": s.is_pivot,
                 "archive_url": s.archive_url,
             }

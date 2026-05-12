@@ -5,7 +5,7 @@ from datetime import datetime
 from enum import Enum
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, StringConstraints
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.source import SourceResponse
 
@@ -37,8 +37,8 @@ SlugPattern = re.compile(r"^[a-z0-9][a-z0-9-]{2,80}$")
 
 
 class CardBase(BaseModel):
-    slug: str = StringConstraints(min_length=3, max_length=100, pattern=SlugPattern)
-    title: str = StringConstraints(min_length=1, max_length=500)
+    slug: str = Field(min_length=3, max_length=100, pattern=SlugPattern)
+    title: str = Field(min_length=1, max_length=500)
     description: str | None = None
     content_url: str | None = None
     platform: Platform = Platform.OTHER
@@ -50,7 +50,7 @@ class CardCreate(CardBase):
 
 
 class CardUpdate(BaseModel):
-    title: str | None = StringConstraints(min_length=1, max_length=500)
+    title: str | None = Field(default=None, min_length=1, max_length=500)
     description: str | None = None
     content_url: str | None = None
     platform: Platform | None = None

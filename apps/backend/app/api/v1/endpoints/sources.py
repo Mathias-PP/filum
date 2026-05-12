@@ -110,6 +110,12 @@ async def update_source(
     result = await db.execute(select(BiblioCard).where(BiblioCard.id == source.biblio_card_id))
     card = result.scalar_one_or_none()
 
+    if not card:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": "Card not found"},
+        )
+
     if card.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -152,6 +158,12 @@ async def delete_source(
 
     result = await db.execute(select(BiblioCard).where(BiblioCard.id == source.biblio_card_id))
     card = result.scalar_one_or_none()
+
+    if not card:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": "Card not found"},
+        )
 
     if card.user_id != current_user.id:
         raise HTTPException(
