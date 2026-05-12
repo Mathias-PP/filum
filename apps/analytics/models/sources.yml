@@ -1,0 +1,71 @@
+version: 2
+
+sources:
+  - name: postgres
+    description: "Source data loaded from PostgreSQL production database"
+    database: filum
+    schema: public
+    tables:
+      - name: users
+        description: "Users of Filum"
+        columns:
+          - name: id
+            description: "Primary key"
+          - name: email
+            description: "User email"
+          - name: username
+            description: "Unique username"
+          - name: display_name
+            description: "Display name"
+          - name: public_key
+            description: "Ed25519 public key"
+          - name: created_at
+            description: "Creation timestamp"
+
+      - name: biblio_cards
+        description: "BiblioCards - provenance cards created by users"
+        columns:
+          - name: id
+            description: "Primary key"
+          - name: user_id
+            description: "Foreign key to users"
+          - name: slug
+            description: "URL-friendly identifier"
+          - name: title
+            description: "Card title"
+          - name: content_type
+            description: "Content type (video, article, post, podcast, other)"
+          - name: content_url
+            description: "URL to the original content"
+          - name: status
+            description: "Card status (draft, published, archived)"
+          - name: canonical_hash
+            description: "SHA-256 hash of card content"
+          - name: signature
+            description: "Ed25519 signature"
+          - name: published_at
+            description: "Publication timestamp"
+          - name: created_at
+            description: "Creation timestamp"
+          - name: updated_at
+            description: "Last update timestamp"
+          - name: deleted_at
+            description: "Soft delete timestamp"
+
+      - name: sources
+        description: "Sources attached to biblio_cards"
+        columns:
+          - name: id
+            description: "Primary key"
+          - name: biblio_card_id
+            description: "Foreign key to biblio_cards"
+          - name: url
+            description: "Source URL"
+          - name: title
+            description: "Source title"
+          - name: source_type
+            description: "Type (peer-reviewed, institutional, press, original)"
+          - name: archive_status
+            description: "Archive status (pending, archived, failed)"
+          - name: created_at
+            description: "Creation timestamp"

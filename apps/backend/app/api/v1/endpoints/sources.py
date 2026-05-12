@@ -108,7 +108,7 @@ async def update_source(
         )
 
     result = await db.execute(select(BiblioCard).where(BiblioCard.id == source.biblio_card_id))
-    card = result.scalar_one_or_none()
+    card: BiblioCard | None = result.scalar_one_or_none()
 
     if not card:
         raise HTTPException(
@@ -157,7 +157,7 @@ async def delete_source(
         )
 
     result = await db.execute(select(BiblioCard).where(BiblioCard.id == source.biblio_card_id))
-    card = result.scalar_one_or_none()
+    card: BiblioCard | None = result.scalar_one_or_none()
 
     if not card:
         raise HTTPException(
