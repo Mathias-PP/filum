@@ -1,6 +1,6 @@
 """Source indicators, conflicts of interest, excerpts table.
 
-Revision ID: 004_source_indicators_excerpts_conflict
+Revision ID: 004_indicators_and_excerpts
 Revises: 003_add_parent_source
 Create Date: 2026-05-12
 
@@ -26,7 +26,7 @@ from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 
 from alembic import op
 
-revision: str = "004_source_indicators_excerpts_conflict"
+revision: str = "004_indicators_and_excerpts"
 down_revision: str | None = "003_add_parent_source"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
