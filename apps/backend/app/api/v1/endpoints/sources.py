@@ -24,9 +24,7 @@ async def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
     return AuthService(db)
 
 
-async def get_current_user(
-    request, auth_service: AuthService = Depends(get_auth_service)
-) -> User:
+async def get_current_user(request, auth_service: AuthService = Depends(get_auth_service)) -> User:
     user = await auth_service.get_current_user(request)
     if not user:
         raise HTTPException(
