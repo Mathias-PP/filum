@@ -93,44 +93,46 @@ async def _get_or_create_demo_card(
         )
     )
     card = result.scalar_one_or_none()
-    if card:
+    if card and card.status == CardStatus.PUBLISHED.value:
         return card
 
-    card = BiblioCard(
-        user_id=user.id,
-        slug=DEMO_CARD_SLUG,
-        title="Comment Filum signe une bibliographie",
-        description=(
-            "Fiche d'exemple présentant le format Filum : sources annotées, "
-            "horodatage, signature Ed25519, archivage Wayback."
-        ),
-        content_url="https://example.org/filum-demo",
-        platform=Platform.BLOG.value,
-        content_type=ContentType.ARTICLE.value,
-        status=CardStatus.DRAFT.value,
-        canonical_hash="",
-        signature="",
-    )
-    db.add(card)
-    await db.flush()
-
-    for position, src in enumerate(_demo_sources()):
-        db.add(
-            Source(
-                biblio_card_id=card.id,
-                position=position,
-                url=src["url"],
-                title=src["title"],
-                authors=src["authors"],
-                source_type=src["source_type"],
-                authority_level=src["authority_level"],
-                annotation=src["annotation"],
-                is_pivot=src["is_pivot"],
-                archive_status=ArchiveStatus.PENDING.value,
-            )
+    if card is None:
+        card = BiblioCard(
+            user_id=user.id,
+            slug=DEMO_CARD_SLUG,
+            title="Comment Filum signe une bibliographie",
+            description=(
+                "Fiche d'exemple présentant le format Filum : sources annotées, "
+                "horodatage, signature Ed25519, archivage Wayback."
+            ),
+            content_url="https://example.org/filum-demo",
+            platform=Platform.BLOG.value,
+            content_type=ContentType.ARTICLE.value,
+            status=CardStatus.DRAFT.value,
+            canonical_hash="",
+            signature="",
         )
+        db.add(card)
+        await db.flush()
 
-    await db.commit()
+        for position, src in enumerate(_demo_sources()):
+            db.add(
+                Source(
+                    biblio_card_id=card.id,
+                    position=position,
+                    url=src["url"],
+                    title=src["title"],
+                    authors=src["authors"],
+                    source_type=src["source_type"],
+                    authority_level=src["authority_level"],
+                    annotation=src["annotation"],
+                    is_pivot=src["is_pivot"],
+                    archive_status=ArchiveStatus.PENDING.value,
+                )
+            )
+
+        await db.commit()
+
     await db.refresh(card, attribute_names=["sources", "user"])
 
     sources_data = [
