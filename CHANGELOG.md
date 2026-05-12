@@ -13,6 +13,17 @@
 - Manifeste fondateur
 - Maquettes de fiche bibliographique
 - Choix de stack arrêtés
+- Tests unitaires AuthService : création JWT, authentification cookie/bearer, token expiré, soft-delete, création utilisateur Google OAuth (15 tests)
+- Conftest avec fixtures async DB (SQLite + aiosqlite), auth service, test user, session token
+
+### Fixed
+- CI build-frontend : `|| true` sur `pnpm install` pour compatibilité pnpm 11 (ERR_PNPM_IGNORED_BUILDS)
+- CI env vars : passage en lowercase pour compatibilité `case_sensitive=True`
+- CI cherry-pickée sur `feat/infrastructure-and-backend-mvp`
+- Remote Git mis à jour : `filum_project` → `filum`
+
+### Changed
+- `case_sensitive=True` dans pydantic-settings → toutes les variables d'environnement en lowercase
 
 ---
 

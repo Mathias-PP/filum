@@ -171,4 +171,18 @@
 
 ---
 
+## Q16 — pnpm 11 : politique build-scripts
+
+**Statut** : workaround en place, non résolu proprement.
+
+**Problème** : pnpm 11 bloque les build scripts (postinstall) des dépendances non explicitement approuvées (ex: esbuild). `onlyBuiltDependencies` dans `package.json` et `.pnpm-approve-builds.json` sont tous deux ignorés par pnpm 11 en CI.
+
+**Workaround actuel** : `pnpm config set onlyBuiltDependencies '["esbuild"]'` + `|| true` sur `pnpm install`.
+
+**Solution propre à trouver** : mise à jour pnpm, correction du bug, ou configuration alternative.
+
+**Suivi** : https://github.com/pnpm/pnpm/issues (rechercher "ERR_PNPM_IGNORED_BUILDS")
+
+---
+
 *Cette liste évolue avec le projet. Toute nouvelle question importante doit y être ajoutée.*

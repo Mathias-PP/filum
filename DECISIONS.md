@@ -192,6 +192,101 @@ Choisir un nom de code pour le projet.
 
 ---
 
+## ADR-009 — Chiffrement AES-GCM au lieu de Fernet
+
+**Date** : 2026-05
+
+**Contexte**
+Chiffrement de la clé privée Ed25519 de chaque utilisateur avant stockage en base.
+
+**Options envisagées**
+- Fernet (standard dans la communauté Python, simple) — rejeté car obsolète
+- AES-GCM avec `cryptography` (retenue)
+
+**Justifications**
+- AES-GCM est le standard moderne, authentifié (AEAD), recommandé par les autorités (ANSSI, NIST)
+- `cryptography` est déjà une dépendance du projet pour Ed25519
+- Fernet est une surcouche qui masque les détails cryptographiques (pédagogiquement moins intéressant pour un portfolio Data Engineer)
+
+**Conséquences**
+- Implémentation légèrement plus verbeuse que Fernet
+- Code crypto plus transparent et valorisable
+
+---
+
+## ADR-010 — `case_sensitive=True` dans pydantic-settings : variables d'env en lowercase
+
+**Date** : 2026-05
+
+**Contexte**
+La classe `Settings` utilise `case_sensitive=True` dans `SettingsConfigDict`. Cela casse la lecture des variables d'environnement en SCREAMING_SNAKE_CASE.
+
+**Options envisagées**
+- Passer `case_sensitive=False` (rejeté : moins de contrôle sur les collisions de noms)
+- Conserver `case_sensitive=True` et utiliser des noms lowercase dans les env vars partout (retenue)
+
+**Justifications**
+- Cohérence avec la définition exacte des champs dans la classe Settings
+- `case_sensitive=True` évite les ambiguïtés (ex: `database_url` vs `DATABASE_URL`)
+- GitHub Actions gère correctement les env vars lowercase
+
+**Conséquences**
+- `.env` : utiliser `database_url`, `session_secret`, etc. (pas `DATABASE_URL`)
+- CI/CD : env vars en lowercase dans `ci.yml` et `cd.yml`
+- Conftest de test : env vars en lowercase avant import des modules app
+
+---
+
+## ADR-011 — pnpm 11 : workaround `ERR_PNPM_IGNORED_BUILDS`
+
+**Date** : 2026-05
+
+**Contexte**
+pnpm 11 a introduit une politique stricte sur les build scripts (`onlyBuiltDependencies`). esbuild (dépendance transitive de SvelteKit/Vite) n'est pas autorisé à exécuter ses postinstall scripts, causant `ERR_PNPM_IGNORED_BUILDS` avec exit code 1.
+
+**Options envisagées**
+- `onlyBuiltDependencies` dans `package.json` (essayé, ignoré par pnpm 11 en CI)
+- `.pnpm-approve-builds.json` (essayé, ignoré par pnpm 11)
+- `pnpm config set onlyBuiltDependencies` + `|| true` sur install (retenue)
+
+**Justifications**
+- La config dans `package.json` est respectée par pnpm local mais pas systématiquement en CI
+- `.pnpm-approve-builds.json` est déprécié par pnpm 11
+- `|| true` est un workaround pragmatique : l'install réussit malgré le warning, l'erreur exit code est supprimée
+
+**Conséquences**
+- Toute job CI frontend avec `pnpm install` doit avoir `|| true`
+- La config `pnpm config set onlyBuiltDependencies` reste présente comme bonne pratique
+- À réévaluer quand pnpm 11 sera plus mature ou que le bug sera fixé
+
+---
+
+## ADR-012 — Tests DB async : SQLite + aiosqlite, import explicite des modèles
+
+**Date** : 2026-05
+
+**Contexte**
+Tests unitaires des services qui dépendent de la base de données (AuthService). Nécessité d'une isolation par test et de la création/destruction des tables.
+
+**Options envisagées**
+- PostgreSQL de test via Docker (rejeté : complexité, CI déjà configurée en SQLite)
+- SQLite + aiosqlite avec fixture `db_session` créant les tables par test (retenue)
+
+**Justifications**
+- SQLite est utilisée en CI (ci.yml : `database_url: sqlite+aiosqlite:///./test.db`)
+- Pas de dépendance Docker pour les tests unitaires
+- aiosqlite compatible avec SQLAlchemy async
+
+**Piège évité**
+`Base.metadata.create_all` ne crée rien si les modèles ne sont pas importés. En conftest, il faut importer explicitement `app.models.user`, `app.models.biblio_card`, etc. avant d'appeler `create_all`, car SQLAlchemy ne découvre les tables qu'au moment de l'import de chaque modèle.
+
+**Conséquences**
+- `conftest.py` importe tous les modèles avant `create_all`
+- Tables créées et détruites à chaque test (via `db_session` fixture)
+- Performances acceptables (38 tests en ~11s)
+
+---
+
 *Pour ajouter une nouvelle décision, copier le template ci-dessous et incrémenter le numéro ADR.*
 
 <!--
