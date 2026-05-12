@@ -1,20 +1,24 @@
 from __future__ import annotations
 
-from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_401_UNAUTHORIZED
 
 from app.db.database import get_db
-from app.services.card import CardService
-from app.services.auth import AuthService
-from app.schemas.biblio_card import CardCreate, CardUpdate, CardDetail, CardResponse
-from app.schemas.auth import VerificationResponse
-from app.schemas.source import SourceResponse
-from app.schemas.biblio_card import CardStats, CreatorInfo
 from app.models.user import User
+from app.schemas.auth import VerificationResponse
+from app.schemas.biblio_card import (
+    CardCreate,
+    CardDetail,
+    CardResponse,
+    CardUpdate,
+    CreatorInfo,
+)
+from app.schemas.source import SourceResponse
+from app.services.auth import AuthService
+from app.services.card import CardService
 
 router = APIRouter(tags=["cards"])
 
@@ -27,7 +31,9 @@ async def get_card_service(db: AsyncSession = Depends(get_db)) -> CardService:
     return CardService(db)
 
 
-async def get_current_user(request: Request, auth_service: AuthService = Depends(get_auth_service)) -> User:
+async def get_current_user(
+    request: Request, auth_service: AuthService = Depends(get_auth_service)
+) -> User:
     user = await auth_service.get_current_user(request)
     if not user:
         raise HTTPException(
@@ -58,11 +64,16 @@ async def create_card(
     current_user: User = Depends(get_current_user),
     card_service: CardService = Depends(get_card_service),
 ):
-    existing = await card_service.get_card_by_slug(current_user.username, card_data.slug, published_only=False)
+    existing = await card_service.get_card_by_slug(
+        current_user.username, card_data.slug, published_only=False
+    )
     if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail={"code": "conflict", "message": f"Card with slug '{card_data.slug}' already exists"},
+            detail={
+                "code": "conflict",
+                "message": f"Card with slug '{card_data.slug}' already exists",
+            },
         )
     card = await card_service.create_card(current_user.id, card_data)
     return card
@@ -164,7 +175,10 @@ async def publish_card(
     if pending_sources:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "validation_error", "message": f"Waiting for {len(pending_sources)} sources to be archived"},
+            detail={
+                "code": "validation_error",
+                "message": f"Waiting for {len(pending_sources)} sources to be archived",
+            },
         )
 
     result = await card_service.publish_card(card)

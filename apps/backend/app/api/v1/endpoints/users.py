@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.database import get_db
-from app.models.user import User
 from app.models.biblio_card import BiblioCard
+from app.models.user import User
 from app.services.auth import AuthService
-from app.schemas.user import UserResponse, UserPublic
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -33,10 +32,7 @@ async def get_user_profile(
     slug: str,
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(User)
-        .where(User.username == slug)
-    )
+    result = await db.execute(select(User).where(User.username == slug))
     user = result.scalar_one_or_none()
 
     if not user:
@@ -64,8 +60,12 @@ async def get_user_profile(
         "stats": {
             "total_cards": len(cards),
             "total_sources": total_sources,
-            "first_published_at": cards[-1].published_at.isoformat() if cards and cards[-1].published_at else None,
-            "last_published_at": cards[0].published_at.isoformat() if cards and cards[0].published_at else None,
+            "first_published_at": cards[-1].published_at.isoformat()
+            if cards and cards[-1].published_at
+            else None,
+            "last_published_at": cards[0].published_at.isoformat()
+            if cards and cards[0].published_at
+            else None,
         },
         "cards": [
             {

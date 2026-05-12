@@ -1,20 +1,20 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.config import get_settings
+from app.crypto.hashing import Canonicalizer, HashService, SigningService
+from app.crypto.keygen import KeyManager
 from app.models.biblio_card import BiblioCard, CardStatus
-from app.models.source import Source, SourceType, ArchiveStatus
+from app.models.source import ArchiveStatus, SourceType
 from app.models.user import User
 from app.schemas.biblio_card import CardCreate, CardStats
-from app.crypto.hashing import HashService, Canonicalizer, SigningService
-from app.crypto.keygen import KeyManager
-from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -52,9 +52,7 @@ class CardService:
     async def get_card_by_slug(
         self, user_slug: str, card_slug: str, published_only: bool = True
     ) -> BiblioCard | None:
-        user_result = await self._db.execute(
-            select(User).where(User.username == user_slug)
-        )
+        user_result = await self._db.execute(select(User).where(User.username == user_slug))
         user = user_result.scalar_one_or_none()
         if not user:
             return None
@@ -118,16 +116,14 @@ class CardService:
         canonical = Canonicalizer.canonicalize(content_to_sign)
         content_hash = HashService.sha256(canonical)
 
-        private_pem = self._key_manager.decrypt_private_key(
-            card.user.encrypted_private_key
-        )
+        private_pem = self._key_manager.decrypt_private_key(card.user.encrypted_private_key)
         signer = SigningService.from_pem(private_pem)
         signature = signer.sign(content_hash)
 
         card.canonical_hash = content_hash
         card.signature = signature
-        card.signed_at = datetime.now(timezone.utc)
-        card.published_at = datetime.now(timezone.utc)
+        card.signed_at = datetime.now(UTC)
+        card.published_at = datetime.now(UTC)
         card.status = CardStatus.PUBLISHED
 
         await self._db.commit()
@@ -146,17 +142,11 @@ class CardService:
     def compute_stats(self, card: BiblioCard) -> CardStats:
         sources = card.sources or []
         total = len(sources)
-        peer_reviewed = sum(
-            1 for s in sources if s.source_type == SourceType.PEER_REVIEWED
-        )
-        institutional = sum(
-            1 for s in sources if s.source_type == SourceType.INSTITUTIONAL
-        )
+        peer_reviewed = sum(1 for s in sources if s.source_type == SourceType.PEER_REVIEWED)
+        institutional = sum(1 for s in sources if s.source_type == SourceType.INSTITUTIONAL)
         press = sum(1 for s in sources if s.source_type == SourceType.PRESS)
         original = sum(1 for s in sources if s.source_type == SourceType.ORIGINAL)
-        all_archived = all(
-            s.archive_status == ArchiveStatus.ARCHIVED for s in sources
-        )
+        all_archived = all(s.archive_status == ArchiveStatus.ARCHIVED for s in sources)
 
         return CardStats(
             total_sources=total,

@@ -2,13 +2,17 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
+from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import String, DateTime, ForeignKey, BigInteger, JSON, Index
+from sqlalchemy import JSON, BigInteger, DateTime, ForeignKey, Index, String
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
 class AuditEventType(str, Enum):
@@ -59,7 +63,7 @@ class AuditEvent(Base):
     user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    user: Mapped["User | None"] = relationship(
+    user: Mapped[User | None] = relationship(
         "User",
         back_populates="audit_events",
     )

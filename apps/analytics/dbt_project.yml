@@ -9,8 +9,6 @@ seed-paths: ["seeds"]
 macro-paths: ["macros"]
 
 target-path: target
-output-path: target
-run-path: target
 log-path: logs
 
 clean-targets:
@@ -32,6 +30,3 @@ models:
       +schema: marts
     analytics:
       +schema: analytics
-
-on_run_end:
-  - test: []

@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import os
 import secrets
+from functools import lru_cache
 from typing import Any
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from functools import lru_cache
 
 
 class Settings(BaseSettings):
@@ -55,6 +55,7 @@ class Settings(BaseSettings):
 
         if self.debug and os.environ.get("CI") != "true":
             import logging
+
             logging.warning(
                 "Application started with default or weak secrets. "
                 "In production, always use strong secrets from environment variables."

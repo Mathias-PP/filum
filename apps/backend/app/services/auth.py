@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from jose import jwt, JWTError
+from jose import JWTError, jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
 from app.core.config import get_settings
-from app.models.user import User
 from app.crypto.keygen import KeyManager
+from app.models.user import User
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -26,11 +26,11 @@ class AuthService:
         self._key_manager = KeyManager(settings.master_encryption_key)
 
     def create_session(self, user_id: UUID) -> str:
-        expire = datetime.now(timezone.utc) + timedelta(hours=SESSION_EXPIRE_HOURS)
+        expire = datetime.now(UTC) + timedelta(hours=SESSION_EXPIRE_HOURS)
         payload = {
             "sub": str(user_id),
             "exp": expire,
-            "iat": datetime.now(timezone.utc),
+            "iat": datetime.now(UTC),
         }
         return jwt.encode(payload, settings.session_secret, algorithm=ALGORITHM)
 
@@ -57,9 +57,7 @@ class AuthService:
         return None
 
     async def get_user_by_google_id(self, google_id: str) -> User | None:
-        result = await self._db.execute(
-            select(User).where(User.google_id == google_id)
-        )
+        result = await self._db.execute(select(User).where(User.google_id == google_id))
         return result.scalar_one_or_none()
 
     async def create_user_from_google(

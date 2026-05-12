@@ -9,7 +9,7 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.source import Source, ArchiveStatus
+from app.models.source import ArchiveStatus, Source
 
 logger = logging.getLogger(__name__)
 

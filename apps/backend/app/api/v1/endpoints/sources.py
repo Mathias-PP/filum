@@ -3,16 +3,17 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.db.database import get_db
+from app.models.biblio_card import BiblioCard, CardStatus
+from app.models.source import Source
+from app.models.user import User
+from app.schemas.source import SourceCreate, SourceResponse, SourceUpdate
 from app.services.auth import AuthService
 from app.services.wayback import WaybackService
-from app.schemas.source import SourceCreate, SourceUpdate, SourceResponse
-from app.models.user import User
-from app.models.source import Source
-from app.models.biblio_card import BiblioCard
-from app.core.config import get_settings
 
 router = APIRouter(prefix="/sources", tags=["sources"])
 settings = get_settings()
@@ -39,8 +40,6 @@ async def create_source(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    from sqlalchemy import select, func
-
     result = await db.execute(select(BiblioCard).where(BiblioCard.id == card_id))
     card = result.scalar_one_or_none()
 
@@ -54,8 +53,6 @@ async def create_source(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"code": "forbidden", "message": "Access denied"},
         )
-
-    from app.models.biblio_card import CardStatus
 
     if card.status == CardStatus.PUBLISHED:
         raise HTTPException(
@@ -101,9 +98,7 @@ async def update_source(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(Source).where(Source.id == source_id).options()
-    )
+    result = await db.execute(select(Source).where(Source.id == source_id).options())
     source = result.scalar_one_or_none()
 
     if not source:
@@ -112,9 +107,7 @@ async def update_source(
             detail={"code": "not_found", "message": "Source not found"},
         )
 
-    result = await db.execute(
-        select(BiblioCard).where(BiblioCard.id == source.biblio_card_id)
-    )
+    result = await db.execute(select(BiblioCard).where(BiblioCard.id == source.biblio_card_id))
     card = result.scalar_one_or_none()
 
     if card.user_id != current_user.id:
@@ -122,8 +115,6 @@ async def update_source(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"code": "forbidden", "message": "Access denied"},
         )
-
-    from app.models.biblio_card import CardStatus
 
     if card.status == CardStatus.PUBLISHED:
         raise HTTPException(
@@ -159,9 +150,7 @@ async def delete_source(
             detail={"code": "not_found", "message": "Source not found"},
         )
 
-    result = await db.execute(
-        select(BiblioCard).where(BiblioCard.id == source.biblio_card_id)
-    )
+    result = await db.execute(select(BiblioCard).where(BiblioCard.id == source.biblio_card_id))
     card = result.scalar_one_or_none()
 
     if card.user_id != current_user.id:
@@ -169,8 +158,6 @@ async def delete_source(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={"code": "forbidden", "message": "Access denied"},
         )
-
-    from app.models.biblio_card import CardStatus
 
     if card.status == CardStatus.PUBLISHED:
         raise HTTPException(

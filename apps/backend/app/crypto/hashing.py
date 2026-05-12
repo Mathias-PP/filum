@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
-from cryptography.hazmat.primitives import serialization
+
 # Hashing module - no Fernet needed
 
 
@@ -46,10 +46,14 @@ class SigningService:
         return signature.hex()
 
     def get_public_key(self) -> str:
-        return self._private_key.public_key().public_bytes(
-            encoding=serialization.Encoding.Raw,
-            format=serialization.PublicFormat.Raw,
-        ).hex()
+        return (
+            self._private_key.public_key()
+            .public_bytes(
+                encoding=serialization.Encoding.Raw,
+                format=serialization.PublicFormat.Raw,
+            )
+            .hex()
+        )
 
     def verify(self, data: str | bytes, signature: str) -> bool:
         if isinstance(data, str):

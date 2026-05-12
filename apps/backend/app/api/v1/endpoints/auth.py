@@ -1,16 +1,17 @@
 from __future__ import annotations
 
 import secrets
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_401_UNAUTHORIZED
 
-from app.db.database import get_db
 from app.core.config import get_settings
-from app.services.auth import AuthService
-from app.schemas.user import UserResponse
+from app.db.database import get_db
 from app.models.user import User
+from app.schemas.user import UserResponse
+from app.services.auth import AuthService
 
 settings = get_settings()
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -20,7 +21,9 @@ async def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
     return AuthService(db)
 
 
-async def get_current_user(request: Request, auth_service: AuthService = Depends(get_auth_service)) -> User:
+async def get_current_user(
+    request: Request, auth_service: AuthService = Depends(get_auth_service)
+) -> User:
     user = await auth_service.get_current_user(request)
     if not user:
         raise HTTPException(
@@ -83,6 +86,7 @@ async def google_callback(
     try:
         token_url = "https://oauth2.googleapis.com/token"
         import httpx
+
         async with httpx.AsyncClient() as client:
             token_response = await client.post(
                 token_url,
@@ -152,7 +156,7 @@ async def google_callback(
         raise HTTPException(
             status_code=503,
             detail={"code": "oauth_error", "message": f"Failed to authenticate: {str(e)}"},
-        )
+        ) from e
 
 
 @router.post("/logout")

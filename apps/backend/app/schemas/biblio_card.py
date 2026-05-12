@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from datetime import datetime
-from uuid import UUID
-from enum import Enum
-
-from pydantic import BaseModel, ConfigDict, StringConstraints, HttpUrl
 import re
+from datetime import datetime
+from enum import Enum
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, StringConstraints
 
 from app.schemas.source import SourceResponse
 

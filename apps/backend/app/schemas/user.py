@@ -1,11 +1,10 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, StringConstraints
-import re
-
 
 SlugPattern = re.compile(r"^[a-z0-9][a-z0-9-]{2,80}$")
 

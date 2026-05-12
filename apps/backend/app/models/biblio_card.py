@@ -2,13 +2,18 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlalchemy import String, Text, DateTime, ForeignKey, Index
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
+
+if TYPE_CHECKING:
+    from app.models.source import Source
+    from app.models.user import User
 
 
 class CardStatus(str, Enum):
@@ -70,12 +75,12 @@ class BiblioCard(Base):
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    user: Mapped["User"] = relationship(
+    user: Mapped[User] = relationship(
         "User",
         back_populates="biblio_cards",
         foreign_keys=[user_id],
     )
-    sources: Mapped[list["Source"]] = relationship(
+    sources: Mapped[list[Source]] = relationship(
         "Source",
         back_populates="biblio_card",
         cascade="all, delete-orphan",

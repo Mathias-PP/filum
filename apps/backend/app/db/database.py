@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import AsyncGenerator
-from uuid import UUID, uuid4
+from collections.abc import AsyncGenerator
+from datetime import datetime
 
-from sqlalchemy import event, func
+from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
