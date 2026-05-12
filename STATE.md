@@ -129,6 +129,7 @@ Variables intentionnellement non configurées (defaults dans `config.py` suffise
 
 ## Prochaines étapes (par ordre logique)
 
+0. **Itération 2 livrée** (ADR-017) : nouveau logo arbre+graphe, indicateurs typés + extraits (table `source_excerpts`), conflits d'intérêt déclarés, refonte cartographie (labels auteurs, seuils de zoom, plein écran), panneau de détail ancré au nœud, SSR + JSON-LD sur la fiche publique (référencement Google + GEO Perplexity/SearchGPT/Claude).
 1. **OAuth Google** : credentials Google Cloud Console → variables `google_client_id` / `google_client_secret` / `google_redirect_uri` (lowercase) dans Railway. Côté frontend, basculer le cookie `filum_session` en `samesite=none` pour cross-origin Vercel↔Railway.
 2. **Tester flow auth bout-en-bout** : login → callback → cookie session → /api/v1/auth/me
 3. **Implémenter `apps/backend/app/extractors/`** : module d'extraction URL → métadonnées (titre, auteur, date, snapshot Wayback). C'est la pierre angulaire du produit.
@@ -137,6 +138,7 @@ Variables intentionnellement non configurées (defaults dans `config.py` suffise
 6. **Fix deps eslint frontend** : ajouter les paquets manquants, retirer `|| true`
 7. **Réécrire un test composant Svelte 5** : utiliser `createRawSnippet` ou l'API actuelle de testing-library/svelte
 8. **Export PDF** d'une fiche
+9. **Mode privé + intégrations Zotero / Obsidian / Notion** (cf. `.docs/09-private-mode-and-integrations.md`)
 
 ---
 

@@ -53,6 +53,15 @@ class SourceUpdate(BaseModel):
     parent_source_id: UUID | None = None
 
 
+class SourceExcerptResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    position: int
+    text: str
+    suggested_by_ai: bool
+
+
 class SourceResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -69,6 +78,12 @@ class SourceResponse(BaseModel):
     archive_url: str | None
     archive_timestamp: datetime | None
     parent_source_id: UUID | None
+    conflict_of_interest: str | None = None
+    citations_count: int | None = None
+    subscribers_count: int | None = None
+    views_count: int | None = None
+    impact_factor: float | None = None
+    excerpts: list[SourceExcerptResponse] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime | None
 

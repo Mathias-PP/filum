@@ -475,3 +475,34 @@ La payload canonical_hash signée par `CardService.publish_card` (et vérifiée 
 **Conséquences**
 ...
 -->
+
+
+## ADR-017 - Itu00e9ration 2 : indicateurs structuru00e9s, extraits, SSR fiche publique, refonte panneau
+
+**Date** : 2026-05-12
+
+**Contexte**
+
+Apru00e8s la du00e9mo de neuroscience (itu00e9ration 1), quatre faiblesses bloquaient un usage MVP cru00e9dible : (1) un cube gu00e9nu00e9rique en guise de logo, (2) une cartographie sans nom d'auteur et un panneau collu00e9 au bord droit, (3) un jugement implicite via 'Autoritu00e9 u00e9levu00e9e/moyenne/faible' qui n'a aucun fondement vu00e9rifiable, (4) une page publique 100 % CSR, donc invisible aux bots SEO et aux moteurs IA (Perplexity, SearchGPT, Claude).
+
+**Du00e9cisions**
+
+1. **Indicateurs typu00e9s par type de source** plutu00f4t qu'un niveau d'autoritu00e9 fourre-tout. Colonnes flat : 'citations_count', 'impact_factor', 'subscribers_count', 'views_count'. Affichu00e9es sous forme de chips neutres. La colonne 'authority_level' n'est plus utilisu00e9e par l'UI mais reste en base (pas de migration destructive, et pas d'impact sur le 'canonical_hash').
+2. **Table du00e9diu00e9e 'source_excerpts'** (FK CASCADE, position, text, suggested_by_ai). Pru00e9fu00e9ru00e9e u00e0 un JSONB sur 'sources' pour : indexabilitu00e9, contrainte 'NOT NULL' sur le texte, u00e9volution future vers un picker IA sans migration de schema.
+3. **'conflict_of_interest' TEXT nullable**. Affichu00e9 _uniquement_ s'il est renseignu00e9 (jamais 'Aucun conflit') pour ne pas du00e9nigrer par omission.
+4. **Renommage 'Pivot' -> 'Source clu00e9'** avec tooltip 'Source structurante du raisonnement'. 'Pivot' restait jargonnant et asymu00e9trique vis-u00e0-vis du reste de l'interface.
+5. **SSR uniquement sur la fiche publique** ('+page.ts' avec 'ssr = true', surcharge le 'ssr = false' du '+layout.ts'). Le D3 est chargu00e9 cu00f4tu00e9 client via dynamic import ; le rendu serveur produit le HTML statique (sources + JSON-LD) que les bots et IA peuvent lire sans exu00e9cuter JS.
+6. **JSON-LD Article + Person + citations[]** dans '<svelte:head>'. Crucial pour le GEO : Perplexity, SearchGPT, Claude.ai lisent prioritairement le JSON-LD avant le DOM.
+7. **Panneau de du00e9tail ancru00e9 au nu0153ud cliquu00e9** plutu00f4t que collu00e9 au bord droit de la fenu00eatre. Largeur ru00e9duite (320px), positionnement contextuel, fallback bottom-sheet sur mobile (< 600px).
+
+**Non-du00e9cisions (explicit)**
+
+- Le 'canonical_hash' payload n'est PAS modifiu00e9. Les nouveaux champs restent hors signature pour pru00e9server la validitu00e9 des fiches du00e9ju00e0 publiu00e9es.
+- Pas de picker IA pour les excerpts dans cette itu00e9ration : 'suggested_by_ai' est seedu00e9 u00e0 'false', le champ est lu00e0 pour la future feature.
+- Pas de mode privu00e9 ni connectivitu00e9 Zotero/Obsidian/Notion : seulement un doc spec ('.docs/09-private-mode-and-integrations.md').
+
+**Consu00e9quences**
+
+- Toutes les fiches du00e9ju00e0 publiu00e9es restent vu00e9rifiables : le payload signu00e9 est inchangu00e9.
+- La page publique devient indexable par Google et lisible par les moteurs IA.
+- L'ajout futur d'un champ visible doit systu00e9matiquement se demander : 'rentre-t-il dans la signature ou pas ?' (par du00e9faut, non).

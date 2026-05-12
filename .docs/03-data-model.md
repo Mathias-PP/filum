@@ -118,6 +118,11 @@ Représente une source citée dans une fiche.
 | `annotation` | `text` nullable | "Pourquoi je cite cette source" (max 500 chars) |
 | `is_pivot` | `boolean` default `false` | Source structurante du raisonnement |
 | `parent_source_id` | `uuid` FK → sources.id nullable | Source citée par celle-ci (auto-référence, indexée). Permet de matérialiser le citation graph sans entrer dans le `canonical_hash` signé. |
+| `conflict_of_interest` | `text` nullable | Conflit d'intérêt déclaré (affiché _uniquement_ si présent). Hors `canonical_hash`. |
+| `citations_count` | `integer` nullable | Indicateur peer-reviewed / livres. Hors `canonical_hash`. |
+| `subscribers_count` | `integer` nullable | Indicateur plateforme (YouTube, podcast). Hors `canonical_hash`. |
+| `views_count` | `integer` nullable | Vues vidéo / podcast. Hors `canonical_hash`. |
+| `impact_factor` | `float` nullable | Journal impact factor. Hors `canonical_hash`. |
 | `archive_url` | `text` nullable | URL Wayback Machine de l'archive |
 | `archive_status` | `text` | `pending`, `archived`, `failed` |
 | `archive_attempted_at` | `timestamptz` nullable | |
@@ -126,6 +131,29 @@ Représente une source citée dans une fiche.
 | `updated_at` | `timestamptz` | |
 
 **Index** : `sources_biblio_card_id_idx`, `sources_url_idx` (pour la détection de doublons), `sources_archive_status_idx` (pour les jobs background), `ix_sources_parent_source_id` (pour "qui cite cette source ?").
+
+### Table : `source_excerpts` (migration 004)
+
+Une source peut porter plusieurs citations verbatim utilisées par le créateur. Hors `canonical_hash`.
+
+| Colonne | Type | Description |
+|---|---|---|
+| `id` | `uuid` PK | |
+| `source_id` | `uuid` FK → sources.id ON DELETE CASCADE, indexé | |
+| `position` | `integer` default 0 | Ordre d'affichage |
+| `text` | `text` NOT NULL | Citation verbatim |
+| `suggested_by_ai` | `boolean` default false | Future-proof : picker IA d'extraits |
+| `created_at` / `updated_at` | `timestamp` | |
+
+```
+source_excerpts
+├── id (uuid, pk)
+├── source_id (uuid, fk → sources.id CASCADE)
+├── position (int)
+├── text (text)
+├── suggested_by_ai (bool)
+└── created_at / updated_at
+```
 
 **Contraintes** :
 - `position` >= 1

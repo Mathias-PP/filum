@@ -3,6 +3,7 @@
   import { env } from '$env/dynamic/public'
   import { auth } from '$lib/stores'
   import { page } from '$app/stores'
+  import { Logo } from '$lib/components'
 
   const loginUrl = `${env.PUBLIC_API_BASE_URL ?? ''}/api/v1/auth/login`
 
@@ -27,11 +28,7 @@
     <nav class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between h-16">
         <a href="/" class="flex items-center gap-2">
-          <svg class="w-8 h-8 text-blue-500" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M16 2L4 8v16l12 6 12-6V8L16 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M4 8l12 6 12-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M16 14v14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
+          <Logo size={32} className="text-blue-600" />
           <span class="text-xl font-bold text-slate-900">Filum</span>
         </a>
 
