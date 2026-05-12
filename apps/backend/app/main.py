@@ -60,11 +60,13 @@ async def health_check():
 
 @app.get("/health/database")
 async def database_health():
+    from sqlalchemy import text
+
     from app.db.database import async_session_maker
 
     try:
         async with async_session_maker() as session:
-            await session.execute("SELECT 1")
+            await session.execute(text("SELECT 1"))
         return {"status": "ok", "database": "connected"}
     except Exception as e:
         return {"status": "error", "database": str(e)}
