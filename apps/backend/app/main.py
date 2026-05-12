@@ -83,19 +83,14 @@ async def seed_health():
     from app.models.user import User
 
     async with async_session_maker() as session:
-        users = (
-            await session.execute(select(User.username, User.id))
-        ).all()
+        users = (await session.execute(select(User.username, User.id))).all()
         cards = (
-            await session.execute(
-                select(BiblioCard.slug, BiblioCard.status, BiblioCard.user_id)
-            )
+            await session.execute(select(BiblioCard.slug, BiblioCard.status, BiblioCard.user_id))
         ).all()
         return {
             "users": [{"username": u.username, "id": str(u.id)} for u in users],
             "cards": [
-                {"slug": c.slug, "status": c.status, "user_id": str(c.user_id)}
-                for c in cards
+                {"slug": c.slug, "status": c.status, "user_id": str(c.user_id)} for c in cards
             ],
         }
 
