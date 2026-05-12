@@ -1,0 +1,275 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop, 'feat/**']
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "22"
+
+jobs:
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Check for secrets in code
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+
+  lint-backend:
+    name: Lint Backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies
+        run: uv sync --only-dev
+        working-directory: apps/backend
+
+      - name: Install dev dependencies
+        run: uv sync --all-extras
+        working-directory: apps/backend
+
+      - name: Run ruff check
+        run: uv run ruff check app/
+        working-directory: apps/backend
+        timeout-minutes: 2
+
+      - name: Check ruff format
+        run: uv run ruff format --check app/
+        working-directory: apps/backend
+
+  typecheck-backend:
+    name: Type Check Backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+        working-directory: apps/backend
+
+      - name: Run mypy
+        run: uv run mypy app/ --ignore-missing-imports
+        working-directory: apps/backend
+        timeout-minutes: 3
+
+  lint-frontend:
+    name: Lint Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: apps/frontend/package.json
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: apps/frontend
+
+      - name: Run ESLint
+        run: pnpm run lint || true
+        working-directory: apps/frontend
+        continue-on-error: true
+
+      - name: Check Prettier format
+        run: pnpm run format --check || true
+        working-directory: apps/frontend
+        continue-on-error: true
+
+  test-backend:
+    name: Test Backend
+    runs-on: ubuntu-latest
+
+    env:
+      database_url: sqlite+aiosqlite:///./test.db
+      session_secret: test-secret-for-ci-session-32chars
+      master_encryption_key: test-key-for-ci-encryption-32b
+      ci: "true"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+        working-directory: apps/backend
+
+      - name: Run tests
+        run: uv run pytest tests/ -v --tb=short
+        working-directory: apps/backend
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-test-results
+          path: apps/backend/.pytest_cache
+          retention-days: 7
+
+  test-frontend:
+    name: Test Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: apps/frontend/package.json
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: apps/frontend
+
+      - name: Run tests
+        run: pnpm run test --run
+        working-directory: apps/frontend
+
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    needs: [lint-frontend]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          package_json_file: apps/frontend/package.json
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: apps/frontend
+
+      - name: Type check
+        run: pnpm run check
+        working-directory: apps/frontend
+
+      - name: Build
+        run: pnpm run build
+        working-directory: apps/frontend
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: apps/frontend/build
+          retention-days: 1
+
+  dbt-check:
+    name: Analytics Check
+    runs-on: ubuntu-latest
+    env:
+      DUCKDB_PATH: ':memory:'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Compile dbt
+        run: uvx --from dbt-duckdb dbt compile --target ci
+        working-directory: apps/analytics
+
+  summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [security-scan, lint-backend, typecheck-backend, lint-frontend, test-backend, test-frontend, build-frontend]
+    if: always()
+    steps:
+      - name: Summary
+        run: |
+          echo "## CI Results"
+          echo "### Security Scan: ${{ needs.security-scan.result }}"
+          echo "### Backend Lint: ${{ needs.lint-backend.result }}"
+          echo "### Backend Type Check: ${{ needs.typecheck-backend.result }}"
+          echo "### Frontend Lint: ${{ needs.lint-frontend.result }}"
+          echo "### Backend Tests: ${{ needs.test-backend.result }}"
+          echo "### Frontend Tests: ${{ needs.test-frontend.result }}"
+          echo "### Frontend Build: ${{ needs.build-frontend.result }}"

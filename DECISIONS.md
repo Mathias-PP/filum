@@ -192,6 +192,169 @@ Choisir un nom de code pour le projet.
 
 ---
 
+## ADR-009 — Chiffrement AES-GCM au lieu de Fernet
+
+**Date** : 2026-05
+
+**Contexte**
+Chiffrement de la clé privée Ed25519 de chaque utilisateur avant stockage en base.
+
+**Options envisagées**
+- Fernet (standard dans la communauté Python, simple) — rejeté car obsolète
+- AES-GCM avec `cryptography` (retenue)
+
+**Justifications**
+- AES-GCM est le standard moderne, authentifié (AEAD), recommandé par les autorités (ANSSI, NIST)
+- `cryptography` est déjà une dépendance du projet pour Ed25519
+- Fernet est une surcouche qui masque les détails cryptographiques (pédagogiquement moins intéressant pour un portfolio Data Engineer)
+
+**Conséquences**
+- Implémentation légèrement plus verbeuse que Fernet
+- Code crypto plus transparent et valorisable
+
+---
+
+## ADR-010 — `case_sensitive=True` dans pydantic-settings : variables d'env en lowercase
+
+**Date** : 2026-05
+
+**Contexte**
+La classe `Settings` utilise `case_sensitive=True` dans `SettingsConfigDict`. Cela casse la lecture des variables d'environnement en SCREAMING_SNAKE_CASE.
+
+**Options envisagées**
+- Passer `case_sensitive=False` (rejeté : moins de contrôle sur les collisions de noms)
+- Conserver `case_sensitive=True` et utiliser des noms lowercase dans les env vars partout (retenue)
+
+**Justifications**
+- Cohérence avec la définition exacte des champs dans la classe Settings
+- `case_sensitive=True` évite les ambiguïtés (ex: `database_url` vs `DATABASE_URL`)
+- GitHub Actions gère correctement les env vars lowercase
+
+**Conséquences**
+- `.env` : utiliser `database_url`, `session_secret`, etc. (pas `DATABASE_URL`)
+- CI/CD : env vars en lowercase dans `ci.yml` et `cd.yml`
+- Conftest de test : env vars en lowercase avant import des modules app
+
+---
+
+## ADR-011 — pnpm 11 : workaround `ERR_PNPM_IGNORED_BUILDS`
+
+**Date** : 2026-05
+
+**Contexte**
+pnpm 11 a introduit une politique stricte sur les build scripts (`onlyBuiltDependencies`). esbuild (dépendance transitive de SvelteKit/Vite) n'est pas autorisé à exécuter ses postinstall scripts, causant `ERR_PNPM_IGNORED_BUILDS` avec exit code 1.
+
+**Options envisagées**
+- `onlyBuiltDependencies` dans `package.json` (essayé, ignoré par pnpm 11 en CI)
+- `.pnpm-approve-builds.json` (essayé, ignoré par pnpm 11)
+- `pnpm config set onlyBuiltDependencies` + `|| true` sur install (retenue)
+
+**Justifications**
+- La config dans `package.json` est respectée par pnpm local mais pas systématiquement en CI
+- `.pnpm-approve-builds.json` est déprécié par pnpm 11
+- `|| true` est un workaround pragmatique : l'install réussit malgré le warning, l'erreur exit code est supprimée
+
+**Conséquences**
+- Toute job CI frontend avec `pnpm install` doit avoir `|| true`
+- La config `pnpm config set onlyBuiltDependencies` reste présente comme bonne pratique
+- À réévaluer quand pnpm 11 sera plus mature ou que le bug sera fixé
+
+---
+
+## ADR-012 — Tests DB async : SQLite + aiosqlite, import explicite des modèles
+
+**Date** : 2026-05
+
+**Contexte**
+Tests unitaires des services qui dépendent de la base de données (AuthService). Nécessité d'une isolation par test et de la création/destruction des tables.
+
+**Options envisagées**
+- PostgreSQL de test via Docker (rejeté : complexité, CI déjà configurée en SQLite)
+- SQLite + aiosqlite avec fixture `db_session` créant les tables par test (retenue)
+
+**Justifications**
+- SQLite est utilisée en CI (ci.yml : `database_url: sqlite+aiosqlite:///./test.db`)
+- Pas de dépendance Docker pour les tests unitaires
+- aiosqlite compatible avec SQLAlchemy async
+
+**Piège évité**
+`Base.metadata.create_all` ne crée rien si les modèles ne sont pas importés. En conftest, il faut importer explicitement `app.models.user`, `app.models.biblio_card`, etc. avant d'appeler `create_all`, car SQLAlchemy ne découvre les tables qu'au moment de l'import de chaque modèle.
+
+**Conséquences**
+- `conftest.py` importe tous les modèles avant `create_all`
+- Tables créées et détruites à chaque test (via `db_session` fixture)
+- Performances acceptables (38 tests en ~11s)
+
+---
+
+## ADR-013 — Pin pnpm 10 via `packageManager` + suppression des workarounds CI
+
+**Date** : 2026-05
+
+**Contexte**
+Le job `build-frontend` échouait sur `pnpm run build`. Investigation :
+
+1. **Cause racine pnpm 11** : `pnpm install` retourne exit 1 sur `ERR_PNPM_IGNORED_BUILDS` (esbuild postinstall script non approuvé), **même si toute la résolution + l'écriture sur disque ont réussi** (les binaires esbuild proviennent de sous-packages prebuilds, le postinstall était cosmétique). pnpm 11 réexécute en plus un `pnpm install` interne avant chaque `pnpm run <script>` (`verify-deps-before-run=true` par défaut), reproduisant l'exit 1 fatalement.
+2. **Aggravation** : pnpm 11 réécrit `pnpm-workspace.yaml` à chaque install pour y insérer un bloc placeholder malformé `allowBuilds: esbuild: set this to true or false`, qui empoisonne la suite du fichier et invalide le `onlyBuiltDependencies` qu'on essaye d'y mettre.
+3. **Cause racine secondaire** : `svelte.config.js` portait `kit.vitePlugin.inspector`, option supprimée dans SvelteKit 2 (`Unexpected option config.kit.vitePlugin`) — invisible tant que (1) bloquait avant.
+
+**Options envisagées**
+- Empiler des workarounds pnpm 11 : `|| true` sur install + `pnpm exec` + `verify-deps-before-run=false` (rejetée : 3 workarounds pour 1 bug, masque la cause)
+- Migrer vers npm ou yarn (rejetée : coût de migration disproportionné)
+- **Pin pnpm 10 via `packageManager: "pnpm@10.33.4"` dans `package.json`** (retenue)
+
+**Justifications**
+- pnpm 10 n'a pas le comportement strict-exit-1 ni le re-install implicite — l'ancien comportement est ce que tout l'écosystème SvelteKit assume aujourd'hui
+- `pnpm/action-setup@v4` honore automatiquement le champ `packageManager` → CI alignée avec local et avec le Dockerfile (qui utilise déjà `corepack enable pnpm`)
+- Permet `--frozen-lockfile` en CI (builds déterministes)
+- Aucun fichier supplémentaire (pnpm-workspace.yaml, .pnpm-approve-builds.json) — restaure `pnpm.onlyBuiltDependencies` dans `package.json` (format pnpm 10 standard)
+
+**Conséquences**
+- `pnpm install` exit 0, `pnpm run build` direct, CI lisible
+- Mêmes versions de pnpm partout : CI, local, Docker
+- `.pnpm-approve-builds.json` supprimé (artefact pnpm 11 non lu par pnpm 10)
+- `pnpm-workspace.yaml` supprimé (réécrit par pnpm 11 avec du junk, inutile pour ce projet mono-package)
+- Bloc `kit.vitePlugin.inspector` retiré de `svelte.config.js`
+- Suppression dans CI : `|| true` sur install, `pnpm exec vite build`, `pnpm config set verify-deps-before-run false`, `continue-on-error: true` sur Type Check
+- `lint-frontend` et `test-frontend` gardent leur `|| true` : ils ont des bugs réels (deps eslint manquantes, incompat Svelte 5 + testing-library) à traiter dans une PR séparée (cf. STATE.md follow-ups)
+- À surveiller : si SvelteKit pousse pnpm 11+ exigé, on remontera le pin
+
+**Reproductibilité**
+```bash
+cd apps/frontend
+pnpm install --frozen-lockfile     # exit 0
+pnpm run build                     # ✓ built in ~10s
+```
+
+---
+
+## ADR-014 — Migration `python-jose` → `PyJWT`
+
+**Date** : 2026-05
+
+**Contexte**
+`actions/dependency-review-action@v4` (PR check GitHub) bloque le merge sur `ecdsa@0.19.2 — Minerva timing attack on P-256 (HIGH)`. `ecdsa` est tiré comme transitive dep par `python-jose`. Filum n'utilise PAS ECDSA (HS256 = HMAC symétrique pour JWT, Ed25519 via `cryptography` pour signatures de fiches) → CVE non exploitable, mais bloquant côté process.
+
+**Options envisagées**
+- Allowlist le CVE (rejetée : la lib `python-jose` est aussi peu maintenue ; on stocke une dette sans valeur)
+- Migrer vers `authlib` (rejetée : surdimensionné, on n'utilise que encode/decode)
+- **Migrer vers `PyJWT`** (retenue : standard de fait, API identique à jose, mainteneurs actifs)
+
+**Justifications**
+- API identique : `jwt.encode(payload, secret, algorithm='HS256')` et `jwt.decode(token, secret, algorithms=['HS256'])` — 0 changement de logique
+- Exception hierarchy plus propre : `jwt.InvalidTokenError` est parent de `ExpiredSignatureError`, `InvalidSignatureError`, `DecodeError` → couvre les 3 cas testés en une seule clause
+- Pas de transitive deps cryptographiques inutiles (ecdsa, pyasn1, rsa supprimés)
+- Type hints natifs : suppression d'un `# type: ignore` dans `auth.py`
+
+**Conséquences**
+- 4 fichiers modifiés : `pyproject.toml`, `uv.lock`, `app/services/auth.py`, `tests/unit/test_auth.py`
+- `uv.lock` : -65 lignes (suppression de ecdsa, pyasn1, rsa)
+- mypy + ruff propres
+- Dependency Review CI passe (plus de CVE haute sévérité)
+- Aucun changement de comportement runtime
+
+---
+
 *Pour ajouter une nouvelle décision, copier le template ci-dessous et incrémenter le numéro ADR.*
 
 <!--

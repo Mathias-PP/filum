@@ -1,0 +1,22 @@
+filum_duckdb:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('DUCKDB_PATH', 'dev.duckdb') }}"
+      extensions: []
+      threads: 4
+      timeout: 300
+
+    prod:
+      type: duckdb
+      path: "/data/filum_analytics.duckdb"
+      extensions: []
+      threads: 8
+      timeout: 600
+
+    ci:
+      type: duckdb
+      path: ":memory:"
+      extensions: []
+      threads: 2

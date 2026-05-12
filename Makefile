@@ -1,110 +1,127 @@
-# Makefile pour le projet Filum
-# Commandes principales pour le développement local
+.PHONY: help setup dev backend frontend test lint typecheck migrate seed clean docker-up docker-down
 
-.PHONY: help setup install-backend install-frontend install-analytics dev dev-backend dev-frontend test test-backend test-frontend lint lint-backend lint-frontend format format-backend format-frontend migrate migrate-create seed analytics-refresh clean
+# Colors
+GREEN  := \033[0;32m
+YELLOW := \033[0;33m
+NC     := \033[0m
 
-help:
-	@echo "Commandes Filum disponibles :"
-	@echo ""
-	@echo "  Setup et installation"
-	@echo "    make setup             - installe toutes les dépendances (backend + frontend + analytics)"
-	@echo "    make install-backend   - dépendances backend uniquement"
-	@echo "    make install-frontend  - dépendances frontend uniquement"
-	@echo "    make install-analytics - dépendances dbt uniquement"
-	@echo ""
-	@echo "  Développement"
-	@echo "    make dev               - démarre backend + frontend en parallèle"
-	@echo "    make dev-backend       - backend FastAPI sur :8000"
-	@echo "    make dev-frontend      - frontend SvelteKit sur :5173"
-	@echo ""
-	@echo "  Base de données"
-	@echo "    make migrate           - applique les migrations en attente"
-	@echo "    make migrate-create    - crée une nouvelle migration (auto-générée)"
-	@echo "    make seed              - peuple la BDD avec des données de démo"
-	@echo ""
-	@echo "  Analytics"
-	@echo "    make analytics-refresh - recharge DuckDB depuis Postgres et exécute dbt run"
-	@echo ""
-	@echo "  Tests, lint, format"
-	@echo "    make test              - tous les tests"
-	@echo "    make test-backend      - tests backend uniquement"
-	@echo "    make test-frontend     - tests frontend uniquement"
-	@echo "    make lint              - linting backend + frontend"
-	@echo "    make format            - formatage backend + frontend"
-	@echo ""
-	@echo "  Nettoyage"
-	@echo "    make clean             - supprime les caches et builds"
+help: ## Show this help
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "$(GREEN)%-20s$(NC) %s\n", $$1, $$2}'
 
-setup: install-backend install-frontend install-analytics
-	@echo "✓ Setup complet effectué"
+# === Python ===
+PYTHON := python3
+BACKEND := apps/backend
+UV := ~/.local/bin/uv
 
-install-backend:
-	@echo "Installation des dépendances backend..."
-	cd apps/backend && uv sync
+# === Node ===
+NODE_VERSION := 22
+PNPM := pnpm
 
-install-frontend:
-	@echo "Installation des dépendances frontend..."
-	cd apps/frontend && pnpm install
+# === Docker ===
+COMPOSE := docker compose
 
-install-analytics:
-	@echo "Installation des dépendances analytics..."
-	cd apps/analytics && uv pip install -r requirements.txt
+# === Setup ===
+setup: docker-up backend-setup frontend-setup ## Full setup (requires sudo for Docker)
 
-dev:
-	@echo "Démarrage backend + frontend..."
-	@(make dev-backend &) && (make dev-frontend &) && wait
+backend-setup: ## Install Python dependencies
+	@echo "$(YELLOW)Installing Python dependencies...$(NC)"
+	cd $(BACKEND) && $(UV) sync
+	cd $(BACKEND) && $(UV) run ruff check .
 
-dev-backend:
-	cd apps/backend && uv run uvicorn src.filum_api.main:app --reload --host 0.0.0.0 --port 8000
+frontend-setup: ## Install Node dependencies
+	@echo "$(YELLOW)Installing Node dependencies...$(NC)"
+	cd apps/frontend && $(PNPM) install
+	cd apps/frontend && $(PNPM) run build
 
-dev-frontend:
-	cd apps/frontend && pnpm dev
+# === Development ===
+dev: ## Start all services in dev mode
+	@echo "$(YELLOW)Starting Filum development...$(NC)"
+	cd $(BACKEND) && $(UV) run uvicorn app.main:app --reload --port 8000 &
+	cd apps/frontend && $(PNPM) dev
 
-migrate:
-	cd apps/backend && uv run alembic upgrade head
+backend: ## Start backend only
+	@echo "$(YELLOW)Starting backend...$(NC)"
+	cd $(BACKEND) && $(UV) run uvicorn app.main:app --reload --port 8000 --host 0.0.0.0
 
-migrate-create:
-	@read -p "Nom de la migration : " name; \
-	cd apps/backend && uv run alembic revision --autogenerate -m "$$name"
+frontend: ## Start frontend only
+	@echo "$(YELLOW)Starting frontend...$(NC)"
+	cd apps/frontend && $(PNPM) dev
 
-seed:
-	cd apps/backend && uv run python -m src.filum_api.scripts.seed
+# === Testing ===
+test: ## Run all tests
+	cd $(BACKEND) && $(UV) run pytest tests/ -v
+	cd apps/frontend && $(PNPM) run test
 
-analytics-refresh:
-	cd apps/backend && uv run python -m src.filum_api.scripts.load_to_duckdb
-	cd apps/analytics && uv run dbt run
+test-backend: ## Run backend tests only
+	cd $(BACKEND) && $(UV) run pytest tests/ -v
 
-test: test-backend test-frontend
+test-frontend: ## Run frontend tests only
+	cd apps/frontend && $(PNPM) run test
 
-test-backend:
-	cd apps/backend && uv run pytest -v
+# === Linting & Type Checking ===
+lint: ## Run linters
+	cd $(BACKEND) && $(UV) run ruff check .
+	cd apps/frontend && $(PNPM) run lint
 
-test-frontend:
-	cd apps/frontend && pnpm test
+typecheck: ## Run type checkers
+	cd $(BACKEND) && $(UV) run mypy app/
+	cd apps/frontend && $(PNPM) run check
 
-lint: lint-backend lint-frontend
+format: ## Format code
+	cd $(BACKEND) && $(UV) run ruff format .
+	cd apps/frontend && $(PNPM) run format
 
-lint-backend:
-	cd apps/backend && uv run ruff check src tests
+# === Database ===
+migrate: ## Run Alembic migrations
+	cd $(BACKEND) && $(UV) run alembic upgrade head
 
-lint-frontend:
-	cd apps/frontend && pnpm lint
+migrate-create: ## Create new migration (name required)
+	cd $(BACKEND) && $(UV) run alembic revision --autogenerate -m "$(NAME)"
 
-format: format-backend format-frontend
+migrate-rollback: ## Rollback last migration
+	cd $(BACKEND) && $(UV) run alembic downgrade -1
 
-format-backend:
-	cd apps/backend && uv run ruff format src tests
-	cd apps/backend && uv run ruff check --fix src tests
+db-reset: ## Reset database (dangerous!)
+	cd $(BACKEND) && $(UV) run alembic downgrade base
+	cd $(BACKEND) && $(UV) run alembic upgrade head
 
-format-frontend:
-	cd apps/frontend && pnpm format
+seed: ## Seed database with demo data
+	cd $(BACKEND) && $(UV) run python -m app.db.seed
 
-clean:
+# === Docker ===
+docker-up: ## Start Docker services (PostgreSQL, DuckDB)
+	@echo "$(YELLOW)Starting Docker services...$(NC)"
+	$(COMPOSE) up -d postgres
+	@echo "Waiting for PostgreSQL to be ready..."
+	@for i in 1 2 3 4 5 6 7 8 9 10; do \
+		nc -z localhost 5432 && break || sleep 1; \
+	done
+
+docker-down: ## Stop Docker services
+	$(COMPOSE) down
+
+docker-logs: ## Show Docker logs
+	$(COMPOSE) logs -f
+
+# === Analytics (dbt) ===
+dbt-deps: ## Install dbt dependencies
+	cd apps/analytics && $(UV) run dbt deps
+
+dbt-run: ## Run dbt models
+	cd apps/analytics && $(UV) run dbt run
+
+dbt-test: ## Run dbt tests
+	cd apps/analytics && $(UV) run dbt test
+
+dbt-docs: ## Generate dbt documentation
+	cd apps/analytics && $(UV) run dbt docs generate
+
+# === Cleanup ===
+clean: ## Clean build artifacts
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name "node_modules" -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name ".svelte-kit" -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name "dist" -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name ".duckdb" -exec rm -rf {} + 2>/dev/null || true
-	@echo "✓ Nettoyage terminé"
+	find . -type f -name "*.pyc" -delete
+	cd $(BACKEND) && $(UV) run pyclean . 2>/dev/null || true
+	cd apps/frontend && $(PNPM) run clean || true

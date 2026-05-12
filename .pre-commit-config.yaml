@@ -1,0 +1,88 @@
+default_install_types:
+  python: true
+  node: true
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+        args: ['--max-file-size=512000']
+      - id: check-merge-conflict
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-case-conflict
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.0
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-formatting]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.14.0
+    hooks:
+      - id: mypy
+        additional_dependencies: [pydantic]
+        args: [--ignore-missing-imports]
+        pass_filenames: false
+        entry: uv run mypy
+
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v9.18.0
+    hooks:
+      - id: eslint
+        args: [--fix]
+        files: ^apps/frontend/.*
+
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.4.0
+    hooks:
+      - id: prettier
+        args: [--write]
+        files: ^apps/frontend/.*
+
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.14.0
+    hooks:
+      - id: isort
+
+  - repo: local
+    hooks:
+      - id: no-secrets-in-code
+        name: Check for hardcoded secrets
+        entry: python scripts/check_secrets.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit, commit]
+
+  - repo: https://github.com/shellcheck-py/shellcheck-pre-commit
+    rev: v0.10.0
+    hooks:
+      - id: shellcheck
+        additional_dependencies: ['shellcheck-py']
+        files: ^scripts/.*
+
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: '\.env\.example$|\.secrets\.baseline$'
+
+  - repo: local
+    hooks:
+      - id: dbt-compile
+        name: dbt-compile
+        entry: uvx dbt-duckdb compile
+        language: system
+        pass_filenames: false
+        always_run: false
+        files: ^apps/analytics/.*
+        stages: [push]

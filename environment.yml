@@ -1,0 +1,36 @@
+name: filum
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - uv
+  - pip
+  - postgresql>=16
+  - duckdb
+  - dbt-duckdb
+
+  # Backend
+  - fastapi
+  - uvicorn
+  - sqlalchemy
+  - asyncpg
+  - alembic
+  - pydantic>=2.10
+  - pydantic-settings
+  - cryptography
+  - httpx
+
+  # Analytics
+  - jupyter
+  - pandas
+  - pyarrow
+
+  # Dev tools
+  - ruff
+  - mypy
+  - pytest
+  - pytest-asyncio
+
+  # Frontend
+  - nodejs>=22
+  - pnpm
