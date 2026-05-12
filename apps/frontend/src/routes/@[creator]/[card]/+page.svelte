@@ -180,7 +180,7 @@
             </button>
           </div>
           <div class="text-sm text-slate-500">
-            <p>Signé le {card.signed_at ? new Date(card.signed_at).toLocaleDateString('fr-FR', { dateStyle: 'long', timeStyle: 'short' }) : 'N/A'}</p>
+            <p>Signé le {card.signed_at ? new Date(card.signed_at).toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' }) : 'N/A'}</p>
             <p class="text-xs">Vérifiable via l'API</p>
           </div>
         </div>

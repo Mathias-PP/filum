@@ -1,7 +1,10 @@
 <script lang="ts">
   import '../app.css'
+  import { env } from '$env/dynamic/public'
   import { auth } from '$lib/stores'
   import { page } from '$app/stores'
+
+  const loginUrl = `${env.PUBLIC_API_BASE_URL ?? ''}/api/v1/auth/login`
 
   interface Props {
     data: { user: unknown }
@@ -47,8 +50,8 @@
           {#if data.user}
             <a href="/dashboard" class="btn-primary text-sm">Tableau de bord</a>
           {:else}
-            <a href="/api/v1/auth/login" class="btn-secondary text-sm">Se connecter</a>
-            <a href="/api/v1/auth/login" class="btn-primary text-sm">Créer une fiche</a>
+            <a href={loginUrl} class="btn-secondary text-sm">Se connecter</a>
+            <a href={loginUrl} class="btn-primary text-sm">Créer une fiche</a>
           {/if}
         </div>
       </div>

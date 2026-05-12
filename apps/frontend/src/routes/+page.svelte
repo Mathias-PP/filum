@@ -1,5 +1,8 @@
 <script lang="ts">
+  import { env } from '$env/dynamic/public'
   import { Button } from '$lib/components'
+
+  const loginUrl = `${env.PUBLIC_API_BASE_URL ?? ''}/api/v1/auth/login`
 </script>
 
 <svelte:head>
@@ -19,7 +22,7 @@
           sources organisées, archivées et signées cryptographiquement.
         </p>
         <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Button href="/api/v1/auth/login" variant="primary" size="lg">
+          <Button href={loginUrl} variant="primary" size="lg">
             Créer ma première fiche
           </Button>
           <Button href="/@example/filum-demo" variant="secondary" size="lg">
@@ -96,7 +99,7 @@
       <p class="text-xl text-blue-100 mb-8">
         Rejoignez les créateurs qui prennent le temps de bien sourcer leur travail.
       </p>
-      <Button href="/api/v1/auth/login" variant="secondary" size="lg" class="bg-white text-blue-600 hover:bg-blue-50">
+      <Button href={loginUrl} variant="secondary" size="lg" class="bg-white text-blue-600 hover:bg-blue-50">
         Créer ma fiche gratuitement
       </Button>
     </div>
