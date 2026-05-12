@@ -26,6 +26,7 @@ limiter = Limiter(key_func=get_remote_address)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info(f"Starting {settings.app_name} v{settings.app_version}")
+    logger.info(f"CORS allowed origins: {settings.cors_origins!r}")
     yield
     logger.info("Shutting down...")
 
