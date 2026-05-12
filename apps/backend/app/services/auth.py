@@ -4,7 +4,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from jose import JWTError, jwt
+import jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
@@ -32,7 +32,7 @@ class AuthService:
             "exp": expire,
             "iat": datetime.now(UTC),
         }
-        return jwt.encode(payload, settings.session_secret, algorithm=ALGORITHM)  # type: ignore[no-any-return]
+        return jwt.encode(payload, settings.session_secret, algorithm=ALGORITHM)
 
     async def get_current_user(self, request: Request) -> User | None:
         token = request.cookies.get("filum_session")
@@ -51,7 +51,7 @@ class AuthService:
             user = result.scalar_one_or_none()
             if user and not user.deleted_at:
                 return user
-        except (JWTError, ValueError, KeyError) as e:
+        except (jwt.InvalidTokenError, ValueError, KeyError) as e:
             logger.warning(f"Session validation failed: {e}")
 
         return None

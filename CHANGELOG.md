@@ -22,6 +22,9 @@
 - CI build-frontend (ADR-013) : pin pnpm 10.33.4 via `packageManager` dans `package.json` ; suppression de tous les workarounds pnpm 11 (`|| true` sur install, `pnpm exec vite build`, `verify-deps-before-run=false`, `continue-on-error` sur Type Check) ; suppression de `kit.vitePlugin.inspector` (SvelteKit 2)
 - Frontend : passage à `--frozen-lockfile` en CI (builds déterministes, `pnpm-lock.yaml` commit)
 
+### Security
+- Migration `python-jose` → `PyJWT` 2.12.1 (ADR-014). Supprime `ecdsa@0.19.2` (CVE Minerva timing attack on P-256, HIGH) et ses transitives `pyasn1`, `rsa`. Non exploitable chez nous (HS256+Ed25519, pas d'ECDSA), mais bloquait la CI Dependency Review.
+
 ### Removed
 - `apps/frontend/.pnpm-approve-builds.json` (artefact pnpm 11, ignoré par pnpm 10)
 - `apps/frontend/pnpm-workspace.yaml` (réécrit par pnpm 11 avec un placeholder malformé ; inutile en mono-package)

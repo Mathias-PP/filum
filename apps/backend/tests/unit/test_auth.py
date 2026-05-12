@@ -3,8 +3,8 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
+import jwt
 from cryptography.hazmat.primitives import serialization
-from jose import jwt
 from starlette.requests import Request
 
 from app.schemas.auth import TokenPayload

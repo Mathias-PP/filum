@@ -328,6 +328,33 @@ pnpm run build                     # ✓ built in ~10s
 
 ---
 
+## ADR-014 — Migration `python-jose` → `PyJWT`
+
+**Date** : 2026-05
+
+**Contexte**
+`actions/dependency-review-action@v4` (PR check GitHub) bloque le merge sur `ecdsa@0.19.2 — Minerva timing attack on P-256 (HIGH)`. `ecdsa` est tiré comme transitive dep par `python-jose`. Filum n'utilise PAS ECDSA (HS256 = HMAC symétrique pour JWT, Ed25519 via `cryptography` pour signatures de fiches) → CVE non exploitable, mais bloquant côté process.
+
+**Options envisagées**
+- Allowlist le CVE (rejetée : la lib `python-jose` est aussi peu maintenue ; on stocke une dette sans valeur)
+- Migrer vers `authlib` (rejetée : surdimensionné, on n'utilise que encode/decode)
+- **Migrer vers `PyJWT`** (retenue : standard de fait, API identique à jose, mainteneurs actifs)
+
+**Justifications**
+- API identique : `jwt.encode(payload, secret, algorithm='HS256')` et `jwt.decode(token, secret, algorithms=['HS256'])` — 0 changement de logique
+- Exception hierarchy plus propre : `jwt.InvalidTokenError` est parent de `ExpiredSignatureError`, `InvalidSignatureError`, `DecodeError` → couvre les 3 cas testés en une seule clause
+- Pas de transitive deps cryptographiques inutiles (ecdsa, pyasn1, rsa supprimés)
+- Type hints natifs : suppression d'un `# type: ignore` dans `auth.py`
+
+**Conséquences**
+- 4 fichiers modifiés : `pyproject.toml`, `uv.lock`, `app/services/auth.py`, `tests/unit/test_auth.py`
+- `uv.lock` : -65 lignes (suppression de ecdsa, pyasn1, rsa)
+- mypy + ruff propres
+- Dependency Review CI passe (plus de CVE haute sévérité)
+- Aucun changement de comportement runtime
+
+---
+
 *Pour ajouter une nouvelle décision, copier le template ci-dessous et incrémenter le numéro ADR.*
 
 <!--
