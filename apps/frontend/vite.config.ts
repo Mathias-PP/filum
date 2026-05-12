@@ -5,12 +5,19 @@ export default defineConfig({
   plugins: [sveltekit()],
   server: {
     port: 5173,
-    strictPort: false
+    strictPort: false,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true
+      }
+    }
   },
   build: {
-    target: 'esnext'
+    target: 'esnext',
+    minify: 'esbuild'
   },
   optimizeDeps: {
-    exclude: ['@node-rs/argon2']
+    include: ['d3']
   }
 })

@@ -6,10 +6,21 @@ const config = {
   kit: {
     adapter: adapter(),
     alias: {
-      $components: 'src/lib/components',
-      $stores: 'src/lib/stores',
-      $api: 'src/lib/api',
-      $utils: 'src/lib/utils'
+      $lib: 'src/lib',
+      '$components': 'src/lib/components',
+      '$stores': 'src/lib/stores',
+      '$api': 'src/lib/api',
+      '$utils': 'src/lib/utils'
+    },
+    csrf: {
+      checkOrigin: false
+    },
+    vitePlugin: {
+      inspector: {
+        toggleKey: 'shiftAlt',
+        toggleButtonOk: 'inspect',
+        toggleButtonCancel: 'close'
+      }
     }
   }
 }
