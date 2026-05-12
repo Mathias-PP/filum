@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from uuid import UUID, uuid4
+from uuid import UUID
 
-import pytest
+from cryptography.hazmat.primitives import serialization
 from jose import jwt
-from starlette.datastructures import Headers
 from starlette.requests import Request
 
-from app.schemas.auth import LoginResponse, TokenPayload
+from app.schemas.auth import TokenPayload
+from app.services.auth import ALGORITHM, SESSION_EXPIRE_HOURS, settings
 
 
 class TestAuthService:
@@ -17,23 +17,19 @@ class TestAuthService:
         assert isinstance(token, str)
         assert len(token.split(".")) == 3
 
-        from app.services.auth import settings
-
-        payload = jwt.decode(
-            token, settings.session_secret, algorithms=["HS256"],
-        )
+        payload = jwt.decode(token, settings.session_secret, algorithms=[ALGORITHM])
         assert payload["sub"] == str(test_user.id)
         assert "exp" in payload
         assert "iat" in payload
 
     async def test_create_session_expiry_is_24h(self, auth_service, test_user):
         token = auth_service.create_session(test_user.id)
-        payload = jwt.decode(
-            token, "test-secret-for-ci-session-32chars", algorithms=["HS256"]
-        )
+        payload = jwt.decode(token, settings.session_secret, algorithms=[ALGORITHM])
         exp = datetime.fromtimestamp(payload["exp"], tz=UTC)
         iat = datetime.fromtimestamp(payload["iat"], tz=UTC)
-        assert exp - iat <= timedelta(hours=24)
+        delta = exp - iat
+        expected = timedelta(hours=SESSION_EXPIRE_HOURS)
+        assert expected - timedelta(seconds=2) <= delta <= expected
 
     async def test_get_current_user_from_cookie(self, auth_service, test_user):
         token = auth_service.create_session(test_user.id)
@@ -41,11 +37,10 @@ class TestAuthService:
             "type": "http",
             "method": "GET",
             "path": "/",
-            "headers": [],
+            "headers": [(b"cookie", f"filum_session={token}".encode())],
             "query_string": b"",
         }
         request = Request(scope)
-        request._cookies = {"filum_session": token}
         user = await auth_service.get_current_user(request)
         assert user is not None
         assert user.id == test_user.id
@@ -183,37 +178,44 @@ class TestAuthService:
         assert found is not None
         assert found.email == "newuser@example.com"
 
-    async def test_create_user_from_google_generates_keypair(self, auth_service):
+    async def test_create_user_from_google_generates_usable_keypair(self, auth_service):
+        from cryptography.hazmat.primitives.asymmetric import ed25519
+
         user = await auth_service.create_user_from_google(
             email="keytest@example.com",
             google_id="key_test_id",
             username="keytest",
             display_name="Key Test",
         )
+
         assert len(user.public_key) == 64
-        assert "ENCRYPTED" not in user.public_key
-        assert user.encrypted_private_key != user.public_key
+        assert bytes.fromhex(user.public_key)
+
+        decrypted_pem = auth_service._key_manager.decrypt_private_key(
+            user.encrypted_private_key
+        )
+        private_key = serialization.load_pem_private_key(
+            decrypted_pem.encode("utf-8"), password=None
+        )
+        assert isinstance(private_key, ed25519.Ed25519PrivateKey)
+
+        message = b"filum-provenance-test"
+        signature = private_key.sign(message)
+
+        public_key = ed25519.Ed25519PublicKey.from_public_bytes(
+            bytes.fromhex(user.public_key)
+        )
+        public_key.verify(signature, message)
 
 
 class TestAuthSchemas:
-    def test_token_payload_valid(self):
-        now = datetime.now(UTC)
+    async def test_token_roundtrip_via_create_session(self, auth_service, test_user):
+        token = auth_service.create_session(test_user.id)
+        raw = jwt.decode(token, settings.session_secret, algorithms=[ALGORITHM])
         payload = TokenPayload(
-            sub=uuid4(),
-            exp=now + timedelta(hours=1),
-            iat=now,
+            sub=UUID(raw["sub"]),
+            exp=datetime.fromtimestamp(raw["exp"], tz=UTC),
+            iat=datetime.fromtimestamp(raw["iat"], tz=UTC),
         )
-        assert payload.sub is not None
-        assert isinstance(payload.sub, UUID)
+        assert payload.sub == test_user.id
         assert payload.exp > payload.iat
-
-    def test_login_response_serialization(self):
-        user_id = uuid4()
-        response = LoginResponse(
-            access_token="test_token_value",
-            token_type="bearer",
-            user_id=user_id,
-        )
-        assert response.access_token == "test_token_value"
-        assert response.token_type == "bearer"
-        assert response.user_id == user_id

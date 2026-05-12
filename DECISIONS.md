@@ -287,6 +287,47 @@ Tests unitaires des services qui dépendent de la base de données (AuthService)
 
 ---
 
+## ADR-013 — Pin pnpm 10 via `packageManager` + suppression des workarounds CI
+
+**Date** : 2026-05
+
+**Contexte**
+Le job `build-frontend` échouait sur `pnpm run build`. Investigation :
+
+1. **Cause racine pnpm 11** : `pnpm install` retourne exit 1 sur `ERR_PNPM_IGNORED_BUILDS` (esbuild postinstall script non approuvé), **même si toute la résolution + l'écriture sur disque ont réussi** (les binaires esbuild proviennent de sous-packages prebuilds, le postinstall était cosmétique). pnpm 11 réexécute en plus un `pnpm install` interne avant chaque `pnpm run <script>` (`verify-deps-before-run=true` par défaut), reproduisant l'exit 1 fatalement.
+2. **Aggravation** : pnpm 11 réécrit `pnpm-workspace.yaml` à chaque install pour y insérer un bloc placeholder malformé `allowBuilds: esbuild: set this to true or false`, qui empoisonne la suite du fichier et invalide le `onlyBuiltDependencies` qu'on essaye d'y mettre.
+3. **Cause racine secondaire** : `svelte.config.js` portait `kit.vitePlugin.inspector`, option supprimée dans SvelteKit 2 (`Unexpected option config.kit.vitePlugin`) — invisible tant que (1) bloquait avant.
+
+**Options envisagées**
+- Empiler des workarounds pnpm 11 : `|| true` sur install + `pnpm exec` + `verify-deps-before-run=false` (rejetée : 3 workarounds pour 1 bug, masque la cause)
+- Migrer vers npm ou yarn (rejetée : coût de migration disproportionné)
+- **Pin pnpm 10 via `packageManager: "pnpm@10.33.4"` dans `package.json`** (retenue)
+
+**Justifications**
+- pnpm 10 n'a pas le comportement strict-exit-1 ni le re-install implicite — l'ancien comportement est ce que tout l'écosystème SvelteKit assume aujourd'hui
+- `pnpm/action-setup@v4` honore automatiquement le champ `packageManager` → CI alignée avec local et avec le Dockerfile (qui utilise déjà `corepack enable pnpm`)
+- Permet `--frozen-lockfile` en CI (builds déterministes)
+- Aucun fichier supplémentaire (pnpm-workspace.yaml, .pnpm-approve-builds.json) — restaure `pnpm.onlyBuiltDependencies` dans `package.json` (format pnpm 10 standard)
+
+**Conséquences**
+- `pnpm install` exit 0, `pnpm run build` direct, CI lisible
+- Mêmes versions de pnpm partout : CI, local, Docker
+- `.pnpm-approve-builds.json` supprimé (artefact pnpm 11 non lu par pnpm 10)
+- `pnpm-workspace.yaml` supprimé (réécrit par pnpm 11 avec du junk, inutile pour ce projet mono-package)
+- Bloc `kit.vitePlugin.inspector` retiré de `svelte.config.js`
+- Suppression dans CI : `|| true` sur install, `pnpm exec vite build`, `pnpm config set verify-deps-before-run false`, `continue-on-error: true` sur Type Check
+- `lint-frontend` et `test-frontend` gardent leur `|| true` : ils ont des bugs réels (deps eslint manquantes, incompat Svelte 5 + testing-library) à traiter dans une PR séparée (cf. STATE.md follow-ups)
+- À surveiller : si SvelteKit pousse pnpm 11+ exigé, on remontera le pin
+
+**Reproductibilité**
+```bash
+cd apps/frontend
+pnpm install --frozen-lockfile     # exit 0
+pnpm run build                     # ✓ built in ~10s
+```
+
+---
+
 *Pour ajouter une nouvelle décision, copier le template ci-dessous et incrémenter le numéro ADR.*
 
 <!--

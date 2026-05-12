@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { auth, cards, publishedCards, draftCards } from '$lib/stores'
+  import { auth, currentUser, cards, publishedCards, draftCards } from '$lib/stores'
   import { api } from '$lib/api'
   import { Button, Card, Avatar } from '$lib/components'
   import type { Card as CardType } from '$lib/api'
@@ -82,7 +82,7 @@
         {:else}
           <div class="grid gap-4">
             {#each userCards.filter(c => c.status === 'published') as card}
-              <a href="/@{auth.currentUser?.username}/{card.slug}" class="card hover:shadow-md transition-shadow">
+              <a href="/@{$currentUser?.username}/{card.slug}" class="card hover:shadow-md transition-shadow">
                 <div class="flex items-center justify-between">
                   <div>
                     <h3 class="font-semibold text-slate-900">{card.title}</h3>

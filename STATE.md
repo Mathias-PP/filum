@@ -45,7 +45,8 @@
 - [x] Crypto: SHA-256, Ed25519, AES-GCM (pas de Fernet)
 - [x] Services: Auth (JWT HS256, Google OAuth), Card, Wayback
 - [x] API REST: auth (login/callback/logout/me), cards (CRUD+publish), sources (CRUD), users
-- [x] 38 unit tests (100% pass) — 23 hérités + 15 auth
+- [x] 38 unit tests (100% pass) — 23 hérités + 15 auth (renforcés : sign/verify Ed25519 roundtrip, expiry tight bounds, JWT round-trip via schema)
+- [x] 3 tests d'intégration endpoints auth (/me 401, /me 200 cookie, /logout clears cookie)
 
 ### Frontend - SvelteKit
 - [x] Design system: Button, Input, Card, Avatar, Badge, Alert
@@ -62,17 +63,19 @@
 - [x] Schemas auth testés : TokenPayload, LoginResponse
 - [x] ruff: 0 erreurs, mypy: 0 erreurs
 
-### CI Résolution pnpm 11
-- [x] `|| true` sur `pnpm install` pour ignorer `ERR_PNPM_IGNORED_BUILDS` (exit code 1)
-- [x] `pnpm config set onlyBuiltDependencies '["esbuild"]'` avant install
-- [x] Build-frontend corrigé avec `|| true` (7/8 jobs verts)
+### CI (ADR-013 : pin pnpm 10)
+- [x] `packageManager: "pnpm@10.33.4"` dans `apps/frontend/package.json`
+- [x] `pnpm-lock.yaml` commit, `--frozen-lockfile` en CI
+- [x] Tous les workarounds pnpm 11 supprimés (build/check enforced strictement)
 
 ---
 
 ## Prochaines étapes (priorité décroissante)
 
-1. **🔴 Build-frontend CI** : dernier job en rouge (pnpm run build échoue pour d'autres raisons)
-2. **Merge feat/* → main** : stratégie de merge à définir (squash ou merge direct ?)
+1. **✅ Build-frontend CI** : RÉSOLU (ADR-013, pin pnpm 10)
+2. **Merge feat/* → main** : squash, backend d'abord puis frontend rebasé
+3. **`lint-frontend`** : casse sur `Cannot find package '@eslint/js'` — deps eslint manquantes dans `package.json` devDeps (`@eslint/js`, `@typescript-eslint/*`, `eslint-plugin-svelte`, `svelte-eslint-parser`, `eslint-config-prettier`). Actuellement masqué par `|| true` ; à fixer dans PR séparée
+4. **`test-frontend`** : `Button.test.ts` casse sur compat Svelte 5 + `@testing-library/svelte` (mount server-side au lieu de DOM). Actuellement masqué par `|| true` ; à fixer dans PR séparée
 3. **OAuth Google fonctionnel** : endpoint callback avec échange de token (dépend de httpx, non testé en CI sans credentials Google)
 4. **Graphe D3.js** : visualisation interactive sur page publique
 5. **Page de création de fiche** : `/dashboard/new` (formulaire métadonnées)

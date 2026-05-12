@@ -14,13 +14,6 @@ const config = {
     },
     csrf: {
       checkOrigin: false
-    },
-    vitePlugin: {
-      inspector: {
-        toggleKey: 'shiftAlt',
-        toggleButtonOk: 'inspect',
-        toggleButtonCancel: 'close'
-      }
     }
   }
 }

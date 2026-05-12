@@ -15,9 +15,16 @@
 - Choix de stack arrêtés
 - Tests unitaires AuthService : création JWT, authentification cookie/bearer, token expiré, soft-delete, création utilisateur Google OAuth (15 tests)
 - Conftest avec fixtures async DB (SQLite + aiosqlite), auth service, test user, session token
+- Test sign/verify Ed25519 roundtrip dans `test_create_user_from_google_generates_usable_keypair` (déchiffre la clé privée via KeyManager, signe, vérifie avec la publique)
+- Tests d'intégration endpoints auth (`tests/integration/test_auth_endpoints.py`) : /me 401 sans token, /me 200 avec cookie, /logout clears cookie
 
 ### Fixed
-- CI build-frontend : `|| true` sur `pnpm install` pour compatibilité pnpm 11 (ERR_PNPM_IGNORED_BUILDS)
+- CI build-frontend (ADR-013) : pin pnpm 10.33.4 via `packageManager` dans `package.json` ; suppression de tous les workarounds pnpm 11 (`|| true` sur install, `pnpm exec vite build`, `verify-deps-before-run=false`, `continue-on-error` sur Type Check) ; suppression de `kit.vitePlugin.inspector` (SvelteKit 2)
+- Frontend : passage à `--frozen-lockfile` en CI (builds déterministes, `pnpm-lock.yaml` commit)
+
+### Removed
+- `apps/frontend/.pnpm-approve-builds.json` (artefact pnpm 11, ignoré par pnpm 10)
+- `apps/frontend/pnpm-workspace.yaml` (réécrit par pnpm 11 avec un placeholder malformé ; inutile en mono-package)
 - CI env vars : passage en lowercase pour compatibilité `case_sensitive=True`
 - CI cherry-pickée sur `feat/infrastructure-and-backend-mvp`
 - Remote Git mis à jour : `filum_project` → `filum`
