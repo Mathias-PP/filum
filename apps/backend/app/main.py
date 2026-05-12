@@ -73,6 +73,33 @@ async def database_health():
         return {"status": "error", "database": str(e)}
 
 
+@app.get("/health/seed")
+async def seed_health():
+    """Diagnose: does the demo user + card exist?"""
+    from sqlalchemy import select
+
+    from app.db.database import async_session_maker
+    from app.models.biblio_card import BiblioCard
+    from app.models.user import User
+
+    async with async_session_maker() as session:
+        users = (
+            await session.execute(select(User.username, User.id))
+        ).all()
+        cards = (
+            await session.execute(
+                select(BiblioCard.slug, BiblioCard.status, BiblioCard.user_id)
+            )
+        ).all()
+        return {
+            "users": [{"username": u.username, "id": str(u.id)} for u in users],
+            "cards": [
+                {"slug": c.slug, "status": c.status, "user_id": str(c.user_id)}
+                for c in cards
+            ],
+        }
+
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
