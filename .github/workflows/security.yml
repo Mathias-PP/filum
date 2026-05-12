@@ -3,15 +3,18 @@ run-name: Security Scan
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, 'feat/**']
   pull_request:
+
+env:
+  PYTHON_VERSION: "3.12"
 
 permissions:
   contents: read
 
 jobs:
   bandit:
-    name: Security Static Analysis
+    name: Static Analysis (Bandit)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -20,16 +23,28 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+        working-directory: apps/backend
 
       - name: Run Bandit
-        run: uv run bandit -r apps/backend/app/
+        run: uv run bandit -r apps/backend/app/ -f json -o bandit-results.json
+        working-directory: apps/backend
+
+      - name: Upload Bandit results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bandit-results
+          path: apps/backend/bandit-results.json
 
   safety:
-    name: Vulnerability Check
+    name: Vulnerability Check (Safety)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -38,17 +53,61 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
 
-      - name: Run Safety
-        run: uv run safety check --json --output vulnerabilities.json || true
+      - name: Install dependencies
+        run: uv sync --all-extras
+        working-directory: apps/backend
+
+      - name: Run Safety check
+        run: |
+          uv run safety check --json --output safety-results.json || \
+          uv run safety check --output safety-results.txt || true
+        working-directory: apps/backend
+
+      - name: Upload Safety results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: safety-results
+          path: apps/backend/safety-results.*
+
+  secrets-scan:
+    name: Secrets Detection (TruffleHog)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run TruffleHog
+        run: |
+          docker run --rm -v "$(pwd):/workspace" \
+            trufflesecurity/trufflehog:latest scan \
+            /workspace \
+            --no-update \
+            --json > trufflehog-results.json 2>&1 || true
+        continue-on-error: true
 
       - name: Upload results
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: security-vulnerabilities
-          path: vulnerabilities.json
+          name: secrets-scan-results
+          path: trufflehog-results.json
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
