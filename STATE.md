@@ -40,6 +40,8 @@
 - [x] Scripts DevOps
 
 ### Backend - FastAPI
+- [ ] **Extractors** : `apps/backend/app/extractors/` est **vide**. Extraction URL→métadonnées (titre, auteur, date, Wayback snapshot) non implémentée — c'est la prochaine feature MVP.
+- [ ] **crypto/signing.py** : stub ré-exportant `hashing.py`. `SigningService` est colocalisé dans `hashing.py`. Refacto à faire (déplacer dans le bon fichier ou supprimer le stub).
 - [x] Models: User, BiblioCard, Source, AuditEvent (SQLAlchemy 2.x async)
 - [x] Schemas Pydantic v2 (avec `Field()` au lieu de `StringConstraints` pour mypy)
 - [x] Crypto: SHA-256, Ed25519, AES-GCM (pas de Fernet)

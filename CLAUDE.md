@@ -56,7 +56,7 @@ Ne propose pas de changer de stack sans discussion. Si tu détectes un problème
 - **Modèles SQLAlchemy** : `PascalCase` (`User`, `BiblioCard`, `Source`)
 - **Tables Postgres** : `snake_case` au pluriel (`users`, `biblio_cards`, `sources`)
 - **Routes API** : `kebab-case`, REST, pluriel (`/api/biblio-cards`, `/api/sources`)
-- **Variables d'environnement** : `SCREAMING_SNAKE_CASE`
+- **Variables d'environnement** : `snake_case` lowercase (cf. ADR-010 — `case_sensitive=True` dans pydantic-settings impose le lowercase ; UPPERCASE = silent fallback aux défauts sur Linux/CI)
 - **Branches Git** : `feat/<sujet>`, `fix/<sujet>`, `docs/<sujet>`
 
 ---
@@ -75,18 +75,19 @@ filum/
 │   ├── backend/                 # FastAPI app
 │   │   ├── pyproject.toml
 │   │   ├── alembic.ini
-│   │   ├── src/filum_api/
+│   │   ├── app/                 # source root (PAS src/filum_api/)
 │   │   │   ├── main.py          # entry point FastAPI
-│   │   │   ├── config.py        # settings via pydantic-settings
-│   │   │   ├── db.py            # session SQLAlchemy async
-│   │   │   ├── models/          # SQLAlchemy models
+│   │   │   ├── core/config.py   # settings via pydantic-settings
+│   │   │   ├── db/database.py   # session SQLAlchemy async + Base
+│   │   │   ├── models/          # SQLAlchemy models (User, BiblioCard, Source, AuditEvent)
 │   │   │   ├── schemas/         # Pydantic schemas
-│   │   │   ├── routes/          # routers FastAPI
-│   │   │   ├── services/        # logique métier
-│   │   │   ├── crypto/          # hash, signature, vérification
-│   │   │   └── extractors/      # extraction de métadonnées depuis URLs
-│   │   ├── tests/
-│   │   └── migrations/
+│   │   │   ├── api/v1/endpoints/  # routers FastAPI (auth, cards, sources, users)
+│   │   │   ├── services/        # logique métier (auth, card, wayback)
+│   │   │   ├── crypto/          # hash, signature, keygen, AES-GCM
+│   │   │   └── extractors/      # ⚠️ vide — extraction URL→métadonnées non implémentée
+│   │   ├── tests/unit/          # tests unitaires (auth, crypto, schemas)
+│   │   ├── tests/integration/   # tests endpoints HTTP (auth /me, /logout)
+│   │   └── alembic/             # migrations
 │   ├── frontend/                # SvelteKit app
 │   │   ├── package.json
 │   │   ├── src/
