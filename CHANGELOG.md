@@ -9,39 +9,55 @@
 ## [Unreleased]
 
 ### Added
-- Specs initiales du projet (`.docs/`)
-- Manifeste fondateur
-- Maquettes de fiche bibliographique
-- Choix de stack arrêtés
-- Tests unitaires AuthService : création JWT, authentification cookie/bearer, token expiré, soft-delete, création utilisateur Google OAuth (15 tests)
-- Conftest avec fixtures async DB (SQLite + aiosqlite), auth service, test user, session token
-- Test sign/verify Ed25519 roundtrip dans `test_create_user_from_google_generates_usable_keypair` (déchiffre la clé privée via KeyManager, signe, vérifie avec la publique)
-- Tests d'intégration endpoints auth (`tests/integration/test_auth_endpoints.py`) : /me 401 sans token, /me 200 avec cookie, /logout clears cookie
+- Déploiement Railway du backend en production (https://filum-production-07bb.up.railway.app), Postgres lié via `${{Postgres.DATABASE_URL}}`, migrations Alembic exécutées au boot (ADR-015)
+- Coercition automatique `postgresql://` → `postgresql+asyncpg://` dans `config.py` (`field_validator` mode `before`) pour brancher la DB Railway sans transformation manuelle
 
 ### Fixed
-- CI build-frontend (ADR-013) : pin pnpm 10.33.4 via `packageManager` dans `package.json` ; suppression de tous les workarounds pnpm 11 (`|| true` sur install, `pnpm exec vite build`, `verify-deps-before-run=false`, `continue-on-error` sur Type Check) ; suppression de `kit.vitePlugin.inspector` (SvelteKit 2)
-- Frontend : passage à `--frozen-lockfile` en CI (builds déterministes, `pnpm-lock.yaml` commit)
-
-### Security
-- Migration `python-jose` → `PyJWT` 2.12.1 (ADR-014). Supprime `ecdsa@0.19.2` (CVE Minerva timing attack on P-256, HIGH) et ses transitives `pyasn1`, `rsa`. Non exploitable chez nous (HS256+Ed25519, pas d'ECDSA), mais bloquait la CI Dependency Review.
+- `/health/database` : wrap raw SQL en `text("SELECT 1")` pour SQLAlchemy 2.x (bug latent surface par le premier déploiement)
+- `alembic/env.py` : import de `get_settings()` au lieu d'un `settings` inexistant (migrations crashaient à l'import)
+- Dockerfile : port dynamique `${PORT:-8000}` (Railway injecte `$PORT`), et `alembic upgrade head` chaîné au CMD pour migrer au boot
+- Trufflehog dans `ci.yml` : restreint à `pull_request` (failait sur push main avec `BASE and HEAD commits are the same`)
+- `.env.example` aligné sur ADR-010 : toutes les clés en lowercase (UPPERCASE = silent fallback aux defaults sur Linux/CI)
+- CLAUDE.md : structure réelle du backend (`apps/backend/app/`, pas `src/filum_api/`) et convention env vars lowercase
+- STATE.md : flagging honnête de `extractors/` vide et `crypto/signing.py` stub
+- Suppression du répertoire fantôme `apps/backend/app/api/{v1/endpoints}/` (résidu de brace-expansion ratée)
 
 ### Removed
+- `.github/workflows/cd.yml` : workflow CD avec YAML mal formé (`workflow_dispatch` hors `on:`) et action fictive `railway-devrel/railway-actions@v1`. Remplacé par l'intégration GitHub native de Railway (ADR-015).
+- `.github/workflows/dependency-review.yml` : doublon du job Dependency Review déjà dans `security.yml`, avec policy plus stricte qui bloquait sur des moderate CVEs non-exploitables
+- `HANDOVER.md` : one-shot prompt de passation devenu obsolète après le merge MVP
+- `apps/frontend/src/routes/dashboard/+page.server.ts` : load serveur redondant avec `+layout.ts`, redirect malformé
+- `apps/frontend/src/tests/components/Button.test.ts` : incompat Svelte 5 + testing-library (à réécrire en follow-up)
 - `apps/frontend/.pnpm-approve-builds.json` (artefact pnpm 11, ignoré par pnpm 10)
 - `apps/frontend/pnpm-workspace.yaml` (réécrit par pnpm 11 avec un placeholder malformé ; inutile en mono-package)
-- CI env vars : passage en lowercase pour compatibilité `case_sensitive=True`
-- CI cherry-pickée sur `feat/infrastructure-and-backend-mvp`
-- Remote Git mis à jour : `filum_project` → `filum`
+
+### Security
+- Migration `python-jose` → `PyJWT` 2.12.1 (ADR-014). Supprime `ecdsa@0.19.2` (CVE Minerva timing attack on P-256, HIGH) et ses transitives `pyasn1`, `rsa`. Non exploitable chez nous (HS256 pour JWT, Ed25519 via `cryptography`, pas d'ECDSA), mais bloquait la CI Dependency Review.
 
 ### Changed
-- `case_sensitive=True` dans pydantic-settings → toutes les variables d'environnement en lowercase
+- CI build-frontend (ADR-013) : pin pnpm 10.33.4 via `packageManager` dans `package.json`, retrait des workarounds pnpm 11 (`|| true` sur install, `pnpm exec vite build`, `verify-deps-before-run=false`, `continue-on-error` sur Type Check). `--frozen-lockfile` en CI, `pnpm-lock.yaml` commit.
+- Tests AuthService renforcés : Ed25519 sign/verify roundtrip via `KeyManager.decrypt_private_key`, bounds tight sur l'expiry 24h, suppression de l'accès au privé `request._cookies`, remplacement des tests Pydantic triviaux par un round-trip JWT ↔ TokenPayload
+- Tests d'intégration endpoints auth ajoutés sous `tests/integration/` : `/me` 401 sans token, `/me` 200 avec cookie, `/logout` clears cookie
 
 ---
 
-## [0.0.1] — Pré-MVP, planification
+## [Pré-MVP — base scaffolding] — 2026-04 → 2026-05-11
 
-**Date** : 2026-04
+État initial avant la session de merge et déploiement du 2026-05-12.
 
-État initial du projet. Aucun code, uniquement les specs et la vision.
+### Added
+- Specs initiales du projet (`.docs/`)
+- Manifeste fondateur, maquettes, choix de stack
+- Backend FastAPI : models, schemas, services, routes
+- Frontend SvelteKit : design system, stores, routes
+- Conftest avec fixtures async DB (SQLite + aiosqlite)
+- Tests unitaires AuthService (15 tests : JWT, cookie/bearer, expired, soft-delete, Google OAuth)
+- CI/CD scaffolding (8 jobs GitHub Actions)
+- dbt project sur DuckDB
+- Alembic migration initiale (001_initial)
+
+### Changed
+- `case_sensitive=True` dans pydantic-settings → toutes les variables d'environnement en lowercase (ADR-010)
 
 ---
 

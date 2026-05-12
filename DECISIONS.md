@@ -355,6 +355,66 @@ pnpm run build                     # ✓ built in ~10s
 
 ---
 
+## ADR-015 — Déploiement Railway via intégration GitHub native (pas de workflow CD)
+
+**Date** : 2026-05
+
+**Contexte**
+Le workflow `cd.yml` initial ne fonctionnait pas :
+- YAML invalide : `workflow_dispatch:` était au top-level au lieu d'être nesté sous `on:` → la CI rejetait le fichier au parsing (0 jobs, 0s runtime)
+- `railway-devrel/railway-actions@v1` n'existe pas sur le marketplace GitHub (fiction d'un LLM lors du scaffolding initial)
+- Variables d'env passées en UPPERCASE (`DATABASE_URL`, etc.) contradictoire avec ADR-010 → silent fallback aux defaults
+- Scope démesuré pour un MVP : staging + production avec 10 secrets distincts
+
+**Options envisagées**
+- Réécrire `cd.yml` from scratch avec le CLI Railway (`@railway/cli`) ou `bervProject/railway-app` (rejetée : duplique ce que Railway fait nativement)
+- Utiliser GitHub Actions pour build une image Docker puis Railway pour la pull (rejetée : 2 sources de vérité, latence)
+- **Intégration GitHub native de Railway** (retenue) : Railway watch le repo, build et deploy automatiquement à chaque push sur main
+
+**Configuration Railway adoptée**
+- Service backend lié à `Mathias-PP/filum`, branch `main`
+- **Root Directory** : `apps/backend`
+- **Builder** : Dockerfile (auto-détection `apps/backend/Dockerfile`)
+- **Wait for CI** : enabled — Railway attend que GitHub Actions soit vert avant de déployer
+- **Healthcheck Path** : `/health`
+- **Port** : injecté via `$PORT` dans le `CMD` Docker (`${PORT:-8000}`)
+- Postgres plugin Railway lié via référence `${{Postgres.DATABASE_URL}}`
+- Domaine généré : `filum-production-07bb.up.railway.app`
+
+**Variables d'env Railway**
+Toutes en lowercase (ADR-010) :
+```
+database_url           = ${{Postgres.DATABASE_URL}}
+session_secret         = <openssl rand -hex 32>
+master_encryption_key  = <openssl rand -hex 32>
+backend_base_url       = https://filum-production-07bb.up.railway.app
+frontend_base_url      = http://localhost:5173 (à update quand frontend déployé)
+cors_origins           = ["http://localhost:5173"]
+debug                  = false
+```
+
+`google_*`, `wayback_api_key`, `duckdb_path`, `api_v1_prefix`, `database_pool_size`, `database_max_overflow` : non configurés, defaults dans `config.py` suffisent.
+
+**Conséquences**
+- 1 fichier workflow en moins (`cd.yml` supprimé)
+- Pas de secrets Railway dans GitHub Actions à gérer
+- Logs de déploiement dans le dashboard Railway (meilleure UX que GHA pour ce cas)
+- Migrations Alembic auto-exécutées au boot via le `CMD` Docker
+- Le port dynamique impose un patch Dockerfile (`${PORT:-8000}`)
+- La référence Postgres expose un URL sans `+asyncpg` → un `field_validator` dans `config.py` coerce automatiquement (`postgresql://` → `postgresql+asyncpg://`)
+- Si on veut un jour un workflow déclencheur (release tags, smoke tests post-deploy), il faudra le réécrire depuis zéro avec le CLI Railway
+
+**Validation**
+```
+curl https://filum-production-07bb.up.railway.app/health
+→ {"status":"ok","version":"0.1.0"}
+
+curl https://filum-production-07bb.up.railway.app/health/database
+→ {"status":"ok","database":"connected"}
+```
+
+---
+
 *Pour ajouter une nouvelle décision, copier le template ci-dessous et incrémenter le numéro ADR.*
 
 <!--

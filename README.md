@@ -37,15 +37,29 @@ Et permet à n'importe qui :
 ## Pour démarrer (développeur)
 
 ```bash
-# Cloner et installer
-git clone <repo> filum
+git clone https://github.com/Mathias-PP/filum.git
 cd filum
-make setup       # installe les dépendances backend + frontend
-make seed        # peuple la BDD avec des données de démonstration
-make dev         # lance backend (FastAPI :8000) + frontend (SvelteKit :5173)
+
+# Backend
+cd apps/backend
+uv sync --all-extras
+cp ../../.env.example .env       # remplir les valeurs (lowercase, cf. ADR-010)
+uv run alembic upgrade head
+uv run uvicorn app.main:app --reload
+
+# Frontend (autre terminal)
+cd apps/frontend
+pnpm install --frozen-lockfile   # pnpm 10 pinned via packageManager
+pnpm run dev
 ```
 
-Voir [`.docs/02-tech-architecture.md`](.docs/02-tech-architecture.md) pour le détail de l'architecture.
+Voir [`STATE.md`](STATE.md) pour l'état courant et [`.docs/02-tech-architecture.md`](.docs/02-tech-architecture.md) pour l'architecture.
+
+### Backend déployé
+
+- Production : https://filum-production-07bb.up.railway.app
+- API docs : https://filum-production-07bb.up.railway.app/api/v1/docs
+- Health : https://filum-production-07bb.up.railway.app/health
 
 ---
 
@@ -110,4 +124,4 @@ Voir le [manifeste fondateur](.docs/MANIFESTE.md) pour la vision complète à lo
 
 ---
 
-*Document maintenu par l'auteur du projet. Version 0.1 — pré-MVP.*
+*Document maintenu par l'auteur du projet. Version 0.1 — MVP backend déployé, frontend non déployé.*
