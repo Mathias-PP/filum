@@ -5,6 +5,7 @@ import secrets
 from functools import lru_cache
 from typing import Any
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -42,6 +43,13 @@ class Settings(BaseSettings):
     wayback_api_key: str = ""
 
     duckdb_path: str = "/data/filum_analytics.duckdb"
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def _coerce_async_driver(cls, value: str) -> str:
+        if isinstance(value, str) and value.startswith("postgresql://"):
+            return value.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return value
 
     def __init__(self, **data: Any):
         super().__init__(**data)
