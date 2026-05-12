@@ -35,6 +35,7 @@ class SourceBase(BaseModel):
     authority_level: AuthorityLevel = AuthorityLevel.MEDIUM
     annotation: str | None = Field(default=None, max_length=500)
     is_pivot: bool = False
+    parent_source_id: UUID | None = None
 
 
 class SourceCreate(SourceBase):
@@ -49,6 +50,7 @@ class SourceUpdate(BaseModel):
     authority_level: AuthorityLevel | None = None
     annotation: str | None = None
     is_pivot: bool | None = None
+    parent_source_id: UUID | None = None
 
 
 class SourceResponse(BaseModel):
@@ -66,6 +68,7 @@ class SourceResponse(BaseModel):
     archive_status: ArchiveStatus
     archive_url: str | None
     archive_timestamp: datetime | None
+    parent_source_id: UUID | None
     created_at: datetime
     updated_at: datetime | None
 

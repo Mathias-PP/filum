@@ -64,12 +64,23 @@ class Source(Base):
     archive_status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
     archive_url: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     archive_timestamp: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    parent_source_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("sources.id"),
+        nullable=True,
+        index=True,
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     biblio_card: Mapped[BiblioCard] = relationship(
         "BiblioCard",
         back_populates="sources",
+    )
+    parent: Mapped[Source | None] = relationship(
+        "Source",
+        remote_side="Source.id",
+        foreign_keys=[parent_source_id],
     )
 
     def __repr__(self) -> str:
