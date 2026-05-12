@@ -111,6 +111,14 @@ filum/
 
 ---
 
+## Pièges Alembic à éviter (vécus en prod)
+
+- **L'ID de révision Alembic doit faire ≤ 32 caractères.** La colonne `alembic_version.version_num` est `VARCHAR(32)` par défaut. Un ID trop long lève `StringDataRightTruncationError` au moment du `UPDATE alembic_version` final, et la transaction DDL rollback _toute_ la migration → boucle crash-loop sur Railway. Convention adoptée : `00X_<courte_description>`.
+- **`sa.Column("col", ForeignKey(...), index=True)` à l'intérieur de `create_table` crée déjà l'index** (nom auto `ix_<table>_<col>`). Ne pas le redoubler par un `op.create_index` explicite après, sinon `DuplicateTableError` sur le second CREATE INDEX → rollback complet.
+- **Les nouveaux champs sur `sources` ne doivent JAMAIS entrer dans le `canonical_hash` payload.** Voir `apps/backend/app/services/card.py` lignes 96-105 et 161-169 + `app/scripts/seed_demo.py`. Toute fiche déjà publiée doit rester vérifiable. Si un champ doit absolument entrer dans la signature → ADR explicite + plan de re-signature.
+
+---
+
 ## Choses à ne PAS faire
 
 - N'ajoute pas de dépendances sans le signaler. Une nouvelle lib = une justification dans la conversation.

@@ -6,13 +6,13 @@
 
 ## Dernière mise à jour
 
-**2026-05-12** — session « MVP merge + déploiement Railway »
+**2026-05-13** — session « Itération 2 : logo, indicateurs/extraits, refonte cartographie, SSR fiche publique »
 
 ---
 
 ## Phase courante
 
-**Phase 1 — MVP déployé.** Backend live sur Railway, frontend non déployé.
+**Phase 1 — MVP déployé.** Backend live sur Railway, frontend live sur Vercel, fiche démo publique en SSR + JSON-LD.
 
 ---
 
@@ -88,6 +88,7 @@ Voir `DECISIONS.md` pour le détail :
 - **ADR-014** : migration `python-jose` → `PyJWT` (suppression CVE ecdsa Minerva)
 - **ADR-015** : déploiement Railway via intégration native GitHub (pas de workflow CD)
 - **ADR-016** : graphe interactif D3.js + `Source.parent_source_id` pour le citation graph (la fiche publique reflète enfin la promesse "wow" de la vision)
+- **ADR-017** : itération 2 — indicateurs typés (citations, IF, abonnés, vues), table `source_excerpts`, conflits d'intérêt déclarés, SSR + JSON-LD sur la fiche publique, panneau de détail ancré au nœud, renommage Pivot → Source clé
 
 ---
 
@@ -97,9 +98,9 @@ Voir `DECISIONS.md` pour le détail :
 database_url           = ${{Postgres.DATABASE_URL}}
 session_secret         = <openssl rand -hex 32>
 master_encryption_key  = <openssl rand -hex 32>
-frontend_base_url      = http://localhost:5173    (à updater quand frontend déployé)
+frontend_base_url      = https://filum-eight.vercel.app
 backend_base_url       = https://filum-production-07bb.up.railway.app
-cors_origins           = ["http://localhost:5173"]
+cors_origins           = ["https://filum-eight.vercel.app","http://localhost:5173"]
 debug                  = false
 ```
 
@@ -122,8 +123,8 @@ Variables intentionnellement non configurées (defaults dans `config.py` suffise
 | Test composant Svelte 5 incompat | Bloquait check, supprimé | À réécrire avec API testing-library compatible Svelte 5 (Snippet vs string) |
 | 8 warnings `state_referenced_locally` | Best-effort | Composants design system passent `$state` en argument sans closure |
 | 6 erreurs ruff dans `alembic/versions/001_initial.py` | Cosmétique | CI ne lint pas `alembic/`, généré auto, `Union[X, None]` → `X \| None` |
-| Frontend non déployé | Feature | Choisir Vercel ou Netlify, pointer sur `apps/frontend/` |
 | Pas de domaine custom | Feature | Brancher `filum.app` quand prêt |
+| Cookie `samesite=lax` | Bloquant pour OAuth | Bascule `samesite=none + secure=True` quand OAuth Google sera branché (cf. `apps/backend/app/api/v1/endpoints/auth.py` 128-152) |
 
 ---
 
