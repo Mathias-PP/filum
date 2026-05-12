@@ -60,15 +60,9 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("updated_at", sa.DateTime(), nullable=True),
     )
-    op.create_index(
-        "ix_source_excerpts_source_id",
-        "source_excerpts",
-        ["source_id"],
-    )
 
 
 def downgrade() -> None:
-    op.drop_index("ix_source_excerpts_source_id", table_name="source_excerpts")
     op.drop_table("source_excerpts")
     op.drop_column("sources", "impact_factor")
     op.drop_column("sources", "views_count")
