@@ -1,3 +1,5 @@
+import { env } from '$env/dynamic/public'
+
 import type {
   Card,
   CardDetail,
@@ -9,7 +11,7 @@ import type {
   VerificationResponse
 } from './types'
 
-const API_BASE = '/api/v1'
+const API_BASE = `${env.PUBLIC_API_BASE_URL ?? ''}/api/v1`
 
 class ApiError extends Error {
   constructor(

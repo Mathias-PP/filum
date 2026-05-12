@@ -9,8 +9,8 @@
   let error = $state<string | null>(null)
   let expandedSource = $state<string | null>(null)
 
-  const creatorSlug = $page.params.creator
-  const cardSlug = $page.params.card
+  const creatorSlug = $page.params.creator ?? ''
+  const cardSlug = $page.params.card ?? ''
 
   $effect(() => {
     loadCard()

@@ -12,19 +12,6 @@
     "moduleResolution": "bundler",
     "module": "ESNext",
     "target": "ESNext",
-    "lib": ["ESNext", "DOM", "DOM.Iterable"],
-    "types": ["vite/client"],
-    "baseUrl": ".",
-    "paths": {
-      "$lib": ["./src/lib"],
-      "$lib/*": ["./src/lib/*"],
-      "$components": ["./src/lib/components"],
-      "$components/*": ["./src/lib/components/*"],
-      "$stores": ["./src/lib/stores"],
-      "$stores/*": ["./src/lib/stores/*"],
-      "$api": ["./src/lib/api"],
-      "$api/*": ["./src/lib/api/*"]
-    }
-  },
-  "include": ["src/**/*.js", "src/**/*.ts", "src/**/*.svelte"]
+    "lib": ["ESNext", "DOM", "DOM.Iterable"]
+  }
 }

@@ -1,0 +1,27 @@
+feat(frontend): make API base configurable for cross-origin deploy
+
+Preparing the SvelteKit frontend for deployment on Vercel while the
+backend lives on Railway. The previous setup assumed same-origin
+serving (`/api/v1`), which doesn't survive the split.
+
+Changes
+- client.ts + +layout.ts: read `PUBLIC_API_BASE_URL` from
+  `$env/dynamic/public`; fall back to empty string for same-origin
+  local dev (`pnpm run dev` proxies to localhost:8000 via Vite)
+- Delete `src/routes/api/v1/auth/{me,logout}/+server.ts`: these proxy
+  routes called `/api/v1/...` recursively (infinite loop) — they were
+  a half-finished BFF pattern that never worked. Removing simplifies
+  the architecture to "FE is a SPA, BE is a real API".
+- Delete `tests/e2e/home.spec.ts`: imports `@playwright/test` which is
+  not installed; playwright was never set up. Out of scope for now.
+- tsconfig.json: drop `baseUrl` / `paths` / `include`. SvelteKit's
+  generated tsconfig provides them via `kit.alias`; overriding here
+  shadowed the `$env/dynamic/public` module declaration, breaking
+  svelte-check.
+- @[username]/+page.svelte and @[creator]/[card]/+page.svelte:
+  narrow optional route params with `?? ''` (SvelteKit types them as
+  `string | undefined` even when the route guarantees presence).
+
+Cookie / CORS / cross-origin auth flow will be tackled in a follow-up
+PR when OAuth Google credentials are wired in — for now the goal is
+"see the site", which only needs the public landing page.

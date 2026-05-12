@@ -8,7 +8,7 @@
   let loading = $state(true)
   let error = $state<string | null>(null)
 
-  const username = $page.params.username
+  const username = $page.params.username ?? ''
 
   $effect(() => {
     loadProfile()
