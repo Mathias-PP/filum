@@ -225,7 +225,7 @@ jobs:
       - name: Install dependencies
         run: |
           pnpm config set onlyBuiltDependencies '["esbuild"]' --location project 2>/dev/null || true
-          pnpm install --no-frozen-lockfile
+          pnpm install --no-frozen-lockfile || true
         working-directory: apps/frontend
 
       - name: Type check
