@@ -9,6 +9,12 @@
 ## [Unreleased]
 
 ### Added
+- Graphe interactif des sources sur la fiche publique (ADR-016) : D3 v7 force-directed, sources colorées par type, sources avec parent en périphérie (plus petites, arêtes pointillées), drag/zoom/pan, animation cascade
+- Panneau latéral détail au clic d'une source (slide-in droite desktop, bottom-sheet mobile, Escape, navigation vers le parent)
+- `Source.parent_source_id` : FK self-référente nullable indexée matérialisant le citation graph (migration 003)
+- Bibliographie démo enrichie : 14 sources réelles en neurosciences de la mémoire + 6 arêtes de citation, nouveau slug `/@example/memoire-et-cerveau`
+- `lib/utils/source-colors.ts` : single source of truth des couleurs par type (hex D3 + classes Tailwind), partagé entre SourceGraph et SourceTypeBadge
+- Déploiement Vercel du frontend : https://filum-eight.vercel.app, API base URL dynamique via `PUBLIC_API_BASE_URL`
 - Déploiement Railway du backend en production (https://filum-production-07bb.up.railway.app), Postgres lié via `${{Postgres.DATABASE_URL}}`, migrations Alembic exécutées au boot (ADR-015)
 - Coercition automatique `postgresql://` → `postgresql+asyncpg://` dans `config.py` (`field_validator` mode `before`) pour brancher la DB Railway sans transformation manuelle
 

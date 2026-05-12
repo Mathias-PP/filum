@@ -23,7 +23,8 @@
   - `/health` → `{"status":"ok","version":"0.1.0"}`
   - `/health/database` → `{"status":"ok","database":"connected"}`
   - `/api/v1/docs` → Swagger UI
-- **Frontend prod** : *non déployé* (Vercel/Netlify pas encore configuré)
+- **Frontend prod** : https://filum-eight.vercel.app
+- **Fiche démo** : https://filum-eight.vercel.app/@example/memoire-et-cerveau (graphe D3 interactif, 14 sources neurosciences, 6 arêtes de citation)
 
 ---
 
@@ -66,11 +67,13 @@ Workflow `cd.yml` supprimé : Railway déploie en natif via son intégration Git
 - 41 tests (38 unit + 3 integration endpoints)
 
 ### Frontend
-- SvelteKit 2 + Svelte 5 + TypeScript + Tailwind
+- SvelteKit 2 + Svelte 5 + TypeScript + Tailwind, déployé sur Vercel
 - pnpm 10.33.4 pinned via `packageManager` (cf. ADR-013)
-- Design system : Button, Input, Card, Avatar, Badge, Alert
+- Design system : Button, Input, Card, Avatar, Badge, Alert, SourceTypeBadge, SourceGraph, SourceDetailPanel
 - Stores : auth, cards
-- Routes : home, dashboard, public card, user profile
+- Routes : home, dashboard, public card (avec graphe D3), user profile
+- D3 v7 (force-directed) + utilitaire `lib/utils/source-colors.ts` (single source of truth des couleurs de type de source)
+- API base URL pilotée par `PUBLIC_API_BASE_URL` (env Vercel)
 
 ### Analytics
 - dbt-core sur DuckDB (job `dbt compile` en CI)
@@ -84,6 +87,7 @@ Voir `DECISIONS.md` pour le détail :
 - **ADR-013** : pin pnpm 10 (les workarounds pnpm 11 dégagent)
 - **ADR-014** : migration `python-jose` → `PyJWT` (suppression CVE ecdsa Minerva)
 - **ADR-015** : déploiement Railway via intégration native GitHub (pas de workflow CD)
+- **ADR-016** : graphe interactif D3.js + `Source.parent_source_id` pour le citation graph (la fiche publique reflète enfin la promesse "wow" de la vision)
 
 ---
 
@@ -125,16 +129,14 @@ Variables intentionnellement non configurées (defaults dans `config.py` suffise
 
 ## Prochaines étapes (par ordre logique)
 
-1. **Frontend deploy** : Vercel ou Netlify depuis `apps/frontend/`, pointer `frontend_base_url` Railway dessus
-2. **OAuth Google** : credentials Google Cloud Console → variables `google_client_id` / `google_client_secret` / `google_redirect_uri` (lowercase) dans Railway
-3. **Tester flow auth bout-en-bout** : login → callback → cookie session → /api/v1/auth/me
-4. **Implémenter `apps/backend/app/extractors/`** : module d'extraction URL → métadonnées (titre, auteur, date, snapshot Wayback). C'est la pierre angulaire du produit.
+1. **OAuth Google** : credentials Google Cloud Console → variables `google_client_id` / `google_client_secret` / `google_redirect_uri` (lowercase) dans Railway. Côté frontend, basculer le cookie `filum_session` en `samesite=none` pour cross-origin Vercel↔Railway.
+2. **Tester flow auth bout-en-bout** : login → callback → cookie session → /api/v1/auth/me
+3. **Implémenter `apps/backend/app/extractors/`** : module d'extraction URL → métadonnées (titre, auteur, date, snapshot Wayback). C'est la pierre angulaire du produit.
+4. **Page création de fiche** : `/dashboard/new` (formulaire + UI ajout sources + définition manuelle des `parent_source_id`)
 5. **Refactor `crypto/signing.py`** : déplacer `SigningService` depuis `hashing.py` ou supprimer le stub
 6. **Fix deps eslint frontend** : ajouter les paquets manquants, retirer `|| true`
 7. **Réécrire un test composant Svelte 5** : utiliser `createRawSnippet` ou l'API actuelle de testing-library/svelte
-8. **Graphe D3.js** sur la page publique `/[creator]/[card]`
-9. **Page création de fiche** : `/dashboard/new`
-10. **Export PDF** d'une fiche
+8. **Export PDF** d'une fiche
 
 ---
 

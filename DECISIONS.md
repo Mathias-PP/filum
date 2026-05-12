@@ -415,6 +415,47 @@ curl https://filum-production-07bb.up.railway.app/health/database
 
 ---
 
+## ADR-016 — Graphe interactif D3 + relation `Source.parent_source_id`
+
+**Date** : 2026-05
+
+**Contexte**
+La vision (`.docs/00-vision.md` lignes 50-59) et le product spec (`.docs/01-product-spec.md` lignes 96-101) promettent une "carte interactive des sources" inspirée de Pappers et Obsidian comme l'un des trois angles d'effet wow du MVP. La page publique livrée ne montrait qu'une liste accordion plate. Par ailleurs la "structure du raisonnement" (qui cite qui) n'était pas matérialisée en BDD.
+
+**Options envisagées**
+- Bibliothèque tierce type `vis-network` ou `cytoscape.js` (rejetée : poids + opacité du rendu, contrôle fin du design system difficile)
+- Rendu statique côté serveur via Mermaid ou Graphviz (rejetée : pas d'interaction, pas de drag/zoom, valeur perçue inférieure)
+- **D3.js v7 force-directed simulation + composant Svelte 5 dédié** (retenue)
+- Stocker la lineage des sources en BDD via `Source.parent_source_id` (FK self-référente), pour que le graphe soit data-driven et que la "provenance/lineage" du projet soit matérialisée (retenue)
+
+**Justifications**
+- D3 v7 déjà installé en dépendance directe (avec `@types/d3`) → pas de nouvelle dette technique
+- Contrôle fin du rendu (couleurs design system, taille par `authority_level`, halo pivot, dimming au hover, animation cascade) impossible avec une lib clé-en-main sans surcharger
+- `parent_source_id` matérialise la promesse "structure du raisonnement" et permet une visualisation hiérarchique (sources de premier niveau près du centre, sources de second niveau en périphérie, plus petites, reliées en pointillés à leur parent)
+- Compatible CSR-only (`ssr=false` dans `+layout.ts`) → pas besoin de guard browser
+
+**Implémentation**
+- Migration Alembic 003 : `op.add_column('sources', 'parent_source_id')` nullable + index
+- `app/models/source.py` : champ + relationship auto-référentielle `parent`
+- `app/schemas/source.py` : champ exposé sur `SourceBase`/`Create`/`Update`/`Response`
+- `apps/frontend/src/lib/api/types.ts` : `Source.parent_source_id: string | null`
+- `apps/frontend/src/lib/components/SourceGraph.svelte` (~310 lignes) : simulation D3, drag, zoom/pan/reset, cascade, légende, ResizeObserver
+- `apps/frontend/src/lib/components/SourceDetailPanel.svelte` (~140 lignes) : side panel desktop / bottom sheet mobile, Escape, navigation vers le parent
+- `apps/frontend/src/lib/utils/source-colors.ts` : single source of truth des couleurs (réutilisée par `SourceTypeBadge`)
+- Seed `apps/backend/app/scripts/seed_demo.py` : remplace le placeholder par 14 sources réelles sur la neuroscience de la mémoire + 6 arêtes `parent_source_id`. Nouveau slug `memoire-et-cerveau` ; l'ancienne fiche `filum-demo` reste en BDD (orpheline mais signée) pour ne pas casser une éventuelle URL externe
+
+**Garantie cryptographique**
+La payload canonical_hash signée par `CardService.publish_card` (et vérifiée par `verify_card`) **N'inclut PAS** `parent_source_id`. La relation de citation est purement structurelle / graphique. Les signatures Ed25519 existantes sur les fiches déjà publiées restent valides après la migration.
+
+**Conséquences**
+- Page publique enfin alignée avec la vision : graphe au-dessus de la fold, panneau latéral au clic, sources de sources en périphérie, identité visuelle cohérente
+- +1 migration (003), +3 fichiers frontend, +1 utilitaire de couleurs
+- Bundle Vercel +80 KB minifié (d3 force/drag/zoom/selection) — acceptable pour MVP, tree-shaking actif
+- L'index `ix_sources_parent_source_id` accélère la résolution d'éventuelles requêtes "qui cite X ?"
+- Aucun changement de comportement runtime sur les endpoints existants ; tests existants non impactés (le champ est nullable et optionnel)
+
+---
+
 *Pour ajouter une nouvelle décision, copier le template ci-dessous et incrémenter le numéro ADR.*
 
 <!--

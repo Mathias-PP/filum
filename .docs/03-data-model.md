@@ -117,6 +117,7 @@ Représente une source citée dans une fiche.
 | `source_type` | `text` | `peer-reviewed`, `institutional`, `press`, `original`, `other` |
 | `annotation` | `text` nullable | "Pourquoi je cite cette source" (max 500 chars) |
 | `is_pivot` | `boolean` default `false` | Source structurante du raisonnement |
+| `parent_source_id` | `uuid` FK → sources.id nullable | Source citée par celle-ci (auto-référence, indexée). Permet de matérialiser le citation graph sans entrer dans le `canonical_hash` signé. |
 | `archive_url` | `text` nullable | URL Wayback Machine de l'archive |
 | `archive_status` | `text` | `pending`, `archived`, `failed` |
 | `archive_attempted_at` | `timestamptz` nullable | |
@@ -124,7 +125,7 @@ Représente une source citée dans une fiche.
 | `created_at` | `timestamptz` | |
 | `updated_at` | `timestamptz` | |
 
-**Index** : `sources_biblio_card_id_idx`, `sources_url_idx` (pour la détection de doublons), `sources_archive_status_idx` (pour les jobs background).
+**Index** : `sources_biblio_card_id_idx`, `sources_url_idx` (pour la détection de doublons), `sources_archive_status_idx` (pour les jobs background), `ix_sources_parent_source_id` (pour "qui cite cette source ?").
 
 **Contraintes** :
 - `position` >= 1
