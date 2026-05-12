@@ -46,6 +46,43 @@ Voir [`CLAUDE.md`](./CLAUDE.md). Résumé :
 
 ---
 
+## Pièges déjà rencontrés (à NE PAS répéter)
+
+Vécus en production sur ce repo. Détails complets dans `CLAUDE.md`, mais les essentiels :
+
+**Backend / Alembic / SQLAlchemy**
+- ID de révision Alembic ≤ **32 caractères** (colonne `alembic_version.version_num` est `VARCHAR(32)`). Au-delà → `StringDataRightTruncationError` au commit du `UPDATE alembic_version` → rollback total → Railway crash-loop. Convention : `00X_<courte_description>`.
+- `Column(..., ForeignKey(...), index=True)` dans `create_table` crée déjà l'index `ix_<table>_<col>`. **Ne pas** doubler avec `op.create_index` derrière (DuplicateTableError → rollback).
+- Aucun nouveau champ sur `sources` / `biblio_cards` ne doit entrer dans le `canonical_hash` payload (cf. `apps/backend/app/services/card.py` 96-105 / 161-169 et `app/scripts/seed_demo.py`). Sinon les fiches déjà signées deviennent invérifiables.
+- `MissingGreenlet` : tout accès à une relation ORM async **après** `await db.commit()` doit avoir été `selectinload`-é avant le retour. Chaînage explicite : `selectinload(BiblioCard.sources).selectinload(Source.excerpts)`.
+- `datetime.utcnow()` est déprécié en Python 3.12. Utiliser `datetime.now(UTC).replace(tzinfo=None)` pour matcher les colonnes `DateTime` sans `timezone=True`.
+- Toutes les variables d'env en **lowercase** (ADR-010, `case_sensitive=True` dans pydantic-settings). UPPERCASE = silent fallback aux defaults sur Linux/CI.
+- `cors_origins` Railway : JSON array sérialisé, ex `'["https://filum-eight.vercel.app","http://localhost:5173"]'`. Toute nouvelle origine à ajouter ici.
+- Cookies auth : actuellement `samesite=lax`. À basculer en `samesite=none + secure=True` quand OAuth Google sera branché (cross-origin Vercel ↔ Railway).
+- Lancer `uv run ruff format app/` **avant** chaque commit backend (pas juste `--check`). La CI bloque sinon.
+
+**Frontend / SvelteKit / D3**
+- pnpm **10.33.4** pinned via `packageManager` dans `apps/frontend/package.json` (ADR-013). Ne pas upgrade vers pnpm 11.
+- D3 : importer depuis `'d3'` (umbrella), pas `'d3-force'` etc. (transitives non déclarées). Typer `.selectAll<SVGGElement, T>('g')` avant `.data().join()`.
+- `.style('display', flag ? '' : 'none')` — pas `null` (types d3 plus stricts, échec build).
+- SSR : `+layout.ts` est `ssr = false`. Surcharger via `+page.ts` (`export const ssr = true`) seulement sur les routes publiques qui en ont besoin. Les composants utilisant `document`/`window` (D3) doivent être dynamic-imported côté client.
+- `tsconfig.json` ne doit pas redéclarer `paths`/`baseUrl` (conflit avec `.svelte-kit/tsconfig.json`). Les alias viennent de `svelte.config.js` → `kit.alias`.
+- `toLocaleDateString` n'accepte pas `timeStyle` ; utiliser `toLocaleString` pour date+heure.
+- `$page.params.<X>` est typé `string | undefined` même si la route le garantit ; utiliser `?? ''`.
+- `<aside role="dialog">` lève un warning a11y. Utiliser `<div role="dialog" aria-modal="true">`.
+
+**Tests / CI**
+- Les tests backend ne tournent pas sur Windows (case-insensitivity env vars + `case_sensitive=True` pydantic). Lancer `ruff`/`mypy` localement, faire confiance à la CI Linux pour `pytest`.
+
+**Git / déploiement**
+- `git` Windows n'est pas dans le PATH ; passer par WSL : `wsl bash -lc 'cd /mnt/c/Users/mathi/Documents/filum_project/filum && git ...'`.
+- `gh` CLI dispo via WSL, déjà authentifié.
+- **Vérifier l'état exact de la branche distante avant de merger une PR**. Un cas vécu : un commit de fix poussé en dernier n'a pas été inclus dans le squash (cause exacte non élucidée). Toujours faire `git fetch && git log origin/<branche> -3 -- <fichier-critique>` ou consulter la diff de la PR sur GitHub avant le `gh pr merge`.
+- Railway + Vercel auto-redeploy sur `git push origin main`. Pas de workflow CD séparé (ADR-015). Si Railway crash-loop sur une migration → la transaction DDL rollback à chaque essai, donc la DB n'est PAS corrompue ; il suffit de pousser le fix et attendre le prochain build.
+- `_commit_msg.txt` est gitignored ; ne pas le commit. Utiliser `git commit -F _commit_msg.txt && rm _commit_msg.txt`.
+
+---
+
 ## Maintenance du contexte projet
 
 À la fin de chaque session de travail significative :
