@@ -1,0 +1,172 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  UV_SYSTEM_PYTHON: 1
+
+jobs:
+  quality:
+    name: Quality Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Lint with ruff
+        run: uv run ruff check apps/backend/
+
+      - name: Type check with mypy
+        run: uv run mypy apps/backend/app/
+
+  backend-tests:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: filum_test
+          POSTGRES_PASSWORD: filum_test
+          POSTGRES_DB: filum_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      DATABASE_URL: postgresql+asyncpg://filum_test:filum_test@localhost:5432/filum_test
+      SESSION_SECRET: test_secret_for_ci_only
+      MASTER_ENCRYPTION_KEY: test_encryption_key_for_ci_only
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run migrations
+        run: uv run alembic upgrade head
+        working-directory: apps/backend
+
+      - name: Run tests
+        run: uv run pytest tests/ -v --cov=app --cov-report=xml
+        working-directory: apps/backend
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./apps/backend/coverage.xml
+          fail_ci_if_error: false
+
+  frontend-build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: apps/frontend
+
+      - name: Type check
+        run: pnpm run check
+        working-directory: apps/frontend
+
+      - name: Build
+        run: pnpm run build
+        working-directory: apps/frontend
+
+  dbt-tests:
+    name: Analytics Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dbt-duckdb
+        run: uvx dbt-duckdb
+
+      - name: Run dbt tests
+        run: uvx dbt-duckdb test
+        working-directory: apps/analytics
+
+  lint-all:
+    name: Lint All
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Install Python dependencies
+        uses: astral-sh/setup-uv@v4
+
+      - name: Backend lint
+        run: uv run ruff check apps/backend/
+
+      - name: Backend format check
+        run: uv run ruff format --check apps/backend/
+
+      - name: Frontend lint
+        run: pnpm run lint
+        working-directory: apps/frontend

@@ -1,0 +1,73 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: filum-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: filum
+      POSTGRES_PASSWORD: filum_dev_password
+      POSTGRES_DB: filum_dev
+      PGDATA: /var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U filum"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    container_name: filum-backend-dev
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://filum:filum_dev_password@postgres:5432/filum_dev
+      SESSION_SECRET: dev_session_secret_change_in_production
+      MASTER_ENCRYPTION_KEY: dev_encryption_key_change_in_production
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      FRONTEND_BASE_URL: http://localhost:5173
+      BACKEND_BASE_URL: http://localhost:8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./apps/backend:/app
+    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+  frontend:
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile
+    container_name: filum-frontend-dev
+    restart: unless-stopped
+    environment:
+      PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "5173:3000"
+    depends_on:
+      - backend
+
+  migrate:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile.migrate
+    container_name: filum-migrate
+    environment:
+      DATABASE_URL: postgresql+asyncpg://filum:filum_dev_password@postgres:5432/filum_dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - migrate
+
+volumes:
+  postgres_dev_data:

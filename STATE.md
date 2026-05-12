@@ -1,71 +1,116 @@
 # État du projet
 
-> Ce fichier est un **document vivant**. Le mettre à jour à la fin de chaque session de travail significative. C'est ce qui permet de reprendre rapidement un projet après une pause, ou de briefer un nouvel agent IA.
+> Ce fichier est un **document vivant**. Le mettre à jour à la fin de chaque session de travail significative.
 
 ---
 
 ## Date de la dernière mise à jour
 
-À renseigner manuellement à chaque mise à jour.
+**12 mai 2026**
 
 ---
 
 ## Phase courante
 
-**Pré-MVP** — préparation du démarrage. Les specs sont rédigées, le code n'a pas encore commencé.
+**Phase 1 - MVP Development** — Backend fonctionnel avec tests green
 
 ---
 
 ## Ce qui est fait
 
-- Manifeste fondateur rédigé (voir `.docs/MANIFESTE.md` à importer)
-- Maquettes visuelles de la fiche bibliographique validées
-- Choix de stack arrêtés
-- Specs rédigées (`.docs/`)
-- Structure de projet définie (`CLAUDE.md`)
+### Infrastructure & Setup
+- [x] Configuration CI/CD GitHub Actions (ci.yml, cd.yml, analytics.yml, security.yml)
+- [x] Pre-commit hooks (ruff, mypy, eslint, prettier, dbt-compile)
+- [x] Docker Compose configs (dev, staging, production)
+- [x] Alembic migrations setup + initial schema
+- [x] dbt project configuration (DuckDB analytics)
+- [x] EditorConfig + VSCode settings
+- [x] Scripts utilitaires (deploy, backup, restore, health-check)
+
+### Backend - Models & Schemas
+- [x] SQLAlchemy models: User, BiblioCard, Source, AuditEvent
+- [x] Pydantic v2 schemas: User, BiblioCard, Source, Auth
+- [x] Database config avec async SQLAlchemy 2.0
+
+### Backend - Services
+- [x] Crypto: HashService (SHA-256), SigningService (Ed25519), KeyManager (AES-GCM)
+- [x] WaybackService: archivage async des sources
+- [x] AuthService: JWT sessions, OAuth Google helper
+- [x] CardService: CRUD, publish, verify
+
+### Backend - API Endpoints
+- [x] Auth: /login, /callback, /logout, /me
+- [x] Cards: CRUD, publish, public card endpoint
+- [x] Sources: CRUD avec Wayback integration
+- [x] Users: public profile endpoint
+
+### Tests
+- [x] 23 unit tests: crypto + schemas (100% pass)
+- [x] FastAPI app load verified
 
 ---
 
 ## Ce qui est en cours
 
-À renseigner au début de la phase de développement.
-
-Exemple :
-- `feat/oauth-google` : intégration Google OAuth, branche en cours, ~50% fait
-- `chore/database-schema` : modèles SQLAlchemy, à finir
+### Frontend
+- Structure SvelteKit à implémenter
+- Composants UI de base
+- Intégration API client
 
 ---
 
 ## Ce qui est bloqué (et pourquoi)
 
-À renseigner au fur et à mesure.
+Aucun blocage pour le MVP backend.
 
 ---
 
-## Prochaines tâches (top 3)
+## Prochaines tâches (top 5)
 
-1. Setup initial du projet (`make setup` fonctionnel)
-2. Migration de base de données initiale
-3. Endpoint `POST /api/biblio-cards` minimal
+1. **F01** - Finaliser OAuth Google callback (échange de token avec Google)
+2. **F05** - Background worker pour Wayback Machine
+3. **F07** - Page publique avec graphe D3.js (frontend)
+4. **F09** - OpenGraph dynamique (génération image)
+5. **F10** - Export PDF
 
 ---
 
 ## Decisions récentes notables
 
-Voir `DECISIONS.md` pour le log complet.
+- **12/05/2026** : Adoption de Ruff comme linter/formatter Python
+- **12/05/2026** : Architecture async complète pour le backend
+- **12/05/2026** : CI/CD pipeline avec GitHub Actions
+- **12/05/2026** : Utilisation AES-GCM au lieu de Fernet pour encryption
+- **12/05/2026** : Renommage `metadata` → `event_metadata` dans AuditEvent
 
 ---
 
-## Notes diverses pour la prochaine session
+## Notes diverses
 
-À renseigner librement (idées, doutes, choses à explorer).
+### Points d'attention
+- Backend FastAPI fonctionnel avec 29 fichiers Python
+- Tests unitaires passent (23/23)
+- OAuth Google nécessite configuration credentials dans .env
+- Wayback Machine API call en place mais pas encore en background worker
+
+### TODO Backend
+- [ ] Seed script pour données de démo
+- [ ] Background worker (Celery/ARQ) pour Wayback
+- [ ] Logging structuré (structlog)
+- [ ] Metrics Prometheus
+- [ ] Rate limiting plus fin
+
+### TODO Frontend
+- [ ] Setup SvelteKit complet
+- [ ] Composants UI (design system)
+- [ ] Graphe D3.js interactif
+- [ ] SSR pour pages publiques
 
 ---
 
-## Métriques courantes (à venir)
+## Métriques
 
-À renseigner quand le projet sera en ligne.
-
-- Nombre d'utilisateurs inscrits :
-- Nombre de fiches publiées :
-- Nombre de sources archivées :
+- Fichiers Python backend : 29
+- Tests unitaires : 23 (100% pass)
+- Endpoints API : ~15
+- Modèles SQLAlchemy : 4

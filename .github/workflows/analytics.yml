@@ -1,0 +1,49 @@
+name: Analytics Pipeline
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"  # Every 6 hours
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  dbt-run:
+    name: Run dbt Models
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dbt-duckdb
+        run: uvx dbt-duckdb
+
+      - name: Run dbt deps
+        run: uvx dbt-duckdb deps
+        working-directory: apps/analytics
+
+      - name: Run dbt models
+        run: uvx dbt-duckdb run
+        working-directory: apps/analytics
+        env:
+          DUCKDB_PATH: ${{ github.workspace }}/data/filum_analytics.duckdb
+
+      - name: Run dbt tests
+        run: uvx dbt-duckdb test
+        working-directory: apps/analytics
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: analytics-output
+          path: apps/analytics/target/
+          retention-days: 7

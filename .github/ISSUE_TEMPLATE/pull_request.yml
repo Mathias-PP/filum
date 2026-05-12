@@ -1,0 +1,62 @@
+name: Pull Request
+description: Submit changes to the project
+title: "[PR] "
+labels: ["triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Description
+        Please include a summary of the changes and the related issue.
+
+  - type: dropdown
+    id: change-type
+    attributes:
+      label: Change Type
+      options:
+        - feat: New feature
+        - fix: Bug fix
+        - docs: Documentation only
+        - refactor: Code refactoring
+        - test: Adding or updating tests
+        - chore: Maintenance tasks
+        - perf: Performance improvements
+        - ci: CI/CD changes
+        - data: Data pipeline changes
+
+  - type: textarea
+    id: breaking
+    attributes:
+      label: Breaking Changes
+      description: Any breaking changes introduced
+
+  - type: textarea
+    id: testing
+    attributes:
+      label: Testing Done
+      description: Describe how the changes were tested
+
+  - type: textarea
+    id: checklist
+    attributes:
+      label: Checklist
+      description: |
+        - [ ] Code follows project conventions
+        - [ ] Tests added/updated
+        - [ ] Documentation updated
+        - [ ] No secrets committed
+        - [ ] CI passes
+        - [ ] Migrations are reversible
+
+  - type: dropdown
+    id: review-needed
+    attributes:
+      label: Review Needed From
+      multiple: true
+      options:
+        - @Mathias-PP (maintainer)
+        - Backend team
+        - Frontend team
+        - Data Engineering team

@@ -1,0 +1,42 @@
+name: Data Engineering Task
+description: Tasks related to data pipelines, transformations, or analytics
+title: "[DataEng] "
+labels: ["data-engineering", "triage"]
+assignees: []
+body:
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - PostgreSQL (transactional data)
+        - DuckDB (analytics)
+        - dbt models
+        - Data pipeline
+        - ETL/ELT
+        - Data quality
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Detailed description of the data engineering task
+
+    validations:
+      required: true
+
+  - type: textarea
+    id: requirements
+    attributes:
+      label: Requirements
+      description: |
+        - Data sources
+        - transformations needed
+        - Quality checks
+        - SLA/schedule
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: What defines a successful implementation?

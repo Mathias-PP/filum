@@ -1,0 +1,231 @@
+from __future__ import annotations
+
+from typing import Annotated
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
+from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.status import HTTP_401_UNAUTHORIZED
+
+from app.db.database import get_db
+from app.services.card import CardService
+from app.services.auth import AuthService
+from app.schemas.biblio_card import CardCreate, CardUpdate, CardDetail, CardResponse
+from app.schemas.auth import VerificationResponse
+from app.schemas.source import SourceResponse
+from app.schemas.biblio_card import CardStats, CreatorInfo
+from app.models.user import User
+
+router = APIRouter(tags=["cards"])
+
+
+async def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
+    return AuthService(db)
+
+
+async def get_card_service(db: AsyncSession = Depends(get_db)) -> CardService:
+    return CardService(db)
+
+
+async def get_current_user(request: Request, auth_service: AuthService = Depends(get_auth_service)) -> User:
+    user = await auth_service.get_current_user(request)
+    if not user:
+        raise HTTPException(
+            status_code=HTTP_401_UNAUTHORIZED,
+            detail={"code": "unauthorized", "message": "Not authenticated"},
+        )
+    return user
+
+
+@router.get("/cards", response_model=list[CardResponse])
+async def list_my_cards(
+    status_filter: str | None = Query(None, alias="status"),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    current_user: User = Depends(get_current_user),
+    card_service: CardService = Depends(get_card_service),
+):
+    from app.models.biblio_card import CardStatus
+
+    status_enum = CardStatus(status_filter) if status_filter else None
+    cards = await card_service.get_user_cards(current_user.id, status_enum, limit, offset)
+    return cards
+
+
+@router.post("/cards", response_model=CardResponse, status_code=status.HTTP_201_CREATED)
+async def create_card(
+    card_data: CardCreate,
+    current_user: User = Depends(get_current_user),
+    card_service: CardService = Depends(get_card_service),
+):
+    existing = await card_service.get_card_by_slug(current_user.username, card_data.slug, published_only=False)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": "conflict", "message": f"Card with slug '{card_data.slug}' already exists"},
+        )
+    card = await card_service.create_card(current_user.id, card_data)
+    return card
+
+
+@router.get("/cards/{card_id}", response_model=CardResponse)
+async def get_card(
+    card_id: UUID,
+    current_user: User = Depends(get_current_user),
+    card_service: CardService = Depends(get_card_service),
+):
+    card = await card_service.get_card_by_id(card_id)
+    if not card:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": "Card not found"},
+        )
+    if card.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": "forbidden", "message": "Access denied"},
+        )
+    return card
+
+
+@router.patch("/cards/{card_id}", response_model=CardResponse)
+async def update_card(
+    card_id: UUID,
+    card_data: CardUpdate,
+    current_user: User = Depends(get_current_user),
+    card_service: CardService = Depends(get_card_service),
+):
+    card = await card_service.get_card_by_id(card_id)
+    if not card:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": "Card not found"},
+        )
+    if card.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": "forbidden", "message": "Access denied"},
+        )
+
+    from app.models.biblio_card import CardStatus
+
+    if card.status == CardStatus.PUBLISHED.value:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "validation_error", "message": "Cannot modify a published card"},
+        )
+
+    if card_data.title is not None:
+        card.title = card_data.title
+    if card_data.description is not None:
+        card.description = card_data.description
+    if card_data.content_url is not None:
+        card.content_url = card_data.content_url
+    if card_data.platform is not None:
+        card.platform = card_data.platform.value
+
+    from app.db.database import async_session_maker
+
+    async with async_session_maker() as db:
+        db.add(card)
+        await db.commit()
+        await db.refresh(card)
+
+    return card
+
+
+@router.post("/cards/{card_id}/publish", response_model=dict)
+async def publish_card(
+    card_id: UUID,
+    current_user: User = Depends(get_current_user),
+    card_service: CardService = Depends(get_card_service),
+):
+    card = await card_service.get_card_by_id(card_id)
+    if not card:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": "Card not found"},
+        )
+    if card.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": "forbidden", "message": "Access denied"},
+        )
+
+    if not card.sources:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "validation_error", "message": "Cannot publish a card without sources"},
+        )
+
+    from app.models.source import ArchiveStatus
+
+    pending_sources = [s for s in card.sources if s.archive_status == ArchiveStatus.PENDING.value]
+    if pending_sources:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "validation_error", "message": f"Waiting for {len(pending_sources)} sources to be archived"},
+        )
+
+    result = await card_service.publish_card(card)
+    return result
+
+
+@router.get("/@{creator_slug}/{card_slug}", response_model=CardDetail)
+async def get_public_card(
+    creator_slug: str,
+    card_slug: str,
+    card_service: CardService = Depends(get_card_service),
+):
+    card = await card_service.get_card_by_slug(creator_slug, card_slug)
+    if not card:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": "Card not found"},
+        )
+
+    stats = card_service.compute_stats(card)
+    sources_response = [SourceResponse.model_validate(s) for s in card.sources]
+
+    return CardDetail(
+        id=card.id,
+        slug=card.slug,
+        title=card.title,
+        description=card.description,
+        content_url=card.content_url,
+        platform=card.platform,
+        content_type=card.content_type,
+        status=card.status,
+        canonical_hash=card.canonical_hash,
+        signature=card.signature,
+        signed_at=card.signed_at,
+        published_at=card.published_at,
+        created_at=card.created_at,
+        updated_at=card.updated_at,
+        creator=CreatorInfo(
+            slug=card.user.username,
+            display_name=card.user.display_name,
+            bio=card.user.bio,
+            avatar_url=card.user.avatar_url,
+            public_key=card.user.public_key,
+        ),
+        sources=sources_response,
+        stats=stats,
+    )
+
+
+@router.get("/@{creator_slug}/{card_slug}/verify", response_model=VerificationResponse)
+async def verify_card(
+    creator_slug: str,
+    card_slug: str,
+    card_service: CardService = Depends(get_card_service),
+):
+    card = await card_service.get_card_by_slug(creator_slug, card_slug)
+    if not card:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": "Card not found"},
+        )
+
+    result = await card_service.verify_card(card)
+    return VerificationResponse(**result)

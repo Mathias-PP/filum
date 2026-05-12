@@ -1,0 +1,37 @@
+name: filum_analytics
+version: "1.0.0"
+config-version: 2
+
+profile: filum_duckdb
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+
+target-path: target
+output-path: target
+run-path: target
+log-path: logs
+
+clean-targets:
+  - target
+  - dbt_packages
+
+quoting:
+  database: false
+  schema: false
+  identifier: true
+
+require-dbt-version: [">=1.8.0", "<2.0.0"]
+
+models:
+  filum_analytics:
+    staging:
+      +schema: staging
+    marts:
+      +schema: marts
+    analytics:
+      +schema: analytics
+
+on_run_end:
+  - test: []
