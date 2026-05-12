@@ -111,6 +111,16 @@ filum/
 
 ---
 
+## Avant de prendre une tâche : lire `STATE.md`
+
+`STATE.md` contient deux sections critiques tenues à jour à chaque session :
+- **« État production vérifié »** : ce qui est réellement live, vérifié par `curl` sur Railway/Vercel (pas par lecture de docs périmées).
+- **« Prochaines étapes par priorité »** : P0 → P4. Toujours commencer par le P0 actuel sauf si l'utilisateur demande explicitement autre chose. Le P0 du moment est souvent un bug d'effet vitrine sur la démo (la fiche `/@example/memoire-et-cerveau`).
+
+Si tu modifies l'état réel du projet (feature livrée, fix prod, déploiement), **mets à jour `STATE.md`** avant de fermer la session. C'est le contrat de continuité.
+
+---
+
 ## Pièges Alembic à éviter (vécus en prod)
 
 - **L'ID de révision Alembic doit faire ≤ 32 caractères.** La colonne `alembic_version.version_num` est `VARCHAR(32)` par défaut. Un ID trop long lève `StringDataRightTruncationError` au moment du `UPDATE alembic_version` final, et la transaction DDL rollback _toute_ la migration → boucle crash-loop sur Railway. Convention adoptée : `00X_<courte_description>`.

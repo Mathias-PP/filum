@@ -19,6 +19,10 @@ Lis dans l'ordre :
 
 Une fois ce contexte chargé, tu disposes du même niveau d'information qu'un Claude Code en session continue.
 
+**`STATE.md` contient en particulier** :
+- Une section « État production vérifié » : faits constatés par `curl` sur les URL prod, pas par re-lecture de la doc.
+- Une section « Prochaines étapes par priorité » (P0 → P4). Commence par le P0 du moment sauf demande explicite contraire. Le P0 actuel décrit souvent un effet vitrine cassé sur la démo publique (`/@example/memoire-et-cerveau`).
+
 ---
 
 ## Stack technique non négociable

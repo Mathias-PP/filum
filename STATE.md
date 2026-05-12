@@ -128,18 +128,46 @@ Variables intentionnellement non configurées (defaults dans `config.py` suffise
 
 ---
 
-## Prochaines étapes (par ordre logique)
+## État production vérifié (2026-05-13)
 
-0. **Itération 2 livrée** (ADR-017) : nouveau logo arbre+graphe, indicateurs typés + extraits (table `source_excerpts`), conflits d'intérêt déclarés, refonte cartographie (labels auteurs, seuils de zoom, plein écran), panneau de détail ancré au nœud, SSR + JSON-LD sur la fiche publique (référencement Google + GEO Perplexity/SearchGPT/Claude).
-1. **OAuth Google** : credentials Google Cloud Console → variables `google_client_id` / `google_client_secret` / `google_redirect_uri` (lowercase) dans Railway. Côté frontend, basculer le cookie `filum_session` en `samesite=none` pour cross-origin Vercel↔Railway.
-2. **Tester flow auth bout-en-bout** : login → callback → cookie session → /api/v1/auth/me
-3. **Implémenter `apps/backend/app/extractors/`** : module d'extraction URL → métadonnées (titre, auteur, date, snapshot Wayback). C'est la pierre angulaire du produit.
-4. **Page création de fiche** : `/dashboard/new` (formulaire + UI ajout sources + définition manuelle des `parent_source_id`)
-5. **Refactor `crypto/signing.py`** : déplacer `SigningService` depuis `hashing.py` ou supprimer le stub
-6. **Fix deps eslint frontend** : ajouter les paquets manquants, retirer `|| true`
-7. **Réécrire un test composant Svelte 5** : utiliser `createRawSnippet` ou l'API actuelle de testing-library/svelte
-8. **Export PDF** d'une fiche
-9. **Mode privé + intégrations Zotero / Obsidian / Notion** (cf. `.docs/09-private-mode-and-integrations.md`)
+Vérifié par `curl` sur les URL prod, pas par lecture des docs :
+
+- ✅ Backend `/health` → 200 OK, version 0.1.0
+- ✅ API `/api/v1/@example/memoire-et-cerveau` → 200, 14 sources, signature Ed25519 présente
+- ✅ Migration 004 **appliquée** : les nouveaux champs (`citations_count`, `subscribers_count`, `views_count`, `impact_factor`, `conflict_of_interest`, `excerpts[]`) sont bien sérialisés dans la réponse API
+- ✅ Frontend SSR fonctionne : `<script type="application/ld+json">` présent dans le HTML statique, meta `og:title`/`og:description` présents
+- ⚠️ **Données de seed itération 2 absentes sur la fiche démo prod** : `excerpts_total = 0`, `conflicts = 0`, `citations_count` partout `null`. Cause : `seed_demo._get_or_create_demo_card` retourne early si la fiche est déjà `PUBLISHED` (idempotence "tout ou rien"). La fiche prod a été publiée avant l'itération 2 → les nouveaux champs et la table `source_excerpts` restent vides. **L'UI itération 2 est en prod mais elle a l'air vide sur la démo**.
+
+---
+
+## Prochaines étapes par priorité (basé sur l'état prod vérifié)
+
+### P0 — Effet vitrine bloquant
+
+1. **Patcher le seed pour rafraîchir les champs hors-payload sur une fiche déjà publiée.** Idée : dans `_get_or_create_demo_card`, après le early-return PUBLISHED, faire une passe "update only" sur les colonnes qui ne rentrent pas dans le `canonical_hash` (`citations_count`, `subscribers_count`, `views_count`, `impact_factor`, `conflict_of_interest`) + recréer les `source_excerpts` à partir de la spec. Aucun impact sur la signature. Sans ce fix, l'itération 2 reste invisible aux visiteurs de la démo.
+
+### P1 — Vision produit (sans ça, Filum reste un démonstrateur)
+
+2. **Implémenter `apps/backend/app/extractors/` (actuellement vide).** Module d'extraction URL → métadonnées (titre, auteur, date, snapshot Wayback, et idéalement `citations_count`/`impact_factor` via Crossref / OpenAlex pour le peer-reviewed). Pierre angulaire annoncée depuis l'itération 1. Sans extracteur, aucun créateur ne peut ajouter de fiche sérieuse à grande échelle.
+3. **Page `/dashboard/new` : création de fiche.** Aujourd'hui `apps/frontend/src/routes/dashboard/` ne contient qu'un `+page.svelte` (vue d'ensemble). Aucune UI pour créer une fiche → seul un seed Python permet de publier. Bloquant pour onboarder un premier vrai créateur (autre que Mathias).
+
+### P2 — Auth / multi-utilisateur
+
+4. **OAuth Google end-to-end.** Crédentials Google Cloud Console → variables `google_client_id` / `google_client_secret` / `google_redirect_uri` (lowercase) dans Railway. Côté backend, basculer les cookies session de `samesite=lax` → `samesite=none + secure=True` (cf. `apps/backend/app/api/v1/endpoints/auth.py` ~128-152) pour cross-origin Vercel ↔ Railway. Sans ça, impossible d'onboarder un utilisateur tiers.
+5. **Tester le flow auth bout-en-bout** une fois OAuth branché : login → callback → cookie session → `/api/v1/auth/me`.
+
+### P3 — Qualité interne (dette dormante)
+
+6. **CI frontend lint réactivé.** `.github/workflows/ci.yml` lignes 131-138 contiennent encore `pnpm run lint || true` et `continue-on-error: true`. Le lint frontend est de facto désactivé. Ajouter les déps eslint manquantes (`@eslint/js`, `@typescript-eslint/*`, `eslint-plugin-svelte`, `svelte-eslint-parser`, `eslint-config-prettier`) et retirer les `|| true`.
+7. **Nettoyer `crypto/signing.py`.** Le fichier est aujourd'hui un simple re-export depuis `hashing.py` (3 lignes). Soit déplacer `SigningService` ici, soit supprimer le shim.
+8. **Réécrire un test composant Svelte 5.** Le test composant a été supprimé à l'itération 1 (incompatibilité Svelte 5). Le réécrire avec l'API courante `testing-library/svelte` (Snippet vs string).
+9. **Nettoyage `authority_level`.** La colonne reste en base et est sérialisée par l'API, mais l'UI itération 2 ne l'utilise plus (remplacée par les chips d'indicateurs typés). Choisir : (a) la retirer du schéma + migration de drop, (b) la garder pour rétrocompat et documenter qu'elle est "legacy / non-affichée".
+
+### P4 — Ouverture produit
+
+10. **Mode privé + intégrations Zotero / Obsidian / Notion** (spec déjà écrite : `.docs/09-private-mode-and-integrations.md`). Repositionne Filum en compagnon plutôt qu'en concurrent.
+11. **Domaine custom `filum.app`** côté Vercel et Railway.
+12. **Export PDF** d'une fiche signée.
 
 ---
 
