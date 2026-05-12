@@ -9,11 +9,13 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
-      - id: check-added-large-files
-      - id: check-merge-conflict
       - id: check-toml
+      - id: check-added-large-files
+        args: ['--max Commit: 500kb']
+      - id: check-merge-conflict
       - id: mixed-line-ending
         args: [--fix=lf]
+      - id: check-case-conflict
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.11.0
@@ -49,7 +51,30 @@ repos:
     rev: 5.14.0
     hooks:
       - id: isort
-        additional_dependencies: [toml]
+
+  - repo: local
+    hooks:
+      - id: no-secrets-in-code
+        name: Check for hardcoded secrets
+        entry: python scripts/check_secrets.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit, commit]
+
+  - repo: https://github.com/shellcheck-py/shellcheck-pre-commit
+    rev: v0.10.0
+    hooks:
+      - id: shellcheck
+        additional_dependencies: ['shellcheck-py']
+        files: ^scripts/.*
+
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: '\.env\.example$|\.secrets\.baseline$'
 
   - repo: local
     hooks:
@@ -58,12 +83,6 @@ repos:
         entry: uvx dbt-duckdb compile
         language: system
         pass_filenames: false
-        always_run: true
+        always_run: false
         files: ^apps/analytics/.*
         stages: [push]
-
-  - repo: https://github.com/shellcheck-py/shellcheck-pre-commit
-    rev: v0.10.0
-    hooks:
-      - id: shellcheck
-        additional_dependencies: ['shellcheck-py']
