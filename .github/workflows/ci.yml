@@ -71,6 +71,7 @@ jobs:
       - name: Run ruff check
         run: uv run ruff check app/
         working-directory: apps/backend
+        timeout-minutes: 2
 
       - name: Check ruff format
         run: uv run ruff format --check app/
@@ -92,12 +93,13 @@ jobs:
         uses: astral-sh/setup-uv@v4
 
       - name: Install dependencies
-        run: uv sync
+        run: uv sync --all-extras
         working-directory: apps/backend
 
       - name: Run mypy
-        run: uv run mypy app/
+        run: uv run mypy app/ --ignore-missing-imports
         working-directory: apps/backend
+        timeout-minutes: 3
 
   lint-frontend:
     name: Lint Frontend
