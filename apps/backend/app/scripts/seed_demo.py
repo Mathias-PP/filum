@@ -18,6 +18,7 @@ from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.config import get_settings
 from app.crypto.hashing import Canonicalizer, HashService, SigningService
@@ -257,7 +258,10 @@ async def _get_or_create_demo_card(
     db: AsyncSession, user: User, key_manager: KeyManager
 ) -> BiblioCard:
     result = await db.execute(
-        select(BiblioCard).where(
+        select(BiblioCard)
+        .options(selectinload(BiblioCard.sources))
+        .options(selectinload(BiblioCard.user))
+        .where(
             BiblioCard.user_id == user.id,
             BiblioCard.slug == DEMO_CARD_SLUG,
         )
@@ -355,8 +359,17 @@ async def _get_or_create_demo_card(
     card.status = CardStatus.PUBLISHED.value
 
     await db.commit()
-    await db.refresh(card)
-    return card
+
+    # Re-fetch with eager-loaded sources so callers can read
+    # `card.sources` without triggering a lazy load (the async session
+    # cannot do sync lazy loads outside a greenlet context).
+    refreshed = await db.execute(
+        select(BiblioCard)
+        .options(selectinload(BiblioCard.sources))
+        .options(selectinload(BiblioCard.user))
+        .where(BiblioCard.id == card.id)
+    )
+    return refreshed.scalar_one()
 
 
 async def seed() -> None:
