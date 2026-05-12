@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -158,8 +158,8 @@ async def _get_or_create_demo_card(
 
     card.canonical_hash = content_hash
     card.signature = signature
-    card.signed_at = datetime.now(UTC)
-    card.published_at = datetime.now(UTC)
+    card.signed_at = datetime.utcnow()
+    card.published_at = datetime.utcnow()
     card.status = CardStatus.PUBLISHED.value
 
     await db.commit()
