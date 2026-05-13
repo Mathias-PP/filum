@@ -60,15 +60,15 @@ Trois jalons. Chaque jalon = une PR auto-suffisante (mergée avant d'attaquer la
   - `google_client_secret`
   - `google_redirect_uri`
 
-**Travail agent / dev** :
-1. Vérifier que la lib OAuth (vraisemblablement `authlib`) est branchée dans `apps/backend/app/api/v1/endpoints/auth.py`.
-2. Implémenter (ou compléter) :
-   - `GET /api/v1/auth/google/login` → redirige vers Google avec `state` token CSRF
-   - `GET /api/v1/auth/google/callback` → échange code, crée/retrouve l'utilisateur, signe le cookie
-3. **Bascule des cookies** : `samesite=lax` → `samesite=none, secure=True`. Localisation : `apps/backend/app/api/v1/endpoints/auth.py` ~128-152 (cf. AGENTS.md). Vérifier que `secure=True` n'empêche pas le dev local (utiliser flag conditionnel via `settings.debug`).
-4. Côté frontend : bouton « Continuer avec Google » sur `/` (page d'accueil) + page `/auth/callback` qui hydrate le store `auth`.
-5. Tester en local avec `https://localhost` ou via `ngrok` (Google n'accepte pas `http://localhost` pour les credentials de production).
-6. Mettre à jour `cors_origins` Railway pour inclure toutes les origines (déjà OK : `["https://filum-eight.vercel.app","http://localhost:5173"]`).
+**Travail agent / dev (FAIT — PR #— `feat/oauth-google-end-to-end`)** :
+1. ✅ Vérifié : `authlib` non nécessaire (PyJWT 2.10+ gère JWKS nativement via `PyJWKClient`, httpx + cryptography déjà présents).
+2. ✅ Implémenté :
+   - `GET /api/v1/auth/google/login` → redirige vers Google avec `state` token CSRF en cookie HttpOnly
+   - `GET /api/v1/auth/google/callback` → vérifie state, échange code → id_token, vérifie signature Google via JWKS, crée/retrouve User, signe cookie session HS256
+3. ✅ **Bascule des cookies** : `samesite` conditionnel sur `settings.debug` (dev = `lax`, prod = `none + secure=True`).
+4. ✅ Frontend : bouton « Continuer avec Google » sur `/` (page d'accueil) + page `/auth/callback` qui hydrate le store `auth` + redirige vers `/dashboard`.
+5. ⏳ Test manuel en local avec ngrok ou via prod : nécessite credentials Google Cloud Console configurés par l'humain.
+6. ✅ `cors_origins` inchangés (déjà OK : `["https://filum-eight.vercel.app","http://localhost:5173"]`).
 
 **Critères de done** :
 - `curl -c cookies.txt https://filum-production-07bb.up.railway.app/api/v1/auth/google/login` retourne une 302 vers `accounts.google.com`.

@@ -66,6 +66,7 @@ class AuthService:
         google_id: str,
         username: str,
         display_name: str | None = None,
+        avatar_url: str | None = None,
     ) -> User:
         private_pem, public_pem, public_key_raw = KeyManager.generate_keypair()
         encrypted_private = self._key_manager.encrypt_private_key(private_pem)
@@ -75,6 +76,7 @@ class AuthService:
             google_id=google_id,
             username=username,
             display_name=display_name or username,
+            avatar_url=avatar_url,
             public_key=public_key_raw,
             encrypted_private_key=encrypted_private,
             is_verified=True,

@@ -6,15 +6,21 @@
 
 ## Dernière mise à jour
 
-**2026-05-13** — itération 3 complète (PR1 + PR2 mergées, CI verte) :
-- PR1 : lint frontend enforced (ESLint 9 flat config, prettier bloquant), `signing.py` refactorisé, `dashboard/new` + `dashboard/new/[card_id]/sources` créés, vitest source-colors, `svelte-kit sync` ajouté en CI avant tests.
-- PR2 : extracteur URL (`url_extractor.py` — Crossref + HTML scraping), endpoint `GET /sources/extract`, fix critique `asyncio.create_task` + session SQLAlchemy isolée (Wayback), guard SSRF (`HttpUrl` + scheme check), fix DOI regex, dead code supprimé.
+**2026-05-13** — jalon M1 (OAuth Google) livré sur `feat/oauth-google-end-to-end` (PR #—) :
+- Backend : endpoints `/auth/google/login` et `/auth/google/callback` complétés. State token CSRF en cookie HttpOnly. Échange code → id_token vérifié via Google JWKS (PyJWKClient). Création/retrouvage User. Cookie session avec samesite conditionnel (`lax` en debug, `none+secure` en prod). Génération paire Ed25519 chiffrée AES-GCM à la première connexion.
+- Frontend : bouton « Continuer avec Google » sur `/` avec icône. Page `/auth/callback` qui hydrate le store auth. `credentials: 'include'` déjà présent dans le client API.
+- Tests : 72 tests pytest (66 existants + 6 nouveaux). 1 test d'intégration callback mocké + tests unitaires state cookie.
+- Aucune nouvelle dépendance ajoutée (PyJWT + httpx + cryptography existaient déjà).
+
+Itérations précédentes :
+- PR1 (itération 3) : lint frontend enforced (ESLint 9 flat config, prettier bloquant), `signing.py` refactorisé, `dashboard/new` + `dashboard/new/[card_id]/sources` créés, vitest source-colors, `svelte-kit sync` ajouté en CI avant tests.
+- PR2 (itération 3) : extracteur URL (`url_extractor.py` — Crossref + HTML scraping), endpoint `GET /sources/extract`, fix critique `asyncio.create_task` + session SQLAlchemy isolée (Wayback), guard SSRF (`HttpUrl` + scheme check), fix DOI regex, dead code supprimé.
 
 ---
 
 ## Phase courante
 
-**Phase 1 — MVP déployé + itération 3 mergée.** Backend live sur Railway, frontend live sur Vercel, fiche démo publique avec graphe D3 18 sources, embranchement Y fonctionnel. Création de fiche disponible via `/dashboard/new`. Extracteur URL opérationnel côté backend (`GET /sources/extract`). CI entièrement enforced (0 `|| true`).
+**Phase 1 — Jalon M1 (OAuth Google) livré.** Backend live sur Railway, frontend live sur Vercel, fiche démo publique avec graphe D3 18 sources, embranchement Y fonctionnel. Création de fiche disponible via `/dashboard/new`. Extracteur URL opérationnel côté backend (`GET /sources/extract`). **OAuth Google end-to-end implémenté** (backend + frontend + tests). Cookie session passe en `samesite=none, secure=True` en prod pour cross-origin Vercel ↔ Railway. CI entièrement enforced (0 `|| true`). Prochain jalon : M2 (auth guard + branchement extracteur formulaire).
 
 ---
 
@@ -131,7 +137,7 @@ Variables intentionnellement non configurées (defaults dans `config.py` suffise
 | Rate limiting absent sur `GET /sources/extract` | Moyen | slowapi déjà dep mais non branché |
 | `impact_factor` toujours `null` | Faible | OpenAlex supprimé (dead code), pas de fallback |
 | Test composant Svelte 5 incompat | Faible | À réécrire avec API testing-library compatible Svelte 5 |
-| Cookie `samesite=lax` | Bloquant pour OAuth | Bascule `samesite=none + secure=True` quand OAuth Google sera branché (`auth.py` 128-152) |
+| ~~Cookie `samesite=lax`~~ | **Résolu** | Bascule `samesite=none + secure=True` conditionnée sur `settings.debug` (PR jalon M1) |
 | Pas de domaine custom | Feature | Brancher `filum.app` quand prêt |
 
 ---
@@ -162,8 +168,8 @@ Le seed ne fait plus early-return : les sources sont recréées, les champs ité
 
 ### P2 — Auth / multi-utilisateur
 
-4. **OAuth Google end-to-end.** Crédentials Google Cloud Console → variables `google_client_id` / `google_client_secret` / `google_redirect_uri` (lowercase) dans Railway. Côté backend, basculer les cookies session de `samesite=lax` → `samesite=none + secure=True` (cf. `apps/backend/app/api/v1/endpoints/auth.py` ~128-152) pour cross-origin Vercel ↔ Railway. Sans ça, impossible d'onboarder un utilisateur tiers.
-5. **Tester le flow auth bout-en-bout** une fois OAuth branché : login → callback → cookie session → `/api/v1/auth/me`.
+4. ~~**OAuth Google end-to-end.**~~ **Fait (PR jalon M1)** — endpoints `/auth/google/login` et `/auth/google/callback` opérationnels, state CSRF en cookie, vérification id_token via JWKS, cookie samesite conditionnel. Reste la configuration humaine des credentials Google Cloud + Railway (hors scope agent).
+5. **Tester le flow auth bout-en-bout** une fois les credentials Google configurés en prod : login → callback → cookie session → `/api/v1/auth/me`. Test manuel requis.
 
 ### P3 — Qualité interne (dette dormante)
 
