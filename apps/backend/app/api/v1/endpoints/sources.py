@@ -69,6 +69,31 @@ async def get_current_user(request, auth_service: AuthService = Depends(get_auth
     return user
 
 
+@router.get("", response_model=list[SourceResponse])
+async def list_sources(
+    card_id: UUID = Query(..., description="Card ID to list sources for"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(BiblioCard).where(BiblioCard.id == card_id))
+    card = result.scalar_one_or_none()
+    if not card:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": "Card not found"},
+        )
+    if card.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": "forbidden", "message": "Access denied"},
+        )
+
+    source_result = await db.execute(
+        select(Source).where(Source.biblio_card_id == card_id).order_by(Source.position)
+    )
+    return source_result.scalars().all()
+
+
 @router.post("", response_model=SourceResponse, status_code=status.HTTP_201_CREATED)
 async def create_source(
     card_id: UUID,

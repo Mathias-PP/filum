@@ -172,18 +172,6 @@ async def publish_card(
             detail={"code": "validation_error", "message": "Cannot publish a card without sources"},
         )
 
-    from app.models.source import ArchiveStatus
-
-    pending_sources = [s for s in card.sources if s.archive_status == ArchiveStatus.PENDING.value]
-    if pending_sources:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "code": "validation_error",
-                "message": f"Waiting for {len(pending_sources)} sources to be archived",
-            },
-        )
-
     result = await card_service.publish_card(card)
     return result
 

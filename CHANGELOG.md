@@ -33,6 +33,21 @@
 ## [Unreleased]
 
 ### Added
+- **Endpoint `GET /sources?card_id=...`** : liste les sources d'une fiche (authentifié, ownership)
+- **Page /about** : présentation, fonctionnement, public cible, techno, contact
+- **Navbar avatar dropdown** : avatar (ou initiales), display name, @username, lien dashboard, déconnexion
+- **Landing page auth-aware** : bouton "Accéder au tableau de bord" quand connecté au lieu de "Continuer avec Google"
+
+### Fixed
+- **Sources page** : charge les sources existantes au montage (ne démarre plus avec une liste vide)
+- **Publish bloqué par Wayback** : suppression du check `archive_status == PENDING` — l'archivage est best-effort et ne doit pas blocker la publication
+- **Types** : `data.user` correctement typé (`User | null`) dans layout + landing (résout 9 erreurs svelte-check)
+
+### Changed
+- **Landing page** : bannière bêta privée supprimée
+- **Description publique** : expandable via bouton "Lire la suite" / "Moins"
+
+### Added
 - **Embranchement en Y** dans le graphe interactif : quand deux sources du même auteur citent le même parent, un nœud de jonction est créé automatiquement (arêtes Nœud central → Léa Marchand → 2 notes de tournage)
 - **Source YouTube** Artem Kirsanov sur la neuroscience de la mémoire (seed demo)
 - **Types de source** `video` (Documentaire→Vidéo) et `image` (Illustration→Image)
