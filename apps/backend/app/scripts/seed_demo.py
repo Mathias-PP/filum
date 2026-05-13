@@ -82,10 +82,10 @@ async def _get_or_create_demo_user(db: AsyncSession, key_manager: KeyManager) ->
 
 
 def _demo_sources() -> list[dict]:
-    """16 realistic sources for a memory-and-brain vulgarization video.
+    """17 realistic sources for a memory-and-brain vulgarization video.
 
     Includes academic (peer-reviewed, institutional, press) and non-academic
-    (documentary, image) sources to demonstrate Filum beyond pure academia.
+    (documentary, video, image) sources to demonstrate Filum beyond pure academia.
 
     Order is meaningful: parent_index references the 1-based position of
     a previously-listed source (so parents are always created before
@@ -325,12 +325,12 @@ def _demo_sources() -> list[dict]:
                 )
             ],
         },
-        # --- Tier 5 — Non-academic (documentary, image) ---
+        # --- Tier 5 — Non-academic (video, documentary, image) ---
         {
             "url": "https://www.pbs.org/wgbh/nova/video/memory-hackers/",
             "title": "Memory Hackers",
             "authors": "NOVA PBS — Documentaire",
-            "source_type": SourceType.ORIGINAL.value,
+            "source_type": SourceType.VIDEO.value,
             "authority_level": AuthorityLevel.MEDIUM.value,
             "annotation": (
                 "Documentaire vidéo sur la plasticité de la mémoire qui illustre "
@@ -349,10 +349,26 @@ def _demo_sources() -> list[dict]:
             ],
         },
         {
+            "url": "https://www.youtube.com/watch?v=H8UQdB3vG6A",
+            "title": "How Memories Are Made: The Neuroscience of Memory Formation",
+            "authors": "Artem Kirsanov",
+            "source_type": SourceType.VIDEO.value,
+            "authority_level": AuthorityLevel.MEDIUM.value,
+            "annotation": (
+                "Vidéo de vulgarisation scientifique qui synthétise les mécanismes "
+                "moléculaires et cellulaires de la mémoire, en s'appuyant notamment "
+                "sur les travaux de Kandel, Nader et Tonegawa. Approche visuelle "
+                "complémentaire au contenu de la vidéo principale."
+            ),
+            "is_pivot": False,
+            "parent_index": 1,
+            "views_count": 1_800_000,
+        },
+        {
             "url": "https://wellcomecollection.org/works/pb7xkuyz",
             "title": "Dessin des neurones de l'hippocampe — Santiago Ramón y Cajal, 1909",
             "authors": "Santiago Ramón y Cajal",
-            "source_type": SourceType.ORIGINAL.value,
+            "source_type": SourceType.IMAGE.value,
             "authority_level": AuthorityLevel.HIGH.value,
             "annotation": (
                 "Dessin original du prix Nobel de médecine 1906, fondateur de la "

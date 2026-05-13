@@ -20,6 +20,8 @@ class SourceType(str, Enum):
     PEER_REVIEWED = "peer-reviewed"
     INSTITUTIONAL = "institutional"
     PRESS = "press"
+    VIDEO = "video"
+    IMAGE = "image"
     ORIGINAL = "original"
 
 

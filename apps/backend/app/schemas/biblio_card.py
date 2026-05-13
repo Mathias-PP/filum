@@ -61,6 +61,8 @@ class CardStats(BaseModel):
     peer_reviewed: int = 0
     institutional: int = 0
     press: int = 0
+    video: int = 0
+    image: int = 0
     original: int = 0
     all_archived: bool = False
 

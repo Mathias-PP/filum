@@ -44,6 +44,8 @@ export interface CardStats {
   peer_reviewed: number
   institutional: number
   press: number
+  video: number
+  image: number
   original: number
   all_archived: boolean
 }
@@ -136,6 +138,6 @@ export interface VerificationResponse {
 export type Platform = 'youtube' | 'podcast' | 'blog' | 'x' | 'bluesky' | 'other'
 export type ContentType = 'video' | 'article' | 'post' | 'podcast' | 'other'
 export type CardStatus = 'draft' | 'published' | 'archived'
-export type SourceType = 'peer-reviewed' | 'institutional' | 'press' | 'original'
+export type SourceType = 'peer-reviewed' | 'institutional' | 'press' | 'video' | 'image' | 'original'
 export type AuthorityLevel = 'high' | 'medium' | 'low'
 export type ArchiveStatus = 'pending' | 'archived' | 'failed'

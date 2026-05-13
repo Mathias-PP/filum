@@ -10,7 +10,7 @@ export interface SourceColor {
 
 export const SOURCE_COLORS: Record<SourceType, SourceColor> = {
   'peer-reviewed': {
-    label: 'Peer-reviewed',
+    label: 'Article scientifique',
     fill: '#C0DD97',
     stroke: '#639922',
     text: '#173404',
@@ -30,8 +30,22 @@ export const SOURCE_COLORS: Record<SourceType, SourceColor> = {
     text: '#412402',
     bgClass: 'bg-amber-100 text-amber-800',
   },
+  video: {
+    label: 'Documentaire',
+    fill: '#F2A7BE',
+    stroke: '#D4456E',
+    text: '#4A0E21',
+    bgClass: 'bg-pink-100 text-pink-800',
+  },
+  image: {
+    label: 'Illustration',
+    fill: '#A7E8D9',
+    stroke: '#2DAF8F',
+    text: '#08382C',
+    bgClass: 'bg-teal-100 text-teal-800',
+  },
   original: {
-    label: 'Original',
+    label: 'Œuvre / Document',
     fill: '#CECBF6',
     stroke: '#7F77DD',
     text: '#26215C',

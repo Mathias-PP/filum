@@ -75,17 +75,6 @@
     return truncate(s.title ?? s.url, 22)
   }
 
-  function contentTypeLabel(contentType: string): string {
-    const labels: Record<string, string> = {
-      video: 'Vidéo',
-      article: 'Article',
-      podcast: 'Podcast',
-      post: 'Post',
-      other: 'Autre',
-    }
-    return labels[contentType] ?? 'Autre'
-  }
-
   function buildGraph(): { nodes: GraphNode[]; links: GraphLink[] } {
     const nodes: GraphNode[] = [
       {
@@ -241,42 +230,28 @@
       .attr('stroke', (d) => d.stroke)
       .attr('stroke-width', (d) => (d.kind === 'card' ? 3 : 2))
 
-    // Card-node header (creator + content-type label), above the node.
-    const cardHeader = nodeG
-      .filter((d) => d.kind === 'card')
-      .append('g')
-      .attr('class', 'card-header')
-      .attr('transform', (d) => `translate(0, ${-(d.radius + 14)})`)
-
-    cardHeader
-      .append('text')
-      .attr('text-anchor', 'end')
-      .attr('x', -4)
-      .attr('y', 4)
-      .attr('fill', '#0f172a')
-      .attr('font-size', 12)
-      .attr('font-weight', 600)
-      .text(card.creator.display_name ?? card.creator.slug)
-
-    cardHeader
-      .append('text')
-      .attr('text-anchor', 'start')
-      .attr('x', 4)
-      .attr('y', 4)
-      .attr('fill', '#64748b')
-      .attr('font-size', 11)
-      .attr('font-weight', 500)
-      .text(contentTypeLabel(card.content_type))
-
-    // Card-title subtitle below the central node
+    // Creator name above card node (always visible at zoom >= 0.7)
     nodeG
       .filter((d) => d.kind === 'card')
       .append('text')
-      .attr('class', 'card-subtitle')
+      .attr('class', 'card-creator')
       .attr('text-anchor', 'middle')
-      .attr('y', (d) => d.radius + 16)
+      .attr('y', (d) => -(d.radius + 8))
+      .attr('font-size', 12)
+      .attr('font-weight', 600)
+      .attr('fill', '#0f172a')
+      .style('pointer-events', 'none')
+      .text(card.creator.display_name ?? card.creator.slug)
+
+    // Card title above creator (shown only at higher zoom levels)
+    nodeG
+      .filter((d) => d.kind === 'card')
+      .append('text')
+      .attr('class', 'card-title-label')
+      .attr('text-anchor', 'middle')
+      .attr('y', (d) => -(d.radius + 22))
       .attr('font-size', 10)
-      .attr('fill', '#64748b')
+      .attr('fill', '#475569')
       .style('pointer-events', 'none')
       .text(truncate(card.title, 35))
 
@@ -448,10 +423,10 @@
     const showAuthor = zoomLevel >= 0.7
     const showTitle = zoomLevel >= 1.5
     svg
-      .selectAll<SVGTextElement, GraphNode>('text.author-label')
+      .selectAll<SVGTextElement, GraphNode>('text.author-label, text.card-creator')
       .style('display', showAuthor ? '' : 'none')
     svg
-      .selectAll<SVGTextElement, GraphNode>('text.title-label')
+      .selectAll<SVGTextElement, GraphNode>('text.title-label, text.card-title-label')
       .style('display', showTitle ? '' : 'none')
   })
 </script>

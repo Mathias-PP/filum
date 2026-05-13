@@ -118,10 +118,10 @@
           {/if}
           {#if source.conflict_of_interest}
             <span
-              class="inline-flex items-center text-xs text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full"
+              class="inline-flex items-center text-xs text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full"
               title={source.conflict_of_interest}
             >
-              ⚠ Conflit d'intérêt déclaré
+              Conflit d'intérêt déclaré
             </span>
           {/if}
         </div>

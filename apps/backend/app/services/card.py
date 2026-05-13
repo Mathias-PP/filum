@@ -145,6 +145,8 @@ class CardService:
         peer_reviewed = sum(1 for s in sources if s.source_type == SourceType.PEER_REVIEWED)
         institutional = sum(1 for s in sources if s.source_type == SourceType.INSTITUTIONAL)
         press = sum(1 for s in sources if s.source_type == SourceType.PRESS)
+        video = sum(1 for s in sources if s.source_type == SourceType.VIDEO)
+        image = sum(1 for s in sources if s.source_type == SourceType.IMAGE)
         original = sum(1 for s in sources if s.source_type == SourceType.ORIGINAL)
         all_archived = all(s.archive_status == ArchiveStatus.ARCHIVED for s in sources)
 
@@ -153,6 +155,8 @@ class CardService:
             peer_reviewed=peer_reviewed,
             institutional=institutional,
             press=press,
+            video=video,
+            image=image,
             original=original,
             all_archived=all_archived,
         )
