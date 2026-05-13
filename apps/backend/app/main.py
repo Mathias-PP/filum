@@ -6,6 +6,7 @@ import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
@@ -112,6 +113,22 @@ async def seed_health():
                 {"slug": c.slug, "status": c.status, "user_id": str(c.user_id)} for c in cards
             ],
         }
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = exc.errors()
+    messages = [f"{'.'.join(str(p) for p in e['loc'])}: {e['msg']}" for e in errors]
+    return JSONResponse(
+        status_code=422,
+        content={
+            "error": {
+                "code": "validation_error",
+                "message": "; ".join(messages),
+                "details": errors,
+            }
+        },
+    )
 
 
 @app.exception_handler(HTTPException)
