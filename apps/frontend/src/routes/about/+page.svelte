@@ -28,9 +28,9 @@
       vulgaristeur s'appuie sur une thèse ? Qui vérifie que la source existe vraiment ?
     </p>
     <p class="text-slate-600 leading-relaxed">
-      Filum répond à ce problème en offrant un espace dédié où chaque source est documentée,
-      archivée, liée à une fiche de lecture, et dont l'authenticité est garantie par signature
-      cryptographique.
+      Filum répond à ce problème en offrant un espace dédié où chaque source est documentée et
+      archivée, et où chaque revendication d'un contenu original par son créateur·ice est attestée
+      par signature cryptographique.
     </p>
 
     <h2 class="text-2xl font-semibold text-slate-900 mt-12 mb-4">Nos valeurs</h2>
@@ -103,10 +103,12 @@
 
     <h2 class="text-2xl font-semibold text-slate-900 mt-12 mb-4">Technologie</h2>
     <p class="text-slate-600 leading-relaxed">
-      Filum utilise la cryptographie Ed25519 pour signer chaque fiche, garantissant ainsi que le
-      contenu n'a pas été altéré depuis sa publication. L'archivage des sources via Wayback Machine
-      permet de préserver les références même si les pages originales disparaissent. Le tout est
-      présenté dans un graphe interactif qui rend la navigation intuitive.
+      Filum utilise la cryptographie Ed25519 pour signer chaque revendication de contenu original
+      (vidéo, article, podcast…) par son créateur·ice, garantissant que ces attestations proviennent
+      bien de la personne qu'elles désignent et qu'elles datent bien du moment indiqué. L'archivage
+      des sources via Wayback Machine permet de préserver les références même si les pages
+      originales disparaissent. Le tout est présenté dans un graphe interactif qui rend la
+      navigation intuitive.
     </p>
     <p class="text-slate-600 leading-relaxed">
       Pour les détails techniques complets (signature, hachage, gestion des clés), rendez-vous sur

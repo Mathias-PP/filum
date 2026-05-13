@@ -42,10 +42,11 @@
           /></svg
         >
       </div>
-      <h3 class="text-lg font-semibold text-slate-900 mb-2">Signature cryptographique</h3>
+      <h3 class="text-lg font-semibold text-slate-900 mb-2">Attestation de contenu Ed25519</h3>
       <p class="text-slate-600 text-sm">
-        Chaque fiche publiée est signée avec une clé Ed25519. Le hash SHA-256 et l'horodatage
-        garantissent l'intégrité et l'authenticité du contenu. Vérifiable par n'importe qui.
+        Chaque contenu original que vous revendiquez (vidéo, article, podcast…) est attesté avec
+        votre clé Ed25519 : le triplet (vous, l'URL, la date) est signé et vérifiable par n'importe
+        qui.
       </p>
     </div>
 

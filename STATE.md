@@ -6,7 +6,9 @@
 
 ## Dernière mise à jour
 
-**2026-05-13** — **Session PR #31 : MVP améliorations — CI lint frontend fixée (`.prettierignore` + format 4 fichiers), README mis à jour.** Voir `CHANGELOG.md` pour le détail.
+**2026-05-14** — **PR #31 enrichie : pivot crypto (signature désormais sur le lien créateur·ice ↔ contenu via triplet `(creator_id, content_url, attested_at)`, plus sur la fiche), reformulation copy globale, suppression FAQ sécurité, ajout Filum Desktop dans roadmap.** Voir ADR-019 dans `DECISIONS.md` pour le détail du pivot. La PR backend de bascule (migration `006_remove_card_signature`, table `content_attestations`, refonte endpoint publish) reste à ouvrir.
+
+**2026-05-13** — Session PR #31 : MVP améliorations — CI lint frontend fixée (`.prettierignore` + format 4 fichiers), README mis à jour. Voir `CHANGELOG.md` pour le détail.
 
 ### PR #30 — Missing Request type hints (mergée)
 - **Root cause du bug "An error occurred"** : `get_current_user` dans `sources.py` et `users.py` avait `request` sans `: Request` type hint → FastAPI traitait `request` comme paramètre query au lieu d'injecter l'objet Request → tous les endpoints sources retournaient 422.
@@ -156,6 +158,8 @@ Variables intentionnellement non configurées (defaults dans `config.py` suffise
 | ~~8 warnings `state_referenced_locally`~~ | **Résolu** | Composants convertis à `$derived()` / `$effect()` |
 | ~~Auth guard absent sur `/dashboard*`~~ | **Résolu** | `+layout.ts` dans `/dashboard/` redirige vers `/` si non connecté |
 | ~~Rate limiting absent sur `GET /sources/extract`~~ | **Résolu** | slowapi branché : 10 req/min sur `/sources/extract`, 20 req/h sur `POST /cards` |
+| Signature fiche encore présente en base (post-ADR-019) | Moyenne | `BiblioCard.canonical_hash/signature/signed_at` à dropter dans migration `006`. Table `content_attestations` à créer. Frontend déjà désaligné (n'affiche plus). |
+| Bug publish « Impossible de contacter le serveur » | À reproduire | `POST /cards/{id}/publish` lève `TypeError: Failed to fetch` côté navigateur. Possibles causes : CORS, cookie cross-site, ou bug backend non-JSON. À reproduire via DevTools. |
 | `impact_factor` toujours `null` | Faible | OpenAlex supprimé (dead code), pas de fallback |
 | Test composant Svelte 5 incompat | Faible | À réécrire avec API testing-library compatible Svelte 5 |
 | ~~Cookie `samesite=lax`~~ | **Résolu** | Bascule `samesite=none + secure=True` conditionnée sur `settings.debug` (PR jalon M1) |

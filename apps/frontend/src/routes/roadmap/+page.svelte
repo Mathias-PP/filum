@@ -72,7 +72,7 @@
               clip-rule="evenodd"
             /></svg
           >
-          Signature cryptographique Ed25519
+          Attestation cryptographique Ed25519 des liens créateur·ice ↔ contenu
         </li>
         <li class="flex items-start gap-2 text-slate-600">
           <svg

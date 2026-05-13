@@ -1,5 +1,7 @@
 # 02 — Architecture technique
 
+> ⚠️ **Pivot ADR-019 (2026-05-14)** : les sections « signature/canonicalisation de fiche » sont obsolètes. La signature porte désormais sur l'attestation de contenu (triplet `(creator_id, content_url, attested_at)`). Le pipeline crypto (Ed25519 + SHA-256 + RFC 8785) reste identique, seul l'objet signé change. Voir `DECISIONS.md` ADR-019. Réécriture intégrale à la PR de bascule backend.
+
 > Ce document décrit les choix d'architecture du projet : stack, structure, déploiement.
 
 ---

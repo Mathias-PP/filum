@@ -130,7 +130,7 @@ Pour une **session autonome longue** (mode plan + acceptEdits, ou agent tiers co
 
 - **L'ID de révision Alembic doit faire ≤ 32 caractères.** La colonne `alembic_version.version_num` est `VARCHAR(32)` par défaut. Un ID trop long lève `StringDataRightTruncationError` au moment du `UPDATE alembic_version` final, et la transaction DDL rollback _toute_ la migration → boucle crash-loop sur Railway. Convention adoptée : `00X_<courte_description>`.
 - **`sa.Column("col", ForeignKey(...), index=True)` à l'intérieur de `create_table` crée déjà l'index** (nom auto `ix_<table>_<col>`). Ne pas le redoubler par un `op.create_index` explicite après, sinon `DuplicateTableError` sur le second CREATE INDEX → rollback complet.
-- **Les nouveaux champs sur `sources` ne doivent JAMAIS entrer dans le `canonical_hash` payload.** Voir `apps/backend/app/services/card.py` lignes 96-105 et 161-169 + `app/scripts/seed_demo.py`. Toute fiche déjà publiée doit rester vérifiable. Si un champ doit absolument entrer dans la signature → ADR explicite + plan de re-signature.
+- **Pivot ADR-019 (2026-05-14)** : la signature ne porte plus sur la fiche bibliographique mais sur le **lien créateur·ice ↔ contenu** (triplet `(creator_id, content_url, attested_at)`). Les fiches sont devenues mutables. Tant que la migration `006_remove_card_signature` + table `content_attestations` ne sont pas mergées, l'ancien `canonical_hash` / `signature` sur `biblio_cards` reste en base mais n'est plus exposé en frontend. **Le payload signé d'une attestation de contenu est immuable : aucun champ ne peut être ajouté/retiré sans ADR + plan de re-attestation.**
 
 ---
 

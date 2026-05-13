@@ -1,5 +1,7 @@
 # 03 — Modèle de données
 
+> ⚠️ **Pivot ADR-019 (2026-05-14)** : les colonnes `canonical_hash`, `signature`, `signed_at` sur `biblio_cards` sont en passe d'être supprimées (migration `006_remove_card_signature` à venir). Une nouvelle table `content_attestations` `(id, user_id, content_url, attested_at, canonical_hash, signature)` portera la signature des liens créateur·ice ↔ contenu. `published_at` est conservé pour l'horodatage UX sans rôle crypto. Voir `DECISIONS.md` ADR-019.
+
 > Schéma de base de données, modèles SQLAlchemy, et structure des tables dbt.
 
 ---

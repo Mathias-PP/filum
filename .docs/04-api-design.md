@@ -1,5 +1,7 @@
 # 04 — Design de l'API
 
+> ⚠️ **Pivot ADR-019 (2026-05-14)** : `POST /cards/{id}/publish` retournera bientôt seulement un statut (plus de `signature`/`canonical_hash`). Nouveaux endpoints à venir : `POST /attestations/content` (création) et `GET /attestations/{id}/verify` (vérification publique). Le endpoint `GET /cards/{creator}/{slug}/verify` sera retiré. Voir `DECISIONS.md` ADR-019.
+
 > Endpoints REST exposés par le backend FastAPI. Conventions, contrats, exemples.
 
 ---

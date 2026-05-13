@@ -30,7 +30,8 @@
         </h1>
         <p class="text-xl text-slate-600 mb-8 text-balance">
           Filum transforme votre bibliographie en un graphe interactif : sources organisées,
-          archivées et signées cryptographiquement.
+          archivées, et chaque contenu original que vous revendiquez est attesté
+          cryptographiquement.
         </p>
         <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
           {#if isAuthenticated}
@@ -106,10 +107,10 @@
               />
             </svg>
           </div>
-          <h3 class="text-xl font-semibold text-slate-900 mb-2">2. Signer</h3>
+          <h3 class="text-xl font-semibold text-slate-900 mb-2">2. Attester</h3>
           <p class="text-slate-600">
-            Votre fiche est signée avec une clé Ed25519. Hash SHA-256 et horodatage garantissent
-            l'authenticité.
+            Chaque contenu original que vous revendiquez est attesté avec votre clé Ed25519 : le
+            triplet (vous, l'URL du contenu, la date) est signé et vérifiable par tous.
           </p>
         </div>
         <div class="text-center">

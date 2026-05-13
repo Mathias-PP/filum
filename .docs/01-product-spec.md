@@ -1,5 +1,7 @@
 # 01 — Spécifications produit du MVP
 
+> ⚠️ **Pivot ADR-019 (2026-05-14)** : les sections « signature de fiche » et « immuabilité de la fiche publiée » de ce document sont obsolètes. La signature porte désormais sur le **lien créateur·ice ↔ contenu** (triplet `(creator_id, content_url, attested_at)`). Les fiches bibliographiques sont mutables. Voir `DECISIONS.md` ADR-019. Réécriture intégrale du document à la PR de bascule backend.
+
 > Ce document décrit les fonctionnalités du MVP de Filum, les scénarios utilisateurs, et les écrans. Il est la référence produit pendant toute la phase 1.
 
 ---

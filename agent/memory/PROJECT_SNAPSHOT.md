@@ -97,7 +97,7 @@ filum/
 - **`source_excerpts`** : `id`, `source_id` (FK CASCADE), `position`, `text`, `suggested_by_ai`
 - **`audit_events`** : audit log des actions sensibles
 
-⚠️ **Invariants crypto** : le `canonical_hash` est gelé. Aucun nouveau champ ne doit y entrer (cf. [`PITFALLS.md`](../PITFALLS.md) 1.3).
+⚠️ **Pivot crypto (ADR-019, 2026-05-14)** : la signature porte sur le **lien créateur·ice ↔ contenu** (triplet `(creator_id, content_url, attested_at)`), plus sur la fiche bibliographique. Les fiches sont mutables. Migration `006_remove_card_signature` + nouvelle table `content_attestations` à venir. Cf. [`PITFALLS.md`](../PITFALLS.md) 1.3 et `DECISIONS.md` ADR-019.
 
 → [`.docs/03-data-model.md`](../../.docs/03-data-model.md)
 
@@ -183,7 +183,7 @@ Pas de workflow CD séparé — Railway déploie auto à chaque push main (ADR-0
 2. Double `create_index` après `index=True` dans `Column` → [`PITFALLS.md`](../PITFALLS.md) 1.2
 3. Variable d'env UPPERCASE silently ignorée → [`PITFALLS.md`](../PITFALLS.md) 1.6
 4. pnpm 11 casse tout — rester sur 10.33.4 → [`PITFALLS.md`](../PITFALLS.md) 2.1
-5. Modifier un champ qui rentre dans `canonical_hash` → fiches signées invérifiables → [`PITFALLS.md`](../PITFALLS.md) 1.3
+5. Modifier la forme du payload `content_attestation` signé → attestations existantes invérifiables → [`PITFALLS.md`](../PITFALLS.md) 1.3
 
 → [`PITFALLS.md`](../PITFALLS.md) liste complète
 
