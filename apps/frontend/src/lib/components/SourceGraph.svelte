@@ -189,8 +189,8 @@
       const dx = mx - px
       const dy = my - py
 
-      jx.x = px + dx * 0.66
-      jx.y = py + dy * 0.66
+      jx.x = px + dx * 0.6
+      jx.y = py + dy * 0.6
       jx.fx = jx.x
       jx.fy = jx.y
     }
@@ -399,7 +399,7 @@
             const tgt = typeof l.target === 'string' ? l.target : l.target.id
             if (src.startsWith('junction:') || tgt.startsWith('junction:')) return 5
             if (l.kind === 'parent') return 75
-            if (l.kind === 'sibling') return 25
+            if (l.kind === 'sibling') return 40
             return 160
           })
           .strength((l) => {
