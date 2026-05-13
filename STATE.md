@@ -6,19 +6,15 @@
 
 ## Dernière mise à jour
 
-**2026-05-13** — session 3 : refonte graphique complète (logo 12 branches, graphe Y-branching, suppression conflits rouge), ajout types source video/image, redesign page fiche publique + page d'accueil, CI/CD cleanup (vite-plugin-svelte/vitest bump)
-
-**2026-05-13** — session 3.5 : correction Y-branching (deux sources Nader mal groupées → deux sources Léa Marchand en premier cercle, premier Y-branch fonctionnel entre le nœud central et les deux notes de tournage)
-
-**2026-05-13** — itération 3 PR1 : lint frontend activé (eslint 9 flat config + 6 deps + prettier pass 0 erreur), `crypto/signing.py` refactorisé (SigningService+Canonicalizer déplacés), `dashboard/new` + `dashboard/new/[card_id]/sources` créés, test vitest source-colors ajouté, CI `|| true` retiré.
-
-**2026-05-13** — session 3.6 : fork Y sans nœud visible (jonction radius 0 épinglée à 60% du chemin parent→enfants), lien original carte→source conservé caché pour les forces, lien sibling distance=55 force=2.0 pour garder les enfants soudés sans superposition des labels, enfants libres (non épinglés) — résultat : fourche Y propre, aucun nœud ne peut s'intercaler, labels lisibles.
+**2026-05-13** — itération 3 complète (PR1 + PR2 mergées, CI verte) :
+- PR1 : lint frontend enforced (ESLint 9 flat config, prettier bloquant), `signing.py` refactorisé, `dashboard/new` + `dashboard/new/[card_id]/sources` créés, vitest source-colors, `svelte-kit sync` ajouté en CI avant tests.
+- PR2 : extracteur URL (`url_extractor.py` — Crossref + HTML scraping), endpoint `GET /sources/extract`, fix critique `asyncio.create_task` + session SQLAlchemy isolée (Wayback), guard SSRF (`HttpUrl` + scheme check), fix DOI regex, dead code supprimé.
 
 ---
 
 ## Phase courante
 
-**Phase 1 — MVP déployé + itération graphique.** Backend live sur Railway, frontend live sur Vercel, fiche démo publique avec graphe D3 18 sources, embranchement Y fonctionnel (2 sources Léa Marchand en fourche V sans nœud visible, liées par sibling force 2.0).
+**Phase 1 — MVP déployé + itération 3 mergée.** Backend live sur Railway, frontend live sur Vercel, fiche démo publique avec graphe D3 18 sources, embranchement Y fonctionnel. Création de fiche disponible via `/dashboard/new`. Extracteur URL opérationnel côté backend (`GET /sources/extract`). CI entièrement enforced (0 `|| true`).
 
 ---
 
@@ -37,8 +33,8 @@
 ## Branches Git
 
 | Branche | État |
-|---|---|---|
-| `main` | Branche unique. Les branches distantes `feat/iteration-2-*` et `feat/source-graph-*` ont été supprimées. |
+|---|---|
+| `main` | Branche unique. `feat/iteration-3-dashboard-ci` et `feat/iteration-3-extractor-wayback` mergées et supprimées. |
 
 ---
 
@@ -72,14 +68,16 @@ Workflow `cd.yml` supprimé : Railway déploie en natif via son intégration Git
 - Models : User, BiblioCard, Source, AuditEvent
 - API REST sous `/api/v1/` : auth, cards, sources, users
 - Migrations Alembic exécutées au boot dans le `CMD` Docker
-- 41 tests (38 unit + 3 integration endpoints)
+- 40 tests (pytest — unit + integration)
+- Extracteur URL : `app/extractors/url_extractor.py` (Crossref + HTML scraping)
+- Endpoint `GET /api/v1/sources/extract` (no auth, best-effort metadata)
 
 ### Frontend
 - SvelteKit 2 + Svelte 5 + TypeScript + Tailwind, déployé sur Vercel
 - pnpm 10.33.4 pinned via `packageManager` (cf. ADR-013)
 - Design system : Button, Input, Card, Avatar, Badge, Alert, SourceTypeBadge, SourceGraph, SourceDetailPanel
 - Stores : auth, cards
-- Routes : home, dashboard, public card (avec graphe D3), user profile
+- Routes : home, dashboard, public card (avec graphe D3), user profile, `/dashboard/new` (création fiche 2 étapes)
 - D3 v7 (force-directed) + utilitaire `lib/utils/source-colors.ts` (single source of truth des couleurs de type de source)
 - API base URL pilotée par `PUBLIC_API_BASE_URL` (env Vercel)
 
@@ -125,15 +123,16 @@ Variables intentionnellement non configurées (defaults dans `config.py` suffise
 
 | Bug | Sévérité | Localisation |
 |---|---|---|
-| `apps/backend/app/extractors/` vide | Bloquant pour la prochaine feature | Module à implémenter (URL → métadonnées) |
-| ~~`crypto/signing.py` = stub~~ | **Résolu** | SigningService + Canonicalizer déplacés dans `signing.py`, `hashing.py` ne garde que `HashService` |
-| ~~Deps eslint frontend manquantes~~ | **Résolu** | 6 deps ajoutées, eslint 9 flat config réécrit, CI `\|\| true` retiré |
+| ~~`apps/backend/app/extractors/` vide~~ | **Résolu** | `url_extractor.py` implémenté (Crossref + HTML scraping), endpoint `GET /sources/extract` |
+| ~~`crypto/signing.py` = stub~~ | **Résolu** | SigningService + Canonicalizer déplacés dans `signing.py` |
+| ~~Deps eslint frontend manquantes~~ | **Résolu** | 6 deps ajoutées, eslint 9 flat config, CI `\|\| true` retiré |
 | ~~8 warnings `state_referenced_locally`~~ | **Résolu** | Composants convertis à `$derived()` / `$effect()` |
-| Test composant Svelte 5 incompat | Bloquait check, supprimé | À réécrire avec API testing-library compatible Svelte 5 (Snippet vs string) |
-| 6 erreurs ruff dans `alembic/versions/001_initial.py` | Cosmétique | CI ne lint pas `alembic/`, généré auto, `Union[X, None]` → `X \| None` |
+| Auth guard absent sur `/dashboard/new` | Moyen | Redirection si non connecté — non implémentée |
+| Rate limiting absent sur `GET /sources/extract` | Moyen | slowapi déjà dep mais non branché |
+| `impact_factor` toujours `null` | Faible | OpenAlex supprimé (dead code), pas de fallback |
+| Test composant Svelte 5 incompat | Faible | À réécrire avec API testing-library compatible Svelte 5 |
+| Cookie `samesite=lax` | Bloquant pour OAuth | Bascule `samesite=none + secure=True` quand OAuth Google sera branché (`auth.py` 128-152) |
 | Pas de domaine custom | Feature | Brancher `filum.app` quand prêt |
-| Cookie `samesite=lax` | Bloquant pour OAuth | Bascule `samesite=none + secure=True` quand OAuth Google sera branché (cf. `apps/backend/app/api/v1/endpoints/auth.py` 128-152) |
-| ~~Seed démo : données itération 2 absentes~~ | **Résolu** | `_get_or_create_demo_card` ne fait plus early-return ; delete+recreate les sources à chaque run ; les excerpts/indicateurs/conflits sont donc rafraîchis. |
 
 ---
 
@@ -157,8 +156,9 @@ Le seed ne fait plus early-return : les sources sont recréées, les champs ité
 
 ### P1 — Vision produit (sans ça, Filum reste un démonstrateur)
 
-2. **Implémenter `apps/backend/app/extractors/` (actuellement vide).** Module d'extraction URL → métadonnées (titre, auteur, date, snapshot Wayback, et idéalement `citations_count`/`impact_factor` via Crossref / OpenAlex pour le peer-reviewed). Pierre angulaire annoncée depuis l'itération 1. Sans extracteur, aucun créateur ne peut ajouter de fiche sérieuse à grande échelle.
-3. ~~**Page `/dashboard/new` : création de fiche.**~~ **Fait (PR1 itération 3)** — routes `dashboard/new` (étape 1 métadonnées) + `dashboard/new/[card_id]/sources` (étape 2 sources + publication) créées.
+2. ~~**Implémenter `apps/backend/app/extractors/`.**~~ **Fait (PR2 itération 3)** — `url_extractor.py` opérationnel (Crossref + HTML scraping), endpoint `GET /sources/extract`.
+3. ~~**Page `/dashboard/new` : création de fiche.**~~ **Fait (PR1 itération 3)** — routes `dashboard/new` + `dashboard/new/[card_id]/sources` créées.
+4. **Brancher l'extracteur dans le formulaire frontend.** Appeler `GET /sources/extract?url=...` au blur du champ URL pour pré-remplir titre, auteurs, date. Ajouter l'auth guard (redirect si non connecté) sur les routes `/dashboard/new`.
 
 ### P2 — Auth / multi-utilisateur
 

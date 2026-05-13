@@ -6,6 +6,30 @@
 
 ---
 
+## [Itération 3] — 2026-05-13
+
+### Added
+- **Extracteur URL** (`app/extractors/url_extractor.py`) : Crossref pour les DOIs (titre, auteurs, date, citations), HTML scraping (og:title, og:description, author, date) en fallback
+- **Endpoint `GET /api/v1/sources/extract`** : métadonnées best-effort sans auth, paramètre `url` validé `HttpUrl` (guard SSRF)
+- **Dashboard création de fiche** : 2 routes SvelteKit — `/dashboard/new` (étape 1 : titre, slug, description, URL, plateforme, type) et `/dashboard/new/[card_id]/sources` (étape 2 : ajout/suppression sources + publication)
+- **Test vitest `source-colors.test.ts`** : vérifie que les 6 `SourceType` ont des couleurs hex valides (label, fill, stroke, text, bgClass)
+- Deps backend : `beautifulsoup4>=4.12.0`, `lxml>=5.0.0`
+- Deps frontend : `@eslint/js`, `@typescript-eslint/eslint-plugin`, `@typescript-eslint/parser`, `eslint-config-prettier`, `eslint-plugin-svelte`, `svelte-eslint-parser`
+
+### Changed
+- **CI enforced** : supprimé `|| true` et `continue-on-error` sur les steps lint/prettier frontend — ESLint et Prettier désormais bloquants
+- **CI `test-frontend`** : ajout `pnpm exec svelte-kit sync` avant `pnpm run test` (`.svelte-kit/tsconfig.json` absent en checkout propre)
+- **ESLint** : réécriture en flat config ESLint 9 (`eslint.config.js`), suppression de `.eslintrc.cjs`
+- **`crypto/signing.py`** : `Canonicalizer` et `SigningService` déplacés hors de `hashing.py` (qui ne garde que `HashService`)
+- **Wayback background task** : session SQLAlchemy isolée (`async_session_maker()` dans `_archive_bg`) — évite `MissingGreenlet`
+
+### Fixed
+- 57 erreurs ESLint : browser globals (`no-undef: off` pour Svelte), `state_referenced_locally` (composants Avatar, Button, Input, SourceGraph convertis à `$derived()`), unused imports dans dashboard et stores
+- DOI regex trop greedy : `(.+)` → `([^\s?#]+)`
+- Suppression dead code `_openalex_impact` (bug logique : retournait toujours `None`, jamais appelée)
+
+---
+
 ## [Unreleased]
 
 ### Added
