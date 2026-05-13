@@ -185,6 +185,20 @@ async def publish_card(
     return result
 
 
+@router.delete("/cards/{card_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_card(
+    card_id: UUID,
+    current_user: User = Depends(get_current_user),
+    card_service: CardService = Depends(get_card_service),
+):
+    deleted = await card_service.delete_card(card_id, current_user.id)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": "Card not found or already published"},
+        )
+
+
 @router.get("/@{creator_slug}/{card_slug}", response_model=CardDetail)
 async def get_public_card(
     creator_slug: str,

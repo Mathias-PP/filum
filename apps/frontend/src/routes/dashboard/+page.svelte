@@ -8,6 +8,15 @@
   let loading = $state(true);
   let userCards = $state<CardType[]>([]);
 
+  async function deleteCard(id: string) {
+    try {
+      await api.cards.delete(id);
+      userCards = userCards.filter((c) => c.id !== id);
+    } catch (err) {
+      console.error('Failed to delete card:', err);
+    }
+  }
+
   onMount(async () => {
     try {
       const response = await api.cards.list();
@@ -64,17 +73,37 @@
         {:else}
           <div class="grid gap-4">
             {#each userCards.filter((c) => c.status === 'draft') as card}
-              <a href="/dashboard/cards/{card.id}" class="card hover:shadow-md transition-shadow">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <h3 class="font-semibold text-slate-900">{card.title}</h3>
-                    <p class="text-sm text-slate-500">
-                      Créé le {new Date(card.created_at).toLocaleDateString('fr-FR')}
-                    </p>
-                  </div>
+              <div class="card flex items-center justify-between gap-4">
+                <a
+                  href="/dashboard/new/{card.id}/sources"
+                  class="flex-1 min-w-0 hover:opacity-80 transition-opacity"
+                >
+                  <h3 class="font-semibold text-slate-900 truncate">{card.title}</h3>
+                  <p class="text-sm text-slate-500">
+                    Créé le {new Date(card.created_at).toLocaleDateString('fr-FR')}
+                  </p>
+                </a>
+                <div class="flex items-center gap-2 shrink-0">
                   <span class="badge bg-slate-100 text-slate-700">Brouillon</span>
+                  <button
+                    type="button"
+                    onclick={() => deleteCard(card.id)}
+                    class="text-slate-400 hover:text-red-500 transition-colors"
+                    aria-label="Supprimer le brouillon"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                      <line x1="6" y1="18" x2="18" y2="6" />
+                    </svg>
+                  </button>
                 </div>
-              </a>
+              </div>
             {/each}
           </div>
         {/if}

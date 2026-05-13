@@ -97,7 +97,7 @@
 
 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
   <div class="mb-6">
-    <a href="/dashboard/new" class="text-sm text-slate-500 hover:text-slate-700">← Étape 1</a>
+    <a href="/dashboard" class="text-sm text-slate-500 hover:text-slate-700">← Tableau de bord</a>
   </div>
 
   <h1 class="text-2xl font-bold text-slate-900 mb-1">

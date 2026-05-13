@@ -123,6 +123,10 @@ export const api = {
       return request(`/cards/${cardId}/publish`, { method: 'POST' });
     },
 
+    delete: async (cardId: string): Promise<void> => {
+      await request(`/cards/${cardId}`, { method: 'DELETE' });
+    },
+
     getPublic: async (creatorSlug: string, cardSlug: string): Promise<CardDetail> => {
       return request<CardDetail>(`/@${creatorSlug}/${cardSlug}`);
     },

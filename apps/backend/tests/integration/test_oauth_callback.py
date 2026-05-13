@@ -49,7 +49,7 @@ async def test_google_callback_without_state_cookie_returns_400(client):
     )
     assert response.status_code == 400
     body = response.json()
-    assert body["detail"]["code"] == "invalid_state"
+    assert body["error"]["code"] == "invalid_state"
 
 
 @pytest.mark.asyncio
@@ -60,7 +60,7 @@ async def test_google_callback_mismatched_state_returns_400(client):
     )
     assert response.status_code == 400
     body = response.json()
-    assert body["detail"]["code"] == "invalid_state"
+    assert body["error"]["code"] == "invalid_state"
 
 
 @pytest.mark.asyncio
@@ -194,4 +194,4 @@ async def test_google_callback_with_error_param_returns_400(client):
     )
     assert response.status_code == 400
     body = response.json()
-    assert "access_denied" in body["detail"]["message"]
+    assert "access_denied" in body["error"]["message"]

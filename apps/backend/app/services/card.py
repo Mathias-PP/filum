@@ -160,6 +160,19 @@ class CardService:
             all_archived=all_archived,
         )
 
+    async def delete_card(self, card_id: UUID, user_id: UUID) -> bool:
+        result = await self._db.execute(
+            select(BiblioCard).where(BiblioCard.id == card_id, BiblioCard.user_id == user_id)
+        )
+        card = result.scalar_one_or_none()
+        if not card:
+            return False
+        if card.status == CardStatus.PUBLISHED:
+            return False
+        await self._db.delete(card)
+        await self._db.commit()
+        return True
+
     async def verify_card(self, card: BiblioCard) -> dict:
         # A draft card has no signature yet; nothing to verify.
         if card.canonical_hash is None or card.signature is None:

@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -93,6 +93,23 @@ async def seed_health():
                 {"slug": c.slug, "status": c.status, "user_id": str(c.user_id)} for c in cards
             ],
         }
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": {
+                "code": exc.detail.get("code", "error")
+                if isinstance(exc.detail, dict)
+                else "error",
+                "message": exc.detail.get("message", str(exc.detail))
+                if isinstance(exc.detail, dict)
+                else str(exc.detail),
+            }
+        },
+    )
 
 
 @app.exception_handler(Exception)
