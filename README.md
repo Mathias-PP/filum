@@ -2,7 +2,7 @@
 
 > Infrastructure ouverte de provenance et de filiation pour le contenu numérique.
 
-**Filum** est un outil qui permet à tout créateur de contenu (vidéo, article, podcast, post long) de transformer sa bibliographie en une fiche publique interactive : sources organisées par type et autorité, archivées de manière horodatée, reliées entre elles dans un graphe navigable.
+**Filum** est un outil qui permet à tout créateur de contenu (vidéo, article, podcast, post long) de transformer sa bibliographie en une fiche publique interactive : sources organisées par type et autorité, archivées de manière horodatée (Wayback Machine), signées cryptographiquement (Ed25519), et reliées entre elles dans un **graphe interactif D3.js** — le tout sur une page publique stable.
 
 À l'ère de l'IA générative qui brouille les pistes de l'authenticité, Filum n'est pas un outil de détection de faux. C'est un **label qualité** pour les créateurs qui prennent le temps de bien sourcer leur travail.
 
@@ -60,6 +60,15 @@ Voir [`STATE.md`](STATE.md) pour l'état courant et [`.docs/02-tech-architecture
 - Production : https://filum-production-07bb.up.railway.app
 - API docs : https://filum-production-07bb.up.railway.app/api/v1/docs
 - Health : https://filum-production-07bb.up.railway.app/health
+
+### Frontend déployé
+
+- Production : https://filum-eight.vercel.app
+- Fiche démo : https://filum-eight.vercel.app/@example/memoire-et-cerveau (graphe D3 interactif, 18 sources neurosciences)
+
+### CI — 9/9 jobs verts
+
+- Security Scan (Trivy + TruffleHog), Lint Backend (ruff), Type Check (mypy), Test Backend (pytest), Lint Frontend (ESLint + Prettier), Test Frontend (vitest), Build Frontend (vite), Analytics (dbt compile)
 
 ---
 
@@ -126,4 +135,4 @@ Voir le [manifeste fondateur](.docs/MANIFESTE.md) pour la vision complète à lo
 
 ---
 
-*Document maintenu par l'auteur du projet. Version 0.1 — MVP backend déployé, frontend non déployé.*
+*Document maintenu par l'auteur du projet. Version 0.1 — MVP complet déployé (backend + frontend).*

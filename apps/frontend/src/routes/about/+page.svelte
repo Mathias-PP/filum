@@ -98,8 +98,8 @@
       <div class="bg-slate-50 rounded-xl p-6">
         <h3 class="text-lg font-semibold text-slate-900 mb-2">Créateur·ice·s de contenu</h3>
         <p class="text-slate-600">
-          Vous ne vous reconnaissez pas dans les cases ci-dessus ? Filum est aussi pour vous.
-          Chaque source mérite d'être citée, quel que soit votre format.
+          Vous ne vous reconnaissez pas dans les cases ci-dessus ? Filum est aussi pour vous. Chaque
+          source mérite d'être citée, quel que soit votre format.
         </p>
       </div>
     </div>
@@ -132,8 +132,7 @@
       Vous pouvez aussi contribuer au projet sur
       <a
         href="https://github.com/Mathias-PP/filum"
-        class="text-blue-600 hover:text-blue-800 underline"
-        >GitHub</a
+        class="text-blue-600 hover:text-blue-800 underline">GitHub</a
       >.
     </p>
   </section>

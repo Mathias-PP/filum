@@ -17,39 +17,113 @@
       <div class="flex items-center gap-3 mb-4">
         <span class="w-3 h-3 rounded-full bg-emerald-500 shrink-0"></span>
         <h2 class="text-2xl font-semibold text-slate-900">MVP — Livré</h2>
-        <span class="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Disponible</span>
+        <span class="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full"
+          >Disponible</span
+        >
       </div>
       <ul class="space-y-3 ml-6">
         <li class="flex items-start gap-2 text-slate-600">
-          <svg class="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+          <svg
+            class="w-5 h-5 text-emerald-500 shrink-0 mt-0.5"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            ><path
+              fill-rule="evenodd"
+              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+              clip-rule="evenodd"
+            /></svg
+          >
           Création de fiches de lecture avec titre, description, plateforme
         </li>
         <li class="flex items-start gap-2 text-slate-600">
-          <svg class="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+          <svg
+            class="w-5 h-5 text-emerald-500 shrink-0 mt-0.5"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            ><path
+              fill-rule="evenodd"
+              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+              clip-rule="evenodd"
+            /></svg
+          >
           Ajout de sources avec 6 types, annotation, extraits
         </li>
         <li class="flex items-start gap-2 text-slate-600">
-          <svg class="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+          <svg
+            class="w-5 h-5 text-emerald-500 shrink-0 mt-0.5"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            ><path
+              fill-rule="evenodd"
+              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+              clip-rule="evenodd"
+            /></svg
+          >
           Graphe interactif D3.js avec pivots
         </li>
         <li class="flex items-start gap-2 text-slate-600">
-          <svg class="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+          <svg
+            class="w-5 h-5 text-emerald-500 shrink-0 mt-0.5"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            ><path
+              fill-rule="evenodd"
+              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+              clip-rule="evenodd"
+            /></svg
+          >
           Signature cryptographique Ed25519
         </li>
         <li class="flex items-start gap-2 text-slate-600">
-          <svg class="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+          <svg
+            class="w-5 h-5 text-emerald-500 shrink-0 mt-0.5"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            ><path
+              fill-rule="evenodd"
+              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+              clip-rule="evenodd"
+            /></svg
+          >
           Archivage automatique par Wayback Machine
         </li>
         <li class="flex items-start gap-2 text-slate-600">
-          <svg class="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+          <svg
+            class="w-5 h-5 text-emerald-500 shrink-0 mt-0.5"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            ><path
+              fill-rule="evenodd"
+              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+              clip-rule="evenodd"
+            /></svg
+          >
           Extraction automatique des métadonnées (titre, auteurs, date)
         </li>
         <li class="flex items-start gap-2 text-slate-600">
-          <svg class="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+          <svg
+            class="w-5 h-5 text-emerald-500 shrink-0 mt-0.5"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            ><path
+              fill-rule="evenodd"
+              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+              clip-rule="evenodd"
+            /></svg
+          >
           Authentification Google OAuth
         </li>
         <li class="flex items-start gap-2 text-slate-600">
-          <svg class="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+          <svg
+            class="w-5 h-5 text-emerald-500 shrink-0 mt-0.5"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            ><path
+              fill-rule="evenodd"
+              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+              clip-rule="evenodd"
+            /></svg
+          >
           Pages publiques avec OpenGraph dynamique
         </li>
       </ul>
@@ -63,19 +137,31 @@
       </div>
       <ul class="space-y-3 ml-6">
         <li class="flex items-start gap-2 text-slate-600">
-          <span class="w-5 h-5 text-blue-500 shrink-0 mt-0.5 flex items-center justify-center text-sm">→</span>
+          <span
+            class="w-5 h-5 text-blue-500 shrink-0 mt-0.5 flex items-center justify-center text-sm"
+            >→</span
+          >
           Copier-coller de bibliographie pour auto-génération de fiches
         </li>
         <li class="flex items-start gap-2 text-slate-600">
-          <span class="w-5 h-5 text-blue-500 shrink-0 mt-0.5 flex items-center justify-center text-sm">→</span>
+          <span
+            class="w-5 h-5 text-blue-500 shrink-0 mt-0.5 flex items-center justify-center text-sm"
+            >→</span
+          >
           Import Zotero / BibTeX / Obsidian
         </li>
         <li class="flex items-start gap-2 text-slate-600">
-          <span class="w-5 h-5 text-blue-500 shrink-0 mt-0.5 flex items-center justify-center text-sm">→</span>
+          <span
+            class="w-5 h-5 text-blue-500 shrink-0 mt-0.5 flex items-center justify-center text-sm"
+            >→</span
+          >
           Export PDF / CSV / Excel / JSON / BibTeX
         </li>
         <li class="flex items-start gap-2 text-slate-600">
-          <span class="w-5 h-5 text-blue-500 shrink-0 mt-0.5 flex items-center justify-center text-sm">→</span>
+          <span
+            class="w-5 h-5 text-blue-500 shrink-0 mt-0.5 flex items-center justify-center text-sm"
+            >→</span
+          >
           Repérage automatique des citations dans les sources (IA)
         </li>
       </ul>
@@ -89,23 +175,38 @@
       </div>
       <ul class="space-y-3 ml-6">
         <li class="flex items-start gap-2 text-slate-600">
-          <span class="w-5 h-5 text-slate-400 shrink-0 mt-0.5 flex items-center justify-center text-sm">→</span>
+          <span
+            class="w-5 h-5 text-slate-400 shrink-0 mt-0.5 flex items-center justify-center text-sm"
+            >→</span
+          >
           Bibliographies collaboratives (édition à plusieurs)
         </li>
         <li class="flex items-start gap-2 text-slate-600">
-          <span class="w-5 h-5 text-slate-400 shrink-0 mt-0.5 flex items-center justify-center text-sm">→</span>
+          <span
+            class="w-5 h-5 text-slate-400 shrink-0 mt-0.5 flex items-center justify-center text-sm"
+            >→</span
+          >
           Extension navigateur (ajout de source en un clic)
         </li>
         <li class="flex items-start gap-2 text-slate-600">
-          <span class="w-5 h-5 text-slate-400 shrink-0 mt-0.5 flex items-center justify-center text-sm">→</span>
+          <span
+            class="w-5 h-5 text-slate-400 shrink-0 mt-0.5 flex items-center justify-center text-sm"
+            >→</span
+          >
           API publique REST + serveur MCP
         </li>
         <li class="flex items-start gap-2 text-slate-600">
-          <span class="w-5 h-5 text-slate-400 shrink-0 mt-0.5 flex items-center justify-center text-sm">→</span>
+          <span
+            class="w-5 h-5 text-slate-400 shrink-0 mt-0.5 flex items-center justify-center text-sm"
+            >→</span
+          >
           Score de sourçage (qualité et diversité des sources)
         </li>
         <li class="flex items-start gap-2 text-slate-600">
-          <span class="w-5 h-5 text-slate-400 shrink-0 mt-0.5 flex items-center justify-center text-sm">→</span>
+          <span
+            class="w-5 h-5 text-slate-400 shrink-0 mt-0.5 flex items-center justify-center text-sm"
+            >→</span
+          >
           Plugin WordPress / Notion / Medium
         </li>
       </ul>
