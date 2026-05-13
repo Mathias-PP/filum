@@ -164,7 +164,7 @@ jobs:
         working-directory: apps/backend
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: backend-test-results
@@ -227,7 +227,7 @@ jobs:
         working-directory: apps/frontend
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-build
           path: apps/frontend/build
