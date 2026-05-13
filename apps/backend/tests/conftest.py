@@ -12,6 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 os.environ["database_url"] = "sqlite+aiosqlite:///./test.db"
 os.environ["session_secret"] = "test-secret-for-ci-session-32chars"
 os.environ["master_encryption_key"] = "test-key-for-ci-encryption-32b"
+os.environ["google_client_id"] = "test-client-id.apps.googleusercontent.com"
+os.environ["google_client_secret"] = "test-client-secret"
+os.environ["google_redirect_uri"] = "http://test/api/v1/auth/google/callback"
 os.environ["ci"] = "true"
 
 from app.db.database import Base, engine  # noqa: E402

@@ -57,7 +57,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export const api = {
   auth: {
     login: () => {
-      window.location.href = `${API_BASE}/auth/login`;
+      window.location.href = `${API_BASE}/auth/google/login`;
     },
 
     logout: async () => {
