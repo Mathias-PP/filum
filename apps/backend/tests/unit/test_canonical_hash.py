@@ -60,14 +60,8 @@ async def real_keyed_user(db_session):
 @pytest_asyncio.fixture
 async def published_card(db_session, real_keyed_user):
     """A BiblioCard with 2 sources, published and signed."""
-    # NOTE: BiblioCard.canonical_hash and .signature are declared
-    # `nullable=False` in the SQLAlchemy model, but the production
-    # CardService.create_card() method does NOT set them on draft cards.
-    # This works against Postgres (where a migration loosened the constraint)
-    # but fails against SQLite tables built from Base.metadata.create_all,
-    # which faithfully follows the model declaration.
-    # See PR description "Discovered gaps" — model/migration drift.
-    # We pass empty strings here so publish_card() can overwrite them.
+    # Since PR #24 (migration 005 + model fix), canonical_hash and signature
+    # are nullable on biblio_cards — a draft card has no signature yet.
     card = BiblioCard(
         id=uuid4(),
         user_id=real_keyed_user.id,
@@ -77,8 +71,6 @@ async def published_card(db_session, real_keyed_user):
         content_url="https://example.com/video",
         platform="youtube",
         content_type="video",
-        canonical_hash="",
-        signature="",
     )
     db_session.add(card)
     await db_session.flush()
@@ -252,7 +244,7 @@ async def test_hash_changes_when_source_is_pivot_toggles(db_session, published_c
 
 
 # ---------------------------------------------------------------------------
-# Sanity: signature is genuine Ed25519 on the canonical_hash.
+# Signature verification — both manual and via the service.
 # ---------------------------------------------------------------------------
 
 
@@ -268,3 +260,33 @@ async def test_signature_is_valid_ed25519_on_canonical_hash(db_session, publishe
     signature_bytes = bytes.fromhex(published_card.signature)
     # The service signs the *hex string* of the hash, not the raw bytes.
     pub.verify(signature_bytes, published_card.canonical_hash.encode("utf-8"))
+
+
+async def test_verify_card_returns_valid_for_freshly_signed_card(db_session, published_card):
+    """Regression test for the verify_card bug fixed in PR #24.
+
+    Before the fix, verify_card always returned valid=False because it
+    wrapped the user's raw public key in PRIVATE PEM headers and called
+    SigningService.from_pem(), which would raise immediately. The fix
+    routes through SigningService.verify_with_public_key_hex() which
+    accepts the raw hex key as stored.
+    """
+    service = CardService(db_session)
+    result = await service.verify_card(published_card)
+    assert result["valid"] is True
+    assert result["content_hash"] == published_card.canonical_hash
+    assert result["signature"] == published_card.signature
+    assert result["details"]["signature_algorithm"] == "Ed25519"
+
+
+async def test_verify_card_detects_tampered_title(db_session, published_card):
+    """A title change without re-publish must be caught by verify_card."""
+    published_card.title = "Tampered title"
+    await db_session.commit()
+
+    service = CardService(db_session)
+    refreshed = await service.get_card_by_id(published_card.id)
+    assert refreshed is not None
+    result = await service.verify_card(refreshed)
+    assert result["valid"] is False
+    assert result["reason"] == "hash_mismatch"

@@ -82,19 +82,24 @@
 
 ### 1.11 Modèle SQLAlchemy `nullable=False` désaligné avec la migration
 
-- **Symptôme** : tests qui créent un `BiblioCard` via `Base.metadata.create_all` (conftest SQLite) reçoivent `IntegrityError: NOT NULL constraint failed: biblio_cards.canonical_hash` alors que `CardService.create_card()` fonctionne en prod sans setter ces champs.
-- **Cause** : `BiblioCard.canonical_hash` et `BiblioCard.signature` sont déclarés `nullable=False` dans `apps/backend/app/models/biblio_card.py` lignes 72-73. Mais une migration ultérieure a manifestement loosené les colonnes côté Postgres prod (et `create_card` les laisse `None`). En CI, le schéma SQLite est construit depuis la déclaration SQLAlchemy → strict.
-- **Prévention** : aligner le modèle avec la migration (passer `nullable=True` et `Mapped[str | None]`). En attendant ce fix, les fixtures de test doivent passer `canonical_hash="", signature=""` lors de l'insertion d'un draft.
-- **Localisation** : `apps/backend/app/models/biblio_card.py:72-73`, `apps/backend/app/services/card.py:29-42`.
-- **Découvert** : 2026-05-13 lors de l'écriture de `tests/unit/test_canonical_hash.py`.
+- **Symptôme** : tests qui créent un `BiblioCard` via `Base.metadata.create_all` (conftest SQLite) reçoivent `IntegrityError: NOT NULL constraint failed: biblio_cards.canonical_hash` alors qu'on tente d'insérer un draft. Aurait aussi cassé `POST /cards` en prod pour tout user tiers (cas pas encore exercé puisque OAuth pas branché).
+- **Cause** : `BiblioCard.canonical_hash` et `BiblioCard.signature` étaient déclarés `nullable=False` dans `apps/backend/app/models/biblio_card.py`, et la migration 001 créait les colonnes NOT NULL aussi. Mais `CardService.create_card()` les laisse `None`. La seule raison que la démo marche : le seed enchaîne immédiatement avec `publish_card()` qui remplit les champs.
+- **Statut : FIXED dans PR #24** — modèle passé à `Mapped[str | None]` + `nullable=True` + migration `005_nullable_card_hash_sig.py`. Test de régression : la fixture `published_card` de `tests/unit/test_canonical_hash.py` crée un draft sans canonical_hash et passe.
+- **Prévention future** : à chaque ajout de colonne `nullable=False`, vérifier qu'au moins un test crée la ligne sans setter ce champ (preuve que c'est *vraiment* requis dans tous les chemins).
 
 ### 1.12 Field constraints Pydantic perdus par redéfinition de champ en sous-classe
 
-- **Symptôme** : `Field(min_length=..., max_length=...)` déclaré sur `SourceBase` n'est PAS appliqué quand on instancie `SourceCreate`.
-- **Cause** : `class SourceCreate(SourceBase): url: str` redéfinit complètement le champ `url`, ce qui efface le `Field(...)` hérité. Pydantic v2 ne fusionne pas — il remplace.
-- **Prévention** : si on veut hériter d'un champ + son `Field(...)`, ne **pas** le redéfinir dans la sous-classe. Si on veut le redéfinir, copier explicitement le `Field(...)` : `url: str = Field(min_length=1, max_length=2000)`.
-- **Localisation** : `apps/backend/app/schemas/source.py:31-45`.
-- **Découvert** : 2026-05-13 lors de l'écriture de `tests/unit/test_schemas.py`.
+- **Symptôme** : `Field(min_length=..., max_length=...)` déclaré sur `SourceBase` n'était PAS appliqué quand on instanciait `SourceCreate`. Validation longueur silently absente sur le payload d'entrée.
+- **Cause** : `class SourceCreate(SourceBase): url: str` redéfinissait complètement le champ `url`, ce qui efface le `Field(...)` hérité. Pydantic v2 ne fusionne pas — il remplace.
+- **Statut : FIXED dans PR #24** — la ligne `url: str` redondante a été retirée de `SourceCreate`. Tests de régression : `test_url_max_length_enforced` + `test_url_min_length_enforced` dans `tests/unit/test_schemas.py`.
+- **Prévention future** : si tu veux hériter d'un champ + son `Field(...)`, ne **pas** le redéfinir dans la sous-classe. Si tu dois absolument le redéfinir, copier explicitement le `Field(...)`.
+
+### 1.13 `CardService.verify_card()` cassée par mauvais wrapping de clé publique
+
+- **Symptôme** : toute vérification d'une fiche signée retournait silencieusement `{"valid": False, "reason": "..."}` en prod. La promesse cryptographique du projet (vérifier que la fiche n'a pas été altérée) était cassée sans alerte.
+- **Cause** : `verify_card()` (`apps/backend/app/services/card.py`) chargeait la clé **publique** de l'utilisateur (`card.user.public_key`, stockée en hex brut, 32 bytes) en l'enroulant dans des headers `-----BEGIN PRIVATE KEY-----` et en appelant `SigningService.from_pem(...)`, qui attend une clé **privée** au format PEM. `serialization.load_pem_private_key` levait une exception, immédiatement caught par le try/except qui retournait `valid=False`.
+- **Statut : FIXED dans PR #24** — ajout de `SigningService.verify_with_public_key_hex()` (méthode statique) qui reconstruit un `Ed25519PublicKey` depuis les bytes raw. `verify_card()` l'appelle désormais. Tests de régression : `test_verify_card_returns_valid_for_freshly_signed_card` et `test_verify_card_detects_tampered_title`.
+- **Prévention future** : tout endpoint qui prétend faire de la crypto **doit** avoir au moins un test positif (cas valide → True) ET un test négatif (cas invalide → False). Un try/except qui swallow tout est un signal d'alerte — préférer logger + re-raise, ou avoir un test qui vérifie le happy path.
 
 ---
 
