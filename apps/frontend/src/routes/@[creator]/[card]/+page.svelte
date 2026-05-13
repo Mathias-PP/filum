@@ -119,6 +119,16 @@
       </div>
     </header>
 
+    {#if card.description}
+      <section class="bg-white border-b border-slate-200">
+        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <p class="text-sm text-slate-600 leading-relaxed">
+            {card.description}
+          </p>
+        </div>
+      </section>
+    {/if}
+
     <section class="bg-slate-50">
       <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
         <div
@@ -151,7 +161,7 @@
             <p class="text-xl sm:text-2xl font-bold text-emerald-600">
               {card.stats.peer_reviewed}
             </p>
-            <p class="text-xs sm:text-sm text-slate-500">Peer-reviewed</p>
+            <p class="text-xs sm:text-sm text-slate-500">Article scientifique</p>
           </div>
           <div class="text-center p-3 sm:p-4 bg-slate-50 rounded-lg">
             <p class="text-xl sm:text-2xl font-bold text-blue-600">
@@ -168,16 +178,6 @@
         </div>
       </div>
     </section>
-
-    {#if card.description}
-      <section class="bg-white">
-        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <p class="text-base text-slate-700 leading-relaxed">
-            {card.description}
-          </p>
-        </div>
-      </section>
-    {/if}
 
     <section class="bg-slate-50 border-t border-slate-200">
       <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -204,14 +204,6 @@
                           title="Source structurante du raisonnement"
                         >
                           ★ Source clé
-                        </span>
-                      {/if}
-                      {#if source.conflict_of_interest}
-                        <span
-                          class="px-2 py-0.5 text-xs bg-red-50 text-red-700 border border-red-200 rounded-full"
-                          title={source.conflict_of_interest}
-                        >
-                          ⚠ Conflit d'intérêt déclaré
                         </span>
                       {/if}
                     </div>
@@ -261,12 +253,6 @@
                           </li>
                         {/each}
                       </ul>
-                    </div>
-                  {/if}
-                  {#if source.conflict_of_interest}
-                    <div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-800">
-                      <p class="font-medium mb-1">Conflit d'intérêt déclaré</p>
-                      <p>{source.conflict_of_interest}</p>
                     </div>
                   {/if}
                   <div class="mt-4 flex flex-wrap gap-2">
