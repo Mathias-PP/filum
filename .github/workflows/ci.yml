@@ -66,10 +66,6 @@ jobs:
         uses: astral-sh/setup-uv@v4
 
       - name: Install dependencies
-        run: uv sync --only-dev
-        working-directory: apps/backend
-
-      - name: Install dev dependencies
         run: uv sync --all-extras
         working-directory: apps/backend
 

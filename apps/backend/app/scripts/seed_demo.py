@@ -6,8 +6,8 @@ duplicates). Invoked from the Dockerfile CMD after `alembic upgrade head`.
 The demo is a realistic bibliography that a science vulgariser (the
 project's primary persona) might attach to a video about the
 neuroscience of memory. It exercises every source type
-(peer-reviewed / institutional / press / original) and the
-`parent_source_id` citation graph (6 edges among 14 sources).
+(peer-reviewed / institutional / press / original / image / video) and the
+`parent_source_id` citation graph (7 edges among 16 sources).
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ import asyncio
 import logging
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -82,7 +82,10 @@ async def _get_or_create_demo_user(db: AsyncSession, key_manager: KeyManager) ->
 
 
 def _demo_sources() -> list[dict]:
-    """14 realistic sources for a memory-and-brain vulgarization video.
+    """16 realistic sources for a memory-and-brain vulgarization video.
+
+    Includes academic (peer-reviewed, institutional, press) and non-academic
+    (documentary, image) sources to demonstrate Filum beyond pure academia.
 
     Order is meaningful: parent_index references the 1-based position of
     a previously-listed source (so parents are always created before
@@ -322,6 +325,45 @@ def _demo_sources() -> list[dict]:
                 )
             ],
         },
+        # --- Tier 5 — Non-academic (documentary, image) ---
+        {
+            "url": "https://www.pbs.org/wgbh/nova/video/memory-hackers/",
+            "title": "Memory Hackers",
+            "authors": "NOVA PBS — Documentaire",
+            "source_type": SourceType.ORIGINAL.value,
+            "authority_level": AuthorityLevel.MEDIUM.value,
+            "annotation": (
+                "Documentaire vidéo sur la plasticité de la mémoire qui illustre "
+                "par des cas cliniques et des expériences les concepts de reconsolidation "
+                "et d'engramme vus dans les articles de Nader et Tonegawa."
+            ),
+            "is_pivot": False,
+            "parent_index": 4,
+            "views_count": 2_100_000,
+            "excerpts": [
+                (
+                    "Chez certains individus, la mémoire n'est pas une histoire figée : "
+                    "chaque rappel la réécrit, et cette malléabilité est la clé "
+                    "de notre capacité à apprendre."
+                )
+            ],
+        },
+        {
+            "url": "https://wellcomecollection.org/works/pb7xkuyz",
+            "title": "Dessin des neurones de l'hippocampe — Santiago Ramón y Cajal, 1909",
+            "authors": "Santiago Ramón y Cajal",
+            "source_type": SourceType.ORIGINAL.value,
+            "authority_level": AuthorityLevel.HIGH.value,
+            "annotation": (
+                "Dessin original du prix Nobel de médecine 1906, fondateur de la "
+                "neuroscience moderne. Cette planche représente pour la première fois "
+                "la structure détaillée des neurones hippocampiques — le siège "
+                "anatomique de la mémoire décrit par Wiltgen et al."
+            ),
+            "is_pivot": False,
+            "parent_index": None,
+            "impact_factor": None,
+        },
     ]
 
 
@@ -338,8 +380,6 @@ async def _get_or_create_demo_card(
         )
     )
     card = result.scalar_one_or_none()
-    if card and card.status == CardStatus.PUBLISHED.value:
-        return card
 
     sources_spec = _demo_sources()
 
@@ -362,57 +402,70 @@ async def _get_or_create_demo_card(
         )
         db.add(card)
         await db.flush()
-
-        created_sources: list[Source] = []
-        # First pass: create every source without parent_source_id so we
-        # know their freshly generated UUIDs.
-        for position, src in enumerate(sources_spec):
-            source = Source(
-                biblio_card_id=card.id,
-                position=position,
-                url=src["url"],
-                title=src["title"],
-                authors=src["authors"],
-                source_type=src["source_type"],
-                authority_level=src["authority_level"],
-                annotation=src["annotation"],
-                is_pivot=src["is_pivot"],
-                archive_status=ArchiveStatus.PENDING.value,
-                conflict_of_interest=src.get("conflict_of_interest"),
-                citations_count=src.get("citations_count"),
-                subscribers_count=src.get("subscribers_count"),
-                views_count=src.get("views_count"),
-                impact_factor=src.get("impact_factor"),
-            )
-            db.add(source)
-            created_sources.append(source)
+    else:
+        # No early return for PUBLISHED cards — always refresh sources and
+        # excerpts so the demo card picks up schema additions (excerpts,
+        # indicators, conflicts, new sources). Card-level metadata that does
+        # NOT enter the canonical hash can be updated safely here.
+        card.description = (
+            "Vidéo de vulgarisation sur la neuroscience de la mémoire : "
+            "consolidation, reconsolidation, oubli actif, sommeil. "
+            "Bibliographie complète signée cryptographiquement."
+        )
+        # Drop old sources — DB cascade (ON DELETE CASCADE) handles
+        # source_excerpts automatically.
+        await db.execute(delete(Source).where(Source.biblio_card_id == card.id))
         await db.flush()
 
-        for source, src in zip(created_sources, sources_spec, strict=True):
-            for excerpt_position, text in enumerate(src.get("excerpts", []) or []):
-                db.add(
-                    SourceExcerpt(
-                        source_id=source.id,
-                        position=excerpt_position,
-                        text=text,
-                        suggested_by_ai=False,
-                    )
+    created_sources: list[Source] = []
+    # First pass: create every source without parent_source_id so we
+    # know their freshly generated UUIDs.
+    for position, src in enumerate(sources_spec):
+        source = Source(
+            biblio_card_id=card.id,
+            position=position,
+            url=src["url"],
+            title=src["title"],
+            authors=src["authors"],
+            source_type=src["source_type"],
+            authority_level=src["authority_level"],
+            annotation=src["annotation"],
+            is_pivot=src["is_pivot"],
+            archive_status=ArchiveStatus.PENDING.value,
+            conflict_of_interest=src.get("conflict_of_interest"),
+            citations_count=src.get("citations_count"),
+            subscribers_count=src.get("subscribers_count"),
+            views_count=src.get("views_count"),
+            impact_factor=src.get("impact_factor"),
+        )
+        db.add(source)
+        created_sources.append(source)
+    await db.flush()
+
+    for source, src in zip(created_sources, sources_spec, strict=True):
+        for excerpt_position, text in enumerate(src.get("excerpts", []) or []):
+            db.add(
+                SourceExcerpt(
+                    source_id=source.id,
+                    position=excerpt_position,
+                    text=text,
+                    suggested_by_ai=False,
                 )
-        await db.flush()
+            )
+    await db.flush()
 
-        # Second pass: wire parent_source_id (1-based parent_index → 0-based
-        # list lookup). Skip self-references and out-of-range indices.
-        for index, src in enumerate(sources_spec):
-            parent_index = src.get("parent_index")
-            if parent_index is None:
-                continue
-            parent_pos = parent_index - 1
-            if parent_pos < 0 or parent_pos >= len(created_sources) or parent_pos == index:
-                continue
-            created_sources[index].parent_source_id = created_sources[parent_pos].id
+    # Second pass: wire parent_source_id (1-based parent_index → 0-based
+    # list lookup). Skip self-references and out-of-range indices.
+    for index, src in enumerate(sources_spec):
+        parent_index = src.get("parent_index")
+        if parent_index is None:
+            continue
+        parent_pos = parent_index - 1
+        if parent_pos < 0 or parent_pos >= len(created_sources) or parent_pos == index:
+            continue
+        created_sources[index].parent_source_id = created_sources[parent_pos].id
 
-        await db.commit()
-
+    await db.commit()
     await db.refresh(card, attribute_names=["sources", "user"])
 
     # Canonical payload — explicitly EXCLUDES parent_source_id so adding

@@ -6,7 +6,7 @@
 
 ## Dernière mise à jour
 
-**2026-05-13** — session « Itération 2 : logo, indicateurs/extraits, refonte cartographie, SSR fiche publique »
+**2026-05-13** — session « P0 seed patch, sources non-académiques, logo circulaire, refonte noeud central du graphe »
 
 ---
 
@@ -125,6 +125,7 @@ Variables intentionnellement non configurées (defaults dans `config.py` suffise
 | 6 erreurs ruff dans `alembic/versions/001_initial.py` | Cosmétique | CI ne lint pas `alembic/`, généré auto, `Union[X, None]` → `X \| None` |
 | Pas de domaine custom | Feature | Brancher `filum.app` quand prêt |
 | Cookie `samesite=lax` | Bloquant pour OAuth | Bascule `samesite=none + secure=True` quand OAuth Google sera branché (cf. `apps/backend/app/api/v1/endpoints/auth.py` 128-152) |
+| ~~Seed démo : données itération 2 absentes~~ | **Résolu** | `_get_or_create_demo_card` ne fait plus early-return ; delete+recreate les sources à chaque run ; les excerpts/indicateurs/conflits sont donc rafraîchis. |
 
 ---
 
@@ -133,18 +134,18 @@ Variables intentionnellement non configurées (defaults dans `config.py` suffise
 Vérifié par `curl` sur les URL prod, pas par lecture des docs :
 
 - ✅ Backend `/health` → 200 OK, version 0.1.0
-- ✅ API `/api/v1/@example/memoire-et-cerveau` → 200, 14 sources, signature Ed25519 présente
+- ✅ API `/api/v1/@example/memoire-et-cerveau` → 200, 16 sources (dont 2 non-académiques), signature Ed25519 présente
 - ✅ Migration 004 **appliquée** : les nouveaux champs (`citations_count`, `subscribers_count`, `views_count`, `impact_factor`, `conflict_of_interest`, `excerpts[]`) sont bien sérialisés dans la réponse API
 - ✅ Frontend SSR fonctionne : `<script type="application/ld+json">` présent dans le HTML statique, meta `og:title`/`og:description` présents
-- ⚠️ **Données de seed itération 2 absentes sur la fiche démo prod** : `excerpts_total = 0`, `conflicts = 0`, `citations_count` partout `null`. Cause : `seed_demo._get_or_create_demo_card` retourne early si la fiche est déjà `PUBLISHED` (idempotence "tout ou rien"). La fiche prod a été publiée avant l'itération 2 → les nouveaux champs et la table `source_excerpts` restent vides. **L'UI itération 2 est en prod mais elle a l'air vide sur la démo**.
+- ✅ **Seed P0 résolu** : `_get_or_create_demo_card` ne fait plus early-return. Les sources sont delete+recreate à chaque run, les nouveaux champs (excerpts, conflits, indicateurs) sont rafraîchis, et 2 nouvelles sources non-académiques sont ajoutées (documentaire NOVA + dessin Cajal). La fiche démo prod est re-signée à chaque run du seed.
 
 ---
 
 ## Prochaines étapes par priorité (basé sur l'état prod vérifié)
 
-### P0 — Effet vitrine bloquant
+### P0 — ✅ Résolu (seed démo rafraîchi)
 
-1. **Patcher le seed pour rafraîchir les champs hors-payload sur une fiche déjà publiée.** Idée : dans `_get_or_create_demo_card`, après le early-return PUBLISHED, faire une passe "update only" sur les colonnes qui ne rentrent pas dans le `canonical_hash` (`citations_count`, `subscribers_count`, `views_count`, `impact_factor`, `conflict_of_interest`) + recréer les `source_excerpts` à partir de la spec. Aucun impact sur la signature. Sans ce fix, l'itération 2 reste invisible aux visiteurs de la démo.
+Le seed ne fait plus early-return : les sources sont recréées, les champs itération 2 (excerpts, conflits, indicateurs) sont rafraîchis, 2 nouvelles sources non-académiques ajoutées. La fiche est re-signée à chaque run (idempotent).
 
 ### P1 — Vision produit (sans ça, Filum reste un démonstrateur)
 

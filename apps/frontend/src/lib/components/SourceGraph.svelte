@@ -75,12 +75,15 @@
     return truncate(s.title ?? s.url, 22)
   }
 
-  function platformIconPath(platform: string, contentType: string): string {
-    // Triangle play for video, document for article, mic for podcast, dot otherwise.
-    if (contentType === 'video' || platform === 'youtube') return 'M8 5v14l11-7z'
-    if (contentType === 'podcast' || platform === 'podcast')
-      return 'M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11z'
-    return 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 7V3.5L18.5 9H13z'
+  function contentTypeLabel(contentType: string): string {
+    const labels: Record<string, string> = {
+      video: 'Vidéo',
+      article: 'Article',
+      podcast: 'Podcast',
+      post: 'Post',
+      other: 'Autre',
+    }
+    return labels[contentType] ?? 'Autre'
   }
 
   function buildGraph(): { nodes: GraphNode[]; links: GraphLink[] } {
@@ -238,7 +241,7 @@
       .attr('stroke', (d) => d.stroke)
       .attr('stroke-width', (d) => (d.kind === 'card' ? 3 : 2))
 
-    // Card-node header (creator + content-type pictogram), above the node.
+    // Card-node header (creator + content-type label), above the node.
     const cardHeader = nodeG
       .filter((d) => d.kind === 'card')
       .append('g')
@@ -248,7 +251,7 @@
     cardHeader
       .append('text')
       .attr('text-anchor', 'end')
-      .attr('x', -6)
+      .attr('x', -4)
       .attr('y', 4)
       .attr('fill', '#0f172a')
       .attr('font-size', 12)
@@ -256,19 +259,26 @@
       .text(card.creator.display_name ?? card.creator.slug)
 
     cardHeader
-      .append('line')
-      .attr('x1', 0)
-      .attr('x2', 0)
-      .attr('y1', -6)
-      .attr('y2', 6)
-      .attr('stroke', '#94a3b8')
-      .attr('stroke-width', 1)
+      .append('text')
+      .attr('text-anchor', 'start')
+      .attr('x', 4)
+      .attr('y', 4)
+      .attr('fill', '#64748b')
+      .attr('font-size', 11)
+      .attr('font-weight', 500)
+      .text(contentTypeLabel(card.content_type))
 
-    cardHeader
-      .append('path')
-      .attr('transform', 'translate(6, -6) scale(0.6)')
-      .attr('d', platformIconPath(card.platform, card.content_type))
-      .attr('fill', '#0f172a')
+    // Card-title subtitle below the central node
+    nodeG
+      .filter((d) => d.kind === 'card')
+      .append('text')
+      .attr('class', 'card-subtitle')
+      .attr('text-anchor', 'middle')
+      .attr('y', (d) => d.radius + 16)
+      .attr('font-size', 10)
+      .attr('fill', '#64748b')
+      .style('pointer-events', 'none')
+      .text(truncate(card.title, 35))
 
     // Pivot star marker (now means "Source clé")
     nodeG

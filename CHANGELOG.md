@@ -8,6 +8,12 @@
 
 ## [Unreleased]
 
+### Changed
+- **P0 seed patch** (STATE.md) : `_get_or_create_demo_card` ne retourne plus early sur les fiches PUBLISHED. Les sources sont delete+recreate à chaque run, ce qui rafraîchit les champs itération 2 (excerpts, conflits, indicateurs) qui restaient vides sur la démo prod.
+- **Logo** : passage d'un arbre phylogénétique debout à une version circulaire (6 branches rayonnantes, nœuds tip interconnectés). Appliqué à `Logo.svelte` et `favicon.svg`.
+- **Noeud central du graphe** (SourceGraph.svelte) : suppression du pictogramme "play" (triangle vidéo) ; remplacé par un label textuel du type de contenu (Vidéo, Article, Podcast…) ; ajout du titre du contenu tronqué sous le cercle central.
+- **Démo** : 2 nouvelles sources non-académiques ajoutées (documentaire NOVA "Memory Hackers" avec citation, dessin des neurones hippocampiques de Ramón y Cajal de 1909). 16 sources, 7 arêtes de citation.
+
 ### Added
 - Itération 2 (ADR-017) : nouveau logo (arbre phylogénétique + graphe), badges « Source clé » + « Conflit d'intérêt déclaré », indicateurs typés (citations, impact factor, abonnés, vues), table `source_excerpts` avec extraits cités, plein écran sur le graphe, panneau de détail ancré au nœud cliqué (au lieu de coller au bord droit), SSR + JSON-LD + meta OG/Twitter/canonical sur la fiche publique pour le référencement classique et le GEO
 - Migration 004 : colonnes `conflict_of_interest`, `citations_count`, `subscribers_count`, `views_count`, `impact_factor` sur `sources`, et nouvelle table `source_excerpts(source_id CASCADE, position, text, suggested_by_ai)`
