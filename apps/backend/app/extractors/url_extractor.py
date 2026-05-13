@@ -3,13 +3,16 @@
 Tries, in order:
 1. Crossref (DOIs and dx.doi.org URLs) — structured metadata + citations count
 2. HTML scraping — og:title, og:description, author, publish date
+3. JSON-LD structured data (schema.org) — richer metadata from embedded scripts
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 from dataclasses import dataclass
+from datetime import date, datetime
 
 import httpx
 from bs4 import BeautifulSoup
@@ -30,6 +33,188 @@ class ExtractedMetadata:
     description: str | None = None
     citations_count: int | None = None
     impact_factor: float | None = None
+
+
+# ── JSON-LD extraction ──────────────────────────────────────────────────
+
+
+def _parse_jsonld_metadata(soup: BeautifulSoup) -> ExtractedMetadata | None:
+    """Parse schema.org JSON-LD from embedded <script> tags.
+
+    Handles Article, NewsArticle, BlogPosting, ScholarlyArticle, WebPage,
+    and other schema.org types that carry ``headline`` / ``name`` /
+    ``author`` / ``datePublished`` / ``description`` fields.
+    Returns ``None`` when no parseable JSON-LD is found.
+    """
+    scripts = soup.find_all("script", type="application/ld+json")
+    if not scripts:
+        return None
+
+    title: str | None = None
+    authors: list[str] = []
+    published_at: str | None = None
+    description: str | None = None
+
+    def _extract_text(v: object) -> str | None:
+        return str(v).strip() if v else None
+
+    def _parse_name(v: object) -> str | None:
+        """Extract a human-readable name from a JSON-LD author/value."""
+        if isinstance(v, dict):
+            name = v.get("name")
+            if isinstance(name, str):
+                return name.strip()
+            return None
+        if isinstance(v, str):
+            return v.strip()
+        return None
+
+    def _parse_author(item: object) -> list[str]:
+        """Extract author names from JSON-LD author fields."""
+        names: list[str] = []
+        if isinstance(item, list):
+            for el in item:
+                n = _parse_name(el)
+                if n:
+                    names.append(n)
+        else:
+            n = _parse_name(item)
+            if n:
+                names.append(n)
+        return names
+
+    def _parse_date(raw: object) -> str | None:
+        """Extract ISO date (at minimum ``YYYY-MM-DD``) from a date string."""
+        s = _extract_text(raw)
+        if not s:
+            return None
+        # Try full ISO datetime first
+        try:
+            return datetime.fromisoformat(s).strftime("%Y-%m-%d")
+        except (ValueError, TypeError):
+            pass
+        # Then plain date
+        try:
+            return date.fromisoformat(s).strftime("%Y-%m-%d")
+        except (ValueError, TypeError):
+            pass
+        m = re.match(r"(\d{4}-\d{2}-\d{2})", s)
+        if m:
+            return m.group(1)
+        return None
+
+    def _extract_jsonld_data(raw: str) -> list[dict]:
+        """Try to parse raw script text as one or more JSON-LD objects."""
+        # Try full text first
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            # Fallback: try line-by-line for pages that inline multiple
+            # JSON-LD objects separated by newlines in a single script tag
+            results: list[dict] = []
+            for line in raw.split("\n"):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    item = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(item, dict):
+                    results.append(item)
+                elif isinstance(item, list):
+                    results.extend(item)
+            return results
+
+        if isinstance(data, dict):
+            return [data]
+        if isinstance(data, list):
+            return data
+        return []
+
+    for script in scripts:
+        raw = script.get_text(strip=True)
+        if not raw:
+            continue
+        blocks = _extract_jsonld_data(raw)
+
+        for data in blocks:
+            # Normalize to graph items
+            graph: list[dict] = []
+            if isinstance(data, dict):
+                g = data.get("@graph")
+                if isinstance(g, list):
+                    graph.extend(g)
+                else:
+                    graph.append(data)
+
+            for item in graph:
+                if not isinstance(item, dict):
+                    continue
+                type_ = item.get("@type")
+                if isinstance(type_, list):
+                    type_ = type_[0] if type_ else None
+                if not isinstance(type_, str):
+                    continue
+                # Only process types likely to carry bibliographic metadata
+                if type_ in (
+                    "Article",
+                    "NewsArticle",
+                    "BlogPosting",
+                    "ScholarlyArticle",
+                    "TechArticle",
+                    "Report",
+                    "Book",
+                    "WebPage",
+                    "VideoObject",
+                    "AudioObject",
+                    "PodcastEpisode",
+                ):
+                    # Title: headline > name > alternativeHeadline
+                    h = _extract_text(item.get("headline"))
+                    if h:
+                        title = title or h
+                    n = _extract_text(item.get("name"))
+                    if n:
+                        title = title or n
+
+                    # Author(s)
+                    author_data = item.get("author")
+                    if author_data:
+                        names = _parse_author(author_data)
+                        for nm in names:
+                            if nm not in authors:
+                                authors.append(nm)
+
+                    # Date
+                    d = _parse_date(
+                        item.get("datePublished")
+                        or item.get("dateModified")
+                        or item.get("dateCreated")
+                    )
+                    if d:
+                        published_at = published_at or d
+
+                    # Description
+                    desc = _extract_text(
+                        item.get("description")
+                        or item.get("abstract")
+                    )
+                    if desc:
+                        description = description or desc
+
+    if not any([title, authors, published_at, description]):
+        return None
+
+    return ExtractedMetadata(
+        title=title,
+        authors=", ".join(authors) if authors else None,
+        published_at=published_at,
+        description=description,
+    )
+
+
+# ── DOI extraction ──────────────────────────────────────────────────────
 
 
 def _extract_doi(url: str) -> str | None:
@@ -121,6 +306,15 @@ async def _html_scrape(url: str) -> ExtractedMetadata | None:
             m = re.match(r"(\d{4}-\d{2}-\d{2})", published_at_raw)
             if m:
                 published_at = m.group(1)
+
+        # Supplement with JSON-LD structured data (richer, same HTTP response)
+        jsonld_meta = _parse_jsonld_metadata(soup)
+        if jsonld_meta:
+            title = title or jsonld_meta.title
+            description = description or jsonld_meta.description
+            published_at = published_at or jsonld_meta.published_at
+            if authors_raw is None and jsonld_meta.authors:
+                authors_raw = jsonld_meta.authors
 
         return ExtractedMetadata(
             title=title or None,

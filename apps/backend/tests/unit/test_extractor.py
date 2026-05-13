@@ -20,6 +20,7 @@ import pytest
 from app.extractors.url_extractor import (
     ExtractedMetadata,
     _extract_doi,
+    _parse_jsonld_metadata,
     extract,
 )
 
@@ -41,6 +42,146 @@ class TestExtractDoi:
 
     def test_strips_query_and_fragment(self):
         assert _extract_doi("https://doi.org/10.1/x?ref=y#sec") == "10.1/x"
+
+
+# ---------------------------------------------------------------------------
+# JSON-LD extraction (no I/O, pure parsing)
+# ---------------------------------------------------------------------------
+
+
+def _soup(html: str) -> Any:
+    """Shortcut to get a BeautifulSoup from a string."""
+    from bs4 import BeautifulSoup
+
+    return BeautifulSoup(html, "lxml")
+
+
+JSONLD_ARTICLE_FIXTURE = """<!DOCTYPE html>
+<html><head>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "The Memory Article",
+  "author": [
+    {"@type": "Person", "name": "Stanislas Dehaene"},
+    {"@type": "Person", "name": "Howard Eichenbaum"}
+  ],
+  "datePublished": "2024-08-15T10:00:00Z",
+  "description": "A compelling study about memory consolidation."
+}
+</script>
+</head><body></body></html>"""
+
+
+class TestJsonLdExtraction:
+    def test_article_with_full_metadata(self):
+        meta = _parse_jsonld_metadata(_soup(JSONLD_ARTICLE_FIXTURE))
+        assert meta is not None
+        assert meta.title == "The Memory Article"
+        assert meta.authors == "Stanislas Dehaene, Howard Eichenbaum"
+        assert meta.published_at == "2024-08-15"
+        assert meta.description == "A compelling study about memory consolidation."
+
+    def test_returns_none_when_no_jsonld(self):
+        html = "<html><head></head><body></body></html>"
+        meta = _parse_jsonld_metadata(_soup(html))
+        assert meta is None
+
+    def test_single_author_string(self):
+        html = """<html><head>
+<script type="application/ld+json">
+{"@type":"Article","author":{"@type":"Person","name":"Jane Doe"},"headline":"Title"}
+</script>
+</head></html>"""
+        meta = _parse_jsonld_metadata(_soup(html))
+        assert meta is not None
+        assert meta.authors == "Jane Doe"
+
+    def test_ignores_non_bibliographic_types(self):
+        html = """<html><head>
+<script type="application/ld+json">
+{"@type":"BreadcrumbList","itemListElement":[]}
+</script>
+</head></html>"""
+        meta = _parse_jsonld_metadata(_soup(html))
+        assert meta is None
+
+    def test_uses_name_when_headline_missing(self):
+        html = """<html><head>
+<script type="application/ld+json">
+{"@type":"WebPage","name":"Page Name","description":"Desc"}
+</script>
+</head></html>"""
+        meta = _parse_jsonld_metadata(_soup(html))
+        assert meta is not None
+        assert meta.title == "Page Name"
+
+    def test_date_variants(self):
+        """ISO datetime, plain date, and embedded prefix patterns."""
+        cases = [
+            ("2024-03-15T14:30:00Z", "2024-03-15"),
+            ("2024-03-15", "2024-03-15"),
+        ]
+        for raw, expected in cases:
+            html = f"""<html><head>
+<script type="application/ld+json">
+{{"@type":"Article","headline":"T","datePublished":"{raw}"}}
+</script>
+</head></html>"""
+            meta = _parse_jsonld_metadata(_soup(html))
+            assert meta is not None and meta.published_at == expected, f"Failed for {raw}"
+
+    def test_multiple_script_tags(self):
+        """Multiple JSON-LD blocks: merge metadata from relevant ones."""
+        html = """<html><head>
+<script type="application/ld+json">
+{"@type":"WebPage","name":"Page Name"}
+</script>
+<script type="application/ld+json">
+{"@type":"Article","headline":"Article Title","author":{"@type":"Person","name":"Author"}}
+</script>
+</head></html>"""
+        meta = _parse_jsonld_metadata(_soup(html))
+        assert meta is not None
+        assert meta.title == "Page Name"  # first valid title wins
+        assert meta.authors == "Author"
+
+
+# ---------------------------------------------------------------------------
+# JSON-LD supplement in full HTML scrape (no extra I/O)
+# ---------------------------------------------------------------------------
+
+
+JSONLD_AND_OG_FIXTURE = """<!DOCTYPE html>
+<html>
+  <head>
+    <meta property="og:title" content="OG Title">
+    <meta name="description" content="OG Description">
+    <script type="application/ld+json">
+    {"@type":"Article","author":{"@type":"Person","name":"JSON-LD Author"},"datePublished":"2025-01-01"}
+    </script>
+  </head>
+  <body></body>
+</html>"""
+
+
+@pytest.mark.asyncio
+async def test_extract_html_with_jsonld_supplement(monkeypatch):
+    """JSON-LD fills fields missing from OG tags (e.g. author if no meta author)."""
+    fake = _FakeAsyncClient(
+        response=_FakeResponse(
+            200, text=JSONLD_AND_OG_FIXTURE, headers={"content-type": "text/html"},
+        )
+    )
+    _patch_async_client(monkeypatch, fake)
+
+    result = await extract("https://example.com/jsonld-article")
+
+    assert result.title == "OG Title"  # OG wins
+    assert result.description == "OG Description"  # OG wins
+    assert result.authors == "JSON-LD Author"  # from JSON-LD (no meta author)
+    assert result.published_at == "2025-01-01"  # from JSON-LD (no meta date)
 
 
 # ---------------------------------------------------------------------------
