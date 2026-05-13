@@ -15,6 +15,7 @@
   const cardSlug = $derived(data.cardSlug);
 
   let expandedSource = $state<string | null>(null);
+  let descriptionExpanded = $state(false);
   let GraphComponent = $state<any>(null);
 
   $effect(() => {
@@ -105,7 +106,20 @@
               {card.title}
             </h1>
             {#if card.description}
-              <p class="text-xs text-slate-500 truncate mt-0.5">{card.description}</p>
+              <div class="relative">
+                <p class="text-xs text-slate-500 mt-0.5 {descriptionExpanded ? '' : 'truncate'}">
+                  {card.description}
+                </p>
+                {#if card.description.length > 100}
+                  <button
+                    type="button"
+                    onclick={() => (descriptionExpanded = !descriptionExpanded)}
+                    class="text-xs text-blue-600 hover:text-blue-800 mt-0.5"
+                  >
+                    {descriptionExpanded ? 'Moins' : 'Lire la suite'}
+                  </button>
+                {/if}
+              </div>
             {/if}
           </div>
           <button
