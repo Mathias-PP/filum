@@ -454,9 +454,41 @@ La payload canonical_hash signée par `CardService.publish_card` (et vérifiée 
 - L'index `ix_sources_parent_source_id` accélère la résolution d'éventuelles requêtes "qui cite X ?"
 - Aucun changement de comportement runtime sur les endpoints existants ; tests existants non impactés (le champ est nullable et optionnel)
 
----
+## ADR-018 — OpenGraph dynamique avec Pillow (backend)
 
-*Pour ajouter une nouvelle décision, copier le template ci-dessous et incrémenter le numéro ADR.*
+**Date** : 2026-05-13
+
+**Contexte**
+Les fiches publiques avaient des meta tags `og:title`, `og:description`, mais pas `og:image`. Les aperçus de liens sur les réseaux (Twitter/X, Discord, LinkedIn) et les moteurs IA (Perplexity, SearchGPT) affichaient un lien nu sans visuel. Le développeur demande d'implémenter les images OG dynamiques.
+
+**Options envisagées**
+- `@vercel/og` / Satori + resvg-js côté frontend (SvelteKit server endpoint) — rejeté car nécessite `@sveltejs/adapter-vercel` explicite et dépendances lourdes (satori, resvg-js)
+- Service externe comme `og-image.vercel.app` (rejeté : dépendance tierce, pas de contrôle)
+- Backend Python avec Pillow (retenue)
+
+**Justifications**
+- Pillow est simple, stable, sans runtime complexe (pas de navigateur headless, pas de WASM)
+- Railway (backend) peut servir des images PNG statiques sans problème
+- Police DejaVu Serif disponible sur Ubuntu/Railway (fallback interne si absente)
+- Le endpoint `GET /api/v1/og?title=&creator=` est simple à cache-CDN (Cache-Control à ajouter plus tard)
+- Permet un contrôle fin du design (couleurs, typo, layout) sans passer par du HTML+CSS+rendering
+
+**Implémentation**
+- `app/services/og_image.py` : `generate_og_image(title, creator)` → bytes PNG (Pillow)
+- Fond sombre #0F172A (slate-900), accent #3B82F6 (blue-500), texte blanc
+- Titre centré en DejaVu Serif Bold 48px, wrapper à 30 caractères
+- Créateur en subtitle 24px, footer "filum.app — bibliographie vérifiable"
+- `app/api/v1/endpoints/og.py` : route `GET /og` avec paramètres `title` (required) et `creator` (optional)
+- Frontend : `og:image` et `twitter:image` pointent vers `{API_BASE}/api/v1/og?title=...&creator=...`
+
+**Conséquences**
+- +1 dépendance backend : `Pillow>=12.2.0` (~12 MB installé)
+- +2 fichiers backend (service + endpoint)
+- +1 fichier frontend modifié (meta tags sur la fiche publique)
+- Image générée à la volée (pas de cache pour l'instant — à ajouter si le trafic augmente)
+- Les polices DejaVu sont présentes sur Railway (Ubuntu) et en local — si absentes, Pillow utilise un fallback
+
+---
 
 <!--
 ## ADR-NNN — Titre court

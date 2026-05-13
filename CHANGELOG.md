@@ -33,46 +33,24 @@
 ## [Unreleased]
 
 ### Added
-- **Endpoint `GET /sources?card_id=...`** : liste les sources d'une fiche (authentifié, ownership)
-- **Page /about** : présentation, fonctionnement, public cible, techno, contact
-- **Navbar avatar dropdown** : avatar (ou initiales), display name, @username, lien dashboard, déconnexion
-- **Landing page auth-aware** : bouton "Accéder au tableau de bord" quand connecté au lieu de "Continuer avec Google"
+- **3 nouvelles pages** : `/features` (grille fonctionnalités dispo + en préparation), `/roadmap` (feuille de route MVP → Futur avec statuts), `/security` (crypto Ed25519, vérification, FAQ sécurité)
+- **OpenGraph dynamique** : endpoint `GET /api/v1/og?title=&creator=` génère une image PNG 1200×630 via Pillow (DejaVu Serif, fond sombre, titre centré, accent bleu)
+- **Meta `og:image` et `twitter:image`** sur les fiches publiques (`/@creator/card`) pointant vers l'endpoint OG
+- **Page /about enrichie** : histoire du projet, valeurs (transparence, pérennité, liberté), liens vers /security et GitHub
+- **Navbar mise à jour** : 5 entrées (Accueil, Fonctionnalités, Roadmap, Sécurité, À propos)
+- **Dépendance backend** : `Pillow>=12.2.0` (génération OG images)
+- **`.prettierignore`** : ignore `.svelte-kit/` et `build/` — Prettier ne vérifie plus les fichiers générés en CI
 
 ### Fixed
-- **Sources page** : charge les sources existantes au montage (ne démarre plus avec une liste vide)
-- **Publish bloqué par Wayback** : suppression du check `archive_status == PENDING` — l'archivage est best-effort et ne doit pas blocker la publication
-- **Types** : `data.user` correctement typé (`User | null`) dans layout + landing (résout 9 erreurs svelte-check)
+- **Logout** : `invalidateAll()` appelé après `auth.reset()` pour que le layout reload `data.user` — l'avatar Google ne reste plus affiché après déconnexion
+- **Publish** : message "Impossible de contacter le serveur" au lieu de "Failed to fetch" en cas d'erreur réseau (TypeError catch)
+- **get_current_user sans `: Request`** : ajout du type hint `request: Request` dans `sources.py:63` et `users.py:20` — FastAPI traitait `request` comme paramètre query → tous les endpoints sources retournaient 422 avec `{"detail": [{"type": "missing", "loc": ["query", "request"]}]}`
+- **Texte "Pour qui?"** : ajout d'une 4e catégorie "Créateur·ice·s de contenu" + note "N'oubliez pas de citer les créateur·ice·s de contenu — ils et elles ne se considèrent pas toujours comme des vulgarisateurs scientifiques ou des journalistes." sur la page d'accueil et la page À propos
+- **Typo** : "méthodologies" → "méthodologie" dans la carte journaliste
 
 ### Changed
-- **Landing page** : bannière bêta privée supprimée
-- **Description publique** : expandable via bouton "Lire la suite" / "Moins"
-
-### Added
-- **Embranchement en Y** dans le graphe interactif : quand deux sources du même auteur citent le même parent, un nœud de jonction est créé automatiquement (arêtes Nœud central → Léa Marchand → 2 notes de tournage)
-- **Source YouTube** Artem Kirsanov sur la neuroscience de la mémoire (seed demo)
-- **Types de source** `video` (Documentaire→Vidéo) et `image` (Illustration→Image)
-
-### Changed
-- **Logo** : 6 branches dédoublées en 12 (embranchement en Y), suppression des lignes pointillées d'arrière-plan
-- **Graphe interactif** : étiquette « Vidéo » supprimée du nœud central, créateur centré au-dessus du nœud (zoom ≥ 0.7), titre au-dessus du créateur (zoom ≥ 1.5)
-- **Labels types source** : Peer-reviewed→Article scientifique, Original→Contenu original, Documentaire→Vidéo, Illustration→Image
-- **Conflits d'intérêt** : rouge→ambré, icône ⚠ supprimée, badge conservé sans alarme
-- **En-tête fiche publique** : layout compact (avatar + créateur + titre sur une ligne, description en sous-titre), hauteur du graphe augmentée (68vh→75vh)
-- **Page d'accueil** : nouveau tagline « Vous allez adorer partager vos références », correction « bibliography »→« bibliographie »
-- **Démo** : 18 sources (au lieu de 16), 8 arêtes de citation, ajout vidéo YouTube
-- **CI/CD** : `@sveltejs/vite-plugin-svelte` ^5→^6, `vitest` ^2→^3 (résout le crash Test Frontend, compatible vite@6)
-
-### Removed
-- Badge vérifié (coche bleue) sur l'avatar de la fiche publique
-- Panneaux conflit d'intérêt expansés (gros bloc rouge) — le badge textuel ambré reste
-
-### Fixed
-- **Fork Y sans nœud visible** : le nœud de jonction est désormais invisible (radius 0, transparent) et repositionné chaque frame au point d'embranchement idéal (40px du parent sur la ligne vers le centre de gravité des enfants). Résultat : un trait qui se divise en deux sans point intermédiaire visible.
-- **Y-branching réel** : les deux sources Nader avaient des chaînes `authors` différentes → pas de groupement. Remplacées par deux sources **Léa Marchand** (notes de tournage + compte-rendu), toutes deux en premier cercle (`parent_index: None`), même auteur exact → Y-branch fonctionnel entre le nœud central et les deux sources.
-- Bug link direction dans le code Y-branch : `links.findIndex` ne matchait pas les liens de premier cercle (`kind: 'card'` → `source: cardId, target: sourceId`). Corrigé en vérifiant les deux directions.
-- Crash Test Frontend : incompatibilité vite-plugin-svelte@6 + vitest@2 (utilisait vite@5). Résolu en montant vitest@3 (vite@6).
-- Typo homepage : « bibliography » → « bibliographie »
-- STATE.md + CHANGELOG.md mis à jour avec toutes les modifications
+- **Architecture du site** : passage de 2 à 5 pages de navigation, contenus distincts et non redondants
+- **Navbar** : refonte des imports (api importé directement, Logout utilise `api.auth.logout()` au lieu de `fetch` brut)
 
 ---
 

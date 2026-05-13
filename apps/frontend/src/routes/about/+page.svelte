@@ -11,36 +11,69 @@
 
   <section class="prose prose-slate max-w-none">
     <p class="text-lg text-slate-600 leading-relaxed">
-      Filum est un outil de gestion de références bibliographiques qui permet aux créateurs de
-      contenu — vulgarisateurs scientifiques, journalistes, chercheurs — de constituer, organiser et
-      partager leurs sources de manière transparente et vérifiable.
+      Filum est un outil de gestion de références bibliographiques qui permet aux créateur·ice·s de
+      contenu de constituer, organiser et partager leurs sources de manière transparente et
+      vérifiable.
     </p>
+
+    <h2 class="text-2xl font-semibold text-slate-900 mt-12 mb-4">L'histoire</h2>
+    <p class="text-slate-600 leading-relaxed">
+      Filum est né d'un constat simple : sur YouTube, Twitch, Twitter, dans les newsletters et les
+      blogs, les créateur·ice·s citent des sources — mais ces citations sont souvent perdues dans le
+      flux, difficiles à retrouver, impossibles à vérifier.
+    </p>
+    <p class="text-slate-600 leading-relaxed">
+      Un vidéaste cite une étude ? Elle est noyée dans la description, parfois sans lien. Un
+      journaliste mentionne un rapport ? Bonne chance pour le retrouver six mois plus tard. Un
+      vulgaristeur s'appuie sur une thèse ? Qui vérifie que la source existe vraiment ?
+    </p>
+    <p class="text-slate-600 leading-relaxed">
+      Filum répond à ce problème en offrant un espace dédié où chaque source est documentée,
+      archivée, liée à une fiche de lecture — et dont l'intégrité est garantie par signature
+      cryptographique.
+    </p>
+
+    <h2 class="text-2xl font-semibold text-slate-900 mt-12 mb-4">Nos valeurs</h2>
+    <div class="space-y-4 not-prose">
+      <div class="bg-slate-50 rounded-xl p-5">
+        <h3 class="font-semibold text-slate-900 mb-1">Transparence</h3>
+        <p class="text-sm text-slate-600">
+          Chaque source est visible, chaque citation est traçable. Rien n'est caché.
+        </p>
+      </div>
+      <div class="bg-slate-50 rounded-xl p-5">
+        <h3 class="font-semibold text-slate-900 mb-1">Pérennité</h3>
+        <p class="text-sm text-slate-600">
+          Les sources sont archivées. Les signatures sont vérifiables. Ce qui est publié aujourd'hui
+          le reste demain.
+        </p>
+      </div>
+      <div class="bg-slate-50 rounded-xl p-5">
+        <h3 class="font-semibold text-slate-900 mb-1">Liberté</h3>
+        <p class="text-sm text-slate-600">
+          Pas de lock-in. Les données sont exportables, l'API est ouverte. Vous gardez le contrôle
+          de votre travail.
+        </p>
+      </div>
+    </div>
 
     <h2 class="text-2xl font-semibold text-slate-900 mt-12 mb-4">Pourquoi Filum ?</h2>
     <p class="text-slate-600 leading-relaxed">
-      Dans un monde où l'information circule à grande vitesse, la qualité du sourçage est devenue un
-      enjeu central. Filum permet de rendre visible le travail de recherche derrière chaque
-      publication, en offrant un espace dédié où chaque source est documentée, archivée et liée à
-      une fiche de lecture.
+      Parce que le sourçage est un geste essentiel du travail intellectuel, mais qu'il est rarement
+      mis en valeur. Filum le rend visible, vérifiable et durable — un service public pour la
+      qualité de l'information en ligne.
+    </p>
+    <p class="text-slate-600 leading-relaxed">
+      Le nom « Filum » vient du latin : le fil qui relie les choses. Comme le fil d'Ariane, comme le
+      fil d'une argumentation, comme le fil qui tisse une bibliographie cohérente.
     </p>
 
-    <h2 class="text-2xl font-semibold text-slate-900 mt-12 mb-4">Comment ça marche</h2>
-    <ol class="list-decimal pl-6 space-y-4 text-slate-600">
-      <li>
-        <strong class="text-slate-900">Sourcer</strong> — Ajoutez vos sources (articles, études, documents)
-        à une fiche de lecture. Chaque source peut être annotée et accompagnée d'extraits.
-      </li>
-      <li>
-        <strong class="text-slate-900">Signer</strong> — La fiche est signée cryptographiquement avec
-        une clé Ed25519. Le hash SHA-256 et l'horodatage garantissent l'intégrité et l'authenticité.
-      </li>
-      <li>
-        <strong class="text-slate-900">Partager</strong> — Publiez votre fiche et partagez la page publique.
-        Le graphe interactif permet à chacun d'explorer vos sources et de vérifier votre travail.
-      </li>
-    </ol>
-
     <h2 class="text-2xl font-semibold text-slate-900 mt-12 mb-4">Qui est-ce que ça concerne ?</h2>
+    <p class="text-slate-600 leading-relaxed mb-6">
+      Filum s'adresse à tou·te·s les créateur·ice·s qui veulent rendre visible la qualité de leur
+      sourçage — y compris celles et ceux qui ne se reconnaissent pas dans les catégories
+      traditionnelles.
+    </p>
     <div class="grid gap-6 not-prose mt-6">
       <div class="bg-slate-50 rounded-xl p-6">
         <h3 class="text-lg font-semibold text-slate-900 mb-2">Vulgarisateurs scientifiques</h3>
@@ -62,13 +95,30 @@
           pairs.
         </p>
       </div>
+      <div class="bg-slate-50 rounded-xl p-6">
+        <h3 class="text-lg font-semibold text-slate-900 mb-2">Créateur·ice·s de contenu</h3>
+        <p class="text-slate-600">
+          Vous ne vous reconnaissez pas dans les cases ci-dessus ? Filum est aussi pour vous. Chaque
+          source mérite d'être citée, quel que soit votre format.
+        </p>
+      </div>
     </div>
+    <p class="mt-4 text-sm text-slate-500 italic">
+      N'oubliez pas de citer les créateur·ice·s de contenu — ils et elles ne se considèrent pas
+      toujours comme des vulgarisateurs scientifiques ou des journalistes.
+    </p>
 
     <h2 class="text-2xl font-semibold text-slate-900 mt-12 mb-4">Technologie</h2>
     <p class="text-slate-600 leading-relaxed">
       Filum utilise la cryptographie Ed25519 pour signer chaque fiche, garantissant ainsi que le
       contenu n'a pas été altéré depuis sa publication. L'archivage des sources via Wayback Machine
-      permet de préserver les références même si les pages originales disparaissent.
+      permet de préserver les références même si les pages originales disparaissent. Le tout est
+      présenté dans un graphe interactif qui rend la navigation intuitive.
+    </p>
+    <p class="text-slate-600 leading-relaxed">
+      Pour les détails techniques complets (signature, hachage, gestion des clés), rendez-vous sur
+      la page
+      <a href="/security" class="text-blue-600 hover:text-blue-800 underline">Sécurité</a>.
     </p>
 
     <h2 class="text-2xl font-semibold text-slate-900 mt-12 mb-4">Contact</h2>
@@ -76,6 +126,13 @@
       Une question, une suggestion ? Écrivez-nous à
       <a href="mailto:mathias@filum.app" class="text-blue-600 hover:text-blue-800 underline"
         >mathias@filum.app</a
+      >.
+    </p>
+    <p class="text-slate-600 leading-relaxed">
+      Vous pouvez aussi contribuer au projet sur
+      <a
+        href="https://github.com/Mathias-PP/filum"
+        class="text-blue-600 hover:text-blue-800 underline">GitHub</a
       >.
     </p>
   </section>

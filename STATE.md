@@ -6,27 +6,19 @@
 
 ## Dernière mise à jour
 
-**2026-05-13** — **MVP complet !** Tous les jalons M1+M2+M3 sont terminés, l'OAuth Google est configuré en prod et fonctionnel. Le flow de bout en bout (login → création → publication → consultation publique) est opérationnel.
+**2026-05-13** — **Session PR #31 : MVP améliorations — CI lint frontend fixée (`.prettierignore` + format 4 fichiers), README mis à jour.** Voir `CHANGELOG.md` pour le détail.
 
-### PR #27 — MVP Polish (mergée)
-- Navbar : avatar utilisateur avec dropdown (menu déroulant, lien dashboard, déconnexion)
-- Landing page auth-aware : bouton "Continuer avec Google" remplacé par "Accéder au tableau de bord" quand connecté
-- Page /about créée avec contenu complet
-- Bannière bêta privée supprimée
-- Description expandable (Lire la suite / Moins) sur fiches publiques
-- Typage strict `data.user: User | null` dans layout + landing
+### PR #30 — Missing Request type hints (mergée)
+- **Root cause du bug "An error occurred"** : `get_current_user` dans `sources.py` et `users.py` avait `request` sans `: Request` type hint → FastAPI traitait `request` comme paramètre query au lieu d'injecter l'objet Request → tous les endpoints sources retournaient 422.
+- Fichiers : `sources.py:63`, `users.py:20` — ajout de `request: Request` + import `Request` dans `users.py`.
 
-### PR #28 — Card creation flow (en cours)
-- **Nouvel endpoint** `GET /sources?card_id=...` : liste les sources d'une fiche
-- **Sources page fix** : charge les sources existantes au montage (plus de liste vide au retour)
-- **Publish fix** : ne bloque plus sur `archive_status=PENDING` (Wayback best-effort)
-- Suppression du check PENDING dans `POST /cards/{id}/publish` (le publish ne doit pas dépendre du résultat Wayback)
-
-### Bugs corrigés (itérations précédentes)
-- Fix 404 en cliquant sur un brouillon depuis le dashboard
-- Fix bouton retour étape 2 → étape 1
-- Fix erreur "An error occurred" non explicite : handler HTTPException
-- Ajout endpoint `DELETE /cards/{id}` + bouton suppression
+### PR #31 — MVP améliorations (cette session)
+- **3 nouvelles pages** : `/features` (fonctionnalités dispo + à venir), `/roadmap` (feuille de route), `/security` (cryptographie, clés, FAQ)
+- **OpenGraph dynamique** : backend `GET /api/v1/og?title=&creator=` génère une image PNG 1200×630 via Pillow + police DejaVu Serif ; frontend `og:image` / `twitter:image` sur les fiches publiques
+- **Logout fix** : `invalidateAll()` après déconnexion pour rafraîchir `data.user` — l'avatar Google ne reste plus affiché
+- **Publish** : message "Impossible de contacter le serveur" au lieu de "Failed to fetch" en cas d'erreur réseau
+- **Texte "Pour qui?"** : 4e catégorie "Créateur·ice·s de contenu" + note "N'oubliez pas de citer..." sur accueil et À propos
+- **About enrichi** : histoire, valeurs (transparence, pérennité, liberté), liens vers /security et GitHub
 
 ### Jalons terminés
 - **M1** — OAuth Google (backend + frontend, manque credentials humains)
@@ -66,8 +58,8 @@ Itérations précédentes :
 ## Branches Git
 
 | Branche | État |
-|---|---|
-| `main` | Branche unique. `feat/iteration-3-dashboard-ci` et `feat/iteration-3-extractor-wayback` mergées et supprimées. |
+|---|---|---|
+| `main` | Branche de déploiement. `feat/iteration-3-dashboard-ci`, `feat/iteration-3-extractor-wayback`, `fix/source-excerpts-missinggreenlet` (PR #30) mergées et supprimées. `feat/mvp-mk2` (PR #31) en cours — CI lint frontend fixée, prête pour merge. |
 
 ---
 
@@ -89,6 +81,7 @@ Workflow `cd.yml` supprimé : Railway déploie en natif via son intégration Git
 **Améliorations CI récentes (2026-05-13)** :
 - Suppression du double `uv sync` dans `lint-backend` (le `--only-dev` initial était écrasé par `--all-extras`)
 - Ajout de `.github/dependabot.yml` : mises à jour hebdo pip/npm, mensuelles GitHub Actions
+- Sécurité : dépendance `Pillow` ajoutée (OG images dynamiques, installée via `uv add Pillow`)
 
 ---
 
@@ -99,18 +92,19 @@ Workflow `cd.yml` supprimé : Railway déploie en natif via son intégration Git
 - PostgreSQL (Railway plugin, lié via `${{Postgres.DATABASE_URL}}`)
 - Crypto : Ed25519 + AES-GCM + HS256 (PyJWT, plus de python-jose, cf. ADR-014)
 - Models : User, BiblioCard, Source, AuditEvent
-- API REST sous `/api/v1/` : auth, cards, sources, users
+- API REST sous `/api/v1/` : auth, cards, sources, users, og
 - Migrations Alembic exécutées au boot dans le `CMD` Docker
-- 40 tests (pytest — unit + integration)
+- 72 tests (pytest — unit + integration)
 - Extracteur URL : `app/extractors/url_extractor.py` (Crossref + HTML scraping)
 - Endpoint `GET /api/v1/sources/extract` (no auth, best-effort metadata)
+- Générateur OpenGraph : `app/services/og_image.py` (Pillow, police DejaVu Serif), endpoint `GET /api/v1/og?title=&creator=`
 
 ### Frontend
 - SvelteKit 2 + Svelte 5 + TypeScript + Tailwind, déployé sur Vercel
 - pnpm 10.33.4 pinned via `packageManager` (cf. ADR-013)
 - Design system : Button, Input, Card, Avatar, Badge, Alert, SourceTypeBadge, SourceGraph, SourceDetailPanel
 - Stores : auth, cards
-- Routes : home, dashboard, public card (avec graphe D3), user profile, `/dashboard/new` (création fiche 2 étapes)
+- Routes : home, dashboard, features, roadmap, security, about, public card (avec graphe D3, OpenGraph dynamique, SSR + JSON-LD), user profile, `/dashboard/new` (création fiche 2 étapes)
 - D3 v7 (force-directed) + utilitaire `lib/utils/source-colors.ts` (single source of truth des couleurs de type de source)
 - API base URL pilotée par `PUBLIC_API_BASE_URL` (env Vercel)
 
@@ -176,43 +170,39 @@ Vérifié par `curl` sur les URL prod, pas par lecture des docs :
 - ✅ Backend `/health` → 200 OK, version 0.1.0
 - ✅ API `/api/v1/@example/memoire-et-cerveau` → 200, 16 sources (dont 2 non-académiques), signature Ed25519 présente
 - ✅ Migration 004 **appliquée** : les nouveaux champs (`citations_count`, `subscribers_count`, `views_count`, `impact_factor`, `conflict_of_interest`, `excerpts[]`) sont bien sérialisés dans la réponse API
-- ✅ Frontend SSR fonctionne : `<script type="application/ld+json">` présent dans le HTML statique, meta `og:title`/`og:description` présents
+- ✅ Frontend SSR fonctionne : `<script type="application/ld+json">` présent dans le HTML statique, meta `og:title`/`og:description`/`og:image` présents
+- ✅ OpenGraph dynamique : `GET /api/v1/og?title=Test` retourne une image PNG 1200×630
+- ✅ Nouvelles pages : `/features`, `/roadmap`, `/security` accessibles sur le frontend
 - ✅ **Seed P0 résolu** : `_get_or_create_demo_card` ne fait plus early-return. Les sources sont delete+recreate à chaque run, les nouveaux champs (excerpts, conflits, indicateurs) sont rafraîchis, et 2 nouvelles sources non-académiques sont ajoutées (documentaire NOVA + dessin Cajal). La fiche démo prod est re-signée à chaque run du seed.
 
 ---
 
 ## Prochaines étapes par priorité (basé sur l'état prod vérifié)
 
-### P0 — ✅ Résolu (seed démo rafraîchi)
+### P0 — 🚀 Session PR #31 — Nouveau contenu et OpenGraph
 
-Le seed ne fait plus early-return : les sources sont recréées, les champs itération 2 (excerpts, conflits, indicateurs) sont rafraîchis, 2 nouvelles sources non-académiques ajoutées. La fiche est re-signée à chaque run (idempotent).
+Nouvelles pages (Features, Roadmap, Security), OpenGraph dynamique fonctionnel, logout fixé, "Pour qui?" enrichi. CI lint frontend fixée (`.prettierignore` + format 4 fichiers). Prête pour merge de `feat/mvp-mk2` vers `main`.
 
-### P1 — Vision produit (sans ça, Filum reste un démonstrateur)
+### P1 — Vision produit
 
-2. ~~**Implémenter `apps/backend/app/extractors/`.**~~ **Fait (PR2 itération 3)** — `url_extractor.py` opérationnel (Crossref + HTML scraping), endpoint `GET /sources/extract`.
-3. ~~**Page `/dashboard/new` : création de fiche.**~~ **Fait (PR1 itération 3)** — routes `dashboard/new` + `dashboard/new/[card_id]/sources` créées.
-4. ✅ **Brancher l'extracteur dans le formulaire frontend.** Appel `GET /sources/extract?url=...` au blur du champ URL en étape 2, pré-remplit titre + auteurs, spinner, silent fail.
-5. ✅ **Auth guard `/dashboard*`.** `+layout.ts` redirige vers `/` si `parent().user` est null.
-6. ✅ **Rate limiting sur `GET /sources/extract` et `POST /cards`.** slowapi branché (10 req/min, 20 req/h).
-7. ✅ **Logs structurés.** Middleware request_id + durée + status.
+- Améliorer l'extraction de métadonnées (plus de sources supportées, fallbacks)
+- Tester le flow auth end-to-end avec un vrai utilisateur
+- Finaliser l'intégration du copier-coller de bibliographie (auto-fill des sources)
 
-### P2 — Auth / multi-utilisateur
+### P2 — Qualité interne (dette dormante)
 
-4. ~~**OAuth Google end-to-end.**~~ **Fait (PR jalon M1)** — endpoints `/auth/google/login` et `/auth/google/callback` opérationnels, state CSRF en cookie, vérification id_token via JWKS, cookie samesite conditionnel. Reste la configuration humaine des credentials Google Cloud + Railway (hors scope agent).
-5. **Tester le flow auth bout-en-bout** une fois les credentials Google configurés en prod : login → callback → cookie session → `/api/v1/auth/me`. Test manuel requis.
+- Réécrire test composant Svelte 5 (compatible testing-library Svelte 5)
+- Nettoyage `authority_level` (legacy, plus utilisé par l'UI)
+- Réduire cold start Railway (keep-alive ou instance hobby)
 
-### P3 — Qualité interne (dette dormante)
+### P3 — Ouverture produit
 
-6. ~~**CI frontend lint réactivé.**~~ **Fait (PR1 itération 3).**
-7. ~~**Nettoyer `crypto/signing.py`.**~~ **Fait (PR1 itération 3).**
-8. **Réécrire un test composant Svelte 5.** Le test composant a été supprimé à l'itération 1 (incompatibilité Svelte 5). Le réécrire avec l'API courante `testing-library/svelte` (Snippet vs string).
-9. **Nettoyage `authority_level`.** La colonne reste en base et est sérialisée par l'API, mais l'UI itération 2 ne l'utilise plus (remplacée par les chips d'indicateurs typés). Choisir : (a) la retirer du schéma + migration de drop, (b) la garder pour rétrocompat et documenter qu'elle est "legacy / non-affichée".
-
-### P4 — Ouverture produit
-
-10. **Mode privé + intégrations Zotero / Obsidian / Notion** (spec déjà écrite : `.docs/09-private-mode-and-integrations.md`). Repositionne Filum en compagnon plutôt qu'en concurrent.
-11. **Domaine custom `filum.app`** côté Vercel et Railway.
-12. **Export PDF** d'une fiche signée.
+- Import Zotero / BibTeX / Obsidian
+- Export PDF / CSV / Excel / JSON / BibTeX
+- Plugin navigateur (ajout de source en un clic)
+- API publique + serveur MCP
+- Domaine custom `filum.app`
+- Score de sourçage IA
 
 ---
 

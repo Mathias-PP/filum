@@ -25,17 +25,21 @@ Infrastructure ouverte de **provenance et de filiation** pour les contenus numé
 
 ## État au 2026-05-13
 
-**Phase 1 — MVP backend + frontend déployés**, itération 3 mergée.
+**Phase 1 — MVP amélioré** : PR #30 (#31 en attente)
 
 - Backend live sur Railway : https://filum-production-07bb.up.railway.app
 - Frontend live sur Vercel : https://filum-eight.vercel.app
 - Fiche démo publique avec graphe D3 18 sources : https://filum-eight.vercel.app/@example/memoire-et-cerveau
-- CI 8/8 verte sur main
+- Nouvelles pages : /features, /roadmap, /security, /about enrichi
+- OpenGraph dynamique : aperçu des liens avec titre et créateur
+- CI 9/9 verte sur main (72 tests pytest)
 
-**Ce qui manque pour le « MVP complet »** (cf. [`10-mvp-completion-plan.md`](../../.docs/10-mvp-completion-plan.md)) :
-1. **OAuth Google end-to-end** — pas branché, cookies en `samesite=lax`
-2. **Auth guard sur `/dashboard*`** — pas implémenté
-3. **Extracteur URL branché dans le formulaire frontend** — pas câblé
+**Ce qui manque pour un produit publiable** :
+- Import Zotero/BibTeX/Obsidian pour réduire la friction
+- Plugin navigateur pour ajout de source en un clic
+- Export PDF/CSV/Excel/JSON
+- Collaboratif (édition à plusieurs)
+- API publique + serveur MCP
 
 → [`STATE.md`](../../STATE.md) pour l'état complet et vérifié
 
@@ -106,9 +110,10 @@ Toutes les routes sous `/api/v1/`. Auth via cookie session HS256.
 - `GET /health`, `GET /health/database` — sondes
 - `GET /auth/google/login`, `GET /auth/google/callback` — OAuth (à compléter)
 - `GET /auth/me`, `POST /auth/logout`
-- `POST /cards`, `GET /me/cards`, `PATCH /cards/{id}`, `POST /cards/{id}/publish`
-- `POST /cards/{id}/sources`, `PATCH /sources/{id}`, `DELETE /sources/{id}`
+- `POST /cards`, `GET /me/cards`, `PATCH /cards/{id}`, `POST /cards/{id}/publish`, `DELETE /cards/{id}`
+- `POST /cards/{id}/sources`, `GET /sources?card_id=...`, `PATCH /sources/{id}`, `DELETE /sources/{id}`
 - `GET /sources/extract?url=…` — extracteur Crossref + HTML
+- `GET /og?title=...&creator=...` — image OpenGraph dynamique (Pillow)
 - `GET /{creator_slug}/{card_slug}` — lecture publique
 - `GET /users/{slug}` — page-identité
 
@@ -145,16 +150,17 @@ debug                  # false en prod
 
 ---
 
-## CI (8 jobs verts requis sur main)
+## CI (9 jobs verts requis sur main)
 
 1. Security Scan (Trivy + TruffleHog)
 2. Lint Backend (ruff)
 3. Type Check Backend (mypy)
-4. Test Backend (pytest, 41 tests)
+4. Test Backend (pytest, 72 tests)
 5. Lint Frontend (eslint + prettier)
 6. Test Frontend (vitest)
 7. Build Frontend (vite, frozen lockfile)
 8. Analytics Check (dbt compile)
+9. Container Build (Docker build check)
 
 Pas de workflow CD séparé — Railway déploie auto à chaque push main (ADR-015).
 
@@ -185,9 +191,12 @@ Pas de workflow CD séparé — Railway déploie auto à chaque push main (ADR-0
 
 ## Ce qu'il faut faire MAINTENANT (jalon courant)
 
-Cf. [`.docs/10-mvp-completion-plan.md`](../../.docs/10-mvp-completion-plan.md) — toujours commencer par le **jalon le plus bas non complété** (M1 → M2 → M3).
+Cf. [`STATE.md`](../../STATE.md) section « Prochaines étapes par priorité ».
 
-Au 2026-05-13, M1 (OAuth Google) est le path critique. Pré-requis humain : configurer credentials Google Cloud + variables Railway.
+Au 2026-05-13, la PR #31 (branche `feat/mvp-mk2`) est en attente de merge — CI lint frontend fixée. Prochaines priorités :
+- Tester le flow auth end-to-end avec un vrai utilisateur Google
+- Implémenter l'import Zotero/BibTeX (prochaine priorité forte)
+- Améliorer l'extraction de métadonnées (plus de sources supportées, fallbacks)
 
 ---
 
