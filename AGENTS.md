@@ -6,6 +6,26 @@ Compatible avec : Aider, OpenAI Codex CLI, Continue.dev, Cursor, opencode, et to
 
 ---
 
+## Pour un travail autonome multi-sessions
+
+Si tu es un agent qui doit avancer **en autonomie** sur plusieurs sessions (typiquement opencode/Big Pickle, ou Claude Code en mode plan + acceptEdits), lis en priorité :
+
+1. [`agent/README.md`](./agent/README.md) — point d'entrée du système d'instructions autonome
+2. [`agent/PERMISSIONS.md`](./agent/PERMISSIONS.md) — matrice de permissions par type d'action
+3. [`agent/GIT_WORKFLOW.md`](./agent/GIT_WORKFLOW.md) — règles git strictes (jamais de push sur main)
+4. [`agent/PITFALLS.md`](./agent/PITFALLS.md) — erreurs déjà payées par le projet
+5. [`agent/TASK_PROTOCOL.md`](./agent/TASK_PROTOCOL.md) — comment savoir où tu en es
+
+Configuration runtime déjà en place :
+- [`opencode.json`](./opencode.json) — config opencode (instructions + matrice bash)
+- [`agent/CONFIG.md`](./agent/CONFIG.md) — traduction des règles pour autres agents
+
+Plan de complétion MVP : [`.docs/10-mvp-completion-plan.md`](./.docs/10-mvp-completion-plan.md).
+
+Les sections ci-dessous restent valables comme **vue d'ensemble** pour un agent qui n'opère que sur une session ponctuelle ; pour de l'autonomie multi-sessions, le dossier `agent/` est plus structuré.
+
+---
+
 ## Comment se synchroniser au projet en début de session
 
 Lis dans l'ordre :
