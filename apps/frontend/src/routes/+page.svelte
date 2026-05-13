@@ -141,7 +141,7 @@
         <h2 class="text-3xl font-bold text-slate-900 mb-4">Pour qui ?</h2>
         <p class="text-xl text-slate-600 max-w-2xl mx-auto">
           Filum s'adresse à tou·te·s les créateur·ice·s qui veulent rendre visible la qualité de
-          leur sourçage.
+          leurs références.
         </p>
       </div>
       <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -168,16 +168,9 @@
         <div class="card">
           <h3 class="text-lg font-semibold text-slate-900 mb-2">Créateur·ice·s de contenu</h3>
           <p class="text-slate-600">
-            Vous ne vous reconnaissez pas dans les cases ci-dessus ? Filum est aussi pour vous.
             Chaque source mérite d'être citée, quel que soit votre format.
           </p>
         </div>
-      </div>
-      <div class="mt-8 text-center">
-        <p class="text-sm text-slate-500 italic">
-          N'oubliez pas de citer les créateur·ice·s de contenu — ils et elles ne se considèrent pas
-          toujours comme des vulgarisateurs scientifiques ou des journalistes.
-        </p>
       </div>
     </div>
   </section>

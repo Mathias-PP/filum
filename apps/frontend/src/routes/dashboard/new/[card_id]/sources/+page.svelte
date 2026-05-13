@@ -144,7 +144,7 @@
   <h1 class="text-2xl font-bold text-slate-900 mb-1">
     {card?.title ?? 'Chargement...'}
   </h1>
-  <p class="text-slate-600 mb-8">Étape 2/2 — Ajoutez vos sources, puis publiez</p>
+  <p class="text-slate-600 mb-8">Étape 2/2 : ajoutez vos sources, puis publiez</p>
 
   {#if loadError}
     <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 mb-6">

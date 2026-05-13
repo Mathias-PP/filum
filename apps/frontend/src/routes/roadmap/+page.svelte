@@ -16,7 +16,7 @@
     <div>
       <div class="flex items-center gap-3 mb-4">
         <span class="w-3 h-3 rounded-full bg-emerald-500 shrink-0"></span>
-        <h2 class="text-2xl font-semibold text-slate-900">MVP — Livré</h2>
+        <h2 class="text-2xl font-semibold text-slate-900">MVP : livré</h2>
         <span class="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full"
           >Disponible</span
         >
@@ -59,7 +59,7 @@
               clip-rule="evenodd"
             /></svg
           >
-          Graphe interactif D3.js avec pivots
+          Graphe interactif D3.js avec sources clés
         </li>
         <li class="flex items-start gap-2 text-slate-600">
           <svg
@@ -200,7 +200,7 @@
             class="w-5 h-5 text-slate-400 shrink-0 mt-0.5 flex items-center justify-center text-sm"
             >→</span
           >
-          Score de sourçage (qualité et diversité des sources)
+          Score de qualité des références (variété, autorité, diversité)
         </li>
         <li class="flex items-start gap-2 text-slate-600">
           <span
@@ -209,17 +209,14 @@
           >
           Plugin WordPress / Notion / Medium
         </li>
+        <li class="flex items-start gap-2 text-slate-600">
+          <span
+            class="w-5 h-5 text-slate-400 shrink-0 mt-0.5 flex items-center justify-center text-sm"
+            >→</span
+          >
+          Filum Desktop (application de bureau)
+        </li>
       </ul>
     </div>
-  </div>
-
-  <div class="mt-12 p-6 bg-slate-50 rounded-xl border border-slate-200">
-    <h2 class="text-lg font-semibold text-slate-900 mb-2">Vous avez une suggestion ?</h2>
-    <p class="text-slate-600 text-sm">
-      La feuille de route évolue avec les retours des utilisateur·ice·s. Écrivez-nous à
-      <a href="mailto:mathias@filum.app" class="text-blue-600 hover:text-blue-800 underline"
-        >mathias@filum.app</a
-      >.
-    </p>
   </div>
 </div>
