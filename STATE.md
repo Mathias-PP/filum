@@ -6,7 +6,19 @@
 
 ## Dernière mise à jour
 
-**2026-05-13** — jalon M1 (OAuth Google) livré sur `feat/oauth-google-end-to-end` (PR #—) :
+**2026-05-13** — jalon M1 (OAuth Google) mergé dans `main`. M2 commencé :
+
+Bugs corrigés :
+- Fix 404 en cliquant sur un brouillon depuis le dashboard (lien vers `/dashboard/cards/{id}` → `/dashboard/new/{id}/sources`)
+- Fix bouton retour étape 2 → étape 1 (allait vers `/dashboard/new` fiche vierge → maintenant `/dashboard`)
+- Fix erreur "An error occurred" non explicite : ajout handler HTTPException backend qui wrapper au format `{error: {code, message}}`
+- Ajout endpoint `DELETE /cards/{id}` + bouton suppression pour les brouillons
+
+Jalon M2 — Auth guard + extracteur URL :
+- Auth guard : `+layout.ts` dans `/dashboard/` redirige vers `/` si non connecté
+- Extracteur : appel `GET /sources/extract?url=...` au blur du champ URL en étape 2, pré-remplit titre + auteurs, loading spinner, silent fail
+
+Jalon M1 livré précédemment :
 - Backend : endpoints `/auth/google/login` et `/auth/google/callback` complétés. State token CSRF en cookie HttpOnly. Échange code → id_token vérifié via Google JWKS (PyJWKClient). Création/retrouvage User. Cookie session avec samesite conditionnel (`lax` en debug, `none+secure` en prod). Génération paire Ed25519 chiffrée AES-GCM à la première connexion.
 - Frontend : bouton « Continuer avec Google » sur `/` avec icône. Page `/auth/callback` qui hydrate le store auth. `credentials: 'include'` déjà présent dans le client API.
 - Tests : 72 tests pytest (66 existants + 6 nouveaux). 1 test d'intégration callback mocké + tests unitaires state cookie.
@@ -133,7 +145,7 @@ Variables intentionnellement non configurées (defaults dans `config.py` suffise
 | ~~`crypto/signing.py` = stub~~ | **Résolu** | SigningService + Canonicalizer déplacés dans `signing.py` |
 | ~~Deps eslint frontend manquantes~~ | **Résolu** | 6 deps ajoutées, eslint 9 flat config, CI `\|\| true` retiré |
 | ~~8 warnings `state_referenced_locally`~~ | **Résolu** | Composants convertis à `$derived()` / `$effect()` |
-| Auth guard absent sur `/dashboard/new` | Moyen | Redirection si non connecté — non implémentée |
+| ~~Auth guard absent sur `/dashboard*`~~ | **Résolu** | `+layout.ts` dans `/dashboard/` redirige vers `/` si non connecté |
 | Rate limiting absent sur `GET /sources/extract` | Moyen | slowapi déjà dep mais non branché |
 | `impact_factor` toujours `null` | Faible | OpenAlex supprimé (dead code), pas de fallback |
 | Test composant Svelte 5 incompat | Faible | À réécrire avec API testing-library compatible Svelte 5 |

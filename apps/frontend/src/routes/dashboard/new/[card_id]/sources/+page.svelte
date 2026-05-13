@@ -25,6 +25,38 @@
   let addError = $state<string | null>(null);
   let addLoading = $state(false);
 
+  // URL extraction
+  let extracting = $state(false);
+  let lastExtractedUrl = $state('');
+
+  const EXTRACT_API = `${import.meta.env.PUBLIC_API_BASE_URL ?? ''}/api/v1/sources/extract`;
+
+  async function extractUrl() {
+    if (!url || url === lastExtractedUrl) return;
+    extracting = true;
+    lastExtractedUrl = url;
+    try {
+      const response = await fetch(`${EXTRACT_API}?url=${encodeURIComponent(url)}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.title) sourceTitle = data.title;
+        if (data.authors) authors = data.authors;
+      }
+    } catch {
+      // silent fail — user can fill manually
+    } finally {
+      extracting = false;
+    }
+  }
+
+  function onUrlChange(value: string) {
+    url = value;
+    if (value !== lastExtractedUrl) {
+      sourceTitle = '';
+      authors = '';
+    }
+  }
+
   onMount(async () => {
     try {
       card = await api.cards.get(cardId);
@@ -127,14 +159,23 @@
           <label for="source-url" class="block text-sm font-medium text-slate-700">
             URL <span class="text-red-500">*</span>
           </label>
-          <input
-            id="source-url"
-            type="url"
-            bind:value={url}
-            required
-            placeholder="https://doi.org/..."
-            class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-slate-400"
-          />
+          <div class="relative">
+            <input
+              id="source-url"
+              type="url"
+              value={url}
+              oninput={(e) => onUrlChange((e.target as HTMLInputElement).value)}
+              onblur={extractUrl}
+              required
+              placeholder="https://doi.org/..."
+              class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-slate-400"
+            />
+            {#if extracting}
+              <div
+                class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"
+              ></div>
+            {/if}
+          </div>
         </div>
 
         <div class="space-y-1.5">
