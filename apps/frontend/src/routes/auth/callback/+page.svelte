@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { page } from '$app/stores';
   import { api } from '$lib/api';
   import { auth } from '$lib/stores/auth';
 
@@ -10,7 +9,6 @@
   onMount(async () => {
     const currentUrl = new URL(window.location.href);
     const error = currentUrl.searchParams.get('error');
-    const code = currentUrl.searchParams.get('code');
 
     if (error) {
       statusMessage = 'Authentification refusée. Redirection…';
@@ -18,14 +16,8 @@
       return;
     }
 
-    if (!code) {
-      statusMessage = "Code d'authentification manquant. Redirection…";
-      setTimeout(() => goto('/'), 2000);
-      return;
-    }
-
-    // The browser already sent the cookie via the redirect from /auth/google/callback
-    // — check /auth/me to hydrate the store
+    // The backend already set the session cookie and redirected here
+    // — check /auth/me to hydrate the store and redirect to dashboard
     try {
       const user = await api.auth.me();
       if (user) {

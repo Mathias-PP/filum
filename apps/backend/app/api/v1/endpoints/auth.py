@@ -210,7 +210,9 @@ async def google_callback(
         existing_user = await auth_service.get_user_by_google_id(google_sub)
         if existing_user:
             session_token = auth_service.create_session(existing_user.id)
-            response = RedirectResponse(url=settings.frontend_base_url, status_code=303)
+            response = RedirectResponse(
+                url=f"{settings.frontend_base_url}/auth/callback", status_code=303
+            )
             _delete_state_cookie(response)
             _set_session_cookie(response, session_token)
             return response
@@ -225,7 +227,9 @@ async def google_callback(
         )
 
         session_token = auth_service.create_session(user.id)
-        response = RedirectResponse(url=settings.frontend_base_url, status_code=303)
+        response = RedirectResponse(
+            url=f"{settings.frontend_base_url}/auth/callback", status_code=303
+        )
         _delete_state_cookie(response)
         _set_session_cookie(response, session_token)
         return response
