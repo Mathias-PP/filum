@@ -1,11 +1,13 @@
 <script lang="ts">
   import '../app.css';
   import { env } from '$env/dynamic/public';
+  import { goto } from '$app/navigation';
   import { auth } from '$lib/stores';
   import { page } from '$app/stores';
   import { Logo } from '$lib/components';
 
-  const loginUrl = `${env.PUBLIC_API_BASE_URL ?? ''}/api/v1/auth/login`;
+  const API_BASE = env.PUBLIC_API_BASE_URL ?? '';
+  const googleLoginUrl = `${API_BASE}/api/v1/auth/google/login`;
 
   interface Props {
     data: { user: unknown };
@@ -14,16 +16,43 @@
 
   let { data, children }: Props = $props();
 
+  let showUserMenu = $state(false);
+
   $effect(() => {
     auth.setUser(data.user as any);
   });
 
+  function closeUserMenu() {
+    showUserMenu = false;
+  }
+
+  async function logout() {
+    try {
+      await fetch(`${API_BASE}/api/v1/auth/logout`, { method: 'POST', credentials: 'include' });
+    } catch {
+      // proceed even if server error
+    }
+    auth.reset();
+    goto('/');
+  }
+
+  function userInitials(name: string): string {
+    return name
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase();
+  }
+
   const navItems = [
     { href: '/', label: 'Accueil' },
-    { href: '/dashboard', label: 'Tableau de bord' },
     { href: '/about', label: 'À propos' },
   ];
 </script>
+
+<svelte:window onclick={closeUserMenu} />
 
 <div class="min-h-screen flex flex-col">
   <header class="sticky top-0 z-50 bg-white border-b border-slate-200">
@@ -49,10 +78,60 @@
 
         <div class="flex items-center gap-3">
           {#if data.user}
-            <a href="/dashboard" class="btn-primary text-sm">Tableau de bord</a>
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div
+              class="relative"
+              onclick={(e) => {
+                e.stopPropagation();
+                showUserMenu = !showUserMenu;
+              }}
+            >
+              {#if data.user.avatar_url}
+                <img
+                  src={data.user.avatar_url}
+                  alt={data.user.display_name ?? data.user.username}
+                  class="w-8 h-8 rounded-full cursor-pointer ring-2 ring-slate-200 hover:ring-blue-400 transition-all"
+                />
+              {:else}
+                <div
+                  class="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-medium cursor-pointer ring-2 ring-slate-200 hover:ring-blue-400 transition-all"
+                >
+                  {userInitials(data.user.display_name ?? data.user.username)}
+                </div>
+              {/if}
+              {#if showUserMenu}
+                <!-- svelte-ignore a11y_click_events_have_key_events -->
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <div
+                  class="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-200 py-1 z-50"
+                  onclick={(e) => e.stopPropagation()}
+                >
+                  <div class="px-4 py-2 border-b border-slate-100">
+                    <p class="text-sm font-medium text-slate-900 truncate">
+                      {data.user.display_name ?? data.user.username}
+                    </p>
+                    <p class="text-xs text-slate-500 truncate">@{data.user.username}</p>
+                  </div>
+                  <a
+                    href="/dashboard"
+                    class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    Tableau de bord
+                  </a>
+                  <button
+                    type="button"
+                    onclick={logout}
+                    class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                  >
+                    Se déconnecter
+                  </button>
+                </div>
+              {/if}
+            </div>
           {:else}
-            <a href={loginUrl} class="btn-secondary text-sm">Se connecter</a>
-            <a href={loginUrl} class="btn-primary text-sm">Créer une fiche</a>
+            <a href={googleLoginUrl} class="btn-secondary text-sm">Se connecter</a>
+            <a href={googleLoginUrl} class="btn-primary text-sm">Créer une fiche</a>
           {/if}
         </div>
       </div>
