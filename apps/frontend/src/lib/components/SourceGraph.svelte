@@ -388,11 +388,17 @@
         forceLink<GraphNode, GraphLink>(links)
           .id((d) => d.id)
           .distance((l) => {
+            const src = typeof l.source === 'string' ? l.source : l.source.id
+            const tgt = typeof l.target === 'string' ? l.target : l.target.id
+            if (src.startsWith('junction:') || tgt.startsWith('junction:')) return 5
             if (l.kind === 'parent') return 75
             if (l.kind === 'sibling') return 25
             return 160
           })
           .strength((l) => {
+            const src = typeof l.source === 'string' ? l.source : l.source.id
+            const tgt = typeof l.target === 'string' ? l.target : l.target.id
+            if (src.startsWith('junction:') || tgt.startsWith('junction:')) return 0.05
             if (l.kind === 'sibling') return 0.6
             return 0.55
           })
