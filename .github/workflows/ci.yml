@@ -253,7 +253,7 @@ jobs:
         uses: astral-sh/setup-uv@v7
 
       - name: Compile dbt
-        run: uvx --from dbt-duckdb dbt compile --target ci
+        run: uvx --from 'dbt-duckdb<1.10' dbt compile --target ci
         working-directory: apps/analytics
 
   summary:
