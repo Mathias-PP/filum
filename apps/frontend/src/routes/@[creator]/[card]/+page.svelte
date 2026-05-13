@@ -206,6 +206,14 @@
                           ★ Source clé
                         </span>
                       {/if}
+                      {#if source.conflict_of_interest}
+                        <span
+                          class="px-2 py-0.5 text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full"
+                          title={source.conflict_of_interest}
+                        >
+                          Conflit d'intérêt déclaré
+                        </span>
+                      {/if}
                     </div>
                     {#if source.authors}
                       <p class="text-sm text-slate-500 mt-1">{source.authors}</p>
