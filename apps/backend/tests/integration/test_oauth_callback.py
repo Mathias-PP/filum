@@ -102,7 +102,7 @@ async def test_google_callback_creates_new_user(
     )
     assert response.status_code == 303
     location = response.headers.get("location", "")
-    assert location == "http://localhost:5173"
+    assert location == "http://localhost:5173/auth/callback"
 
     set_cookie = response.headers.get("set-cookie", "")
     assert "filum_session=" in set_cookie
@@ -162,7 +162,7 @@ async def test_google_callback_returns_existing_user(
         follow_redirects=False,
     )
     assert response.status_code == 303
-    assert response.headers.get("location", "") == "http://localhost:5173"
+    assert response.headers.get("location", "") == "http://localhost:5173/auth/callback"
     assert "filum_session=" in response.headers.get("set-cookie", "")
 
 
