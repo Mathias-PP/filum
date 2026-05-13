@@ -30,7 +30,8 @@
         </h1>
         <p class="text-xl text-slate-600 mb-8 text-balance">
           Filum transforme votre bibliographie en un graphe interactif : sources organisées,
-          archivées et signées cryptographiquement.
+          archivées, et chaque contenu original que vous revendiquez est attesté
+          cryptographiquement.
         </p>
         <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
           {#if isAuthenticated}
@@ -106,10 +107,10 @@
               />
             </svg>
           </div>
-          <h3 class="text-xl font-semibold text-slate-900 mb-2">2. Signer</h3>
+          <h3 class="text-xl font-semibold text-slate-900 mb-2">2. Attester</h3>
           <p class="text-slate-600">
-            Votre fiche est signée avec une clé Ed25519. Hash SHA-256 et horodatage garantissent
-            l'authenticité.
+            Chaque contenu original que vous revendiquez est attesté avec votre clé Ed25519 : le
+            triplet (vous, l'URL du contenu, la date) est signé et vérifiable par tous.
           </p>
         </div>
         <div class="text-center">
@@ -141,7 +142,7 @@
         <h2 class="text-3xl font-bold text-slate-900 mb-4">Pour qui ?</h2>
         <p class="text-xl text-slate-600 max-w-2xl mx-auto">
           Filum s'adresse à tou·te·s les créateur·ice·s qui veulent rendre visible la qualité de
-          leur sourçage.
+          leurs références.
         </p>
       </div>
       <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -168,16 +169,9 @@
         <div class="card">
           <h3 class="text-lg font-semibold text-slate-900 mb-2">Créateur·ice·s de contenu</h3>
           <p class="text-slate-600">
-            Vous ne vous reconnaissez pas dans les cases ci-dessus ? Filum est aussi pour vous.
             Chaque source mérite d'être citée, quel que soit votre format.
           </p>
         </div>
-      </div>
-      <div class="mt-8 text-center">
-        <p class="text-sm text-slate-500 italic">
-          N'oubliez pas de citer les créateur·ice·s de contenu — ils et elles ne se considèrent pas
-          toujours comme des vulgarisateurs scientifiques ou des journalistes.
-        </p>
       </div>
     </div>
   </section>

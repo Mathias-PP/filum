@@ -1,5 +1,7 @@
 # 08 — Glossaire
 
+> ⚠️ **Pivot ADR-019 (2026-05-14)** : les définitions de « signature de fiche », « canonical_hash de fiche », « fiche immuable » sont obsolètes. Nouveau terme à formaliser : **attestation de contenu** = triplet signé `(creator_id, content_url, attested_at)` prouvant la revendication d'un contenu original par son créateur·ice à une date précise. Voir `DECISIONS.md` ADR-019.
+
 > Termes techniques, juridiques et institutionnels utilisés dans le projet. Conçu pour servir à la fois de rappel et de briefing initial pour un agent IA.
 
 ---

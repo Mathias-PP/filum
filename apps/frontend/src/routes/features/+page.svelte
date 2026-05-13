@@ -9,8 +9,8 @@
 <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
   <h1 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">Fonctionnalités</h1>
   <p class="text-xl text-slate-600 mb-12 max-w-3xl">
-    Filum est conçu pour les créateur·ice·s qui veulent rendre visible la qualité de leur sourçage.
-    Voici ce que la plateforme offre aujourd'hui et ce qui est en préparation.
+    Filum est conçu pour les créateur·ice·s qui veulent rendre visible la qualité de leurs
+    références. Voici ce que la plateforme offre aujourd'hui et ce qui est en préparation.
   </p>
 
   <h2 class="text-2xl font-semibold text-slate-900 mb-6">Disponibles aujourd'hui</h2>
@@ -28,7 +28,7 @@
       <h3 class="text-lg font-semibold text-slate-900 mb-2">Graphe interactif</h3>
       <p class="text-slate-600 text-sm">
         Visualisez vos sources sous forme de graphe dynamique. Chaque nœud représente une source,
-        les pivots sont mis en avant. Exploration intuitive : cliquez, glissez, zoomez.
+        les sources clés sont mises en avant. Exploration intuitive : cliquez, glissez, zoomez.
       </p>
     </div>
 
@@ -42,10 +42,11 @@
           /></svg
         >
       </div>
-      <h3 class="text-lg font-semibold text-slate-900 mb-2">Signature cryptographique</h3>
+      <h3 class="text-lg font-semibold text-slate-900 mb-2">Attestation de contenu Ed25519</h3>
       <p class="text-slate-600 text-sm">
-        Chaque fiche publiée est signée avec une clé Ed25519. Le hash SHA-256 et l'horodatage
-        garantissent l'intégrité et l'authenticité du contenu. Vérifiable par n'importe qui.
+        Chaque contenu original que vous revendiquez (vidéo, article, podcast…) est attesté avec
+        votre clé Ed25519 : le triplet (vous, l'URL, la date) est signé et vérifiable par n'importe
+        qui.
       </p>
     </div>
 
@@ -95,8 +96,8 @@
       </div>
       <h3 class="text-lg font-semibold text-slate-900 mb-2">6 types de sources</h3>
       <p class="text-slate-600 text-sm">
-        Articles scientifique, sources institutionnelles, presse, vidéos, images, sources originales
-        — chaque type a son propre affichage et son propre poids dans le graphe.
+        Articles scientifiques, sources institutionnelles, presse, vidéos, images, sources
+        originales : chaque type a son propre affichage et son propre poids dans le graphe.
       </p>
     </div>
 
@@ -110,9 +111,9 @@
           /><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg
         >
       </div>
-      <h3 class="text-lg font-semibold text-slate-900 mb-2">Sources clés (pivots)</h3>
+      <h3 class="text-lg font-semibold text-slate-900 mb-2">Sources clés</h3>
       <p class="text-slate-600 text-sm">
-        Marquez une source comme « pivot » pour indiquer qu'elle est structurante dans votre
+        Marquez une source comme « clé » pour indiquer qu'elle est structurante dans votre
         raisonnement. Elle apparaît en évidence dans le graphe.
       </p>
     </div>
@@ -167,9 +168,15 @@
         Intégrez Filum dans vos outils : API REST publique et serveur MCP pour les agents IA.
       </p>
     </div>
+    <div class="bg-slate-50 rounded-xl p-6 border border-slate-200 border-dashed">
+      <h3 class="text-lg font-semibold text-slate-900 mb-2">Filum Desktop</h3>
+      <p class="text-slate-600 text-sm">
+        Application de bureau pour gérer vos références hors ligne, avec synchronisation et
+        intégration aux outils locaux.
+      </p>
+    </div>
   </div>
   <p class="text-sm text-slate-500">
-    Ces fonctionnalités sont en cours de développement. Leur ordre d'arrivée peut varier. Des
-    suggestions ? Écrivez-nous.
+    Ces fonctionnalités sont en cours de développement. Leur ordre d'arrivée peut varier.
   </p>
 </div>

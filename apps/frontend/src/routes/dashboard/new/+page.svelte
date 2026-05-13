@@ -84,7 +84,7 @@
   </div>
 
   <h1 class="text-2xl font-bold text-slate-900 mb-2">Nouvelle fiche</h1>
-  <p class="text-slate-600 mb-8">Étape 1/2 — Informations sur votre contenu</p>
+  <p class="text-slate-600 mb-8">Étape 1/2 : informations sur votre contenu</p>
 
   <form onsubmit={handleSubmit} class="space-y-6">
     {#if error}

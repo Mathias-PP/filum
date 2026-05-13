@@ -2,7 +2,7 @@
 
 > Infrastructure ouverte de provenance et de filiation pour le contenu numérique.
 
-**Filum** est un outil qui permet à tout créateur de contenu (vidéo, article, podcast, post long) de transformer sa bibliographie en une fiche publique interactive : sources organisées par type et autorité, archivées de manière horodatée (Wayback Machine), signées cryptographiquement (Ed25519), et reliées entre elles dans un **graphe interactif D3.js** — le tout sur une page publique stable.
+**Filum** est un outil qui permet à tout créateur de contenu (vidéo, article, podcast, post long) de transformer sa bibliographie en une fiche publique interactive : sources organisées par type et autorité, archivées de manière horodatée (Wayback Machine), reliées entre elles dans un **graphe interactif D3.js**, et chaque contenu original revendiqué par son créateur·ice est attesté cryptographiquement (Ed25519, ADR-019) — le tout sur une page publique stable.
 
 À l'ère de l'IA générative qui brouille les pistes de l'authenticité, Filum n'est pas un outil de détection de faux. C'est un **label qualité** pour les créateurs qui prennent le temps de bien sourcer leur travail.
 

@@ -488,6 +488,52 @@ Les fiches publiques avaient des meta tags `og:title`, `og:description`, mais pa
 - Image générée à la volée (pas de cache pour l'instant — à ajouter si le trafic augmente)
 - Les polices DejaVu sont présentes sur Railway (Ubuntu) et en local — si absentes, Pillow utilise un fallback
 
+## ADR-019 — La signature porte sur le lien créateur·ice ↔ contenu, plus sur la fiche bibliographique
+
+**Date** : 2026-05-14
+
+**Contexte**
+Le MVP signe chaque fiche bibliographique au moment du `publish` : `canonical_hash` + `signature` Ed25519 sur `BiblioCard` (titre + sources + métadonnées canonicalisées via RFC 8785). Conséquence implicite acceptée jusqu'ici : la fiche devient immuable ; toute modification invaliderait la signature et nécessiterait dé-publication / re-publication, donc en pratique elle est figée.
+
+L'utilisateur (Mathias) constate que ce modèle est contre-productif :
+- Les fiches sont des documents vivants. Corriger une coquille, ajouter une source plus tard, raffiner une annotation : autant de gestes légitimes que l'immuabilité bloque.
+- Ce qui compte vraiment, ce que les usagers tiers veulent vérifier, ce n'est pas la composition exacte de la bibliographie à un instant T mais : « tel·le créateur·ice revendique-t-il·elle bien tel contenu original (vidéo, article, podcast) à telle date ? »
+
+**Décision**
+La crypto Ed25519 / SHA-256 / RFC 8785 est conservée mais l'objet signé change. **Un seul type d'objet attesté** : le **lien créateur·ice ↔ contenu**, sous forme d'un triplet `(creator_id, content_url, attested_at)`, signé. Cela prouve « tel·le créateur·ice revendique telle URL comme contenu mien à telle date ».
+
+Les fiches bibliographiques (`BiblioCard`) **redeviennent mutables** : modification libre tant que le créateur est authentifié. Suppression des colonnes `canonical_hash`, `signature`, `signed_at` du contrat de signature (`published_at` peut rester pour l'horodatage UX, sans rôle cryptographique).
+
+Le **profil créateur·ice n'est PAS signé** en tant que tel. Seule sa clé publique est exposée publiquement pour permettre la vérification des attestations qu'il·elle a émises. L'identité Filum reste portée par l'authentification (Google OAuth) et la possession démontrée de la clé privée.
+
+**Justifications**
+- Aligne le produit sur le besoin réel (vérifier la paternité d'un contenu) plutôt que sur un fantasme d'immuabilité bibliographique
+- Décolle la crypto du flux d'édition : on peut éditer une fiche autant qu'on veut sans rien resigner
+- Simplifie le modèle mental : « ce que Filum garantit, c'est mon lien à un contenu, pas mon brouillon de bibliographie »
+- Modèle à un seul type d'objet signé : plus simple à implémenter et à expliquer qu'un système à deux types (profil + content_link)
+- Ouvre la voie naturelle à la collaboration sur les fiches (Phase 2)
+
+**Conséquences code (à implémenter dans PR backend dédiée, non incluse dans #31)**
+- Nouvelle table `content_attestations` : `(id, user_id, content_url, attested_at, canonical_hash, signature)`. Unicité sur `(user_id, content_url)` à discuter (un même créateur revendique-t-il une URL une seule fois, ou peut-il la re-revendiquer ultérieurement ?)
+- Suppression de la signature sur `biblio_cards` : migration `006_remove_card_signature` qui dropte `canonical_hash`, `signature`, `signed_at` (et garde `published_at` sans rôle crypto)
+- Endpoint `POST /cards/{id}/publish` redevient un simple flip de statut, plus de crypto
+- Nouvel endpoint `POST /attestations/content` (création) + `GET /attestations/{id}/verify` (vérification publique)
+- Liaison `BiblioCard.content_url` → `ContentAttestation` : à exposer dans la fiche publique pour afficher l'attestation correspondante
+- Refonte de `seed_demo.py` : plus de re-signature de fiche, à la place une attestation de contenu pour la vidéo démo « Mémoire et cerveau »
+- Frontend types `BiblioCard`/`PublicCard` : supprimer `canonical_hash`/`signature`/`signed_at` (ou garder `null`-ables le temps de la migration). Ajouter un type `ContentAttestation`
+- Tests : `test_canonical_hash.py` / `test_crypto.py` rebasculer sur les attestations de contenu
+- Specs `.docs/01..04, 08` : sections crypto à réécrire (objet signé, schéma, API)
+- `agent/PITFALLS.md` item 1.3 : la règle « ne jamais modifier le payload signé » s'applique maintenant aux attestations de contenu
+
+**Conséquences user-facing (incluses dans PR #31)**
+- Page `/security` réécrite : un seul type d'objet signé expliqué (le lien créateur·ice ↔ contenu)
+- Pages `/`, `/features`, `/about`, `/roadmap` : reformulation « attestation de contenu », plus de mention d'immuabilité de fiche
+- Fiche publique `@{creator}/{card}` : footer ne montre plus la signature hash de la fiche ; affiche « Contenu revendiqué par son créateur·ice » avec lien vers `/security`. La date affichée est `published_at` (sans rôle crypto)
+- FAQ « Puis-je modifier une fiche publiée ? » supprimée (réponse devient « oui »)
+
+**Transition**
+La prod tourne encore avec l'ancien schéma. Le frontend de PR #31 ne *lit* plus `card.signature` / `card.signed_at` ; les champs restent renvoyés par l'API mais ignorés. Pas de casse côté prod. La PR backend dédiée fera la migration descendante propre et ajoutera la table `content_attestations`.
+
 ---
 
 <!--

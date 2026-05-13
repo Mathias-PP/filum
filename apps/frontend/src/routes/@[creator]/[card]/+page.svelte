@@ -308,24 +308,24 @@
       <div
         class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-wrap items-center justify-between gap-4"
       >
-        <div class="text-xs text-slate-500 font-mono break-all">
-          <p class="text-slate-700 font-sans font-medium not-italic mb-1">Signature Ed25519</p>
-          {#if card.signature}
-            {card.signature.slice(0, 32)}…{card.signature.slice(-8)}
-          {:else}
-            <span class="italic text-slate-400">non signée</span>
-          {/if}
+        <div class="text-sm text-slate-500">
+          <p class="text-slate-700 font-medium mb-1">Contenu revendiqué par son créateur·ice</p>
+          <p class="text-xs">
+            L'URL du contenu original est attestée par signature Ed25519. <a
+              href="/security"
+              class="text-blue-600 hover:text-blue-800 underline">En savoir plus</a
+            >
+          </p>
         </div>
         <div class="text-sm text-slate-500 text-right">
-          <p>
-            Signé le {card.signed_at
-              ? new Date(card.signed_at).toLocaleString('fr-FR', {
-                  dateStyle: 'long',
-                  timeStyle: 'short',
-                })
-              : 'N/A'}
-          </p>
-          <p class="text-xs">Vérifiable via l'API</p>
+          {#if card.published_at}
+            <p>
+              Publiée le {new Date(card.published_at).toLocaleString('fr-FR', {
+                dateStyle: 'long',
+                timeStyle: 'short',
+              })}
+            </p>
+          {/if}
         </div>
       </div>
     </footer>

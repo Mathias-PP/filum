@@ -29,14 +29,16 @@
 - **Cause** : `sa.Column("col", ForeignKey(...), index=True)` à l'intérieur d'un `create_table()` crée déjà l'index avec nom auto `ix_<table>_<col>`. Ajouter un `op.create_index("ix_<table>_<col>", ...)` après est redondant.
 - **Prévention** : si `index=True` dans la colonne, **pas** de `op.create_index` derrière. Et inversement.
 
-### 1.3 Nouveau champ qui entre dans `canonical_hash`
+### 1.3 Payload signé immuable (ex-`canonical_hash` sur fiche, maintenant attestation de contenu)
 
-- **Symptôme** : les fiches déjà signées en prod deviennent invérifiables (`verify_card` retourne `False`).
-- **Cause** : le `canonical_hash` est une signature gelée. Tout champ qui entre dedans modifie le hash de toutes les fiches passées.
-- **Prévention** : **aucun nouveau champ sur `sources` / `biblio_cards` ne doit entrer dans le payload `canonical_hash`** sans :
+> ⚠️ **Pivot ADR-019 (2026-05-14)** : la signature ne porte plus sur la fiche bibliographique mais sur le **lien créateur·ice ↔ contenu** — triplet `(creator_id, content_url, attested_at)`. Les fiches sont mutables. Tant que la migration `006_remove_card_signature` + table `content_attestations` ne sont pas mergées, l'ancien `canonical_hash` sur `biblio_cards` reste en base mais n'est plus exposé en frontend.
+
+- **Symptôme** : une attestation de contenu déjà émise devient invérifiable (la vérification renvoie `False`) car le payload signé a changé de forme.
+- **Cause** : un payload signé est gelé. Tout champ ajouté/retiré au schéma sérialisé change le hash de toutes les signatures passées.
+- **Prévention** : **aucun nouveau champ ne doit entrer dans le payload canonicalisé d'une `content_attestation`** sans :
   1. Un ADR explicite expliquant pourquoi c'est nécessaire
-  2. Un plan de re-signature de toutes les fiches existantes
-- **Localisation** : `apps/backend/app/services/card.py` lignes 96-105 et 161-169 + `apps/backend/app/scripts/seed_demo.py`.
+  2. Un plan de re-attestation pour toutes les attestations existantes
+- **Localisation post-migration** : à définir (probablement `apps/backend/app/services/attestation.py`). Pre-migration : `apps/backend/app/services/card.py` + `apps/backend/app/scripts/seed_demo.py`.
 
 ### 1.4 `MissingGreenlet` sur accès relation ORM post-commit
 
