@@ -6,7 +6,7 @@
 
 ## Dernière mise à jour
 
-**2026-05-13** — session « P0 seed patch, sources non-académiques, logo circulaire, refonte noeud central du graphe »
+**2026-05-13** — session 2 : commit+push des modifs P0 + CI/CD cleanup (fix double uv sync, dependabot, stale branches)
 
 ---
 
@@ -31,10 +31,8 @@
 ## Branches Git
 
 | Branche | État |
-|---|---|
-| `main` | Branche unique. Tout est mergé, les feature branches MVP ont été supprimées. |
-
-Le repo a été simplifié après le squash-merge de la PR #1 (« feat: MVP — backend FastAPI + frontend SvelteKit + CI verte »).
+|---|---|---|
+| `main` | Branche unique. Les branches distantes `feat/iteration-2-*` et `feat/source-graph-*` ont été supprimées. |
 
 ---
 
@@ -52,6 +50,10 @@ Le repo a été simplifié après le squash-merge de la PR #1 (« feat: MVP — 
 - Analytics Check (dbt compile)
 
 Workflow `cd.yml` supprimé : Railway déploie en natif via son intégration GitHub (cf. ADR-015).
+
+**Améliorations CI récentes (2026-05-13)** :
+- Suppression du double `uv sync` dans `lint-backend` (le `--only-dev` initial était écrasé par `--all-extras`)
+- Ajout de `.github/dependabot.yml` : mises à jour hebdo pip/npm, mensuelles GitHub Actions
 
 ---
 

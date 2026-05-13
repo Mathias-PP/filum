@@ -13,8 +13,11 @@
 - **Logo** : passage d'un arbre phylogénétique debout à une version circulaire (6 branches rayonnantes, nœuds tip interconnectés). Appliqué à `Logo.svelte` et `favicon.svg`.
 - **Noeud central du graphe** (SourceGraph.svelte) : suppression du pictogramme "play" (triangle vidéo) ; remplacé par un label textuel du type de contenu (Vidéo, Article, Podcast…) ; ajout du titre du contenu tronqué sous le cercle central.
 - **Démo** : 2 nouvelles sources non-académiques ajoutées (documentaire NOVA "Memory Hackers" avec citation, dessin des neurones hippocampiques de Ramón y Cajal de 1909). 16 sources, 7 arêtes de citation.
+- **CI `lint-backend`** : supprime le double `uv sync` (le `--only-dev` initial était écrasé par le `--all-extras` suivant). Un seul `uv sync --all-extras` suffit.
+- **STATE.md** : section Branches simplifiée, section CI enrichie (dependabot, fix double sync).
 
 ### Added
+- `.github/dependabot.yml` : mises à jour hebdo pip/npm, mensuelles GitHub Actions (labels dépendances/ci).
 - Itération 2 (ADR-017) : nouveau logo (arbre phylogénétique + graphe), badges « Source clé » + « Conflit d'intérêt déclaré », indicateurs typés (citations, impact factor, abonnés, vues), table `source_excerpts` avec extraits cités, plein écran sur le graphe, panneau de détail ancré au nœud cliqué (au lieu de coller au bord droit), SSR + JSON-LD + meta OG/Twitter/canonical sur la fiche publique pour le référencement classique et le GEO
 - Migration 004 : colonnes `conflict_of_interest`, `citations_count`, `subscribers_count`, `views_count`, `impact_factor` sur `sources`, et nouvelle table `source_excerpts(source_id CASCADE, position, text, suggested_by_ai)`
 - Section publique renommée « Sources citées » (ex « Liste éditoriale »), titres des sources calés à `text-base` pour rétablir la hiérarchie typographique
