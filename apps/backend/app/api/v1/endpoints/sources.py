@@ -154,7 +154,7 @@ async def create_source(
     result = await db.execute(
         select(Source).options(selectinload(Source.excerpts)).where(Source.id == source.id)
     )
-    source = result.scalar_one()
+    source = cast(Source, result.scalar_one())
 
     source_id_bg = source.id
     source_url_bg = source.url
