@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+import asyncio
 from typing import cast
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, HttpUrl
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.db.database import get_db
+from app.db.database import async_session_maker, get_db
+from app.extractors import url_extractor
 from app.models.biblio_card import BiblioCard, CardStatus
 from app.models.source import Source
 from app.models.user import User
@@ -20,8 +23,37 @@ router = APIRouter(prefix="/sources", tags=["sources"])
 settings = get_settings()
 
 
+class ExtractResponse(BaseModel):
+    title: str | None
+    authors: str | None
+    published_at: str | None
+    description: str | None
+    citations_count: int | None
+    impact_factor: float | None
+
+
 async def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
     return AuthService(db)
+
+
+@router.get("/extract", response_model=ExtractResponse)
+async def extract_url_metadata(
+    url: HttpUrl = Query(..., description="URL to extract metadata from"),
+):
+    """Extract title, authors, date, citations from a URL (best-effort, no auth required)."""
+    if url.scheme not in ("http", "https"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Only http/https URLs are supported"
+        )
+    meta = await url_extractor.extract(str(url))
+    return ExtractResponse(
+        title=meta.title,
+        authors=meta.authors,
+        published_at=meta.published_at,
+        description=meta.description,
+        citations_count=meta.citations_count,
+        impact_factor=meta.impact_factor,
+    )
 
 
 async def get_current_user(request, auth_service: AuthService = Depends(get_auth_service)) -> User:
@@ -86,8 +118,15 @@ async def create_source(
     await db.commit()
     await db.refresh(source)
 
-    wayback = WaybackService(db, settings.wayback_api_key)
-    await wayback.archive_url(source.id, source.url)
+    source_id_bg = source.id
+    source_url_bg = source.url
+
+    async def _archive_bg() -> None:
+        async with async_session_maker() as bg_db:
+            wayback = WaybackService(bg_db, settings.wayback_api_key)
+            await wayback.archive_url(source_id_bg, source_url_bg)
+
+    asyncio.create_task(_archive_bg())
 
     return source
 
