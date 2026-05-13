@@ -112,7 +112,11 @@
       await api.cards.publish(cardId);
       goto('/dashboard');
     } catch (err) {
-      publishError = err instanceof Error ? err.message : 'Erreur lors de la publication';
+      if (err instanceof TypeError && err.message === 'Failed to fetch') {
+        publishError = 'Impossible de contacter le serveur. Vérifiez votre connexion et réessayez.';
+      } else {
+        publishError = err instanceof Error ? err.message : 'Erreur lors de la publication';
+      }
     } finally {
       publishing = false;
     }

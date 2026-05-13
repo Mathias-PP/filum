@@ -14,6 +14,11 @@
   const creatorSlug = $derived(data.creatorSlug);
   const cardSlug = $derived(data.cardSlug);
 
+  const API_BASE = import.meta.env.PUBLIC_API_BASE_URL ?? '';
+  const ogImageUrl = $derived(
+    `${API_BASE}/api/v1/og?title=${encodeURIComponent(card.title)}&creator=${encodeURIComponent(card.creator.display_name ?? card.creator.slug)}`
+  );
+
   let expandedSource = $state<string | null>(null);
   let descriptionExpanded = $state(false);
   let GraphComponent = $state<any>(null);
@@ -76,8 +81,11 @@
   <meta property="og:description" content={card.description ?? card.title} />
   <meta property="og:type" content="article" />
   <meta property="og:url" content={publicUrl} />
+  <meta property="og:image" content={ogImageUrl} />
+  <meta property="og:site_name" content="Filum" />
   <meta property="article:author" content={card.creator.display_name ?? card.creator.slug} />
   <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content={ogImageUrl} />
   <link rel="canonical" href={publicUrl} />
   {@html `<script type="application/ld+json">${JSON.stringify(jsonLd)}<` + `/script>`}
 </svelte:head>

@@ -1,11 +1,11 @@
 <script lang="ts">
   import '../app.css';
   import { env } from '$env/dynamic/public';
-  import { goto } from '$app/navigation';
+  import { goto, invalidateAll } from '$app/navigation';
+  import { api, type User } from '$lib/api';
   import { auth } from '$lib/stores';
   import { page } from '$app/stores';
   import { Logo } from '$lib/components';
-  import type { User } from '$lib/api';
 
   const API_BASE = env.PUBLIC_API_BASE_URL ?? '';
   const googleLoginUrl = `${API_BASE}/api/v1/auth/google/login`;
@@ -29,11 +29,12 @@
 
   async function logout() {
     try {
-      await fetch(`${API_BASE}/api/v1/auth/logout`, { method: 'POST', credentials: 'include' });
+      await api.auth.logout();
     } catch {
       // proceed even if server error
     }
     auth.reset();
+    await invalidateAll();
     goto('/');
   }
 
@@ -49,6 +50,9 @@
 
   const navItems = [
     { href: '/', label: 'Accueil' },
+    { href: '/features', label: 'Fonctionnalités' },
+    { href: '/roadmap', label: 'Roadmap' },
+    { href: '/security', label: 'Sécurité' },
     { href: '/about', label: 'À propos' },
   ];
 </script>
