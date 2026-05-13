@@ -1,2 +1,2 @@
-dbt-duckdb>=1.9,<1.10
-dbt-core>=1.9,<1.10
+dbt-duckdb>=1.8,<1.9
+dbt-core>=1.8,<1.9
