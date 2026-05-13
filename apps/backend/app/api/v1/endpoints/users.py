@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -17,7 +17,9 @@ async def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
     return AuthService(db)
 
 
-async def get_current_user(request, auth_service: AuthService = Depends(get_auth_service)) -> User:
+async def get_current_user(
+    request: Request, auth_service: AuthService = Depends(get_auth_service)
+) -> User:
     user = await auth_service.get_current_user(request)
     if not user:
         raise HTTPException(
