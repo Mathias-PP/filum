@@ -1,21 +1,21 @@
 <script lang="ts">
-  import type { CardDetail, Source } from '$lib/api'
-  import { SOURCE_COLORS } from '$lib/utils/source-colors'
-  import SourceTypeBadge from './SourceTypeBadge.svelte'
+  import type { CardDetail, Source } from '$lib/api';
+  import { SOURCE_COLORS } from '$lib/utils/source-colors';
+  import SourceTypeBadge from './SourceTypeBadge.svelte';
 
   interface Anchor {
-    x: number
-    y: number
+    x: number;
+    y: number;
   }
 
   interface Props {
-    source: Source | null
-    card: CardDetail
-    anchor?: Anchor | null
-    containerWidth?: number
-    containerHeight?: number
-    onClose: () => void
-    onSelect: (source: Source) => void
+    source: Source | null;
+    card: CardDetail;
+    anchor?: Anchor | null;
+    containerWidth?: number;
+    containerHeight?: number;
+    onClose: () => void;
+    onSelect: (source: Source) => void;
   }
 
   let {
@@ -25,50 +25,50 @@
     containerWidth = 800,
     containerHeight = 560,
     onClose,
-    onSelect
-  }: Props = $props()
+    onSelect,
+  }: Props = $props();
 
-  const PANEL_WIDTH = 320
-  const PANEL_HEIGHT_EST = 420
-  const MARGIN = 12
+  const PANEL_WIDTH = 320;
+  const PANEL_HEIGHT_EST = 420;
+  const MARGIN = 12;
 
   function handleKeydown(event: KeyboardEvent) {
-    if (event.key === 'Escape' && source) onClose()
+    if (event.key === 'Escape' && source) onClose();
   }
 
   function parentOf(s: Source | null): Source | null {
-    if (!s || !s.parent_source_id) return null
-    return card.sources.find((x) => x.id === s.parent_source_id) ?? null
+    if (!s || !s.parent_source_id) return null;
+    return card.sources.find((x) => x.id === s.parent_source_id) ?? null;
   }
 
   function formatPublishedDate(value: string | null): string | null {
-    if (!value) return null
+    if (!value) return null;
     try {
-      return new Date(value).toLocaleDateString('fr-FR', { dateStyle: 'long' })
+      return new Date(value).toLocaleDateString('fr-FR', { dateStyle: 'long' });
     } catch {
-      return null
+      return null;
     }
   }
 
   function formatCount(n: number): string {
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
-    if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, '')}k`
-    return n.toLocaleString('fr-FR')
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace(/\.0$/, '')}k`;
+    return n.toLocaleString('fr-FR');
   }
 
-  const parent = $derived(parentOf(source))
-  const publishedDate = $derived(formatPublishedDate(source?.published_at ?? null))
-  const isMobile = $derived(containerWidth < 600)
+  const parent = $derived(parentOf(source));
+  const publishedDate = $derived(formatPublishedDate(source?.published_at ?? null));
+  const isMobile = $derived(containerWidth < 600);
 
   const panelStyle = $derived.by(() => {
-    if (!anchor || isMobile) return ''
-    const onLeftHalf = anchor.x < containerWidth / 2
-    let left = onLeftHalf ? anchor.x + 24 : anchor.x - PANEL_WIDTH - 24
-    left = Math.max(MARGIN, Math.min(containerWidth - PANEL_WIDTH - MARGIN, left))
-    let top = anchor.y - PANEL_HEIGHT_EST / 2
-    top = Math.max(MARGIN, Math.min(containerHeight - PANEL_HEIGHT_EST - MARGIN, top))
-    return `left:${left}px; top:${top}px; width:${PANEL_WIDTH}px;`
-  })
+    if (!anchor || isMobile) return '';
+    const onLeftHalf = anchor.x < containerWidth / 2;
+    let left = onLeftHalf ? anchor.x + 24 : anchor.x - PANEL_WIDTH - 24;
+    left = Math.max(MARGIN, Math.min(containerWidth - PANEL_WIDTH - MARGIN, left));
+    let top = anchor.y - PANEL_HEIGHT_EST / 2;
+    top = Math.max(MARGIN, Math.min(containerHeight - PANEL_HEIGHT_EST - MARGIN, top));
+    return `left:${left}px; top:${top}px; width:${PANEL_WIDTH}px;`;
+  });
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -131,7 +131,13 @@
           class="text-slate-500 hover:text-slate-900 transition-colors shrink-0"
           aria-label="Fermer"
         >
-          <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2">
+          <svg
+            viewBox="0 0 24 24"
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
             <line x1="6" y1="6" x2="18" y2="18" />
             <line x1="6" y1="18" x2="18" y2="6" />
           </svg>
@@ -155,22 +161,30 @@
       {#if source.citations_count || source.impact_factor || source.subscribers_count || source.views_count}
         <div class="mt-3 flex flex-wrap gap-1.5">
           {#if source.citations_count}
-            <span class="inline-flex items-center text-xs text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
+            <span
+              class="inline-flex items-center text-xs text-slate-700 bg-slate-100 px-2 py-0.5 rounded"
+            >
               {formatCount(source.citations_count)} citations
             </span>
           {/if}
           {#if source.impact_factor}
-            <span class="inline-flex items-center text-xs text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
+            <span
+              class="inline-flex items-center text-xs text-slate-700 bg-slate-100 px-2 py-0.5 rounded"
+            >
               Impact factor {source.impact_factor.toFixed(1)}
             </span>
           {/if}
           {#if source.subscribers_count}
-            <span class="inline-flex items-center text-xs text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
+            <span
+              class="inline-flex items-center text-xs text-slate-700 bg-slate-100 px-2 py-0.5 rounded"
+            >
               {formatCount(source.subscribers_count)} abonnés
             </span>
           {/if}
           {#if source.views_count}
-            <span class="inline-flex items-center text-xs text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
+            <span
+              class="inline-flex items-center text-xs text-slate-700 bg-slate-100 px-2 py-0.5 rounded"
+            >
               {formatCount(source.views_count)} vues
             </span>
           {/if}
@@ -217,7 +231,13 @@
           class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 transition-colors"
         >
           Voir la source
-          <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2">
+          <svg
+            viewBox="0 0 24 24"
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
             <path d="M7 17L17 7" />
             <path d="M7 7h10v10" />
           </svg>

@@ -10,6 +10,8 @@
 
 **2026-05-13** — session 3.5 : correction Y-branching (deux sources Nader mal groupées → deux sources Léa Marchand en premier cercle, premier Y-branch fonctionnel entre le nœud central et les deux notes de tournage)
 
+**2026-05-13** — itération 3 PR1 : lint frontend activé (eslint 9 flat config + 6 deps + prettier pass 0 erreur), `crypto/signing.py` refactorisé (SigningService+Canonicalizer déplacés), `dashboard/new` + `dashboard/new/[card_id]/sources` créés, test vitest source-colors ajouté, CI `|| true` retiré.
+
 **2026-05-13** — session 3.6 : fork Y sans nœud visible (jonction radius 0 épinglée à 60% du chemin parent→enfants), lien original carte→source conservé caché pour les forces, lien sibling distance=55 force=2.0 pour garder les enfants soudés sans superposition des labels, enfants libres (non épinglés) — résultat : fourche Y propre, aucun nœud ne peut s'intercaler, labels lisibles.
 
 ---
@@ -48,8 +50,8 @@
 - Lint Backend (ruff)
 - Type Check Backend (mypy, 0 erreur)
 - Test Backend (41 tests pytest, 100% pass)
-- Lint Frontend (eslint + prettier, **masqué par `|| true`** — voir follow-ups)
-- Test Frontend (vitest avec `passWithNoTests: true`)
+- Lint Frontend (eslint 9 flat config, prettier, **actif** depuis PR1 itération 3)
+- Test Frontend (vitest, test source-colors 2/2)
 - Build Frontend (vite, `--frozen-lockfile`, pnpm 10 pinned)
 - Analytics Check (dbt compile)
 
@@ -124,10 +126,10 @@ Variables intentionnellement non configurées (defaults dans `config.py` suffise
 | Bug | Sévérité | Localisation |
 |---|---|---|
 | `apps/backend/app/extractors/` vide | Bloquant pour la prochaine feature | Module à implémenter (URL → métadonnées) |
-| `crypto/signing.py` = stub | Code smell | `SigningService` colocalisé dans `hashing.py` ; déplacer ou supprimer le stub |
-| Deps eslint frontend manquantes | Lint masqué par `\|\| true` | Manque `@eslint/js`, `@typescript-eslint/*`, `eslint-plugin-svelte`, `svelte-eslint-parser`, `eslint-config-prettier` |
+| ~~`crypto/signing.py` = stub~~ | **Résolu** | SigningService + Canonicalizer déplacés dans `signing.py`, `hashing.py` ne garde que `HashService` |
+| ~~Deps eslint frontend manquantes~~ | **Résolu** | 6 deps ajoutées, eslint 9 flat config réécrit, CI `\|\| true` retiré |
+| ~~8 warnings `state_referenced_locally`~~ | **Résolu** | Composants convertis à `$derived()` / `$effect()` |
 | Test composant Svelte 5 incompat | Bloquait check, supprimé | À réécrire avec API testing-library compatible Svelte 5 (Snippet vs string) |
-| 8 warnings `state_referenced_locally` | Best-effort | Composants design system passent `$state` en argument sans closure |
 | 6 erreurs ruff dans `alembic/versions/001_initial.py` | Cosmétique | CI ne lint pas `alembic/`, généré auto, `Union[X, None]` → `X \| None` |
 | Pas de domaine custom | Feature | Brancher `filum.app` quand prêt |
 | Cookie `samesite=lax` | Bloquant pour OAuth | Bascule `samesite=none + secure=True` quand OAuth Google sera branché (cf. `apps/backend/app/api/v1/endpoints/auth.py` 128-152) |
@@ -156,7 +158,7 @@ Le seed ne fait plus early-return : les sources sont recréées, les champs ité
 ### P1 — Vision produit (sans ça, Filum reste un démonstrateur)
 
 2. **Implémenter `apps/backend/app/extractors/` (actuellement vide).** Module d'extraction URL → métadonnées (titre, auteur, date, snapshot Wayback, et idéalement `citations_count`/`impact_factor` via Crossref / OpenAlex pour le peer-reviewed). Pierre angulaire annoncée depuis l'itération 1. Sans extracteur, aucun créateur ne peut ajouter de fiche sérieuse à grande échelle.
-3. **Page `/dashboard/new` : création de fiche.** Aujourd'hui `apps/frontend/src/routes/dashboard/` ne contient qu'un `+page.svelte` (vue d'ensemble). Aucune UI pour créer une fiche → seul un seed Python permet de publier. Bloquant pour onboarder un premier vrai créateur (autre que Mathias).
+3. ~~**Page `/dashboard/new` : création de fiche.**~~ **Fait (PR1 itération 3)** — routes `dashboard/new` (étape 1 métadonnées) + `dashboard/new/[card_id]/sources` (étape 2 sources + publication) créées.
 
 ### P2 — Auth / multi-utilisateur
 
@@ -165,8 +167,8 @@ Le seed ne fait plus early-return : les sources sont recréées, les champs ité
 
 ### P3 — Qualité interne (dette dormante)
 
-6. **CI frontend lint réactivé.** `.github/workflows/ci.yml` lignes 131-138 contiennent encore `pnpm run lint || true` et `continue-on-error: true`. Le lint frontend est de facto désactivé. Ajouter les déps eslint manquantes (`@eslint/js`, `@typescript-eslint/*`, `eslint-plugin-svelte`, `svelte-eslint-parser`, `eslint-config-prettier`) et retirer les `|| true`.
-7. **Nettoyer `crypto/signing.py`.** Le fichier est aujourd'hui un simple re-export depuis `hashing.py` (3 lignes). Soit déplacer `SigningService` ici, soit supprimer le shim.
+6. ~~**CI frontend lint réactivé.**~~ **Fait (PR1 itération 3).**
+7. ~~**Nettoyer `crypto/signing.py`.**~~ **Fait (PR1 itération 3).**
 8. **Réécrire un test composant Svelte 5.** Le test composant a été supprimé à l'itération 1 (incompatibilité Svelte 5). Le réécrire avec l'API courante `testing-library/svelte` (Snippet vs string).
 9. **Nettoyage `authority_level`.** La colonne reste en base et est sérialisée par l'API, mais l'UI itération 2 ne l'utilise plus (remplacée par les chips d'indicateurs typés). Choisir : (a) la retirer du schéma + migration de drop, (b) la garder pour rétrocompat et documenter qu'elle est "legacy / non-affichée".
 

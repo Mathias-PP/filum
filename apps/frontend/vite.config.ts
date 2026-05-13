@@ -1,5 +1,5 @@
-import { sveltekit } from '@sveltejs/kit/vite'
-import { defineConfig } from 'vite'
+import { sveltekit } from '@sveltejs/kit/vite';
+import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [sveltekit()],
@@ -9,15 +9,15 @@ export default defineConfig({
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
-        changeOrigin: true
-      }
-    }
+        changeOrigin: true,
+      },
+    },
   },
   build: {
     target: 'esnext',
-    minify: 'esbuild'
+    minify: 'esbuild',
   },
   optimizeDeps: {
-    include: ['d3']
-  }
-})
+    include: ['d3'],
+  },
+});

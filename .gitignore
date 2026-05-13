@@ -90,6 +90,7 @@ docs/_build/
 site/
 
 # === Tests ===
+*.db
 .coverage
 .tox/
 .nox/

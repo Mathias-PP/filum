@@ -1,15 +1,15 @@
 <script lang="ts">
   interface Props {
-    label: string
-    id?: string
-    type?: 'text' | 'email' | 'url' | 'password'
-    placeholder?: string
-    value?: string
-    error?: string
-    required?: boolean
-    disabled?: boolean
-    class?: string
-    oninput?: (e: Event) => void
+    label: string;
+    id?: string;
+    type?: 'text' | 'email' | 'url' | 'password';
+    placeholder?: string;
+    value?: string;
+    error?: string;
+    required?: boolean;
+    disabled?: boolean;
+    class?: string;
+    oninput?: (e: Event) => void;
   }
 
   let {
@@ -22,10 +22,10 @@
     required = false,
     disabled = false,
     class: className = '',
-    oninput
-  }: Props = $props()
+    oninput,
+  }: Props = $props();
 
-  const inputId = id || label.toLowerCase().replace(/\s+/g, '-')
+  const inputId = $derived(id || label.toLowerCase().replace(/\s+/g, '-'));
 </script>
 
 <div class="space-y-1.5 {className}">
@@ -42,7 +42,7 @@
     {placeholder}
     {required}
     {disabled}
-    oninput={oninput}
+    {oninput}
     class="w-full px-4 py-2 rounded-lg border bg-white transition-all
       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
       placeholder:text-slate-400

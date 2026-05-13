@@ -9,8 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import get_settings
-from app.crypto.hashing import Canonicalizer, HashService, SigningService
+from app.crypto.hashing import HashService
 from app.crypto.keygen import KeyManager
+from app.crypto.signing import Canonicalizer, SigningService
 from app.models.biblio_card import BiblioCard, CardStatus
 from app.models.source import ArchiveStatus, Source, SourceType
 from app.models.user import User

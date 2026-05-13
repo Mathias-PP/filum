@@ -1,18 +1,18 @@
 <script lang="ts">
-  import type { SourceType } from '$lib/api'
-  import { SOURCE_COLORS } from '$lib/utils/source-colors'
+  import type { SourceType } from '$lib/api';
+  import { SOURCE_COLORS } from '$lib/utils/source-colors';
 
   interface Props {
-    type: SourceType
-    size?: 'sm' | 'md'
+    type: SourceType;
+    size?: 'sm' | 'md';
   }
 
-  let { type, size = 'sm' }: Props = $props()
+  let { type, size = 'sm' }: Props = $props();
 
   const sizeClasses = {
     sm: 'px-2 py-0.5 text-xs',
-    md: 'px-2.5 py-1 text-sm'
-  }
+    md: 'px-2.5 py-1 text-sm',
+  };
 </script>
 
 <span

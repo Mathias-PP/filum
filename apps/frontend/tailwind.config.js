@@ -15,14 +15,14 @@ export default {
           700: '#1d4ed8',
           800: '#1e40af',
           900: '#1e3a8a',
-          950: '#172554'
-        }
+          950: '#172554',
+        },
       },
       fontFamily: {
         sans: ['Inter Variable', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'Consolas', 'monospace']
-      }
-    }
+        mono: ['JetBrains Mono', 'Consolas', 'monospace'],
+      },
+    },
   },
-  plugins: []
-}
+  plugins: [],
+};

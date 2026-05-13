@@ -3,7 +3,8 @@ from __future__ import annotations
 import pytest
 from cryptography.hazmat.primitives.asymmetric import ed25519
 
-from app.crypto.hashing import HashService, SigningService, Canonicalizer
+from app.crypto.hashing import HashService
+from app.crypto.signing import Canonicalizer, SigningService
 from app.crypto.keygen import KeyManager
 
 
