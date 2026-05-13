@@ -172,7 +172,7 @@
   function ticked(svgRoot: SVGSVGElement, nodes: GraphNode[], links: GraphLink[]) {
     const svg = select(svgRoot)
 
-    // Pin junction + children in a clean V fork
+    // Pin only the junction at 60% — children are free but bound by a strong sibling link
     for (const fork of forks) {
       const jx = nodes.find((n) => n.id === fork.junctionId)
       if (!jx) continue
@@ -188,29 +188,11 @@
       const py = parent.y ?? 0
       const dx = mx - px
       const dy = my - py
-      const dist = Math.sqrt(dx * dx + dy * dy) || 1
-      const ux = dx / dist
-      const uy = dy / dist
-      const perpX = -uy
-      const perpY = ux
 
-      // Fork point at 60% du chemin parent → enfants
-      const fx = px + dx * 0.6
-      const fy = py + dy * 0.6
-      jx.x = fx
-      jx.y = fy
-      jx.fx = fx
-      jx.fy = fy
-
-      // Enfants de part et d'autre de la ligne parent → fork, 50px d'écart
-      const halfGap = 25
-      for (let i = 0; i < children.length; i++) {
-        const side = i === 0 ? 1 : -1
-        children[i].fx = fx + perpX * halfGap * side
-        children[i].fy = fy + perpY * halfGap * side
-        children[i].x = children[i].fx!
-        children[i].y = children[i].fy!
-      }
+      jx.x = px + dx * 0.6
+      jx.y = py + dy * 0.6
+      jx.fx = jx.x
+      jx.fy = jx.y
     }
 
     svg
@@ -417,14 +399,14 @@
             const tgt = typeof l.target === 'string' ? l.target : l.target.id
             if (src.startsWith('junction:') || tgt.startsWith('junction:')) return 5
             if (l.kind === 'parent') return 75
-            if (l.kind === 'sibling') return 40
+            if (l.kind === 'sibling') return 25
             return 160
           })
           .strength((l) => {
             const src = typeof l.source === 'string' ? l.source : l.source.id
             const tgt = typeof l.target === 'string' ? l.target : l.target.id
             if (src.startsWith('junction:') || tgt.startsWith('junction:')) return 0.05
-            if (l.kind === 'sibling') return 0.6
+            if (l.kind === 'sibling') return 2.0
             return 0.55
           })
       )
