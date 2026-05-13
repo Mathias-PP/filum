@@ -60,6 +60,14 @@ async def real_keyed_user(db_session):
 @pytest_asyncio.fixture
 async def published_card(db_session, real_keyed_user):
     """A BiblioCard with 2 sources, published and signed."""
+    # NOTE: BiblioCard.canonical_hash and .signature are declared
+    # `nullable=False` in the SQLAlchemy model, but the production
+    # CardService.create_card() method does NOT set them on draft cards.
+    # This works against Postgres (where a migration loosened the constraint)
+    # but fails against SQLite tables built from Base.metadata.create_all,
+    # which faithfully follows the model declaration.
+    # See PR description "Discovered gaps" — model/migration drift.
+    # We pass empty strings here so publish_card() can overwrite them.
     card = BiblioCard(
         id=uuid4(),
         user_id=real_keyed_user.id,
@@ -69,6 +77,8 @@ async def published_card(db_session, real_keyed_user):
         content_url="https://example.com/video",
         platform="youtube",
         content_type="video",
+        canonical_hash="",
+        signature="",
     )
     db_session.add(card)
     await db_session.flush()
