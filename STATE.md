@@ -10,11 +10,13 @@
 
 **2026-05-13** — session 3.5 : correction Y-branching (deux sources Nader mal groupées → deux sources Léa Marchand en premier cercle, premier Y-branch fonctionnel entre le nœud central et les deux notes de tournage)
 
+**2026-05-13** — session 3.6 : fork Y sans nœud visible (jonction radius 0 épinglée à 60% du chemin parent→enfants), lien original carte→source conservé caché pour les forces, lien sibling distance=55 force=2.0 pour garder les enfants soudés sans superposition des labels, enfants libres (non épinglés) — résultat : fourche Y propre, aucun nœud ne peut s'intercaler, labels lisibles.
+
 ---
 
 ## Phase courante
 
-**Phase 1 — MVP déployé + itération graphique.** Backend live sur Railway, frontend live sur Vercel, fiche démo publique avec graphe D3 18 sources, embranchement Y fonctionnel (2 sources Léa Marchand → nœud de jonction gris → nœud central), redesign UX.
+**Phase 1 — MVP déployé + itération graphique.** Backend live sur Railway, frontend live sur Vercel, fiche démo publique avec graphe D3 18 sources, embranchement Y fonctionnel (2 sources Léa Marchand en fourche V sans nœud visible, liées par sibling force 2.0).
 
 ---
 
