@@ -83,6 +83,8 @@ Trois jalons. Chaque jalon = une PR auto-suffisante (mergée avant d'attaquer la
 
 **Estimation** : 4-6h de travail focus.
 
+**✅ FAIT — 2026-05-13** : credentials Google Cloud configurés dans Railway. Login OK : `curl` → 302 vers `accounts.google.com`.
+
 ---
 
 ### Jalon M2 — Auth guard + branchement extracteur dans le formulaire

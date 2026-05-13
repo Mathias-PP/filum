@@ -6,7 +6,7 @@
 
 ## Dernière mise à jour
 
-**2026-05-13** — jalons M1+M2+M3 terminés. PR #27 mergée (polish UX). PR #28 en cours (fix flow création).
+**2026-05-13** — **MVP complet !** Tous les jalons M1+M2+M3 sont terminés, l'OAuth Google est configuré en prod et fonctionnel. Le flow de bout en bout (login → création → publication → consultation publique) est opérationnel.
 
 ### PR #27 — MVP Polish (mergée)
 - Navbar : avatar utilisateur avec dropdown (menu déroulant, lien dashboard, déconnexion)
@@ -47,13 +47,7 @@ Itérations précédentes :
 
 ## Phase courante
 
-**Phase 1 — Jalons M1+M2+M3 terminés.** Le flow création de fiche est fonctionnel (dashboard → new → ajout sources → publication). Le seul blocage pour le MVP complet est la **configuration des credentials Google OAuth** (voir ci-dessous).
-
-**Blocage OAuth** : les endpoints `/auth/google/login` et `/auth/google/callback` sont implémentés et testés, mais les variables d'env ne sont pas configurées dans Railway :
-1. Créer un projet OAuth dans Google Cloud Console
-2. Configurer `google_client_id`, `google_client_secret`, `google_redirect_uri` dans Railway
-3. La redirect URI doit être `https://filum-production-07bb.up.railway.app/api/v1/auth/google/callback`
-4. Toutes les variables en **lowercase** (ADR-010)
+**Phase 1 — MVP complet.** Tous les jalons M1+M2+M3 sont terminés. L'OAuth Google est configuré et fonctionnel (302 vers `accounts.google.com` avec le bon `client_id` et `redirect_uri`). Le flow login → création → publication → consultation publique peut être testé de bout en bout.
 
 ---
 
