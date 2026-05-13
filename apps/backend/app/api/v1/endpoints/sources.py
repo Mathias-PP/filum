@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, HttpUrl
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.config import get_settings
 from app.core.rate_limit import limiter
@@ -89,7 +90,10 @@ async def list_sources(
         )
 
     source_result = await db.execute(
-        select(Source).where(Source.biblio_card_id == card_id).order_by(Source.position)
+        select(Source)
+        .options(selectinload(Source.excerpts))
+        .where(Source.biblio_card_id == card_id)
+        .order_by(Source.position)
     )
     return source_result.scalars().all()
 
@@ -146,6 +150,12 @@ async def create_source(
     await db.commit()
     await db.refresh(source)
 
+    # Eager-load excerpts to avoid MissingGreenlet during serialization
+    result = await db.execute(
+        select(Source).options(selectinload(Source.excerpts)).where(Source.id == source.id)
+    )
+    source = result.scalar_one()
+
     source_id_bg = source.id
     source_url_bg = source.url
 
@@ -166,7 +176,9 @@ async def update_source(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Source).where(Source.id == source_id))
+    result = await db.execute(
+        select(Source).options(selectinload(Source.excerpts)).where(Source.id == source_id)
+    )
     source = result.scalar_one_or_none()
 
     if not source:
