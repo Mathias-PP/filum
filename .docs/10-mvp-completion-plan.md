@@ -111,11 +111,11 @@ Trois jalons. Chaque jalon = une PR auto-suffisante (mergée avant d'attaquer la
 **Objectif** : ouvrir l'accès à 3-5 premiers créateurs sans risque opérationnel grave.
 
 **Travail** :
-1. **Rate limiting** : brancher `slowapi` sur `GET /sources/extract` (10 req/min/IP) et sur `POST /cards` (20/h/user authentifié). Voir [skill : rate-limiting](../agent/skills/rate-limiting.md).
-2. **Logs structurés** : si `structlog` n'est pas encore branché, le faire. Ajouter un middleware FastAPI qui log chaque requête avec `request_id`, `user_id` si présent, durée, status.
-3. **Erreurs en prod** : pas de Sentry (payant au-delà du tier gratuit), mais a minima `Logger.error()` propre sur les exceptions non capturées + alerte par email Railway si possible (à investiguer dans le dashboard Railway).
-4. **README + page d'accueil** : ajouter un encart « bêta privée, 5 créateurs invités, contact mathias@... pour rejoindre ».
-5. **Backup BDD** : documenter dans `.docs/02-tech-architecture.md` la procédure (Railway propose un dump on-demand sur le tier Hobby — vérifier). Si tier gratuit ne le permet pas, écrire un script `scripts/db-dump.sh` exécutable manuellement via `wsl psql ...`.
+1. ✅ **Rate limiting** : `slowapi` branché sur `GET /sources/extract` (10 req/min/IP) et `POST /cards` (20 req/h/IP). `Limiter` défini dans `app/core/rate_limit.py` pour éviter imports circulaires.
+2. ✅ **Logs structurés** : middleware FastAPI qui log chaque requête avec `request_id` (UUID tronqué), méthode, path, status, durée (ms). Header `X-Request-ID` présent sur chaque réponse.
+3. ⏳ **Erreurs en prod** : `global_exception_handler` déjà présent avec `exc_info=True`. Alerte email Railway à investiguer.
+4. ⏳ **README + page d'accueil** : ajouter encart bêta privée.
+5. ⏳ **Backup BDD** : documenter la procédure.
 
 **Critères de done** :
 - Spam `GET /sources/extract` → 429 après 10 req.

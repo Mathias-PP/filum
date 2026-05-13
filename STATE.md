@@ -6,7 +6,7 @@
 
 ## Dernière mise à jour
 
-**2026-05-13** — jalon M1 (OAuth Google) mergé dans `main`. M2 commencé :
+**2026-05-13** — jalons M1+M2+M3 débuté. Bugs critiques corrigés.
 
 Bugs corrigés :
 - Fix 404 en cliquant sur un brouillon depuis le dashboard (lien vers `/dashboard/cards/{id}` → `/dashboard/new/{id}/sources`)
@@ -15,8 +15,12 @@ Bugs corrigés :
 - Ajout endpoint `DELETE /cards/{id}` + bouton suppression pour les brouillons
 
 Jalon M2 — Auth guard + extracteur URL :
-- Auth guard : `+layout.ts` dans `/dashboard/` redirige vers `/` si non connecté
-- Extracteur : appel `GET /sources/extract?url=...` au blur du champ URL en étape 2, pré-remplit titre + auteurs, loading spinner, silent fail
+- Auth guard : `+layout.ts` dans `/dashboard/` (lit `parent().user`, `throw redirect(302, '/')` si null)
+- Extracteur : appel `GET /sources/extract?url=...` au blur du champ URL en étape 2, pré-remplit titre + auteurs, spinner, silent fail
+
+Jalon M3 — Durcissement :
+- Rate limiting : slowapi branché sur `GET /sources/extract` (10 req/min/IP) et `POST /cards` (20 req/h/IP)
+- Logging structuré : middleware FastAPI log chaque requête avec `request_id`, méthode, path, status, durée en ms + header `X-Request-ID`
 
 Jalon M1 livré précédemment :
 - Backend : endpoints `/auth/google/login` et `/auth/google/callback` complétés. State token CSRF en cookie HttpOnly. Échange code → id_token vérifié via Google JWKS (PyJWKClient). Création/retrouvage User. Cookie session avec samesite conditionnel (`lax` en debug, `none+secure` en prod). Génération paire Ed25519 chiffrée AES-GCM à la première connexion.
@@ -58,7 +62,7 @@ Itérations précédentes :
 
 ## CI
 
-8/8 jobs verts sur `main` :
+9/9 jobs verts sur `main` :
 
 - Security Scan (Trivy SARIF, TruffleHog sur PR uniquement)
 - Lint Backend (ruff)
@@ -146,7 +150,7 @@ Variables intentionnellement non configurées (defaults dans `config.py` suffise
 | ~~Deps eslint frontend manquantes~~ | **Résolu** | 6 deps ajoutées, eslint 9 flat config, CI `\|\| true` retiré |
 | ~~8 warnings `state_referenced_locally`~~ | **Résolu** | Composants convertis à `$derived()` / `$effect()` |
 | ~~Auth guard absent sur `/dashboard*`~~ | **Résolu** | `+layout.ts` dans `/dashboard/` redirige vers `/` si non connecté |
-| Rate limiting absent sur `GET /sources/extract` | Moyen | slowapi déjà dep mais non branché |
+| ~~Rate limiting absent sur `GET /sources/extract`~~ | **Résolu** | slowapi branché : 10 req/min sur `/sources/extract`, 20 req/h sur `POST /cards` |
 | `impact_factor` toujours `null` | Faible | OpenAlex supprimé (dead code), pas de fallback |
 | Test composant Svelte 5 incompat | Faible | À réécrire avec API testing-library compatible Svelte 5 |
 | ~~Cookie `samesite=lax`~~ | **Résolu** | Bascule `samesite=none + secure=True` conditionnée sur `settings.debug` (PR jalon M1) |
@@ -176,7 +180,10 @@ Le seed ne fait plus early-return : les sources sont recréées, les champs ité
 
 2. ~~**Implémenter `apps/backend/app/extractors/`.**~~ **Fait (PR2 itération 3)** — `url_extractor.py` opérationnel (Crossref + HTML scraping), endpoint `GET /sources/extract`.
 3. ~~**Page `/dashboard/new` : création de fiche.**~~ **Fait (PR1 itération 3)** — routes `dashboard/new` + `dashboard/new/[card_id]/sources` créées.
-4. **Brancher l'extracteur dans le formulaire frontend.** Appeler `GET /sources/extract?url=...` au blur du champ URL pour pré-remplir titre, auteurs, date. Ajouter l'auth guard (redirect si non connecté) sur les routes `/dashboard/new`.
+4. ✅ **Brancher l'extracteur dans le formulaire frontend.** Appel `GET /sources/extract?url=...` au blur du champ URL en étape 2, pré-remplit titre + auteurs, spinner, silent fail.
+5. ✅ **Auth guard `/dashboard*`.** `+layout.ts` redirige vers `/` si `parent().user` est null.
+6. ✅ **Rate limiting sur `GET /sources/extract` et `POST /cards`.** slowapi branché (10 req/min, 20 req/h).
+7. ✅ **Logs structurés.** Middleware request_id + durée + status.
 
 ### P2 — Auth / multi-utilisateur
 
