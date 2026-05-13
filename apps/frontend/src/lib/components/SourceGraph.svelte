@@ -172,7 +172,7 @@
   function ticked(svgRoot: SVGSVGElement, nodes: GraphNode[], links: GraphLink[]) {
     const svg = select(svgRoot)
 
-    // Pin junction nodes at ideal fork point (invisible Y-branch split)
+    // Pin junction + children in a clean V fork
     for (const fork of forks) {
       const jx = nodes.find((n) => n.id === fork.junctionId)
       if (!jx) continue
@@ -188,11 +188,29 @@
       const py = parent.y ?? 0
       const dx = mx - px
       const dy = my - py
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1
+      const ux = dx / dist
+      const uy = dy / dist
+      const perpX = -uy
+      const perpY = ux
 
-      jx.x = px + dx * 0.6
-      jx.y = py + dy * 0.6
-      jx.fx = jx.x
-      jx.fy = jx.y
+      // Fork point at 60% du chemin parent → enfants
+      const fx = px + dx * 0.6
+      const fy = py + dy * 0.6
+      jx.x = fx
+      jx.y = fy
+      jx.fx = fx
+      jx.fy = fy
+
+      // Enfants de part et d'autre de la ligne parent → fork, 50px d'écart
+      const halfGap = 25
+      for (let i = 0; i < children.length; i++) {
+        const side = i === 0 ? 1 : -1
+        children[i].fx = fx + perpX * halfGap * side
+        children[i].fy = fy + perpY * halfGap * side
+        children[i].x = children[i].fx!
+        children[i].y = children[i].fy!
+      }
     }
 
     svg
