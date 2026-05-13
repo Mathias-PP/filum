@@ -196,10 +196,7 @@ def _parse_jsonld_metadata(soup: BeautifulSoup) -> ExtractedMetadata | None:
                         published_at = published_at or d
 
                     # Description
-                    desc = _extract_text(
-                        item.get("description")
-                        or item.get("abstract")
-                    )
+                    desc = _extract_text(item.get("description") or item.get("abstract"))
                     if desc:
                         description = description or desc
 
