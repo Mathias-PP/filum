@@ -1,6 +1,6 @@
-import { svelte } from '@sveltejs/vite-plugin-svelte'
-import { defineConfig } from 'vitest/config'
-import path from 'path'
+import { svelte } from '@sveltejs/vite-plugin-svelte';
+import { defineConfig } from 'vitest/config';
+import path from 'path';
 
 export default defineConfig({
   plugins: [svelte({ hot: false })],
@@ -19,4 +19,4 @@ export default defineConfig({
       $api: path.resolve('./src/lib/api'),
     },
   },
-})
+});

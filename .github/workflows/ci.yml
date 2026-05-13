@@ -124,14 +124,12 @@ jobs:
         working-directory: apps/frontend
 
       - name: Run ESLint
-        run: pnpm run lint || true
+        run: pnpm run lint
         working-directory: apps/frontend
-        continue-on-error: true
 
       - name: Check Prettier format
-        run: pnpm run format --check || true
+        run: pnpm run format --check
         working-directory: apps/frontend
-        continue-on-error: true
 
   test-backend:
     name: Test Backend

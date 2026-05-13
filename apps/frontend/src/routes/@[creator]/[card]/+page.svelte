@@ -1,41 +1,41 @@
 <script lang="ts">
-  import { browser } from '$app/environment'
-  import type { CardDetail } from '$lib/api'
-  import { Avatar, SourceTypeBadge } from '$lib/components'
+  import { browser } from '$app/environment';
+  import type { CardDetail } from '$lib/api';
+  import { Avatar, SourceTypeBadge } from '$lib/components';
 
   interface PageData {
-    card: CardDetail
-    creatorSlug: string
-    cardSlug: string
+    card: CardDetail;
+    creatorSlug: string;
+    cardSlug: string;
   }
 
-  let { data }: { data: PageData } = $props()
-  const card = $derived(data.card)
-  const creatorSlug = $derived(data.creatorSlug)
-  const cardSlug = $derived(data.cardSlug)
+  let { data }: { data: PageData } = $props();
+  const card = $derived(data.card);
+  const creatorSlug = $derived(data.creatorSlug);
+  const cardSlug = $derived(data.cardSlug);
 
-  let expandedSource = $state<string | null>(null)
-  let GraphComponent = $state<any>(null)
+  let expandedSource = $state<string | null>(null);
+  let GraphComponent = $state<any>(null);
 
   $effect(() => {
     if (browser && !GraphComponent) {
       import('$lib/components/SourceGraph.svelte').then((m) => {
-        GraphComponent = m.default
-      })
+        GraphComponent = m.default;
+      });
     }
-  })
+  });
 
   function toggleSource(sourceId: string) {
-    expandedSource = expandedSource === sourceId ? null : sourceId
+    expandedSource = expandedSource === sourceId ? null : sourceId;
   }
 
   function copyLink() {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(window.location.href)
+      navigator.clipboard.writeText(window.location.href);
     }
   }
 
-  const publicUrl = $derived(`https://filum-eight.vercel.app/@${creatorSlug}/${cardSlug}`)
+  const publicUrl = $derived(`https://filum-eight.vercel.app/@${creatorSlug}/${cardSlug}`);
 
   const jsonLd = $derived.by(() => {
     const citations = card.sources.map((s) => ({
@@ -44,8 +44,8 @@
       ...(s.authors ? { author: s.authors } : {}),
       ...(s.published_at ? { datePublished: s.published_at } : {}),
       url: s.url,
-      ...(s.source_type === 'peer-reviewed' ? { isAccessibleForFree: false } : {})
-    }))
+      ...(s.source_type === 'peer-reviewed' ? { isAccessibleForFree: false } : {}),
+    }));
     return {
       '@context': 'https://schema.org',
       '@type': 'Article',
@@ -53,19 +53,19 @@
       author: {
         '@type': 'Person',
         name: card.creator.display_name ?? card.creator.slug,
-        url: `https://filum-eight.vercel.app/@${creatorSlug}`
+        url: `https://filum-eight.vercel.app/@${creatorSlug}`,
       },
       ...(card.published_at ? { datePublished: card.published_at } : {}),
       ...(card.description ? { description: card.description } : {}),
       publisher: {
         '@type': 'Organization',
         name: 'Filum',
-        url: 'https://filum-eight.vercel.app/'
+        url: 'https://filum-eight.vercel.app/',
       },
       mainEntityOfPage: publicUrl,
-      citation: citations
-    }
-  })
+      citation: citations,
+    };
+  });
 </script>
 
 <svelte:head>
@@ -133,7 +133,8 @@
           {/if}
         </div>
         <p class="text-center text-xs sm:text-sm text-slate-500 mt-3">
-          Cliquez sur un nœud pour explorer la source · glissez pour réorganiser · molette pour zoomer
+          Cliquez sur un nœud pour explorer la source · glissez pour réorganiser · molette pour
+          zoomer
         </p>
       </div>
     </section>
@@ -286,9 +287,7 @@
         class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-wrap items-center justify-between gap-4"
       >
         <div class="text-xs text-slate-500 font-mono break-all">
-          <p class="text-slate-700 font-sans font-medium not-italic mb-1">
-            Signature Ed25519
-          </p>
+          <p class="text-slate-700 font-sans font-medium not-italic mb-1">Signature Ed25519</p>
           {#if card.signature}
             {card.signature.slice(0, 32)}…{card.signature.slice(-8)}
           {:else}
@@ -300,7 +299,7 @@
             Signé le {card.signed_at
               ? new Date(card.signed_at).toLocaleString('fr-FR', {
                   dateStyle: 'long',
-                  timeStyle: 'short'
+                  timeStyle: 'short',
                 })
               : 'N/A'}
           </p>

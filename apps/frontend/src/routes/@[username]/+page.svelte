@@ -1,26 +1,26 @@
 <script lang="ts">
-  import { page } from '$app/stores'
-  import { api } from '$lib/api'
-  import { Avatar, Button, Card } from '$lib/components'
-  import type { UserProfile } from '$lib/api'
+  import { page } from '$app/stores';
+  import { api } from '$lib/api';
+  import { Avatar, Button, Card } from '$lib/components';
+  import type { UserProfile } from '$lib/api';
 
-  let profile = $state<UserProfile | null>(null)
-  let loading = $state(true)
-  let error = $state<string | null>(null)
+  let profile = $state<UserProfile | null>(null);
+  let loading = $state(true);
+  let error = $state<string | null>(null);
 
-  const username = $page.params.username ?? ''
+  const username = $page.params.username ?? '';
 
   $effect(() => {
-    loadProfile()
-  })
+    loadProfile();
+  });
 
   async function loadProfile() {
     try {
-      profile = await api.users.getProfile(username)
+      profile = await api.users.getProfile(username);
     } catch (e) {
-      error = 'Utilisateur non trouvé'
+      error = 'Utilisateur non trouvé';
     } finally {
-      loading = false
+      loading = false;
     }
   }
 </script>
@@ -63,7 +63,12 @@
               <span>{profile.stats.total_sources} sources</span>
               {#if profile.stats.first_published_at}
                 <span>·</span>
-                <span>Depuis {new Date(profile.stats.first_published_at).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })}</span>
+                <span
+                  >Depuis {new Date(profile.stats.first_published_at).toLocaleDateString('fr-FR', {
+                    month: 'short',
+                    year: 'numeric',
+                  })}</span
+                >
               {/if}
             </div>
           </div>
@@ -77,7 +82,10 @@
         {:else}
           <div class="space-y-4">
             {#each profile.cards as card}
-              <a href="/@{username}/{card.slug}" class="block bg-white rounded-xl border border-slate-200 p-6 hover:shadow-md transition-shadow">
+              <a
+                href="/@{username}/{card.slug}"
+                class="block bg-white rounded-xl border border-slate-200 p-6 hover:shadow-md transition-shadow"
+              >
                 <div class="flex items-center justify-between">
                   <div>
                     <h3 class="font-semibold text-slate-900">{card.title}</h3>
@@ -88,8 +96,18 @@
                       {/if}
                     </p>
                   </div>
-                  <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  <svg
+                    class="w-5 h-5 text-slate-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 5l7 7-7 7"
+                    />
                   </svg>
                 </div>
               </a>

@@ -1,11 +1,11 @@
-import type { SourceType } from '$lib/api'
+import type { SourceType } from '$lib/api';
 
 export interface SourceColor {
-  label: string
-  fill: string
-  stroke: string
-  text: string
-  bgClass: string
+  label: string;
+  fill: string;
+  stroke: string;
+  text: string;
+  bgClass: string;
 }
 
 export const SOURCE_COLORS: Record<SourceType, SourceColor> = {
@@ -51,4 +51,4 @@ export const SOURCE_COLORS: Record<SourceType, SourceColor> = {
     text: '#26215C',
     bgClass: 'bg-purple-100 text-purple-800',
   },
-}
+};
