@@ -49,6 +49,7 @@
     source: string | GraphNode
     target: string | GraphNode
     kind: 'card' | 'parent' | 'sibling'
+    forkHide?: true
   }
 
   interface ForkMeta {
@@ -156,7 +157,7 @@
             (l.source === pidStr && l.target === s.id) ||
             (l.source === s.id && l.target === pidStr)
         )
-        if (idx !== -1) links.splice(idx, 1)
+        if (idx !== -1) (links[idx] as GraphLink & { forkHide: true }).forkHide = true
         links.push({ source: jxId, target: s.id, kind: linkKind })
       }
       forks.push({ junctionId: jxId, parentId: pidStr, childIds: group.map((s) => s.id) })
@@ -254,15 +255,21 @@
       .attr('class', 'link')
       .attr('stroke', '#94a3b8')
       .attr('stroke-opacity', (d) => {
+        if ((d as any).forkHide) return 0
         if (d.kind === 'sibling') return 0
         return d.kind === 'parent' ? 0.5 : 0.7
       })
       .attr('stroke-width', (d) => {
+        if ((d as any).forkHide) return 0
         if (d.kind === 'sibling') return 0
         return d.kind === 'parent' ? 1 : 1.5
       })
       .attr('stroke-dasharray', (d) => (d.kind === 'parent' ? '4 3' : null))
-      .style('pointer-events', (d) => (d.kind === 'sibling' ? 'none' : null))
+      .style('pointer-events', (d) => {
+        if ((d as any).forkHide) return 'none'
+        if (d.kind === 'sibling') return 'none'
+        return null
+      })
 
     const nodeG = root
       .append('g')
