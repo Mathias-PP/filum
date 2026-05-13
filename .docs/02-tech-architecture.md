@@ -240,6 +240,26 @@ Léa            Frontend         Backend         Postgres        Wayback
 
 ---
 
+## Sauvegarde de la base de données
+
+Railway offre un dump PostgreSQL via son dashboard (plan Hobby) :
+- Aller sur le dashboard Railway → service PostgreSQL → "Dump" ou "Backup".
+- Le dump est un fichier `.dump` téléchargeable.
+
+En CLI avec la chaîne de connexion :
+```bash
+pg_dump --no-owner --clean "$DATABASE_URL" > filum_backup_$(date +%Y-%m-%d).sql
+```
+
+**Fréquence recommandée** : hebdomadaire en phase MVP (manuel). Si le nombre d'utilisateurs grandit, basculer vers un backup automatisé (`pg_cron` ou script GitHub Actions avec `pg_dump`).
+
+**Restauration** :
+```bash
+psql "$DATABASE_URL" < filum_backup_2026-05-13.sql
+```
+
+---
+
 ## Stratégie de test
 
 - **Backend** : `pytest` avec `pytest-asyncio`. Couverture cible : tous les endpoints, toutes les fonctions crypto, l'extraction de métadonnées.

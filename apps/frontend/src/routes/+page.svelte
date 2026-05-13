@@ -15,6 +15,13 @@
 </svelte:head>
 
 <div class="relative">
+  <div class="bg-amber-50 border-b border-amber-200 text-center py-2 px-4 text-sm text-amber-800">
+    Filum est en bêta privée —
+    <a href="mailto:mathias@filum.app" class="underline font-medium hover:text-amber-900"
+      >contactez-nous</a
+    >
+    pour obtenir un accès.
+  </div>
   <section class="relative overflow-hidden">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32">
       <div class="text-center max-w-3xl mx-auto">
