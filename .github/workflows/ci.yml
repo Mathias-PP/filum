@@ -238,7 +238,6 @@ jobs:
   dbt-check:
     name: Analytics Check
     runs-on: ubuntu-latest
-    continue-on-error: true  # dbt-duckdb JS-UDF macro vs ModelLanguage enum bug — upstream issue
     env:
       DUCKDB_PATH: ':memory:'
     steps:
