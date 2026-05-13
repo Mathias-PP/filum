@@ -48,7 +48,7 @@
   interface GraphLink {
     source: string | GraphNode
     target: string | GraphNode
-    kind: 'card' | 'parent'
+    kind: 'card' | 'parent' | 'sibling'
   }
 
   interface ForkMeta {
@@ -160,6 +160,9 @@
         links.push({ source: jxId, target: s.id, kind: linkKind })
       }
       forks.push({ junctionId: jxId, parentId: pidStr, childIds: group.map((s) => s.id) })
+      if (group.length >= 2) {
+        links.push({ source: group[0].id, target: group[1].id, kind: 'sibling' })
+      }
     }
 
     return { nodes, links }
@@ -184,11 +187,9 @@
       const py = parent.y ?? 0
       const dx = mx - px
       const dy = my - py
-      const dist = Math.sqrt(dx * dx + dy * dy) || 1
-      const frac = Math.min(0.65, 40 / dist)
 
-      jx.x = px + dx * frac
-      jx.y = py + dy * frac
+      jx.x = px + dx * 0.75
+      jx.y = py + dy * 0.75
       jx.fx = jx.x
       jx.fy = jx.y
     }
@@ -252,9 +253,16 @@
       .join('line')
       .attr('class', 'link')
       .attr('stroke', '#94a3b8')
-      .attr('stroke-opacity', (d) => (d.kind === 'parent' ? 0.5 : 0.7))
-      .attr('stroke-width', (d) => (d.kind === 'parent' ? 1 : 1.5))
+      .attr('stroke-opacity', (d) => {
+        if (d.kind === 'sibling') return 0
+        return d.kind === 'parent' ? 0.5 : 0.7
+      })
+      .attr('stroke-width', (d) => {
+        if (d.kind === 'sibling') return 0
+        return d.kind === 'parent' ? 1 : 1.5
+      })
       .attr('stroke-dasharray', (d) => (d.kind === 'parent' ? '4 3' : null))
+      .style('pointer-events', (d) => (d.kind === 'sibling' ? 'none' : null))
 
     const nodeG = root
       .append('g')
@@ -379,8 +387,15 @@
         'link',
         forceLink<GraphNode, GraphLink>(links)
           .id((d) => d.id)
-          .distance((l) => (l.kind === 'parent' ? 75 : 160))
-          .strength(0.55)
+          .distance((l) => {
+            if (l.kind === 'parent') return 75
+            if (l.kind === 'sibling') return 25
+            return 160
+          })
+          .strength((l) => {
+            if (l.kind === 'sibling') return 0.6
+            return 0.55
+          })
       )
       .force('charge', forceManyBody().strength(-280))
       .force('center', forceCenter(width / 2, height / 2).strength(0.05))
