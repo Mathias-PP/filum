@@ -5,7 +5,7 @@
   import { api } from '$lib/api';
   import { auth } from '$lib/stores/auth';
 
-  let statusMessage = 'Finalisation de l\'authentification…';
+  let statusMessage = "Finalisation de l'authentification…";
 
   onMount(async () => {
     const currentUrl = new URL(window.location.href);
@@ -19,7 +19,7 @@
     }
 
     if (!code) {
-      statusMessage = 'Code d\'authentification manquant. Redirection…';
+      statusMessage = "Code d'authentification manquant. Redirection…";
       setTimeout(() => goto('/'), 2000);
       return;
     }
@@ -32,7 +32,7 @@
         auth.setUser(user);
         goto('/dashboard');
       } else {
-        statusMessage = 'Échec de l\'authentification. Redirection…';
+        statusMessage = "Échec de l'authentification. Redirection…";
         setTimeout(() => goto('/'), 2000);
       }
     } catch {
