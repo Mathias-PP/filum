@@ -161,6 +161,10 @@ class CardService:
         )
 
     async def verify_card(self, card: BiblioCard) -> dict:
+        # A draft card has no signature yet; nothing to verify.
+        if card.canonical_hash is None or card.signature is None:
+            return {"valid": False, "reason": "not_published"}
+
         sources_data = [
             {
                 "url": s.url,

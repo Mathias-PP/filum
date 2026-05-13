@@ -55,9 +55,7 @@ class SigningService:
             return False
 
     @staticmethod
-    def verify_with_public_key_hex(
-        public_key_hex: str, data: str | bytes, signature: str
-    ) -> bool:
+    def verify_with_public_key_hex(public_key_hex: str, data: str | bytes, signature: str) -> bool:
         """Verify an Ed25519 signature using a raw public key stored as hex.
 
         Used by CardService.verify_card(): we only have the user's raw public
@@ -69,9 +67,7 @@ class SigningService:
         if isinstance(data, str):
             data = data.encode("utf-8")
         try:
-            public_key = ed25519.Ed25519PublicKey.from_public_bytes(
-                bytes.fromhex(public_key_hex)
-            )
+            public_key = ed25519.Ed25519PublicKey.from_public_bytes(bytes.fromhex(public_key_hex))
             public_key.verify(bytes.fromhex(signature), data)
             return True
         except Exception:
