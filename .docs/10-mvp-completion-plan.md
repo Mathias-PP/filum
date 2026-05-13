@@ -33,8 +33,8 @@ Un MVP est **complet** quand chacune de ces six affirmations est vraie :
 | Extracteur URL backend (`GET /sources/extract`) | ✅ Crossref + HTML scraping | — |
 | Routes `/dashboard/new` + `/dashboard/new/[card_id]/sources` | ✅ scaffold | — |
 | **OAuth Google end-to-end** | ❌ credentials non configurés, cookies en `samesite=lax` | **OUI** |
-| **Auth guard sur `/dashboard*`** | ❌ aucune redirection si non loggé | **OUI** |
-| **Extracteur branché dans le formulaire frontend** | ❌ appel `/sources/extract` non câblé | **OUI** |
+| **Auth guard sur `/dashboard*`** | ✅ `+layout.ts` redirige vers `/` si non connecté | — |
+| **Extracteur branché dans le formulaire frontend** | ✅ appel `/sources/extract` au blur de l'URL en étape 2 | — |
 | Rate limiting sur endpoints publics | ❌ slowapi présent mais non câblé | Risque (DoS) |
 | Observabilité (logs, erreurs, uptime) | ⚠️ logs Railway uniquement, pas de Sentry | Recommandé |
 | Test du flow auth end-to-end | ❌ | Recommandé |
@@ -89,12 +89,12 @@ Trois jalons. Chaque jalon = une PR auto-suffisante (mergée avant d'attaquer la
 
 **Objectif** : un utilisateur connecté peut créer une fiche complète depuis le frontend sans toucher au backend manuellement. Un utilisateur non connecté est redirigé vers la page de login.
 
-**Travail** :
-1. **Auth guard `/dashboard*`** : créer un `+layout.ts` dans `apps/frontend/src/routes/dashboard/` qui vérifie `auth` store et `throw redirect(302, '/')` si non connecté. Côté SSR, vérifier le cookie via un `fetch` à `/api/v1/auth/me` (cf. CLAUDE.md sur SSR sélectif).
-2. **Branchement extracteur** : dans `dashboard/new/[card_id]/sources/+page.svelte`, sur le blur du champ URL, appeler `GET /api/v1/sources/extract?url=...` et pré-remplir titre + auteurs + date. Si l'API renvoie une erreur, laisser l'utilisateur saisir manuellement (silent fail).
-3. **UX** : indicateur de chargement pendant l'extraction (~1-3s). Empêcher la soumission tant que l'extraction n'est pas terminée OU offrir un bouton « ignorer et saisir manuellement ».
-4. **Validation côté frontend** : URL valide (regex simple ou `new URL(...)`), titre non vide à la publication.
-5. Tester le flow complet en local contre le backend prod (ou local).
+**Travail (FAIT — 2026-05-13, commit `132ea13`)** :
+1. ✅ **Auth guard `/dashboard*`** : `+layout.ts` dans `apps/frontend/src/routes/dashboard/` — lit `parent().user` et `throw redirect(302, '/')` si non connecté.
+2. ✅ **Branchement extracteur** : dans `dashboard/new/[card_id]/sources/+page.svelte`, sur `onblur` du champ URL, `GET /api/v1/sources/extract?url=...` → pré-remplit titre + auteurs. Silent fail si erreur réseau ou API.
+3. ✅ **UX** : spinner dans le champ URL pendant l'extraction. Les champs titre/auteurs sont réinitialisés si l'URL change.
+4. ⏳ **Validation frontend** (URL valide, titre non vide) — non fait, reporté à l'itération UX suivante.
+5. ⏳ Test du flow complet — dépend des credentials Google Cloud configurés.
 
 **Critères de done** :
 - Visiter `/dashboard/new` non connecté → redirige vers `/`.
