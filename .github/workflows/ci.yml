@@ -249,11 +249,12 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
+      - name: Install dbt
+        run: pip install -r requirements.txt
+        working-directory: apps/analytics
 
       - name: Compile dbt
-        run: uvx --from 'dbt-duckdb<1.10' dbt compile --target ci
+        run: dbt compile --target ci
         working-directory: apps/analytics
 
   summary:
