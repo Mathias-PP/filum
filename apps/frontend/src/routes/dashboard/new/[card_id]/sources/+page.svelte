@@ -53,7 +53,7 @@
       annotation = '';
       isPivot = false;
     } catch (err) {
-      addError = err instanceof Error ? err.message : 'Erreur lors de l\'ajout';
+      addError = err instanceof Error ? err.message : "Erreur lors de l'ajout";
     } finally {
       addLoading = false;
     }
@@ -154,9 +154,7 @@
         </div>
 
         <div class="space-y-1.5">
-          <label for="source-title" class="block text-sm font-medium text-slate-700">
-            Titre
-          </label>
+          <label for="source-title" class="block text-sm font-medium text-slate-700"> Titre </label>
           <input
             id="source-title"
             type="text"
@@ -244,7 +242,13 @@
               class="shrink-0 text-slate-400 hover:text-red-500 transition-colors"
               aria-label="Supprimer"
             >
-              <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2">
+              <svg
+                viewBox="0 0 24 24"
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
                 <line x1="6" y1="6" x2="18" y2="18" />
                 <line x1="6" y1="18" x2="18" y2="6" />
               </svg>
@@ -277,11 +281,7 @@
       </div>
       <div class="flex gap-3">
         <Button variant="ghost" href="/dashboard">Enregistrer en brouillon</Button>
-        <Button
-          onclick={publish}
-          loading={publishing}
-          disabled={sources.length === 0}
-        >
+        <Button onclick={publish} loading={publishing} disabled={sources.length === 0}>
           Publier la fiche
         </Button>
       </div>
