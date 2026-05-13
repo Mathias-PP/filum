@@ -175,7 +175,12 @@
         Rejoignez les créateurs qui prennent le temps de bien sourcer leur travail.
       </p>
       {#if isAuthenticated}
-        <Button href="/dashboard" variant="secondary" size="lg" class="bg-white text-blue-600 hover:bg-blue-50">
+        <Button
+          href="/dashboard"
+          variant="secondary"
+          size="lg"
+          class="bg-white text-blue-600 hover:bg-blue-50"
+        >
           Accéder au tableau de bord
         </Button>
       {:else}
