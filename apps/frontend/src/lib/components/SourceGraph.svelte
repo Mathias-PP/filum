@@ -26,7 +26,7 @@
 
   let { card, onSelect }: Props = $props()
 
-  type NodeKind = 'card' | 'source'
+  type NodeKind = 'card' | 'source' | 'junction'
 
   interface GraphNode {
     id: string
@@ -36,7 +36,7 @@
     radius: number
     fill: string
     stroke: string
-    tier: 'card' | 'first' | 'second'
+    tier: 'card' | 'first' | 'second' | 'junction'
     x?: number
     y?: number
     vx?: number
@@ -75,6 +75,8 @@
     return truncate(s.title ?? s.url, 22)
   }
 
+  let junctionCounter = 0
+
   function buildGraph(): { nodes: GraphNode[]; links: GraphLink[] } {
     const nodes: GraphNode[] = [
       {
@@ -88,6 +90,8 @@
       }
     ]
     const links: GraphLink[] = []
+
+    const byAuthorAndParent = new Map<string, typeof card.sources>()
 
     for (const s of card.sources) {
       const colors = SOURCE_COLORS[s.source_type]
@@ -112,6 +116,44 @@
         links.push({ source: s.id, target: s.parent_source_id, kind: 'parent' })
       } else {
         links.push({ source: cardId, target: s.id, kind: 'card' })
+      }
+
+      // Group by author + parent for Y-branching
+      if (s.authors && s.authors.trim().length > 0) {
+        const pid = isSecondary && s.parent_source_id ? s.parent_source_id : cardId
+        const key = `${s.authors.trim()}||${pid}`
+        if (!byAuthorAndParent.has(key)) byAuthorAndParent.set(key, [])
+        byAuthorAndParent.get(key)!.push(s)
+      }
+    }
+
+    // Create Y-junctions for groups of 2+ sources by the same author to the same parent
+    for (const [key, group] of byAuthorAndParent) {
+      if (group.length < 2) continue
+      const pid = key.includes('||' + cardId) ? cardId : group[0].parent_source_id
+      const author = group[0].authors!
+      const jxId = `junction:${++junctionCounter}`
+      const jxNode: GraphNode = {
+        id: jxId,
+        kind: 'junction',
+        label: author,
+        radius: 4,
+        fill: '#94a3b8',
+        stroke: '#64748b',
+        tier: 'junction'
+      }
+      nodes.push(jxNode)
+      // Redirect parent→source links through junction
+      links.push({ source: pid!, target: jxId, kind: 'parent' })
+      for (const s of group) {
+        // Remove direct parent→source link
+        const idx = links.findIndex(
+          (l) =>
+            (l.source === s.id || (l.source as string) === s.id) &&
+            (l.target === pid || (l.target as string) === pid)
+        )
+        if (idx !== -1) links.splice(idx, 1)
+        links.push({ source: jxId, target: s.id, kind: 'parent' })
       }
     }
 
@@ -196,6 +238,7 @@
       .on('click', (_event, d) => {
         if (d.kind === 'source' && d.source) selectSource(d.source, d)
         else if (d.kind === 'card') selectSource(null)
+        // junction: no-op
       })
       .on('mouseenter', (_event, d) => {
         hoveredId = d.id

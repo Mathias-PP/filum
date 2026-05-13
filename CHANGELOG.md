@@ -8,66 +8,30 @@
 
 ## [Unreleased]
 
-### Changed
-- **P0 seed patch** (STATE.md) : `_get_or_create_demo_card` ne retourne plus early sur les fiches PUBLISHED. Les sources sont delete+recreate à chaque run, ce qui rafraîchit les champs itération 2 (excerpts, conflits, indicateurs) qui restaient vides sur la démo prod.
-- **Logo** : passage d'un arbre phylogénétique debout à une version circulaire (6 branches rayonnantes, nœuds tip interconnectés). Appliqué à `Logo.svelte` et `favicon.svg`.
-- **Noeud central du graphe** (SourceGraph.svelte) : suppression du pictogramme "play" (triangle vidéo) ; remplacé par un label textuel du type de contenu (Vidéo, Article, Podcast…) ; ajout du titre du contenu tronqué sous le cercle central.
-- **Démo** : 2 nouvelles sources non-académiques ajoutées (documentaire NOVA "Memory Hackers" avec citation, dessin des neurones hippocampiques de Ramón y Cajal de 1909). 16 sources, 7 arêtes de citation.
-- **CI `lint-backend`** : supprime le double `uv sync` (le `--only-dev` initial était écrasé par le `--all-extras` suivant). Un seul `uv sync --all-extras` suffit.
-- **STATE.md** : section Branches simplifiée, section CI enrichie (dependabot, fix double sync).
-
 ### Added
-- `.github/dependabot.yml` : mises à jour hebdo pip/npm, mensuelles GitHub Actions (labels dépendances/ci).
-- Itération 2 (ADR-017) : nouveau logo (arbre phylogénétique + graphe), badges « Source clé » + « Conflit d'intérêt déclaré », indicateurs typés (citations, impact factor, abonnés, vues), table `source_excerpts` avec extraits cités, plein écran sur le graphe, panneau de détail ancré au nœud cliqué (au lieu de coller au bord droit), SSR + JSON-LD + meta OG/Twitter/canonical sur la fiche publique pour le référencement classique et le GEO
-- Migration 004 : colonnes `conflict_of_interest`, `citations_count`, `subscribers_count`, `views_count`, `impact_factor` sur `sources`, et nouvelle table `source_excerpts(source_id CASCADE, position, text, suggested_by_ai)`
-- Section publique renommée « Sources citées » (ex « Liste éditoriale »), titres des sources calés à `text-base` pour rétablir la hiérarchie typographique
-- Spec mode privé + intégrations Zotero/Obsidian/Notion (`.docs/09-private-mode-and-integrations.md`)
+- **Embranchement en Y** dans le graphe interactif : quand deux sources du même auteur citent le même parent, un nœud de jonction est créé automatiquement (arêtes Kandel → Nader → 2 papiers Nader)
+- **Source YouTube** Artem Kirsanov sur la neuroscience de la mémoire (seed demo)
+- **Deuxième source Karim Nader** : review Nature 2007 sur la reconsolidation, même auteur et même parent que l'article 2000 → démonstration de l'embranchement Y
+- **Types de source** `video` (Documentaire→Vidéo) et `image` (Illustration→Image)
 
 ### Changed
-- Cartographie : labels d'auteurs au-dessus des nœuds, seuils de zoom (< 0.7 rien, ≥ 0.7 auteur, ≥ 1.5 auteur + début du titre), nœud central étiqueté par créateur + pictogramme du type de contenu (plus de label « Fiche »)
+- **Logo** : 6 branches dédoublées en 12 (embranchement en Y), suppression des lignes pointillées d'arrière-plan
+- **Graphe interactif** : étiquette « Vidéo » supprimée du nœud central, créateur centré au-dessus du nœud (zoom ≥ 0.7), titre au-dessus du créateur (zoom ≥ 1.5)
+- **Labels types source** : Peer-reviewed→Article scientifique, Original→Contenu original, Documentaire→Vidéo, Illustration→Image
+- **Conflits d'intérêt** : rouge→ambré, icône ⚠ supprimée, badge conservé sans alarme
+- **En-tête fiche publique** : layout compact (avatar + créateur + titre sur une ligne, description en sous-titre), hauteur du graphe augmentée (68vh→75vh)
+- **Page d'accueil** : nouveau tagline « Vous allez adorer partager vos références », correction « bibliography »→« bibliographie »
+- **Démo** : 18 sources (au lieu de 16), 8 arêtes de citation, ajout vidéo YouTube + review Nader
+- **CI/CD** : `@sveltejs/vite-plugin-svelte` ^5→^6, `vitest` ^2→^3 (résout le crash Test Frontend, compatible vite@6)
 
 ### Removed
-- Affichage des badges « Autorité élevée/moyenne/faible » côté UI (la colonne `authority_level` est conservée en base pour compatibilité ; remplacée à l'écran par les indicateurs structurés)
-- Label « Fiche » sur le nœud central du graphe
-
-### Security
-- Aucune modification du `canonical_hash` payload : les nouveaux champs (indicateurs, excerpts, conflict_of_interest) sont volontairement hors signature, donc toutes les fiches déjà publiées restent vérifiables sans re-signature
-
-- Graphe interactif des sources sur la fiche publique (ADR-016) : D3 v7 force-directed, sources colorées par type, sources avec parent en périphérie (plus petites, arêtes pointillées), drag/zoom/pan, animation cascade
-- Panneau latéral détail au clic d'une source (slide-in droite desktop, bottom-sheet mobile, Escape, navigation vers le parent)
-- `Source.parent_source_id` : FK self-référente nullable indexée matérialisant le citation graph (migration 003)
-- Bibliographie démo enrichie : 14 sources réelles en neurosciences de la mémoire + 6 arêtes de citation, nouveau slug `/@example/memoire-et-cerveau`
-- `lib/utils/source-colors.ts` : single source of truth des couleurs par type (hex D3 + classes Tailwind), partagé entre SourceGraph et SourceTypeBadge
-- Déploiement Vercel du frontend : https://filum-eight.vercel.app, API base URL dynamique via `PUBLIC_API_BASE_URL`
-- Déploiement Railway du backend en production (https://filum-production-07bb.up.railway.app), Postgres lié via `${{Postgres.DATABASE_URL}}`, migrations Alembic exécutées au boot (ADR-015)
-- Coercition automatique `postgresql://` → `postgresql+asyncpg://` dans `config.py` (`field_validator` mode `before`) pour brancher la DB Railway sans transformation manuelle
+- Badge vérifié (coche bleue) sur l'avatar de la fiche publique
+- Panneaux conflit d'intérêt expansés (gros bloc rouge) — le badge textuel ambré reste
 
 ### Fixed
-- `/health/database` : wrap raw SQL en `text("SELECT 1")` pour SQLAlchemy 2.x (bug latent surface par le premier déploiement)
-- `alembic/env.py` : import de `get_settings()` au lieu d'un `settings` inexistant (migrations crashaient à l'import)
-- Dockerfile : port dynamique `${PORT:-8000}` (Railway injecte `$PORT`), et `alembic upgrade head` chaîné au CMD pour migrer au boot
-- Trufflehog dans `ci.yml` : restreint à `pull_request` (failait sur push main avec `BASE and HEAD commits are the same`)
-- `.env.example` aligné sur ADR-010 : toutes les clés en lowercase (UPPERCASE = silent fallback aux defaults sur Linux/CI)
-- CLAUDE.md : structure réelle du backend (`apps/backend/app/`, pas `src/filum_api/`) et convention env vars lowercase
-- STATE.md : flagging honnête de `extractors/` vide et `crypto/signing.py` stub
-- Suppression du répertoire fantôme `apps/backend/app/api/{v1/endpoints}/` (résidu de brace-expansion ratée)
-
-### Removed
-- `.github/workflows/cd.yml` : workflow CD avec YAML mal formé (`workflow_dispatch` hors `on:`) et action fictive `railway-devrel/railway-actions@v1`. Remplacé par l'intégration GitHub native de Railway (ADR-015).
-- `.github/workflows/dependency-review.yml` : doublon du job Dependency Review déjà dans `security.yml`, avec policy plus stricte qui bloquait sur des moderate CVEs non-exploitables
-- `HANDOVER.md` : one-shot prompt de passation devenu obsolète après le merge MVP
-- `apps/frontend/src/routes/dashboard/+page.server.ts` : load serveur redondant avec `+layout.ts`, redirect malformé
-- `apps/frontend/src/tests/components/Button.test.ts` : incompat Svelte 5 + testing-library (à réécrire en follow-up)
-- `apps/frontend/.pnpm-approve-builds.json` (artefact pnpm 11, ignoré par pnpm 10)
-- `apps/frontend/pnpm-workspace.yaml` (réécrit par pnpm 11 avec un placeholder malformé ; inutile en mono-package)
-
-### Security
-- Migration `python-jose` → `PyJWT` 2.12.1 (ADR-014). Supprime `ecdsa@0.19.2` (CVE Minerva timing attack on P-256, HIGH) et ses transitives `pyasn1`, `rsa`. Non exploitable chez nous (HS256 pour JWT, Ed25519 via `cryptography`, pas d'ECDSA), mais bloquait la CI Dependency Review.
-
-### Changed
-- CI build-frontend (ADR-013) : pin pnpm 10.33.4 via `packageManager` dans `package.json`, retrait des workarounds pnpm 11 (`|| true` sur install, `pnpm exec vite build`, `verify-deps-before-run=false`, `continue-on-error` sur Type Check). `--frozen-lockfile` en CI, `pnpm-lock.yaml` commit.
-- Tests AuthService renforcés : Ed25519 sign/verify roundtrip via `KeyManager.decrypt_private_key`, bounds tight sur l'expiry 24h, suppression de l'accès au privé `request._cookies`, remplacement des tests Pydantic triviaux par un round-trip JWT ↔ TokenPayload
-- Tests d'intégration endpoints auth ajoutés sous `tests/integration/` : `/me` 401 sans token, `/me` 200 avec cookie, `/logout` clears cookie
+- Crash Test Frontend : incompatibilité vite-plugin-svelte@6 + vitest@2 (utilisait vite@5). Résolu en montant vitest@3 (vite@6).
+- Typo homepage : « bibliography » → « bibliographie »
+- STATE.md + CHANGELOG.md mis à jour avec toutes les modifications
 
 ---
 

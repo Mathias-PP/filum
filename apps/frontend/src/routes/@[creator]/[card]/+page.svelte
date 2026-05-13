@@ -84,34 +84,34 @@
 <div class="min-h-screen bg-slate-50">
   <article>
     <header class="bg-white border-b border-slate-200">
-      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div class="flex items-center gap-3">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+        <div class="flex items-center gap-2">
           <a
             href="/@{creatorSlug}"
-            class="flex items-center gap-2 hover:opacity-80 transition-opacity"
+            class="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0"
           >
             <Avatar
               avatarUrl={card.creator.avatar_url}
               name={card.creator.display_name || card.creator.slug}
               size="sm"
-              verified={true}
             />
-            <span class="text-sm font-medium text-slate-700 hidden sm:inline"
+            <span class="text-sm font-medium text-slate-700"
               >{card.creator.display_name || card.creator.slug}</span
             >
           </a>
+          <span class="text-slate-300 shrink-0">·</span>
           <div class="flex-1 min-w-0">
-            <h1
-              class="text-base sm:text-xl font-serif text-slate-900 truncate"
-              title={card.title}
-            >
+            <h1 class="text-sm sm:text-base font-serif text-slate-900 truncate" title={card.title}>
               {card.title}
             </h1>
+            {#if card.description}
+              <p class="text-xs text-slate-500 truncate mt-0.5">{card.description}</p>
+            {/if}
           </div>
           <button
             type="button"
             onclick={copyLink}
-            class="text-xs sm:text-sm text-slate-600 hover:text-slate-900 transition-colors px-3 py-1.5 rounded-md border border-slate-200 hover:border-slate-300"
+            class="text-xs text-slate-500 hover:text-slate-900 transition-colors px-2.5 py-1 rounded-md border border-slate-200 hover:border-slate-300 shrink-0"
           >
             Partager
           </button>
@@ -119,20 +119,10 @@
       </div>
     </header>
 
-    {#if card.description}
-      <section class="bg-white border-b border-slate-200">
-        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <p class="text-sm text-slate-600 leading-relaxed">
-            {card.description}
-          </p>
-        </div>
-      </section>
-    {/if}
-
     <section class="bg-slate-50">
-      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div
-          class="h-[68vh] min-h-[460px] rounded-xl bg-white border border-slate-200 overflow-hidden relative"
+          class="h-[75vh] min-h-[500px] rounded-xl bg-white border border-slate-200 overflow-hidden relative"
         >
           {#if GraphComponent}
             <GraphComponent {card} />

@@ -6,8 +6,8 @@
 </script>
 
 <svelte:head>
-  <title>Filum - Infrastructure ouverte de provenance</title>
-  <meta name="description" content="Transformez votre bibliography en une fiche publique interactive avec sources archivées et signées cryptographiquement." />
+  <title>Filum - Votre gestionnaire de références bibliographiques</title>
+  <meta name="description" content="Vous allez adorer partager vos références. Constituez votre bibliographie, archivez chaque source et partagez-la avec le monde." />
 </svelte:head>
 
 <div class="relative">
@@ -15,10 +15,10 @@
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32">
       <div class="text-center max-w-3xl mx-auto">
         <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-900 tracking-tight mb-6">
-          Rendez visible la <span class="text-blue-600">provenance</span> de votre contenu
+          Vous allez adorer partager <span class="text-blue-600">vos références</span>
         </h1>
         <p class="text-xl text-slate-600 mb-8 text-balance">
-          Filum permet aux créateurs de transformer leur bibliography en une fiche publique interactive : 
+          Filum transforme votre bibliographie en un graphe interactif : 
           sources organisées, archivées et signées cryptographiquement.
         </p>
         <div class="flex flex-col sm:flex-row items-center justify-center gap-4">

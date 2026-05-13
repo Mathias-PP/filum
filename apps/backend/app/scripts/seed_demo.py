@@ -82,7 +82,7 @@ async def _get_or_create_demo_user(db: AsyncSession, key_manager: KeyManager) ->
 
 
 def _demo_sources() -> list[dict]:
-    """17 realistic sources for a memory-and-brain vulgarization video.
+    """18 realistic sources for a memory-and-brain vulgarization video.
 
     Includes academic (peer-reviewed, institutional, press) and non-academic
     (documentary, video, image) sources to demonstrate Filum beyond pure academia.
@@ -363,6 +363,29 @@ def _demo_sources() -> list[dict]:
             "is_pivot": False,
             "parent_index": 1,
             "views_count": 1_800_000,
+        },
+        {
+            "url": "https://www.nature.com/articles/nrn2237",
+            "title": "Reconsolidation: Maintaining Memories in the Brain",
+            "authors": "Karim Nader",
+            "source_type": SourceType.PEER_REVIEWED.value,
+            "authority_level": AuthorityLevel.HIGH.value,
+            "annotation": (
+                "Review 2007 qui synthétise une décennie de recherches sur la "
+                "reconsolidation depuis l'article fondateur de 2000. "
+                "Deuxième source de Nader citant Kandel comme socle."
+            ),
+            "is_pivot": False,
+            "parent_index": 1,
+            "citations_count": 2100,
+            "impact_factor": 34.3,
+            "excerpts": [
+                (
+                    "La reconsolidation n'est pas une simple répétition de la consolidation : "
+                    "elle ouvre une fenêtre de plasticité qui permet de mettre à jour "
+                    "le souvenir avant de le restabiliser."
+                )
+            ],
         },
         {
             "url": "https://wellcomecollection.org/works/pb7xkuyz",

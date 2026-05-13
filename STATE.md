@@ -6,13 +6,13 @@
 
 ## Dernière mise à jour
 
-**2026-05-13** — session 2 : commit+push des modifs P0 + CI/CD cleanup (fix double uv sync, dependabot, stale branches)
+**2026-05-13** — session 3 : refonte graphique complète (logo 12 branches, graphe Y-branching, suppression conflits rouge), ajout types source video/image, redesign page fiche publique + page d'accueil, CI/CD cleanup (vite-plugin-svelte/vitest bump)
 
 ---
 
 ## Phase courante
 
-**Phase 1 — MVP déployé.** Backend live sur Railway, frontend live sur Vercel, fiche démo publique en SSR + JSON-LD.
+**Phase 1 — MVP déployé + itération graphique.** Backend live sur Railway, frontend live sur Vercel, fiche démo publique avec graphe D3 18 sources, embranchement Y, redesign UX.
 
 ---
 
@@ -24,7 +24,7 @@
   - `/health/database` → `{"status":"ok","database":"connected"}`
   - `/api/v1/docs` → Swagger UI
 - **Frontend prod** : https://filum-eight.vercel.app
-- **Fiche démo** : https://filum-eight.vercel.app/@example/memoire-et-cerveau (graphe D3 interactif, 14 sources neurosciences, 6 arêtes de citation)
+- **Fiche démo** : https://filum-eight.vercel.app/@example/memoire-et-cerveau (graphe D3 interactif, 18 sources neurosciences, 8 arêtes de citation, embranchement Y)
 
 ---
 
