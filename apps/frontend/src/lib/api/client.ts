@@ -137,6 +137,10 @@ export const api = {
   },
 
   sources: {
+    list: async (cardId: string): Promise<Source[]> => {
+      return request<Source[]>(`/sources?card_id=${cardId}`);
+    },
+
     create: async (cardId: string, data: SourceCreate): Promise<Source> => {
       return request<Source>(`/sources?card_id=${cardId}`, {
         method: 'POST',

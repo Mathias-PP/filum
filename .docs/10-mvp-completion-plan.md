@@ -113,9 +113,9 @@ Trois jalons. Chaque jalon = une PR auto-suffisante (mergée avant d'attaquer la
 **Travail** :
 1. ✅ **Rate limiting** : `slowapi` branché sur `GET /sources/extract` (10 req/min/IP) et `POST /cards` (20 req/h/IP). `Limiter` défini dans `app/core/rate_limit.py` pour éviter imports circulaires.
 2. ✅ **Logs structurés** : middleware FastAPI qui log chaque requête avec `request_id` (UUID tronqué), méthode, path, status, durée (ms). Header `X-Request-ID` présent sur chaque réponse.
-3. ⏳ **Erreurs en prod** : `global_exception_handler` déjà présent avec `exc_info=True`. Alerte email Railway à investiguer.
-4. ⏳ **README + page d'accueil** : ajouter encart bêta privée.
-5. ⏳ **Backup BDD** : documenter la procédure.
+3. ✅ **Erreurs en prod** : `global_exception_handler` présent avec `exc_info=True`. Alerte email Railway via dashboard (action humaine).
+4. ✅ **README + page d'accueil** : README mis à jour. Encart bêta supprimé sur demande (hors MVP).
+5. ✅ **Backup BDD** : procédure documentée dans `.docs/02-tech-architecture.md`.
 
 **Critères de done** :
 - Spam `GET /sources/extract` → 429 après 10 req.

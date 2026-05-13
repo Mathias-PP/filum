@@ -6,21 +6,32 @@
 
 ## Dernière mise à jour
 
-**2026-05-13** — jalons M1+M2+M3 débuté. Bugs critiques corrigés.
+**2026-05-13** — jalons M1+M2+M3 terminés. PR #27 mergée (polish UX). PR #28 en cours (fix flow création).
 
-Bugs corrigés :
-- Fix 404 en cliquant sur un brouillon depuis le dashboard (lien vers `/dashboard/cards/{id}` → `/dashboard/new/{id}/sources`)
-- Fix bouton retour étape 2 → étape 1 (allait vers `/dashboard/new` fiche vierge → maintenant `/dashboard`)
-- Fix erreur "An error occurred" non explicite : ajout handler HTTPException backend qui wrapper au format `{error: {code, message}}`
-- Ajout endpoint `DELETE /cards/{id}` + bouton suppression pour les brouillons
+### PR #27 — MVP Polish (mergée)
+- Navbar : avatar utilisateur avec dropdown (menu déroulant, lien dashboard, déconnexion)
+- Landing page auth-aware : bouton "Continuer avec Google" remplacé par "Accéder au tableau de bord" quand connecté
+- Page /about créée avec contenu complet
+- Bannière bêta privée supprimée
+- Description expandable (Lire la suite / Moins) sur fiches publiques
+- Typage strict `data.user: User | null` dans layout + landing
 
-Jalon M2 — Auth guard + extracteur URL :
-- Auth guard : `+layout.ts` dans `/dashboard/` (lit `parent().user`, `throw redirect(302, '/')` si null)
-- Extracteur : appel `GET /sources/extract?url=...` au blur du champ URL en étape 2, pré-remplit titre + auteurs, spinner, silent fail
+### PR #28 — Card creation flow (en cours)
+- **Nouvel endpoint** `GET /sources?card_id=...` : liste les sources d'une fiche
+- **Sources page fix** : charge les sources existantes au montage (plus de liste vide au retour)
+- **Publish fix** : ne bloque plus sur `archive_status=PENDING` (Wayback best-effort)
+- Suppression du check PENDING dans `POST /cards/{id}/publish` (le publish ne doit pas dépendre du résultat Wayback)
 
-Jalon M3 — Durcissement :
-- Rate limiting : slowapi branché sur `GET /sources/extract` (10 req/min/IP) et `POST /cards` (20 req/h/IP)
-- Logging structuré : middleware FastAPI log chaque requête avec `request_id`, méthode, path, status, durée en ms + header `X-Request-ID`
+### Bugs corrigés (itérations précédentes)
+- Fix 404 en cliquant sur un brouillon depuis le dashboard
+- Fix bouton retour étape 2 → étape 1
+- Fix erreur "An error occurred" non explicite : handler HTTPException
+- Ajout endpoint `DELETE /cards/{id}` + bouton suppression
+
+### Jalons terminés
+- **M1** — OAuth Google (backend + frontend, manque credentials humains)
+- **M2** — Auth guard + extracteur URL branché
+- **M3** — Rate limiting, logs structurés, backup documenté
 
 Jalon M1 livré précédemment :
 - Backend : endpoints `/auth/google/login` et `/auth/google/callback` complétés. State token CSRF en cookie HttpOnly. Échange code → id_token vérifié via Google JWKS (PyJWKClient). Création/retrouvage User. Cookie session avec samesite conditionnel (`lax` en debug, `none+secure` en prod). Génération paire Ed25519 chiffrée AES-GCM à la première connexion.
@@ -36,7 +47,13 @@ Itérations précédentes :
 
 ## Phase courante
 
-**Phase 1 — Jalon M1 (OAuth Google) livré.** Backend live sur Railway, frontend live sur Vercel, fiche démo publique avec graphe D3 18 sources, embranchement Y fonctionnel. Création de fiche disponible via `/dashboard/new`. Extracteur URL opérationnel côté backend (`GET /sources/extract`). **OAuth Google end-to-end implémenté** (backend + frontend + tests). Cookie session passe en `samesite=none, secure=True` en prod pour cross-origin Vercel ↔ Railway. CI entièrement enforced (0 `|| true`). Prochain jalon : M2 (auth guard + branchement extracteur formulaire).
+**Phase 1 — Jalons M1+M2+M3 terminés.** Le flow création de fiche est fonctionnel (dashboard → new → ajout sources → publication). Le seul blocage pour le MVP complet est la **configuration des credentials Google OAuth** (voir ci-dessous).
+
+**Blocage OAuth** : les endpoints `/auth/google/login` et `/auth/google/callback` sont implémentés et testés, mais les variables d'env ne sont pas configurées dans Railway :
+1. Créer un projet OAuth dans Google Cloud Console
+2. Configurer `google_client_id`, `google_client_secret`, `google_redirect_uri` dans Railway
+3. La redirect URI doit être `https://filum-production-07bb.up.railway.app/api/v1/auth/google/callback`
+4. Toutes les variables en **lowercase** (ADR-010)
 
 ---
 

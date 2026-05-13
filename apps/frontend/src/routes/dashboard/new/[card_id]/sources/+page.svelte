@@ -59,7 +59,12 @@
 
   onMount(async () => {
     try {
-      card = await api.cards.get(cardId);
+      const [loadedCard, loadedSources] = await Promise.all([
+        api.cards.get(cardId),
+        api.sources.list(cardId),
+      ]);
+      card = loadedCard;
+      sources = loadedSources;
     } catch (err) {
       loadError = err instanceof Error ? err.message : 'Erreur de chargement';
     }
