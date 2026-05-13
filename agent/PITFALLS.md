@@ -80,6 +80,22 @@
 - **Cause** : Windows = case-insensitivity native sur les env vars, conflit avec `case_sensitive=True` pydantic.
 - **Prévention** : lancer `ruff` + `mypy` en local sur Windows. Faire confiance à la CI Linux pour `pytest`. Si vraiment besoin de tester sur Windows, passer par WSL.
 
+### 1.11 Modèle SQLAlchemy `nullable=False` désaligné avec la migration
+
+- **Symptôme** : tests qui créent un `BiblioCard` via `Base.metadata.create_all` (conftest SQLite) reçoivent `IntegrityError: NOT NULL constraint failed: biblio_cards.canonical_hash` alors que `CardService.create_card()` fonctionne en prod sans setter ces champs.
+- **Cause** : `BiblioCard.canonical_hash` et `BiblioCard.signature` sont déclarés `nullable=False` dans `apps/backend/app/models/biblio_card.py` lignes 72-73. Mais une migration ultérieure a manifestement loosené les colonnes côté Postgres prod (et `create_card` les laisse `None`). En CI, le schéma SQLite est construit depuis la déclaration SQLAlchemy → strict.
+- **Prévention** : aligner le modèle avec la migration (passer `nullable=True` et `Mapped[str | None]`). En attendant ce fix, les fixtures de test doivent passer `canonical_hash="", signature=""` lors de l'insertion d'un draft.
+- **Localisation** : `apps/backend/app/models/biblio_card.py:72-73`, `apps/backend/app/services/card.py:29-42`.
+- **Découvert** : 2026-05-13 lors de l'écriture de `tests/unit/test_canonical_hash.py`.
+
+### 1.12 Field constraints Pydantic perdus par redéfinition de champ en sous-classe
+
+- **Symptôme** : `Field(min_length=..., max_length=...)` déclaré sur `SourceBase` n'est PAS appliqué quand on instancie `SourceCreate`.
+- **Cause** : `class SourceCreate(SourceBase): url: str` redéfinit complètement le champ `url`, ce qui efface le `Field(...)` hérité. Pydantic v2 ne fusionne pas — il remplace.
+- **Prévention** : si on veut hériter d'un champ + son `Field(...)`, ne **pas** le redéfinir dans la sous-classe. Si on veut le redéfinir, copier explicitement le `Field(...)` : `url: str = Field(min_length=1, max_length=2000)`.
+- **Localisation** : `apps/backend/app/schemas/source.py:31-45`.
+- **Découvert** : 2026-05-13 lors de l'écriture de `tests/unit/test_schemas.py`.
+
 ---
 
 ## 2. Frontend / SvelteKit / D3
