@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -17,7 +16,6 @@ from app.models.source import ArchiveStatus, Source, SourceType
 from app.models.user import User
 from app.schemas.biblio_card import CardCreate, CardStats
 
-logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
@@ -163,6 +161,10 @@ class CardService:
         )
 
     async def verify_card(self, card: BiblioCard) -> dict:
+        # A draft card has no signature yet; nothing to verify.
+        if card.canonical_hash is None or card.signature is None:
+            return {"valid": False, "reason": "not_published"}
+
         sources_data = [
             {
                 "url": s.url,
@@ -189,15 +191,10 @@ class CardService:
         if content_hash != card.canonical_hash:
             return {"valid": False, "reason": "hash_mismatch"}
 
-        try:
-            signer = SigningService.from_pem(
-                f"-----BEGIN PRIVATE KEY-----\n{card.user.public_key}\n-----END PRIVATE KEY-----"
-            )
-            if not signer.verify(content_hash, card.signature):
-                return {"valid": False, "reason": "signature_mismatch"}
-        except Exception as e:
-            logger.warning(f"Verification failed: {e}")
-            return {"valid": False, "reason": str(e)}
+        if not SigningService.verify_with_public_key_hex(
+            card.user.public_key, content_hash, card.signature
+        ):
+            return {"valid": False, "reason": "signature_mismatch"}
 
         return {
             "valid": True,

@@ -53,3 +53,22 @@ class SigningService:
             return True
         except Exception:
             return False
+
+    @staticmethod
+    def verify_with_public_key_hex(public_key_hex: str, data: str | bytes, signature: str) -> bool:
+        """Verify an Ed25519 signature using a raw public key stored as hex.
+
+        Used by CardService.verify_card(): we only have the user's raw public
+        key (64 hex chars = 32 bytes), not a private PEM. Wrapping the raw key
+        in `BEGIN PRIVATE KEY` headers and calling from_pem() — as the old
+        verify_card code did — always fails, so signed cards were silently
+        unverifiable in production.
+        """
+        if isinstance(data, str):
+            data = data.encode("utf-8")
+        try:
+            public_key = ed25519.Ed25519PublicKey.from_public_bytes(bytes.fromhex(public_key_hex))
+            public_key.verify(bytes.fromhex(signature), data)
+            return True
+        except Exception:
+            return False

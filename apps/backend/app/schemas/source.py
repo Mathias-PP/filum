@@ -41,7 +41,11 @@ class SourceBase(BaseModel):
 
 
 class SourceCreate(SourceBase):
-    url: str
+    # No fields are added here. The previous `url: str` override silently
+    # discarded the Field(min_length=1, max_length=2000) inherited from
+    # SourceBase (Pydantic v2 replaces fields, doesn't merge). Removed
+    # so input validation actually applies on the API boundary.
+    pass
 
 
 class SourceUpdate(BaseModel):

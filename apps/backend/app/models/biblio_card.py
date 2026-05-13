@@ -69,8 +69,10 @@ class BiblioCard(Base):
         index=True,
     )
     published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    canonical_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
-    signature: Mapped[str] = mapped_column(Text, nullable=False)
+    # Nullable: a draft card has no signature until publish_card() runs.
+    # Migration 005 loosens the production Postgres constraints to match.
+    canonical_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    signature: Mapped[str | None] = mapped_column(Text, nullable=True)
     signed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

@@ -213,12 +213,14 @@ git commit --allow-empty -m "ci: retrigger" && git push origin main
 
 ## Comment relancer une session avec un agent IA
 
-Pour qu'un agent (Claude Code, Aider, etc.) reprenne efficacement :
+Pour qu'un agent (Claude Code, Aider, opencode, etc.) reprenne efficacement :
 
-1. Lire dans l'ordre : `README.md` → `STATE.md` (ce fichier) → `DECISIONS.md` → `.docs/01-product-spec.md` → `.docs/02-tech-architecture.md`
-2. Vérifier l'état actuel :
+1. **Travail autonome multi-sessions** : commencer par [`agent/README.md`](./agent/README.md). Le dossier `agent/` contient le protocole complet (permissions, git workflow, pitfalls, skills) + une mémoire condensée dans [`agent/memory/PROJECT_SNAPSHOT.md`](./agent/memory/PROJECT_SNAPSHOT.md).
+2. **Plan de complétion MVP** : [`.docs/10-mvp-completion-plan.md`](./.docs/10-mvp-completion-plan.md) — jalons M1 (OAuth), M2 (auth guard + extracteur), M3 (durcissement).
+3. **Travail ponctuel (une session)** : lire dans l'ordre `README.md` → `STATE.md` (ce fichier) → `DECISIONS.md` → `.docs/01-product-spec.md` → `.docs/02-tech-architecture.md`.
+4. **Vérifier l'état actuel** :
    - `git log --oneline -10`
    - `wsl gh run list --branch main --limit 3`
    - `curl https://filum-production-07bb.up.railway.app/health`
-3. Choisir une tâche dans « Prochaines étapes » ci-dessus
-4. Travailler sur une branche `feat/<sujet>`, PR vers `main`, squash-merge
+5. **Choisir une tâche** : suivre le jalon courant du plan MVP, sinon prendre dans « Prochaines étapes » ci-dessus.
+6. **Travailler** : branche `feat/<sujet>` (jamais sur main), PR vers `main`, squash-merge **après validation humaine** explicite (cf. [`agent/GIT_WORKFLOW.md`](./agent/GIT_WORKFLOW.md)).

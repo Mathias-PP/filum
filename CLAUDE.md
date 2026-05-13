@@ -119,6 +119,11 @@ filum/
 
 Si tu modifies l'état réel du projet (feature livrée, fix prod, déploiement), **mets à jour `STATE.md`** avant de fermer la session. C'est le contrat de continuité.
 
+Pour une **session autonome longue** (mode plan + acceptEdits, ou agent tiers comme opencode), consulter aussi :
+- [`.docs/10-mvp-completion-plan.md`](./.docs/10-mvp-completion-plan.md) — jalons M1/M2/M3 vers MVP complet
+- [`.docs/11-critique-and-improvements.md`](./.docs/11-critique-and-improvements.md) — regard critique
+- [`agent/README.md`](./agent/README.md) — point d'entrée du système d'instructions agent (permissions, git workflow, pitfalls, skills)
+
 ---
 
 ## Pièges Alembic à éviter (vécus en prod)

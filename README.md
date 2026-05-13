@@ -91,12 +91,14 @@ Documents vivants à maintenir au fil du projet :
 
 ## Conventions pour l'assistance IA
 
-Filum est conçu pour être développé en partie avec l'assistance d'agents IA (Claude Code en priorité, Aider en secours).
+Filum est conçu pour être développé en partie avec l'assistance d'agents IA (Claude Code en priorité, Aider en secours, opencode/Big Pickle pour les sessions autonomes longues).
 
 - [`CLAUDE.md`](CLAUDE.md) — instructions et contraintes pour Claude Code (lu automatiquement)
 - [`AGENTS.md`](AGENTS.md) — instructions équivalentes pour d'autres agents (Aider, Codex, etc.)
+- [`agent/`](agent/) — système d'instructions pour le travail autonome multi-sessions : permissions, git workflow, sécurité, pièges à éviter, protocole de tâche, mémoire et skills (Alembic, Svelte, OAuth, etc.)
+- [`opencode.json`](opencode.json) — config runtime pour opencode (instructions chargées + matrice de permissions bash)
 
-Les deux fichiers contiennent l'essentiel des règles à respecter pour rester cohérent avec le projet.
+Les deux fichiers racines (CLAUDE.md, AGENTS.md) contiennent les règles essentielles. Le dossier `agent/` les opérationnalise pour un travail autonome avec garde-fous explicites.
 
 ---
 
