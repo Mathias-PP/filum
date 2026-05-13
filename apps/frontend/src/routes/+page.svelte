@@ -1,11 +1,12 @@
 <script lang="ts">
   import { env } from '$env/dynamic/public';
   import { Button } from '$lib/components';
+  import type { User } from '$lib/api';
 
   const googleLoginUrl = `${env.PUBLIC_API_BASE_URL ?? ''}/api/v1/auth/google/login`;
 
   interface PageData {
-    user: unknown;
+    user: User | null;
   }
 
   let { data }: { data: PageData } = $props();

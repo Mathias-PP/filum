@@ -5,12 +5,13 @@
   import { auth } from '$lib/stores';
   import { page } from '$app/stores';
   import { Logo } from '$lib/components';
+  import type { User } from '$lib/api';
 
   const API_BASE = env.PUBLIC_API_BASE_URL ?? '';
   const googleLoginUrl = `${API_BASE}/api/v1/auth/google/login`;
 
   interface Props {
-    data: { user: unknown };
+    data: { user: User | null };
     children: any;
   }
 
@@ -19,7 +20,7 @@
   let showUserMenu = $state(false);
 
   $effect(() => {
-    auth.setUser(data.user as any);
+    auth.setUser(data.user);
   });
 
   function closeUserMenu() {
