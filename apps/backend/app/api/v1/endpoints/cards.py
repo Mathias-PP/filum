@@ -3,6 +3,8 @@ from __future__ import annotations
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+
+from app.core.rate_limit import limiter
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_401_UNAUTHORIZED
 
@@ -59,7 +61,9 @@ async def list_my_cards(
 
 
 @router.post("/cards", response_model=CardResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("20/hour")
 async def create_card(
+    request: Request,
     card_data: CardCreate,
     current_user: User = Depends(get_current_user),
     card_service: CardService = Depends(get_card_service),

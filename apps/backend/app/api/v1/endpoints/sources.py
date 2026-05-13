@@ -4,12 +4,13 @@ import asyncio
 from typing import cast
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, HttpUrl
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.rate_limit import limiter
 from app.db.database import async_session_maker, get_db
 from app.extractors import url_extractor
 from app.models.biblio_card import BiblioCard, CardStatus
@@ -37,7 +38,9 @@ async def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
 
 
 @router.get("/extract", response_model=ExtractResponse)
+@limiter.limit("10/minute")
 async def extract_url_metadata(
+    request: Request,
     url: HttpUrl = Query(..., description="URL to extract metadata from"),
 ):
     """Extract title, authors, date, citations from a URL (best-effort, no auth required)."""
