@@ -8,11 +8,13 @@
 
 **2026-05-13** — session 3 : refonte graphique complète (logo 12 branches, graphe Y-branching, suppression conflits rouge), ajout types source video/image, redesign page fiche publique + page d'accueil, CI/CD cleanup (vite-plugin-svelte/vitest bump)
 
+**2026-05-13** — session 3.5 : correction Y-branching (deux sources Nader mal groupées → deux sources Léa Marchand en premier cercle, premier Y-branch fonctionnel entre le nœud central et les deux notes de tournage)
+
 ---
 
 ## Phase courante
 
-**Phase 1 — MVP déployé + itération graphique.** Backend live sur Railway, frontend live sur Vercel, fiche démo publique avec graphe D3 18 sources, embranchement Y, redesign UX.
+**Phase 1 — MVP déployé + itération graphique.** Backend live sur Railway, frontend live sur Vercel, fiche démo publique avec graphe D3 18 sources, embranchement Y fonctionnel (2 sources Léa Marchand → nœud de jonction gris → nœud central), redesign UX.
 
 ---
 

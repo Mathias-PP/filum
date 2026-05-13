@@ -365,27 +365,18 @@ def _demo_sources() -> list[dict]:
             "views_count": 1_800_000,
         },
         {
-            "url": "https://www.nature.com/articles/nrn2237",
-            "title": "Reconsolidation: Maintaining Memories in the Brain",
-            "authors": "Karim Nader",
-            "source_type": SourceType.PEER_REVIEWED.value,
-            "authority_level": AuthorityLevel.HIGH.value,
+            "url": "https://lea-marchand.filum.app/notes/loftus-interview-2025",
+            "title": "Compte-rendu : entretien avec Elizabeth Loftus sur les faux souvenirs",
+            "authors": "Léa Marchand",
+            "source_type": SourceType.ORIGINAL.value,
+            "authority_level": AuthorityLevel.LOW.value,
             "annotation": (
-                "Review 2007 qui synthétise une décennie de recherches sur la "
-                "reconsolidation depuis l'article fondateur de 2000. "
-                "Deuxième source de Nader citant Kandel comme socle."
+                "Notes personnelles prises lors d'un entretien informel avec Loftus "
+                "après une conférence à Paris en 2025. Échanges sur l'éthique "
+                "et la controverse autour de ses expertises judiciaires."
             ),
             "is_pivot": False,
-            "parent_index": 1,
-            "citations_count": 2100,
-            "impact_factor": 34.3,
-            "excerpts": [
-                (
-                    "La reconsolidation n'est pas une simple répétition de la consolidation : "
-                    "elle ouvre une fenêtre de plasticité qui permet de mettre à jour "
-                    "le souvenir avant de le restabiliser."
-                )
-            ],
+            "parent_index": None,
         },
         {
             "url": "https://wellcomecollection.org/works/pb7xkuyz",

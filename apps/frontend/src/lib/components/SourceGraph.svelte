@@ -51,6 +51,12 @@
     kind: 'card' | 'parent'
   }
 
+  interface ForkMeta {
+    junctionId: string
+    parentId: string
+    childIds: string[]
+  }
+
   let container: HTMLDivElement | undefined = $state()
   let svgEl: SVGSVGElement | undefined = $state()
   let width = $state(800)
@@ -76,6 +82,7 @@
   }
 
   let junctionCounter = 0
+  let forks: ForkMeta[] = []
 
   function buildGraph(): { nodes: GraphNode[]; links: GraphLink[] } {
     const nodes: GraphNode[] = [
@@ -90,6 +97,7 @@
       }
     ]
     const links: GraphLink[] = []
+    forks = []
 
     const byAuthorAndParent = new Map<string, typeof card.sources>()
 
@@ -118,7 +126,6 @@
         links.push({ source: cardId, target: s.id, kind: 'card' })
       }
 
-      // Group by author + parent for Y-branching
       if (s.authors && s.authors.trim().length > 0) {
         const pid = isSecondary && s.parent_source_id ? s.parent_source_id : cardId
         const key = `${s.authors.trim()}||${pid}`
@@ -127,34 +134,32 @@
       }
     }
 
-    // Create Y-junctions for groups of 2+ sources by the same author to the same parent
+    // Replace direct links with invisible junction + fork for Y-branch groups
     for (const [key, group] of byAuthorAndParent) {
       if (group.length < 2) continue
-      const pid = key.includes('||' + cardId) ? cardId : group[0].parent_source_id
-      const author = group[0].authors!
+      const pidStr = key.split('||')[1]
       const jxId = `junction:${++junctionCounter}`
-      const jxNode: GraphNode = {
+      nodes.push({
         id: jxId,
         kind: 'junction',
-        label: author,
-        radius: 4,
-        fill: '#94a3b8',
-        stroke: '#64748b',
+        label: '',
+        radius: 0,
+        fill: 'transparent',
+        stroke: 'transparent',
         tier: 'junction'
-      }
-      nodes.push(jxNode)
-      // Redirect parent→source links through junction
-      links.push({ source: pid!, target: jxId, kind: 'parent' })
+      })
+      const linkKind = pidStr === cardId ? 'card' : 'parent'
+      links.push({ source: pidStr, target: jxId, kind: linkKind })
       for (const s of group) {
-        // Remove direct parent→source link
         const idx = links.findIndex(
           (l) =>
-            (l.source === s.id || (l.source as string) === s.id) &&
-            (l.target === pid || (l.target as string) === pid)
+            (l.source === pidStr && l.target === s.id) ||
+            (l.source === s.id && l.target === pidStr)
         )
         if (idx !== -1) links.splice(idx, 1)
-        links.push({ source: jxId, target: s.id, kind: 'parent' })
+        links.push({ source: jxId, target: s.id, kind: linkKind })
       }
+      forks.push({ junctionId: jxId, parentId: pidStr, childIds: group.map((s) => s.id) })
     }
 
     return { nodes, links }
@@ -162,6 +167,31 @@
 
   function ticked(svgRoot: SVGSVGElement, nodes: GraphNode[], links: GraphLink[]) {
     const svg = select(svgRoot)
+
+    // Pin junction nodes at ideal fork point (invisible Y-branch split)
+    for (const fork of forks) {
+      const jx = nodes.find((n) => n.id === fork.junctionId)
+      if (!jx) continue
+      const parent = nodes.find((n) => n.id === fork.parentId)
+      const children = fork.childIds
+        .map((id) => nodes.find((n) => n.id === id))
+        .filter(Boolean) as GraphNode[]
+      if (!parent || children.length < 2) continue
+
+      const mx = children.reduce((s, c) => s + (c.x ?? 0), 0) / children.length
+      const my = children.reduce((s, c) => s + (c.y ?? 0), 0) / children.length
+      const px = parent.x ?? 0
+      const py = parent.y ?? 0
+      const dx = mx - px
+      const dy = my - py
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1
+      const frac = Math.min(0.65, 40 / dist)
+
+      jx.x = px + dx * frac
+      jx.y = py + dy * frac
+      jx.fx = jx.x
+      jx.fy = jx.y
+    }
 
     svg
       .selectAll<SVGLineElement, GraphLink>('.link')

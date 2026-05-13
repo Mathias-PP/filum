@@ -9,9 +9,8 @@
 ## [Unreleased]
 
 ### Added
-- **Embranchement en Y** dans le graphe interactif : quand deux sources du même auteur citent le même parent, un nœud de jonction est créé automatiquement (arêtes Kandel → Nader → 2 papiers Nader)
+- **Embranchement en Y** dans le graphe interactif : quand deux sources du même auteur citent le même parent, un nœud de jonction est créé automatiquement (arêtes Nœud central → Léa Marchand → 2 notes de tournage)
 - **Source YouTube** Artem Kirsanov sur la neuroscience de la mémoire (seed demo)
-- **Deuxième source Karim Nader** : review Nature 2007 sur la reconsolidation, même auteur et même parent que l'article 2000 → démonstration de l'embranchement Y
 - **Types de source** `video` (Documentaire→Vidéo) et `image` (Illustration→Image)
 
 ### Changed
@@ -21,7 +20,7 @@
 - **Conflits d'intérêt** : rouge→ambré, icône ⚠ supprimée, badge conservé sans alarme
 - **En-tête fiche publique** : layout compact (avatar + créateur + titre sur une ligne, description en sous-titre), hauteur du graphe augmentée (68vh→75vh)
 - **Page d'accueil** : nouveau tagline « Vous allez adorer partager vos références », correction « bibliography »→« bibliographie »
-- **Démo** : 18 sources (au lieu de 16), 8 arêtes de citation, ajout vidéo YouTube + review Nader
+- **Démo** : 18 sources (au lieu de 16), 8 arêtes de citation, ajout vidéo YouTube
 - **CI/CD** : `@sveltejs/vite-plugin-svelte` ^5→^6, `vitest` ^2→^3 (résout le crash Test Frontend, compatible vite@6)
 
 ### Removed
@@ -29,6 +28,9 @@
 - Panneaux conflit d'intérêt expansés (gros bloc rouge) — le badge textuel ambré reste
 
 ### Fixed
+- **Fork Y sans nœud visible** : le nœud de jonction est désormais invisible (radius 0, transparent) et repositionné chaque frame au point d'embranchement idéal (40px du parent sur la ligne vers le centre de gravité des enfants). Résultat : un trait qui se divise en deux sans point intermédiaire visible.
+- **Y-branching réel** : les deux sources Nader avaient des chaînes `authors` différentes → pas de groupement. Remplacées par deux sources **Léa Marchand** (notes de tournage + compte-rendu), toutes deux en premier cercle (`parent_index: None`), même auteur exact → Y-branch fonctionnel entre le nœud central et les deux sources.
+- Bug link direction dans le code Y-branch : `links.findIndex` ne matchait pas les liens de premier cercle (`kind: 'card'` → `source: cardId, target: sourceId`). Corrigé en vérifiant les deux directions.
 - Crash Test Frontend : incompatibilité vite-plugin-svelte@6 + vitest@2 (utilisait vite@5). Résolu en montant vitest@3 (vite@6).
 - Typo homepage : « bibliography » → « bibliographie »
 - STATE.md + CHANGELOG.md mis à jour avec toutes les modifications
