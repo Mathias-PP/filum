@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from uuid import uuid4
+
 import pytest
 from pydantic import ValidationError
 
 from app.schemas.user import SlugPattern
 from app.schemas.biblio_card import CardCreate, Platform, ContentType
-from app.schemas.source import SourceCreate, SourceType
+from app.schemas.source import SourceCreate, SourceType, SourceUpdate
 
 
 class TestUserSchemas:
@@ -60,8 +62,13 @@ class TestSourceSchemas:
         assert data.url == "https://www.nature.com/articles/s41586-023-06501-x"
         assert data.source_type == SourceType.PEER_REVIEWED
         assert data.is_pivot is False
+        assert data.parent_source_id is None
 
     def test_source_with_all_fields(self):
+        # NOTE: authority_level is legacy (cf. ADR-017 / STATE.md). Kept in
+        # the schema for backward compatibility but no longer used by the UI.
+        # New code should rely on the typed indicators (citations_count,
+        # impact_factor, subscribers_count, views_count) on SourceResponse.
         data = SourceCreate(
             url="https://example.com/article",
             title="Example Article",
@@ -81,9 +88,39 @@ class TestSourceSchemas:
         )
         assert source.source_type.value == "press"
 
-    def test_url_is_string(self):
+    def test_url_is_stored_as_plain_string(self):
+        """url is intentionally typed `str`, not HttpUrl: validation happens at
+        the endpoint boundary (via HttpUrl + SSRF guard in url_extractor.py).
+        This test pins the design so that a future "tightening" PR has to
+        confront the migration cost of existing rows."""
         source = SourceCreate(
             url="not-a-valid-url",
             source_type=SourceType.PRESS,
         )
         assert isinstance(source.url, str)
+        assert source.url == "not-a-valid-url"
+
+    def test_url_max_length_enforced(self):
+        too_long = "https://example.com/" + ("x" * 2001)
+        with pytest.raises(ValidationError):
+            SourceCreate(url=too_long, source_type=SourceType.PRESS)
+
+    def test_url_min_length_enforced(self):
+        with pytest.raises(ValidationError):
+            SourceCreate(url="", source_type=SourceType.PRESS)
+
+    def test_parent_source_id_accepts_uuid(self):
+        parent_id = uuid4()
+        source = SourceCreate(
+            url="https://example.com/child",
+            source_type=SourceType.PRESS,
+            parent_source_id=parent_id,
+        )
+        assert source.parent_source_id == parent_id
+
+    def test_source_update_partial(self):
+        """SourceUpdate must accept any subset of fields without requiring url."""
+        update = SourceUpdate(title="New title", is_pivot=True)
+        assert update.title == "New title"
+        assert update.is_pivot is True
+        assert update.annotation is None
