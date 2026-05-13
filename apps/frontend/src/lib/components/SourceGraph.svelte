@@ -189,8 +189,8 @@
       const dx = mx - px
       const dy = my - py
 
-      jx.x = px + dx * 0.75
-      jx.y = py + dy * 0.75
+      jx.x = px + dx * 0.66
+      jx.y = py + dy * 0.66
       jx.fx = jx.x
       jx.fy = jx.y
     }
