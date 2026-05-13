@@ -5,12 +5,12 @@ from typing import cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.db.database import get_db
+from app.db.database import async_session_maker, get_db
 from app.extractors import url_extractor
 from app.models.biblio_card import BiblioCard, CardStatus
 from app.models.source import Source
@@ -37,9 +37,15 @@ async def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
 
 
 @router.get("/extract", response_model=ExtractResponse)
-async def extract_url_metadata(url: str = Query(..., description="URL to extract metadata from")):
+async def extract_url_metadata(
+    url: HttpUrl = Query(..., description="URL to extract metadata from"),
+):
     """Extract title, authors, date, citations from a URL (best-effort, no auth required)."""
-    meta = await url_extractor.extract(url)
+    if url.scheme not in ("http", "https"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Only http/https URLs are supported"
+        )
+    meta = await url_extractor.extract(str(url))
     return ExtractResponse(
         title=meta.title,
         authors=meta.authors,
@@ -112,8 +118,15 @@ async def create_source(
     await db.commit()
     await db.refresh(source)
 
-    wayback = WaybackService(db, settings.wayback_api_key)
-    asyncio.create_task(wayback.archive_url(source.id, source.url))
+    source_id_bg = source.id
+    source_url_bg = source.url
+
+    async def _archive_bg() -> None:
+        async with async_session_maker() as bg_db:
+            wayback = WaybackService(bg_db, settings.wayback_api_key)
+            await wayback.archive_url(source_id_bg, source_url_bg)
+
+    asyncio.create_task(_archive_bg())
 
     return source
 

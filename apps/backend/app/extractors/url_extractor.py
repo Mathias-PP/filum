@@ -2,8 +2,7 @@
 
 Tries, in order:
 1. Crossref (DOIs and dx.doi.org URLs) — structured metadata + citations count
-2. OpenAlex (DOIs) — impact_factor via journal data
-3. HTML scraping — og:title, og:description, author, publish date
+2. HTML scraping — og:title, og:description, author, publish date
 """
 
 from __future__ import annotations
@@ -36,8 +35,8 @@ class ExtractedMetadata:
 def _extract_doi(url: str) -> str | None:
     """Return bare DOI from a URL like https://doi.org/10.xxx/yyy or https://dx.doi.org/..."""
     patterns = [
-        r"(?:https?://)?(?:dx\.)?doi\.org/(.+)",
-        r"doi:\s*(.+)",
+        r"(?:https?://)?(?:dx\.)?doi\.org/([^\s?#]+)",
+        r"doi:\s*([^\s?#]+)",
     ]
     for p in patterns:
         m = re.search(p, url, re.IGNORECASE)
@@ -90,20 +89,6 @@ async def _crossref(doi: str) -> ExtractedMetadata | None:
         )
     except Exception as e:
         logger.debug("Crossref lookup failed for doi=%s: %s", doi, e)
-        return None
-
-
-async def _openalex_impact(doi: str) -> float | None:
-    url = f"https://api.openalex.org/works/https://doi.org/{doi}"
-    try:
-        async with httpx.AsyncClient(headers=_HEADERS, timeout=_TIMEOUT) as client:
-            r = await client.get(url)
-        if r.status_code != 200:
-            return None
-        data = r.json()
-        journal = data.get("primary_location", {}).get("source") or {}
-        return journal.get("apc_usd") and None  # apc_usd is not IF; skip
-    except Exception:
         return None
 
 
