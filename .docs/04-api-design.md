@@ -2,6 +2,8 @@
 
 > ⚠️ **Pivot ADR-019 (2026-05-14)** : `POST /cards/{id}/publish` retournera bientôt seulement un statut (plus de `signature`/`canonical_hash`). Nouveaux endpoints à venir : `POST /attestations/content` (création) et `GET /attestations/{id}/verify` (vérification publique). Le endpoint `GET /cards/{creator}/{slug}/verify` sera retiré. Voir `DECISIONS.md` ADR-019.
 
+> ⚠️ **Refonte taxonomie ADR-020 (2026-05-14)** : les payloads `Source` n'utilisent plus `source_type` ni `authority_level`. Les exemples JSON dans ce document sont **obsolètes** : remplacer par `format` (texte/video/image/audio/data), `category` (12 valeurs) et `author_kind` (9 valeurs, colore le graphe). `POST /cards/{id}/sources` accepte désormais `parent_source_id` (corrigé — auparavant silencieusement ignoré). Les endpoints sources autorisent ajout/édition/suppression sur fiches `published` (cohérent avec ADR-019). Voir `DECISIONS.md` ADR-020.
+
 > Endpoints REST exposés par le backend FastAPI. Conventions, contrats, exemples.
 
 ---

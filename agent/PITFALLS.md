@@ -122,6 +122,13 @@
 - **Statut : FIXED dans PR #24** — ajout de `SigningService.verify_with_public_key_hex()` (méthode statique) qui reconstruit un `Ed25519PublicKey` depuis les bytes raw. `verify_card()` l'appelle désormais. Tests de régression : `test_verify_card_returns_valid_for_freshly_signed_card` et `test_verify_card_detects_tampered_title`.
 - **Prévention future** : tout endpoint qui prétend faire de la crypto **doit** avoir au moins un test positif (cas valide → True) ET un test négatif (cas invalide → False). Un try/except qui swallow tout est un signal d'alerte — préférer logger + re-raise, ou avoir un test qui vérifie le happy path.
 
+### 1.15 Champ Pydantic accepté mais silencieusement non persisté (constructeur SQLAlchemy oublié)
+
+- **Symptôme** : `parent_source_id` envoyé en payload sur `POST /cards/{id}/sources` était bien accepté par Pydantic (présent sur `SourceCreate`) mais jamais persisté en base. Aucune erreur, juste une donnée perdue. Le seed démo (qui insère directement en base) n'était pas affecté, donc le bug se cachait. Découvert quand on a voulu exposer le champ dans l'UI.
+- **Cause** (`sources.py:138-149` avant ADR-020) : le constructeur `Source(...)` listait explicitement les champs (`url=`, `title=`, `source_type=`, etc.) mais avait oublié `parent_source_id=source_data.parent_source_id`. Pas de `**source_data.model_dump()` ni de `setattr` boucle → tout champ non explicite est silencieusement laissé à `None`.
+- **Statut : FIXED dans la PR taxonomie (ADR-020)**.
+- **Prévention future** : un endpoint CREATE qui construit manuellement le modèle SQLAlchemy à partir d'un `Pydantic.BaseModel` doit (a) soit utiliser `Model(**payload.model_dump(exclude_unset=False, exclude={"computed_fields"}))` pour ne rien oublier, (b) soit avoir un test d'intégration qui vérifie le round-trip pour **chaque champ** déclaré dans le schéma. Si on choisit la liste explicite, ajouter le test round-trip est non-négociable.
+
 ---
 
 ## 2. Frontend / SvelteKit / D3

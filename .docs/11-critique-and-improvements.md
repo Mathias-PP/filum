@@ -41,7 +41,7 @@
 ### Dettes dormantes
 
 - **`impact_factor` toujours `null`** mais le champ est sérialisé : soit le supprimer de l'API tant qu'il n'est pas alimenté, soit brancher OpenAlex (qui avait été enlevé en dead code — pourquoi ?). État ambigu = signal cassé pour l'utilisateur final.
-- **`authority_level` legacy** : encore en base et dans l'API mais plus utilisé en UI. Décider : drop avec migration ou documenter « champ legacy non-affiché ».
+- ~~**`authority_level` legacy** : encore en base et dans l'API mais plus utilisé en UI. Décider : drop avec migration ou documenter « champ legacy non-affiché ».~~ **Résolu par ADR-020 (2026-05-14)** : colonne supprimée par migration 007 dans le cadre de la refonte taxonomie 3 axes (`format`/`category`/`author_kind`).
 - **`apps/analytics/` (dbt + DuckDB)** présent mais inerte en runtime — uniquement `dbt compile` en CI. Joli pour le portfolio, mais entretient une dette qu'il faudra purger ou activer un jour.
 - **Pas de tests E2E** (Playwright prévu en phase 2) → impossible de valider le flow OAuth en CI.
 - **`SECURITY.md` mentionne « Fernet symmetric encryption »** alors que **ADR-009** acte le passage à AES-GCM. Cohérence à rétablir.

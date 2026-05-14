@@ -6,7 +6,32 @@
 
 ---
 
-## [Unreleased] — UX & accessibility pass (2026-05-14)
+## [Unreleased] — Source taxonomy redesign (3 orthogonal axes) — ADR-020 (2026-05-14)
+
+### Added
+- **3 axes obligatoires sur `Source`** : `format` (5 valeurs : texte/video/image/audio/data), `category` (12 valeurs : article-scientifique, preprint, article-presse, communique, documentaire, interview, podcast, blog, post-social, livre, page-web, notes), `author_kind` (9 valeurs : chercheur, media, institution-publique, gouvernement, ecole, laboratoire, entreprise, asso, individu).
+- **Dropdown « Cette source en cite une autre déjà ajoutée ? »** dans le formulaire d'ajout de source. Persiste `parent_source_id`, rendu en pointillés dans le graphe.
+- **3 nouveaux composants badge** : `AuthorKindBadge` (coloré par auteur), `FormatBadge`, `CategoryBadge` (variantes neutres).
+- **ADR-020** dans `DECISIONS.md` documentant la décision et le mapping de migration.
+- Tests : 4 nouveaux vitest sur `author-colors`. Tests pytest schemas mis à jour (17 cas pour la nouvelle taxonomie).
+
+### Changed
+- **Graphe coloré par `author_kind`** au lieu de `source_type` (signal épistémique le plus informatif pour le lecteur).
+- **`CardStats`** re-keyé : `peer_reviewed` / `institutional` / `press` / `video` / `image` / `original` → `chercheur` / `media` / `institution_publique` / `individu`. Frontend public card adapte les 2 tuiles statistiques.
+- **Endpoints sources** : ajout/édition/suppression désormais autorisée sur fiches publiées (cohérent avec ADR-019 sur la mutabilité des fiches).
+- **Hero accueil** : SVG redessiné — lignes droites (plus de courbes), 2 arêtes en pointillés entre sources pour illustrer la feature parent_source_id, labels mis à jour avec la nouvelle taxonomie (Chercheur·euse / Média / Institution / École / Individu / Association).
+- **Seed démo** : 16 sources réécrites avec la taxonomie 3 axes ; les 7 liens parent_source_id conservés.
+
+### Fixed
+- **`POST /cards/{id}/sources` ignorait silencieusement `parent_source_id`** : le champ était accepté par Pydantic mais jamais passé au constructeur `Source(...)` dans `sources.py:138`. Le seed le contournait par insertion directe ; depuis l'UI il était impossible de créer un lien parent. PITFALLS mis à jour avec ce cas d'école.
+- **Hero copy** : « chaque contenu original que vous revendiquez » → « chaque création que vous revendiquez » (2 occurrences). Collision sémantique levée avec l'ancien `source_type=original`.
+
+### Removed
+- Colonnes `sources.source_type` et `sources.authority_level` (migration 007). `AuthorityLevel` (legacy) supprimé du modèle, schéma, frontend.
+
+---
+
+## [Released] — UX & accessibility pass (PR #43, 2026-05-14)
 
 ### Added
 - **Menu hamburger mobile** dans la header : sur viewport `<md`, les onglets Fonctionnalités/Roadmap/Sécurité/À propos étaient invisibles. Désormais accessibles via un drawer sous la header avec gestion `aria-expanded`/`aria-controls` et fermeture sur Escape.

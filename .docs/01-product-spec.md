@@ -2,6 +2,8 @@
 
 > ⚠️ **Pivot ADR-019 (2026-05-14)** : les sections « signature de fiche » et « immuabilité de la fiche publiée » de ce document sont obsolètes. La signature porte désormais sur le **lien créateur·ice ↔ contenu** (triplet `(creator_id, content_url, attested_at)`). Les fiches bibliographiques sont mutables. Voir `DECISIONS.md` ADR-019. Réécriture intégrale du document à la PR de bascule backend.
 
+> ⚠️ **Refonte taxonomie ADR-020 (2026-05-14)** : toute mention de `source_type` (`peer-reviewed`, `institutionnel`, `presse`, `matériel original`, `vidéo`, `image`) dans ce document est **obsolète**. La taxonomie est désormais sur 3 axes orthogonaux : `format` (texte/video/image/audio/data), `category` (12 valeurs : article-scientifique, preprint, article-presse, communique, documentaire, interview, podcast, blog, post-social, livre, page-web, notes) et `author_kind` (9 valeurs : chercheur, media, institution-publique, gouvernement, ecole, laboratoire, entreprise, asso, individu). Le graphe est coloré par `author_kind`. Voir `DECISIONS.md` ADR-020.
+
 > Ce document décrit les fonctionnalités du MVP de Filum, les scénarios utilisateurs, et les écrans. Il est la référence produit pendant toute la phase 1.
 
 ---
