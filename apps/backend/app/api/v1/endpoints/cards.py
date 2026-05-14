@@ -252,9 +252,6 @@ async def get_public_card(
         platform=card.platform,
         content_type=card.content_type,
         status=card.status,
-        canonical_hash=card.canonical_hash,
-        signature=card.signature,
-        signed_at=card.signed_at,
         published_at=card.published_at,
         created_at=card.created_at,
         updated_at=card.updated_at,
@@ -283,5 +280,7 @@ async def verify_card(
             detail={"code": "not_found", "message": "Card not found"},
         )
 
-    result = await card_service.verify_card(card)
-    return VerificationResponse(**result)
+    return VerificationResponse(
+        valid=False,
+        reason="Card-level verification deprecated — use GET /attestations/{id}/verify instead",
+    )

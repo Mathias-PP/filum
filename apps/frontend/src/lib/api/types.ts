@@ -17,9 +17,6 @@ export interface Card {
   platform: Platform;
   content_type: ContentType;
   status: CardStatus;
-  canonical_hash: string | null;
-  signature: string | null;
-  signed_at: string | null;
   published_at: string | null;
   created_at: string;
   updated_at: string | null;
@@ -132,6 +129,28 @@ export interface VerificationResponse {
     signature_algorithm: string;
     canonicalization: string;
   } | null;
+  reason: string | null;
+}
+
+export interface Attestation {
+  id: string;
+  user_id: string;
+  content_url: string;
+  attested_at: string;
+  canonical_hash: string;
+  signature: string;
+  created_at: string | null;
+}
+
+export interface AttestationVerifyResponse {
+  valid: boolean;
+  attestation_id: string | null;
+  content_url: string | null;
+  creator_slug: string | null;
+  public_key: string | null;
+  hash_algorithm: string;
+  signature_algorithm: string;
+  canonicalization: string;
   reason: string | null;
 }
 

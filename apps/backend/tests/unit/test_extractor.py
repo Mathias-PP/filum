@@ -171,7 +171,9 @@ async def test_extract_html_with_jsonld_supplement(monkeypatch):
     """JSON-LD fills fields missing from OG tags (e.g. author if no meta author)."""
     fake = _FakeAsyncClient(
         response=_FakeResponse(
-            200, text=JSONLD_AND_OG_FIXTURE, headers={"content-type": "text/html"},
+            200,
+            text=JSONLD_AND_OG_FIXTURE,
+            headers={"content-type": "text/html"},
         )
     )
     _patch_async_client(monkeypatch, fake)
@@ -190,7 +192,9 @@ async def test_extract_html_with_jsonld_supplement(monkeypatch):
 
 
 class _FakeResponse:
-    def __init__(self, status_code: int, json_body: Any = None, text: str = "", headers: dict | None = None):
+    def __init__(
+        self, status_code: int, json_body: Any = None, text: str = "", headers: dict | None = None
+    ):
         self.status_code = status_code
         self._json = json_body
         self.text = text
@@ -203,7 +207,13 @@ class _FakeResponse:
 class _FakeAsyncClient:
     """Drop-in replacement for httpx.AsyncClient supporting `async with` + .get."""
 
-    def __init__(self, *, response: _FakeResponse | None = None, raise_exc: Exception | None = None, **_kwargs):
+    def __init__(
+        self,
+        *,
+        response: _FakeResponse | None = None,
+        raise_exc: Exception | None = None,
+        **_kwargs,
+    ):
         self._response = response
         self._raise = raise_exc
         self.last_url: str | None = None
@@ -304,7 +314,9 @@ async def test_extract_non_doi_falls_back_to_html(monkeypatch):
 @pytest.mark.asyncio
 async def test_extract_returns_empty_when_html_is_not_html(monkeypatch):
     fake = _FakeAsyncClient(
-        response=_FakeResponse(200, text="binary", headers={"content-type": "application/octet-stream"})
+        response=_FakeResponse(
+            200, text="binary", headers={"content-type": "application/octet-stream"}
+        )
     )
     _patch_async_client(monkeypatch, fake)
 

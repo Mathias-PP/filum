@@ -110,9 +110,7 @@ async def test_google_callback_creates_new_user(
     from sqlalchemy import select
     from app.models.user import User
 
-    result = await db_session.execute(
-        select(User).where(User.google_id == "google_test_sub_123")
-    )
+    result = await db_session.execute(select(User).where(User.google_id == "google_test_sub_123"))
     user = result.scalar_one_or_none()
     assert user is not None
     assert user.email == "oauth_new@example.com"

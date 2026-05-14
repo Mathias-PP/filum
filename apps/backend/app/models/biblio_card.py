@@ -41,10 +41,7 @@ class ContentType(str, Enum):
 
 class BiblioCard(Base):
     __tablename__ = "biblio_cards"
-    __table_args__ = (
-        Index("ix_biblio_cards_user_status", "user_id", "status"),
-        Index("ix_biblio_cards_canonical", "canonical_hash"),
-    )
+    __table_args__ = (Index("ix_biblio_cards_user_status", "user_id", "status"),)
 
     id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),
@@ -69,11 +66,6 @@ class BiblioCard(Base):
         index=True,
     )
     published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    # Nullable: a draft card has no signature until publish_card() runs.
-    # Migration 005 loosens the production Postgres constraints to match.
-    canonical_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
-    signature: Mapped[str | None] = mapped_column(Text, nullable=True)
-    signed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
