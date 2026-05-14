@@ -2,14 +2,17 @@
   interface Props {
     label: string;
     id?: string;
-    type?: 'text' | 'email' | 'url' | 'password';
+    type?: 'text' | 'email' | 'url' | 'password' | 'search';
     placeholder?: string;
     value?: string;
     error?: string;
+    hint?: string;
     required?: boolean;
     disabled?: boolean;
+    readonly?: boolean;
     class?: string;
     oninput?: (e: Event) => void;
+    onblur?: (e: FocusEvent) => void;
   }
 
   let {
@@ -19,20 +22,23 @@
     placeholder = '',
     value = $bindable(''),
     error,
+    hint,
     required = false,
     disabled = false,
+    readonly = false,
     class: className = '',
     oninput,
+    onblur,
   }: Props = $props();
 
   const inputId = $derived(id || label.toLowerCase().replace(/\s+/g, '-'));
 </script>
 
 <div class="space-y-1.5 {className}">
-  <label for={inputId} class="block text-sm font-medium text-slate-700">
+  <label for={inputId} class="block text-sm font-medium text-ink-secondary">
     {label}
     {#if required}
-      <span class="text-red-500">*</span>
+      <span class="text-danger" aria-hidden="true">*</span>
     {/if}
   </label>
   <input
@@ -42,14 +48,21 @@
     {placeholder}
     {required}
     {disabled}
+    {readonly}
     {oninput}
-    class="w-full px-4 py-2 rounded-lg border bg-white transition-all
-      focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-      placeholder:text-slate-400
-      disabled:bg-slate-50 disabled:cursor-not-allowed
-      {error ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-slate-300'}"
+    {onblur}
+    aria-invalid={error ? 'true' : undefined}
+    aria-describedby={error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined}
+    class="form-input w-full h-9 rounded bg-surface-primary border border-border px-3 py-2 text-sm transition-colors
+      focus:outline-none focus:border-info focus:ring-2 focus:ring-info focus:ring-offset-0
+      placeholder:text-ink-tertiary
+      read-only:bg-surface-tertiary read-only:text-ink-secondary
+      disabled:bg-surface-tertiary disabled:cursor-not-allowed disabled:opacity-60
+      {error ? 'border-danger focus:border-danger focus:ring-danger' : ''}"
   />
   {#if error}
-    <p class="text-sm text-red-500">{error}</p>
+    <p id="{inputId}-error" class="text-xs text-danger">{error}</p>
+  {:else if hint}
+    <p id="{inputId}-hint" class="text-xs text-ink-tertiary">{hint}</p>
   {/if}
 </div>

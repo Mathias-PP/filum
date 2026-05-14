@@ -5,7 +5,7 @@
   import { api, type User } from '$lib/api';
   import { auth } from '$lib/stores';
   import { page } from '$app/stores';
-  import { Logo } from '$lib/components';
+  import { Logo, Button } from '$lib/components';
 
   const API_BASE = env.PUBLIC_API_BASE_URL ?? '';
   const googleLoginUrl = `${API_BASE}/api/v1/auth/google/login`;
@@ -180,8 +180,8 @@
               {/if}
             </div>
           {:else}
-            <a href={googleLoginUrl} class="btn-secondary text-sm">Se connecter</a>
-            <a href={googleLoginUrl} class="btn-primary text-sm">Créer une fiche</a>
+            <Button href={googleLoginUrl} variant="secondary" size="sm">Se connecter</Button>
+            <Button href={googleLoginUrl} variant="primary" size="sm">Créer une fiche</Button>
           {/if}
         </div>
       </div>

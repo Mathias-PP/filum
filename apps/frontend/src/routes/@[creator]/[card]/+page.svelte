@@ -1,7 +1,7 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import type { CardDetail } from '$lib/api';
-  import { Avatar, AuthorKindBadge, FormatBadge, CategoryBadge } from '$lib/components';
+  import { Avatar, AuthorKindBadge, FormatBadge, CategoryBadge, Button } from '$lib/components';
   import { currentUser } from '$lib/stores/auth';
 
   interface PageData {
@@ -304,23 +304,18 @@
                   {/if}
                   <div class="mt-4 flex flex-wrap gap-2">
                     {#if source.archive_url}
-                      <a
+                      <Button
                         href={source.archive_url}
                         target="_blank"
-                        rel="noopener noreferrer"
-                        class="btn-secondary text-sm"
+                        variant="secondary"
+                        size="sm"
                       >
                         Version archivée Wayback
-                      </a>
+                      </Button>
                     {/if}
-                    <a
-                      href={source.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="btn-secondary text-sm"
-                    >
+                    <Button href={source.url} target="_blank" variant="secondary" size="sm">
                       Version live ↗
-                    </a>
+                    </Button>
                   </div>
                 </div>
               {/if}
