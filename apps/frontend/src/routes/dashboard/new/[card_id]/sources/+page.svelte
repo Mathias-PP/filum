@@ -232,8 +232,7 @@
           <select
             id="source-format"
             value={sourceFormat}
-            onchange={(e) =>
-              (sourceFormat = (e.target as HTMLSelectElement).value as SourceFormat)}
+            onchange={(e) => (sourceFormat = (e.target as HTMLSelectElement).value as SourceFormat)}
             class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             {#each formatOptions as opt}
@@ -262,15 +261,12 @@
         <div class="sm:col-span-2 space-y-1.5">
           <label for="source-author-kind" class="block text-sm font-medium text-slate-700">
             Type d'auteur <span class="text-red-500">*</span>
-            <span class="text-xs text-slate-500 font-normal"
-              >— colore le nœud dans le graphe</span
-            >
+            <span class="text-xs text-slate-500 font-normal">— colore le nœud dans le graphe</span>
           </label>
           <select
             id="source-author-kind"
             value={authorKind}
-            onchange={(e) =>
-              (authorKind = (e.target as HTMLSelectElement).value as AuthorKind)}
+            onchange={(e) => (authorKind = (e.target as HTMLSelectElement).value as AuthorKind)}
             class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             style:border-left="4px solid {AUTHOR_COLORS[authorKind].stroke}"
           >

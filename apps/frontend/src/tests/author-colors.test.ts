@@ -14,7 +14,13 @@ const ALL_AUTHOR_KINDS = [
   'individu',
 ] as const satisfies readonly AuthorKind[];
 
-const ALL_FORMATS = ['texte', 'video', 'image', 'audio', 'data'] as const satisfies readonly SourceFormat[];
+const ALL_FORMATS = [
+  'texte',
+  'video',
+  'image',
+  'audio',
+  'data',
+] as const satisfies readonly SourceFormat[];
 
 const ALL_CATEGORIES = [
   'article-scientifique',
