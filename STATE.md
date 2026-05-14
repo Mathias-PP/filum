@@ -6,6 +6,8 @@
 
 ## Dernière mise à jour
 
+**2026-05-14 (post-PR #36)** — **Publish prod validé** (`/health/publish-diagnose` retourne `ok: true`). Plateforme exploitable end-to-end. Plan détaillé des 3 prochains axes documenté dans [`.docs/12-next-steps.md`](.docs/12-next-steps.md) : (A) stockage cloud R2 pour héberger directement les contenus originaux (sortie de dépendance plateforme), (B) archivage multi-cible Wayback + Archive.today + snapshot Filum-hosted, (C) refonte backend post-ADR-019 (table `content_attestations`, drop signature fiche). Ordre recommandé : C → B → validation produit → A.
+
 **2026-05-14 (PR #36) — VRAIE root cause du bug publish trouvée et corrigée.** Après 3 PRs de fausses pistes (#33 MissingGreenlet, #34 try/except + diagnostic, #35 endpoint /health/publish-diagnose), l'endpoint diagnostic a exposé le vrai traceback : `asyncpg.DataError: can't subtract offset-naive and offset-aware datetimes`. `CardService.publish_card` faisait `datetime.now(UTC)` sans `.replace(tzinfo=None)` (oubli du pattern PITFALLS §1.5) → colonne `TIMESTAMP WITHOUT TIME ZONE` refusait → commit aborté → `get_db` cleanup retentait le commit sur session morte → réponse interrompue mid-stream → CORS header jamais ajouté → user voit "blocked by CORS policy" alors que CORS marche partout ailleurs. Fix : `.replace(tzinfo=None)` + rollback défensif dans le try/except du endpoint. PITFALLS §1.5 enrichi.
 
 **2026-05-14 (PR #34)** — Diagnostic & filet de sécurité publish : le user a signalé que le bug `Failed to fetch` persistait après PR #33 mergée. Triple action : (1) endpoint `publish_card` enveloppé d'un `try/except` qui garantit une réponse JSON 500 propre quelle que soit l'exception (au lieu d'une connexion qui meurt en silence) ; (2) `/health` retourne désormais `commit` (SHA git Railway) pour vérifier en un `curl` que Railway a bien redéployé ; (3) message d'erreur frontend publish reformulé pour guider le user vers la console DevTools. Voir CHANGELOG `[Unreleased]`.
@@ -190,15 +192,45 @@ Vérifié par `curl` sur les URL prod, pas par lecture des docs :
 
 ## Prochaines étapes par priorité (basé sur l'état prod vérifié)
 
-### P0 — 🚀 Session PR #31 — Nouveau contenu et OpenGraph
+> Plan détaillé dans [`.docs/12-next-steps.md`](.docs/12-next-steps.md). Cette section est l'**index** opérationnel.
 
-Nouvelles pages (Features, Roadmap, Security), OpenGraph dynamique fonctionnel, logout fixé, "Pour qui?" enrichi. CI lint frontend fixée (`.prettierignore` + format 4 fichiers). Prête pour merge de `feat/mvp-mk2` vers `main`.
+### P0 — Axe C : refonte backend post-ADR-019 (1-2 semaines)
 
-### P1 — Vision produit
+Bloque tout le reste (import, attestation par URL).
+- Migration `006_content_attestations + drop_card_signature`
+- `AttestationService` (canonicalize triplet, sign, verify)
+- Endpoints `POST /attestations/content`, `GET /attestations/{id}/verify`
+- `POST /cards/{id}/publish` simplifié (flip statut + crée attestation si besoin)
+- Refonte `seed_demo.py` et cleanup types TS frontend
 
-- Améliorer l'extraction de métadonnées (plus de sources supportées, fallbacks)
-- Tester le flow auth end-to-end avec un vrai utilisateur
-- Finaliser l'intégration du copier-coller de bibliographie (auto-fill des sources)
+### P1 — Axe B : archivage multi-cible (1 semaine)
+
+- Refacto `WaybackService` → `ArchiveOrchestrator` (Wayback → Archive.today → Playwright)
+- Table `archive_attempts` + retry exponentiel via cron Railway
+- Badge archive sur chaque source côté UI
+- Endpoint public `GET /sources/{id}/archive`
+
+### P2 — Validation produit (1 semaine)
+
+Interviewer 3 créateurs cibles avant Axe A : « voudriez-vous héberger vos vidéos/articles directement sur Filum, ou Filum doit-il rester un index ? »
+Sans validation, ne pas attaquer Axe A.
+
+### P3 — Axe A : stockage cloud R2 (2-3 semaines, conditionnel)
+
+- ADR-020 : Cloudflare R2 comme blob store principal (10 GB free + zero egress), Internet Archive en miroir long terme
+- Service `BlobStorage` (interface) + impls R2 + InternetArchive
+- Migration `007_add_content_files`
+- Endpoints `POST /uploads/initiate` (URL pré-signée R2) + `/uploads/complete`
+- Frontend `<ContentUploader>` avec upload direct R2
+- Sécurité : ClamAV scan, max 500 Mo/fichier, vérif checksum SHA-256
+
+### P4 — Autres (mûr mais non bloquant)
+
+- Tests E2E Playwright (golden path)
+- Import Zotero / BibTeX / Obsidian (bloqué jusqu'à axe C livré)
+- Plugin navigateur (après 3-5 créateurs actifs)
+- Domaine custom `filum.app` (après premier ambassadeur prêt)
+- Améliorer l'extraction de métadonnées (fallbacks supplémentaires)
 
 ### P2 — Qualité interne (dette dormante)
 

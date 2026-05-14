@@ -87,6 +87,7 @@ Tous les fichiers de spec sont dans [`.docs/`](.docs/). Ils sont conçus pour ê
 | [`06-roadmap.md`](.docs/06-roadmap.md) | Plan jour par jour de la semaine 1, puis phases 2-6 |
 | [`07-open-questions.md`](.docs/07-open-questions.md) | Arbitrages non tranchés |
 | [`08-glossary.md`](.docs/08-glossary.md) | Glossaire technique et institutionnel |
+| [`12-next-steps.md`](.docs/12-next-steps.md) | Chemin critique post-MVP : axe C (refonte backend ADR-019), axe B (archivage multi-cible), axe A (stockage cloud R2) |
 
 Documents vivants à maintenir au fil du projet :
 
