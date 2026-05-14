@@ -19,16 +19,16 @@
       <h2 class="text-xl font-semibold text-slate-900">Ce que nous collectons</h2>
       <ul class="list-disc pl-6">
         <li>
-          <strong>Compte</strong> : nom, email et photo de profil retournés par votre fournisseur
-          OAuth (Google).
+          <strong>Compte</strong> : nom, email et photo de profil retournés par votre fournisseur OAuth
+          (Google).
         </li>
         <li>
-          <strong>Contenu</strong> : les fiches bibliographiques et sources que vous créez,
-          publiques par défaut une fois publiées.
+          <strong>Contenu</strong> : les fiches bibliographiques et sources que vous créez, publiques
+          par défaut une fois publiées.
         </li>
         <li>
-          <strong>Technique</strong> : logs serveur anonymisés (méthode HTTP, status, durée), pas de
-          tracking publicitaire, pas de cookies tiers.
+          <strong>Technique</strong> : logs serveur anonymisés (méthode HTTP, status, durée), pas de tracking
+          publicitaire, pas de cookies tiers.
         </li>
       </ul>
     </section>

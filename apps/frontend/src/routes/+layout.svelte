@@ -89,11 +89,21 @@
           >
             {#if mobileNavOpen}
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             {:else}
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
               </svg>
             {/if}
           </button>
@@ -188,7 +198,8 @@
             <a
               href={item.href}
               onclick={closeMobileNav}
-              class="block px-4 py-3 text-sm font-medium rounded-md {$page.url.pathname === item.href
+              class="block px-4 py-3 text-sm font-medium rounded-md {$page.url.pathname ===
+              item.href
                 ? 'text-blue-600 bg-blue-50'
                 : 'text-slate-700 hover:bg-slate-50'}"
             >

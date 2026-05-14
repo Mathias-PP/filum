@@ -21,7 +21,9 @@
   }
 
   async function deletePublishedCard(id: string, title: string) {
-    if (!confirm(`Supprimer définitivement la fiche « ${title} » ? Cette action est irréversible.`)) {
+    if (
+      !confirm(`Supprimer définitivement la fiche « ${title} » ? Cette action est irréversible.`)
+    ) {
       return;
     }
     await deleteCard(id);

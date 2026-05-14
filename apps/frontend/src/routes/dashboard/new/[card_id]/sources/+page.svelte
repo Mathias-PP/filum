@@ -254,7 +254,12 @@
       </div>
 
       <div class="flex justify-end">
-        <Button type="submit" variant="secondary" loading={addLoading} disabled={!url || addLoading}>
+        <Button
+          type="submit"
+          variant="secondary"
+          loading={addLoading}
+          disabled={!url || addLoading}
+        >
           {addLoading ? 'Ajout…' : 'Ajouter'}
         </Button>
       </div>

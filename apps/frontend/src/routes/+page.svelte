@@ -34,7 +34,9 @@
             archivées, et chaque contenu original que vous revendiquez est attesté
             cryptographiquement.
           </p>
-          <div class="flex flex-col sm:flex-row items-center lg:items-start justify-center lg:justify-start gap-4">
+          <div
+            class="flex flex-col sm:flex-row items-center lg:items-start justify-center lg:justify-start gap-4"
+          >
             {#if isAuthenticated}
               <Button href="/dashboard" variant="primary" size="lg">
                 Accéder au tableau de bord
@@ -102,12 +104,7 @@
 
             <g>
               <circle cx="240" cy="210" r="34" fill="#3b82f6" stroke="#1d4ed8" stroke-width="2.5">
-                <animate
-                  attributeName="r"
-                  values="34;36;34"
-                  dur="2.5s"
-                  repeatCount="indefinite"
-                />
+                <animate attributeName="r" values="34;36;34" dur="2.5s" repeatCount="indefinite" />
               </circle>
               <text
                 x="240"
@@ -116,8 +113,8 @@
                 font-size="14"
                 font-weight="700"
                 fill="white"
-                font-family="ui-sans-serif, system-ui"
-              >Filum</text>
+                font-family="ui-sans-serif, system-ui">Filum</text
+              >
 
               <circle cx="90" cy="95" r="22" fill="#C0DD97" stroke="#639922" stroke-width="2" />
               <circle cx="400" cy="110" r="22" fill="#B5D4F4" stroke="#378ADD" stroke-width="2" />
