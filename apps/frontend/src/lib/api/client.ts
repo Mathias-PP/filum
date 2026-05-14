@@ -12,6 +12,7 @@ import type {
   UserProfile,
   VerificationResponse,
 } from './types';
+import { normalizeCardDetail, normalizeSource } from './legacy-adapter';
 
 const API_BASE = `${env.PUBLIC_API_BASE_URL ?? ''}/api/v1`;
 
@@ -127,7 +128,8 @@ export const api = {
     },
 
     getPublic: async (creatorSlug: string, cardSlug: string): Promise<CardDetail> => {
-      return request<CardDetail>(`/@${creatorSlug}/${cardSlug}`);
+      const raw = await request<CardDetail>(`/@${creatorSlug}/${cardSlug}`);
+      return normalizeCardDetail(raw);
     },
 
     verify: async (creatorSlug: string, cardSlug: string): Promise<VerificationResponse> => {
@@ -137,21 +139,24 @@ export const api = {
 
   sources: {
     list: async (cardId: string): Promise<Source[]> => {
-      return request<Source[]>(`/sources?card_id=${cardId}`);
+      const raw = await request<Source[]>(`/sources?card_id=${cardId}`);
+      return raw.map((s) => normalizeSource(s));
     },
 
     create: async (cardId: string, data: SourceCreate): Promise<Source> => {
-      return request<Source>(`/sources?card_id=${cardId}`, {
+      const raw = await request<Source>(`/sources?card_id=${cardId}`, {
         method: 'POST',
         body: JSON.stringify(data),
       });
+      return normalizeSource(raw);
     },
 
     update: async (sourceId: string, data: Partial<SourceCreate>): Promise<Source> => {
-      return request<Source>(`/sources/${sourceId}`, {
+      const raw = await request<Source>(`/sources/${sourceId}`, {
         method: 'PATCH',
         body: JSON.stringify(data),
       });
+      return normalizeSource(raw);
     },
 
     delete: async (sourceId: string): Promise<void> => {
