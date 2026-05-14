@@ -18,6 +18,7 @@
   let { data, children }: Props = $props();
 
   let showUserMenu = $state(false);
+  let mobileNavOpen = $state(false);
 
   $effect(() => {
     auth.setUser(data.user);
@@ -25,6 +26,17 @@
 
   function closeUserMenu() {
     showUserMenu = false;
+  }
+
+  function closeMobileNav() {
+    mobileNavOpen = false;
+  }
+
+  function onGlobalKeydown(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      showUserMenu = false;
+      mobileNavOpen = false;
+    }
   }
 
   async function logout() {
@@ -57,16 +69,39 @@
   ];
 </script>
 
-<svelte:window onclick={closeUserMenu} />
+<svelte:window onclick={closeUserMenu} onkeydown={onGlobalKeydown} />
 
 <div class="min-h-screen flex flex-col">
   <header class="sticky top-0 z-50 bg-white border-b border-slate-200">
     <nav class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-16">
-        <a href="/" class="flex items-center gap-2">
-          <Logo size={32} className="text-blue-600" />
-          <span class="text-xl font-bold text-slate-900">Filum</span>
-        </a>
+      <div class="flex items-center justify-between h-16 gap-3">
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="md:hidden p-2 -ml-2 text-slate-700 hover:text-slate-900 rounded-md hover:bg-slate-100 transition-colors"
+            aria-label={mobileNavOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+            aria-expanded={mobileNavOpen}
+            aria-controls="mobile-nav"
+            onclick={(e) => {
+              e.stopPropagation();
+              mobileNavOpen = !mobileNavOpen;
+            }}
+          >
+            {#if mobileNavOpen}
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            {:else}
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            {/if}
+          </button>
+          <a href="/" class="flex items-center gap-2">
+            <Logo size={32} className="text-blue-600" />
+            <span class="text-xl font-bold text-slate-900">Filum</span>
+          </a>
+        </div>
 
         <div class="hidden md:flex items-center gap-6">
           {#each navItems as item}
@@ -140,6 +175,28 @@
           {/if}
         </div>
       </div>
+
+      {#if mobileNavOpen}
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <div
+          id="mobile-nav"
+          class="md:hidden border-t border-slate-200 py-2"
+          onclick={(e) => e.stopPropagation()}
+        >
+          {#each navItems as item}
+            <a
+              href={item.href}
+              onclick={closeMobileNav}
+              class="block px-4 py-3 text-sm font-medium rounded-md {$page.url.pathname === item.href
+                ? 'text-blue-600 bg-blue-50'
+                : 'text-slate-700 hover:bg-slate-50'}"
+            >
+              {item.label}
+            </a>
+          {/each}
+        </div>
+      {/if}
     </nav>
   </header>
 
