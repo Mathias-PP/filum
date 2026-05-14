@@ -2,6 +2,7 @@
   import { browser } from '$app/environment';
   import type { CardDetail } from '$lib/api';
   import { Avatar, AuthorKindBadge, FormatBadge, CategoryBadge } from '$lib/components';
+  import { currentUser } from '$lib/stores/auth';
 
   interface PageData {
     card: CardDetail;
@@ -42,6 +43,7 @@
   }
 
   const publicUrl = $derived(`https://filum-eight.vercel.app/@${creatorSlug}/${cardSlug}`);
+  const isOwner = $derived($currentUser?.username === creatorSlug);
 
   const jsonLd = $derived.by(() => {
     const citations = card.sources.map((s) => ({
@@ -95,6 +97,28 @@
     <header class="bg-white border-b border-slate-200">
       <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
         <div class="flex items-center gap-2">
+          {#if isOwner}
+            <a
+              href="/dashboard"
+              class="flex items-center gap-1 text-xs sm:text-sm text-slate-500 hover:text-slate-900 transition-colors shrink-0 mr-1 sm:mr-2 px-2 py-1 rounded-md hover:bg-slate-100"
+              title="Retour à votre tableau de bord"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                class="w-3.5 h-3.5"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <line x1="19" y1="12" x2="5" y2="12" />
+                <polyline points="12 19 5 12 12 5" />
+              </svg>
+              <span class="hidden sm:inline">Tableau de bord</span>
+            </a>
+          {/if}
           <a
             href="/@{creatorSlug}"
             class="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0"

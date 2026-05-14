@@ -15,7 +15,7 @@
   let publishing = $state(false);
   let publishError = $state<string | null>(null);
 
-  // Add-source form
+  // Add-source / edit-source form (shared state)
   let url = $state('');
   let sourceFormat = $state<SourceFormat>('texte');
   let sourceCategory = $state<SourceCategory>('article-scientifique');
@@ -27,6 +27,8 @@
   let isPivot = $state(false);
   let addError = $state<string | null>(null);
   let addLoading = $state(false);
+  let editingSourceId = $state<string | null>(null);
+  const isEditing = $derived(editingSourceId !== null);
 
   // URL extraction
   let extracting = $state(false);
@@ -73,31 +75,85 @@
     }
   });
 
-  async function addSource(e: Event) {
+  function resetForm() {
+    url = '';
+    sourceFormat = 'texte';
+    sourceCategory = 'article-scientifique';
+    authorKind = 'chercheur';
+    sourceTitle = '';
+    authors = '';
+    annotation = '';
+    isPivot = false;
+    parentSourceId = '';
+    lastExtractedUrl = '';
+    editingSourceId = null;
+    addError = null;
+  }
+
+  function startEdit(source: Source) {
+    editingSourceId = source.id;
+    url = source.url;
+    sourceFormat = source.format;
+    sourceCategory = source.category;
+    authorKind = source.author_kind;
+    sourceTitle = source.title ?? '';
+    authors = source.authors ?? '';
+    annotation = source.annotation ?? '';
+    isPivot = source.is_pivot;
+    parentSourceId = source.parent_source_id ?? '';
+    lastExtractedUrl = source.url;
+    addError = null;
+    if (typeof document !== 'undefined') {
+      document
+        .getElementById('source-title')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
+  function cancelEdit() {
+    resetForm();
+  }
+
+  async function submitSource(e: Event) {
     e.preventDefault();
     addError = null;
     addLoading = true;
     try {
-      const s = await api.sources.create(cardId, {
-        url,
-        format: sourceFormat,
-        category: sourceCategory,
-        author_kind: authorKind,
-        title: sourceTitle || undefined,
-        authors: authors || undefined,
-        annotation: annotation || undefined,
-        is_pivot: isPivot,
-        parent_source_id: parentSourceId || undefined,
-      });
-      sources = [...sources, s];
-      url = '';
-      sourceTitle = '';
-      authors = '';
-      annotation = '';
-      isPivot = false;
-      parentSourceId = '';
+      if (editingSourceId) {
+        const updated = await api.sources.update(editingSourceId, {
+          format: sourceFormat,
+          category: sourceCategory,
+          author_kind: authorKind,
+          title: sourceTitle || undefined,
+          authors: authors || undefined,
+          annotation: annotation || undefined,
+          is_pivot: isPivot,
+          parent_source_id: parentSourceId || null,
+        });
+        sources = sources.map((s) => (s.id === updated.id ? updated : s));
+        resetForm();
+      } else {
+        const s = await api.sources.create(cardId, {
+          url,
+          format: sourceFormat,
+          category: sourceCategory,
+          author_kind: authorKind,
+          title: sourceTitle || undefined,
+          authors: authors || undefined,
+          annotation: annotation || undefined,
+          is_pivot: isPivot,
+          parent_source_id: parentSourceId || undefined,
+        });
+        sources = [...sources, s];
+        resetForm();
+      }
     } catch (err) {
-      addError = err instanceof Error ? err.message : "Erreur lors de l'ajout";
+      addError =
+        err instanceof Error
+          ? err.message
+          : editingSourceId
+            ? 'Erreur lors de la modification'
+            : "Erreur lors de l'ajout";
     } finally {
       addLoading = false;
     }
@@ -107,6 +163,7 @@
     try {
       await api.sources.delete(id);
       sources = sources.filter((s) => s.id !== id);
+      if (editingSourceId === id) resetForm();
     } catch (err) {
       addError = err instanceof Error ? err.message : 'Erreur lors de la suppression';
     }
@@ -190,11 +247,28 @@
     </div>
   {/if}
 
-  <!-- Add source form -->
-  <div class="bg-white border border-slate-200 rounded-xl p-6 mb-6">
-    <h2 class="text-lg font-semibold text-slate-900 mb-4">Ajouter une source</h2>
+  <!-- Add / edit source form -->
+  <div
+    class="bg-white border rounded-xl p-6 mb-6 {isEditing
+      ? 'border-blue-300 ring-1 ring-blue-200'
+      : 'border-slate-200'}"
+  >
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-semibold text-slate-900">
+        {isEditing ? 'Modifier la source' : 'Ajouter une source'}
+      </h2>
+      {#if isEditing}
+        <button
+          type="button"
+          onclick={cancelEdit}
+          class="text-sm text-slate-500 hover:text-slate-900 transition-colors"
+        >
+          Annuler
+        </button>
+      {/if}
+    </div>
 
-    <form onsubmit={addSource} class="space-y-4">
+    <form onsubmit={submitSource} class="space-y-4">
       {#if addError}
         <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
           {addError}
@@ -214,8 +288,9 @@
               oninput={(e) => onUrlChange((e.target as HTMLInputElement).value)}
               onblur={extractUrl}
               required
+              readonly={isEditing}
               placeholder="https://doi.org/..."
-              class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-slate-400"
+              class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-slate-400 read-only:bg-slate-50 read-only:text-slate-500 read-only:cursor-not-allowed"
             />
             {#if extracting}
               <div
@@ -223,6 +298,11 @@
               ></div>
             {/if}
           </div>
+          {#if isEditing}
+            <p class="text-xs text-slate-500">
+              L'URL d'une source ne peut pas être modifiée (préserve l'archivage Wayback).
+            </p>
+          {/if}
         </div>
 
         <div class="space-y-1.5">
@@ -334,7 +414,7 @@
               class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">— Aucun lien parent —</option>
-              {#each sources as s}
+              {#each sources.filter((s) => s.id !== editingSourceId) as s}
                 <option value={s.id}>{s.title ?? s.url}</option>
               {/each}
             </select>
@@ -342,14 +422,25 @@
         {/if}
       </div>
 
-      <div class="flex justify-end">
+      <div class="flex justify-end gap-2">
+        {#if isEditing}
+          <Button type="button" variant="ghost" onclick={cancelEdit} disabled={addLoading}>
+            Annuler
+          </Button>
+        {/if}
         <Button
           type="submit"
-          variant="secondary"
+          variant={isEditing ? 'primary' : 'secondary'}
           loading={addLoading}
           disabled={!url || addLoading}
         >
-          {addLoading ? 'Ajout…' : 'Ajouter'}
+          {#if addLoading}
+            {isEditing ? 'Enregistrement…' : 'Ajout…'}
+          {:else if isEditing}
+            Enregistrer les modifications
+          {:else}
+            Ajouter
+          {/if}
         </Button>
       </div>
     </form>
@@ -364,8 +455,11 @@
       <div class="space-y-2">
         {#each sources as source (source.id)}
           {@const color = AUTHOR_COLORS[source.author_kind]}
+          {@const isThisEditing = editingSourceId === source.id}
           <div
-            class="flex items-start justify-between gap-3 bg-white border border-slate-200 rounded-lg px-4 py-3"
+            class="flex items-start justify-between gap-3 bg-white border rounded-lg px-4 py-3 transition-colors {isThisEditing
+              ? 'border-blue-300 ring-1 ring-blue-200'
+              : 'border-slate-200'}"
           >
             <div class="flex items-start gap-3 min-w-0">
               <span
@@ -385,23 +479,47 @@
                 <p class="text-xs text-slate-400 truncate">{source.url}</p>
               </div>
             </div>
-            <button
-              type="button"
-              onclick={() => removeSource(source.id)}
-              class="shrink-0 text-slate-400 hover:text-red-500 transition-colors"
-              aria-label="Supprimer"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                class="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
+            <div class="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onclick={() => startEdit(source)}
+                disabled={isThisEditing}
+                class="p-1.5 text-slate-400 hover:text-blue-600 disabled:text-blue-600 disabled:cursor-default transition-colors"
+                aria-label="Modifier la source"
+                title="Modifier"
               >
-                <line x1="6" y1="6" x2="18" y2="18" />
-                <line x1="6" y1="18" x2="18" y2="6" />
-              </svg>
-            </button>
+                <svg
+                  viewBox="0 0 24 24"
+                  class="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                onclick={() => removeSource(source.id)}
+                class="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
+                aria-label="Supprimer la source"
+                title="Supprimer"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  class="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                  <line x1="6" y1="18" x2="18" y2="6" />
+                </svg>
+              </button>
+            </div>
           </div>
         {/each}
       </div>
