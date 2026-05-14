@@ -106,6 +106,15 @@
 - **Statut : FIXED dans PR #24** — la ligne `url: str` redondante a été retirée de `SourceCreate`. Tests de régression : `test_url_max_length_enforced` + `test_url_min_length_enforced` dans `tests/unit/test_schemas.py`.
 - **Prévention future** : si tu veux hériter d'un champ + son `Field(...)`, ne **pas** le redéfinir dans la sous-classe. Si tu dois absolument le redéfinir, copier explicitement le `Field(...)`.
 
+### 1.14 `default=None` dans un modèle SQLAlchemy override le `server_default` de la DB
+
+- **Symptôme** : `NotNullViolationError` sur une colonne qui a pourtant `server_default=sa.func.now()` dans la migration. L'INSERT envoie explicitement `None`.
+- **Cause** : le modèle SQLAlchemy a `default=None, server_default=None`, ce qui force SQLAlchemy à inclure la colonne dans l'INSERT avec `None`, court-circuitant le `DEFAULT now()` PostgreSQL.
+- **Prévention** : ne **jamais** mettre `default=None` sur une colonne `nullable=False` avec `server_default`. Soit on omet complètement les defaults (SQLAlchemy omet la colonne de l'INSERT si elle n'est pas set), soit on utilise `server_default=func.now()` seul. Si on veut un default côté Python, utiliser un callable (`default=datetime.utcnow`) pas `None`.
+- **Cas vécu** (2026-05-14, PR #40) : `ContentAttestation.created_at` avait `default=None, server_default=None`. La migration 006 définissait `server_default=sa.func.now()` mais le modèle override. Le seed demo et `AttestationService.create_attestation` ne settaient pas `created_at` → `NotNullViolationError` en boucle sur Railway.
+- **Localisation** : `apps/backend/app/models/content_attestation.py:36-40`
+- **Test** : créer une `ContentAttestation` sans setter `created_at` — l'INSERT doit réussir et `created_at` doit être rempli par la DB.
+
 ### 1.13 `CardService.verify_card()` cassée par mauvais wrapping de clé publique
 
 - **Symptôme** : toute vérification d'une fiche signée retournait silencieusement `{"valid": False, "reason": "..."}` en prod. La promesse cryptographique du projet (vérifier que la fiche n'a pas été altérée) était cassée sans alerte.

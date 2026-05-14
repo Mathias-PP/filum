@@ -23,16 +23,16 @@ Infrastructure ouverte de **provenance et de filiation** pour les contenus numé
 
 ---
 
-## État au 2026-05-13
+## État au 2026-05-14
 
-**Phase 1 — MVP amélioré** : PR #30 (#31 en attente)
+**Phase 1 — MVP complet + Axe C (ADR-019) livré**
 
 - Backend live sur Railway : https://filum-production-07bb.up.railway.app
 - Frontend live sur Vercel : https://filum-eight.vercel.app
 - Fiche démo publique avec graphe D3 18 sources : https://filum-eight.vercel.app/@example/memoire-et-cerveau
-- Nouvelles pages : /features, /roadmap, /security, /about enrichi
-- OpenGraph dynamique : aperçu des liens avec titre et créateur
-- CI 9/9 verte sur main (72 tests pytest)
+- **Axe C déployé** : migration 006, table `content_attestations`, endpoints attestation, seed signé. La signature porte sur le triplet `(creator_id, content_url, attested_at)` — les fiches sont désormais mutables.
+- **2 crashs prod résolus** : (1) DROP INDEX inexistant dans migration 006, (2) `created_at=NULL` dans le modèle `ContentAttestation`
+- CI 9/9 verte sur main
 
 **Ce qui manque pour un produit publiable** :
 - Import Zotero/BibTeX/Obsidian pour réduire la friction
@@ -92,7 +92,8 @@ filum/
 ## Modèle de données (essentiel)
 
 - **`users`** : `id`, `slug` (unique), `email`, `display_name`, `avatar_url`, `encrypted_private_key`, `public_key`
-- **`biblio_cards`** : `id`, `creator_id` (FK users), `slug` (unique par créateur), `title`, `description`, `content_url`, `platform`, `canonical_hash`, `signature`, `published_at`
+- **`biblio_cards`** : `id`, `creator_id` (FK users), `slug` (unique par créateur), `title`, `description`, `content_url`, `platform`, `published_at` (plus de `canonical_hash`/`signature`/`signed_at` — migré vers `content_attestations`)
+- **`content_attestations`** : `id`, `user_id` (FK users), `content_url`, `attested_at`, `canonical_hash`, `signature`, `created_at` — signature du triplet `(creator_id, content_url, attested_at)` via Ed25519
 - **`sources`** : `id`, `biblio_card_id` (FK), `url`, `title`, `authors`, `source_type`, `published_date`, `annotation`, `is_pivot`, `archive_url`, `archive_status`, `parent_source_id` (FK self), `citations_count`, `impact_factor`, `subscribers_count`, `views_count`, `conflict_of_interest`, `authority_level` (legacy)
 - **`source_excerpts`** : `id`, `source_id` (FK CASCADE), `position`, `text`, `suggested_by_ai`
 - **`audit_events`** : audit log des actions sensibles
@@ -177,13 +178,14 @@ Pas de workflow CD séparé — Railway déploie auto à chaque push main (ADR-0
 
 ---
 
-## Pièges les plus coûteux (top 5)
+## Pièges les plus coûteux (top 6)
 
-1. Revision Alembic > 32 char → crash-loop Railway → [`PITFALLS.md`](../PITFALLS.md) 1.1
-2. Double `create_index` après `index=True` dans `Column` → [`PITFALLS.md`](../PITFALLS.md) 1.2
-3. Variable d'env UPPERCASE silently ignorée → [`PITFALLS.md`](../PITFALLS.md) 1.6
-4. pnpm 11 casse tout — rester sur 10.33.4 → [`PITFALLS.md`](../PITFALLS.md) 2.1
-5. Modifier la forme du payload `content_attestation` signé → attestations existantes invérifiables → [`PITFALLS.md`](../PITFALLS.md) 1.3
+1. Revision Alembic > 32 char → crash-loop Railway → [`PITFALLS.md`](../PITFALLS.md) §1.1
+2. Double `create_index` après `index=True` dans `Column` → [`PITFALLS.md`](../PITFALLS.md) §1.2
+3. Variable d'env UPPERCASE silently ignorée → [`PITFALLS.md`](../PITFALLS.md) §1.6
+4. pnpm 11 casse tout — rester sur 10.33.4 → [`PITFALLS.md`](../PITFALLS.md) §2.1
+5. Modifier la forme du payload `content_attestation` signé → attestations existantes invérifiables → [`PITFALLS.md`](../PITFALLS.md) §1.3
+6. `default=None` dans un modèle SQLAlchemy override `server_default` de la DB → `NotNullViolationError` → [`PITFALLS.md`](../PITFALLS.md) §1.8
 
 → [`PITFALLS.md`](../PITFALLS.md) liste complète
 
@@ -193,15 +195,15 @@ Pas de workflow CD séparé — Railway déploie auto à chaque push main (ADR-0
 
 Cf. [`STATE.md`](../../STATE.md) et [`.docs/12-next-steps.md`](../../.docs/12-next-steps.md).
 
-Au 2026-05-14, MVP stabilisé : publish prod opérationnel après marathon de 4 PRs (#33→#36) sur un bug `tz-aware datetime` qui se déguisait en erreur CORS. Cf. `PITFALLS.md` §1.5 cas vécu — **leçon : instrumenter avant de spéculer** (endpoint diagnostic `/health/publish-diagnose` a finalement révélé la vraie cause).
+Au 2026-05-14, **Axe C (ADR-019) livré** — MVP stabilisé + refonte backend attestations déployée. 2 crashs prod résolus en chemin.
 
-Plan 3 axes (détail dans `.docs/12-next-steps.md`) :
-- **P0** Axe C : refonte backend post-ADR-019 (table `content_attestations`, drop signature fiche, endpoints attestation)
+Plan 3 axes mis à jour (détail dans `.docs/12-next-steps.md`) :
+- **P0** ✅ Axe C : refonte backend post-ADR-019 — **LIVRÉ**
 - **P1** Axe B : archivage multi-cible (Wayback + Archive.today + Playwright snapshot)
 - **P2** Validation produit (3 interviews créateurs cibles avant Axe A)
 - **P3** Axe A : stockage cloud R2 + Internet Archive (conditionnel à P2)
 
-Ordre : C → B → validation → A. Un axe à la fois.
+Prochaine étape : P1 (Axe B — archivage multi-cible).
 
 ---
 
