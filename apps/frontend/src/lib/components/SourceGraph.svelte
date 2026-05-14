@@ -16,7 +16,7 @@
   import { onDestroy, onMount } from 'svelte';
 
   import type { CardDetail, Source } from '$lib/api';
-  import { SOURCE_COLORS } from '$lib/utils/source-colors';
+  import { AUTHOR_COLORS } from '$lib/utils/author-colors';
   import SourceDetailPanel from './SourceDetailPanel.svelte';
 
   interface Props {
@@ -103,10 +103,10 @@
     const byAuthorAndParent = new Map<string, typeof card.sources>();
 
     for (const s of card.sources) {
-      const colors = SOURCE_COLORS[s.source_type];
+      const colors = AUTHOR_COLORS[s.author_kind];
       const isSecondary = s.parent_source_id !== null;
-      let radius = s.authority_level === 'high' ? 17 : s.authority_level === 'medium' ? 13 : 10;
-      if (s.is_pivot) radius += 3;
+      let radius = 14;
+      if (s.is_pivot) radius += 4;
       if (isSecondary) radius = Math.round(radius * 0.75);
 
       nodes.push({
@@ -596,7 +596,7 @@
   <div
     class="absolute bottom-3 left-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs bg-white/90 border border-slate-200 rounded-md px-2.5 py-1.5 backdrop-blur-sm"
   >
-    {#each Object.entries(SOURCE_COLORS) as [_key, c] (c.label)}
+    {#each Object.entries(AUTHOR_COLORS) as [_key, c] (c.label)}
       <span class="inline-flex items-center gap-1.5 text-slate-700">
         <span
           class="inline-block w-2.5 h-2.5 rounded-full border"

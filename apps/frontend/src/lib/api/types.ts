@@ -38,12 +38,10 @@ export interface CreatorInfo {
 
 export interface CardStats {
   total_sources: number;
-  peer_reviewed: number;
-  institutional: number;
-  press: number;
-  video: number;
-  image: number;
-  original: number;
+  chercheur: number;
+  media: number;
+  institution_publique: number;
+  individu: number;
   all_archived: boolean;
 }
 
@@ -69,8 +67,9 @@ export interface Source {
   title: string | null;
   authors: string | null;
   published_at: string | null;
-  source_type: SourceType;
-  authority_level: AuthorityLevel;
+  format: SourceFormat;
+  category: SourceCategory;
+  author_kind: AuthorKind;
   annotation: string | null;
   is_pivot: boolean;
   archive_status: ArchiveStatus;
@@ -92,9 +91,12 @@ export interface SourceCreate {
   title?: string;
   authors?: string;
   published_at?: string;
-  source_type: SourceType;
+  format: SourceFormat;
+  category: SourceCategory;
+  author_kind: AuthorKind;
   annotation?: string;
   is_pivot?: boolean;
+  parent_source_id?: string | null;
 }
 
 export interface UserProfile {
@@ -157,12 +159,32 @@ export interface AttestationVerifyResponse {
 export type Platform = 'youtube' | 'podcast' | 'blog' | 'x' | 'bluesky' | 'other';
 export type ContentType = 'video' | 'article' | 'post' | 'podcast' | 'other';
 export type CardStatus = 'draft' | 'published' | 'archived';
-export type SourceType =
-  | 'peer-reviewed'
-  | 'institutional'
-  | 'press'
-  | 'video'
-  | 'image'
-  | 'original';
-export type AuthorityLevel = 'high' | 'medium' | 'low';
+
+export type SourceFormat = 'texte' | 'video' | 'image' | 'audio' | 'data';
+
+export type SourceCategory =
+  | 'article-scientifique'
+  | 'preprint'
+  | 'article-presse'
+  | 'communique'
+  | 'documentaire'
+  | 'interview'
+  | 'podcast'
+  | 'blog'
+  | 'post-social'
+  | 'livre'
+  | 'page-web'
+  | 'notes';
+
+export type AuthorKind =
+  | 'chercheur'
+  | 'media'
+  | 'institution-publique'
+  | 'gouvernement'
+  | 'ecole'
+  | 'laboratoire'
+  | 'entreprise'
+  | 'asso'
+  | 'individu';
+
 export type ArchiveStatus = 'pending' | 'archived' | 'failed';

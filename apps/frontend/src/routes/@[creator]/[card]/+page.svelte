@@ -1,7 +1,7 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import type { CardDetail } from '$lib/api';
-  import { Avatar, SourceTypeBadge } from '$lib/components';
+  import { Avatar, AuthorKindBadge, FormatBadge, CategoryBadge } from '$lib/components';
 
   interface PageData {
     card: CardDetail;
@@ -45,12 +45,12 @@
 
   const jsonLd = $derived.by(() => {
     const citations = card.sources.map((s) => ({
-      '@type': s.source_type === 'peer-reviewed' ? 'ScholarlyArticle' : 'CreativeWork',
+      '@type': s.category === 'article-scientifique' ? 'ScholarlyArticle' : 'CreativeWork',
       name: s.title ?? s.url,
       ...(s.authors ? { author: s.authors } : {}),
       ...(s.published_at ? { datePublished: s.published_at } : {}),
       url: s.url,
-      ...(s.source_type === 'peer-reviewed' ? { isAccessibleForFree: false } : {}),
+      ...(s.category === 'article-scientifique' ? { isAccessibleForFree: false } : {}),
     }));
     return {
       '@context': 'https://schema.org',
@@ -172,15 +172,15 @@
           </div>
           <div class="text-center p-3 sm:p-4 bg-slate-50 rounded-lg">
             <p class="text-xl sm:text-2xl font-bold text-emerald-600">
-              {card.stats.peer_reviewed}
+              {card.stats.chercheur}
             </p>
-            <p class="text-xs sm:text-sm text-slate-500">Article scientifique</p>
+            <p class="text-xs sm:text-sm text-slate-500">Chercheur·euse·s</p>
           </div>
           <div class="text-center p-3 sm:p-4 bg-slate-50 rounded-lg">
             <p class="text-xl sm:text-2xl font-bold text-blue-600">
-              {card.stats.institutional}
+              {card.stats.institution_publique}
             </p>
-            <p class="text-xs sm:text-sm text-slate-500">Institutionnels</p>
+            <p class="text-xs sm:text-sm text-slate-500">Institutions</p>
           </div>
           <div class="text-center p-3 sm:p-4 bg-slate-50 rounded-lg">
             <p class="text-xl sm:text-2xl font-bold text-slate-700">
@@ -210,7 +210,9 @@
                       <h3 class="text-base font-medium text-slate-900">
                         {source.title || 'Sans titre'}
                       </h3>
-                      <SourceTypeBadge type={source.source_type} />
+                      <AuthorKindBadge kind={source.author_kind} />
+                      <FormatBadge format={source.format} />
+                      <CategoryBadge category={source.category} />
                       {#if source.is_pivot}
                         <span
                           class="px-2 py-0.5 text-xs bg-amber-100 text-amber-800 rounded-full"
