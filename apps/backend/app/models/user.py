@@ -12,6 +12,7 @@ from app.db.database import Base, TimestampMixin
 if TYPE_CHECKING:
     from app.models.audit_event import AuditEvent
     from app.models.biblio_card import BiblioCard
+    from app.models.content_attestation import ContentAttestation
 
 
 class User(Base, TimestampMixin):
@@ -36,6 +37,11 @@ class User(Base, TimestampMixin):
         "BiblioCard",
         back_populates="user",
         foreign_keys="BiblioCard.user_id",
+    )
+    content_attestations: Mapped[list[ContentAttestation]] = relationship(
+        "ContentAttestation",
+        back_populates="user",
+        foreign_keys="ContentAttestation.user_id",
     )
     audit_events: Mapped[list[AuditEvent]] = relationship(
         "AuditEvent",

@@ -86,9 +86,6 @@ class CardResponse(BaseModel):
     platform: Platform
     content_type: ContentType
     status: CardStatus
-    canonical_hash: str | None
-    signature: str | None
-    signed_at: datetime | None
     published_at: datetime | None
     created_at: datetime
     updated_at: datetime | None
@@ -102,9 +99,6 @@ class CardDetail(CardResponse):
 
 class CardPublish(BaseModel):
     status: CardStatus = CardStatus.PUBLISHED
-    canonical_hash: str
-    signature: str
-    signed_at: datetime
     published_at: datetime
     public_url: str
 

@@ -8,9 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import get_settings
-from app.crypto.hashing import HashService
-from app.crypto.keygen import KeyManager
-from app.crypto.signing import Canonicalizer, SigningService
 from app.models.biblio_card import BiblioCard, CardStatus
 from app.models.source import ArchiveStatus, Source, SourceType
 from app.models.user import User
@@ -22,7 +19,6 @@ settings = get_settings()
 class CardService:
     def __init__(self, db: AsyncSession):
         self._db = db
-        self._key_manager = KeyManager(settings.master_encryption_key)
 
     async def create_card(self, user_id: UUID, card_data: CardCreate) -> BiblioCard:
         card = BiblioCard(
@@ -92,51 +88,13 @@ class CardService:
         return list(result.scalars().all())
 
     async def publish_card(self, card: BiblioCard) -> dict:
-        sources_data = [
-            {
-                "url": s.url,
-                "title": s.title,
-                "source_type": s.source_type,
-                "is_pivot": s.is_pivot,
-                "archive_url": s.archive_url,
-            }
-            for s in sorted(card.sources, key=lambda x: x.position)
-        ]
-
-        content_to_sign = {
-            "id": str(card.id),
-            "title": card.title,
-            "user_id": str(card.user_id),
-            "slug": card.slug,
-            "sources": sources_data,
-            "created_at": card.created_at.isoformat(),
-        }
-
-        canonical = Canonicalizer.canonicalize(content_to_sign)
-        content_hash = HashService.sha256(canonical)
-
-        private_pem = self._key_manager.decrypt_private_key(card.user.encrypted_private_key)
-        signer = SigningService.from_pem(private_pem)
-        signature = signer.sign(content_hash)
-
         # Capture scalar values from relations BEFORE commit.
         # Post-commit, SQLAlchemy expires loaded relations; accessing card.user
-        # then triggers a lazy-load outside the greenlet context → MissingGreenlet,
-        # which kills the HTTP response without a body → browser sees "Failed to fetch".
-        # See agent/PITFALLS.md §1.4.
+        # then triggers a lazy-load outside the greenlet context → MissingGreenlet.
         username = card.user.username
         card_slug = card.slug
 
-        # Naive UTC datetime: the columns are `DateTime` without `timezone=True`,
-        # which asyncpg sends as `TIMESTAMP WITHOUT TIME ZONE`. Passing a
-        # tz-aware datetime raises asyncpg DataError "can't subtract offset-naive
-        # and offset-aware datetimes" → the commit fails, the session is left in
-        # an aborted state, and the response is interrupted mid-flight (no CORS
-        # header reaches the browser). See agent/PITFALLS.md §1.5.
         now = datetime.now(UTC).replace(tzinfo=None)
-        card.canonical_hash = content_hash
-        card.signature = signature
-        card.signed_at = now
         card.published_at = now
         card.status = CardStatus.PUBLISHED
 
@@ -145,9 +103,6 @@ class CardService:
         return {
             "id": card.id,
             "status": card.status,
-            "canonical_hash": content_hash,
-            "signature": signature,
-            "signed_at": card.signed_at,
             "published_at": card.published_at,
             "public_url": f"{settings.frontend_base_url}/@{username}/{card_slug}",
         }
@@ -186,53 +141,3 @@ class CardService:
         await self._db.delete(card)
         await self._db.commit()
         return True
-
-    async def verify_card(self, card: BiblioCard) -> dict:
-        # A draft card has no signature yet; nothing to verify.
-        if card.canonical_hash is None or card.signature is None:
-            return {"valid": False, "reason": "not_published"}
-
-        sources_data = [
-            {
-                "url": s.url,
-                "title": s.title,
-                "source_type": s.source_type,
-                "is_pivot": s.is_pivot,
-                "archive_url": s.archive_url,
-            }
-            for s in sorted(card.sources, key=lambda x: x.position)
-        ]
-
-        content_to_sign = {
-            "id": str(card.id),
-            "title": card.title,
-            "user_id": str(card.user_id),
-            "slug": card.slug,
-            "sources": sources_data,
-            "created_at": card.created_at.isoformat(),
-        }
-
-        canonical = Canonicalizer.canonicalize(content_to_sign)
-        content_hash = HashService.sha256(canonical)
-
-        if content_hash != card.canonical_hash:
-            return {"valid": False, "reason": "hash_mismatch"}
-
-        if not SigningService.verify_with_public_key_hex(
-            card.user.public_key, content_hash, card.signature
-        ):
-            return {"valid": False, "reason": "signature_mismatch"}
-
-        return {
-            "valid": True,
-            "creator_slug": card.user.username,
-            "card_slug": card.slug,
-            "content_hash": content_hash,
-            "signature": card.signature,
-            "signed_at": card.signed_at,
-            "details": {
-                "hash_algorithm": "SHA-256",
-                "signature_algorithm": "Ed25519",
-                "canonicalization": "RFC 8785 JSON Canonicalization Scheme",
-            },
-        }

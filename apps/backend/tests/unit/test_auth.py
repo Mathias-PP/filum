@@ -93,9 +93,7 @@ class TestAuthService:
             "exp": expire,
             "iat": datetime.now(UTC) - timedelta(hours=2),
         }
-        expired_token = jwt.encode(
-            expired_payload, settings.session_secret, algorithm=ALGORITHM
-        )
+        expired_token = jwt.encode(expired_payload, settings.session_secret, algorithm=ALGORITHM)
         scope = {
             "type": "http",
             "method": "GET",
@@ -171,9 +169,7 @@ class TestAuthService:
         assert user.encrypted_private_key is not None
         assert user.id is not None
 
-        result = await db_session.execute(
-            select(User).where(User.google_id == "new_google_id_456")
-        )
+        result = await db_session.execute(select(User).where(User.google_id == "new_google_id_456"))
         found = result.scalar_one_or_none()
         assert found is not None
         assert found.email == "newuser@example.com"
@@ -191,9 +187,7 @@ class TestAuthService:
         assert len(user.public_key) == 64
         assert bytes.fromhex(user.public_key)
 
-        decrypted_pem = auth_service._key_manager.decrypt_private_key(
-            user.encrypted_private_key
-        )
+        decrypted_pem = auth_service._key_manager.decrypt_private_key(user.encrypted_private_key)
         private_key = serialization.load_pem_private_key(
             decrypted_pem.encode("utf-8"), password=None
         )
@@ -202,9 +196,7 @@ class TestAuthService:
         message = b"filum-provenance-test"
         signature = private_key.sign(message)
 
-        public_key = ed25519.Ed25519PublicKey.from_public_bytes(
-            bytes.fromhex(user.public_key)
-        )
+        public_key = ed25519.Ed25519PublicKey.from_public_bytes(bytes.fromhex(user.public_key))
         public_key.verify(signature, message)
 
 

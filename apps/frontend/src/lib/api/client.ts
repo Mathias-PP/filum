@@ -1,6 +1,8 @@
 import { env } from '$env/dynamic/public';
 
 import type {
+  Attestation,
+  AttestationVerifyResponse,
   Card,
   CardDetail,
   CardCreate,
@@ -114,9 +116,6 @@ export const api = {
     ): Promise<{
       id: string;
       status: string;
-      canonical_hash: string;
-      signature: string;
-      signed_at: string;
       published_at: string;
       public_url: string;
     }> => {
@@ -163,6 +162,23 @@ export const api = {
   users: {
     getProfile: async (slug: string): Promise<UserProfile> => {
       return request<UserProfile>(`/users/@${slug}`);
+    },
+  },
+
+  attestations: {
+    create: async (contentUrl: string): Promise<Attestation> => {
+      return request<Attestation>('/attestations/content', {
+        method: 'POST',
+        body: JSON.stringify({ content_url: contentUrl }),
+      });
+    },
+
+    get: async (attestationId: string): Promise<Attestation> => {
+      return request<Attestation>(`/attestations/${attestationId}`);
+    },
+
+    verify: async (attestationId: string): Promise<AttestationVerifyResponse> => {
+      return request<AttestationVerifyResponse>(`/attestations/${attestationId}/verify`);
     },
   },
 };

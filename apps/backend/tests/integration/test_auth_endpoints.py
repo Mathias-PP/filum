@@ -44,4 +44,4 @@ async def test_logout_clears_session_cookie(client, session_token):
     assert response.status_code == 303
     set_cookie = response.headers.get("set-cookie", "")
     assert "filum_session=" in set_cookie
-    assert "Max-Age=0" in set_cookie or 'expires=Thu, 01 Jan 1970' in set_cookie.lower()
+    assert "Max-Age=0" in set_cookie or "expires=Thu, 01 Jan 1970" in set_cookie.lower()

@@ -8,6 +8,8 @@ project's primary persona) might attach to a video about the
 neuroscience of memory. It exercises every source type
 (peer-reviewed / institutional / press / original / image / video) and the
 `parent_source_id` citation graph (7 edges among 16 sources).
+
+On first run, it also creates a ContentAttestation for the demo video URL.
 """
 
 from __future__ import annotations
@@ -26,6 +28,7 @@ from app.crypto.keygen import KeyManager
 from app.crypto.signing import Canonicalizer, SigningService
 from app.db.database import async_session_maker
 from app.models.biblio_card import BiblioCard, CardStatus, ContentType, Platform
+from app.models.content_attestation import ContentAttestation
 from app.models.source import ArchiveStatus, AuthorityLevel, Source, SourceType
 from app.models.source_excerpt import SourceExcerpt
 from app.models.user import User
@@ -400,7 +403,7 @@ def _demo_sources() -> list[dict]:
 
 async def _get_or_create_demo_card(
     db: AsyncSession, user: User, key_manager: KeyManager
-) -> BiblioCard:
+) -> tuple[BiblioCard, ContentAttestation | None]:
     result = await db.execute(
         select(BiblioCard)
         .options(selectinload(BiblioCard.sources))
@@ -422,35 +425,25 @@ async def _get_or_create_demo_card(
             description=(
                 "Vidéo de vulgarisation sur la neuroscience de la mémoire : "
                 "consolidation, reconsolidation, oubli actif, sommeil. "
-                "Bibliographie complète signée cryptographiquement."
+                "Bibliographie complète."
             ),
             content_url="https://www.youtube.com/watch?v=memoire-et-cerveau",
             platform=Platform.YOUTUBE.value,
             content_type=ContentType.VIDEO.value,
             status=CardStatus.DRAFT.value,
-            canonical_hash="",
-            signature="",
         )
         db.add(card)
         await db.flush()
     else:
-        # No early return for PUBLISHED cards — always refresh sources and
-        # excerpts so the demo card picks up schema additions (excerpts,
-        # indicators, conflicts, new sources). Card-level metadata that does
-        # NOT enter the canonical hash can be updated safely here.
         card.description = (
             "Vidéo de vulgarisation sur la neuroscience de la mémoire : "
             "consolidation, reconsolidation, oubli actif, sommeil. "
-            "Bibliographie complète signée cryptographiquement."
+            "Bibliographie complète."
         )
-        # Drop old sources — DB cascade (ON DELETE CASCADE) handles
-        # source_excerpts automatically.
         await db.execute(delete(Source).where(Source.biblio_card_id == card.id))
         await db.flush()
 
     created_sources: list[Source] = []
-    # First pass: create every source without parent_source_id so we
-    # know their freshly generated UUIDs.
     for position, src in enumerate(sources_spec):
         source = Source(
             biblio_card_id=card.id,
@@ -485,8 +478,6 @@ async def _get_or_create_demo_card(
             )
     await db.flush()
 
-    # Second pass: wire parent_source_id (1-based parent_index → 0-based
-    # list lookup). Skip self-references and out-of-range indices.
     for index, src in enumerate(sources_spec):
         parent_index = src.get("parent_index")
         if parent_index is None:
@@ -496,52 +487,42 @@ async def _get_or_create_demo_card(
             continue
         created_sources[index].parent_source_id = created_sources[parent_pos].id
 
-    await db.commit()
-    await db.refresh(card, attribute_names=["sources", "user"])
-
-    # Canonical payload — explicitly EXCLUDES parent_source_id so adding
-    # the citation graph never invalidates signatures on existing cards.
-    sources_data = [
-        {
-            "url": s.url,
-            "title": s.title,
-            "source_type": s.source_type,
-            "is_pivot": s.is_pivot,
-            "archive_url": s.archive_url,
-        }
-        for s in sorted(card.sources, key=lambda x: x.position)
-    ]
-    content_to_sign = {
-        "id": str(card.id),
-        "title": card.title,
-        "user_id": str(card.user_id),
-        "slug": card.slug,
-        "sources": sources_data,
-        "created_at": card.created_at.isoformat(),
-    }
-    canonical = Canonicalizer.canonicalize(content_to_sign)
-    content_hash = HashService.sha256(canonical)
-    private_pem = key_manager.decrypt_private_key(card.user.encrypted_private_key)
-    signature = SigningService.from_pem(private_pem).sign(content_hash)
-
-    card.canonical_hash = content_hash
-    card.signature = signature
-    card.signed_at = _utcnow_naive()
     card.published_at = _utcnow_naive()
     card.status = CardStatus.PUBLISHED.value
 
     await db.commit()
 
-    # Re-fetch with eager-loaded sources so callers can read
-    # `card.sources` without triggering a lazy load (the async session
-    # cannot do sync lazy loads outside a greenlet context).
+    # Create a ContentAttestation for the demo content URL
+    attestation = None
+    if card.content_url:
+        now = _utcnow_naive()
+        content_to_sign = {
+            "user_id": str(user.id),
+            "content_url": card.content_url,
+            "attested_at": now.isoformat(),
+        }
+        canonical = Canonicalizer.canonicalize(content_to_sign)
+        content_hash = HashService.sha256(canonical)
+        private_pem = key_manager.decrypt_private_key(user.encrypted_private_key)
+        signature = SigningService.from_pem(private_pem).sign(content_hash)
+
+        attestation = ContentAttestation(
+            user_id=user.id,
+            content_url=card.content_url,
+            attested_at=now,
+            canonical_hash=content_hash,
+            signature=signature,
+        )
+        db.add(attestation)
+        await db.commit()
+
     refreshed = await db.execute(
         select(BiblioCard)
         .options(selectinload(BiblioCard.sources).selectinload(Source.excerpts))
         .options(selectinload(BiblioCard.user))
         .where(BiblioCard.id == card.id)
     )
-    return refreshed.scalar_one()
+    return refreshed.scalar_one(), attestation
 
 
 async def seed() -> None:
@@ -551,15 +532,19 @@ async def seed() -> None:
 
     async with async_session_maker() as db:
         user = await _get_or_create_demo_user(db, key_manager)
-        card = await _get_or_create_demo_card(db, user, key_manager)
+        card, attestation = await _get_or_create_demo_card(db, user, key_manager)
         parent_count = sum(1 for s in card.sources if s.parent_source_id is not None)
+        log_extra = ""
+        if attestation:
+            log_extra = f" attestation={attestation.id}"
         logger.info(
-            "Seed demo OK: user=%s card=%s status=%s sources=%d edges=%d",
+            "Seed demo OK: user=%s card=%s status=%s sources=%d edges=%d%s",
             user.username,
             card.slug,
             card.status,
             len(card.sources),
             parent_count,
+            log_extra,
         )
 
 
