@@ -106,3 +106,4 @@ tmp/
 
 # scratchpad for commit messages
 _commit_msg.txt
+.claude/
