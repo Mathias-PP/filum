@@ -42,9 +42,14 @@
 
 ### 1.4 `MissingGreenlet` sur accès relation ORM post-commit
 
-- **Symptôme** : `sqlalchemy.exc.MissingGreenlet: greenlet_spawn has not been called`
-- **Cause** : on accède à une relation ORM async (`card.sources`, etc.) après `await db.commit()`, sans avoir `selectinload`-é avant.
-- **Prévention** : chaînage explicite avant le commit : `select(BiblioCard).options(selectinload(BiblioCard.sources).selectinload(Source.excerpts))`. Si tu écris du nouveau code qui retourne un objet avec ses relations après commit, anticipe le `selectinload`.
+- **Symptôme côté backend** : `sqlalchemy.exc.MissingGreenlet: greenlet_spawn has not been called`
+- **Symptôme côté frontend** : `TypeError: Failed to fetch` dans la console — le navigateur ne reçoit aucun body et croit à une coupure réseau. C'est trompeur : ce n'est pas CORS ni le réseau, c'est le backend qui meurt en pleine sérialisation.
+- **Cause** : on accède à une relation ORM async (`card.sources`, `card.user.username`, etc.) après `await db.commit()` sans avoir `selectinload`-é avant. Pire : un `await db.refresh(card)` post-commit **réexpire toutes les relations** même si elles étaient eager-loadées initialement.
+- **Prévention** :
+  1. `selectinload` chaîné dans le `get_*` initial : `select(BiblioCard).options(selectinload(BiblioCard.sources).selectinload(Source.excerpts)).options(selectinload(BiblioCard.user))`.
+  2. **Ne pas appeler `await db.refresh(obj)` si on n'en a pas besoin** (les valeurs en mémoire suffisent souvent).
+  3. **Capturer les scalaires de relations AVANT le commit** quand on doit les utiliser après. Ex : `username = card.user.username` puis `await db.commit()` puis `f"@{username}"`.
+- **Cas vécu** (2026-05-14, fix sur PR #33) : `CardService.publish_card` accédait à `card.user.username` ligne 138 après `await db.commit() + await db.refresh(card)`. Le `refresh` avait expiré la relation `user`, l'accès lazy a planté la sérialisation HTTP → tous les `POST /cards/{id}/publish` retournaient `Failed to fetch` côté navigateur, sans aucun log clair côté Railway car l'exception est levée trop tard dans le pipeline ASGI.
 
 ### 1.5 `datetime.utcnow()` déprécié Python 3.12
 

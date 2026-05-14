@@ -119,6 +119,14 @@ class CardService:
         signer = SigningService.from_pem(private_pem)
         signature = signer.sign(content_hash)
 
+        # Capture scalar values from relations BEFORE commit.
+        # Post-commit, SQLAlchemy expires loaded relations; accessing card.user
+        # then triggers a lazy-load outside the greenlet context → MissingGreenlet,
+        # which kills the HTTP response without a body → browser sees "Failed to fetch".
+        # See agent/PITFALLS.md §1.4.
+        username = card.user.username
+        card_slug = card.slug
+
         card.canonical_hash = content_hash
         card.signature = signature
         card.signed_at = datetime.now(UTC)
@@ -126,7 +134,6 @@ class CardService:
         card.status = CardStatus.PUBLISHED
 
         await self._db.commit()
-        await self._db.refresh(card)
 
         return {
             "id": card.id,
@@ -135,7 +142,7 @@ class CardService:
             "signature": signature,
             "signed_at": card.signed_at,
             "published_at": card.published_at,
-            "public_url": f"{settings.frontend_base_url}/@{card.user.username}/{card.slug}",
+            "public_url": f"{settings.frontend_base_url}/@{username}/{card_slug}",
         }
 
     def compute_stats(self, card: BiblioCard) -> CardStats:
