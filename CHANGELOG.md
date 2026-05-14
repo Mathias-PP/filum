@@ -6,7 +6,21 @@
 
 ---
 
-## [Unreleased] — fix publish MissingGreenlet (PR #33, 2026-05-14)
+## [Unreleased] — publish diagnostics + safety net (PR #34, 2026-05-14)
+
+### Added
+- **`GET /health`** retourne désormais `commit` : SHA git de la version déployée (`RAILWAY_GIT_COMMIT_SHA` exposé par Railway). Permet de vérifier en un `curl` que Railway a bien redéployé le dernier commit. Comparer à `git log -1 --format=%H origin/main`.
+
+### Changed
+- **`POST /cards/{id}/publish`** : enveloppé d'un `try/except Exception` qui log la stack côté serveur et retourne un 500 JSON propre `{"error": {"code": "publish_failed", "message": "..."}}` au lieu de laisser n'importe quelle exception tuer la connexion ASGI (ce qui faisait que le navigateur voyait `Failed to fetch`, indistinguable d'une coupure réseau).
+- **Frontend publish error** (`sources/+page.svelte`) : ne plus afficher « Impossible de contacter le serveur » sur `TypeError: Failed to fetch` — pointer l'utilisateur vers la console DevTools (onglet Network) avec le statut HTTP réel. Log brut dans `console.error`.
+
+### Why
+PR #33 corrigeait un site d'accès relation post-commit dans `publish_card`. L'utilisateur a signalé que l'erreur persistait en prod après merge. Sans observabilité, impossible de discriminer entre : (a) Railway pas encore redéployé, (b) un autre site `MissingGreenlet` non détecté, (c) un bug réseau réel. Cette PR rend les trois cas distinguables.
+
+---
+
+## [Released] — fix publish MissingGreenlet (PR #33, 2026-05-14)
 
 ### Fixed
 - **`POST /api/v1/cards/{id}/publish` retournait `TypeError: Failed to fetch` au navigateur** — `CardService.publish_card` accédait à `card.user.username` ligne 138 après `await db.commit() + await db.refresh(card)`. Le `refresh` expirait toutes les relations, l'accès lazy déclenchait `MissingGreenlet` en pleine sérialisation HTTP, la requête mourait sans body. Côté UI : message « Impossible de contacter le serveur ». Fix : capture des scalaires (`username`, `card_slug`) avant `commit`, suppression du `refresh` superflu (les valeurs viennent d'être assignées en mémoire).

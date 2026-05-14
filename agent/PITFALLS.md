@@ -50,6 +50,8 @@
   2. **Ne pas appeler `await db.refresh(obj)` si on n'en a pas besoin** (les valeurs en mémoire suffisent souvent).
   3. **Capturer les scalaires de relations AVANT le commit** quand on doit les utiliser après. Ex : `username = card.user.username` puis `await db.commit()` puis `f"@{username}"`.
 - **Cas vécu** (2026-05-14, fix sur PR #33) : `CardService.publish_card` accédait à `card.user.username` ligne 138 après `await db.commit() + await db.refresh(card)`. Le `refresh` avait expiré la relation `user`, l'accès lazy a planté la sérialisation HTTP → tous les `POST /cards/{id}/publish` retournaient `Failed to fetch` côté navigateur, sans aucun log clair côté Railway car l'exception est levée trop tard dans le pipeline ASGI.
+- **Filet de sécurité** (2026-05-14, PR #34) : `publish_card` endpoint enveloppé d'un `try/except Exception` qui log la stack et retourne un 500 JSON propre. Désormais, même si un `MissingGreenlet` futur est ré-introduit, le navigateur recevra `{"error": {"code": "publish_failed", ...}}` au lieu d'un `Failed to fetch` opaque. À répliquer sur tout endpoint qui mute + sérialise des relations.
+- **Vérifier que Railway a redéployé** : `curl https://filum-production-07bb.up.railway.app/health` retourne maintenant `{"commit": "<sha>"}` (champ ajouté PR #34). Comparer à `git log -1 --format=%H origin/main` pour confirmer que la version live est bien la dernière.
 
 ### 1.5 `datetime.utcnow()` déprécié Python 3.12
 
