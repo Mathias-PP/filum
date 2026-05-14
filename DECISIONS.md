@@ -601,9 +601,188 @@ Le seed est réécrit derrière avec des valeurs réelles ; les comptes dev peuv
 
 **Follow-ups (hors scope de cette PR)**
 - Alignement `BiblioCard.platform` / `BiblioCard.content_type` avec la nouvelle taxonomie (ADR séparé).
-- Re-attestation automatique des fiches publiées modifiées (ADR-021 éventuel).
+- Re-attestation automatique des fiches publiées modifiées (ADR futur).
 - Suggestion automatique de taxonomie depuis l'URL extractor (DOI → `category=article-scientifique`, `author_kind=chercheur`).
 - Multi-parents pour `Source.parent_source_id` (passer à une table de jonction si demande utilisateur).
+
+---
+
+## ADR-021 — Renommage du projet : Filum → Philum
+
+**Date** : 2026-05-15
+
+**Statut** : **Décidé, non exécuté.** Implémentation à planifier dans une PR dédiée (cf. ADR-022 qui est lié).
+
+**Contexte**
+
+Le nom « Filum » était provisoire (cf. ADR-008). Au moment de chercher un domaine pour la mise en ligne MVP, recherche WHOIS et DNS sur le 2026-05-15 :
+
+| Domaine | Statut | Coût d'acquisition |
+|---|---|---|
+| `filum.com` | Parqué « Coming Soon » sur Linode (squatteur) | 500-3000 € (négociation auprès du propriétaire) |
+| `filum.fr` | Vendu explicitement par Dovendi (revendeur NL) | 300-1500 € |
+| `filum.app` | Parking OVH, propriétaire inconnu | 100-500 € (whois requis) |
+| `philum.fr` | **Libre, 5,10 € la 1re année / ~7 €/an ensuite** (offert avec Public Cloud Infomaniak) | ~7 €/an |
+| `philum.app` | **Libre, ~12-15 €/an** | ~12-15 €/an |
+
+Aucun des trois `filum.*` n'est récupérable sans payer une rançon (300 à 3000 €). Les variantes orthographiques (`filum.eu`, `filum.science`, `filum.io`, etc.) sont moins lisibles ou plus chères que `philum.*`.
+
+**Décision**
+
+Renommer le projet de **Filum** en **Philum**.
+
+Rationale produit : « Philum » se rapproche de **phylum** (rang taxonomique en biologie) et évoque les **arbres phylogénétiques** — métaphore directement alignée avec la promesse de Filum/Philum (cartographier les liens de citation entre sources comme on cartographie l'évolution des espèces). Le glissement orthographique est donc significatif, pas cosmétique : il **renforce** le storytelling produit au lieu de le diluer.
+
+Domaines à acquérir :
+- **Primaire** : `philum.fr` (~7 €/an, offert 1re année avec compte Public Cloud Infomaniak — cf. ADR-022)
+- **Défensif (à acquérir si budget OK)** : `philum.app` (~12-15 €/an) pour bloquer l'usurpation et préparer l'éventuelle bascule en TLD international plus tard
+
+**Justifications**
+- Évite une dépense one-shot de 300 à 3000 € pour récupérer `filum.fr` ou `filum.com`
+- `philum` est conceptuellement plus riche que `filum` (lien direct avec phylogénie / taxonomie / arbre des sources)
+- TLD `.fr` cohérent avec le choix d'hébergement souverain européen (Infomaniak Suisse, cf. ADR-022)
+- Le `.fr` n'est pas un blocage à l'international : pattern standard (BlaBlaCar, Doctolib, Qonto) consiste à démarrer sur `.fr` puis acquérir `.com` plus tard et basculer le canonique. `philum.com` semble libre et restera acquérable à ~12 €/an quand le besoin se présentera.
+
+**Conséquences (à exécuter dans la PR de renommage)**
+
+Renommage textuel dans le repo. Aucune logique applicative impactée — c'est uniquement de la chaîne de caractères. Estimation ~15-25 fichiers à toucher :
+
+- `CLAUDE.md` : titre, mentions de « Filum », « filum.app » dans la roadmap → « Philum », « philum.fr »
+- `README.md` : titre, badges, description, URL démo
+- `STATE.md` : URL prod, URL démo, titre projet
+- `DECISIONS.md` : préface ; les ADR antérieurs gardent leur formulation « Filum » historique (c'est leur datation qui les rend cohérents)
+- `CHANGELOG.md` : préface
+- `agent/PITFALLS.md`, `agent/README.md`, `agent/memory/PROJECT_SNAPSHOT.md`
+- `.docs/00-vision.md`, `01-product-spec.md`, `02-tech-architecture.md`, `04-api-design.md`, `05-design-system.md`, `08-security.md`, `09-naming.md`, `10-mvp-completion-plan.md`, `11-critique-and-improvements.md`, `12-next-steps.md`
+- `apps/backend/app/scripts/seed_demo.py` : `lea-marchand.filum.app` → `lea-marchand.philum.fr` (2 occurrences dans les notes Léa Marchand)
+- `apps/backend/pyproject.toml` : nom du package `filum-api` → `philum-api`
+- `apps/frontend/package.json` : nom `filum-frontend` → `philum-frontend`
+- `apps/frontend/src/app.html`, `src/routes/+layout.svelte`, `src/routes/+page.svelte`, `src/routes/about/+page.svelte` : titre, footer « © Filum » → « © Philum », mentions
+- `apps/frontend/src/routes/about/+page.svelte` : ajouter une **section dédiée « Pourquoi Philum ? »** expliquant le clin d'œil aux phylums biologiques et aux arbres phylogénétiques (storytelling produit pour les visiteurs curieux)
+- `apps/frontend/src/lib/components/Logo.svelte` : à voir si le logo SVG mentionne « F » ou « Filum » ; ajuster si oui (probablement aucun changement car c'est un dessin abstrait)
+- `apps/frontend/src/routes/security/+page.svelte`, `features/+page.svelte`, `roadmap/+page.svelte` : mentions « Filum » dans le copy
+- `apps/frontend/src/routes/+error.svelte`, `privacy/+page.svelte` : titres et copy
+- `infra/` : si template Caddyfile / Dockerfile mentionnent un nom, à mettre à jour
+- Variables d'environnement Railway / Vercel : `frontend_base_url`, `backend_base_url` à mettre à jour quand le domaine est branché
+
+**Stratégie de migration en deux temps** : (1) rename code-only sans changer encore l'URL prod (PR ~15 min, frontend reste sur `filum-eight.vercel.app`), (2) achat domaine `philum.fr` + branchement DNS quand prêt (peut être aligné avec ADR-022 ou indépendant).
+
+**Migration des données utilisateurs** : aucune. À ce stade pré-MVP, les comptes dev acceptent un re-login sur le nouveau domaine. Si plus tard des users vrais existent, prévoir une redirection 301 `filum-eight.vercel.app` → nouveau domaine + un mail d'annonce.
+
+---
+
+## ADR-022 — Cible de migration hébergement : Infomaniak Public Cloud (planifiée)
+
+**Date** : 2026-05-15
+
+**Statut** : **Décidé, non exécuté.** Migration mise en attente le 2026-05-15 quand les crédits Railway sont revenus de manière inattendue ($4.86 / 28 jours restants). Conserver la cible Infomaniak comme plan de bascule pour quand Railway deviendra payant.
+
+**Contexte**
+
+Le 2026-05-14, les crédits free Railway sont passés à $0.00. Tentative de migration vers une plateforme gratuite alternative. Le 2026-05-15, les crédits Railway sont revenus à $4.86 (probablement re-crédit mensuel automatique du Hobby Plan, à confirmer côté billing dashboard). Décision : on reste sur Railway pour les ~28 jours restants mais on **fige les choix de migration** pour pouvoir basculer rapidement quand le besoin se représente (fin du free tier, pic de coûts, ou décision de souveraineté).
+
+**Comparaison réalisée le 2026-05-15**
+
+| Solution | Free réel ? | Setup | Verdict |
+|---|---|---|---|
+| Render free + Neon free | ✅ Oui mais cold start ~30 s après 15 min idle | Très simple | Plan B rapide pour bascule d'urgence sans budget |
+| Oracle Cloud Always Free (ARM Ampere) | ✅ Oui à vie, mais pénurie ARM fréquente | Sysadmin nu | Bon technique mais piège « Out of capacity » |
+| Hetzner CX22 | ❌ Payant ~4 €/mois | Setup VPS classique | Très bon rapport qualité/prix mais Allemagne |
+| Scaleway DEV1-S | ❌ Payant ~5 €/mois | Console moderne FR | Bon souverain FR |
+| **Infomaniak Public Cloud (retenu)** | ❌ Payant **~5-8 €/mois** estimés pour Filum | OpenStack standard | **300 € de crédits offerts sur 3 mois** = ~30+ mois gratuits effectifs pour la taille de Filum |
+| Infomaniak VPS Cloud | Payant 24,92 €/mois forfait minimum | Console web | Surdimensionné pour Filum, et ne profite pas des 300 € de crédits |
+| Clever Cloud | Payant ~15 €/mois | PaaS souverain FR `git push` | Plus cher mais zéro sysadmin |
+| Wix / Lovable / Base44 | — | — | **Inadaptés** : builders no-code propriétaires, demandent de réécrire Filum from scratch dans leur runtime fermé. Lock-in total. Rejetés. |
+| Monarobase, PulseHeberg, Ikoula | Payant ~5 €/mois | VPS classique | OK techniquement mais aucun avantage face à OVH/Scaleway/Infomaniak |
+
+**Décision**
+
+Cibler **Infomaniak Public Cloud (OpenStack)** comme prochaine étape d'hébergement quand le budget Railway s'épuise.
+
+**Justifications**
+- **300 € de crédits offerts sur 3 mois** lors de l'inscription : couvre largement les besoins MVP de Philum pendant la première année effective
+- **Datacenters Tier 3+ en Suisse** (Genève, Zurich), 100% hydroélectrique
+- **Souveraineté européenne forte** : pas un GAFAM, pas de Cloud Act US, infrastructure développée et possédée par les fondateurs et employés d'Infomaniak
+- **Compatibilité technique 100%** avec la stack Filum/Philum (Docker, Postgres, Caddy, FastAPI async, Alembic — tout ça tourne sur Ubuntu standard sans adaptation)
+- **API OpenStack** + ecosystem standard (Terraform, Ansible) → portable, pas de lock-in propriétaire
+- **Service Database managé** (Postgres) disponible quand on voudra externaliser la base
+- **Object Storage S3-compatible** (Swift) disponible pour backups + futurs uploads de contenu (cf. axe A R2 envisagé)
+- **Bande passante gratuite** (sauf Object Storage > 10 To/mois)
+- **Pas d'engagement**, résiliable mensuellement, facturation à l'usage
+- **Domaine `philum.fr` offert** la 1re année avec le compte Public Cloud (~7 €/an ensuite)
+
+**Architecture cible décidée**
+
+```
+philum.fr (Infomaniak Domain) ──DNS──► Cloudflare DNS (gratuit)
+                                              │
+                ┌─────────────────────────────┴───────────────────┐
+                │                                                  │
+        ┌───────▼─────────┐                              ┌────────▼─────────┐
+        │ filum-eight     │                              │ Public Cloud     │
+        │ .vercel.app     │                              │ Infomaniak       │
+        │ → philum.fr     │                              │ Datacenter D3    │
+        │ (Frontend)      │                              │ Genève           │
+        └─────────────────┘                              │ ┌──────────────┐ │
+                ▲                                         │ │ Caddy (443)  │ │
+                │ HTTPS                                   │ │ ↓ proxy      │ │
+                ▼                                         │ │ Backend:8000 │ │
+            Utilisateur                                   │ │ Postgres:5432│ │
+                                                          │ │ (Docker)     │ │
+                                                          │ └──────────────┘ │
+                                                          └──────────────────┘
+                                                          IP publique IPv4 dédiée
+                                                          Ubuntu 22.04 LTS
+```
+
+**Choix techniques figés** :
+- **Instance** : la plus petite Nova disponible (~2 vCPU + 4 Go RAM + 20 Go SSD root, à confirmer dans le calculateur Infomaniak au moment du provisioning)
+- **Volume Block additionnel** : 20 Go pour Postgres data (séparation root / data, snapshots indépendants), ~0,50 €/mois
+- **OS** : Ubuntu 22.04 LTS
+- **Région** : Genève (DC3) ou Zurich (équivalents)
+- **Database** : **Postgres en container Docker** sur la même instance pour démarrer (0 € marginal). Migration vers Database Service managé Infomaniak quand la charge le justifie (dump + restore).
+- **Domaine** : `philum.fr` (5,10 € la 1re année, ~7 €/an ensuite, offert avec compte Public Cloud)
+- **DNS** : Cloudflare DNS (gratuit) pour routage et flexibilité, ou Infomaniak DNS si tout-en-un préféré
+- **HTTPS** : Caddy + Let's Encrypt automatique
+- **Frontend** : Vercel maintenu pour le MVP. Migration éventuelle vers la VM Infomaniak ou Pages Infomaniak en phase 2 si on veut full souverain.
+- **Backups** : snapshot quotidien du volume Postgres via cron, plus tard upload vers Swift Object Storage Infomaniak
+- **Auto-deploy** : GitHub Actions qui SSH la VM et fait `git pull && docker compose pull && docker compose up -d`
+
+**Coût annuel estimé après les 3 mois de crédits**
+- Compute (Nova small) : ~5-8 €/mois → **~70-100 €/an**
+- Volume Block (20 Go Postgres) : ~0,50 €/mois → ~6 €/an
+- Domaine `philum.fr` : 7 €/an
+- Domaine défensif `philum.app` (optionnel) : ~12-15 €/an
+- **Total : ~85 à 130 €/an** selon options
+
+**Plan de bascule (à exécuter quand Railway s'épuise ou par décision)**
+
+1. Créer compte Infomaniak, profiter des 300 € de crédits
+2. Acheter `philum.fr` + éventuellement `philum.app` défensif
+3. Provisionner instance Nova Ubuntu 22.04
+4. Setup serveur : Docker + Caddy + UFW + fail2ban + unattended-upgrades
+5. Cloner repo Philum, créer `infra/docker-compose.prod.yml` + `infra/Caddyfile` + `.env`
+6. Lancer la stack (backend + Postgres en container)
+7. Configurer DNS `api.philum.fr` → IP Infomaniak
+8. Caddy obtient certificat Let's Encrypt automatique
+9. Seed démo : `docker compose exec backend python -m app.scripts.seed_demo`
+10. Mettre à jour Vercel `PUBLIC_API_BASE_URL` → `https://api.philum.fr`
+11. Ajouter URL callback dans Google OAuth Console
+12. Ajouter cron quotidien `pg_dump` + Swiss Backup ou Object Storage
+13. Configurer GitHub Actions pour auto-deploy sur push `main`
+14. Désactiver Railway (ou laisser tourner en mode standby zero-traffic le temps de vérifier)
+
+**Conséquences code (à exécuter dans la PR de migration, pas celle-ci)**
+- `infra/docker-compose.prod.yml` (nouveau)
+- `infra/Caddyfile` (nouveau, template avec domaine final)
+- `infra/setup.sh` (nouveau, script idempotent setup serveur)
+- `infra/backup.sh` + cron template
+- `apps/backend/.env.example` à jour
+- `.github/workflows/deploy-infomaniak.yml` (auto-deploy)
+- `STATE.md` + `CHANGELOG.md` mis à jour
+- Suppression du Dockerfile / config Railway-spécifique si présents
+
+**Dépendance avec ADR-021** : si le rename Philum est exécuté avant la migration (recommandé), tout le repo + variables d'env utiliseront déjà `philum` partout, et la migration n'a plus qu'à brancher le nouveau domaine. Si non, on peut migrer d'abord avec `filum-eight.vercel.app` qui pointe vers la nouvelle backend, puis renommer dans une PR séparée.
 
 ---
 

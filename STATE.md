@@ -6,6 +6,21 @@
 
 ## Dernière mise à jour
 
+**2026-05-15 — Décisions structurantes capturées (ADR-021 + ADR-022), aucune exécution.**
+
+Crédits Railway sont passés à $0 le 2026-05-14 puis revenus à $4.86 (28 jours restants) le 2026-05-15 — probablement re-crédit mensuel automatique du Hobby Plan, à confirmer côté billing dashboard. Migration mise en pause, **mais les choix sont gelés** dans `DECISIONS.md` pour pouvoir basculer rapidement quand le besoin se représente :
+
+- **ADR-021** : projet à renommer **Filum → Philum** (référence aux phylums biologiques et arbres phylogénétiques, en plus du fait que `filum.com/.fr/.app` sont tous squattés à 300-3000 €). Domaines libres : `philum.fr` (5,10 € la 1re année) et `philum.app` (~12 €/an défensif).
+- **ADR-022** : cible de migration figée = **Infomaniak Public Cloud** (datacenter Genève D3, OpenStack, 300 € de crédits offerts sur 3 mois, ~5-8 €/mois pour la taille de Philum après les crédits, soit ~85-130 €/an avec domaines).
+
+Voir les deux ADR pour le détail architecture, étapes, coûts.
+
+**Action prochaine** : surveiller le billing Railway — si CB requise pour continuer après les 28 jours, exécuter la PR de migration (rename + déploiement Infomaniak) en suivant le plan ADR-022.
+
+---
+
+## Mises à jour précédentes
+
 **2026-05-14 (PR taxonomie en cours)** — **Refonte taxonomie sources en 3 axes orthogonaux + corrections hero + parent links UI (ADR-020).**
 
 - **Taxonomie 3 axes** : `source_type` (mélangeait format + catégorie) et `authority_level` (legacy) supprimés. Remplacés par `format` (5 valeurs), `category` (12), `author_kind` (9). Migration Alembic 007 avec backfill best-effort.
