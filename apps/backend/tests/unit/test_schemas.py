@@ -7,7 +7,13 @@ from pydantic import ValidationError
 
 from app.schemas.user import SlugPattern
 from app.schemas.biblio_card import CardCreate, Platform, ContentType
-from app.schemas.source import SourceCreate, SourceType, SourceUpdate
+from app.schemas.source import (
+    AuthorKind,
+    SourceCategory,
+    SourceCreate,
+    SourceFormat,
+    SourceUpdate,
+)
 
 
 class TestUserSchemas:
@@ -53,72 +59,75 @@ class TestCardSchemas:
         assert card.platform.value == "youtube"
 
 
+def _minimal_source_kwargs(**overrides):
+    """Helper: minimal valid SourceCreate kwargs with the 3-axis taxonomy."""
+    base = {
+        "url": "https://example.com/article",
+        "format": SourceFormat.TEXTE,
+        "category": SourceCategory.ARTICLE_SCIENTIFIQUE,
+        "author_kind": AuthorKind.CHERCHEUR,
+    }
+    base.update(overrides)
+    return base
+
+
 class TestSourceSchemas:
     def test_valid_source_create(self):
-        data = SourceCreate(
-            url="https://www.nature.com/articles/s41586-023-06501-x",
-            source_type=SourceType.PEER_REVIEWED,
-        )
+        data = SourceCreate(**_minimal_source_kwargs(
+            url="https://www.nature.com/articles/s41586-023-06501-x"
+        ))
         assert data.url == "https://www.nature.com/articles/s41586-023-06501-x"
-        assert data.source_type == SourceType.PEER_REVIEWED
+        assert data.format == SourceFormat.TEXTE
+        assert data.category == SourceCategory.ARTICLE_SCIENTIFIQUE
+        assert data.author_kind == AuthorKind.CHERCHEUR
         assert data.is_pivot is False
         assert data.parent_source_id is None
 
     def test_source_with_all_fields(self):
-        # NOTE: authority_level is legacy (cf. ADR-017 / STATE.md). Kept in
-        # the schema for backward compatibility but no longer used by the UI.
-        # New code should rely on the typed indicators (citations_count,
-        # impact_factor, subscribers_count, views_count) on SourceResponse.
-        data = SourceCreate(
-            url="https://example.com/article",
+        data = SourceCreate(**_minimal_source_kwargs(
             title="Example Article",
             authors="John Doe, Jane Smith",
-            source_type=SourceType.INSTITUTIONAL,
-            authority_level="high",
+            format=SourceFormat.VIDEO,
+            category=SourceCategory.DOCUMENTAIRE,
+            author_kind=AuthorKind.MEDIA,
             annotation="Important source for the argument",
             is_pivot=True,
-        )
+        ))
         assert data.is_pivot is True
         assert data.annotation == "Important source for the argument"
+        assert data.format.value == "video"
 
-    def test_source_type_enum(self):
-        source = SourceCreate(
-            url="https://example.com",
-            source_type=SourceType.PRESS,
-        )
-        assert source.source_type.value == "press"
+    def test_format_enum_values(self):
+        source = SourceCreate(**_minimal_source_kwargs(format=SourceFormat.AUDIO))
+        assert source.format.value == "audio"
+
+    def test_category_enum_values(self):
+        source = SourceCreate(**_minimal_source_kwargs(category=SourceCategory.PODCAST))
+        assert source.category.value == "podcast"
+
+    def test_author_kind_enum_values(self):
+        source = SourceCreate(**_minimal_source_kwargs(author_kind=AuthorKind.MEDIA))
+        assert source.author_kind.value == "media"
 
     def test_url_is_stored_as_plain_string(self):
         """url is intentionally typed `str`, not HttpUrl: validation happens at
-        the endpoint boundary (via HttpUrl + SSRF guard in url_extractor.py).
-        This test pins the design so that a future "tightening" PR has to
-        confront the migration cost of existing rows."""
-        source = SourceCreate(
-            url="not-a-valid-url",
-            source_type=SourceType.PRESS,
-        )
+        the endpoint boundary (via HttpUrl + SSRF guard in url_extractor.py)."""
+        source = SourceCreate(**_minimal_source_kwargs(url="not-a-valid-url"))
         assert isinstance(source.url, str)
         assert source.url == "not-a-valid-url"
 
     def test_url_max_length_enforced(self):
-        """Since PR #24 (removal of the redundant `url: str` override on
-        SourceCreate), the Field(min_length=1, max_length=2000) declared on
-        SourceBase actually applies on SourceCreate too."""
         too_long = "https://example.com/" + ("x" * 2001)
         with pytest.raises(ValidationError):
-            SourceCreate(url=too_long, source_type=SourceType.PRESS)
+            SourceCreate(**_minimal_source_kwargs(url=too_long))
 
     def test_url_min_length_enforced(self):
         with pytest.raises(ValidationError):
-            SourceCreate(url="", source_type=SourceType.PRESS)
+            SourceCreate(**_minimal_source_kwargs(url=""))
 
     def test_parent_source_id_accepts_uuid(self):
         parent_id = uuid4()
-        source = SourceCreate(
-            url="https://example.com/child",
-            source_type=SourceType.PRESS,
-            parent_source_id=parent_id,
-        )
+        source = SourceCreate(**_minimal_source_kwargs(parent_source_id=parent_id))
         assert source.parent_source_id == parent_id
 
     def test_source_update_partial(self):
