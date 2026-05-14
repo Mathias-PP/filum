@@ -177,11 +177,13 @@ async def publish_card(
         )
 
     # Belt-and-suspenders: any exception raised during publish (MissingGreenlet,
-    # crypto error, etc.) must surface as a clean JSON 500 with the message
-    # bubbled up to the browser. Without this wrapper, certain async errors
-    # (notably MissingGreenlet during serialization) kill the response mid-flight
-    # and the browser sees `TypeError: Failed to fetch` — indistinguishable from
-    # a network outage. See agent/PITFALLS.md §1.4.
+    # asyncpg DataError, crypto error, etc.) must surface as a clean JSON 500
+    # with CORS headers. Without this wrapper, an exception that aborts the
+    # SQLAlchemy transaction leaves `get_db`'s post-yield `await session.commit()`
+    # to raise a second time AFTER the response is being constructed, killing
+    # the response stream so the browser receives no CORS header (visible as
+    # "blocked by CORS policy" + ERR_FAILED, indistinguishable from a network
+    # outage). See agent/PITFALLS.md §1.4 and §1.5.
     try:
         return await card_service.publish_card(card)
     except HTTPException:
@@ -194,6 +196,12 @@ async def publish_card(
             len(card.sources),
             type(exc).__name__,
         )
+        # Rollback so `get_db`'s cleanup `commit()` doesn't trip on the aborted
+        # transaction and corrupt the response stream.
+        try:
+            await card_service._db.rollback()
+        except Exception:
+            logger.exception("rollback after publish failure also failed")
         return JSONResponse(
             status_code=500,
             content={
