@@ -6,6 +6,17 @@
 
 ## Dernière mise à jour
 
+**2026-05-14 (PR UX en cours)** — **Passe UX/UI : mobile nav + dashboard édition + hero + 404.**
+
+- **Mobile nav** : menu hamburger ajouté dans `+layout.svelte`. Les 4 onglets de navigation (`Fonctionnalités`, `Roadmap`, `Sécurité`, `À propos`) étaient inaccessibles sur mobile (`hidden md:flex` sans alternative). Drawer fermé sur Escape ou clic extérieur.
+- **Dashboard fiches publiées** : ajout des boutons Voir / Éditer / Supprimer (les fiches sont mutables depuis ADR-019, l'édition réutilise `/dashboard/new/{id}/sources`).
+- **Compteurs dashboard** (X brouillons, Y publiées) + skeleton loader.
+- **Hero accueil refondu** : layout 2 colonnes, illustration SVG vectorielle dédiée (graphe de citation stylisé avec types de sources colorés et nœud central animé), background dégradé subtil.
+- **Page 404 custom** (`+error.svelte`) avec CTA contextuels.
+- **`/privacy`** : stub minimal pour éviter le 404 footer.
+- **Loading states** : labels dynamiques + `disabled` pendant submit sur création fiche, ajout source, publication.
+- Branche `feat/ux-mobile-dashboard-hero`, PR à ouvrir, merge manuel par l'utilisateur.
+
 **2026-05-14 (post-PR #40)** — **Axe C terminé et déployé en prod.** Migration 006 + table `content_attestations` + endpoints attestation + seed signing sont opérationnels. Plusieurs crashs résolus. Plan 3 axes révisé : le P0 (Axe C) est livré, place au P1 (Axe B — archivage multi-cible).
 
 **2026-05-14 (PR #39 + PR #40) — Axe C déployé, 2 crashs production résolus.**
