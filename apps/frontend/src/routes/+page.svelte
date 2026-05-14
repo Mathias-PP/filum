@@ -31,8 +31,7 @@
           </h1>
           <p class="text-xl text-slate-600 mb-8 text-balance">
             Filum transforme votre bibliographie en un graphe interactif : sources organisées,
-            archivées, et chaque contenu original que vous revendiquez est attesté
-            cryptographiquement.
+            archivées, et chaque création que vous revendiquez est attestée cryptographiquement.
           </p>
           <div
             class="flex flex-col sm:flex-row items-center lg:items-start justify-center lg:justify-start gap-4"
@@ -89,17 +88,28 @@
               </filter>
             </defs>
 
-            <circle cx="240" cy="210" r="140" fill="url(#halo)" />
+            <circle cx="240" cy="210" r="150" fill="url(#halo)" />
 
-            <g stroke="#cbd5e1" stroke-width="1.5" fill="none" stroke-linecap="round">
-              <path d="M 240 210 C 180 150, 130 120, 90 95" />
-              <path d="M 240 210 C 300 150, 350 130, 400 110" />
-              <path d="M 240 210 C 180 260, 130 290, 95 335" />
-              <path d="M 240 210 C 310 260, 360 300, 405 330" />
-              <path d="M 240 210 C 220 130, 215 90, 220 55" />
-              <path d="M 240 210 C 260 290, 270 340, 265 380" />
-              <path d="M 90 95 C 110 70, 160 60, 220 55" />
-              <path d="M 400 110 C 360 80, 290 60, 220 55" />
+            <!-- Creator -> source edges (solid straight lines) -->
+            <g stroke="#cbd5e1" stroke-width="1.5" stroke-linecap="round">
+              <line x1="240" y1="210" x2="90" y2="95" />
+              <line x1="240" y1="210" x2="400" y2="110" />
+              <line x1="240" y1="210" x2="95" y2="335" />
+              <line x1="240" y1="210" x2="405" y2="330" />
+              <line x1="240" y1="210" x2="220" y2="55" />
+              <line x1="240" y1="210" x2="265" y2="380" />
+            </g>
+
+            <!-- Source-to-source citation edges (dashed: "ma source cite cette autre source") -->
+            <g
+              stroke="#94a3b8"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-dasharray="4 3"
+              opacity="0.75"
+            >
+              <line x1="90" y1="95" x2="95" y2="335" />
+              <line x1="400" y1="110" x2="405" y2="330" />
             </g>
 
             <g>
@@ -113,24 +123,25 @@
                 font-size="14"
                 font-weight="700"
                 fill="white"
-                font-family="ui-sans-serif, system-ui">Filum</text
+                font-family="ui-sans-serif, system-ui">Vous</text
               >
 
+              <!-- Source nodes colored by author_kind (cf. AUTHOR_COLORS) -->
               <circle cx="90" cy="95" r="22" fill="#C0DD97" stroke="#639922" stroke-width="2" />
               <circle cx="400" cy="110" r="22" fill="#B5D4F4" stroke="#378ADD" stroke-width="2" />
               <circle cx="95" cy="335" r="22" fill="#FAC775" stroke="#EF9F27" stroke-width="2" />
-              <circle cx="405" cy="330" r="22" fill="#F2A7BE" stroke="#D4456E" stroke-width="2" />
-              <circle cx="220" cy="55" r="20" fill="#A7E8D9" stroke="#2DAF8F" stroke-width="2" />
-              <circle cx="265" cy="380" r="20" fill="#CECBF6" stroke="#7F77DD" stroke-width="2" />
+              <circle cx="405" cy="330" r="22" fill="#A7E8D9" stroke="#2DAF8F" stroke-width="2" />
+              <circle cx="220" cy="55" r="20" fill="#CECBF6" stroke="#7F77DD" stroke-width="2" />
+              <circle cx="265" cy="380" r="20" fill="#FDE68A" stroke="#CA8A04" stroke-width="2" />
             </g>
 
             <g font-family="ui-sans-serif, system-ui" font-size="11" fill="#475569">
-              <text x="90" y="135" text-anchor="middle">Article</text>
+              <text x="90" y="135" text-anchor="middle">Chercheur·euse</text>
               <text x="400" y="150" text-anchor="middle">Institution</text>
-              <text x="95" y="375" text-anchor="middle">Presse</text>
-              <text x="405" y="370" text-anchor="middle">Vidéo</text>
-              <text x="220" y="25" text-anchor="middle">Image</text>
-              <text x="265" y="412" text-anchor="middle">Original</text>
+              <text x="95" y="375" text-anchor="middle">Média</text>
+              <text x="405" y="370" text-anchor="middle">École</text>
+              <text x="220" y="25" text-anchor="middle">Individu</text>
+              <text x="265" y="412" text-anchor="middle">Association</text>
             </g>
           </svg>
         </div>
@@ -176,8 +187,8 @@
           </div>
           <h3 class="text-xl font-semibold text-slate-900 mb-2">2. Attester</h3>
           <p class="text-slate-600">
-            Chaque contenu original que vous revendiquez est attesté avec votre clé Ed25519 : le
-            triplet (vous, l'URL du contenu, la date) est signé et vérifiable par tous.
+            Chaque création que vous revendiquez est attestée avec votre clé Ed25519 : le triplet
+            (vous, l'URL du contenu, la date) est signé et vérifiable par tous.
           </p>
         </div>
         <div class="text-center">
