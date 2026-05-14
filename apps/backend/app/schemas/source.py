@@ -7,19 +7,39 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class SourceType(str, Enum):
-    PEER_REVIEWED = "peer-reviewed"
-    INSTITUTIONAL = "institutional"
-    PRESS = "press"
+class SourceFormat(str, Enum):
+    TEXTE = "texte"
     VIDEO = "video"
     IMAGE = "image"
-    ORIGINAL = "original"
+    AUDIO = "audio"
+    DATA = "data"
 
 
-class AuthorityLevel(str, Enum):
-    HIGH = "high"
-    MEDIUM = "medium"
-    LOW = "low"
+class SourceCategory(str, Enum):
+    ARTICLE_SCIENTIFIQUE = "article-scientifique"
+    PREPRINT = "preprint"
+    ARTICLE_PRESSE = "article-presse"
+    COMMUNIQUE = "communique"
+    DOCUMENTAIRE = "documentaire"
+    INTERVIEW = "interview"
+    PODCAST = "podcast"
+    BLOG = "blog"
+    POST_SOCIAL = "post-social"
+    LIVRE = "livre"
+    PAGE_WEB = "page-web"
+    NOTES = "notes"
+
+
+class AuthorKind(str, Enum):
+    CHERCHEUR = "chercheur"
+    MEDIA = "media"
+    INSTITUTION_PUBLIQUE = "institution-publique"
+    GOUVERNEMENT = "gouvernement"
+    ECOLE = "ecole"
+    LABORATOIRE = "laboratoire"
+    ENTREPRISE = "entreprise"
+    ASSO = "asso"
+    INDIVIDU = "individu"
 
 
 class ArchiveStatus(str, Enum):
@@ -33,8 +53,9 @@ class SourceBase(BaseModel):
     title: str | None = Field(default=None, max_length=500)
     authors: str | None = Field(default=None, max_length=500)
     published_at: datetime | None = None
-    source_type: SourceType
-    authority_level: AuthorityLevel = AuthorityLevel.MEDIUM
+    format: SourceFormat
+    category: SourceCategory
+    author_kind: AuthorKind
     annotation: str | None = Field(default=None, max_length=500)
     is_pivot: bool = False
     parent_source_id: UUID | None = None
@@ -52,8 +73,9 @@ class SourceUpdate(BaseModel):
     title: str | None = None
     authors: str | None = None
     published_at: datetime | None = None
-    source_type: SourceType | None = None
-    authority_level: AuthorityLevel | None = None
+    format: SourceFormat | None = None
+    category: SourceCategory | None = None
+    author_kind: AuthorKind | None = None
     annotation: str | None = None
     is_pivot: bool | None = None
     parent_source_id: UUID | None = None
@@ -76,8 +98,9 @@ class SourceResponse(BaseModel):
     title: str | None
     authors: str | None
     published_at: datetime | None
-    source_type: SourceType
-    authority_level: AuthorityLevel
+    format: SourceFormat
+    category: SourceCategory
+    author_kind: AuthorKind
     annotation: str | None
     is_pivot: bool
     archive_status: ArchiveStatus

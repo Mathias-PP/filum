@@ -4,8 +4,8 @@
   import { onMount } from 'svelte';
   import { api } from '$lib/api';
   import { Button } from '$lib/components';
-  import { SOURCE_COLORS } from '$lib/utils/source-colors';
-  import type { Card, Source, SourceType } from '$lib/api';
+  import { AUTHOR_COLORS, authorLabel } from '$lib/utils/author-colors';
+  import type { AuthorKind, Card, Source, SourceCategory, SourceFormat } from '$lib/api';
 
   const cardId = $derived($page.params.card_id ?? '');
 
@@ -17,7 +17,10 @@
 
   // Add-source form
   let url = $state('');
-  let sourceType = $state<SourceType>('peer-reviewed');
+  let sourceFormat = $state<SourceFormat>('texte');
+  let sourceCategory = $state<SourceCategory>('article-scientifique');
+  let authorKind = $state<AuthorKind>('chercheur');
+  let parentSourceId = $state<string>('');
   let sourceTitle = $state('');
   let authors = $state('');
   let annotation = $state('');
@@ -77,11 +80,14 @@
     try {
       const s = await api.sources.create(cardId, {
         url,
-        source_type: sourceType,
+        format: sourceFormat,
+        category: sourceCategory,
+        author_kind: authorKind,
         title: sourceTitle || undefined,
         authors: authors || undefined,
         annotation: annotation || undefined,
         is_pivot: isPivot,
+        parent_source_id: parentSourceId || undefined,
       });
       sources = [...sources, s];
       url = '';
@@ -89,6 +95,7 @@
       authors = '';
       annotation = '';
       isPivot = false;
+      parentSourceId = '';
     } catch (err) {
       addError = err instanceof Error ? err.message : "Erreur lors de l'ajout";
     } finally {
@@ -127,13 +134,39 @@
     }
   }
 
-  const sourceTypes: { value: SourceType; label: string }[] = [
-    { value: 'peer-reviewed', label: 'Revue à comité de lecture' },
-    { value: 'institutional', label: 'Source institutionnelle' },
-    { value: 'press', label: 'Presse' },
+  const formatOptions: { value: SourceFormat; label: string }[] = [
+    { value: 'texte', label: 'Texte' },
     { value: 'video', label: 'Vidéo' },
     { value: 'image', label: 'Image' },
-    { value: 'original', label: 'Source originale' },
+    { value: 'audio', label: 'Audio' },
+    { value: 'data', label: 'Données' },
+  ];
+
+  const categoryOptions: { value: SourceCategory; label: string }[] = [
+    { value: 'article-scientifique', label: 'Article scientifique' },
+    { value: 'preprint', label: 'Préprint' },
+    { value: 'article-presse', label: 'Article de presse' },
+    { value: 'communique', label: 'Communiqué' },
+    { value: 'documentaire', label: 'Documentaire' },
+    { value: 'interview', label: 'Interview' },
+    { value: 'podcast', label: 'Podcast' },
+    { value: 'blog', label: 'Blog' },
+    { value: 'post-social', label: 'Post réseaux sociaux' },
+    { value: 'livre', label: 'Livre' },
+    { value: 'page-web', label: 'Page web' },
+    { value: 'notes', label: 'Notes' },
+  ];
+
+  const authorKindOptions: AuthorKind[] = [
+    'chercheur',
+    'media',
+    'institution-publique',
+    'gouvernement',
+    'ecole',
+    'laboratoire',
+    'entreprise',
+    'asso',
+    'individu',
   ];
 </script>
 
@@ -193,17 +226,52 @@
         </div>
 
         <div class="space-y-1.5">
-          <label for="source-type" class="block text-sm font-medium text-slate-700">
-            Type <span class="text-red-500">*</span>
+          <label for="source-format" class="block text-sm font-medium text-slate-700">
+            Format <span class="text-red-500">*</span>
           </label>
           <select
-            id="source-type"
-            value={sourceType}
-            onchange={(e) => (sourceType = (e.target as HTMLSelectElement).value as SourceType)}
+            id="source-format"
+            value={sourceFormat}
+            onchange={(e) => (sourceFormat = (e.target as HTMLSelectElement).value as SourceFormat)}
             class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            {#each sourceTypes as st}
-              <option value={st.value}>{st.label}</option>
+            {#each formatOptions as opt}
+              <option value={opt.value}>{opt.label}</option>
+            {/each}
+          </select>
+        </div>
+
+        <div class="space-y-1.5">
+          <label for="source-category" class="block text-sm font-medium text-slate-700">
+            Catégorie <span class="text-red-500">*</span>
+          </label>
+          <select
+            id="source-category"
+            value={sourceCategory}
+            onchange={(e) =>
+              (sourceCategory = (e.target as HTMLSelectElement).value as SourceCategory)}
+            class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {#each categoryOptions as opt}
+              <option value={opt.value}>{opt.label}</option>
+            {/each}
+          </select>
+        </div>
+
+        <div class="sm:col-span-2 space-y-1.5">
+          <label for="source-author-kind" class="block text-sm font-medium text-slate-700">
+            Type d'auteur <span class="text-red-500">*</span>
+            <span class="text-xs text-slate-500 font-normal">— colore le nœud dans le graphe</span>
+          </label>
+          <select
+            id="source-author-kind"
+            value={authorKind}
+            onchange={(e) => (authorKind = (e.target as HTMLSelectElement).value as AuthorKind)}
+            class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            style:border-left="4px solid {AUTHOR_COLORS[authorKind].stroke}"
+          >
+            {#each authorKindOptions as opt}
+              <option value={opt}>{authorLabel(opt)}</option>
             {/each}
           </select>
         </div>
@@ -251,6 +319,27 @@
             <span class="text-sm text-slate-700">Source clé (★ structurante du raisonnement)</span>
           </label>
         </div>
+
+        {#if sources.length > 0}
+          <div class="sm:col-span-2 space-y-1.5">
+            <label for="source-parent" class="block text-sm font-medium text-slate-700">
+              Cette source en cite une autre déjà ajoutée ?
+              <span class="text-xs text-slate-500 font-normal"
+                >— affichée en pointillés dans le graphe</span
+              >
+            </label>
+            <select
+              id="source-parent"
+              bind:value={parentSourceId}
+              class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">— Aucun lien parent —</option>
+              {#each sources as s}
+                <option value={s.id}>{s.title ?? s.url}</option>
+              {/each}
+            </select>
+          </div>
+        {/if}
       </div>
 
       <div class="flex justify-end">
@@ -274,7 +363,7 @@
       </h2>
       <div class="space-y-2">
         {#each sources as source (source.id)}
-          {@const color = SOURCE_COLORS[source.source_type]}
+          {@const color = AUTHOR_COLORS[source.author_kind]}
           <div
             class="flex items-start justify-between gap-3 bg-white border border-slate-200 rounded-lg px-4 py-3"
           >

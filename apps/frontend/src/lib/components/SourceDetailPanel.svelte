@@ -1,7 +1,9 @@
 <script lang="ts">
   import type { CardDetail, Source } from '$lib/api';
-  import { SOURCE_COLORS } from '$lib/utils/source-colors';
-  import SourceTypeBadge from './SourceTypeBadge.svelte';
+  import { AUTHOR_COLORS } from '$lib/utils/author-colors';
+  import AuthorKindBadge from './AuthorKindBadge.svelte';
+  import FormatBadge from './FormatBadge.svelte';
+  import CategoryBadge from './CategoryBadge.svelte';
 
   interface Anchor {
     x: number;
@@ -107,7 +109,9 @@
     <div class="p-4">
       <div class="flex items-start justify-between gap-2 mb-3">
         <div class="flex items-center gap-1.5 flex-wrap">
-          <SourceTypeBadge type={source.source_type} size="sm" />
+          <AuthorKindBadge kind={source.author_kind} size="sm" />
+          <FormatBadge format={source.format} size="sm" />
+          <CategoryBadge category={source.category} size="sm" />
           {#if source.is_pivot}
             <span
               class="inline-flex items-center text-xs text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full"
@@ -194,7 +198,7 @@
       {#if source.annotation}
         <p
           class="mt-4 text-sm text-slate-700 italic leading-relaxed border-l-2 pl-3"
-          style:border-color={SOURCE_COLORS[source.source_type].stroke}
+          style:border-color={AUTHOR_COLORS[source.author_kind].stroke}
         >
           {source.annotation}
         </p>

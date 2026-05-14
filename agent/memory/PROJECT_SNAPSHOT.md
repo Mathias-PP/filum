@@ -94,7 +94,7 @@ filum/
 - **`users`** : `id`, `slug` (unique), `email`, `display_name`, `avatar_url`, `encrypted_private_key`, `public_key`
 - **`biblio_cards`** : `id`, `creator_id` (FK users), `slug` (unique par créateur), `title`, `description`, `content_url`, `platform`, `published_at` (plus de `canonical_hash`/`signature`/`signed_at` — migré vers `content_attestations`)
 - **`content_attestations`** : `id`, `user_id` (FK users), `content_url`, `attested_at`, `canonical_hash`, `signature`, `created_at` — signature du triplet `(creator_id, content_url, attested_at)` via Ed25519
-- **`sources`** : `id`, `biblio_card_id` (FK), `url`, `title`, `authors`, `source_type`, `published_date`, `annotation`, `is_pivot`, `archive_url`, `archive_status`, `parent_source_id` (FK self), `citations_count`, `impact_factor`, `subscribers_count`, `views_count`, `conflict_of_interest`, `authority_level` (legacy)
+- **`sources`** : `id`, `biblio_card_id` (FK), `url`, `title`, `authors`, `format` / `category` / `author_kind` (taxonomie 3 axes — ADR-020, remplace ex-`source_type` + `authority_level`), `published_date`, `annotation`, `is_pivot`, `archive_url`, `archive_status`, `parent_source_id` (FK self, rendu dashed dans le graphe), `citations_count`, `impact_factor`, `subscribers_count`, `views_count`, `conflict_of_interest`
 - **`source_excerpts`** : `id`, `source_id` (FK CASCADE), `position`, `text`, `suggested_by_ai`
 - **`audit_events`** : audit log des actions sensibles
 

@@ -6,4 +6,6 @@ export { default as Input } from './Input.svelte';
 export { default as Logo } from './Logo.svelte';
 export { default as SourceDetailPanel } from './SourceDetailPanel.svelte';
 export { default as SourceGraph } from './SourceGraph.svelte';
-export { default as SourceTypeBadge } from './SourceTypeBadge.svelte';
+export { default as AuthorKindBadge } from './AuthorKindBadge.svelte';
+export { default as FormatBadge } from './FormatBadge.svelte';
+export { default as CategoryBadge } from './CategoryBadge.svelte';

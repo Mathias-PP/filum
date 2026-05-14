@@ -6,7 +6,18 @@
 
 ## Dernière mise à jour
 
-**2026-05-14 (PR UX en cours)** — **Passe UX/UI : mobile nav + dashboard édition + hero + 404.**
+**2026-05-14 (PR taxonomie en cours)** — **Refonte taxonomie sources en 3 axes orthogonaux + corrections hero + parent links UI (ADR-020).**
+
+- **Taxonomie 3 axes** : `source_type` (mélangeait format + catégorie) et `authority_level` (legacy) supprimés. Remplacés par `format` (5 valeurs), `category` (12), `author_kind` (9). Migration Alembic 007 avec backfill best-effort.
+- **Graphe coloré par `author_kind`** : la couleur du nœud encode désormais l'origine épistémique (chercheur / média / institution-publique / etc.), pas un mélange format/catégorie. Palette dans `apps/frontend/src/lib/utils/author-colors.ts`.
+- **Formulaire d'ajout de source** : 1 dropdown → 3 dropdowns obligatoires + dropdown optionnel « Cette source en cite une autre déjà ajoutée ? » qui persiste `parent_source_id`. Composants `AuthorKindBadge`, `FormatBadge`, `CategoryBadge` côté détail.
+- **Bug fix** : `POST /cards/{id}/sources` ignorait silencieusement `parent_source_id` au CREATE (champ jamais passé au constructeur `Source(...)`). Le seed le contournait par insertion directe.
+- **Garde levée** : `POST/PATCH/DELETE /sources/...` n'interdisent plus l'édition sur fiches publiées (cohérent avec ADR-019 — fiches mutables).
+- **Hero accueil** : suppression du mot « contenu » dans « chaque contenu original que vous revendiquez » (collision sémantique avec l'ex-`source_type=original`) et refonte du SVG (lignes droites, 2 arêtes pointillées entre sources pour illustrer le feature parent, labels mis à jour avec la nouvelle taxonomie).
+- `CardStats` re-keyé : `peer_reviewed`/`institutional`/... → `chercheur`/`media`/`institution_publique`/`individu`. La fiche publique adapte les 2 tuiles statistiques.
+- Branche `feat/taxonomy-redesign`, PR à ouvrir, merge manuel par l'utilisateur.
+
+**2026-05-14 (PR #43 mergée)** — **Passe UX/UI : mobile nav + dashboard édition + hero + 404.**
 
 - **Mobile nav** : menu hamburger ajouté dans `+layout.svelte`. Les 4 onglets de navigation (`Fonctionnalités`, `Roadmap`, `Sécurité`, `À propos`) étaient inaccessibles sur mobile (`hidden md:flex` sans alternative). Drawer fermé sur Escape ou clic extérieur.
 - **Dashboard fiches publiées** : ajout des boutons Voir / Éditer / Supprimer (les fiches sont mutables depuis ADR-019, l'édition réutilise `/dashboard/new/{id}/sources`).
@@ -247,7 +258,7 @@ Sans validation, ne pas attaquer Axe A.
 ### P2 — Qualité interne (dette dormante)
 
 - Réécrire test composant Svelte 5 (compatible testing-library Svelte 5)
-- Nettoyage `authority_level` (legacy, plus utilisé par l'UI)
+- ~~Nettoyage `authority_level` (legacy, plus utilisé par l'UI)~~ **Résolu par ADR-020** : colonne droppée par migration 007
 - Réduire cold start Railway (keep-alive ou instance hobby)
 
 ### P3 — Ouverture produit

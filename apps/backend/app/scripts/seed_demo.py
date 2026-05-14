@@ -29,7 +29,7 @@ from app.crypto.signing import Canonicalizer, SigningService
 from app.db.database import async_session_maker
 from app.models.biblio_card import BiblioCard, CardStatus, ContentType, Platform
 from app.models.content_attestation import ContentAttestation
-from app.models.source import ArchiveStatus, AuthorityLevel, Source, SourceType
+from app.models.source import ArchiveStatus, AuthorKind, Source, SourceCategory, SourceFormat
 from app.models.source_excerpt import SourceExcerpt
 from app.models.user import User
 
@@ -101,8 +101,9 @@ def _demo_sources() -> list[dict]:
             "url": "https://www.science.org/doi/10.1126/science.1067020",
             "title": "The Molecular Biology of Memory Storage: A Dialogue Between Genes and Synapses",
             "authors": "Eric R. Kandel",
-            "source_type": SourceType.PEER_REVIEWED.value,
-            "authority_level": AuthorityLevel.HIGH.value,
+            "format": SourceFormat.TEXTE.value,
+            "category": SourceCategory.ARTICLE_SCIENTIFIQUE.value,
+            "author_kind": AuthorKind.CHERCHEUR.value,
             "annotation": (
                 "Conférence Nobel 2000. Pose les fondations moléculaires de la "
                 "consolidation mnésique (CREB, synapses, protéines)."
@@ -126,8 +127,9 @@ def _demo_sources() -> list[dict]:
             "url": "https://www.cell.com/current-biology/fulltext/S0960-9822(10)01007-0",
             "title": "The Hippocampus Plays a Selective Role in the Retrieval of Detailed Contextual Memories",
             "authors": "Brian J. Wiltgen et al.",
-            "source_type": SourceType.PEER_REVIEWED.value,
-            "authority_level": AuthorityLevel.HIGH.value,
+            "format": SourceFormat.TEXTE.value,
+            "category": SourceCategory.ARTICLE_SCIENTIFIQUE.value,
+            "author_kind": AuthorKind.CHERCHEUR.value,
             "annotation": "Démonstration du rôle sélectif de l'hippocampe pour les détails contextuels.",
             "is_pivot": True,
             "parent_index": None,
@@ -138,8 +140,9 @@ def _demo_sources() -> list[dict]:
             "url": "https://www.nature.com/articles/35021052",
             "title": "Fear Memories Require Protein Synthesis in the Amygdala for Reconsolidation After Retrieval",
             "authors": "Karim Nader, Glenn E. Schafe, Joseph E. LeDoux",
-            "source_type": SourceType.PEER_REVIEWED.value,
-            "authority_level": AuthorityLevel.HIGH.value,
+            "format": SourceFormat.TEXTE.value,
+            "category": SourceCategory.ARTICLE_SCIENTIFIQUE.value,
+            "author_kind": AuthorKind.CHERCHEUR.value,
             "annotation": (
                 "Article 2000 qui relance le débat sur la reconsolidation : se souvenir "
                 "rouvre la mémoire à modification. Cite Kandel comme socle."
@@ -153,8 +156,9 @@ def _demo_sources() -> list[dict]:
             "url": "https://www.nature.com/articles/nature11028",
             "title": "Optogenetic Stimulation of a Hippocampal Engram Activates Fear Memory Recall",
             "authors": "Xu Liu, Steve Ramirez, Susumu Tonegawa et al.",
-            "source_type": SourceType.PEER_REVIEWED.value,
-            "authority_level": AuthorityLevel.HIGH.value,
+            "format": SourceFormat.TEXTE.value,
+            "category": SourceCategory.ARTICLE_SCIENTIFIQUE.value,
+            "author_kind": AuthorKind.CHERCHEUR.value,
             "annotation": (
                 "Première preuve causale d'un engramme dans l'hippocampe par optogénétique. "
                 "S'appuie sur Wiltgen 2010 pour le rôle de l'hippocampe."
@@ -174,8 +178,9 @@ def _demo_sources() -> list[dict]:
             "url": "https://learnmem.cshlp.org/content/12/4/361.full",
             "title": "Planting Misinformation in the Human Mind: A 30-Year Investigation of the Misinformation Effect",
             "authors": "Elizabeth F. Loftus",
-            "source_type": SourceType.PEER_REVIEWED.value,
-            "authority_level": AuthorityLevel.HIGH.value,
+            "format": SourceFormat.TEXTE.value,
+            "category": SourceCategory.ARTICLE_SCIENTIFIQUE.value,
+            "author_kind": AuthorKind.CHERCHEUR.value,
             "annotation": "Synthèse des 30 ans de recherche sur les faux souvenirs.",
             "is_pivot": False,
             "parent_index": None,
@@ -198,8 +203,9 @@ def _demo_sources() -> list[dict]:
             "url": "https://www.ninds.nih.gov/health-information/public-education/brain-basics/brain-basics-understanding-sleep",
             "title": "Brain Basics: Understanding Sleep",
             "authors": "NIH — National Institute of Neurological Disorders and Stroke",
-            "source_type": SourceType.INSTITUTIONAL.value,
-            "authority_level": AuthorityLevel.HIGH.value,
+            "format": SourceFormat.TEXTE.value,
+            "category": SourceCategory.PAGE_WEB.value,
+            "author_kind": AuthorKind.INSTITUTION_PUBLIQUE.value,
             "annotation": "Ressource pédagogique NIH sur le sommeil et son rôle dans la consolidation mnésique.",
             "is_pivot": False,
             "parent_index": None,
@@ -214,8 +220,9 @@ def _demo_sources() -> list[dict]:
             "url": "https://memorylab.stanford.edu/",
             "title": "Stanford Memory Lab — Anthony Wagner, Principal Investigator",
             "authors": "Stanford University",
-            "source_type": SourceType.INSTITUTIONAL.value,
-            "authority_level": AuthorityLevel.MEDIUM.value,
+            "format": SourceFormat.TEXTE.value,
+            "category": SourceCategory.PAGE_WEB.value,
+            "author_kind": AuthorKind.ECOLE.value,
             "annotation": "Site du laboratoire de référence sur l'encodage et le rappel chez l'humain.",
             "is_pivot": False,
             "parent_index": None,
@@ -224,8 +231,9 @@ def _demo_sources() -> list[dict]:
             "url": "https://www.inserm.fr/dossier/memoire/",
             "title": "Mémoire : Quand nos souvenirs façonnent notre cerveau",
             "authors": "Inserm",
-            "source_type": SourceType.INSTITUTIONAL.value,
-            "authority_level": AuthorityLevel.HIGH.value,
+            "format": SourceFormat.TEXTE.value,
+            "category": SourceCategory.PAGE_WEB.value,
+            "author_kind": AuthorKind.LABORATOIRE.value,
             "annotation": "Dossier de synthèse Inserm sur la mémoire, en français, à destination grand public.",
             "is_pivot": False,
             "parent_index": None,
@@ -235,8 +243,9 @@ def _demo_sources() -> list[dict]:
             "url": "https://www.nytimes.com/2023/03/30/well/mind/memory-brain-science.html",
             "title": "How Your Brain Builds Memories",
             "authors": "Dana G. Smith — The New York Times",
-            "source_type": SourceType.PRESS.value,
-            "authority_level": AuthorityLevel.MEDIUM.value,
+            "format": SourceFormat.TEXTE.value,
+            "category": SourceCategory.ARTICLE_PRESSE.value,
+            "author_kind": AuthorKind.MEDIA.value,
             "annotation": (
                 "Vulgarisation grand public des travaux de Kandel et successeurs. "
                 "Cite l'article fondateur de 2001 comme socle."
@@ -254,8 +263,9 @@ def _demo_sources() -> list[dict]:
             "url": "https://www.lemonde.fr/sciences/article/2024/03/15/le-sommeil-gardien-de-la-memoire.html",
             "title": "Le sommeil, gardien de la mémoire",
             "authors": "Hervé Morin — Le Monde Sciences",
-            "source_type": SourceType.PRESS.value,
-            "authority_level": AuthorityLevel.MEDIUM.value,
+            "format": SourceFormat.TEXTE.value,
+            "category": SourceCategory.ARTICLE_PRESSE.value,
+            "author_kind": AuthorKind.MEDIA.value,
             "annotation": "Article 2024 reprenant les ressources NIH sur sommeil et consolidation.",
             "is_pivot": False,
             "parent_index": 6,
@@ -264,8 +274,9 @@ def _demo_sources() -> list[dict]:
             "url": "https://www.nature.com/articles/d41586-022-04123-3",
             "title": "The Neuroscience of Forgetting",
             "authors": "Lauren Gravitz — Nature News",
-            "source_type": SourceType.PRESS.value,
-            "authority_level": AuthorityLevel.MEDIUM.value,
+            "format": SourceFormat.TEXTE.value,
+            "category": SourceCategory.ARTICLE_PRESSE.value,
+            "author_kind": AuthorKind.MEDIA.value,
             "annotation": (
                 "Synthèse Nature News sur l'oubli comme processus actif. "
                 "Reprend l'effet de désinformation de Loftus."
@@ -278,8 +289,9 @@ def _demo_sources() -> list[dict]:
             "url": "https://lexfridman.com/karim-nader/",
             "title": "Lex Fridman Podcast #310 — Karim Nader on Memory Reconsolidation",
             "authors": "Lex Fridman & Karim Nader",
-            "source_type": SourceType.ORIGINAL.value,
-            "authority_level": AuthorityLevel.MEDIUM.value,
+            "format": SourceFormat.AUDIO.value,
+            "category": SourceCategory.PODCAST.value,
+            "author_kind": AuthorKind.INDIVIDU.value,
             "annotation": (
                 "Entretien long format avec l'auteur de l'article 2000. "
                 "Source primaire complémentaire au papier scientifique."
@@ -297,8 +309,9 @@ def _demo_sources() -> list[dict]:
             "url": "https://lea-marchand.filum.app/notes/tonegawa-tokyo-2024",
             "title": "Notes de tournage : interview Susumu Tonegawa, Tokyo, mars 2024",
             "authors": "Léa Marchand",
-            "source_type": SourceType.ORIGINAL.value,
-            "authority_level": AuthorityLevel.LOW.value,
+            "format": SourceFormat.TEXTE.value,
+            "category": SourceCategory.NOTES.value,
+            "author_kind": AuthorKind.INDIVIDU.value,
             "annotation": (
                 "Notes personnelles prises pendant l'interview de Tonegawa. "
                 "Citations brutes utilisées dans la vidéo en voix off."
@@ -310,8 +323,9 @@ def _demo_sources() -> list[dict]:
             "url": "https://www.simonandschuster.com/books/Remember/Lisa-Genova/9781982171544",
             "title": "Remember: The Science of Memory and the Art of Forgetting",
             "authors": "Lisa Genova",
-            "source_type": SourceType.ORIGINAL.value,
-            "authority_level": AuthorityLevel.MEDIUM.value,
+            "format": SourceFormat.TEXTE.value,
+            "category": SourceCategory.LIVRE.value,
+            "author_kind": AuthorKind.CHERCHEUR.value,
             "annotation": (
                 "Livre 2021 d'une neuroscientifique pour le grand public. "
                 "Référence narrative pour la structure de la vidéo."
@@ -334,8 +348,9 @@ def _demo_sources() -> list[dict]:
             "url": "https://www.pbs.org/wgbh/nova/video/memory-hackers/",
             "title": "Memory Hackers",
             "authors": "NOVA PBS — Documentaire",
-            "source_type": SourceType.VIDEO.value,
-            "authority_level": AuthorityLevel.MEDIUM.value,
+            "format": SourceFormat.VIDEO.value,
+            "category": SourceCategory.DOCUMENTAIRE.value,
+            "author_kind": AuthorKind.MEDIA.value,
             "annotation": (
                 "Documentaire vidéo sur la plasticité de la mémoire qui illustre "
                 "par des cas cliniques et des expériences les concepts de reconsolidation "
@@ -356,8 +371,9 @@ def _demo_sources() -> list[dict]:
             "url": "https://www.youtube.com/watch?v=H8UQdB3vG6A",
             "title": "How Memories Are Made: The Neuroscience of Memory Formation",
             "authors": "Artem Kirsanov",
-            "source_type": SourceType.VIDEO.value,
-            "authority_level": AuthorityLevel.MEDIUM.value,
+            "format": SourceFormat.VIDEO.value,
+            "category": SourceCategory.DOCUMENTAIRE.value,
+            "author_kind": AuthorKind.INDIVIDU.value,
             "annotation": (
                 "Vidéo de vulgarisation scientifique qui synthétise les mécanismes "
                 "moléculaires et cellulaires de la mémoire, en s'appuyant notamment "
@@ -372,8 +388,9 @@ def _demo_sources() -> list[dict]:
             "url": "https://lea-marchand.filum.app/notes/loftus-interview-2025",
             "title": "Compte-rendu : entretien avec Elizabeth Loftus sur les faux souvenirs",
             "authors": "Léa Marchand",
-            "source_type": SourceType.ORIGINAL.value,
-            "authority_level": AuthorityLevel.LOW.value,
+            "format": SourceFormat.TEXTE.value,
+            "category": SourceCategory.NOTES.value,
+            "author_kind": AuthorKind.INDIVIDU.value,
             "annotation": (
                 "Notes personnelles prises lors d'un entretien informel avec Loftus "
                 "après une conférence à Paris en 2025. Échanges sur l'éthique "
@@ -386,8 +403,9 @@ def _demo_sources() -> list[dict]:
             "url": "https://wellcomecollection.org/works/pb7xkuyz",
             "title": "Dessin des neurones de l'hippocampe — Santiago Ramón y Cajal, 1909",
             "authors": "Santiago Ramón y Cajal",
-            "source_type": SourceType.IMAGE.value,
-            "authority_level": AuthorityLevel.HIGH.value,
+            "format": SourceFormat.IMAGE.value,
+            "category": SourceCategory.PAGE_WEB.value,
+            "author_kind": AuthorKind.CHERCHEUR.value,
             "annotation": (
                 "Dessin original du prix Nobel de médecine 1906, fondateur de la "
                 "neuroscience moderne. Cette planche représente pour la première fois "
@@ -451,8 +469,9 @@ async def _get_or_create_demo_card(
             url=src["url"],
             title=src["title"],
             authors=src["authors"],
-            source_type=src["source_type"],
-            authority_level=src["authority_level"],
+            format=src["format"],
+            category=src["category"],
+            author_kind=src["author_kind"],
             annotation=src["annotation"],
             is_pivot=src["is_pivot"],
             archive_status=ArchiveStatus.PENDING.value,

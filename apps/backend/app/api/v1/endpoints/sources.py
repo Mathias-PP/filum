@@ -14,7 +14,7 @@ from app.core.config import get_settings
 from app.core.rate_limit import limiter
 from app.db.database import async_session_maker, get_db
 from app.extractors import url_extractor
-from app.models.biblio_card import BiblioCard, CardStatus
+from app.models.biblio_card import BiblioCard
 from app.models.source import Source
 from app.models.user import User
 from app.schemas.source import SourceCreate, SourceResponse, SourceUpdate
@@ -121,14 +121,9 @@ async def create_source(
             detail={"code": "forbidden", "message": "Access denied"},
         )
 
-    if card.status == CardStatus.PUBLISHED:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "code": "validation_error",
-                "message": "Cannot add sources to a published card",
-            },
-        )
+    # ADR-019 + ADR-020: published cards are mutable. The existing attestation
+    # remains valid for its timestamped version; re-attestation policy is left
+    # to a future ADR-021 if needed.
 
     max_position = await db.execute(
         select(func.max(Source.position)).where(Source.biblio_card_id == card_id)
@@ -142,10 +137,12 @@ async def create_source(
         title=source_data.title,
         authors=source_data.authors,
         published_at=source_data.published_at,
-        source_type=source_data.source_type.value,
-        authority_level=source_data.authority_level.value,
+        format=source_data.format.value,
+        category=source_data.category.value,
+        author_kind=source_data.author_kind.value,
         annotation=source_data.annotation,
         is_pivot=source_data.is_pivot,
+        parent_source_id=source_data.parent_source_id,
     )
 
     db.add(source)
@@ -204,14 +201,7 @@ async def update_source(
             detail={"code": "forbidden", "message": "Access denied"},
         )
 
-    if card.status == CardStatus.PUBLISHED:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "code": "validation_error",
-                "message": "Cannot modify sources of a published card",
-            },
-        )
+    # ADR-019 + ADR-020: published cards are mutable.
 
     update_data = source_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -253,14 +243,7 @@ async def delete_source(
             detail={"code": "forbidden", "message": "Access denied"},
         )
 
-    if card.status == CardStatus.PUBLISHED:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "code": "validation_error",
-                "message": "Cannot delete sources from a published card",
-            },
-        )
+    # ADR-019 + ADR-020: published cards are mutable.
 
     await db.delete(source)
     await db.commit()

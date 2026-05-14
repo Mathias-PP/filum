@@ -2,6 +2,8 @@
 
 > ⚠️ **Pivot ADR-019 (2026-05-14)** : les colonnes `canonical_hash`, `signature`, `signed_at` sur `biblio_cards` sont en passe d'être supprimées (migration `006_remove_card_signature` à venir). Une nouvelle table `content_attestations` `(id, user_id, content_url, attested_at, canonical_hash, signature)` portera la signature des liens créateur·ice ↔ contenu. `published_at` est conservé pour l'horodatage UX sans rôle crypto. Voir `DECISIONS.md` ADR-019.
 
+> ⚠️ **Refonte taxonomie ADR-020 (2026-05-14)** : les colonnes `sources.source_type` et `sources.authority_level` sont **supprimées** (migration `007_taxonomy`). Trois nouvelles colonnes obligatoires les remplacent : `format` `VARCHAR(20)`, `category` `VARCHAR(40)`, `author_kind` `VARCHAR(40)` (indexée — colore le graphe public). Les exemples JSON et le schéma ASCII ci-dessous restent à mettre à jour. Voir `DECISIONS.md` ADR-020 pour les valeurs autorisées et le mapping de migration.
+
 > Schéma de base de données, modèles SQLAlchemy, et structure des tables dbt.
 
 ---

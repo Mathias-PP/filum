@@ -536,6 +536,77 @@ La prod tourne encore avec l'ancien schéma. Le frontend de PR #31 ne *lit* plus
 
 ---
 
+## ADR-020 — Refonte de la taxonomie des sources en 3 axes orthogonaux
+
+**Date** : 2026-05-14
+
+**Contexte**
+
+L'enum `source_type` du MVP mélange deux dimensions distinctes :
+- des **catégories** de contenu : `peer-reviewed`, `press`, `institutional`, `original`
+- des **formats** de média : `video`, `image`
+
+Conséquences observées :
+- Confusion à l'usage : où classer une vidéo de chercheur sur YouTube ? Sous `video` (format) ou sous `peer-reviewed` (autorité) ? Aucun choix n'est satisfaisant.
+- Le graphe public coloré par `source_type` mixe des signaux hétérogènes, le lecteur ne sait pas si la couleur encode la nature de l'auteur, le format ou la catégorie.
+- Le champ legacy `authority_level` (`high`/`medium`/`low`) survit sans usage UI et porte un jugement non vérifiable, identifié comme dette dans STATE.md.
+- Cosmétique : le texte d'accueil utilise « contenu original que vous revendiquez » alors que `original` est aussi un type de source — collision sémantique.
+
+Le projet étant pré-MVP (seules données = seed + comptes dev), une refonte agressive sans backfill complexe est encore possible. Une fois des créateurs onboardés, ce sera très coûteux à corriger.
+
+**Options envisagées**
+
+1. **Renommage simple sur un seul axe** : remplacer les 6 valeurs par 6 valeurs cohérentes sur un seul axe épistémique. Migration légère. Rejeté : ne résout pas le problème de fond (mélange format/catégorie/auteur).
+2. **Hybride** : 1 axe principal obligatoire (~6 valeurs simples) + 3 champs optionnels riches (format, catégorie détaillée, type d'auteur). Lisibilité préservée par défaut. Rejeté par l'utilisateur : préférence pour la rigueur explicite à l'entrée.
+3. **3 axes orthogonaux tous obligatoires** : `format`, `category`, `author_kind`. Graphe coloré par `author_kind`. **Retenue.**
+
+**Décision**
+
+Trois colonnes obligatoires sur `Source`, valeurs en base = strings kebab-case (cohérent avec ADR-010 sur la lowercase) :
+
+- `format` (5 valeurs) : `texte`, `video`, `image`, `audio`, `data`
+- `category` (12 valeurs) : `article-scientifique`, `preprint`, `article-presse`, `communique`, `documentaire`, `interview`, `podcast`, `blog`, `post-social`, `livre`, `page-web`, `notes`
+- `author_kind` (9 valeurs) : `chercheur`, `media`, `institution-publique`, `gouvernement`, `ecole`, `laboratoire`, `entreprise`, `asso`, `individu`
+
+Le **graphe est coloré par `author_kind`**, dimension la plus informative pour la confiance épistémique (« qui dit ça ? »). Format et catégorie apparaissent en badges neutres dans le panneau de détail de chaque source.
+
+`source_type` et `authority_level` sont **supprimés** (migration 007).
+
+**Justifications**
+- Sépare des axes orthogonaux : on peut décrire un podcast de chercheur (`format=audio`, `category=podcast`, `author_kind=chercheur`) sans devoir choisir une seule étiquette.
+- Aligne la couleur du graphe sur la dimension de confiance, signal principal pour un lecteur tiers.
+- Élimine `authority_level` (jugement non-vérifiable) au profit d'une description structurelle (qui est l'auteur).
+- Pré-MVP = fenêtre acceptable pour rompre la compatibilité.
+
+**Conséquences code**
+- Migration Alembic `007_taxonomy` : add 3 colonnes nullable → backfill via mapping → ALTER NOT NULL → drop `source_type` + `authority_level`. ID ≤ 32 chars, pas de `op.create_index` redondant (cf. CLAUDE.md pièges).
+- Modèles + schémas + endpoints backend mis à jour ; seed_demo.py réécrit.
+- Frontend : `source-colors.ts` → `author-colors.ts` (palette 9), `SourceTypeBadge` éclaté en `AuthorKindBadge` + `FormatBadge` + `CategoryBadge`, `SourceGraph` coloré par `author_kind`, formulaire de création passe d'1 dropdown à 3.
+- Bug latent corrigé en parallèle : `sources.py:138` ne passait pas `parent_source_id` au constructeur `Source(...)`, le champ était silencieusement ignoré à la création via API (le seed le contournait par insertion directe). Documenté en `agent/PITFALLS.md`.
+- Garde `sources.py:124` (interdit l'ajout de source sur fiche publiée) retirée pour être cohérent avec ADR-019 (fiches mutables). L'attestation existante reste valide pour sa version horodatée — une politique de re-attestation automatique sera traitée en ADR-021 si nécessaire.
+- Page d'accueil : suppression du mot « contenu » dans « chaque contenu original que vous revendiquez » → « chaque création que vous revendiquez » (collision sémantique avec l'ex-`source_type=original`).
+
+**Mapping backfill (best-effort, pré-MVP donc tolérant)**
+
+| Ancien `source_type` | → format | → category | → author_kind |
+|---|---|---|---|
+| `peer-reviewed` | texte | article-scientifique | chercheur |
+| `institutional` | texte | communique | institution-publique |
+| `press` | texte | article-presse | media |
+| `video` | video | documentaire | media |
+| `image` | image | page-web | individu |
+| `original` | texte | notes | individu |
+
+Le seed est réécrit derrière avec des valeurs réelles ; les comptes dev peuvent éditer manuellement.
+
+**Follow-ups (hors scope de cette PR)**
+- Alignement `BiblioCard.platform` / `BiblioCard.content_type` avec la nouvelle taxonomie (ADR séparé).
+- Re-attestation automatique des fiches publiées modifiées (ADR-021 éventuel).
+- Suggestion automatique de taxonomie depuis l'URL extractor (DOI → `category=article-scientifique`, `author_kind=chercheur`).
+- Multi-parents pour `Source.parent_source_id` (passer à une table de jonction si demande utilisateur).
+
+---
+
 <!--
 ## ADR-NNN — Titre court
 

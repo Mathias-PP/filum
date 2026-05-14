@@ -1,5 +1,7 @@
 # 05 — Design system
 
+> ⚠️ **Refonte taxonomie ADR-020 (2026-05-14)** : la palette « par `source_type` » documentée plus bas (peer-reviewed vert, institutional bleu, etc.) est **obsolète**. Le graphe et les badges principaux sont désormais colorés par `author_kind` (9 entrées) ; `format` et `category` ont des badges neutres slate. Source de vérité : `apps/frontend/src/lib/utils/author-colors.ts`. Voir `DECISIONS.md` ADR-020.
+
 > Couleurs, typographie, composants, principes esthétiques, inspirations.
 
 ---
