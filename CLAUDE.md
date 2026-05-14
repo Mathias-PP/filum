@@ -152,6 +152,14 @@ Pour une **session autonome longue** (mode plan + acceptEdits, ou agent tiers co
 2. Si l'ambiguïté persiste, ajoute une entrée dans `.docs/07-open-questions.md` et choisis l'option la plus simple en l'attendant
 3. Mentionne-le explicitement dans ta réponse au développeur
 
+## Debug d'un bug prod : instrumenter avant de spéculer
+
+Leçon payée 4 PRs (#33-#36, mai 2026) : un bug publish a été chassé pendant 4 itérations parce que le symptôme côté navigateur (`Failed to fetch` + erreur CORS) ne reflétait pas la vraie cause (`asyncpg.DataError` sur datetime tz-aware). Chaque PR appliquait un fix plausible mais non vérifié.
+
+**Règle** : quand un bug prod résiste à 1 fix, **arrête de patcher et instrumente**. Ajoute un endpoint `/health/<feature>-diagnose` qui exerce le code path **sans auth** (sur des données de seed) et retourne le traceback brut. C'est l'endpoint qui a finalement révélé la vraie cause. Cf. `agent/PITFALLS.md` §1.5 cas vécu.
+
+Quand un user reporte `TypeError: Failed to fetch` ou "blocked by CORS policy" alors que le 401 / OPTIONS preflight ont des headers CORS corrects : le bug est **dans le code path authentifié**, généralement une exception SQLAlchemy qui corrompt la session, et `get_db`'s post-yield commit retente sur session morte → réponse interrompue mid-stream → header CORS jamais finalisé.
+
 ---
 
 ## Format de réponse souhaité

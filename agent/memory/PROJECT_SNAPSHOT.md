@@ -191,12 +191,17 @@ Pas de workflow CD séparé — Railway déploie auto à chaque push main (ADR-0
 
 ## Ce qu'il faut faire MAINTENANT (jalon courant)
 
-Cf. [`STATE.md`](../../STATE.md) section « Prochaines étapes par priorité ».
+Cf. [`STATE.md`](../../STATE.md) et [`.docs/12-next-steps.md`](../../.docs/12-next-steps.md).
 
-Au 2026-05-13, la PR #31 (branche `feat/mvp-mk2`) est en attente de merge — CI lint frontend fixée. Prochaines priorités :
-- Tester le flow auth end-to-end avec un vrai utilisateur Google
-- Implémenter l'import Zotero/BibTeX (prochaine priorité forte)
-- Améliorer l'extraction de métadonnées (plus de sources supportées, fallbacks)
+Au 2026-05-14, MVP stabilisé : publish prod opérationnel après marathon de 4 PRs (#33→#36) sur un bug `tz-aware datetime` qui se déguisait en erreur CORS. Cf. `PITFALLS.md` §1.5 cas vécu — **leçon : instrumenter avant de spéculer** (endpoint diagnostic `/health/publish-diagnose` a finalement révélé la vraie cause).
+
+Plan 3 axes (détail dans `.docs/12-next-steps.md`) :
+- **P0** Axe C : refonte backend post-ADR-019 (table `content_attestations`, drop signature fiche, endpoints attestation)
+- **P1** Axe B : archivage multi-cible (Wayback + Archive.today + Playwright snapshot)
+- **P2** Validation produit (3 interviews créateurs cibles avant Axe A)
+- **P3** Axe A : stockage cloud R2 + Internet Archive (conditionnel à P2)
+
+Ordre : C → B → validation → A. Un axe à la fois.
 
 ---
 
