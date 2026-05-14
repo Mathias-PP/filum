@@ -104,6 +104,66 @@ async def database_health():
         return {"status": "error", "database": str(e)}
 
 
+@app.get("/health/publish-diagnose")
+async def publish_diagnose():
+    """Exercise the publish code path on the demo user's seeded card.
+
+    No auth required. Returns step-by-step trace so we can pinpoint
+    exactly where production publish fails. Safe because it acts only on
+    the seeded demo card and reverts via rollback at the end.
+    """
+    import traceback
+
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+
+    from app.db.database import async_session_maker
+    from app.models.biblio_card import BiblioCard
+    from app.models.source import Source
+    from app.services.card import CardService
+
+    trace: list[str] = []
+    try:
+        async with async_session_maker() as db:
+            trace.append("session_opened")
+            result = await db.execute(
+                select(BiblioCard)
+                .options(selectinload(BiblioCard.sources).selectinload(Source.excerpts))
+                .options(selectinload(BiblioCard.user))
+                .limit(1)
+            )
+            card = result.scalar_one_or_none()
+            if not card:
+                return {"ok": False, "trace": trace, "reason": "no_card_in_db"}
+            trace.append(f"card_loaded id={card.id} sources={len(card.sources)}")
+            if not card.sources:
+                return {"ok": False, "trace": trace, "reason": "card_has_no_sources"}
+            if not card.user:
+                return {"ok": False, "trace": trace, "reason": "card_has_no_user"}
+            trace.append(f"user_loaded username={card.user.username}")
+            trace.append("calling_publish_card")
+            svc = CardService(db)
+            result_dict = await svc.publish_card(card)
+            trace.append("publish_returned")
+            # rollback to avoid actually altering prod data via diagnose
+            await db.rollback()
+            trace.append("rolled_back")
+            return {
+                "ok": True,
+                "trace": trace,
+                "result_keys": sorted(result_dict.keys()),
+                "public_url": result_dict.get("public_url"),
+            }
+    except Exception as exc:
+        return {
+            "ok": False,
+            "trace": trace,
+            "error_type": type(exc).__name__,
+            "error_msg": str(exc),
+            "traceback": traceback.format_exc().splitlines()[-15:],
+        }
+
+
 @app.get("/health/seed")
 async def seed_health():
     """Diagnose: does the demo user + card exist?"""
