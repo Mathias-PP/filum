@@ -8,6 +8,9 @@
   let loading = $state(true);
   let userCards = $state<CardType[]>([]);
 
+  const draftsCount = $derived(userCards.filter((c) => c.status === 'draft').length);
+  const publishedCount = $derived(userCards.filter((c) => c.status === 'published').length);
+
   async function deleteCard(id: string) {
     try {
       await api.cards.delete(id);
@@ -41,12 +44,30 @@
 </svelte:head>
 
 <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-  <div class="flex items-center justify-between mb-8">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
     <div>
       <h1 class="text-2xl font-bold text-slate-900">Tableau de bord</h1>
       <p class="text-slate-600">Gérez vos fiches bibliographiques</p>
     </div>
     <Button href="/dashboard/new">Nouvelle fiche</Button>
+  </div>
+
+  <div class="flex flex-wrap gap-3 mb-8">
+    {#if loading}
+      <div class="h-7 w-32 bg-slate-100 rounded-full animate-pulse"></div>
+      <div class="h-7 w-32 bg-slate-100 rounded-full animate-pulse"></div>
+    {:else}
+      <span
+        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-sm"
+      >
+        <span class="font-semibold">{draftsCount}</span> brouillon{draftsCount > 1 ? 's' : ''}
+      </span>
+      <span
+        class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-sm"
+      >
+        <span class="font-semibold">{publishedCount}</span> publiée{publishedCount > 1 ? 's' : ''}
+      </span>
+    {/if}
   </div>
 
   {#if loading}
