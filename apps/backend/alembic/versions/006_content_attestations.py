@@ -52,7 +52,9 @@ def upgrade() -> None:
     )
 
     # Drop card-level signature fields (replaced by content_attestations)
-    op.drop_index("ix_biblio_cards_canonical", table_name="biblio_cards")
+    # Note: ix_biblio_cards_canonical was never created in migrations (only in
+    # the model's __table_args__). The auto-index ix_biblio_cards_canonical_hash
+    # from Column(index=True) in 001_initial will cascade-drop with the column.
     op.drop_column("biblio_cards", "canonical_hash")
     op.drop_column("biblio_cards", "signature")
     op.drop_column("biblio_cards", "signed_at")
@@ -71,8 +73,11 @@ def downgrade() -> None:
         "biblio_cards",
         sa.Column("canonical_hash", sa.String(64), nullable=True),
     )
+    # Note: the original Column(index=True) in 001_initial auto-generated
+    # ix_biblio_cards_canonical_hash. We re-create that index here for
+    # downgrade correctness.
     op.create_index(
-        "ix_biblio_cards_canonical",
+        "ix_biblio_cards_canonical_hash",
         "biblio_cards",
         ["canonical_hash"],
     )
