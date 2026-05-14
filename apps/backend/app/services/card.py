@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import get_settings
 from app.models.biblio_card import BiblioCard, CardStatus
-from app.models.source import ArchiveStatus, Source, SourceType
+from app.models.source import ArchiveStatus, AuthorKind, Source
 from app.models.user import User
 from app.schemas.biblio_card import CardCreate, CardStats
 
@@ -110,22 +110,20 @@ class CardService:
     def compute_stats(self, card: BiblioCard) -> CardStats:
         sources = card.sources or []
         total = len(sources)
-        peer_reviewed = sum(1 for s in sources if s.source_type == SourceType.PEER_REVIEWED)
-        institutional = sum(1 for s in sources if s.source_type == SourceType.INSTITUTIONAL)
-        press = sum(1 for s in sources if s.source_type == SourceType.PRESS)
-        video = sum(1 for s in sources if s.source_type == SourceType.VIDEO)
-        image = sum(1 for s in sources if s.source_type == SourceType.IMAGE)
-        original = sum(1 for s in sources if s.source_type == SourceType.ORIGINAL)
-        all_archived = all(s.archive_status == ArchiveStatus.ARCHIVED for s in sources)
+        chercheur = sum(1 for s in sources if s.author_kind == AuthorKind.CHERCHEUR.value)
+        media = sum(1 for s in sources if s.author_kind == AuthorKind.MEDIA.value)
+        institution_publique = sum(
+            1 for s in sources if s.author_kind == AuthorKind.INSTITUTION_PUBLIQUE.value
+        )
+        individu = sum(1 for s in sources if s.author_kind == AuthorKind.INDIVIDU.value)
+        all_archived = all(s.archive_status == ArchiveStatus.ARCHIVED.value for s in sources)
 
         return CardStats(
             total_sources=total,
-            peer_reviewed=peer_reviewed,
-            institutional=institutional,
-            press=press,
-            video=video,
-            image=image,
-            original=original,
+            chercheur=chercheur,
+            media=media,
+            institution_publique=institution_publique,
+            individu=individu,
             all_archived=all_archived,
         )
 

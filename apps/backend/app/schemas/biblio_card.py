@@ -58,12 +58,10 @@ class CardUpdate(BaseModel):
 
 class CardStats(BaseModel):
     total_sources: int = 0
-    peer_reviewed: int = 0
-    institutional: int = 0
-    press: int = 0
-    video: int = 0
-    image: int = 0
-    original: int = 0
+    chercheur: int = 0
+    media: int = 0
+    institution_publique: int = 0
+    individu: int = 0
     all_archived: bool = False
 
 

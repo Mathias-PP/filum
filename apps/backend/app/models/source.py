@@ -16,19 +16,39 @@ if TYPE_CHECKING:
     from app.models.source_excerpt import SourceExcerpt
 
 
-class SourceType(str, Enum):
-    PEER_REVIEWED = "peer-reviewed"
-    INSTITUTIONAL = "institutional"
-    PRESS = "press"
+class SourceFormat(str, Enum):
+    TEXTE = "texte"
     VIDEO = "video"
     IMAGE = "image"
-    ORIGINAL = "original"
+    AUDIO = "audio"
+    DATA = "data"
 
 
-class AuthorityLevel(str, Enum):
-    HIGH = "high"
-    MEDIUM = "medium"
-    LOW = "low"
+class SourceCategory(str, Enum):
+    ARTICLE_SCIENTIFIQUE = "article-scientifique"
+    PREPRINT = "preprint"
+    ARTICLE_PRESSE = "article-presse"
+    COMMUNIQUE = "communique"
+    DOCUMENTAIRE = "documentaire"
+    INTERVIEW = "interview"
+    PODCAST = "podcast"
+    BLOG = "blog"
+    POST_SOCIAL = "post-social"
+    LIVRE = "livre"
+    PAGE_WEB = "page-web"
+    NOTES = "notes"
+
+
+class AuthorKind(str, Enum):
+    CHERCHEUR = "chercheur"
+    MEDIA = "media"
+    INSTITUTION_PUBLIQUE = "institution-publique"
+    GOUVERNEMENT = "gouvernement"
+    ECOLE = "ecole"
+    LABORATOIRE = "laboratoire"
+    ENTREPRISE = "entreprise"
+    ASSO = "asso"
+    INDIVIDU = "individu"
 
 
 class ArchiveStatus(str, Enum):
@@ -60,8 +80,9 @@ class Source(Base):
     title: Mapped[str | None] = mapped_column(String(500), nullable=True)
     authors: Mapped[str | None] = mapped_column(String(500), nullable=True)
     published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    source_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    authority_level: Mapped[str] = mapped_column(String(20), default="medium")
+    format: Mapped[str] = mapped_column(String(20), nullable=False)
+    category: Mapped[str] = mapped_column(String(40), nullable=False)
+    author_kind: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
     annotation: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_pivot: Mapped[bool] = mapped_column(default=False)
     archive_status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
