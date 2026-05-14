@@ -6,7 +6,26 @@
 
 ---
 
-## [Unreleased] — publish ACTUAL fix : tz-aware datetime on TIMESTAMP WITHOUT TIME ZONE (PR #36, 2026-05-14)
+## [Unreleased] — UX & accessibility pass (2026-05-14)
+
+### Added
+- **Menu hamburger mobile** dans la header : sur viewport `<md`, les onglets Fonctionnalités/Roadmap/Sécurité/À propos étaient invisibles. Désormais accessibles via un drawer sous la header avec gestion `aria-expanded`/`aria-controls` et fermeture sur Escape.
+- **Boutons Voir / Éditer / Supprimer sur les fiches publiées** du dashboard. Auparavant seul un lien "voir" couvrait toute la card — impossible d'éditer une fiche publiée pourtant mutable depuis ADR-019. Édition réutilise la route `/dashboard/new/{id}/sources`.
+- **Compteurs récap** dans le header du dashboard (X brouillons, Y publiées) avec skeleton pendant le chargement.
+- **`+error.svelte`** : page 404/erreur custom avec CTA retour accueil + fiche démo, ou lien GitHub Issues pour les 5xx.
+- **`/privacy`** : page stub minimale (le lien footer renvoyait sur du 404).
+- **Illustration SVG dédiée** dans le hero d'accueil : graphe stylisé multi-types de sources (couleurs depuis `source-colors.ts`), nœud central animé, halo radial. Layout passe en 2 colonnes responsive avec background gradient subtil.
+
+### Changed
+- **Labels dynamiques sur les boutons submit** (création fiche, ajout source, publication) : "Création…"/"Ajout…"/"Publication…" pendant la requête + `disabled` pendant le loading pour empêcher le double-clic.
+- **Menu utilisateur (avatar dropdown)** : ferme sur Escape via handler global, en plus du clic extérieur.
+
+### Fixed
+- `.gitignore` : ajout de `.claude/` (état local de l'agent).
+
+---
+
+## [Released] — publish ACTUAL fix : tz-aware datetime on TIMESTAMP WITHOUT TIME ZONE (PR #36, 2026-05-14)
 
 ### Fixed
 - **Root cause publish bug** (résisté à PR #33 et #34) : `CardService.publish_card` faisait `card.signed_at = datetime.now(UTC)` sans `.replace(tzinfo=None)`. La colonne `DateTime` SQLAlchemy (sans `timezone=True`) est mappée à `TIMESTAMP WITHOUT TIME ZONE` côté PostgreSQL → asyncpg refuse les datetimes tz-aware avec `DataError: can't subtract offset-naive and offset-aware datetimes`. Le commit était aborté, la session passait en état "transaction aborted", `get_db`'s post-yield `await session.commit()` retentait et échouait à nouveau → la réponse était interrompue mid-stream → le navigateur voyait `ERR_FAILED` + "blocked by CORS policy" alors que CORS marchait sur tous les autres endpoints. Symptôme trompeur ++.
