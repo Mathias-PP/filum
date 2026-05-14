@@ -254,8 +254,8 @@
       </div>
 
       <div class="flex justify-end">
-        <Button type="submit" variant="secondary" loading={addLoading} disabled={!url}>
-          Ajouter
+        <Button type="submit" variant="secondary" loading={addLoading} disabled={!url || addLoading}>
+          {addLoading ? 'Ajout…' : 'Ajouter'}
         </Button>
       </div>
     </form>
@@ -336,8 +336,12 @@
       </div>
       <div class="flex gap-3">
         <Button variant="ghost" href="/dashboard">Enregistrer en brouillon</Button>
-        <Button onclick={publish} loading={publishing} disabled={sources.length === 0}>
-          Publier la fiche
+        <Button
+          onclick={publish}
+          loading={publishing}
+          disabled={sources.length === 0 || publishing}
+        >
+          {publishing ? 'Publication…' : 'Publier la fiche'}
         </Button>
       </div>
     </div>

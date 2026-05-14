@@ -189,8 +189,8 @@
     </div>
 
     <div class="flex justify-end pt-4">
-      <Button type="submit" {loading} disabled={!title || !slug}>
-        Suivant : ajouter les sources →
+      <Button type="submit" {loading} disabled={!title || !slug || loading}>
+        {loading ? 'Création…' : 'Suivant : ajouter les sources →'}
       </Button>
     </div>
   </form>
