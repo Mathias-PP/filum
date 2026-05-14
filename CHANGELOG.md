@@ -6,6 +6,16 @@
 
 ---
 
+## [Unreleased] — fix publish MissingGreenlet (PR #33, 2026-05-14)
+
+### Fixed
+- **`POST /api/v1/cards/{id}/publish` retournait `TypeError: Failed to fetch` au navigateur** — `CardService.publish_card` accédait à `card.user.username` ligne 138 après `await db.commit() + await db.refresh(card)`. Le `refresh` expirait toutes les relations, l'accès lazy déclenchait `MissingGreenlet` en pleine sérialisation HTTP, la requête mourait sans body. Côté UI : message « Impossible de contacter le serveur ». Fix : capture des scalaires (`username`, `card_slug`) avant `commit`, suppression du `refresh` superflu (les valeurs viennent d'être assignées en mémoire).
+
+### Changed
+- `agent/PITFALLS.md` §1.4 enrichi : ajout du symptôme côté frontend (`Failed to fetch` trompeur) et du cas vécu sur `publish_card`.
+
+---
+
 ## [Itération 3] — 2026-05-13
 
 ### Added
