@@ -6,7 +6,9 @@
 
 ## Dernière mise à jour
 
-**2026-05-14 (PR #33)** — **Fix critique du publish** : `MissingGreenlet` sur `card.user.username` post-commit/refresh dans `CardService.publish_card`. Navigateur recevait `TypeError: Failed to fetch` (pas un bug réseau ni CORS, mais la sérialisation HTTP qui mourait sans body). PITFALLS §1.4 enrichi avec le symptôme côté frontend.
+**2026-05-14 (PR #34)** — **Diagnostic & filet de sécurité publish** : le user a signalé que le bug `Failed to fetch` persistait après PR #33 mergée. Triple action : (1) endpoint `publish_card` enveloppé d'un `try/except` qui garantit une réponse JSON 500 propre quelle que soit l'exception (au lieu d'une connexion qui meurt en silence) ; (2) `/health` retourne désormais `commit` (SHA git Railway) pour vérifier en un `curl` que Railway a bien redéployé ; (3) message d'erreur frontend publish reformulé pour guider le user vers la console DevTools. Voir CHANGELOG `[Unreleased]`.
+
+**2026-05-14 (PR #33)** — Fix critique du publish : `MissingGreenlet` sur `card.user.username` post-commit/refresh dans `CardService.publish_card`. Navigateur recevait `TypeError: Failed to fetch` (pas un bug réseau ni CORS, mais la sérialisation HTTP qui mourait sans body). PITFALLS §1.4 enrichi avec le symptôme côté frontend.
 
 **2026-05-14 (PR #32)** — **Pivot crypto** : signature désormais sur le lien créateur·ice ↔ contenu via triplet `(creator_id, content_url, attested_at)`, plus sur la fiche. Reformulation copy globale, suppression FAQ sécurité, ajout Filum Desktop dans roadmap. Voir ADR-019 dans `DECISIONS.md`. La PR backend de bascule (migration `006_remove_card_signature`, table `content_attestations`, refonte endpoint publish) reste à ouvrir.
 

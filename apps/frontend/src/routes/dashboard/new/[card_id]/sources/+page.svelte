@@ -112,8 +112,13 @@
       await api.cards.publish(cardId);
       goto('/dashboard');
     } catch (err) {
+      console.error('publish error:', err);
       if (err instanceof TypeError && err.message === 'Failed to fetch') {
-        publishError = 'Impossible de contacter le serveur. Vérifiez votre connexion et réessayez.';
+        // Real network/CORS failure OR backend died mid-response (e.g. MissingGreenlet
+        // before the publish endpoint's try/except wrapper). Surface a hint so it's
+        // easier to diagnose than the generic "check your connection".
+        publishError =
+          "La requête de publication n'a pas abouti (aucune réponse du serveur). Ouvre la console (F12 → Network) pour voir le statut HTTP de POST /cards/.../publish et signale-le.";
       } else {
         publishError = err instanceof Error ? err.message : 'Erreur lors de la publication';
       }

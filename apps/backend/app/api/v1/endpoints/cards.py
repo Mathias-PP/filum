@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_401_UNAUTHORIZED
 
@@ -20,6 +22,8 @@ from app.schemas.biblio_card import (
 from app.schemas.source import SourceResponse
 from app.services.auth import AuthService
 from app.services.card import CardService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["cards"])
 
@@ -172,8 +176,33 @@ async def publish_card(
             detail={"code": "validation_error", "message": "Cannot publish a card without sources"},
         )
 
-    result = await card_service.publish_card(card)
-    return result
+    # Belt-and-suspenders: any exception raised during publish (MissingGreenlet,
+    # crypto error, etc.) must surface as a clean JSON 500 with the message
+    # bubbled up to the browser. Without this wrapper, certain async errors
+    # (notably MissingGreenlet during serialization) kill the response mid-flight
+    # and the browser sees `TypeError: Failed to fetch` — indistinguishable from
+    # a network outage. See agent/PITFALLS.md §1.4.
+    try:
+        return await card_service.publish_card(card)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception(
+            "publish_card failed: card_id=%s user_id=%s sources=%d type=%s",
+            card_id,
+            current_user.id,
+            len(card.sources),
+            type(exc).__name__,
+        )
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": {
+                    "code": "publish_failed",
+                    "message": f"Publish failed: {type(exc).__name__}: {exc}",
+                }
+            },
+        )
 
 
 @router.delete("/cards/{card_id}", status_code=status.HTTP_204_NO_CONTENT)

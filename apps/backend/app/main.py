@@ -76,7 +76,18 @@ app.include_router(create_router(), prefix=settings.api_v1_prefix)
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok", "version": settings.app_version}
+    import os
+
+    return {
+        "status": "ok",
+        "version": settings.app_version,
+        # Railway sets RAILWAY_GIT_COMMIT_SHA on every deploy; falls back to
+        # local env vars if running outside Railway. Useful to verify which
+        # commit is actually live in prod.
+        "commit": os.environ.get("RAILWAY_GIT_COMMIT_SHA")
+        or os.environ.get("GIT_COMMIT_SHA")
+        or "unknown",
+    }
 
 
 @app.get("/health/database")
