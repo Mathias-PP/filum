@@ -17,6 +17,13 @@
     }
   }
 
+  async function deletePublishedCard(id: string, title: string) {
+    if (!confirm(`Supprimer définitivement la fiche « ${title} » ? Cette action est irréversible.`)) {
+      return;
+    }
+    await deleteCard(id);
+  }
+
   onMount(async () => {
     try {
       const response = await api.cards.list();
@@ -116,22 +123,46 @@
         {:else}
           <div class="grid gap-4">
             {#each userCards.filter((c) => c.status === 'published') as card}
-              <a
-                href="/@{$currentUser?.username}/{card.slug}"
-                class="card hover:shadow-md transition-shadow"
-              >
-                <div class="flex items-center justify-between">
-                  <div>
-                    <h3 class="font-semibold text-slate-900">{card.title}</h3>
-                    <p class="text-sm text-slate-500">
-                      Publiée le {new Date(card.published_at || card.created_at).toLocaleDateString(
-                        'fr-FR'
-                      )}
-                    </p>
-                  </div>
-                  <span class="badge bg-emerald-100 text-emerald-800">Publiée</span>
+              <div class="card flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="min-w-0">
+                  <h3 class="font-semibold text-slate-900 truncate">{card.title}</h3>
+                  <p class="text-sm text-slate-500">
+                    Publiée le {new Date(card.published_at || card.created_at).toLocaleDateString(
+                      'fr-FR'
+                    )}
+                  </p>
                 </div>
-              </a>
+                <div class="flex items-center gap-2 shrink-0 flex-wrap">
+                  <span class="badge bg-emerald-100 text-emerald-800">Publiée</span>
+                  <Button
+                    href="/@{$currentUser?.username}/{card.slug}"
+                    variant="secondary"
+                    size="sm"
+                  >
+                    Voir
+                  </Button>
+                  <Button href="/dashboard/new/{card.id}/sources" variant="primary" size="sm">
+                    Éditer
+                  </Button>
+                  <button
+                    type="button"
+                    onclick={() => deletePublishedCard(card.id, card.title)}
+                    class="text-slate-400 hover:text-red-500 transition-colors p-1"
+                    aria-label="Supprimer la fiche"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                      <line x1="6" y1="18" x2="18" y2="6" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
             {/each}
           </div>
         {/if}
