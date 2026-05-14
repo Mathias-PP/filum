@@ -6,7 +6,14 @@
 
 ## Dernière mise à jour
 
-**2026-05-14 (post-PR #36)** — **Publish prod validé** (`/health/publish-diagnose` retourne `ok: true`). Plateforme exploitable end-to-end. Plan détaillé des 3 prochains axes documenté dans [`.docs/12-next-steps.md`](.docs/12-next-steps.md) : (A) stockage cloud R2 pour héberger directement les contenus originaux (sortie de dépendance plateforme), (B) archivage multi-cible Wayback + Archive.today + snapshot Filum-hosted, (C) refonte backend post-ADR-019 (table `content_attestations`, drop signature fiche). Ordre recommandé : C → B → validation produit → A.
+**2026-05-14 (post-PR #40)** — **Axe C terminé et déployé en prod.** Migration 006 + table `content_attestations` + endpoints attestation + seed signing sont opérationnels. Plusieurs crashs résolus. Plan 3 axes révisé : le P0 (Axe C) est livré, place au P1 (Axe B — archivage multi-cible).
+
+**2026-05-14 (PR #39 + PR #40) — Axe C déployé, 2 crashs production résolus.**
+
+- **PR #39** — Fix migration 006 : `op.drop_index("ix_biblio_cards_canonical")` retiré car l'index n'a jamais été créé en base (seul `ix_biblio_cards_canonical_hash` auto-généré par `Column(index=True)` existe). PostgreSQL cascade-drop automatiquement l'index avec la colonne. Conflits de merge résolus (rebased on `main` après merge PR #38). CI toute verte.
+- **PR #40** — Fix `NotNullViolationError` sur `content_attestations.created_at` : le modèle avait `default=None, server_default=None`, ce qui forçait SQLAlchemy à envoyer `NULL` dans l'INSERT, court-circuitant le `server_default=sa.func.now()` défini dans la migration 006. Fix : `server_default=func.now()` sans `default=None`.
+- Root cause documentée dans [`agent/PITFALLS.md`](agent/PITFALLS.md) §1.8.
+- Backend stable : migration 006 s'exécute correctement, seed demo crée les attestations, endpoints attestation fonctionnels.
 
 **2026-05-14 (PR #36) — VRAIE root cause du bug publish trouvée et corrigée.** Après 3 PRs de fausses pistes (#33 MissingGreenlet, #34 try/except + diagnostic, #35 endpoint /health/publish-diagnose), l'endpoint diagnostic a exposé le vrai traceback : `asyncpg.DataError: can't subtract offset-naive and offset-aware datetimes`. `CardService.publish_card` faisait `datetime.now(UTC)` sans `.replace(tzinfo=None)` (oubli du pattern PITFALLS §1.5) → colonne `TIMESTAMP WITHOUT TIME ZONE` refusait → commit aborté → `get_db` cleanup retentait le commit sur session morte → réponse interrompue mid-stream → CORS header jamais ajouté → user voit "blocked by CORS policy" alors que CORS marche partout ailleurs. Fix : `.replace(tzinfo=None)` + rollback défensif dans le try/except du endpoint. PITFALLS §1.5 enrichi.
 
@@ -49,7 +56,7 @@ Itérations précédentes :
 
 ## Phase courante
 
-**Phase 1 — MVP complet.** Tous les jalons M1+M2+M3 sont terminés. L'OAuth Google est configuré et fonctionnel (302 vers `accounts.google.com` avec le bon `client_id` et `redirect_uri`). Le flow login → création → publication → consultation publique peut être testé de bout en bout.
+**Phase 1 — MVP complet + Axe C (ADR-019) livré.** Tous les jalons M1+M2+M3 sont terminés. Axe C (refonte backend post-ADR-019) également déployé : migration 006, table `content_attestations`, endpoints attestation, désormais la signature porte sur le triplet `(creator_id, content_url, attested_at)` et non plus sur la fiche. Le flow complet login → création → signature → attestation → publication est opérationnel.
 
 ---
 
@@ -69,7 +76,7 @@ Itérations précédentes :
 
 | Branche | État |
 |---|---|---|
-| `main` | Branche de déploiement. `feat/iteration-3-dashboard-ci`, `feat/iteration-3-extractor-wayback`, `fix/source-excerpts-missinggreenlet` (PR #30) mergées et supprimées. `feat/mvp-mk2` (PR #31) en cours — CI lint frontend fixée, prête pour merge. |
+| `main` | Branche de déploiement. PR #39 (fix migration 006 drop index) et PR #40 (fix model `created_at` NULL) mergées et supprimées. Axe C fully live. |
 
 ---
 
@@ -166,8 +173,7 @@ Variables intentionnellement non configurées (defaults dans `config.py` suffise
 | ~~8 warnings `state_referenced_locally`~~ | **Résolu** | Composants convertis à `$derived()` / `$effect()` |
 | ~~Auth guard absent sur `/dashboard*`~~ | **Résolu** | `+layout.ts` dans `/dashboard/` redirige vers `/` si non connecté |
 | ~~Rate limiting absent sur `GET /sources/extract`~~ | **Résolu** | slowapi branché : 10 req/min sur `/sources/extract`, 20 req/h sur `POST /cards` |
-| Signature fiche encore présente en base (post-ADR-019) | Moyenne | `BiblioCard.canonical_hash/signature/signed_at` à dropter dans migration `006`. Table `content_attestations` à créer. Frontend déjà désaligné (n'affiche plus). |
-| Bug publish « Impossible de contacter le serveur » | À reproduire | `POST /cards/{id}/publish` lève `TypeError: Failed to fetch` côté navigateur. Possibles causes : CORS, cookie cross-site, ou bug backend non-JSON. À reproduire via DevTools. |
+| ~~Signature fiche encore présente en base (post-ADR-019)~~ | **Résolu** | Migration 006 mergée et déployée : table `content_attestations` créée, colonnes `canonical_hash/signature/signed_at` dropées de `biblio_cards`. Seed demo crée les attestations. |
 | `impact_factor` toujours `null` | Faible | OpenAlex supprimé (dead code), pas de fallback |
 | ~~Publish renvoie « Impossible de contacter le serveur »~~ | **Vraie résolution PR #36** | `asyncpg.DataError` sur `card.signed_at = datetime.now(UTC)` (manquait `.replace(tzinfo=None)`) dans `CardService.publish_card`. Commit aborté → `get_db` cleanup retente sur session morte → réponse interrompue → CORS header jamais ajouté → user voyait "blocked by CORS policy". Fix : naive UTC datetime + rollback défensif. PITFALLS §1.5 enrichi. PR #33 (MissingGreenlet) et #34 (try/except) n'étaient pas la vraie cause mais restent utiles comme filet de sécurité. |
 | Test composant Svelte 5 incompat | Faible | À réécrire avec API testing-library compatible Svelte 5 |
@@ -194,14 +200,9 @@ Vérifié par `curl` sur les URL prod, pas par lecture des docs :
 
 > Plan détaillé dans [`.docs/12-next-steps.md`](.docs/12-next-steps.md). Cette section est l'**index** opérationnel.
 
-### P0 — Axe C : refonte backend post-ADR-019 (1-2 semaines)
+### P0 — Axe C : refonte backend post-ADR-019 ✅ **LIVRÉ**
 
-Bloque tout le reste (import, attestation par URL).
-- Migration `006_content_attestations + drop_card_signature`
-- `AttestationService` (canonicalize triplet, sign, verify)
-- Endpoints `POST /attestations/content`, `GET /attestations/{id}/verify`
-- `POST /cards/{id}/publish` simplifié (flip statut + crée attestation si besoin)
-- Refonte `seed_demo.py` et cleanup types TS frontend
+Migration 006 mergée et déployée. Table `content_attestations` en prod. Endpoints attestation fonctionnels. Seed demo signé. Deux bugs résolus en cours de route (DROP INDEX inexistant, `created_at` NULL).
 
 ### P1 — Axe B : archivage multi-cible (1 semaine)
 
