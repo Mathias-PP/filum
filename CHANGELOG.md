@@ -6,7 +6,21 @@
 
 ---
 
-## [Unreleased] — publish diagnostics + safety net (PR #34, 2026-05-14)
+## [Unreleased] — publish ACTUAL fix : tz-aware datetime on TIMESTAMP WITHOUT TIME ZONE (PR #36, 2026-05-14)
+
+### Fixed
+- **Root cause publish bug** (résisté à PR #33 et #34) : `CardService.publish_card` faisait `card.signed_at = datetime.now(UTC)` sans `.replace(tzinfo=None)`. La colonne `DateTime` SQLAlchemy (sans `timezone=True`) est mappée à `TIMESTAMP WITHOUT TIME ZONE` côté PostgreSQL → asyncpg refuse les datetimes tz-aware avec `DataError: can't subtract offset-naive and offset-aware datetimes`. Le commit était aborté, la session passait en état "transaction aborted", `get_db`'s post-yield `await session.commit()` retentait et échouait à nouveau → la réponse était interrompue mid-stream → le navigateur voyait `ERR_FAILED` + "blocked by CORS policy" alors que CORS marchait sur tous les autres endpoints. Symptôme trompeur ++.
+- **Diagnostic** : exposé via `/health/publish-diagnose` (ajouté PR #35) qui renvoie le traceback complet. Sans ce endpoint, on aurait continué à chasser des fantômes.
+
+### Added
+- **Rollback défensif dans le `try/except` de publish endpoint** : si une exception est levée pendant `publish_card`, on rollback la session avant de retourner le JSONResponse 500. Ça évite que `get_db` cleanup ne retente un commit sur session aborted et ne corrompe le stream de la réponse (cause profonde de l'absence de CORS dans la réponse d'erreur).
+
+### Changed
+- `agent/PITFALLS.md` §1.5 enrichi : ajout du symptôme tz-aware sur asyncpg (qui se confond avec un bug MissingGreenlet ou CORS), du cas vécu, et du chemin de diagnostic via `/health/publish-diagnose`.
+
+---
+
+## [Released] — publish diagnostics + safety net (PR #34, 2026-05-14)
 
 ### Added
 - **`GET /health`** retourne désormais `commit` : SHA git de la version déployée (`RAILWAY_GIT_COMMIT_SHA` exposé par Railway). Permet de vérifier en un `curl` que Railway a bien redéployé le dernier commit. Comparer à `git log -1 --format=%H origin/main`.

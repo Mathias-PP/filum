@@ -53,10 +53,13 @@
 - **Filet de sécurité** (2026-05-14, PR #34) : `publish_card` endpoint enveloppé d'un `try/except Exception` qui log la stack et retourne un 500 JSON propre. Désormais, même si un `MissingGreenlet` futur est ré-introduit, le navigateur recevra `{"error": {"code": "publish_failed", ...}}` au lieu d'un `Failed to fetch` opaque. À répliquer sur tout endpoint qui mute + sérialise des relations.
 - **Vérifier que Railway a redéployé** : `curl https://filum-production-07bb.up.railway.app/health` retourne maintenant `{"commit": "<sha>"}` (champ ajouté PR #34). Comparer à `git log -1 --format=%H origin/main` pour confirmer que la version live est bien la dernière.
 
-### 1.5 `datetime.utcnow()` déprécié Python 3.12
+### 1.5 `datetime.utcnow()` déprécié Python 3.12 ET tz-aware datetime sur colonnes `TIMESTAMP WITHOUT TIME ZONE`
 
-- **Symptôme** : `DeprecationWarning` qui devient `Error` dans une version future.
-- **Prévention** : `datetime.now(UTC).replace(tzinfo=None)` pour matcher les colonnes `DateTime` sans `timezone=True`. Import : `from datetime import datetime, UTC`.
+- **Symptôme déprécation** : `DeprecationWarning` qui devient `Error` dans une version future.
+- **Symptôme tz-aware** : `asyncpg.exceptions.DataError: invalid input for query argument $1: ... (can't subtract offset-naive and offset-aware datetimes)` au moment du commit. La session SQLAlchemy passe en état "transaction aborted". Si l'endpoint a un `try/except` qui catch et retourne `JSONResponse`, `get_db`'s post-yield `await session.commit()` retente sur session corrompue → seconde exception **après** que la réponse a commencé à se construire → stream interrompu → **le navigateur reçoit ERR_FAILED et un message CORS trompeur "No 'Access-Control-Allow-Origin' header"** alors que CORS marche très bien sur tous les autres endpoints.
+- **Cause** : les colonnes `Mapped[datetime] = mapped_column(DateTime, ...)` sont par défaut sans `timezone=True` côté SQLAlchemy → asyncpg envoie en `TIMESTAMP WITHOUT TIME ZONE`. Un `datetime.now(UTC)` est tz-aware → asyncpg refuse.
+- **Prévention** : **toujours** `datetime.now(UTC).replace(tzinfo=None)` pour matcher les colonnes `DateTime` sans `timezone=True`. Import : `from datetime import datetime, UTC`.
+- **Cas vécu** (2026-05-14, fix sur PR #36) : `CardService.publish_card` faisait `card.signed_at = datetime.now(UTC)` (oubli du `.replace(tzinfo=None)`). En prod, **tout** `POST /cards/{id}/publish` retournait CORS error côté navigateur. Le pattern de PITFALLS §1.4 (`TypeError: Failed to fetch`) cachait la vraie cause pendant 3 PRs : on a chassé un MissingGreenlet qui n'existait pas. Diagnostiqué via `/health/publish-diagnose` (endpoint ajouté PR #35) qui exposait le traceback réel.
 
 ### 1.6 Variables d'env UPPERCASE silencieusement ignorées
 

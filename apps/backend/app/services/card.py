@@ -127,10 +127,17 @@ class CardService:
         username = card.user.username
         card_slug = card.slug
 
+        # Naive UTC datetime: the columns are `DateTime` without `timezone=True`,
+        # which asyncpg sends as `TIMESTAMP WITHOUT TIME ZONE`. Passing a
+        # tz-aware datetime raises asyncpg DataError "can't subtract offset-naive
+        # and offset-aware datetimes" → the commit fails, the session is left in
+        # an aborted state, and the response is interrupted mid-flight (no CORS
+        # header reaches the browser). See agent/PITFALLS.md §1.5.
+        now = datetime.now(UTC).replace(tzinfo=None)
         card.canonical_hash = content_hash
         card.signature = signature
-        card.signed_at = datetime.now(UTC)
-        card.published_at = datetime.now(UTC)
+        card.signed_at = now
+        card.published_at = now
         card.status = CardStatus.PUBLISHED
 
         await self._db.commit()
