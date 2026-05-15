@@ -6,7 +6,7 @@
   import { api, type User } from '$lib/api';
   import { auth } from '$lib/stores';
   import { page } from '$app/stores';
-  import { Logo, Button, Toast } from '$lib/components';
+  import { Logo, Button, Toast, ThemeToggle } from '$lib/components';
 
   const API_BASE = env.PUBLIC_API_BASE_URL ?? '';
   const googleLoginUrl = `${API_BASE}/api/v1/auth/google/login`;
@@ -114,6 +114,7 @@
         </div>
 
         <div class="flex items-center gap-2">
+          <ThemeToggle />
           {#if data.user}
             <!-- svelte-ignore a11y_click_events_have_key_events -->
             <!-- svelte-ignore a11y_no_static_element_interactions -->

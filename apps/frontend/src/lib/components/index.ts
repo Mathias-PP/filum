@@ -10,6 +10,7 @@ export { default as Skeleton } from './Skeleton.svelte';
 export { default as EmptyState } from './EmptyState.svelte';
 export { default as ProgressSteps } from './ProgressSteps.svelte';
 export { default as Toast, toast } from './Toast.svelte';
+export { default as ThemeToggle } from './ThemeToggle.svelte';
 export { default as SourceDetailPanel } from './SourceDetailPanel.svelte';
 export { default as SourceGraph } from './SourceGraph.svelte';
 export { default as AuthorKindBadge } from './AuthorKindBadge.svelte';

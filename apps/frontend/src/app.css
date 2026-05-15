@@ -32,10 +32,32 @@
   --color-border: var(--border);
 }
 
+.dark {
+  --bg-primary: 26 26 30; /* #1A1A1E — surface card */
+  --bg-secondary: 15 15 17; /* #0F0F11 — body */
+  --bg-tertiary: 37 37 41; /* #252529 — hover/panel */
+  --text-primary: 237 237 237; /* #EDEDED */
+  --text-secondary: 156 163 175; /* #9CA3AF */
+  --text-tertiary: 107 114 128; /* #6B7280 */
+  --border: 45 45 50; /* #2D2D32 */
+  --border-strong: 61 61 66; /* #3D3D42 */
+  --success: 52 211 153; /* #34D399 saturated */
+  --success-bg: 21 50 41;
+  --warning: 251 191 36; /* #FBBF24 */
+  --warning-bg: 56 41 14;
+  --danger: 248 113 113; /* #F87171 */
+  --danger-bg: 60 22 22;
+  --info: 96 165 250; /* #60A5FA */
+  --info-bg: 17 39 70;
+}
+
 @layer base {
   body {
     @apply bg-surface-secondary text-ink-primary font-sans antialiased;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    transition:
+      background-color 200ms ease,
+      color 200ms ease;
   }
 
   h1,

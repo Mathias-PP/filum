@@ -8,6 +8,17 @@
       name="description"
       content="Infrastructure ouverte de provenance et de filiation pour le contenu numérique"
     />
+    <script>
+      // Apply theme before first paint to avoid FOUC.
+      (function () {
+        try {
+          var t = localStorage.getItem('filum-theme');
+          if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          if (t === 'dark') document.documentElement.classList.add('dark');
+          document.documentElement.style.colorScheme = t;
+        } catch (e) {}
+      })();
+    </script>
     %sveltekit.head%
   </head>
   <body data-sveltekit-preload-data="hover">
