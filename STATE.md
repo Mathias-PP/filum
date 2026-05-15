@@ -6,16 +6,20 @@
 
 ## Dernière mise à jour
 
-**2026-05-15 — Décisions structurantes capturées (ADR-021 + ADR-022), aucune exécution.**
+**2026-05-15 — UI polish branch `feat/polish-and-a11y` : dark mode, hero, hover effects, CTA, bouton primary.**
 
-Crédits Railway sont passés à $0 le 2026-05-14 puis revenus à $4.86 (28 jours restants) le 2026-05-15 — probablement re-crédit mensuel automatique du Hobby Plan, à confirmer côté billing dashboard. Migration mise en pause, **mais les choix sont gelés** dans `DECISIONS.md` pour pouvoir basculer rapidement quand le besoin se représente :
+Branche `feat/polish-and-a11y` créée depuis `main` avec 6 commits de refonte design system + dark mode + layout + hero galaxie + nouveaux composants. Puis corrections de polish appliquées directement sur la branche :
 
-- **ADR-021** : projet à renommer **Filum → Philum** (référence aux phylums biologiques et arbres phylogénétiques, en plus du fait que `filum.com/.fr/.app` sont tous squattés à 300-3000 €). Domaines libres : `philum.fr` (5,10 € la 1re année) et `philum.app` (~12 €/an défensif).
-- **ADR-022** : cible de migration figée = **Infomaniak Public Cloud** (datacenter Genève D3, OpenStack, 300 € de crédits offerts sur 3 mois, ~5-8 €/mois pour la taille de Philum après les crédits, soit ~85-130 €/an avec domaines).
+- **Texte hero** : restauré « Vous allez adorer partager vos références » (original pré-redesign).
+- **Tokens dark mode** : `--bg-secondary` éclairci (`#0F0F11` → `#14141A`), `--text-primary` éclairci (`#EDEDED` → `#F5F5F5`), couleurs sémantiques saturées +15 %.
+- **Bouton primary** : `bg-ink-primary text-white` → `bg-black text-white dark:bg-white dark:text-black` (résout le bug white-on-white en dark mode).
+- **Section CTA** : background marine dédié (`#1A2A4A` light / `#0D1525` dark) au lieu d'hériter de `rgb(var(--text-primary))`.
+- **SVG hero** : étiquettes des nœuds supprimées (seul « Filum » conservé), 2 clusters Y-fork ajoutés, densité d'étoiles ~13 → ~30.
+- **Pages features/security/about** : `bg-white` → `bg-surface-primary` sur les cartes Features, `dark:prose-invert` ajouté sur les blocs prose Security et About.
+- **Hover lift** : `translateY(-3px)` sur les step-cards, audience-cards et feature-cards.
+- **Nouveaux utilitaires CSS** : `.cta-section`, `.hero-cta-light`, `.hover-lift`, `--bg-surface-secondary`.
 
-Voir les deux ADR pour le détail architecture, étapes, coûts.
-
-**Action prochaine** : surveiller le billing Railway — si CB requise pour continuer après les 28 jours, exécuter la PR de migration (rename + déploiement Infomaniak) en suivant le plan ADR-022.
+ADR-021/ADR-022 et migration Railway → Infomaniak toujours en attente. Voir ci-dessous.
 
 ---
 
@@ -114,6 +118,7 @@ Itérations précédentes :
 | Branche | État |
 |---|---|---|
 | `main` | Branche de déploiement. PR #39 (fix migration 006 drop index) et PR #40 (fix model `created_at` NULL) mergées et supprimées. Axe C fully live. |
+| `feat/polish-and-a11y` | UI polish : dark mode tokens, hero text/SVG, bouton primary, CTA, hover effects, `dark:prose-invert`. PR à ouvrir. |
 
 ---
 

@@ -23,7 +23,14 @@ Infrastructure ouverte de **provenance et de filiation** pour les contenus numé
 
 ---
 
-## État au 2026-05-14
+## État au 2026-05-15
+
+**Branche `feat/polish-and-a11y` en cours — UI polish : dark mode, hero, CTA, hover effects**
+- Tokens dark mode éclaircis, bouton primary corrigé (white-on-white bug)
+- Texte hero restauré, SVG hero nettoyé (labels supprimés, Y-forks, stars)
+- `bg-white` → `bg-surface-primary` sur features, `dark:prose-invert` sur security/about
+- Hover lift sur toutes les cartes, section CTA avec fond marine dédié
+- → PR à ouvrir vers `main`
 
 **Phase 1 — MVP complet + Axe C (ADR-019) livré**
 

@@ -13,7 +13,7 @@
     <strong>vérifiables</strong> par n'importe qui. Voici comment.
   </p>
 
-  <section class="prose prose-slate max-w-none">
+  <section class="prose prose-slate dark:prose-invert max-w-none">
     <h2 class="text-2xl font-semibold text-ink-primary mt-12 mb-4">Ce qui est signé</h2>
     <p class="text-ink-secondary leading-relaxed">
       Les fiches bibliographiques sont des documents vivants : vous pouvez les compléter, corriger

@@ -9,7 +9,7 @@
 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
   <h1 class="text-3xl sm:text-4xl font-bold text-ink-primary mb-8">À propos de Filum</h1>
 
-  <section class="prose prose-slate max-w-none">
+  <section class="prose prose-slate dark:prose-invert max-w-none">
     <p class="text-lg text-ink-secondary leading-relaxed">
       Filum est un outil de gestion de références bibliographiques qui permet aux créateur·ice·s de
       contenu de constituer, organiser et partager leurs sources de manière transparente et

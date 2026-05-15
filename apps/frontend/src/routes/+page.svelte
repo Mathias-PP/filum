@@ -33,8 +33,8 @@
             class="font-serif text-4xl md:text-5xl lg:text-6xl tracking-tight mb-6 text-white text-balance"
             style="font-weight: 500;"
           >
-            Votre bibliographie<br />
-            <span class="hero-accent">devient une galaxie</span>
+            Vous allez adorer<br />
+            <span class="hero-accent">partager vos références</span>
           </h1>
           <p class="text-lg md:text-xl text-slate-300 mb-8 text-balance max-w-xl mx-auto lg:mx-0">
             Filum transforme vos sources en un graphe vivant : organisées, archivées, et chaque
@@ -100,23 +100,40 @@
                 </filter>
               </defs>
 
-              <!-- Distant stars -->
+              <!-- Distant stars (increased density ~30) -->
               <g fill="#ffffff">
-                <circle cx="38" cy="62" r="1" opacity="0.5" />
-                <circle cx="105" cy="200" r="1.2" opacity="0.4" />
-                <circle cx="170" cy="40" r="0.8" opacity="0.3" />
-                <circle cx="320" cy="55" r="1" opacity="0.5" />
-                <circle cx="450" cy="180" r="1.2" opacity="0.4" />
-                <circle cx="380" cy="250" r="0.8" opacity="0.3" />
-                <circle cx="60" cy="280" r="1" opacity="0.5" />
-                <circle cx="160" cy="395" r="1.2" opacity="0.4" />
-                <circle cx="340" cy="400" r="0.8" opacity="0.3" />
-                <circle cx="445" cy="380" r="1.4" opacity="0.55" />
-                <circle cx="20" cy="380" r="1" opacity="0.4" />
-                <circle cx="200" cy="250" r="0.7" opacity="0.3" />
-                <circle cx="300" cy="180" r="0.8" opacity="0.3" />
+                <circle cx="38" cy="62" r="0.8" opacity="0.5" />
+                <circle cx="105" cy="200" r="1" opacity="0.4" />
+                <circle cx="170" cy="40" r="0.6" opacity="0.3" />
+                <circle cx="320" cy="55" r="0.8" opacity="0.5" />
+                <circle cx="450" cy="180" r="1" opacity="0.4" />
+                <circle cx="380" cy="250" r="0.6" opacity="0.3" />
+                <circle cx="60" cy="280" r="0.8" opacity="0.5" />
+                <circle cx="160" cy="395" r="1" opacity="0.4" />
+                <circle cx="340" cy="400" r="0.6" opacity="0.3" />
+                <circle cx="445" cy="380" r="1.2" opacity="0.55" />
+                <circle cx="20" cy="380" r="0.8" opacity="0.4" />
+                <circle cx="200" cy="250" r="0.6" opacity="0.3" />
+                <circle cx="300" cy="180" r="0.6" opacity="0.3" />
+                <circle cx="50" cy="120" r="0.7" opacity="0.35" />
+                <circle cx="130" cy="310" r="0.9" opacity="0.45" />
+                <circle cx="290" cy="90" r="0.7" opacity="0.4" />
+                <circle cx="350" cy="320" r="0.8" opacity="0.35" />
+                <circle cx="410" cy="280" r="0.7" opacity="0.3" />
+                <circle cx="30" cy="230" r="0.6" opacity="0.3" />
+                <circle cx="150" cy="140" r="0.8" opacity="0.35" />
+                <circle cx="250" cy="330" r="0.7" opacity="0.4" />
+                <circle cx="430" cy="50" r="0.9" opacity="0.45" />
+                <circle cx="100" cy="360" r="0.6" opacity="0.3" />
+                <circle cx="310" cy="140" r="0.7" opacity="0.35" />
+                <circle cx="360" cy="390" r="0.8" opacity="0.4" />
+                <circle cx="460" cy="120" r="0.6" opacity="0.3" />
+                <circle cx="40" cy="330" r="0.7" opacity="0.35" />
+                <circle cx="190" cy="180" r="0.6" opacity="0.3" />
+                <circle cx="420" cy="200" r="0.7" opacity="0.35" />
+                <circle cx="140" cy="50" r="0.6" opacity="0.3" />
                 <!-- Twinkling stars -->
-                <circle cx="75" cy="155" r="1.5" opacity="0.7">
+                <circle cx="75" cy="155" r="1.2" opacity="0.7">
                   <animate
                     attributeName="opacity"
                     values="0.3;0.9;0.3"
@@ -124,7 +141,7 @@
                     repeatCount="indefinite"
                   />
                 </circle>
-                <circle cx="415" cy="100" r="1.8" opacity="0.6">
+                <circle cx="415" cy="100" r="1.4" opacity="0.6">
                   <animate
                     attributeName="opacity"
                     values="0.2;0.85;0.2"
@@ -132,11 +149,35 @@
                     repeatCount="indefinite"
                   />
                 </circle>
-                <circle cx="265" cy="285" r="1.3" opacity="0.6">
+                <circle cx="265" cy="285" r="1" opacity="0.6">
                   <animate
                     attributeName="opacity"
                     values="0.3;0.85;0.3"
                     dur="3.6s"
+                    repeatCount="indefinite"
+                  />
+                </circle>
+                <circle cx="130" cy="140" r="1.1" opacity="0.5">
+                  <animate
+                    attributeName="opacity"
+                    values="0.2;0.8;0.2"
+                    dur="5s"
+                    repeatCount="indefinite"
+                  />
+                </circle>
+                <circle cx="350" cy="50" r="1" opacity="0.5">
+                  <animate
+                    attributeName="opacity"
+                    values="0.25;0.75;0.25"
+                    dur="3.8s"
+                    repeatCount="indefinite"
+                  />
+                </circle>
+                <circle cx="30" cy="290" r="1.2" opacity="0.55">
+                  <animate
+                    attributeName="opacity"
+                    values="0.3;0.85;0.3"
+                    dur="4.5s"
                     repeatCount="indefinite"
                   />
                 </circle>
@@ -183,6 +224,19 @@
               >
                 <path d="M 90 95 Q 60 215 95 335" />
                 <path d="M 400 110 Q 430 215 405 330" />
+              </g>
+
+              <!-- Y-fork branch clusters -->
+              <g
+                stroke="rgba(255,255,255,0.12)"
+                stroke-width="0.8"
+                stroke-linecap="round"
+                fill="none"
+              >
+                <path d="M 170 150 Q 190 170 210 155" />
+                <path d="M 170 150 Q 175 180 155 195" />
+                <path d="M 310 270 Q 290 290 270 275" />
+                <path d="M 310 270 Q 305 300 325 315" />
               </g>
 
               <!-- Centre → sources : solid rays -->
@@ -261,15 +315,7 @@
                 font-family="Inter, system-ui">Filum</text
               >
 
-              <!-- Source labels in light tone -->
-              <g font-family="Inter, system-ui" font-size="11" fill="#CBD5E1" font-weight="500">
-                <text x="90" y="138" text-anchor="middle">Chercheur·euse</text>
-                <text x="400" y="153" text-anchor="middle">Institution</text>
-                <text x="95" y="378" text-anchor="middle">Média</text>
-                <text x="405" y="373" text-anchor="middle">École</text>
-                <text x="220" y="28" text-anchor="middle">Individu</text>
-                <text x="265" y="412" text-anchor="middle">Association</text>
-              </g>
+              <!-- Source labels (only "Filum" kept, others removed) -->
             </svg>
           </div>
         </div>
@@ -490,6 +536,13 @@
     border-radius: 12px;
     padding: 1.5rem;
     position: relative;
+    transition:
+      transform 180ms cubic-bezier(0.2, 0.7, 0.3, 1),
+      border-color 180ms ease;
+  }
+  .step-card:hover {
+    transform: translateY(-3px);
+    border-color: rgb(var(--border-strong));
   }
   .step-number {
     font-size: 2.5rem;
@@ -509,21 +562,24 @@
       border-color 180ms ease;
   }
   .audience-card:hover {
-    transform: translateY(-2px);
+    transform: translateY(-3px);
     border-color: rgb(var(--border-strong));
   }
 
   /* === CTA section === */
   .cta-section {
-    background: rgb(var(--text-primary));
+    background: #1a2a4a;
     color: white;
+  }
+  :global(.dark) .cta-section {
+    background: #0d1525;
   }
   .hero-cta-light {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
     background: white;
-    color: rgb(var(--text-primary));
+    color: #1a1a1a;
     padding: 0.75rem 1.5rem;
     border-radius: 6px;
     font-size: 1rem;
@@ -532,8 +588,15 @@
     text-decoration: none;
   }
   .hero-cta-light:hover {
-    background: rgb(var(--bg-tertiary));
+    background: #f0f2f5;
     transform: translateY(-1px);
+  }
+  :global(.dark) .hero-cta-light {
+    background: #1e1e2a;
+    color: #f5f5f5;
+  }
+  :global(.dark) .hero-cta-light:hover {
+    background: #2a2a3a;
   }
 
   @media (prefers-reduced-motion: reduce) {
