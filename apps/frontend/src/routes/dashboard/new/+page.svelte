@@ -1,8 +1,13 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { api } from '$lib/api';
-  import { Button } from '$lib/components';
+  import { Button, ProgressSteps } from '$lib/components';
   import type { Platform, ContentType } from '$lib/api';
+
+  const steps = [
+    { label: 'Informations', description: 'Titre, plateforme' },
+    { label: 'Sources', description: 'Ajouter et publier' },
+  ];
 
   let title = $state('');
   let slug = $state('');
@@ -80,11 +85,15 @@
 
 <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
   <div class="mb-6">
-    <a href="/dashboard" class="text-sm text-slate-500 hover:text-slate-700">← Tableau de bord</a>
+    <a href="/dashboard" class="text-sm text-ink-tertiary hover:text-ink-primary transition-colors"
+      >← Tableau de bord</a
+    >
   </div>
 
-  <h1 class="text-2xl font-bold text-slate-900 mb-2">Nouvelle fiche</h1>
-  <p class="text-slate-600 mb-8">Étape 1/2 : informations sur votre contenu</p>
+  <h1 class="font-serif text-3xl text-ink-primary mb-2">Nouvelle fiche</h1>
+  <p class="text-sm text-ink-secondary mb-6">Informations sur votre contenu</p>
+
+  <ProgressSteps {steps} current={0} class="mb-8" />
 
   <form onsubmit={handleSubmit} class="space-y-6">
     {#if error}

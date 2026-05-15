@@ -2,21 +2,27 @@
   import type { Snippet } from 'svelte';
 
   interface Props {
-    variant?: 'default' | 'success' | 'warning' | 'error';
+    variant?: 'info' | 'success' | 'warning' | 'danger';
+    title?: string;
     class?: string;
     children: Snippet;
   }
 
-  let { variant = 'default', class: className = '', children }: Props = $props();
+  let { variant = 'info', title, class: className = '', children }: Props = $props();
 
   const variantClasses = {
-    default: 'bg-slate-50 border-slate-200',
-    success: 'bg-emerald-50 border-emerald-200 text-emerald-800',
-    warning: 'bg-amber-50 border-amber-200 text-amber-800',
-    error: 'bg-red-50 border-red-200 text-red-800',
+    info: 'bg-info-bg border-info/20 text-info',
+    success: 'bg-success-bg border-success/20 text-success',
+    warning: 'bg-warning-bg border-warning/20 text-warning',
+    danger: 'bg-danger-bg border-danger/20 text-danger',
   };
 </script>
 
-<div class="rounded-lg border p-4 {variantClasses[variant]} {className}" role="alert">
-  {@render children()}
+<div class="rounded border px-4 py-3 text-sm {variantClasses[variant]} {className}" role="alert">
+  {#if title}
+    <p class="font-medium mb-0.5">{title}</p>
+  {/if}
+  <div class="text-ink-primary/90">
+    {@render children()}
+  </div>
 </div>

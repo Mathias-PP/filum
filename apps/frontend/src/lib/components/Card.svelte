@@ -4,19 +4,31 @@
   interface Props {
     title?: string;
     class?: string;
+    padding?: 'sm' | 'md' | 'lg' | 'none';
     children: Snippet;
   }
 
-  let { title, class: className = '', children }: Props = $props();
+  let { title, class: className = '', padding = 'md', children }: Props = $props();
+
+  const paddingClasses = {
+    none: '',
+    sm: 'p-4',
+    md: 'p-5',
+    lg: 'p-6',
+  };
 </script>
 
-<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden {className}">
+<div class="bg-surface-primary rounded-lg border border-border overflow-hidden {className}">
   {#if title}
-    <div class="px-6 py-4 border-b border-slate-200">
-      <h3 class="text-lg font-semibold text-slate-900">{title}</h3>
+    <div class="px-5 py-3 border-b border-border">
+      <h3 class="text-base font-medium text-ink-primary">{title}</h3>
+    </div>
+    <div class={paddingClasses[padding]}>
+      {@render children()}
+    </div>
+  {:else}
+    <div class={paddingClasses[padding]}>
+      {@render children()}
     </div>
   {/if}
-  <div class="p-6">
-    {@render children()}
-  </div>
 </div>
