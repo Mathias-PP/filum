@@ -6,6 +6,32 @@
 
 ---
 
+## [Unreleased] — UI polish : dark mode, hero, hover effects, CTA fix (2026-05-15)
+
+### Added
+- **Hover lift effect** (`hover-lift` class in `app.css`) : cards on Features page, step cards, and audience cards now rise 3px on hover with border highlight.
+- **Y-fork branch clusters** in hero SVG : two fork-shaped branch connections added for visual depth.
+- **Star density increased** in hero SVG from ~13 to ~30 stars, with 6 twinkling animated stars.
+- **`--bg-surface-secondary`** CSS custom property in `.dark` for theme-aware alternate surfaces.
+- **`.cta-section` and `.hero-cta-light`** global CSS classes in `app.css` with proper dark-mode awareness (navy `#1A2A4A` / `#0D1525` backgrounds).
+
+### Fixed
+- **Hero text** restored to "Vous allez adorer partager vos références" (original pre-redesign tagline).
+- **Dark mode tokens lightened** : `--bg-secondary` from `#0F0F11` → `#14141A`, `--text-primary` from `#EDEDED` → `#F5F5F5`, semantic colors saturated +15%.
+- **Primary button** (`Button.svelte`) : replaced `bg-ink-primary text-white` (white-on-white in dark mode) with `bg-black text-white dark:bg-white dark:text-black`.
+- **CTA section** : no longer inherits `rgb(var(--text-primary))` background (was near-black in light mode, light-gray in dark mode). Now uses dedicated dark navy (`#1A2A4A` / `#0D1525`).
+- **`hero-cta-light`** button : white bg with `rgb(var(--text-primary))` text was invisible in dark mode (white bg, light gray text). Now uses `#1e1e2a` bg with `#f5f5f5` text.
+- **Features page** : all 6 "Disponibles" cards had hardcoded `bg-white` — replaced with `bg-surface-primary`.
+- **Security page** : `prose prose-slate` without `dark:prose-invert` made bold text illegible in dark mode.
+- **About page** : same `prose prose-slate` issue fixed.
+- **Hero SVG** : all node labels removed (Chercheur·euse, Institution, Média, École, Individu, Association) — only "Filum" center label kept.
+
+### Changed
+- **Step card hover** : added `translateY(-3px)` + border-color transition (was static).
+- **Audience card hover** : increased lift from `-2px` to `-3px`.
+
+---
+
 ## [Unreleased] — Source taxonomy redesign (3 orthogonal axes) — ADR-020 (2026-05-14)
 
 ### Added

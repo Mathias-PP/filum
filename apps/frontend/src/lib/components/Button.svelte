@@ -32,7 +32,8 @@
   const computedRel = $derived(rel ?? (target === '_blank' ? 'noopener noreferrer' : undefined));
 
   const variantClasses = {
-    primary: 'bg-ink-primary text-white hover:opacity-90 active:opacity-80',
+    primary:
+      'bg-black text-white dark:bg-white dark:text-black hover:opacity-90 active:opacity-80',
     secondary:
       'bg-transparent text-ink-primary border border-border-strong hover:bg-surface-tertiary',
     tertiary: 'bg-transparent text-info hover:underline px-0',
