@@ -7,16 +7,16 @@
 </svelte:head>
 
 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-  <h1 class="text-4xl font-bold text-slate-900 mb-6">Confidentialité</h1>
+  <h1 class="text-4xl font-bold text-ink-primary mb-6">Confidentialité</h1>
 
-  <div class="prose prose-slate max-w-none space-y-6 text-slate-700">
+  <div class="prose prose-slate max-w-none space-y-6 text-ink-secondary">
     <p class="text-lg">
       Filum collecte le minimum d'informations nécessaires au fonctionnement du service. Cette page
       détaillera bientôt notre politique complète. En attendant, voici l'essentiel.
     </p>
 
     <section>
-      <h2 class="text-xl font-semibold text-slate-900">Ce que nous collectons</h2>
+      <h2 class="text-xl font-semibold text-ink-primary">Ce que nous collectons</h2>
       <ul class="list-disc pl-6">
         <li>
           <strong>Compte</strong> : nom, email et photo de profil retournés par votre fournisseur OAuth
@@ -34,7 +34,7 @@
     </section>
 
     <section>
-      <h2 class="text-xl font-semibold text-slate-900">Vos droits</h2>
+      <h2 class="text-xl font-semibold text-ink-primary">Vos droits</h2>
       <p>
         Conformément au RGPD, vous pouvez à tout moment accéder, exporter, rectifier ou supprimer
         vos données. Contactez-nous via
@@ -44,7 +44,7 @@
       </p>
     </section>
 
-    <p class="text-sm text-slate-500">
+    <p class="text-sm text-ink-tertiary">
       Page en cours de rédaction — une version complète sera publiée avant la mise en production
       grand public.
     </p>

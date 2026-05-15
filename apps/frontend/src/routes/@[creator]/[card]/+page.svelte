@@ -100,15 +100,15 @@
   {@html `<script type="application/ld+json">${JSON.stringify(jsonLd)}<` + `/script>`}
 </svelte:head>
 
-<div class="min-h-screen bg-slate-50">
+<div class="min-h-screen bg-surface-secondary">
   <article>
-    <header class="bg-white border-b border-slate-200">
+    <header class="bg-surface-primary border-b border-border">
       <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
         <div class="flex items-center gap-2">
           {#if isOwner}
             <a
               href="/dashboard"
-              class="flex items-center gap-1 text-xs sm:text-sm text-slate-500 hover:text-slate-900 transition-colors shrink-0 mr-1 sm:mr-2 px-2 py-1 rounded-md hover:bg-slate-100"
+              class="flex items-center gap-1 text-xs sm:text-sm text-ink-tertiary hover:text-ink-primary transition-colors shrink-0 mr-1 sm:mr-2 px-2 py-1 rounded-md hover:bg-surface-tertiary"
               title="Retour à votre tableau de bord"
             >
               <svg
@@ -136,25 +136,28 @@
               name={card.creator.display_name || card.creator.slug}
               size="sm"
             />
-            <span class="text-sm font-medium text-slate-700"
+            <span class="text-sm font-medium text-ink-secondary"
               >{card.creator.display_name || card.creator.slug}</span
             >
           </a>
-          <span class="text-slate-300 shrink-0">·</span>
+          <span class="text-ink-tertiary shrink-0">·</span>
           <div class="flex-1 min-w-0">
-            <h1 class="text-sm sm:text-base font-serif text-slate-900 truncate" title={card.title}>
+            <h1
+              class="text-sm sm:text-base font-serif text-ink-primary truncate"
+              title={card.title}
+            >
               {card.title}
             </h1>
             {#if card.description}
               <div class="relative">
-                <p class="text-xs text-slate-500 mt-0.5 {descriptionExpanded ? '' : 'truncate'}">
+                <p class="text-xs text-ink-tertiary mt-0.5 {descriptionExpanded ? '' : 'truncate'}">
                   {card.description}
                 </p>
                 {#if card.description.length > 100}
                   <button
                     type="button"
                     onclick={() => (descriptionExpanded = !descriptionExpanded)}
-                    class="text-xs text-blue-600 hover:text-blue-800 mt-0.5"
+                    class="text-xs text-info hover:opacity-80 mt-0.5"
                   >
                     {descriptionExpanded ? 'Moins' : 'Lire la suite'}
                   </button>
@@ -165,7 +168,7 @@
           <button
             type="button"
             onclick={copyLink}
-            class="text-xs text-slate-500 hover:text-slate-900 transition-colors px-2.5 py-1 rounded-md border border-slate-200 hover:border-slate-300 shrink-0"
+            class="text-xs text-ink-tertiary hover:text-ink-primary transition-colors px-2.5 py-1 rounded-md border border-border hover:border-border-strong shrink-0"
           >
             Partager
           </button>
@@ -173,10 +176,10 @@
       </div>
     </header>
 
-    <section class="bg-slate-50">
+    <section class="bg-surface-secondary">
       <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div
-          class="h-[75vh] min-h-[500px] rounded-xl bg-white border border-slate-200 overflow-hidden relative"
+          class="h-[75vh] min-h-[500px] rounded-xl bg-surface-primary border border-border overflow-hidden relative"
         >
           {#if GraphComponent}
             <GraphComponent {card} />
@@ -187,60 +190,60 @@
             </div>
           {/if}
         </div>
-        <p class="text-center text-xs sm:text-sm text-slate-500 mt-3">
+        <p class="text-center text-xs sm:text-sm text-ink-tertiary mt-3">
           Cliquez sur un nœud pour explorer la source · glissez pour réorganiser · molette pour
           zoomer
         </p>
       </div>
     </section>
 
-    <section class="bg-white border-t border-b border-slate-200">
+    <section class="bg-surface-primary border-t border-b border-border">
       <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-          <div class="text-center p-3 sm:p-4 bg-slate-50 rounded-lg">
-            <p class="text-xl sm:text-2xl font-bold text-slate-900">
+          <div class="text-center p-3 sm:p-4 bg-surface-secondary rounded-lg">
+            <p class="text-xl sm:text-2xl font-bold text-ink-primary">
               {card.stats.total_sources}
             </p>
-            <p class="text-xs sm:text-sm text-slate-500">Sources</p>
+            <p class="text-xs sm:text-sm text-ink-tertiary">Sources</p>
           </div>
-          <div class="text-center p-3 sm:p-4 bg-slate-50 rounded-lg">
+          <div class="text-center p-3 sm:p-4 bg-surface-secondary rounded-lg">
             <p class="text-xl sm:text-2xl font-bold text-emerald-600">
               {card.stats.chercheur}
             </p>
-            <p class="text-xs sm:text-sm text-slate-500">Chercheur·euse·s</p>
+            <p class="text-xs sm:text-sm text-ink-tertiary">Chercheur·euse·s</p>
           </div>
-          <div class="text-center p-3 sm:p-4 bg-slate-50 rounded-lg">
-            <p class="text-xl sm:text-2xl font-bold text-blue-600">
+          <div class="text-center p-3 sm:p-4 bg-surface-secondary rounded-lg">
+            <p class="text-xl sm:text-2xl font-bold text-info">
               {card.stats.institution_publique}
             </p>
-            <p class="text-xs sm:text-sm text-slate-500">Institutions</p>
+            <p class="text-xs sm:text-sm text-ink-tertiary">Institutions</p>
           </div>
-          <div class="text-center p-3 sm:p-4 bg-slate-50 rounded-lg">
-            <p class="text-xl sm:text-2xl font-bold text-slate-700">
+          <div class="text-center p-3 sm:p-4 bg-surface-secondary rounded-lg">
+            <p class="text-xl sm:text-2xl font-bold text-ink-secondary">
               {card.stats.all_archived ? '✓' : '…'}
             </p>
-            <p class="text-xs sm:text-sm text-slate-500">Archivés</p>
+            <p class="text-xs sm:text-sm text-ink-tertiary">Archivés</p>
           </div>
         </div>
       </div>
     </section>
 
-    <section class="bg-slate-50 border-t border-slate-200">
+    <section class="bg-surface-secondary border-t border-border">
       <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h2 class="text-xl font-semibold text-slate-900 mb-4">Sources citées</h2>
+        <h2 class="text-xl font-semibold text-ink-primary mb-4">Sources citées</h2>
         <div class="space-y-3">
           {#each card.sources as source, i (source.id)}
-            <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            <div class="bg-surface-primary rounded-lg border border-border overflow-hidden">
               <button
                 type="button"
-                class="w-full text-left p-4 hover:bg-slate-50 transition-colors"
+                class="w-full text-left p-4 hover:bg-surface-secondary transition-colors"
                 onclick={() => toggleSource(source.id)}
               >
                 <div class="flex items-start gap-3">
-                  <span class="text-slate-400 font-medium tabular-nums">{i + 1}.</span>
+                  <span class="text-ink-tertiary font-medium tabular-nums">{i + 1}.</span>
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 flex-wrap">
-                      <h3 class="text-base font-medium text-slate-900">
+                      <h3 class="text-base font-medium text-ink-primary">
                         {source.title || 'Sans titre'}
                       </h3>
                       <AuthorKindBadge kind={source.author_kind} />
@@ -264,12 +267,12 @@
                       {/if}
                     </div>
                     {#if source.authors}
-                      <p class="text-sm text-slate-500 mt-1">{source.authors}</p>
+                      <p class="text-sm text-ink-tertiary mt-1">{source.authors}</p>
                     {/if}
-                    <p class="text-sm text-blue-600 mt-1 truncate">{source.url}</p>
+                    <p class="text-sm text-info mt-1 truncate">{source.url}</p>
                   </div>
                   <svg
-                    class="w-5 h-5 text-slate-400 shrink-0 transition-transform {expandedSource ===
+                    class="w-5 h-5 text-ink-tertiary shrink-0 transition-transform {expandedSource ===
                     source.id
                       ? 'rotate-180'
                       : ''}"
@@ -288,25 +291,24 @@
               </button>
 
               {#if expandedSource === source.id}
-                <div
-                  class="px-4 pb-4 border-t border-slate-100"
-                  transition:slide={{ duration: 200 }}
-                >
+                <div class="px-4 pb-4 border-t border-border" transition:slide={{ duration: 200 }}>
                   {#if source.annotation}
-                    <div class="mt-4 p-3 bg-slate-50 rounded-lg text-sm text-slate-700">
-                      <p class="font-medium text-slate-900 mb-1">Annotation :</p>
+                    <div
+                      class="mt-4 p-3 bg-surface-secondary rounded-lg text-sm text-ink-secondary"
+                    >
+                      <p class="font-medium text-ink-primary mb-1">Annotation :</p>
                       <p>{source.annotation}</p>
                     </div>
                   {/if}
                   {#if source.excerpts && source.excerpts.length > 0}
                     <div class="mt-4">
-                      <p class="text-xs uppercase tracking-wide text-slate-500 mb-2">
+                      <p class="text-xs uppercase tracking-wide text-ink-tertiary mb-2">
                         Extraits cités
                       </p>
                       <ul class="space-y-2">
                         {#each source.excerpts as excerpt (excerpt.id)}
                           <li
-                            class="bg-slate-50 border border-slate-200 rounded-md p-3 text-sm italic text-slate-700"
+                            class="bg-surface-secondary border border-border rounded-md p-3 text-sm italic text-ink-secondary"
                           >
                             «&nbsp;{excerpt.text}&nbsp;»
                           </li>
@@ -337,20 +339,20 @@
       </div>
     </section>
 
-    <footer class="bg-white border-t border-slate-200">
+    <footer class="bg-surface-primary border-t border-border">
       <div
         class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-wrap items-center justify-between gap-4"
       >
-        <div class="text-sm text-slate-500">
-          <p class="text-slate-700 font-medium mb-1">Contenu revendiqué par son créateur·ice</p>
+        <div class="text-sm text-ink-tertiary">
+          <p class="text-ink-secondary font-medium mb-1">Contenu revendiqué par son créateur·ice</p>
           <p class="text-xs">
             L'URL du contenu original est attestée par signature Ed25519. <a
               href="/security"
-              class="text-blue-600 hover:text-blue-800 underline">En savoir plus</a
+              class="text-info hover:opacity-80 underline">En savoir plus</a
             >
           </p>
         </div>
-        <div class="text-sm text-slate-500 text-right">
+        <div class="text-sm text-ink-tertiary text-right">
           {#if card.published_at}
             <p>
               Publiée le {new Date(card.published_at).toLocaleString('fr-FR', {

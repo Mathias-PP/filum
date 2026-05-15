@@ -7,15 +7,15 @@
 </svelte:head>
 
 <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-  <h1 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">Fonctionnalités</h1>
-  <p class="text-xl text-slate-600 mb-12 max-w-3xl">
+  <h1 class="text-3xl sm:text-4xl font-bold text-ink-primary mb-4">Fonctionnalités</h1>
+  <p class="text-xl text-ink-secondary mb-12 max-w-3xl">
     Filum est conçu pour les créateur·ice·s qui veulent rendre visible la qualité de leurs
     références. Voici ce que la plateforme offre aujourd'hui et ce qui est en préparation.
   </p>
 
-  <h2 class="text-2xl font-semibold text-slate-900 mb-6">Disponibles aujourd'hui</h2>
+  <h2 class="text-2xl font-semibold text-ink-primary mb-6">Disponibles aujourd'hui</h2>
   <div class="grid md:grid-cols-2 gap-6 mb-16">
-    <div class="bg-white border border-slate-200 rounded-xl p-6">
+    <div class="bg-white border border-border rounded-xl p-6">
       <div
         class="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center mb-3"
       >
@@ -25,14 +25,14 @@
           /></svg
         >
       </div>
-      <h3 class="text-lg font-semibold text-slate-900 mb-2">Graphe interactif</h3>
-      <p class="text-slate-600 text-sm">
+      <h3 class="text-lg font-semibold text-ink-primary mb-2">Graphe interactif</h3>
+      <p class="text-ink-secondary text-sm">
         Visualisez vos sources sous forme de graphe dynamique. Chaque nœud représente une source,
         les sources clés sont mises en avant. Exploration intuitive : cliquez, glissez, zoomez.
       </p>
     </div>
 
-    <div class="bg-white border border-slate-200 rounded-xl p-6">
+    <div class="bg-white border border-border rounded-xl p-6">
       <div
         class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center mb-3"
       >
@@ -42,15 +42,15 @@
           /></svg
         >
       </div>
-      <h3 class="text-lg font-semibold text-slate-900 mb-2">Attestation de contenu Ed25519</h3>
-      <p class="text-slate-600 text-sm">
+      <h3 class="text-lg font-semibold text-ink-primary mb-2">Attestation de contenu Ed25519</h3>
+      <p class="text-ink-secondary text-sm">
         Chaque contenu original que vous revendiquez (vidéo, article, podcast…) est attesté avec
         votre clé Ed25519 : le triplet (vous, l'URL, la date) est signé et vérifiable par n'importe
         qui.
       </p>
     </div>
 
-    <div class="bg-white border border-slate-200 rounded-xl p-6">
+    <div class="bg-white border border-border rounded-xl p-6">
       <div
         class="w-10 h-10 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center mb-3"
       >
@@ -60,14 +60,14 @@
           /></svg
         >
       </div>
-      <h3 class="text-lg font-semibold text-slate-900 mb-2">Archivage automatique</h3>
-      <p class="text-slate-600 text-sm">
+      <h3 class="text-lg font-semibold text-ink-primary mb-2">Archivage automatique</h3>
+      <p class="text-ink-secondary text-sm">
         Chaque source est automatiquement archivée via la Wayback Machine. Même si la page originale
         disparaît, sa copie reste accessible.
       </p>
     </div>
 
-    <div class="bg-white border border-slate-200 rounded-xl p-6">
+    <div class="bg-white border border-border rounded-xl p-6">
       <div
         class="w-10 h-10 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center mb-3"
       >
@@ -77,14 +77,14 @@
           /></svg
         >
       </div>
-      <h3 class="text-lg font-semibold text-slate-900 mb-2">Extraction automatique</h3>
-      <p class="text-slate-600 text-sm">
+      <h3 class="text-lg font-semibold text-ink-primary mb-2">Extraction automatique</h3>
+      <p class="text-ink-secondary text-sm">
         Collez une URL : Filum extrait automatiquement le titre, les auteurs, la date de publication
         et une description. Plus besoin de tout remplir à la main.
       </p>
     </div>
 
-    <div class="bg-white border border-slate-200 rounded-xl p-6">
+    <div class="bg-white border border-border rounded-xl p-6">
       <div
         class="w-10 h-10 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center mb-3"
       >
@@ -94,14 +94,14 @@
           /></svg
         >
       </div>
-      <h3 class="text-lg font-semibold text-slate-900 mb-2">6 types de sources</h3>
-      <p class="text-slate-600 text-sm">
+      <h3 class="text-lg font-semibold text-ink-primary mb-2">6 types de sources</h3>
+      <p class="text-ink-secondary text-sm">
         Articles scientifiques, sources institutionnelles, presse, vidéos, images, sources
         originales : chaque type a son propre affichage et son propre poids dans le graphe.
       </p>
     </div>
 
-    <div class="bg-white border border-slate-200 rounded-xl p-6">
+    <div class="bg-white border border-border rounded-xl p-6">
       <div
         class="w-10 h-10 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center mb-3"
       >
@@ -111,72 +111,72 @@
           /><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg
         >
       </div>
-      <h3 class="text-lg font-semibold text-slate-900 mb-2">Sources clés</h3>
-      <p class="text-slate-600 text-sm">
+      <h3 class="text-lg font-semibold text-ink-primary mb-2">Sources clés</h3>
+      <p class="text-ink-secondary text-sm">
         Marquez une source comme « clé » pour indiquer qu'elle est structurante dans votre
         raisonnement. Elle apparaît en évidence dans le graphe.
       </p>
     </div>
   </div>
 
-  <h2 id="a-venir" class="text-2xl font-semibold text-slate-900 mb-6">En préparation</h2>
+  <h2 id="a-venir" class="text-2xl font-semibold text-ink-primary mb-6">En préparation</h2>
   <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-    <div class="bg-slate-50 rounded-xl p-6 border border-slate-200 border-dashed">
-      <h3 class="text-lg font-semibold text-slate-900 mb-2">Copier-coller de bibliographie</h3>
-      <p class="text-slate-600 text-sm">
+    <div class="bg-surface-secondary rounded-xl p-6 border border-border border-dashed">
+      <h3 class="text-lg font-semibold text-ink-primary mb-2">Copier-coller de bibliographie</h3>
+      <p class="text-ink-secondary text-sm">
         Collez votre bibliographie existante (depuis un article, YouTube, votre site) et Filum
         génère automatiquement une fiche avec les sources pré-remplies.
       </p>
     </div>
-    <div class="bg-slate-50 rounded-xl p-6 border border-slate-200 border-dashed">
-      <h3 class="text-lg font-semibold text-slate-900 mb-2">Citations intelligentes</h3>
-      <p class="text-slate-600 text-sm">
+    <div class="bg-surface-secondary rounded-xl p-6 border border-border border-dashed">
+      <h3 class="text-lg font-semibold text-ink-primary mb-2">Citations intelligentes</h3>
+      <p class="text-ink-secondary text-sm">
         L'IA identifie l'emplacement exact de chaque citation dans le document source, pour y
         accéder en un clic.
       </p>
     </div>
-    <div class="bg-slate-50 rounded-xl p-6 border border-slate-200 border-dashed">
-      <h3 class="text-lg font-semibold text-slate-900 mb-2">Import Zotero / Obsidian</h3>
-      <p class="text-slate-600 text-sm">
+    <div class="bg-surface-secondary rounded-xl p-6 border border-border border-dashed">
+      <h3 class="text-lg font-semibold text-ink-primary mb-2">Import Zotero / Obsidian</h3>
+      <p class="text-ink-secondary text-sm">
         Importez vos collections depuis Zotero, Obsidian, BibTeX et d'autres gestionnaires de
         références.
       </p>
     </div>
-    <div class="bg-slate-50 rounded-xl p-6 border border-slate-200 border-dashed">
-      <h3 class="text-lg font-semibold text-slate-900 mb-2">Bibliographies collaboratives</h3>
-      <p class="text-slate-600 text-sm">
+    <div class="bg-surface-secondary rounded-xl p-6 border border-border border-dashed">
+      <h3 class="text-lg font-semibold text-ink-primary mb-2">Bibliographies collaboratives</h3>
+      <p class="text-ink-secondary text-sm">
         Créez et éditez une fiche à plusieurs, avec contrôle de version et historique des
         modifications.
       </p>
     </div>
-    <div class="bg-slate-50 rounded-xl p-6 border border-slate-200 border-dashed">
-      <h3 class="text-lg font-semibold text-slate-900 mb-2">Export PDF / CSV / Excel</h3>
-      <p class="text-slate-600 text-sm">
+    <div class="bg-surface-secondary rounded-xl p-6 border border-border border-dashed">
+      <h3 class="text-lg font-semibold text-ink-primary mb-2">Export PDF / CSV / Excel</h3>
+      <p class="text-ink-secondary text-sm">
         Exportez vos fiches dans tous les formats : PDF, CSV, Excel, JSON, BibTeX, CSL-JSON.
       </p>
     </div>
-    <div class="bg-slate-50 rounded-xl p-6 border border-slate-200 border-dashed">
-      <h3 class="text-lg font-semibold text-slate-900 mb-2">Extension navigateur</h3>
-      <p class="text-slate-600 text-sm">
+    <div class="bg-surface-secondary rounded-xl p-6 border border-border border-dashed">
+      <h3 class="text-lg font-semibold text-ink-primary mb-2">Extension navigateur</h3>
+      <p class="text-ink-secondary text-sm">
         Ajoutez une source en un clic depuis votre navigateur, sans quitter la page que vous
         consultez.
       </p>
     </div>
-    <div class="bg-slate-50 rounded-xl p-6 border border-slate-200 border-dashed">
-      <h3 class="text-lg font-semibold text-slate-900 mb-2">API publique</h3>
-      <p class="text-slate-600 text-sm">
+    <div class="bg-surface-secondary rounded-xl p-6 border border-border border-dashed">
+      <h3 class="text-lg font-semibold text-ink-primary mb-2">API publique</h3>
+      <p class="text-ink-secondary text-sm">
         Intégrez Filum dans vos outils : API REST publique et serveur MCP pour les agents IA.
       </p>
     </div>
-    <div class="bg-slate-50 rounded-xl p-6 border border-slate-200 border-dashed">
-      <h3 class="text-lg font-semibold text-slate-900 mb-2">Filum Desktop</h3>
-      <p class="text-slate-600 text-sm">
+    <div class="bg-surface-secondary rounded-xl p-6 border border-border border-dashed">
+      <h3 class="text-lg font-semibold text-ink-primary mb-2">Filum Desktop</h3>
+      <p class="text-ink-secondary text-sm">
         Application de bureau pour gérer vos références hors ligne, avec synchronisation et
         intégration aux outils locaux.
       </p>
     </div>
   </div>
-  <p class="text-sm text-slate-500">
+  <p class="text-sm text-ink-tertiary">
     Ces fonctionnalités sont en cours de développement. Leur ordre d'arrivée peut varier.
   </p>
 </div>
