@@ -37,7 +37,7 @@
             <span class="hero-accent">partager vos références</span>
           </h1>
           <p class="text-lg md:text-xl text-slate-300 mb-8 text-balance max-w-xl mx-auto lg:mx-0">
-            Organisez, archivez et partagez vos sources en un graphe interactif — chaque référence
+            Organisez, archivez et partagez vos sources en un graphe interactif. Chaque référence
             devient vérifiable par tous.
           </p>
           <div
@@ -47,20 +47,7 @@
               <a
                 href="/dashboard"
                 class="hero-cta-primary inline-flex items-center justify-center gap-1.5 rounded font-medium transition-all duration-150"
-              >
-                <svg
-                  class="w-5 h-5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-                  />
-                </svg>
-                Tableau de bord
+                >Tableau de bord
               </a>
             {:else}
               <a href={googleLoginUrl} class="hero-cta-primary">
@@ -169,16 +156,8 @@
                 <ellipse cx="240" cy="210" rx="125" ry="80" />
               </g>
 
-              <!-- Central halo (pulsing) -->
-              <circle cx="240" cy="210" r="160" fill="url(#centralHalo)">
-                <animate attributeName="r" values="150;170;150" dur="4s" repeatCount="indefinite" />
-                <animate
-                  attributeName="opacity"
-                  values="0.9;1;0.9"
-                  dur="4s"
-                  repeatCount="indefinite"
-                />
-              </circle>
+              <!-- Central halo -->
+              <circle cx="240" cy="210" r="160" fill="url(#centralHalo)" />
 
               <!-- Source → source citation edges (dashed orbital feel) -->
               <g
@@ -355,9 +334,10 @@
   /* === HERO: spatial dark background === */
   .hero {
     background:
-      radial-gradient(ellipse at 30% 20%, rgba(74, 108, 247, 0.18) 0%, transparent 55%),
-      radial-gradient(ellipse at 80% 70%, rgba(123, 80, 200, 0.12) 0%, transparent 50%),
-      linear-gradient(180deg, #0b0d17 0%, #1a1b2e 100%);
+      radial-gradient(ellipse at 50% 50%, rgba(120, 50, 180, 0.1) 0%, transparent 60%),
+      radial-gradient(ellipse at 25% 30%, rgba(160, 70, 220, 0.07) 0%, transparent 45%),
+      radial-gradient(ellipse at 75% 65%, rgba(40, 160, 190, 0.05) 0%, transparent 40%),
+      linear-gradient(165deg, #050508 0%, #0a0a14 50%, #07070f 100%);
     min-height: 80vh;
     color: white;
   }
