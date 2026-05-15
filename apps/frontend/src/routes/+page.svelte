@@ -37,7 +37,7 @@
             <span class="hero-accent">partager vos références</span>
           </h1>
           <p class="text-lg md:text-xl text-slate-300 mb-8 text-balance max-w-xl mx-auto lg:mx-0">
-            Organisez, archivez et partagez vos sources en un graphe interactif — chaque référence
+            Organisez, archivez et partagez vos sources en un graphe interactif. Chaque référence
             devient vérifiable par tous.
           </p>
           <div
