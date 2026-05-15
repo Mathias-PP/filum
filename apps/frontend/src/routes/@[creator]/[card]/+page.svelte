@@ -1,7 +1,15 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import type { CardDetail } from '$lib/api';
-  import { Avatar, AuthorKindBadge, FormatBadge, CategoryBadge, Button } from '$lib/components';
+  import {
+    Avatar,
+    AuthorKindBadge,
+    FormatBadge,
+    CategoryBadge,
+    Button,
+    Skeleton,
+  } from '$lib/components';
+  import { slide } from 'svelte/transition';
   import { currentUser } from '$lib/stores/auth';
 
   interface PageData {
@@ -173,8 +181,9 @@
           {#if GraphComponent}
             <GraphComponent {card} />
           {:else}
-            <div class="h-full flex items-center justify-center text-slate-400">
-              Chargement du graphe…
+            <div class="absolute inset-0 p-6 flex flex-col items-center justify-center gap-4">
+              <Skeleton variant="graph" height="100%" class="absolute inset-0 opacity-50" />
+              <p class="relative text-sm text-ink-tertiary">Chargement du graphe…</p>
             </div>
           {/if}
         </div>
@@ -279,7 +288,10 @@
               </button>
 
               {#if expandedSource === source.id}
-                <div class="px-4 pb-4 border-t border-slate-100">
+                <div
+                  class="px-4 pb-4 border-t border-slate-100"
+                  transition:slide={{ duration: 200 }}
+                >
                   {#if source.annotation}
                     <div class="mt-4 p-3 bg-slate-50 rounded-lg text-sm text-slate-700">
                       <p class="font-medium text-slate-900 mb-1">Annotation :</p>

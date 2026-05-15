@@ -3,9 +3,14 @@
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
   import { api } from '$lib/api';
-  import { Button } from '$lib/components';
+  import { Button, ProgressSteps } from '$lib/components';
   import { AUTHOR_COLORS, authorLabel } from '$lib/utils/author-colors';
   import type { AuthorKind, Card, Source, SourceCategory, SourceFormat } from '$lib/api';
+
+  const wizardSteps = [
+    { label: 'Informations', description: 'Titre, plateforme' },
+    { label: 'Sources', description: 'Ajouter et publier' },
+  ];
 
   const cardId = $derived($page.params.card_id ?? '');
 
@@ -233,13 +238,17 @@
 
 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
   <div class="mb-6">
-    <a href="/dashboard" class="text-sm text-slate-500 hover:text-slate-700">← Tableau de bord</a>
+    <a href="/dashboard" class="text-sm text-ink-tertiary hover:text-ink-primary transition-colors"
+      >← Tableau de bord</a
+    >
   </div>
 
-  <h1 class="text-2xl font-bold text-slate-900 mb-1">
+  <h1 class="font-serif text-3xl text-ink-primary mb-1">
     {card?.title ?? 'Chargement...'}
   </h1>
-  <p class="text-slate-600 mb-8">Étape 2/2 : ajoutez vos sources, puis publiez</p>
+  <p class="text-sm text-ink-secondary mb-6">Ajoutez vos sources, puis publiez la fiche.</p>
+
+  <ProgressSteps steps={wizardSteps} current={1} class="mb-8" />
 
   {#if loadError}
     <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 mb-6">
