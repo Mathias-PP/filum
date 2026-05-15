@@ -37,8 +37,8 @@
             <span class="hero-accent">partager vos références</span>
           </h1>
           <p class="text-lg md:text-xl text-slate-300 mb-8 text-balance max-w-xl mx-auto lg:mx-0">
-            Organisez, archivez et partagez vos sources en un graphe interactif. Chaque référence
-            devient vérifiable par tous.
+            Vos sources prennent vie dans un graphe interactif. Archivez, partagez et attestez
+            chaque création.
           </p>
           <div
             class="flex flex-col sm:flex-row items-center lg:items-start justify-center lg:justify-start gap-3"
@@ -102,58 +102,56 @@
                 </filter>
               </defs>
 
-              <!-- Distant stars (increased density ~30) -->
-              <g fill="#ffffff">
-                <circle cx="38" cy="62" r="0.8" opacity="0.5" />
-                <circle cx="105" cy="200" r="1" opacity="0.4" />
-                <circle cx="170" cy="40" r="0.6" opacity="0.3" />
-                <circle cx="320" cy="55" r="0.8" opacity="0.5" />
-                <circle cx="450" cy="180" r="1" opacity="0.4" />
-                <circle cx="380" cy="250" r="0.6" opacity="0.3" />
-                <circle cx="60" cy="280" r="0.8" opacity="0.5" />
-                <circle cx="160" cy="395" r="1" opacity="0.4" />
-                <circle cx="340" cy="400" r="0.6" opacity="0.3" />
-                <circle cx="445" cy="380" r="1.2" opacity="0.55" />
-                <circle cx="20" cy="380" r="0.8" opacity="0.4" />
-                <circle cx="200" cy="250" r="0.6" opacity="0.3" />
-                <circle cx="300" cy="180" r="0.6" opacity="0.3" />
-                <circle cx="50" cy="120" r="0.7" opacity="0.35" />
-                <circle cx="130" cy="310" r="0.9" opacity="0.45" />
-                <circle cx="290" cy="90" r="0.7" opacity="0.4" />
-                <circle cx="350" cy="320" r="0.8" opacity="0.35" />
-                <circle cx="410" cy="280" r="0.7" opacity="0.3" />
-                <circle cx="30" cy="230" r="0.6" opacity="0.3" />
-                <circle cx="150" cy="140" r="0.8" opacity="0.35" />
-                <circle cx="250" cy="330" r="0.7" opacity="0.4" />
-                <circle cx="430" cy="50" r="0.9" opacity="0.45" />
-                <circle cx="100" cy="360" r="0.6" opacity="0.3" />
-                <circle cx="310" cy="140" r="0.7" opacity="0.35" />
-                <circle cx="360" cy="390" r="0.8" opacity="0.4" />
-                <circle cx="460" cy="120" r="0.6" opacity="0.3" />
-                <circle cx="40" cy="330" r="0.7" opacity="0.35" />
-                <circle cx="190" cy="180" r="0.6" opacity="0.3" />
-                <circle cx="420" cy="200" r="0.7" opacity="0.35" />
-                <circle cx="140" cy="50" r="0.6" opacity="0.3" />
+              <!-- Far background stars (small, slow drift — depth layer 3) -->
+              <g class="star-layer star-layer-far" fill="#ffffff">
+                <circle cx="38" cy="62" r="0.5" opacity="0.35" />
+                <circle cx="170" cy="40" r="0.4" opacity="0.25" />
+                <circle cx="380" cy="250" r="0.4" opacity="0.25" />
+                <circle cx="20" cy="380" r="0.5" opacity="0.3" />
+                <circle cx="200" cy="250" r="0.4" opacity="0.25" />
+                <circle cx="300" cy="180" r="0.4" opacity="0.25" />
+                <circle cx="50" cy="120" r="0.5" opacity="0.3" />
+                <circle cx="410" cy="280" r="0.5" opacity="0.25" />
+                <circle cx="30" cy="230" r="0.4" opacity="0.25" />
+                <circle cx="430" cy="50" r="0.5" opacity="0.3" />
+                <circle cx="360" cy="390" r="0.4" opacity="0.25" />
+                <circle cx="460" cy="120" r="0.4" opacity="0.25" />
+                <circle cx="40" cy="330" r="0.5" opacity="0.3" />
+                <circle cx="420" cy="200" r="0.4" opacity="0.25" />
+                <circle cx="140" cy="50" r="0.4" opacity="0.25" />
               </g>
 
-              <!-- Orbital rings: 2 ellipses behind nodes -->
-              <g
-                class="orbital-ring orbital-ring-outer"
-                fill="none"
-                stroke="#3D4E7A"
-                stroke-width="0.6"
-                opacity="0.4"
-              >
-                <ellipse cx="240" cy="210" rx="175" ry="115" />
+              <!-- Mid-layer stars (medium, medium drift — depth layer 2) -->
+              <g class="star-layer star-layer-mid" fill="#ffffff">
+                <circle cx="105" cy="200" r="0.7" opacity="0.45" />
+                <circle cx="320" cy="55" r="0.6" opacity="0.45" />
+                <circle cx="450" cy="180" r="0.8" opacity="0.45" />
+                <circle cx="60" cy="280" r="0.7" opacity="0.45" />
+                <circle cx="340" cy="400" r="0.5" opacity="0.4" />
+                <circle cx="290" cy="90" r="0.6" opacity="0.4" />
+                <circle cx="350" cy="320" r="0.6" opacity="0.35" />
+                <circle cx="150" cy="140" r="0.6" opacity="0.4" />
+                <circle cx="250" cy="330" r="0.6" opacity="0.4" />
+                <circle cx="100" cy="360" r="0.5" opacity="0.4" />
+                <circle cx="310" cy="140" r="0.5" opacity="0.35" />
+                <circle cx="190" cy="180" r="0.5" opacity="0.35" />
+                <circle cx="130" cy="310" r="0.7" opacity="0.4" />
+                <circle cx="445" cy="380" r="0.8" opacity="0.45" />
+                <circle cx="160" cy="395" r="0.7" opacity="0.4" />
               </g>
-              <g
-                class="orbital-ring orbital-ring-inner"
-                fill="none"
-                stroke="#5A6FA6"
-                stroke-width="0.5"
-                opacity="0.35"
-              >
-                <ellipse cx="240" cy="210" rx="125" ry="80" />
+
+              <!-- Near foreground stars (larger, faster drift, some twinkle — depth layer 1) -->
+              <g class="star-layer star-layer-near" fill="#ffffff">
+                <circle cx="75" cy="155" r="1.1" opacity="0.7" class="star-twinkle" />
+                <circle cx="415" cy="100" r="1.3" opacity="0.6" class="star-twinkle" />
+                <circle cx="265" cy="285" r="1" opacity="0.6" class="star-twinkle" />
+                <circle cx="130" cy="140" r="1" opacity="0.5" class="star-twinkle" />
+                <circle cx="350" cy="50" r="0.9" opacity="0.5" class="star-twinkle" />
+                <circle cx="30" cy="290" r="1.1" opacity="0.55" class="star-twinkle" />
+                <circle cx="210" cy="130" r="0.8" opacity="0.5" />
+                <circle cx="330" cy="170" r="0.9" opacity="0.5" />
+                <circle cx="180" cy="310" r="0.8" opacity="0.45" />
+                <circle cx="280" cy="390" r="0.9" opacity="0.5" />
               </g>
 
               <!-- Central halo -->
@@ -421,31 +419,63 @@
     transform: rotateY(calc(var(--mx) * 9deg)) rotateX(calc(var(--my) * -7deg));
     transition: transform 220ms cubic-bezier(0.2, 0.7, 0.3, 1);
   }
-  /* Slow rotation on inner ring */
-  :global(.orbital-ring-inner) {
-    transform-origin: 240px 210px;
-    transform-box: fill-box;
-    animation: galaxy-spin 38s linear infinite;
+  /* 3D depth layers: star drift at different speeds */
+  :global(.star-layer-far) {
+    animation: star-drift-far 90s ease-in-out infinite alternate;
   }
-  :global(.orbital-ring-outer) {
-    transform-origin: 240px 210px;
-    transform-box: fill-box;
-    animation: galaxy-spin-rev 60s linear infinite;
+  :global(.star-layer-mid) {
+    animation: star-drift-mid 50s ease-in-out infinite alternate;
   }
-  @keyframes galaxy-spin {
+  :global(.star-layer-near) {
+    animation: star-drift-near 30s ease-in-out infinite alternate;
+  }
+  :global(.star-twinkle) {
+    animation: star-twinkle 3s ease-in-out infinite;
+  }
+  :global(.star-twinkle:nth-child(2n)) {
+    animation-duration: 4.2s;
+    animation-delay: -1s;
+  }
+  :global(.star-twinkle:nth-child(3n)) {
+    animation-duration: 3.6s;
+    animation-delay: -2.5s;
+  }
+  :global(.star-twinkle:nth-child(5n)) {
+    animation-duration: 5s;
+    animation-delay: -0.5s;
+  }
+
+  @keyframes star-drift-far {
     from {
-      transform: rotate(0deg);
+      transform: translate(0, 0);
     }
     to {
-      transform: rotate(360deg);
+      transform: translate(1.5px, 1px);
     }
   }
-  @keyframes galaxy-spin-rev {
+  @keyframes star-drift-mid {
     from {
-      transform: rotate(360deg);
+      transform: translate(0, 0);
     }
     to {
-      transform: rotate(0deg);
+      transform: translate(2.5px, 2px);
+    }
+  }
+  @keyframes star-drift-near {
+    from {
+      transform: translate(0, 0);
+    }
+    to {
+      transform: translate(4px, 3px);
+    }
+  }
+  @keyframes star-twinkle {
+    0%,
+    100% {
+      opacity: 0.25;
+    }
+    50% {
+      opacity: 0.85;
     }
   }
 
@@ -540,8 +570,8 @@
       transform: none !important;
       transition: none !important;
     }
-    :global(.orbital-ring-inner),
-    :global(.orbital-ring-outer) {
+    :global(.star-layer),
+    :global(.star-twinkle) {
       animation: none !important;
     }
   }
