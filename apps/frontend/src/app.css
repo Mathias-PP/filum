@@ -161,17 +161,20 @@
   font-weight: 500;
   transition: all 150ms ease;
   text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.4);
 }
 .hero-cta-light:hover {
   background: #f0f2f5;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 .dark .hero-cta-light {
   background: #1e1e2a;
   color: #f5f5f5;
+  border-color: rgba(255, 255, 255, 0.15);
 }
 .dark .hero-cta-light:hover {
   background: #2a2a3a;
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 /* Hover lift for cards */

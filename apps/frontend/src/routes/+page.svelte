@@ -37,16 +37,31 @@
             <span class="hero-accent">partager vos références</span>
           </h1>
           <p class="text-lg md:text-xl text-slate-300 mb-8 text-balance max-w-xl mx-auto lg:mx-0">
-            Filum transforme vos sources en un graphe vivant : organisées, archivées, et chaque
-            création que vous revendiquez est attestée cryptographiquement.
+            Organisez, archivez et partagez vos sources en un graphe interactif — chaque référence
+            devient vérifiable par tous.
           </p>
           <div
             class="flex flex-col sm:flex-row items-center lg:items-start justify-center lg:justify-start gap-3"
           >
             {#if isAuthenticated}
-              <Button href="/dashboard" variant="primary" size="lg">
-                Accéder au tableau de bord
-              </Button>
+              <a
+                href="/dashboard"
+                class="hero-cta-primary inline-flex items-center justify-center gap-1.5 rounded font-medium transition-all duration-150"
+              >
+                <svg
+                  class="w-5 h-5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                  />
+                </svg>
+                Tableau de bord
+              </a>
             {:else}
               <a href={googleLoginUrl} class="hero-cta-primary">
                 <svg class="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
@@ -132,55 +147,6 @@
                 <circle cx="190" cy="180" r="0.6" opacity="0.3" />
                 <circle cx="420" cy="200" r="0.7" opacity="0.35" />
                 <circle cx="140" cy="50" r="0.6" opacity="0.3" />
-                <!-- Twinkling stars -->
-                <circle cx="75" cy="155" r="1.2" opacity="0.7">
-                  <animate
-                    attributeName="opacity"
-                    values="0.3;0.9;0.3"
-                    dur="3s"
-                    repeatCount="indefinite"
-                  />
-                </circle>
-                <circle cx="415" cy="100" r="1.4" opacity="0.6">
-                  <animate
-                    attributeName="opacity"
-                    values="0.2;0.85;0.2"
-                    dur="4.2s"
-                    repeatCount="indefinite"
-                  />
-                </circle>
-                <circle cx="265" cy="285" r="1" opacity="0.6">
-                  <animate
-                    attributeName="opacity"
-                    values="0.3;0.85;0.3"
-                    dur="3.6s"
-                    repeatCount="indefinite"
-                  />
-                </circle>
-                <circle cx="130" cy="140" r="1.1" opacity="0.5">
-                  <animate
-                    attributeName="opacity"
-                    values="0.2;0.8;0.2"
-                    dur="5s"
-                    repeatCount="indefinite"
-                  />
-                </circle>
-                <circle cx="350" cy="50" r="1" opacity="0.5">
-                  <animate
-                    attributeName="opacity"
-                    values="0.25;0.75;0.25"
-                    dur="3.8s"
-                    repeatCount="indefinite"
-                  />
-                </circle>
-                <circle cx="30" cy="290" r="1.2" opacity="0.55">
-                  <animate
-                    attributeName="opacity"
-                    values="0.3;0.85;0.3"
-                    dur="4.5s"
-                    repeatCount="indefinite"
-                  />
-                </circle>
               </g>
 
               <!-- Orbital rings: 2 ellipses behind nodes -->
@@ -224,19 +190,6 @@
               >
                 <path d="M 90 95 Q 60 215 95 335" />
                 <path d="M 400 110 Q 430 215 405 330" />
-              </g>
-
-              <!-- Y-fork branch clusters -->
-              <g
-                stroke="rgba(255,255,255,0.12)"
-                stroke-width="0.8"
-                stroke-linecap="round"
-                fill="none"
-              >
-                <path d="M 170 150 Q 190 170 210 155" />
-                <path d="M 170 150 Q 175 180 155 195" />
-                <path d="M 310 270 Q 290 290 270 275" />
-                <path d="M 310 270 Q 305 300 325 315" />
               </g>
 
               <!-- Centre → sources : solid rays -->
@@ -586,17 +539,20 @@
     font-weight: 500;
     transition: all 150ms ease;
     text-decoration: none;
+    border: 1px solid rgba(255, 255, 255, 0.4);
   }
   .hero-cta-light:hover {
     background: #f0f2f5;
-    transform: translateY(-1px);
+    transform: translateY(-2px);
   }
   :global(.dark) .hero-cta-light {
     background: #1e1e2a;
     color: #f5f5f5;
+    border-color: rgba(255, 255, 255, 0.15);
   }
   :global(.dark) .hero-cta-light:hover {
     background: #2a2a3a;
+    border-color: rgba(255, 255, 255, 0.25);
   }
 
   @media (prefers-reduced-motion: reduce) {
