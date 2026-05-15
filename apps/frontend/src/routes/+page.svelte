@@ -227,7 +227,12 @@
               </g>
 
               <!-- Y-fork branch clusters -->
-              <g stroke="rgba(255,255,255,0.12)" stroke-width="0.8" stroke-linecap="round" fill="none">
+              <g
+                stroke="rgba(255,255,255,0.12)"
+                stroke-width="0.8"
+                stroke-linecap="round"
+                fill="none"
+              >
                 <path d="M 170 150 Q 190 170 210 155" />
                 <path d="M 170 150 Q 175 180 155 195" />
                 <path d="M 310 270 Q 290 290 270 275" />
@@ -531,8 +536,9 @@
     border-radius: 12px;
     padding: 1.5rem;
     position: relative;
-    transition: transform 180ms cubic-bezier(0.2, 0.7, 0.3, 1),
-                border-color 180ms ease;
+    transition:
+      transform 180ms cubic-bezier(0.2, 0.7, 0.3, 1),
+      border-color 180ms ease;
   }
   .step-card:hover {
     transform: translateY(-3px);
@@ -562,11 +568,11 @@
 
   /* === CTA section === */
   .cta-section {
-    background: #1A2A4A;
+    background: #1a2a4a;
     color: white;
   }
   :global(.dark) .cta-section {
-    background: #0D1525;
+    background: #0d1525;
   }
   .hero-cta-light {
     display: inline-flex;
