@@ -1,7 +1,7 @@
 <script lang="ts">
   import { env } from '$env/dynamic/public';
   import { Button } from '$lib/components';
-  import { reveal, mouseParallax } from '$lib/actions/reveal';
+  import { reveal } from '$lib/actions/reveal';
   import type { User } from '$lib/api';
 
   const googleLoginUrl = `${env.PUBLIC_API_BASE_URL ?? ''}/api/v1/auth/google/login`;
@@ -78,8 +78,8 @@
           </div>
         </div>
 
-        <!-- Galaxy SVG with parallax 3D -->
-        <div class="hero-galaxy-wrap" use:mouseParallax={{ strength: 0.4 }}>
+        <!-- Galaxy SVG -->
+        <div class="hero-galaxy-wrap">
           <div class="hero-galaxy">
             <svg
               viewBox="0 0 480 420"
@@ -156,18 +156,6 @@
 
               <!-- Central halo -->
               <circle cx="240" cy="210" r="160" fill="url(#centralHalo)" />
-
-              <!-- Source → source citation edges (dashed orbital feel) -->
-              <g
-                stroke="rgba(255,255,255,0.18)"
-                stroke-width="1"
-                stroke-linecap="round"
-                stroke-dasharray="3 4"
-                fill="none"
-              >
-                <path d="M 90 95 Q 60 215 95 335" />
-                <path d="M 400 110 Q 430 215 405 330" />
-              </g>
 
               <!-- Centre → sources : solid rays -->
               <g stroke="rgba(255,255,255,0.22)" stroke-width="1.2" stroke-linecap="round">
@@ -403,11 +391,8 @@
     color: white;
   }
 
-  /* === GALAXY 3D PARALLAX === */
+  /* === GALAXY === */
   .hero-galaxy-wrap {
-    --mx: 0;
-    --my: 0;
-    perspective: 1400px;
     display: flex;
     justify-content: center;
     position: relative;
@@ -415,9 +400,6 @@
   .hero-galaxy {
     width: 100%;
     max-width: 28rem;
-    transform-style: preserve-3d;
-    transform: rotateY(calc(var(--mx) * 9deg)) rotateX(calc(var(--my) * -7deg));
-    transition: transform 220ms cubic-bezier(0.2, 0.7, 0.3, 1);
   }
   /* 3D depth layers: star drift at different speeds */
   :global(.star-layer-far) {
@@ -566,10 +548,6 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .hero-galaxy {
-      transform: none !important;
-      transition: none !important;
-    }
     :global(.star-layer),
     :global(.star-twinkle) {
       animation: none !important;
