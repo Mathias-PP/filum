@@ -1,12 +1,10 @@
-import { env } from '$env/dynamic/public';
-
 import type { LayoutLoad } from './$types';
 
 export const ssr = false;
 
 export const load: LayoutLoad = async ({ fetch }) => {
-  const base = env.PUBLIC_API_BASE_URL ?? '';
-  const response = await fetch(`${base}/api/v1/auth/me`, {
+  // Relative — routed through the SvelteKit /api proxy for first-party cookies.
+  const response = await fetch('/api/v1/auth/me', {
     credentials: 'include',
   });
 

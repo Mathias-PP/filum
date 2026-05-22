@@ -23,7 +23,8 @@
   const creatorSlug = $derived(data.creatorSlug);
   const cardSlug = $derived(data.cardSlug);
 
-  const API_BASE = import.meta.env.PUBLIC_API_BASE_URL ?? '';
+  // Relative — routed through the SvelteKit /api proxy for first-party cookies.
+  const API_BASE = '';
   const ogImageUrl = $derived(
     `${API_BASE}/api/v1/og?title=${encodeURIComponent(card.title)}&creator=${encodeURIComponent(card.creator.display_name ?? card.creator.slug)}`
   );
