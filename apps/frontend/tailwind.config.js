@@ -68,6 +68,11 @@ export default {
         lg: '12px',
         xl: '16px',
       },
+      screens: {
+        // Phone breakpoint just below sm (640px). Used in the header to
+        // hide the "Créer une fiche" CTA on the narrowest devices.
+        xs: '480px',
+      },
     },
   },
   plugins: [forms({ strategy: 'class' }), typography],

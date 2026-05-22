@@ -176,7 +176,11 @@
             </div>
           {:else}
             <Button href={googleLoginUrl} variant="secondary" size="sm">Se connecter</Button>
-            <Button href={googleLoginUrl} variant="primary" size="sm">Créer une fiche</Button>
+            <!-- Hidden on phones (< 480px) to keep both buttons on one line.
+                 Same destination (Google login) so no feature regression. -->
+            <span class="hidden xs:inline-flex">
+              <Button href={googleLoginUrl} variant="primary" size="sm">Créer une fiche</Button>
+            </span>
           {/if}
         </div>
       </div>

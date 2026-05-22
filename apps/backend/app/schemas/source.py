@@ -59,6 +59,10 @@ class SourceBase(BaseModel):
     annotation: str | None = Field(default=None, max_length=500)
     is_pivot: bool = False
     parent_source_id: UUID | None = None
+    # Optional manual archive URL (e.g., Wayback snapshot the user already has).
+    # When provided, it is persisted as-is and the auto-archive background task
+    # is skipped. Empty/null → auto-archive via Wayback "Save Page Now" runs.
+    archive_url: str | None = Field(default=None, max_length=2000)
 
 
 class SourceCreate(SourceBase):
@@ -79,6 +83,7 @@ class SourceUpdate(BaseModel):
     annotation: str | None = None
     is_pivot: bool | None = None
     parent_source_id: UUID | None = None
+    archive_url: str | None = Field(default=None, max_length=2000)
 
 
 class SourceExcerptResponse(BaseModel):

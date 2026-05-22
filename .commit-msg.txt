@@ -1,0 +1,34 @@
+fix(ui+auth+wayback): mobile header buttons, cross-origin cookies, real archiving
+
+Three independent fixes:
+
+1) Header buttons overflow on narrow phones — Button.svelte gets
+whitespace-nowrap by default so labels never wrap inside the fixed
+h-{8|9|11} containers. The "Creer une fiche" CTA is hidden below 480px
+via a new xs Tailwind breakpoint; same Google login target as
+"Se connecter", no feature regression.
+
+2) Google auth fails on mobile (Safari/iOS, WebKit Chrome) while desktop
+works — root cause is third-party cookie blocking by ITP. Backend
+already sets SameSite=None; Secure, but with frontend and backend on
+different origins Safari rejects the cookie on the post-OAuth /auth/me
+request, producing 401 and the "Echec de l'authentification" message.
+Fix: add apps/frontend/vercel.json with a /api/* rewrite to the Railway
+backend so the API is first-party from the browser standpoint. Requires
+post-merge: edit vercel.json with the actual backend host and unset
+PUBLIC_API_BASE_URL on Vercel so the client uses the relative path that
+the rewrite handles. Details in PR description.
+
+3) Wayback Machine archiving not visible on demo cards — WaybackService
+.archive_url only hit archive.org/wayback/available which returns
+existing snapshots without ever creating one, so fresh URLs always
+landed on FAILED. Rewrote the service to also trigger Save Page Now
+(GET web.archive.org/save/<url>, best-effort) before polling
+availability with growing back-offs. Also added an optional archive_url
+field on SourceCreate / SourceUpdate so the user can paste a manual
+snapshot (skips the background task). New input in the dashboard
+source form; existing display on the public card and SourceDetailPanel
+already supports archive_url.
+
+Verified locally: pnpm check / lint / format / build / test all pass,
+ruff check + format clean.
