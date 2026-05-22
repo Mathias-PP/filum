@@ -69,7 +69,16 @@
     left = Math.max(MARGIN, Math.min(containerWidth - PANEL_WIDTH - MARGIN, left));
     let top = anchor.y - PANEL_HEIGHT_EST / 2;
     top = Math.max(MARGIN, Math.min(containerHeight - PANEL_HEIGHT_EST - MARGIN, top));
-    return `left:${left}px; top:${top}px; width:${PANEL_WIDTH}px;`;
+    // Compute the actual max-height in PIXELS based on the available space
+    // below `top`. The previous `max-h-[85%]` class was independent of `top`,
+    // so a tall source (annotation + 4 excerpts + manual archive link, etc.)
+    // could be positioned such that its bottom extended below the graph
+    // container — clipped by `overflow-hidden` on the parent, with the
+    // scrollbar itself out of view. With a pixel-exact max-height, the
+    // overflow always lands inside the visible viewport and the user can
+    // scroll the panel content normally.
+    const maxHeight = Math.max(200, containerHeight - top - MARGIN);
+    return `left:${left}px; top:${top}px; width:${PANEL_WIDTH}px; max-height:${maxHeight}px;`;
   });
 </script>
 
@@ -84,7 +93,7 @@
       onclick={onClose}
     ></button>
     <div
-      class="absolute z-50 left-0 right-0 bottom-0 max-h-[80%] overflow-y-auto bg-white rounded-t-2xl border-t border-slate-200 shadow-2xl"
+      class="panel-scroll absolute z-50 left-0 right-0 bottom-0 max-h-[80%] overflow-y-auto bg-white rounded-t-2xl border-t border-slate-200 shadow-2xl"
       role="dialog"
       aria-modal="true"
       aria-labelledby="source-panel-title"
@@ -93,7 +102,7 @@
     </div>
   {:else}
     <div
-      class="absolute z-50 bg-white shadow-xl border border-slate-200 rounded-xl overflow-y-auto max-h-[85%]"
+      class="panel-scroll absolute z-50 bg-white shadow-xl border border-slate-200 rounded-xl overflow-y-auto"
       style={panelStyle}
       role="dialog"
       aria-modal="false"
@@ -276,3 +285,27 @@
     </div>
   {/if}
 {/snippet}
+
+<style>
+  /* Make the vertical scrollbar persistently visible on platforms that hide
+     it by default (macOS, iOS). Mirrors the styling used on the horizontal
+     excerpts strip so the two affordances feel consistent. */
+  .panel-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(100, 116, 139, 0.45) transparent;
+  }
+  .panel-scroll::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .panel-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .panel-scroll::-webkit-scrollbar-thumb {
+    background-color: rgba(100, 116, 139, 0.45);
+    border-radius: 4px;
+  }
+  .panel-scroll::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(71, 85, 105, 0.7);
+  }
+</style>
