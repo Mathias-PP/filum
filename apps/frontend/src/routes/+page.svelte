@@ -236,11 +236,31 @@
     color: white;
   }
 
-  /* === HERO VISUAL === */
+  /* === HERO VISUAL ===
+     The pulsar canvas is intentionally LARGER than its column. We use a square
+     aspect-ratio (1:1), no max-width, and a negative inset so the canvas spills
+     beyond the column boundaries on lg+ screens. Combined with the shader's
+     alpha-fade at the edges, this makes the graph appear ~2× bigger than the
+     previous boxed version and dissolves seamlessly into the hero background —
+     no visible rectangle, no hard boundary. */
   .hero-galaxy-wrap {
-    display: flex;
-    justify-content: center;
     position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    /* Spill beyond the column on lg+ for a bigger, more immersive rendering. */
+    margin-top: -2rem;
+    margin-bottom: -2rem;
+  }
+  @media (min-width: 1024px) {
+    .hero-galaxy-wrap {
+      /* Extend the canvas into the gap between columns AND beyond the right
+         edge of the section. The shader's alpha-fade handles the dissolve. */
+      width: calc(100% + 6rem);
+      margin-left: -3rem;
+      margin-right: -3rem;
+      margin-top: -4rem;
+      margin-bottom: -4rem;
+    }
   }
 
   /* === REVEAL animation (uses data-reveal attr added by action) === */
