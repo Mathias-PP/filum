@@ -162,13 +162,20 @@
 </div>
 
 <style>
-  /* === HERO: spatial dark background === */
+  /* === HERO: spatial dark background ===
+     Colors tuned to match the WebGL canvas's inner palette so the alpha-faded
+     edge of the graph dissolves invisibly into the section background.
+     - Shader base void: vec3(0.004, 0.005, 0.010) ≈ #010103
+     - Shader lit web:  vec3(0.028, 0.040, 0.095) ≈ #07091A
+     - Shader edge bg:  vec3(0.011, 0.011, 0.025) ≈ #03030D
+     The linear gradient stops are picked from this range; the soft radial
+     overlays add only subtle hue (kept very low alpha). */
   .hero {
     background:
-      radial-gradient(ellipse at 50% 50%, rgba(120, 50, 180, 0.1) 0%, transparent 60%),
-      radial-gradient(ellipse at 25% 30%, rgba(160, 70, 220, 0.07) 0%, transparent 45%),
-      radial-gradient(ellipse at 75% 65%, rgba(40, 160, 190, 0.05) 0%, transparent 40%),
-      linear-gradient(165deg, #050508 0%, #0a0a14 50%, #07070f 100%);
+      radial-gradient(ellipse at 50% 50%, rgba(70, 90, 180, 0.08) 0%, transparent 60%),
+      radial-gradient(ellipse at 25% 30%, rgba(90, 80, 200, 0.05) 0%, transparent 45%),
+      radial-gradient(ellipse at 75% 65%, rgba(40, 80, 160, 0.04) 0%, transparent 40%),
+      linear-gradient(165deg, #02020a 0%, #07091a 50%, #03030d 100%);
     min-height: 80vh;
     color: white;
   }
@@ -237,29 +244,26 @@
   }
 
   /* === HERO VISUAL ===
-     The pulsar canvas is intentionally LARGER than its column. We use a square
-     aspect-ratio (1:1), no max-width, and a negative inset so the canvas spills
-     beyond the column boundaries on lg+ screens. Combined with the shader's
-     alpha-fade at the edges, this makes the graph appear ~2× bigger than the
-     previous boxed version and dissolves seamlessly into the hero background —
-     no visible rectangle, no hard boundary. */
+     The pulsar canvas is intentionally MUCH LARGER than its column. We use a
+     square aspect-ratio (1:1), no max-width, and aggressive negative margins
+     so the canvas spills well beyond the column on lg+ screens. The shader's
+     alpha-fade (45% opaque core, 55% gradient skirt) dissolves the edges into
+     the hero background — wider and softer dissolve than before. */
   .hero-galaxy-wrap {
     position: relative;
     width: 100%;
     aspect-ratio: 1 / 1;
-    /* Spill beyond the column on lg+ for a bigger, more immersive rendering. */
-    margin-top: -2rem;
-    margin-bottom: -2rem;
+    margin-top: -3rem;
+    margin-bottom: -3rem;
   }
   @media (min-width: 1024px) {
     .hero-galaxy-wrap {
-      /* Extend the canvas into the gap between columns AND beyond the right
-         edge of the section. The shader's alpha-fade handles the dissolve. */
-      width: calc(100% + 6rem);
-      margin-left: -3rem;
-      margin-right: -3rem;
-      margin-top: -4rem;
-      margin-bottom: -4rem;
+      /* Spread further: bigger spill into the gap and toward both edges. */
+      width: calc(100% + 12rem);
+      margin-left: -6rem;
+      margin-right: -6rem;
+      margin-top: -7rem;
+      margin-bottom: -7rem;
     }
   }
 
