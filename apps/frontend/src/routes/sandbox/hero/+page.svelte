@@ -15,14 +15,15 @@
   let nodeSpread = $state(1.0);
 
   const NODE_COLORS: [number, number, number][] = [
-    [0.75, 0.87, 0.59],
-    [0.71, 0.83, 0.96],
-    [0.98, 0.78, 0.46],
-    [0.65, 0.91, 0.85],
-    [0.81, 0.80, 0.96],
-    [0.99, 0.90, 0.54],
-    [0.95, 0.65, 0.75],
-    [0.60, 0.95, 0.78],
+    [0.35, 0.55, 0.95], // royal blue — clearly blue
+    [0.55, 0.80, 0.55], // sage green — the ONE green
+    [0.40, 0.78, 0.92], // sky blue — second blue
+    [0.85, 0.55, 0.55], // dusty rose-red
+    [0.85, 0.72, 0.48], // warm amber — the ONE orange
+    [0.72, 0.55, 0.85], // soft violet — cool accent
+    // Extras (used only if nodeCount > 6)
+    [0.85, 0.80, 0.55], // soft yellow
+    [0.55, 0.82, 0.65], // jade green
   ];
 
   // Fixed virtual light direction (normalized): upper-left, slightly toward viewer
@@ -57,6 +58,8 @@
     uniform vec4 uNodes[8];       // xyz position (z: depth), w: radius
     uniform vec3 uNodeColors[8];
     uniform vec3 uLightDir;
+    uniform float uHoverNode[8];  // 0..1 per node — 1 = fully hovered
+    uniform float uHoverCore;     // 0..1 — pulsar hover state
 
     // Hash + value noise
     float hash(vec2 p) {
@@ -176,26 +179,114 @@
 
       vec3 col = vec3(0.0);
 
-      // --- Background nebula (very faint) ---
-      float neb = fbm(uv * 0.6 + vec2(uTime * 0.01, 0.0));
-      col += mix(vec3(0.010, 0.012, 0.025), vec3(0.04, 0.025, 0.07), neb) * 0.12;
+      // ====================================================================
+      // BACKGROUND — Continuous cosmic web / nebula matrix.
+      // ====================================================================
+      // The goal: a coherent textured field that reads as deep-space structure
+      // (cosmic web of gas and dust), not isolated bright color blobs.
+      // Strategy: build a SHARED structural field once, then apply it as both
+      // a brightness pattern AND a color modulation. Colors are very desaturated
+      // so the texture dominates the eye, not the hue.
 
-      // --- Procedural starfield (sparse) ---
-      vec2 starGrid = uv * 40.0;
-      vec2 starId = floor(starGrid);
-      vec2 starF = fract(starGrid) - 0.5;
-      float starRand = hash(starId);
-      if (starRand > 0.985) {
-        float twinkle = 0.7 + 0.3 * sin(uTime * 0.8 + starRand * 100.0);
-        float starDist = length(starF);
-        col += vec3(smoothstep(0.04, 0.0, starDist) * twinkle * 0.7);
-      } else if (starRand > 0.965) {
-        col += vec3(smoothstep(0.025, 0.0, length(starF)) * 0.3);
+      vec2 driftA = vec2(uTime * 0.0025, uTime * 0.0009);
+      vec2 driftB = vec2(uTime * -0.0018, uTime * 0.0013);
+
+      // 1) Deep void base — darker than before
+      col = vec3(0.004, 0.005, 0.010);
+
+      // 2) MATRIX — cosmic web of filaments. Two ridged-noise scales.
+      vec2 matUv = uv * 1.2 + driftA;
+      float m1 = fbm(matUv);
+      float m2 = fbm(matUv * 2.3 + vec2(5.0));
+      float ridge1 = 1.0 - abs(m1 - 0.5) * 2.0;
+      float ridge2 = 1.0 - abs(m2 - 0.5) * 2.0;
+      float webBase = pow(ridge1, 1.4) * 0.6 + pow(ridge2, 2.0) * 0.4;
+      // Large-scale density modulates brightness
+      float density = fbm(uv * 0.5 + driftB);
+
+      // 3) Matrix brightness — deep-blue tint instead of grey. The lit stops
+      //    push more into B than RG so filaments read as cool cosmic dust,
+      //    never washed-out white.
+      vec3 cool = vec3(0.008, 0.012, 0.028);   // base — deep indigo void
+      vec3 lit  = vec3(0.028, 0.040, 0.095);   // lit — clear cobalt-blue (not whitish)
+      vec3 matrix = mix(cool, lit, smoothstep(0.25, 0.90, webBase));
+      matrix *= 0.50 + 0.70 * density;
+      col += matrix;
+
+      // A very faint warm tint in the densest knots (suggests dust glow without
+      // creating bright patches — strictly bounded by the web pattern).
+      float warmKnot = smoothstep(0.70, 0.95, webBase) * density;
+      col += vec3(0.045, 0.025, 0.015) * warmKnot;
+
+      // 4) Very subtle dust lanes — anisotropic ridged carving.
+      vec2 dustUv = uv * vec2(1.4, 0.9) + vec2(2.0, -1.5) + driftB;
+      float dustField = fbm(dustUv);
+      float dustField2 = fbm(dustUv * 2.5 + vec2(7.0));
+      float dustRidge = 1.0 - abs(dustField - 0.5) * 2.0;
+      dustRidge *= 0.6 + 0.4 * dustField2;
+      float dustMask = smoothstep(0.62, 0.95, dustRidge);
+      col *= 1.0 - dustMask * 0.50;
+
+      // NOTE: colored emission regions and distant galaxy disks were removed —
+      // they read as luminous patches rather than as cosmic structure.
+
+      // ====================================================================
+      // STARFIELD — three layers at different scales for depth
+      // ====================================================================
+
+      // Layer 1: distant tiny stars (very dense, low brightness)
+      {
+        vec2 g = uv * 80.0;
+        vec2 id = floor(g);
+        vec2 fp = fract(g) - 0.5;
+        float h = hash(id);
+        if (h > 0.985) {
+          float d = length(fp);
+          col += vec3(0.6, 0.65, 0.75) * smoothstep(0.025, 0.0, d) * 0.4;
+        }
       }
 
-      // --- Pulsar (3D sphere at origin) ---
-      vec2 coreC = uMouse * 0.025;
-      float coreR = 0.085;
+      // Layer 2: mid stars (medium density, varied size)
+      {
+        vec2 g = uv * 35.0;
+        vec2 id = floor(g);
+        vec2 fp = fract(g) - 0.5;
+        float h = hash(id);
+        if (h > 0.978) {
+          float d = length(fp);
+          float size = mix(0.025, 0.06, hash(id + 0.5));
+          float twinkle = 0.65 + 0.35 * sin(uTime * 0.7 + h * 100.0);
+          // Color temp: subtly cooler or warmer per star
+          float ct = hash(id + 1.7);
+          vec3 starCol = mix(vec3(0.7, 0.8, 1.0), vec3(1.0, 0.85, 0.65), ct);
+          col += starCol * smoothstep(size, 0.0, d) * twinkle * 0.65;
+        }
+      }
+
+      // Layer 3: bright foreground stars (rare, bigger, with diffraction spikes)
+      {
+        vec2 g = uv * 14.0;
+        vec2 id = floor(g);
+        vec2 fp = fract(g) - 0.5;
+        float h = hash(id);
+        if (h > 0.992) {
+          float d = length(fp);
+          float twinkle = 0.7 + 0.3 * sin(uTime * 1.1 + h * 200.0);
+          float ct = hash(id + 3.3);
+          vec3 starCol = mix(vec3(0.65, 0.80, 1.0), vec3(1.0, 0.90, 0.75), ct);
+          // Bright core
+          float core = smoothstep(0.05, 0.0, d);
+          // Tiny diffraction cross (only on the brightest)
+          float sx = exp(-abs(fp.x) * 50.0) * exp(-abs(fp.y) * 250.0);
+          float sy = exp(-abs(fp.y) * 50.0) * exp(-abs(fp.x) * 250.0);
+          float spikes = (sx + sy) * 0.45;
+          col += starCol * (core + spikes) * twinkle * 0.9;
+        }
+      }
+
+      // --- Pulsar (3D sphere — position controlled by JS for click-drag) ---
+      vec2 coreC = uMouse;  // uMouse repurposed as "pulsar position" (set by JS)
+      float coreR = 0.085 * (1.0 + 0.10 * uHoverCore);  // grows slightly on hover
       float pulse = 0.5 + 0.5 * sin(uTime * uPulseSpeed * 2.0);
       float coreRPulsed = coreR * (0.985 + 0.030 * pulse);
       vec3 coreColor = hueShift(uCoreHue);
@@ -304,12 +395,19 @@
         vec3 nodeColor = uNodeColors[i];
         float depthBright = 0.75 + 0.25 * clamp(n.z / 0.35 + 0.5, 0.0, 1.0);
 
-        // Occlusion mask: 0 if hidden behind pulsar, 1 otherwise
-        float distToCore = length(n.xy - coreC);
-        float occBehind = step(n.z, -coreRPulsed * 0.2);
-        float occInside = step(distToCore, coreRPulsed - n.w * 0.5);
-        float visible = 1.0 - occBehind * occInside;
-        float mask = active * visible;
+        // Hover: enlarge the radius and brighten the orb
+        float hover = uHoverNode[i];
+        float nodeR = n.w * (1.0 + 0.35 * hover);
+
+        // Per-pixel occlusion by the pulsar (smooth, depth-aware).
+        // pulsarCoverage: 1 inside pulsar disk, 0 outside, AA at edge.
+        // behindMix: 1 if node is behind, 0 if in front, smooth around z=0.
+        float dPixelToCore = length(uv - coreC);
+        float aaCore = uAaPixel.x * 1.4;
+        float pulsarCoverage = 1.0 - smoothstep(coreRPulsed - aaCore, coreRPulsed + aaCore, dPixelToCore);
+        float behindMix = smoothstep(coreRPulsed * 0.05, -coreRPulsed * 0.05, n.z);
+        float occlude = pulsarCoverage * behindMix;
+        float mask = active;
 
         // Light comes FROM the pulsar TOWARD the node — so the node's "lit
         // side" faces the pulsar.
@@ -318,17 +416,20 @@
         // Biome and seed derived from index — deterministic per node.
         float biome = mod(float(i), 4.0);
         float seed = float(i) * 13.37;
-        vec4 sh = nodeSphere(uv, n.xy, n.w, nodeColor, lightDir2D, biome, seed);
-        vec3 lit = sh.rgb * depthBright;
+        vec4 sh = nodeSphere(uv, n.xy, nodeR, nodeColor, lightDir2D, biome, seed);
+        vec3 lit = sh.rgb * (depthBright + 0.40 * hover);
 
-        // Soft outer glow (additive, exp falloff — clean)
+        // Soft outer glow (additive, exp falloff — clean). Intensifies on hover.
+        // Occlusion also fades the glow (so a node passing behind doesn't have
+        // a stranded halo bleeding past the pulsar's silhouette).
         float dN = length(uv - n.xy);
-        float glowOut = max(dN - n.w * 0.95, 0.0);
-        float glowRim  = exp(-glowOut * 28.0) * 0.45;
-        float glowWide = exp(-glowOut * 9.0)  * 0.20;
-        col += nodeColor * (glowRim + glowWide) * depthBright * mask;
+        float glowOut = max(dN - nodeR * 0.95, 0.0);
+        float glowBoost = 1.0 + 1.30 * hover;
+        float glowRim  = exp(-glowOut * 28.0) * 0.45 * glowBoost;
+        float glowWide = exp(-glowOut * 9.0)  * 0.20 * glowBoost;
+        col += nodeColor * (glowRim + glowWide) * depthBright * mask * (1.0 - occlude);
 
-        col = mix(col, lit, sh.a * mask);
+        col = mix(col, lit, sh.a * mask * (1.0 - occlude));
       }
 
       // --- Light bloom on bright pixels ---
@@ -339,9 +440,19 @@
       col = col / (1.0 + col);
       col = pow(col, vec3(0.88));
 
-      // Vignette
-      float vig = smoothstep(1.7, 0.5, length(uv));
-      col *= 0.6 + 0.4 * vig;
+      // Edge fade — blends the canvas with the surrounding page bg so there's
+      // no visible rectangle boundary. Two fades: a soft radial darkening
+      // (cosmic vignette) and a per-axis fade that LERPs to the page bg color
+      // matching the CSS .stage background.
+      vec3 pageBg = vec3(0.011, 0.011, 0.025);
+      // Radial vignette (subtle, cosmic feel)
+      float radialVig = smoothstep(1.7, 0.6, length(uv));
+      col *= 0.55 + 0.45 * radialVig;
+      // Per-axis edge fade — fades sharply only in the last 15% of each axis
+      vec2 edge = abs(vUv - 0.5) * 2.0;
+      float edgeDist = max(edge.x, edge.y);
+      float blend = 1.0 - smoothstep(0.70, 1.0, edgeDist);
+      col = mix(pageBg, col, blend);
 
       gl_FragColor = vec4(col, 1.0);
     }
@@ -355,7 +466,7 @@
       antialias: true,
     });
     const gl = renderer.gl;
-    gl.clearColor(0.02, 0.02, 0.04, 1);
+    gl.clearColor(0.011, 0.011, 0.025, 1);
 
     const geometry = new Triangle(gl);
 
@@ -387,6 +498,8 @@
         uNodes: { value: nodesArr },
         uNodeColors: { value: colorsArr },
         uLightDir: { value: new Vec3(LIGHT_DIR[0], LIGHT_DIR[1], LIGHT_DIR[2]) },
+        uHoverNode: { value: Array.from({ length: 8 }, () => 0) },
+        uHoverCore: { value: 0 },
       },
     });
 
@@ -406,6 +519,13 @@
 
     const targetMouse = new Vec2(0, 0);
     const currentMouse = new Vec2(0, 0);
+    let draggingIdx = -1; // index into the sorted slice (matches current frame)
+    let draggingNodeKey = -1; // stable node identity (NODES index)
+    let draggingCore = false;
+    // Pulsar displacement from its anchor (0,0), eased toward cursor on drag,
+    // toward 0 on release.
+    const coreDisp = { x: 0, y: 0 };
+
     function onMove(e: PointerEvent) {
       const rect = wrapEl.getBoundingClientRect();
       const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -415,9 +535,52 @@
     }
     function onLeave() {
       targetMouse.set(0, 0);
+      draggingIdx = -1;
+      draggingNodeKey = -1;
+      draggingCore = false;
+    }
+    function onDown(e: PointerEvent) {
+      // Front-most pick wins: iterate all nodes, keep the closest hit.
+      const n = nodeCount;
+      let pickKey = -1;
+      let bestD = Infinity;
+      for (let i = 0; i < n; i++) {
+        const c = computed[i];
+        const dx = currentMouse.x - c.x;
+        const dy = currentMouse.y - c.y;
+        const r = c.r * 1.25;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < r * r && d2 < bestD) {
+          bestD = d2;
+          pickKey = c.colorIdx;
+        }
+      }
+      if (pickKey !== -1) {
+        draggingNodeKey = pickKey;
+        wrapEl.setPointerCapture?.(e.pointerId);
+        return;
+      }
+      // No node hit — check the pulsar.
+      const cx = coreDisp.x;
+      const cy = coreDisp.y;
+      const dx = currentMouse.x - cx;
+      const dy = currentMouse.y - cy;
+      const coreHitR = 0.085 * 1.2;
+      if (dx * dx + dy * dy < coreHitR * coreHitR) {
+        draggingCore = true;
+        wrapEl.setPointerCapture?.(e.pointerId);
+      }
+    }
+    function onUp(e: PointerEvent) {
+      draggingNodeKey = -1;
+      draggingCore = false;
+      wrapEl.releasePointerCapture?.(e.pointerId);
     }
     wrapEl.addEventListener('pointermove', onMove);
     wrapEl.addEventListener('pointerleave', onLeave);
+    wrapEl.addEventListener('pointerdown', onDown);
+    wrapEl.addEventListener('pointerup', onUp);
+    wrapEl.addEventListener('pointercancel', onUp);
 
     let rafId = 0;
     let visible = true;
@@ -459,39 +622,50 @@
     const computed: Computed[] = Array.from({ length: 8 }, () => ({
       x: 0, y: 0, z: 0, r: 0.04, colorIdx: 0,
     }));
+    // Per-node displacement from its orbital position (for click-and-drag).
+    // Decays back to (0, 0) when the node is released — re-joins the orbit.
+    const displacement = Array.from({ length: 8 }, () => ({ x: 0, y: 0 }));
+
+    // Hover state — smoothed values, target values computed by mouse picking.
+    const hoverTarget = new Array(8).fill(0) as number[];
+    const hoverCurrent = program.uniforms.uHoverNode.value as number[];
+    let hoverCoreTarget = 0;
 
     const start = performance.now();
     function loop(t: number) {
       rafId = 0;
       if (!visible) return;
-      currentMouse.x += (targetMouse.x - currentMouse.x) * 0.06;
-      currentMouse.y += (targetMouse.y - currentMouse.y) * 0.06;
+      currentMouse.x += (targetMouse.x - currentMouse.x) * 0.10;
+      currentMouse.y += (targetMouse.y - currentMouse.y) * 0.10;
       const time = (t - start) / 1000;
 
-      // Compute node 3D positions
+      // Compute node 3D positions (no cursor pull on the cosmos — orbits are sacred).
+      // Click-drag adds a transient displacement to a single node, which decays
+      // back to zero when released so the node rejoins its orbit smoothly.
       const n = nodeCount;
       const spread = nodeSpread;
-      const mix01 = orbitMix; // for ellipticity blend
-      const mouseAttract = 0.04; // small
+      const mix01 = orbitMix;
       for (let i = 0; i < n; i++) {
         const p = NODES[i];
         const a = p.baseAngle + time * orbitSpeed * p.speed;
-        // 3D ellipse in orbit-local space, then rotate around X by tilt for inclination
         const lx = Math.cos(a) * p.orbitRx * spread;
         const ly0 = Math.sin(a) * (p.orbitRy * (1 - 0.4 * mix01) + p.orbitRx * 0.4 * mix01) * spread;
         const lz0 = Math.sin(a + p.tilt * 0.7) * p.orbitRz * spread;
-        // Rotate around X by tilt to incline the orbit plane
         const cs = Math.cos(p.tilt);
         const sn = Math.sin(p.tilt);
         const ly = ly0 * cs - lz0 * sn;
         const lz = ly0 * sn + lz0 * cs;
-        // Mouse pulls slightly
-        const cx = lx + (currentMouse.x - lx) * mouseAttract;
-        const cy = ly + (currentMouse.y - ly) * mouseAttract;
-        // Depth → size and (later) brightness
         const depthScale = 0.85 + 0.30 * (lz / 0.35);
-        computed[i].x = cx;
-        computed[i].y = cy;
+        // Drag handling: if this node is being held, ease displacement
+        // toward (cursor - orbital_pos) so the rendered position tracks the cursor.
+        const isDragging = p.colorIdx === draggingNodeKey;
+        const dispTargetX = isDragging ? currentMouse.x - lx : 0;
+        const dispTargetY = isDragging ? currentMouse.y - ly : 0;
+        const ease = isDragging ? 0.28 : 0.08; // grab snappy, release smooth
+        displacement[i].x += (dispTargetX - displacement[i].x) * ease;
+        displacement[i].y += (dispTargetY - displacement[i].y) * ease;
+        computed[i].x = lx + displacement[i].x;
+        computed[i].y = ly + displacement[i].y;
         computed[i].z = lz;
         computed[i].r = p.radius * depthScale;
         computed[i].colorIdx = p.colorIdx;
@@ -512,7 +686,45 @@
         colArr[i][2] = c[2];
       }
 
-      program.uniforms.uMouse.value.copy(currentMouse);
+      // --- Mouse picking: find the node under the cursor (front-most only).
+      // Iterate sorted list back-to-front; the LAST matching wins (= front).
+      let pickIdx = -1;
+      for (let i = 0; i < n; i++) {
+        const sNode = slice[i];
+        const dx = currentMouse.x - sNode.x;
+        const dy = currentMouse.y - sNode.y;
+        const r = sNode.r * 1.25; // generous hit area
+        if (dx * dx + dy * dy < r * r) pickIdx = i;
+      }
+      // Hovering the pulsar (only if no node is picked). Use the pulsar's
+      // CURRENT position (it may have been dragged) for the hit test.
+      const coreDx = currentMouse.x - coreDisp.x;
+      const coreDy = currentMouse.y - coreDisp.y;
+      const coreHit =
+        pickIdx === -1 && coreDx * coreDx + coreDy * coreDy < 0.085 * 0.085 * 1.5;
+      hoverCoreTarget = coreHit ? 1 : 0;
+      for (let i = 0; i < 8; i++) hoverTarget[i] = i === pickIdx ? 1 : 0;
+      // Smooth toward target
+      for (let i = 0; i < 8; i++) {
+        hoverCurrent[i] += (hoverTarget[i] - hoverCurrent[i]) * 0.18;
+      }
+      program.uniforms.uHoverCore.value += (hoverCoreTarget - program.uniforms.uHoverCore.value) * 0.18;
+      // Update CSS cursor for affordance
+      const wantPointer = pickIdx !== -1 || coreHit;
+      if (wantPointer && wrapEl.style.cursor !== 'pointer') wrapEl.style.cursor = 'pointer';
+      else if (!wantPointer && wrapEl.style.cursor !== 'crosshair') wrapEl.style.cursor = 'crosshair';
+
+      // Pulsar drag/release easing — anchored at (0,0), decays back when released.
+      {
+        const tx = draggingCore ? currentMouse.x : 0;
+        const ty = draggingCore ? currentMouse.y : 0;
+        const ease = draggingCore ? 0.28 : 0.08;
+        coreDisp.x += (tx - coreDisp.x) * ease;
+        coreDisp.y += (ty - coreDisp.y) * ease;
+      }
+      // uMouse uniform is repurposed: it now carries the pulsar's current
+      // 2D position (the shader reads it as `coreC`).
+      program.uniforms.uMouse.value.set(coreDisp.x, coreDisp.y);
       program.uniforms.uTime.value = time;
       program.uniforms.uBloom.value = bloomStrength;
       program.uniforms.uPulseSpeed.value = pulseSpeed;
@@ -530,6 +742,9 @@
       io.disconnect();
       wrapEl.removeEventListener('pointermove', onMove);
       wrapEl.removeEventListener('pointerleave', onLeave);
+      wrapEl.removeEventListener('pointerdown', onDown);
+      wrapEl.removeEventListener('pointerup', onUp);
+      wrapEl.removeEventListener('pointercancel', onUp);
     };
   });
 </script>
@@ -617,7 +832,7 @@
     width: 100%;
     border-radius: 14px;
     overflow: hidden;
-    background: #02020a;
+    background: #030307;
     position: relative;
     cursor: crosshair;
   }
