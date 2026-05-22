@@ -21,10 +21,13 @@
   const BLOOM_STRENGTH = 0.3;
   const PULSE_SPEED = 0.25;
   const ORBIT_SPEED = 0.12;
-  const NODE_COUNT = 6;
+  const NODE_COUNT = 7;
   const ORBIT_MIX = 0.55;
   const CORE_HUE = 0.58;
   const NODE_SPREAD = 1.0;
+  // Pulsar disk radius in NDC. Bumped from 0.085 → 0.13 (1.5×) so the star
+  // reads big at any container size.
+  const CORE_R = 0.13;
 
   const NODE_COLORS: [number, number, number][] = [
     [0.35, 0.55, 0.95],
@@ -240,7 +243,7 @@
 
       // Pulsar core position (uMouse holds the dragged offset; defaults to 0)
       vec2 coreC = uMouse;
-      float coreR = 0.085 * (1.0 + 0.10 * uHoverCore);
+      float coreR = 0.13 * (1.0 + 0.10 * uHoverCore);
       float pulse = 0.5 + 0.5 * sin(uTime * uPulseSpeed * 2.0);
       float coreRPulsed = coreR * (0.985 + 0.030 * pulse);
       vec3 coreColor = hueShift(uCoreHue);
@@ -370,10 +373,11 @@
       col *= 0.55 + 0.45 * radialVig;
       vec2 edge = abs(vUv - 0.5) * 2.0;
       float edgeDist = max(edge.x, edge.y);
-      // Fade per axis: starts at 65% so the inner ~65% of the canvas remains
-      // fully opaque (the graph reads big and bright), then dissolves
-      // continuously to fully transparent at the edges.
-      float alpha = 1.0 - smoothstep(0.65, 1.0, edgeDist);
+      // Fade per axis: wider dissolve band. The inner ~45% stays fully opaque,
+      // then alpha decays continuously to 0 across the outer 55%. Combined
+      // with the larger wrapper (lg breakpoint margins below), the graph is
+      // spread further over the page with a much softer, more gradual edge.
+      float alpha = 1.0 - smoothstep(0.45, 1.05, edgeDist);
       // Premultiplied alpha avoids fringing when the canvas composites over
       // a textured background.
       gl_FragColor = vec4(col * alpha, alpha);
@@ -489,7 +493,7 @@
           }
           const dx = currentMouse.x - coreDisp.x;
           const dy = currentMouse.y - coreDisp.y;
-          const coreHitR = 0.085 * 1.2;
+          const coreHitR = CORE_R * 1.2;
           if (dx * dx + dy * dy < coreHitR * coreHitR) {
             draggingCore = true;
             wrapEl?.setPointerCapture?.(e.pointerId);
@@ -528,13 +532,16 @@
           colorIdx: number;
         };
         const NODES: NodeParam[] = Array.from({ length: 8 }, (_, i) => ({
-          baseAngle: (i / 6) * Math.PI * 2,
+          // Even angular distribution over the active node count.
+          baseAngle: (i / NODE_COUNT) * Math.PI * 2,
           orbitRx: 0.48 + 0.1 * Math.sin(i * 2.3),
           orbitRy: 0.36 + 0.08 * Math.cos(i * 1.7),
           orbitRz: 0.28 + 0.08 * Math.sin(i * 1.1 + 1.0),
           tilt: i * 0.45,
           speed: 0.85 + 0.3 * Math.sin(i * 1.9),
-          radius: 0.038 + 0.012 * Math.sin(i * 1.3),
+          // Bumped 1.5× from 0.038 / 0.012 → the orbiting planets are visibly
+          // bigger to match the larger pulsar.
+          radius: 0.057 + 0.018 * Math.sin(i * 1.3),
           colorIdx: i,
         }));
 
@@ -610,7 +617,8 @@
           }
           const coreDx = currentMouse.x - coreDisp.x;
           const coreDy = currentMouse.y - coreDisp.y;
-          const coreHit = pickIdx === -1 && coreDx * coreDx + coreDy * coreDy < 0.085 * 0.085 * 1.5;
+          const coreHit =
+            pickIdx === -1 && coreDx * coreDx + coreDy * coreDy < CORE_R * CORE_R * 1.5;
           hoverCoreTarget = coreHit ? 1 : 0;
           for (let i = 0; i < 8; i++) hoverTarget[i] = i === pickIdx ? 1 : 0;
           for (let i = 0; i < 8; i++) {
