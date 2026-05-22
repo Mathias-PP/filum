@@ -4,6 +4,7 @@ export { default as Button } from './Button.svelte';
 export { default as Card } from './Card.svelte';
 export { default as Input } from './Input.svelte';
 export { default as Logo } from './Logo.svelte';
+export { default as HeroPulsar } from './HeroPulsar.svelte';
 export { default as Modal } from './Modal.svelte';
 export { default as ConfirmDialog } from './ConfirmDialog.svelte';
 export { default as Skeleton } from './Skeleton.svelte';
