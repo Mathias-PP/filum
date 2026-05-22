@@ -6,6 +6,27 @@
 
 ## Dernière mise à jour
 
+**2026-05-22 — Sandbox WebGL hero pulsar (`/sandbox/hero`) : prototype validé, prêt à passer en prod.**
+
+Refonte du visuel du hero accueil. Le SVG statique précédent (galaxie 2D avec parallax 3D au survol) a été jugé trop limité ; remplacé en sandbox par un prototype WebGL temps-réel rendu via [OGL](https://github.com/oframe/ogl) (~12 KB gzippé, MIT). Sandbox accessible à `/sandbox/hero` (non indexée, `<meta name="robots" content="noindex,nofollow">`), conservée pour itérations futures (cf. PR à venir).
+
+Caractéristiques du rendu actuel :
+
+- **Étoile bleue centrale (style naine bleue / O-B type)** : photosphère en 3 stops radiaux pré-compensés pour le tonemap Reinhard (HDR > 1.0, ratios bleu-dominants préservés post-compression), limb darkening type Eddington (`0.70 + 0.30 * pow(zN, 0.42)`), granulation fbm haute fréquence très basse amplitude, hotspot central teinté.
+- **Couronne stellaire multi-couches** : chromosphère serrée (`exp(-d*30)`), couronne moyenne (`exp(-d*8)`), halo diffus lointain (`exp(-d*2.5)`), éruptions limbaires animées en coordonnées polaires.
+- **Pointes de diffraction discrètes** (croix horizontale/verticale, intensité 0.20 — juste un soupçon d'effet "étoile brillante" type JWST).
+- **6 nœuds exoplanétaires** en orbite 3D : ellipses inclinées avec composante Z, calcul des positions en JS chaque frame, **tri back-to-front** + occlusion par le pulsar (lignes et nœuds disparaissent quand passent derrière l'astre).
+- **4 biomes** procéduraux par index (géante gazeuse à bandes / rocheuse à continents / marbrée à domain warping / glacée à fractures), rotation ultra-lente (`uTime * 0.0006`), patterns subtils avec tinting cross-channel et terminator doux (la face nuit reste visible pour éviter le popping de motifs).
+- **Lignes de connexion nœud → pulsar** toujours visibles (pas de popping), atténuation douce avec la profondeur.
+- **Interaction souris** : nœuds et cœur légèrement attirés par le curseur (avec smoothing exponentiel sur les coordonnées).
+- **Sliders live** dans la sandbox pour ajuster en temps réel : bloom, vitesse pulsation, vitesse orbite, nombre de nœuds, ellipticité, teinte cœur, étendue.
+
+**Prochaine étape (P1 hero)** : extraire le proto sandbox en composant `<HeroPulsar />` réutilisable, ajouter SVG fallback statique pour LCP (le canvas WebGL ne charge qu'après l'import dynamique), `IntersectionObserver` pour mettre la boucle RAF en pause hors écran, `prefers-reduced-motion` → freeze sur SVG, DPR plafonné à 2. Remplacer le SVG du `+page.svelte` actuel. Décision technique consignée dans **ADR-024**.
+
+**2026-05-22 (PR #60 ouverte)** — Cleanup hero préalable mergé sur la branche : suppression du tilt 3D parallax au survol (`mouseParallax`, jugé peu qualitatif) et des deux courbes pointillées entre nœuds. Voir [PR #60](https://github.com/Mathias-PP/filum/pull/60).
+
+---
+
 **2026-05-15 — UI polish branch `feat/polish-and-a11y` : dark mode, hero, hover effects, CTA, bouton primary.**
 
 Branche `feat/polish-and-a11y` créée depuis `main` avec 6 commits de refonte design system + dark mode + layout + hero galaxie + nouveaux composants. Puis corrections de polish appliquées directement sur la branche :
