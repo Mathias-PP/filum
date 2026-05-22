@@ -534,7 +534,11 @@
 
         type Computed = { x: number; y: number; z: number; r: number; colorIdx: number };
         const computed: Computed[] = Array.from({ length: 8 }, () => ({
-          x: 0, y: 0, z: 0, r: 0.04, colorIdx: 0,
+          x: 0,
+          y: 0,
+          z: 0,
+          r: 0.04,
+          colorIdx: 0,
         }));
         const displacement = Array.from({ length: 8 }, () => ({ x: 0, y: 0 }));
         const hoverTarget = new Array(8).fill(0) as number[];
@@ -554,7 +558,10 @@
             const p = NODES[i];
             const a = p.baseAngle + time * ORBIT_SPEED * p.speed;
             const lx = Math.cos(a) * p.orbitRx * NODE_SPREAD;
-            const ly0 = Math.sin(a) * (p.orbitRy * (1 - 0.4 * ORBIT_MIX) + p.orbitRx * 0.4 * ORBIT_MIX) * NODE_SPREAD;
+            const ly0 =
+              Math.sin(a) *
+              (p.orbitRy * (1 - 0.4 * ORBIT_MIX) + p.orbitRx * 0.4 * ORBIT_MIX) *
+              NODE_SPREAD;
             const lz0 = Math.sin(a + p.tilt * 0.7) * p.orbitRz * NODE_SPREAD;
             const cs = Math.cos(p.tilt);
             const sn = Math.sin(p.tilt);
@@ -597,14 +604,14 @@
           }
           const coreDx = currentMouse.x - coreDisp.x;
           const coreDy = currentMouse.y - coreDisp.y;
-          const coreHit =
-            pickIdx === -1 && coreDx * coreDx + coreDy * coreDy < 0.085 * 0.085 * 1.5;
+          const coreHit = pickIdx === -1 && coreDx * coreDx + coreDy * coreDy < 0.085 * 0.085 * 1.5;
           hoverCoreTarget = coreHit ? 1 : 0;
           for (let i = 0; i < 8; i++) hoverTarget[i] = i === pickIdx ? 1 : 0;
           for (let i = 0; i < 8; i++) {
             hoverCurrent[i] += (hoverTarget[i] - hoverCurrent[i]) * 0.18;
           }
-          program.uniforms.uHoverCore.value += (hoverCoreTarget - program.uniforms.uHoverCore.value) * 0.18;
+          program.uniforms.uHoverCore.value +=
+            (hoverCoreTarget - program.uniforms.uHoverCore.value) * 0.18;
           if (wrapEl) {
             const wantPointer = pickIdx !== -1 || coreHit;
             if (wantPointer && wrapEl.style.cursor !== 'pointer') wrapEl.style.cursor = 'pointer';
