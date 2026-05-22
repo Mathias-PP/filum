@@ -97,6 +97,12 @@ export interface SourceCreate {
   annotation?: string;
   is_pivot?: boolean;
   parent_source_id?: string | null;
+  /**
+   * Optional manual archive URL (e.g. an existing Wayback snapshot the user
+   * already has). When set, the backend skips its background Wayback Save
+   * Page Now task. When omitted or empty, the backend auto-archives.
+   */
+  archive_url?: string | null;
 }
 
 export interface UserProfile {

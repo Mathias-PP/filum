@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime
 from typing import cast
 from uuid import UUID
 
@@ -130,6 +131,11 @@ async def create_source(
     )
     max_pos = max_position.scalar() or 0
 
+    # If the user provided a manual archive URL, we persist it directly and
+    # mark the source as ARCHIVED, skipping the auto-archive background task.
+    # Otherwise we start with PENDING and the background Wayback save runs.
+    manual_archive = (source_data.archive_url or "").strip() or None
+
     source = Source(
         biblio_card_id=card_id,
         position=max_pos + 1,
@@ -143,6 +149,9 @@ async def create_source(
         annotation=source_data.annotation,
         is_pivot=source_data.is_pivot,
         parent_source_id=source_data.parent_source_id,
+        archive_url=manual_archive,
+        archive_status="archived" if manual_archive else "pending",
+        archive_timestamp=datetime.now().replace(tzinfo=None) if manual_archive else None,
     )
 
     db.add(source)
@@ -155,15 +164,16 @@ async def create_source(
     )
     source = cast(Source, result.scalar_one())
 
-    source_id_bg = source.id
-    source_url_bg = source.url
+    if not manual_archive:
+        source_id_bg = source.id
+        source_url_bg = source.url
 
-    async def _archive_bg() -> None:
-        async with async_session_maker() as bg_db:
-            wayback = WaybackService(bg_db, settings.wayback_api_key)
-            await wayback.archive_url(source_id_bg, source_url_bg)
+        async def _archive_bg() -> None:
+            async with async_session_maker() as bg_db:
+                wayback = WaybackService(bg_db, settings.wayback_api_key)
+                await wayback.archive_url(source_id_bg, source_url_bg)
 
-    asyncio.create_task(_archive_bg())
+        asyncio.create_task(_archive_bg())
 
     return source
 
@@ -204,6 +214,20 @@ async def update_source(
     # ADR-019 + ADR-020: published cards are mutable.
 
     update_data = source_data.model_dump(exclude_unset=True)
+    # Special-case archive_url: when the user provides one explicitly we mark
+    # the source ARCHIVED with the current timestamp. When they explicitly
+    # clear it we revert to PENDING and let the next save (or a re-add) handle
+    # auto-archiving.
+    if "archive_url" in update_data:
+        new_archive = (update_data["archive_url"] or "").strip() or None
+        update_data["archive_url"] = new_archive
+        if new_archive:
+            update_data["archive_status"] = "archived"
+            update_data["archive_timestamp"] = datetime.now().replace(tzinfo=None)
+        else:
+            update_data["archive_status"] = "pending"
+            update_data["archive_timestamp"] = None
+
     for field, value in update_data.items():
         setattr(source, field, value)
 

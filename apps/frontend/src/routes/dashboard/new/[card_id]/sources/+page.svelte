@@ -30,6 +30,9 @@
   let authors = $state('');
   let annotation = $state('');
   let isPivot = $state(false);
+  // Optional manual archive URL (e.g. a Wayback snapshot the user already has).
+  // When empty, the backend auto-archives via Wayback Save Page Now.
+  let archiveUrl = $state('');
   let addError = $state<string | null>(null);
   let addLoading = $state(false);
   let editingSourceId = $state<string | null>(null);
@@ -90,6 +93,7 @@
     annotation = '';
     isPivot = false;
     parentSourceId = '';
+    archiveUrl = '';
     lastExtractedUrl = '';
     editingSourceId = null;
     addError = null;
@@ -106,6 +110,7 @@
     annotation = source.annotation ?? '';
     isPivot = source.is_pivot;
     parentSourceId = source.parent_source_id ?? '';
+    archiveUrl = source.archive_url ?? '';
     lastExtractedUrl = source.url;
     addError = null;
     if (typeof document !== 'undefined') {
@@ -134,6 +139,7 @@
           annotation: annotation || undefined,
           is_pivot: isPivot,
           parent_source_id: parentSourceId || null,
+          archive_url: archiveUrl.trim() || null,
         });
         sources = sources.map((s) => (s.id === updated.id ? updated : s));
         resetForm();
@@ -148,6 +154,7 @@
           annotation: annotation || undefined,
           is_pivot: isPivot,
           parent_source_id: parentSourceId || undefined,
+          archive_url: archiveUrl.trim() || null,
         });
         sources = [...sources, s];
         resetForm();
@@ -400,6 +407,24 @@
             placeholder="Pourquoi cette source est-elle importante ?"
             class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-slate-400 resize-none"
           ></textarea>
+        </div>
+
+        <div class="sm:col-span-2 space-y-1.5">
+          <label for="source-archive-url" class="block text-sm font-medium text-slate-700">
+            Lien archivé <span class="text-slate-500 font-normal">(optionnel)</span>
+            <span class="text-xs text-slate-500 font-normal block mt-0.5">
+              Laisser vide pour que Filum tente un archivage automatique via Wayback Machine. Sinon,
+              coller ici un snapshot existant (ex. <code>https://web.archive.org/web/…</code>) ou
+              tout autre miroir d'archive.
+            </span>
+          </label>
+          <input
+            id="source-archive-url"
+            type="url"
+            bind:value={archiveUrl}
+            placeholder="https://web.archive.org/web/2026.../https://..."
+            class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-slate-400 font-mono text-sm"
+          />
         </div>
 
         <div class="sm:col-span-2">
