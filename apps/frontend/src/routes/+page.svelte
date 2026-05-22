@@ -1,6 +1,6 @@
 <script lang="ts">
   import { env } from '$env/dynamic/public';
-  import { Button } from '$lib/components';
+  import { Button, HeroPulsar } from '$lib/components';
   import { reveal } from '$lib/actions/reveal';
   import type { User } from '$lib/api';
 
@@ -78,164 +78,9 @@
           </div>
         </div>
 
-        <!-- Galaxy SVG -->
+        <!-- Hero visual: WebGL pulsar with SVG fallback inline in the component. -->
         <div class="hero-galaxy-wrap">
-          <div class="hero-galaxy">
-            <svg
-              viewBox="0 0 480 420"
-              class="w-full max-w-md"
-              role="img"
-              aria-label="Illustration : galaxie de sources reliées au nœud Filum"
-            >
-              <defs>
-                <radialGradient id="centralHalo" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stop-color="#6B8AFF" stop-opacity="0.55" />
-                  <stop offset="55%" stop-color="#4A6CF7" stop-opacity="0.18" />
-                  <stop offset="100%" stop-color="#4A6CF7" stop-opacity="0" />
-                </radialGradient>
-                <radialGradient id="nodeGlow" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stop-color="#ffffff" stop-opacity="0.4" />
-                  <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
-                </radialGradient>
-                <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
-                  <feGaussianBlur stdDeviation="2.5" />
-                </filter>
-              </defs>
-
-              <!-- Far background stars (small, slow drift — depth layer 3) -->
-              <g class="star-layer star-layer-far" fill="#ffffff">
-                <circle cx="38" cy="62" r="0.5" opacity="0.35" />
-                <circle cx="170" cy="40" r="0.4" opacity="0.25" />
-                <circle cx="380" cy="250" r="0.4" opacity="0.25" />
-                <circle cx="20" cy="380" r="0.5" opacity="0.3" />
-                <circle cx="200" cy="250" r="0.4" opacity="0.25" />
-                <circle cx="300" cy="180" r="0.4" opacity="0.25" />
-                <circle cx="50" cy="120" r="0.5" opacity="0.3" />
-                <circle cx="410" cy="280" r="0.5" opacity="0.25" />
-                <circle cx="30" cy="230" r="0.4" opacity="0.25" />
-                <circle cx="430" cy="50" r="0.5" opacity="0.3" />
-                <circle cx="360" cy="390" r="0.4" opacity="0.25" />
-                <circle cx="460" cy="120" r="0.4" opacity="0.25" />
-                <circle cx="40" cy="330" r="0.5" opacity="0.3" />
-                <circle cx="420" cy="200" r="0.4" opacity="0.25" />
-                <circle cx="140" cy="50" r="0.4" opacity="0.25" />
-              </g>
-
-              <!-- Mid-layer stars (medium, medium drift — depth layer 2) -->
-              <g class="star-layer star-layer-mid" fill="#ffffff">
-                <circle cx="105" cy="200" r="0.7" opacity="0.45" />
-                <circle cx="320" cy="55" r="0.6" opacity="0.45" />
-                <circle cx="450" cy="180" r="0.8" opacity="0.45" />
-                <circle cx="60" cy="280" r="0.7" opacity="0.45" />
-                <circle cx="340" cy="400" r="0.5" opacity="0.4" />
-                <circle cx="290" cy="90" r="0.6" opacity="0.4" />
-                <circle cx="350" cy="320" r="0.6" opacity="0.35" />
-                <circle cx="150" cy="140" r="0.6" opacity="0.4" />
-                <circle cx="250" cy="330" r="0.6" opacity="0.4" />
-                <circle cx="100" cy="360" r="0.5" opacity="0.4" />
-                <circle cx="310" cy="140" r="0.5" opacity="0.35" />
-                <circle cx="190" cy="180" r="0.5" opacity="0.35" />
-                <circle cx="130" cy="310" r="0.7" opacity="0.4" />
-                <circle cx="445" cy="380" r="0.8" opacity="0.45" />
-                <circle cx="160" cy="395" r="0.7" opacity="0.4" />
-              </g>
-
-              <!-- Near foreground stars (larger, faster drift, some twinkle — depth layer 1) -->
-              <g class="star-layer star-layer-near" fill="#ffffff">
-                <circle cx="75" cy="155" r="1.1" opacity="0.7" class="star-twinkle" />
-                <circle cx="415" cy="100" r="1.3" opacity="0.6" class="star-twinkle" />
-                <circle cx="265" cy="285" r="1" opacity="0.6" class="star-twinkle" />
-                <circle cx="130" cy="140" r="1" opacity="0.5" class="star-twinkle" />
-                <circle cx="350" cy="50" r="0.9" opacity="0.5" class="star-twinkle" />
-                <circle cx="30" cy="290" r="1.1" opacity="0.55" class="star-twinkle" />
-                <circle cx="210" cy="130" r="0.8" opacity="0.5" />
-                <circle cx="330" cy="170" r="0.9" opacity="0.5" />
-                <circle cx="180" cy="310" r="0.8" opacity="0.45" />
-                <circle cx="280" cy="390" r="0.9" opacity="0.5" />
-              </g>
-
-              <!-- Central halo -->
-              <circle cx="240" cy="210" r="160" fill="url(#centralHalo)" />
-
-              <!-- Centre → sources : solid rays -->
-              <g stroke="rgba(255,255,255,0.22)" stroke-width="1.2" stroke-linecap="round">
-                <line x1="240" y1="210" x2="90" y2="95" />
-                <line x1="240" y1="210" x2="400" y2="110" />
-                <line x1="240" y1="210" x2="95" y2="335" />
-                <line x1="240" y1="210" x2="405" y2="330" />
-                <line x1="240" y1="210" x2="220" y2="55" />
-                <line x1="240" y1="210" x2="265" y2="380" />
-              </g>
-
-              <!-- Source nodes (slight glow) -->
-              <g filter="url(#softGlow)" opacity="0.55">
-                <circle cx="90" cy="95" r="26" fill="#C0DD97" />
-                <circle cx="400" cy="110" r="26" fill="#B5D4F4" />
-                <circle cx="95" cy="335" r="26" fill="#FAC775" />
-                <circle cx="405" cy="330" r="26" fill="#A7E8D9" />
-                <circle cx="220" cy="55" r="24" fill="#CECBF6" />
-                <circle cx="265" cy="380" r="24" fill="#FDE68A" />
-              </g>
-              <g>
-                <circle cx="90" cy="95" r="22" fill="#C0DD97" stroke="#639922" stroke-width="1.5" />
-                <circle
-                  cx="400"
-                  cy="110"
-                  r="22"
-                  fill="#B5D4F4"
-                  stroke="#378ADD"
-                  stroke-width="1.5"
-                />
-                <circle
-                  cx="95"
-                  cy="335"
-                  r="22"
-                  fill="#FAC775"
-                  stroke="#EF9F27"
-                  stroke-width="1.5"
-                />
-                <circle
-                  cx="405"
-                  cy="330"
-                  r="22"
-                  fill="#A7E8D9"
-                  stroke="#2DAF8F"
-                  stroke-width="1.5"
-                />
-                <circle
-                  cx="220"
-                  cy="55"
-                  r="20"
-                  fill="#CECBF6"
-                  stroke="#7F77DD"
-                  stroke-width="1.5"
-                />
-                <circle
-                  cx="265"
-                  cy="380"
-                  r="20"
-                  fill="#FDE68A"
-                  stroke="#CA8A04"
-                  stroke-width="1.5"
-                />
-              </g>
-
-              <!-- Central "Filum" node (white-cream, blue stroke) -->
-              <circle cx="240" cy="210" r="58" fill="url(#nodeGlow)" opacity="0.6" />
-              <circle cx="240" cy="210" r="40" fill="#F0F2F5" stroke="#6B8AFF" stroke-width="2" />
-              <text
-                x="240"
-                y="216"
-                text-anchor="middle"
-                font-size="16"
-                font-weight="700"
-                fill="#1A1A1A"
-                font-family="Inter, system-ui">Filum</text
-              >
-
-              <!-- Source labels (only "Filum" kept, others removed) -->
-            </svg>
-          </div>
+          <HeroPulsar />
         </div>
       </div>
     </div>
@@ -391,74 +236,11 @@
     color: white;
   }
 
-  /* === GALAXY === */
+  /* === HERO VISUAL === */
   .hero-galaxy-wrap {
     display: flex;
     justify-content: center;
     position: relative;
-  }
-  .hero-galaxy {
-    width: 100%;
-    max-width: 28rem;
-  }
-  /* 3D depth layers: star drift at different speeds */
-  :global(.star-layer-far) {
-    animation: star-drift-far 90s ease-in-out infinite alternate;
-  }
-  :global(.star-layer-mid) {
-    animation: star-drift-mid 50s ease-in-out infinite alternate;
-  }
-  :global(.star-layer-near) {
-    animation: star-drift-near 30s ease-in-out infinite alternate;
-  }
-  :global(.star-twinkle) {
-    animation: star-twinkle 3s ease-in-out infinite;
-  }
-  :global(.star-twinkle:nth-child(2n)) {
-    animation-duration: 4.2s;
-    animation-delay: -1s;
-  }
-  :global(.star-twinkle:nth-child(3n)) {
-    animation-duration: 3.6s;
-    animation-delay: -2.5s;
-  }
-  :global(.star-twinkle:nth-child(5n)) {
-    animation-duration: 5s;
-    animation-delay: -0.5s;
-  }
-
-  @keyframes star-drift-far {
-    from {
-      transform: translate(0, 0);
-    }
-    to {
-      transform: translate(1.5px, 1px);
-    }
-  }
-  @keyframes star-drift-mid {
-    from {
-      transform: translate(0, 0);
-    }
-    to {
-      transform: translate(2.5px, 2px);
-    }
-  }
-  @keyframes star-drift-near {
-    from {
-      transform: translate(0, 0);
-    }
-    to {
-      transform: translate(4px, 3px);
-    }
-  }
-  @keyframes star-twinkle {
-    0%,
-    100% {
-      opacity: 0.25;
-    }
-    50% {
-      opacity: 0.85;
-    }
   }
 
   /* === REVEAL animation (uses data-reveal attr added by action) === */
@@ -547,10 +329,5 @@
     border-color: rgba(255, 255, 255, 0.25);
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    :global(.star-layer),
-    :global(.star-twinkle) {
-      animation: none !important;
-    }
-  }
+  /* Reduced motion handled inside HeroPulsar.svelte (skips WebGL init). */
 </style>
