@@ -42,7 +42,8 @@
   let extracting = $state(false);
   let lastExtractedUrl = $state('');
 
-  const EXTRACT_API = `${import.meta.env.PUBLIC_API_BASE_URL ?? ''}/api/v1/sources/extract`;
+  // Relative — routed through the SvelteKit /api proxy for first-party cookies.
+  const EXTRACT_API = '/api/v1/sources/extract';
 
   async function extractUrl() {
     if (!url || url === lastExtractedUrl) return;

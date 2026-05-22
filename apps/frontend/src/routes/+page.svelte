@@ -1,10 +1,11 @@
 <script lang="ts">
-  import { env } from '$env/dynamic/public';
   import { Button, HeroPulsar } from '$lib/components';
   import { reveal } from '$lib/actions/reveal';
   import type { User } from '$lib/api';
 
-  const googleLoginUrl = `${env.PUBLIC_API_BASE_URL ?? ''}/api/v1/auth/google/login`;
+  // Always relative — goes through the SvelteKit /api proxy so the OAuth
+  // state + session cookies are first-party (see src/routes/api/[...path]/+server.ts).
+  const googleLoginUrl = '/api/v1/auth/google/login';
 
   interface PageData {
     user: User | null;

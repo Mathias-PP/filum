@@ -1,3 +1,4 @@
+import { browser } from '$app/environment';
 import { env } from '$env/dynamic/public';
 
 import type {
@@ -14,7 +15,15 @@ import type {
 } from './types';
 import { normalizeCardDetail, normalizeSource } from './legacy-adapter';
 
-const API_BASE = `${env.PUBLIC_API_BASE_URL ?? ''}/api/v1`;
+// In the browser we ALWAYS use a relative path so requests hit the SvelteKit
+// /api proxy (src/routes/api/[...path]/+server.ts), which forwards to the
+// FastAPI backend SERVER-SIDE and makes session cookies first-party.
+// Without this same-origin proxy, mobile Safari/iOS WebKit silently blocks
+// the backend's session cookie as a third-party cookie (ITP), which is the
+// exact symptom of the "Echec de l'authentification" reported on mobile only.
+// On SSR (during page render on Vercel) we may still use the env var if set,
+// but it works equally well with a relative path through the same proxy.
+const API_BASE = browser ? '/api/v1' : `${env.PUBLIC_API_BASE_URL ?? ''}/api/v1`;
 
 class ApiError extends Error {
   constructor(

@@ -1,6 +1,5 @@
 <script lang="ts">
   import '../app.css';
-  import { env } from '$env/dynamic/public';
   import { goto, invalidateAll } from '$app/navigation';
   import { fly } from 'svelte/transition';
   import { api, type User } from '$lib/api';
@@ -8,7 +7,8 @@
   import { page } from '$app/stores';
   import { Logo, Button, Toast, ThemeToggle } from '$lib/components';
 
-  const API_BASE = env.PUBLIC_API_BASE_URL ?? '';
+  // Relative — routed through the SvelteKit /api proxy for first-party cookies.
+  const API_BASE = '';
   const googleLoginUrl = `${API_BASE}/api/v1/auth/google/login`;
 
   interface Props {
