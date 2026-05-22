@@ -6,6 +6,40 @@
 
 ## Dernière mise à jour
 
+**2026-05-22 — Refonte hero (WebGL pulsar) + logo V11 + favicon, déployés en prod sur `main`. Sandbox `/sandbox/hero` et `/sandbox/logo` conservées pour itérations futures.**
+
+Quatre PR mergées dans `main` cette journée, séquence courte mais avec une grosse leçon de process :
+
+- **PR #61** (`feat/hero-pulsar-prod` → `main`, mergée 10:29 UTC) — Mise en prod de la première version du hero WebGL et du logo V11.
+  - Nouveau composant `apps/frontend/src/lib/components/HeroPulsar.svelte` : single full-screen quad fragment shader rendu via OGL (~12 KB gzippé, **lazy-imported** via `import('ogl')`). Étoile bleue type O/B au centre (limb darkening, couronne multi-couches, pointes de diffraction, éruptions plasma au limbe), 6 nœuds-exoplanètes en orbite 3D inclinée avec occlusion **par pixel** quand ils passent derrière l'astre, 4 biomes procéduraux (géante gazeuse, rocheuse, marbrée, glacée). Fond : matrice cosmique continue (ridged noise + dust lanes).
+  - Contrat de performance respecté : SVG fallback inline rendu synchrone → LCP préservé, `IntersectionObserver` pause le RAF hors-écran, `prefers-reduced-motion` skip WebGL, `devicePixelRatio` plafonné à 2. Chunk OGL séparé (~27 KB), 0 KB sur le bundle initial des autres routes.
+  - Interactivité : hover par nœud et sur le pulsar (curseur CSS + highlight) ; click-and-drag sur n'importe quel élément, retour à l'orbite/anchor en easing à la libération.
+  - Logo `apps/frontend/src/lib/components/Logo.svelte` réécrit en V11 (3 forks + 3 simples alternés à 60°, symétrie d'ordre 3). API props inchangée, utilise `currentColor` donc `className="text-info"` continue de marcher.
+  - Dépendance ajoutée : `ogl@^1.0.11` (MIT). Pitfalls documentés en **ADR-024**.
+
+- **PR #62** — **PR perdue par erreur de process** : créée avec `--base feat/hero-pulsar-prod` à l'origine (parce que #61 n'était pas encore mergée et que je voulais isoler le diff), puis non rebasée vers `main` quand #61 a été mergée. Mergée dans `feat/hero-pulsar-prod` → contenu jamais arrivé sur `main`. **Leçon retenue** : quand une PR cible une feature branch en attente d'une PR parente, signaler explicitement la nécessité de rebaser dès que la parente est mergée.
+
+- **PR #63** (`fix/recover-pr62-to-main` → `main`, mergée 13:55 UTC) — Cherry-pick du commit perdu vers `main`. Apporte :
+  - **Favicon mis à jour** (`static/favicon.svg`) avec le tracé V11. Onglet Chrome / bookmarks / PWA reflètent enfin le nouveau logo.
+  - **Cadre rigide du hero supprimé** : WebGL en `alpha: true` + `premultipliedAlpha: true` + `gl.clearColor(0,0,0,0)`. Shader sort `vec4(col * alpha, alpha)` avec fondu alpha → le canvas est réellement transparent à ses bords, le fond du `<section class="hero">` bleed à travers.
+  - **Graphe ~2× plus gros** : aspect-ratio 1:1 sans max-width, marges négatives sur lg+ pour spill au-delà de la colonne.
+
+- **PR #64** (`feat/hero-bigger-and-spread` → `main`, mergée fin de journée) — Ajustements esthétiques finaux :
+  - Pulsar et nœuds 1.5× plus gros (`CORE_R` 0.085 → 0.13, rayons nœuds 0.038 → 0.057).
+  - **7 nœuds** au lieu de 6 (`NODE_COUNT` 7, distribution angulaire corrigée en `(i / NODE_COUNT) * 2π` pour éviter le chevauchement à 360°).
+  - Fade élargi : `smoothstep(0.45, 1.05)` au lieu de `(0.65, 1.0)` → 45 % opaque, 60 % de dissolution douce. Wrapper margins doublés sur lg+ (`width: calc(100% + 12rem)`, `-6/-7rem`).
+  - Fond de la `<section class="hero">` recalé sur la palette intérieure du shader (`#02020a → #07091a → #03030d`, halos radiaux désaturés) → la transition canvas → page est désormais imperceptible.
+
+**Sandbox laissées en place** sur la branche `feat/polish-and-a11y` (déjà mergée via PR #60 pour le polish UI, mais les commits sandbox d82e030 + 6cfee68 sont **stranded** dessus, non mergés dans main) :
+- `apps/frontend/src/routes/sandbox/hero/+page.svelte` — proto avec 6 sliders live (bloom, vitesse pulsation/orbite, nodeCount, ellipticité, teinte cœur, étendue)
+- `apps/frontend/src/routes/sandbox/logo/+page.svelte` — 11 variantes + référence du logo, panneau de contrôle live (taille, épaisseur, couleurs)
+
+Ces routes sont en `<meta name="robots" content="noindex, nofollow">` et n'ont jamais été déployées en prod. Si tu veux les rendre accessibles en prod un jour pour réitérer, il faudra les cherry-picker depuis `feat/polish-and-a11y` vers une nouvelle branche basée sur `main`.
+
+**ADR-024 (Hero WebGL via OGL)** également stranded sur `feat/polish-and-a11y`. La présente PR docs le rapatrie dans `DECISIONS.md` sur `main` pour qu'il soit consultable depuis l'arborescence principale.
+
+---
+
 **2026-05-15 — UI polish branch `feat/polish-and-a11y` : dark mode, hero, hover effects, CTA, bouton primary.**
 
 Branche `feat/polish-and-a11y` créée depuis `main` avec 6 commits de refonte design system + dark mode + layout + hero galaxie + nouveaux composants. Puis corrections de polish appliquées directement sur la branche :

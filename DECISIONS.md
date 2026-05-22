@@ -6,6 +6,42 @@
 
 ---
 
+## ADR-024 — Hero accueil : WebGL via OGL plutôt que SVG/Canvas 2D/three.js
+
+**Date** : 2026-05-22
+
+**Contexte**
+Le hero du site (accueil `/`) sert d'effet vitrine. Le SVG statique précédent (galaxie 2D + parallax 3D au survol) ne tenait pas le niveau visuel souhaité (« naine bleue avec exoplanètes en orbite »). Besoin d'un rendu temps-réel haute qualité sans dégrader les Core Web Vitals (LCP en particulier).
+
+**Options envisagées**
+- **SVG enrichi + CSS animations** : 0 KB de bundle. Pas de vrai bloom, pas de particules GPU, plafond visuel atteint.
+- **Canvas 2D pur** : 0 KB. Glow via gradients radiaux acceptable, mais pas de post-process volumétrique, CPU-bound (~5-15 % continu mobile).
+- **Three.js** : ~150 KB gzippé. Capacité visuelle maximale, mais coût bundle disproportionné pour un seul composant.
+- **[OGL](https://github.com/oframe/ogl) (retenu)** : ~12 KB gzippé, WebGL low-level minimaliste, MIT. Capacité quasi-équivalente à three.js (custom shaders, FBO, instancing) pour 12× moins de poids.
+
+**Justifications**
+- 1 draw call par frame (un seul quad fullscreen, tout le rendu en fragment shader) → faible coût GPU desktop comme mobile.
+- Bundle isolé via import dynamique : le chunk WebGL ne charge **que** sur la route home, jamais sur dashboard/fiches publiques/etc.
+- LCP préservé par fallback SVG statique affiché immédiatement, swap quand le canvas est prêt.
+- `IntersectionObserver` met la boucle RAF en pause hors-écran (0 % CPU quand on scrolle plus bas).
+- `prefers-reduced-motion` → on ne charge même pas le module WebGL, on reste sur le SVG.
+- DPR plafonné à 2 (au-delà : invisible à l'œil, cuit le GPU mobile).
+
+**Conséquences**
+- Une dépendance frontend supplémentaire (`ogl@^1.0.11`).
+- Maintien possible par un développeur seul (shaders GLSL ES 1.0 documentés, sans abstractions surcouches).
+- Coût mesuré (en prod) : +0 KB sur le bundle initial des autres routes, +27 KB sur le chunk de la home (lazy), 1-3 % CPU desktop quand visible.
+- **Implémentation prod** (PR #61 + #63 + #64) : `apps/frontend/src/lib/components/HeroPulsar.svelte` — SVG fallback inline rendu synchrone, OGL dynamic-imported sur mount, IntersectionObserver pause/reprise, prefers-reduced-motion skip WebGL, DPR cap, canvas en `alpha: true`/`premultipliedAlpha`, edge-fade alpha pour dissolution dans le fond de la `<section class="hero">`.
+
+**Pitfalls rencontrés (à connaître pour future maintenance)**
+- OGL détecte les uniforms array via `Array.isArray()` : il faut passer `Array<Array<number>>`, **pas** un `Float32Array` (qui échoue silencieusement avec « Active uniform xxx[0] has not been supplied »).
+- En WebGL1 (ANGLE/D3D sur Windows), `break` ou `continue` dépendant d'un uniform dans une boucle peuvent être rejetés par le driver. Pattern adopté : masque multiplicatif `step(float(i)+0.5, float(uCount))` et toutes les itérations exécutées.
+- `pow(x, y)` avec `x < 0` retourne `NaN` en GLSL — qui se propage et noircit toute la frame via `mix`. Toujours `max(x, 0.0)` avant `pow`.
+- Le tonemap Reinhard `col / (1.0 + col)` écrase les couleurs très brillantes (RGB ~1.5 chacun) vers le gris. Pour conserver une teinte forte, **pré-compenser** : utiliser des valeurs HDR > 1.0 avec ratios bleu-dominants marqués.
+- Sur le node count : la distribution angulaire `(i / N) * 2π` doit utiliser `N = NODE_COUNT` exactement, pas un littéral hardcodé — sinon les nœuds 0 et N se superposent à 360° quand on change `NODE_COUNT`.
+
+---
+
 ## ADR-001 — Stack backend : FastAPI + PostgreSQL + DuckDB + dbt
 
 **Date** : 2026-04 (phase de planification)
