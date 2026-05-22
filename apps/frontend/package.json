@@ -46,7 +46,7 @@
     "@tailwindcss/forms": "^0.5.9",
     "@tailwindcss/typography": "^0.5.15",
     "d3": "^7.9.0",
-    "lucide-svelte": "^0.460.0",
+    "lucide-svelte": "^1.0.1",
     "ogl": "^1.0.11"
   },
   "pnpm": {
