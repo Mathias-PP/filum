@@ -363,16 +363,20 @@
       col = col / (1.0 + col);
       col = pow(col, vec3(0.88));
 
-      // Edge blend to page background (no hard rectangle boundary)
-      vec3 pageBg = vec3(0.011, 0.011, 0.025);
+      // Edge fade — true alpha transparency so whatever is behind the canvas
+      // (the host hero section background) shows through unchanged. No solid
+      // rectangle, no visible boundary.
       float radialVig = smoothstep(1.7, 0.6, length(uv));
       col *= 0.55 + 0.45 * radialVig;
       vec2 edge = abs(vUv - 0.5) * 2.0;
       float edgeDist = max(edge.x, edge.y);
-      float blend = 1.0 - smoothstep(0.70, 1.0, edgeDist);
-      col = mix(pageBg, col, blend);
-
-      gl_FragColor = vec4(col, 1.0);
+      // Fade per axis: starts at 65% so the inner ~65% of the canvas remains
+      // fully opaque (the graph reads big and bright), then dissolves
+      // continuously to fully transparent at the edges.
+      float alpha = 1.0 - smoothstep(0.65, 1.0, edgeDist);
+      // Premultiplied alpha avoids fringing when the canvas composites over
+      // a textured background.
+      gl_FragColor = vec4(col * alpha, alpha);
     }
   `;
 
@@ -395,11 +399,13 @@
         const renderer = new Renderer({
           canvas: canvasEl,
           dpr: Math.min(window.devicePixelRatio, 2),
-          alpha: false,
+          alpha: true, // canvas itself is transparent at edges (see frag shader)
+          premultipliedAlpha: true,
           antialias: true,
         });
         const gl = renderer.gl;
-        gl.clearColor(0.011, 0.011, 0.025, 1);
+        // Fully transparent clear — canvas does not paint a background rect.
+        gl.clearColor(0, 0, 0, 0);
 
         const geometry = new Triangle(gl);
 
@@ -660,9 +666,11 @@
 
 <div class="hero-pulsar" bind:this={wrapEl}>
   <!-- SVG fallback: renders on first paint so LCP isn't blocked by the WebGL
-       module download. Fades out once the canvas has its first frame. -->
+       module download. Fades out once the canvas has its first frame.
+       Transparent background — relies on the host's bg to show through. -->
   <svg
     viewBox="0 0 480 420"
+    preserveAspectRatio="xMidYMid slice"
     class="fallback"
     class:hidden={webglReady}
     role="img"
@@ -680,7 +688,6 @@
         <stop offset="100%" stop-color="#4A6CF7" stop-opacity="0" />
       </radialGradient>
     </defs>
-    <rect width="480" height="420" fill="#0a0a14" />
     <!-- Subtle scattered stars -->
     <g fill="#ffffff" opacity="0.6">
       <circle cx="60" cy="50" r="0.8" />
@@ -720,14 +727,14 @@
 </div>
 
 <style>
+  /* Wrapper is fully transparent — width/height/aspect controlled by parent.
+     No background, no border, no border-radius: the WebGL canvas fades to
+     transparent at the edges (alpha output) and the host's section background
+     bleeds through, so the visual integrates seamlessly with the page. */
   .hero-pulsar {
     position: relative;
     width: 100%;
-    aspect-ratio: 4 / 3;
-    max-width: 28rem;
-    border-radius: 14px;
-    overflow: hidden;
-    background: #030307;
+    height: 100%;
   }
   .fallback,
   .canvas {
