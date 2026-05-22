@@ -86,6 +86,35 @@ def _generate_state() -> str:
     return secrets.token_urlsafe(32)
 
 
+def _public_callback_url(request: Request) -> str:
+    """Build the OAuth callback URL on the *public-facing* origin.
+
+    When the backend sits behind a reverse proxy (Vercel rewrites `/api/*`
+    to Railway in production, vite-dev proxies it to FastAPI), the request
+    arrives at Railway with the original host preserved in
+    ``X-Forwarded-Host``. Using that for the OAuth ``redirect_uri`` ensures:
+
+      * Google sends users back to the SAME origin where the state cookie
+        was set (otherwise the cookie isn't on Railway's host and the state
+        check fails),
+      * the post-OAuth ``Set-Cookie filum_session`` lands on the origin where
+        the SPA later calls ``/auth/me`` (otherwise it's a third-party cookie
+        that Safari/ITP silently drops on mobile — the root cause of the
+        "Échec de l'authentification" reported on mobile only, while desktop
+        worked).
+
+    Falls back to ``backend_base_url`` for direct (un-proxied) calls, e.g.
+    backend-to-backend or a curl test.
+    """
+    forwarded_host = request.headers.get("x-forwarded-host")
+    if forwarded_host:
+        # Some proxies append origins; the original is first.
+        forwarded_host = forwarded_host.split(",")[0].strip()
+        forwarded_proto = request.headers.get("x-forwarded-proto", "https").split(",")[0].strip()
+        return f"{forwarded_proto}://{forwarded_host}/api/v1/auth/google/callback"
+    return f"{settings.backend_base_url}/api/v1/auth/google/callback"
+
+
 @router.get("/google/login")
 async def google_login(request: Request):
     if not settings.google_client_id:
@@ -95,7 +124,7 @@ async def google_login(request: Request):
         )
 
     state = _generate_state()
-    redirect_uri = f"{settings.backend_base_url}/api/v1/auth/google/callback"
+    redirect_uri = _public_callback_url(request)
 
     auth_url = (
         f"https://accounts.google.com/o/oauth2/v2/auth?"
@@ -154,7 +183,9 @@ async def google_callback(
                     "code": code,
                     "client_id": settings.google_client_id,
                     "client_secret": settings.google_client_secret,
-                    "redirect_uri": f"{settings.backend_base_url}/api/v1/auth/google/callback",
+                    # Must MATCH the redirect_uri sent at /login (Google
+                    # enforces this); use the same proxy-aware derivation.
+                    "redirect_uri": _public_callback_url(request),
                     "grant_type": "authorization_code",
                 },
             )

@@ -112,6 +112,15 @@ def _demo_sources() -> list[dict]:
             "parent_index": None,
             "citations_count": 12423,
             "impact_factor": 49.8,
+            # Pre-populated Wayback snapshots for a few demo sources so the
+            # "Voir l'archive" CTA is exercised on the public card without
+            # waiting for the background Save-Page-Now task to land. Wayback
+            # URLs with a full timestamp resolve to the closest snapshot, so
+            # these stay valid even if the exact moment isn't archived.
+            "archive_url": (
+                "https://web.archive.org/web/20240601000000/"
+                "https://www.science.org/doi/10.1126/science.1067020"
+            ),
             "excerpts": [
                 (
                     "La mémoire à long terme requiert la synthèse de nouvelles protéines "
@@ -151,6 +160,10 @@ def _demo_sources() -> list[dict]:
             "parent_index": 1,
             "citations_count": 4567,
             "impact_factor": 50.5,
+            "archive_url": (
+                "https://web.archive.org/web/20240601000000/"
+                "https://www.nature.com/articles/35021052"
+            ),
         },
         {
             "url": "https://www.nature.com/articles/nature11028",
@@ -252,6 +265,10 @@ def _demo_sources() -> list[dict]:
             ),
             "is_pivot": False,
             "parent_index": 1,
+            "archive_url": (
+                "https://web.archive.org/web/20240601000000/"
+                "https://www.nytimes.com/2023/03/30/well/mind/memory-brain-science.html"
+            ),
             "excerpts": [
                 (
                     "Chaque souvenir rappelé est en partie reconstruit ; les neurosciences "
@@ -269,6 +286,11 @@ def _demo_sources() -> list[dict]:
             "annotation": "Article 2024 reprenant les ressources NIH sur sommeil et consolidation.",
             "is_pivot": False,
             "parent_index": 6,
+            "archive_url": (
+                "https://web.archive.org/web/20240601000000/"
+                "https://www.lemonde.fr/sciences/article/2024/03/15/"
+                "le-sommeil-gardien-de-la-memoire.html"
+            ),
         },
         {
             "url": "https://www.nature.com/articles/d41586-022-04123-3",
@@ -359,6 +381,10 @@ def _demo_sources() -> list[dict]:
             "is_pivot": False,
             "parent_index": 4,
             "views_count": 2_100_000,
+            "archive_url": (
+                "https://web.archive.org/web/20240601000000/"
+                "https://www.pbs.org/wgbh/nova/video/memory-hackers/"
+            ),
             "excerpts": [
                 (
                     "Chez certains individus, la mémoire n'est pas une histoire figée : "
@@ -463,6 +489,7 @@ async def _get_or_create_demo_card(
 
     created_sources: list[Source] = []
     for position, src in enumerate(sources_spec):
+        manual_archive = src.get("archive_url")
         source = Source(
             biblio_card_id=card.id,
             position=position,
@@ -474,7 +501,11 @@ async def _get_or_create_demo_card(
             author_kind=src["author_kind"],
             annotation=src["annotation"],
             is_pivot=src["is_pivot"],
-            archive_status=ArchiveStatus.PENDING.value,
+            archive_url=manual_archive,
+            archive_status=(
+                ArchiveStatus.ARCHIVED.value if manual_archive else ArchiveStatus.PENDING.value
+            ),
+            archive_timestamp=(datetime.now(UTC).replace(tzinfo=None) if manual_archive else None),
             conflict_of_interest=src.get("conflict_of_interest"),
             citations_count=src.get("citations_count"),
             subscribers_count=src.get("subscribers_count"),
