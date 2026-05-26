@@ -6,6 +6,30 @@
 
 ## Dernière mise à jour
 
+**2026-05-26 (soir) — Audit complet du repo et nettoyage. 4 PR poussées en phases.**
+
+Audit déclenché par la demande utilisateur : cohérence doc/code, anticipation des bottlenecks, nettoyage des branches obsolètes. Délégué l'audit code à un agent Explore, sanity-checké ses findings (3 hallucinations sur 8 dans son rapport — corrigées avant action). Résultat livré en 4 phases, chacune une PR distincte sur main.
+
+- **PR #79** (`chore/salvage-sandboxes-to-main`) — Phase 1 : sauvegarde sur main des sandboxes `/sandbox/hero` (884 lignes) et `/sandbox/logo` (607 lignes), qui vivaient depuis 4 jours uniquement sur la branche stranded `feat/polish-and-a11y`. Méthode `git checkout origin/feat/polish-and-a11y -- apps/frontend/src/routes/sandbox/{hero,logo}/+page.svelte` plutôt que cherry-pick (qui aurait charrié 28 autres fichiers obsolètes).
+- **PR #80** (`fix/ssrf-secrets-cleanup`) — Phase 3 sécurité/robustesse :
+  - **SSRF guard** (`apps/backend/app/core/url_safety.py`) sur `/sources/extract` et défense en profondeur dans `WaybackService`. Bloque loopback, RFC1918, link-local (169.254.169.254 metadata cloud), multicast, reserved. 16 tests.
+  - **Fail-hard sur secrets manquants en prod** : `config.py::_validate_secrets` lève un `RuntimeError` clair si `session_secret`/`master_encryption_key` sont vides hors dev/CI. Avant : régénération silencieuse à chaque démarrage Railway → invalidation de toutes les sessions + corruption de la clé qui chiffre les clés privées.
+  - **Suppression endpoint `/verify` legacy** (cards + schemas + frontend stub).
+  - **Doc `.env.example`** : `PUBLIC_API_BASE_URL` marqué "do not set in prod".
+- **PR #81** (`feat/soft-delete-cards-sources`) — Phase 4 : soft-delete sur `BiblioCard` et `Source`.
+  - Migration `008_source_deleted_at` ajoute la colonne sur sources (BiblioCard l'avait déjà depuis 001 mais elle était inutile — aucune query ne filtrait).
+  - Toutes les queries publiques + dashboard + endpoints sources filtrent `deleted_at IS NULL`, eager-loads compris.
+  - `DELETE /cards/{id}` et `DELETE /sources/{id}` set `deleted_at = now()` au lieu de `db.delete(card)` (qui cascadait sur les sources et brisait la citation history). Cards publiées toujours non-deletable. 6 nouveaux tests.
+- **PR #82** (`docs/audit-2026-05-26-roadmap`) — la présente : roadmap Phase 5 (long terme) consignée dans [`.docs/13-audit-2026-05-26-followups.md`](.docs/13-audit-2026-05-26-followups.md) — 11 items priorisés P1/P2/P3 avec triggers naturels (génération auto des types TS, tests Postgres, queue Wayback durable, multi-tenancy, restore endpoint, etc.).
+
+**Dependabot enquêté mais reporté** : les 10 PR Dependabot ouvertes échouent toutes au job `Lint Frontend` à cause d'un `pnpm-lock.yaml` non-prettier-formaté (Dependabot ne lance pas `pnpm format` après bump). Plus important encore : elles ont été ouvertes AVANT les PR #66–#77, donc les merger aujourd'hui reverterait les fix OAuth. À traiter en une PR groupée fresh quand le besoin se présente. Pour l'instant : ne pas merger ces PRs Dependabot, les fermer ou les laisser ouvertes selon préférence.
+
+**Nettoyage de branches** : après le merge des PRs ouvertes, supprimer les 24 branches feature/fix/docs locales+remotes désormais inutiles (cf. PR #79 pour la liste exhaustive). Garder `main` + les PRs en cours uniquement.
+
+**Bilan audit** : pas de finding CRITICAL en prod. Le projet est dans un état sain pour son stade (MVP pré-utilisateurs). Les bottlenecks anticipés (multi-tenancy, queue durable, scaling) sont documentés et déclenchables au bon moment.
+
+---
+
 **2026-05-26 — Saga « OAuth mobile + Wayback + UI polish ». 7 PR mergées (#66, #67, #75, #76, #77, plus #74 ouverte/fermée pour Wayback démo), ADR-025 ajoutée.**
 
 Au démarrage : sur mobile, "Se connecter" produisait "Échec de l'authentification. Redirection…" alors que desktop marchait parfaitement. Symptôme classique de cookies tiers bloqués par ITP/Safari, mais le vrai diagnostic n'est tombé qu'à la 4ᵉ tentative. À chaque étape, un nouveau symptôme remplaçait le précédent — j'ai préservé toutes les PRs en historique parce que chacune posait une brique nécessaire (même si certaines ne suffisaient pas seules).

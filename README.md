@@ -88,6 +88,7 @@ Tous les fichiers de spec sont dans [`.docs/`](.docs/). Ils sont conçus pour ê
 | [`07-open-questions.md`](.docs/07-open-questions.md) | Arbitrages non tranchés |
 | [`08-glossary.md`](.docs/08-glossary.md) | Glossaire technique et institutionnel |
 | [`12-next-steps.md`](.docs/12-next-steps.md) | Chemin critique post-MVP : axe C (refonte backend ADR-019), axe B (archivage multi-cible), axe A (stockage cloud R2) |
+| [`13-audit-2026-05-26-followups.md`](.docs/13-audit-2026-05-26-followups.md) | Suites à donner issues de l'audit du 26/05 : 11 items P1/P2/P3 avec triggers naturels (types TS auto, tests Postgres, queue Wayback durable, multi-tenancy, restore endpoint…) |
 
 Documents vivants à maintenir au fil du projet :
 
