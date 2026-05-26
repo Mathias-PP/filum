@@ -43,10 +43,13 @@ async def get_user_profile(
             detail={"code": "not_found", "message": "User not found"},
         )
 
+    # Import Source locally to use its deleted_at column on the eager-load.
+    from app.models.source import Source
+
     cards_result = await db.execute(
         select(BiblioCard)
-        .where(BiblioCard.user_id == user.id)
-        .options(selectinload(BiblioCard.sources))
+        .where(BiblioCard.user_id == user.id, BiblioCard.deleted_at.is_(None))
+        .options(selectinload(BiblioCard.sources.and_(Source.deleted_at.is_(None))))
         .order_by(BiblioCard.published_at.desc())
     )
     cards = list(cards_result.scalars().all())

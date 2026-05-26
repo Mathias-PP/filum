@@ -38,9 +38,15 @@ class CardService:
     async def get_card_by_id(self, card_id: UUID) -> BiblioCard | None:
         result = await self._db.execute(
             select(BiblioCard)
-            .options(selectinload(BiblioCard.sources).selectinload(Source.excerpts))
+            # Hide soft-deleted sources from the eager-load. The card's
+            # `deleted_at IS NULL` filter is on the outer query below.
+            .options(
+                selectinload(BiblioCard.sources.and_(Source.deleted_at.is_(None))).selectinload(
+                    Source.excerpts
+                )
+            )
             .options(selectinload(BiblioCard.user))
-            .where(BiblioCard.id == card_id)
+            .where(BiblioCard.id == card_id, BiblioCard.deleted_at.is_(None))
         )
         return result.scalar_one_or_none()
 
@@ -54,9 +60,17 @@ class CardService:
 
         query = (
             select(BiblioCard)
-            .options(selectinload(BiblioCard.sources).selectinload(Source.excerpts))
+            .options(
+                selectinload(BiblioCard.sources.and_(Source.deleted_at.is_(None))).selectinload(
+                    Source.excerpts
+                )
+            )
             .options(selectinload(BiblioCard.user))
-            .where(BiblioCard.user_id == user.id, BiblioCard.slug == card_slug)
+            .where(
+                BiblioCard.user_id == user.id,
+                BiblioCard.slug == card_slug,
+                BiblioCard.deleted_at.is_(None),
+            )
         )
 
         if published_only:
@@ -72,13 +86,19 @@ class CardService:
         limit: int = 20,
         offset: int = 0,
     ) -> list[BiblioCard]:
-        query = select(BiblioCard).where(BiblioCard.user_id == user_id)
+        query = select(BiblioCard).where(
+            BiblioCard.user_id == user_id, BiblioCard.deleted_at.is_(None)
+        )
 
         if status:
             query = query.where(BiblioCard.status == status)
 
         query = (
-            query.options(selectinload(BiblioCard.sources).selectinload(Source.excerpts))
+            query.options(
+                selectinload(BiblioCard.sources.and_(Source.deleted_at.is_(None))).selectinload(
+                    Source.excerpts
+                )
+            )
             .order_by(BiblioCard.created_at.desc())
             .limit(limit)
             .offset(offset)
@@ -128,14 +148,30 @@ class CardService:
         )
 
     async def delete_card(self, card_id: UUID, user_id: UUID) -> bool:
+        """Soft-delete a draft card.
+
+        Sets ``deleted_at`` to now instead of removing the row. The card's
+        sources stay in the DB (they're referenced by content_attestations
+        and any incoming citation graph from other cards); they just become
+        invisible because every public query filters
+        ``BiblioCard.deleted_at IS NULL``.
+
+        Published cards are never deletable from this endpoint (ADR-019:
+        published attestations are public commitments). They can only be
+        soft-archived (status=archived) via a future flow.
+        """
         result = await self._db.execute(
-            select(BiblioCard).where(BiblioCard.id == card_id, BiblioCard.user_id == user_id)
+            select(BiblioCard).where(
+                BiblioCard.id == card_id,
+                BiblioCard.user_id == user_id,
+                BiblioCard.deleted_at.is_(None),
+            )
         )
         card = result.scalar_one_or_none()
         if not card:
             return False
         if card.status == CardStatus.PUBLISHED:
             return False
-        await self._db.delete(card)
+        card.deleted_at = datetime.now(UTC).replace(tzinfo=None)
         await self._db.commit()
         return True
