@@ -11,7 +11,6 @@ from starlette.status import HTTP_401_UNAUTHORIZED
 from app.core.rate_limit import limiter
 from app.db.database import get_db
 from app.models.user import User
-from app.schemas.auth import VerificationResponse
 from app.schemas.biblio_card import (
     CardCreate,
     CardDetail,
@@ -267,20 +266,6 @@ async def get_public_card(
     )
 
 
-@router.get("/@{creator_slug}/{card_slug}/verify", response_model=VerificationResponse)
-async def verify_card(
-    creator_slug: str,
-    card_slug: str,
-    card_service: CardService = Depends(get_card_service),
-):
-    card = await card_service.get_card_by_slug(creator_slug, card_slug)
-    if not card:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "not_found", "message": "Card not found"},
-        )
-
-    return VerificationResponse(
-        valid=False,
-        reason="Card-level verification deprecated — use GET /attestations/{id}/verify instead",
-    )
+# Card-level /verify endpoint removed (ADR-019 pivot to content attestations).
+# Verification now lives at GET /attestations/{id}/verify. The frontend no
+# longer calls /verify on cards — removing the dead endpoint avoids confusion.

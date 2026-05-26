@@ -56,17 +56,43 @@ class Settings(BaseSettings):
         self._validate_secrets()
 
     def _validate_secrets(self) -> None:
+        """Fail-hard in production if critical secrets are missing.
+
+        Previous behavior generated random secrets on the fly when env vars
+        were empty. That hides misconfigurations: every Railway restart
+        without proper env vars would invalidate every active session
+        silently (new random `session_secret`) and rotate the key used to
+        encrypt private keys at rest (new random `master_encryption_key`,
+        which corrupts the ability to decrypt previously stored keys).
+
+        We now:
+          - Generate fresh secrets ONLY in dev/CI where it's safe.
+          - Raise loudly in production with a clear remediation message.
+
+        The "production" detection is conservative: if NEITHER `debug=True`
+        NOR `CI=true` is set, we assume a deployment context (Railway, etc.)
+        and require explicit secrets.
+        """
+        is_dev_or_ci = self.debug or os.environ.get("CI") == "true"
+        missing = []
         if not self.session_secret:
-            self.session_secret = secrets.token_urlsafe(32)
+            if is_dev_or_ci:
+                self.session_secret = secrets.token_urlsafe(32)
+            else:
+                missing.append("session_secret")
         if not self.master_encryption_key:
-            self.master_encryption_key = secrets.token_hex(32)
+            if is_dev_or_ci:
+                self.master_encryption_key = secrets.token_hex(32)
+            else:
+                missing.append("master_encryption_key")
 
-        if self.debug and os.environ.get("CI") != "true":
-            import logging
-
-            logging.warning(
-                "Application started with default or weak secrets. "
-                "In production, always use strong secrets from environment variables."
+        if missing:
+            raise RuntimeError(
+                "Missing required production secrets: "
+                + ", ".join(missing)
+                + ". Set them in the deployment environment (Railway → Variables) "
+                "or set `debug=true` / `CI=true` to allow ephemeral random generation "
+                "(dev only). Generate with `openssl rand -hex 32`."
             )
 
 

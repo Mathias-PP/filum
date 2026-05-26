@@ -9,6 +9,7 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.url_safety import UnsafeUrlError, assert_url_is_safe
 from app.models.source import ArchiveStatus, Source
 
 logger = logging.getLogger(__name__)
@@ -44,6 +45,18 @@ class WaybackService:
         self._api_key = api_key
 
     async def archive_url(self, source_id: UUID, url: str) -> dict:
+        # Refuse non-public URLs up-front so we don't ask the Internet
+        # Archive to crawl loopback/private targets via this service. Source
+        # creation now also blocks these at the API boundary (sources.py),
+        # but defense-in-depth in case the source was inserted via seed or
+        # an older client.
+        try:
+            assert_url_is_safe(url)
+        except UnsafeUrlError as e:
+            logger.warning(f"Wayback skipped for non-public URL {url}: {e}")
+            await self._update_source(source_id, ArchiveStatus.FAILED, None, None)
+            return {"status": "failed", "reason": "unsafe_url"}
+
         # Step 1 — trigger Save Page Now (best effort).
         try:
             async with httpx.AsyncClient(timeout=self.TIMEOUT, follow_redirects=False) as client:

@@ -125,20 +125,9 @@ export interface UserProfile {
   }>;
 }
 
-export interface VerificationResponse {
-  valid: boolean;
-  creator_slug: string | null;
-  card_slug: string | null;
-  content_hash: string | null;
-  signature: string | null;
-  signed_at: string | null;
-  details: {
-    hash_algorithm: string;
-    signature_algorithm: string;
-    canonicalization: string;
-  } | null;
-  reason: string | null;
-}
+// VerificationResponse removed: card-level /verify endpoint was deprecated
+// in ADR-019 (pivot to content attestations). The frontend now exclusively
+// uses AttestationVerifyResponse for the current verification flow.
 
 export interface Attestation {
   id: string;
