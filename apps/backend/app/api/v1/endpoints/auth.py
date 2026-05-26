@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import RedirectResponse
 from httpx import HTTPError
 from jwt import PyJWKClient
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_401_UNAUTHORIZED
 
@@ -253,14 +254,32 @@ async def google_callback(
             _set_session_cookie(response, session_token)
             return response
 
-        username = email.split("@")[0] if email else f"user_{google_sub[:8]}"
-        user = await auth_service.create_user_from_google(
-            email=email,
-            google_id=google_sub,
-            username=username,
-            display_name=name or username,
-            avatar_url=picture,
-        )
+        # The service slugifies this and resolves username collisions; we
+        # only pass a *preferred* base (the email's local part). Email
+        # uniqueness is still enforced at the DB level — if the same email
+        # is linked to two different Google accounts we surface a clear 409.
+        preferred_username = email.split("@")[0] if email else f"user-{google_sub[:12]}"
+        try:
+            user = await auth_service.create_user_from_google(
+                email=email,
+                google_id=google_sub,
+                username=preferred_username,
+                display_name=name or preferred_username,
+                avatar_url=picture,
+            )
+        except IntegrityError as e:
+            # Almost always: a different Google account previously registered
+            # with the same email address.
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "email_already_registered",
+                    "message": (
+                        "Cette adresse e-mail est déjà associée à un autre compte. "
+                        "Connectez-vous avec ce compte ou contactez le support."
+                    ),
+                },
+            ) from e
 
         session_token = auth_service.create_session(user.id)
         response = RedirectResponse(
