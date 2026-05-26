@@ -11,7 +11,6 @@ import type {
   SourceCreate,
   User,
   UserProfile,
-  VerificationResponse,
 } from './types';
 import { normalizeCardDetail, normalizeSource } from './legacy-adapter';
 
@@ -140,10 +139,7 @@ export const api = {
       const raw = await request<CardDetail>(`/@${creatorSlug}/${cardSlug}`);
       return normalizeCardDetail(raw);
     },
-
-    verify: async (creatorSlug: string, cardSlug: string): Promise<VerificationResponse> => {
-      return request<VerificationResponse>(`/@${creatorSlug}/${cardSlug}/verify`);
-    },
+    // `verify` removed (ADR-019). Use `api.attestations.verify(id)` instead.
   },
 
   sources: {

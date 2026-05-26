@@ -13,6 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import get_settings
 from app.core.rate_limit import limiter
+from app.core.url_safety import UnsafeUrlError, assert_url_is_safe
 from app.db.database import async_session_maker, get_db
 from app.extractors import url_extractor
 from app.models.biblio_card import BiblioCard
@@ -45,11 +46,19 @@ async def extract_url_metadata(
     request: Request,
     url: HttpUrl = Query(..., description="URL to extract metadata from"),
 ):
-    """Extract title, authors, date, citations from a URL (best-effort, no auth required)."""
-    if url.scheme not in ("http", "https"):
+    """Extract title, authors, date, citations from a URL (best-effort, no auth required).
+
+    Protected against SSRF: the URL is resolved and any non-public IP
+    (loopback, private RFC1918, link-local, cloud-metadata 169.254.169.254,
+    etc.) is rejected up-front. See `app.core.url_safety`.
+    """
+    try:
+        assert_url_is_safe(str(url))
+    except UnsafeUrlError as e:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Only http/https URLs are supported"
-        )
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "unsafe_url", "message": str(e)},
+        ) from e
     meta = await url_extractor.extract(str(url))
     return ExtractResponse(
         title=meta.title,

@@ -1,4 +1,4 @@
-from app.schemas.auth import LoginResponse, TokenPayload, VerificationResponse
+from app.schemas.auth import LoginResponse, TokenPayload
 from app.schemas.biblio_card import (
     CardCreate,
     CardDetail,
@@ -25,5 +25,4 @@ __all__ = [
     "SourceDetail",
     "TokenPayload",
     "LoginResponse",
-    "VerificationResponse",
 ]

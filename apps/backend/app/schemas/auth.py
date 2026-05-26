@@ -18,15 +18,9 @@ class LoginResponse(BaseModel):
     user_id: UUID
 
 
-class VerificationResponse(BaseModel):
-    valid: bool
-    creator_slug: str | None = None
-    card_slug: str | None = None
-    content_hash: str | None = None
-    signature: str | None = None
-    signed_at: datetime | None = None
-    details: dict | None = None
-    reason: str | None = None
+# VerificationResponse removed: card-level /verify endpoint was deprecated
+# in ADR-019 (pivot to content attestations). Use AttestationVerifyResponse
+# for the current verification flow.
 
 
 class ErrorDetail(BaseModel):
