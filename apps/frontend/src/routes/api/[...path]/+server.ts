@@ -79,7 +79,25 @@ const proxy: RequestHandler = async ({ request, params, url }) => {
     const lower = name.toLowerCase();
     if (HOP_BY_HOP.has(lower)) continue;
     if (lower === 'content-encoding' || lower === 'content-length') continue;
+    // `Set-Cookie` MUST be handled separately. When multiple Set-Cookie
+    // headers are present, iterating `Headers` collapses them into a single
+    // comma-separated value in undici/Node fetch — which mangles cookies
+    // whose attributes legitimately contain commas (e.g. `Expires=...`) and,
+    // worse, can lose individual cookies entirely. The browser then never
+    // stores the cookie. This was the cause of OAuth `invalid_state` errors
+    // after merging this proxy: the backend's `Set-Cookie filum_oauth_state`
+    // never made it to the browser, so the state check at /callback failed.
+    if (lower === 'set-cookie') continue;
     respHeaders.append(name, value);
+  }
+  // Re-emit each Set-Cookie line individually so the browser stores cookies
+  // correctly. `getSetCookie()` is available in Node 18+ undici and on Vercel.
+  const setCookies =
+    typeof upstreamResp.headers.getSetCookie === 'function'
+      ? upstreamResp.headers.getSetCookie()
+      : [];
+  for (const cookie of setCookies) {
+    respHeaders.append('set-cookie', cookie);
   }
 
   return new Response(upstreamResp.body, {
