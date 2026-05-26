@@ -6,6 +6,47 @@
 
 ## Dernière mise à jour
 
+**2026-05-26 — Saga « OAuth mobile + Wayback + UI polish ». 7 PR mergées (#66, #67, #75, #76, #77, plus #74 ouverte/fermée pour Wayback démo), ADR-025 ajoutée.**
+
+Au démarrage : sur mobile, "Se connecter" produisait "Échec de l'authentification. Redirection…" alors que desktop marchait parfaitement. Symptôme classique de cookies tiers bloqués par ITP/Safari, mais le vrai diagnostic n'est tombé qu'à la 4ᵉ tentative. À chaque étape, un nouveau symptôme remplaçait le précédent — j'ai préservé toutes les PRs en historique parce que chacune posait une brique nécessaire (même si certaines ne suffisaient pas seules).
+
+**Chronologie OAuth mobile** (du plus simpliste au vrai root cause) :
+
+1. **PR #66** — Boutons header overflow + tentative #1 cross-origin cookies via `vercel.json` rewrite. **Inactive en prod** : le fichier contenait `REPLACE_WITH_BACKEND_HOST` (placeholder à remplir manuellement) que je n'ai pas signalé clairement. Brique architecturale correcte mais inopérante. **Leçon** : un fix qui dépend d'une action manuelle silencieuse n'est PAS un fix.
+
+2. **PR #67** — `auth.py::_public_callback_url(request)` lit `X-Forwarded-Host` pour construire le `redirect_uri` OAuth. Aussi : démo `/@example/memoire-et-cerveau` enrichie avec 5 `archive_url` Wayback pré-remplis, SourceDetailPanel devient scrollable (max-height pixel-exacte calculée depuis `containerHeight - top - MARGIN`, plus scrollbar `.panel-scroll` toujours visible). Le volet OAuth restait inactif tant que le proxy de #66 n'était pas fonctionnel.
+
+3. **PR #68** — Remplacement du `vercel.json` édité-à-la-main par un **proxy SvelteKit** `apps/frontend/src/routes/api/[...path]/+server.ts` qui lit `BACKEND_URL` en env var (server-side). Tous les fetchs côté navigateur passés en chemin relatif (`/api/v1/...`). `client.ts` force le path relatif via `import { browser } from '$app/environment'`. `PUBLIC_API_BASE_URL` n'est plus utilisé dans le browser. **Action utilisateur requise** : ajouter `BACKEND_URL=https://filum-production-07bb.up.railway.app` dans les env vars Vercel.
+
+4. **PR #75** — Après #68, l'OAuth atteignait Google mais retombait sur `invalid_state` au callback. Cause : mon proxy itérait `response.headers` avec `for (const [name, value] of headers)`, ce qui en **undici (Node fetch sur Vercel)** collapse plusieurs `Set-Cookie` en un seul header virgule-séparé — comportement spécifique au runtime Node, différent des navigateurs. Le state cookie n'arrivait jamais dans le browser. Fix : skip explicite de `set-cookie` dans la copie générale, puis re-append individuel via `response.headers.getSetCookie()` (Node 18+ undici).
+
+5. **PR #76** — Encore `invalid_state`. URL Google fournie par l'utilisateur révèle que Google redirigeait vers `filum-production-07bb.up.railway.app/api/v1/auth/google/callback` (Railway direct) au lieu de la Vercel. Donc le `redirect_uri` envoyé à Google par le backend pointait sur Railway. Root cause : **Railway's ingress réécrit unconditionnellement `X-Forwarded-Host` et `X-Forwarded-Proto`** avec son propre hostname avant que la requête n'atteigne FastAPI (sécurité standard contre host spoofing). PR #67 lisait toujours le hostname Railway, jamais le Vercel. Fix : header custom `X-Filum-Public-Origin` (non standard → Railway le laisse passer), avec fallback sur `settings.frontend_base_url`. Plus aucun chemin ne mène à `backend_base_url` pour l'OAuth.
+
+6. **PR #77** — Auth mobile fonctionne enfin pour le compte existant `mathias.pinault@hotmail.fr`, mais un nouveau Gmail produit un 500 `internal_error`. Root cause : `username = email.split("@")[0]` collisionne avec un user existant (même local part `mathias.pinault`). Colonne `username` `unique=True` → `IntegrityError` → 500 générique. Fix : `_slugify_username()` + `_resolve_available_username()` dans `services/auth.py` qui slugifie (`mathias.pinault` → `mathias-pinault`) et résout les collisions (`mathias-pinault-2`, `-3`, …). Catch de l'`IntegrityError` résiduelle sur email duplicate → 409 propre au lieu de 500.
+
+**Autres améliorations de la session :**
+
+- **WaybackService refait** (PR #66) : POSTAIT seulement sur `/wayback/available` (qui n'archive pas, juste check) → tous les sources fraîches finissaient `FAILED`. Nouvelle version trigger d'abord `/save/<url>` (Save Page Now public, best-effort), puis poll `/available` avec back-offs croissants ~33 s.
+- **Champ manuel `archive_url`** sur `SourceCreate`/`SourceUpdate` (PR #66) : utilisateur peut coller un snapshot existant, backend skip l'auto-archive et persiste avec `ARCHIVED` directement. Champ dans le formulaire d'ajout/édition de source.
+- **5 démo sources avec archive Wayback pré-remplie** (PR #67) : Kandel, Nader, NYT, Le Monde, PBS Nova. Persistées via `archive_status=ARCHIVED` + URL `web.archive.org/web/20240601000000/...` qui résout via redirection vers le snapshot existant le plus proche.
+- **Boutons header `whitespace-nowrap`** + masquage de "Créer une fiche" sous 480 px (`xs:` breakpoint Tailwind ajouté).
+- **3 nouveaux tests** dans `test_auth.py` couvrant la slugification, la résolution de collision, et le fallback.
+
+**Architecture résultante (à connaître) :**
+
+- **Frontend → Backend** : tout passe par le proxy SvelteKit `src/routes/api/[...path]/+server.ts`. Browser appelle `/api/v1/...` (relatif), Vercel route vers la fonction serverless qui forwarde vers `BACKEND_URL`. Cookies first-party. Set-Cookie ré-appendés un-par-un.
+- **Backend OAuth `redirect_uri`** : prioritairement `X-Filum-Public-Origin` (set par le proxy), fallback `frontend_base_url`. Plus jamais `backend_base_url` dans l'OAuth.
+- **Configuration prod** :
+  - Vercel env vars : `BACKEND_URL=https://filum-production-07bb.up.railway.app` (PUBLIC_API_BASE_URL ignoré côté navigateur, peut rester ou être supprimé)
+  - Railway env vars : `frontend_base_url=https://filum-eight.vercel.app`
+  - GCP OAuth Client : `Authorized redirect URI` = `https://filum-eight.vercel.app/api/v1/auth/google/callback`
+
+**ADR-025** (nouvelle) — choix du proxy SvelteKit vs rewrite Vercel, avec les 3 pitfalls qui ont façonné le design (placeholder Vercel, undici Set-Cookie, Railway clobbering).
+
+**Pitfalls ajoutés** dans `agent/PITFALLS.md` §1.16, §2.10, §2.11 (cookies cross-origin mobile + undici Set-Cookie + username collision).
+
+---
+
 **2026-05-22 — Refonte hero (WebGL pulsar) + logo V11 + favicon, déployés en prod sur `main`. Sandbox `/sandbox/hero` et `/sandbox/logo` conservées pour itérations futures.**
 
 Quatre PR mergées dans `main` cette journée, séquence courte mais avec une grosse leçon de process :
