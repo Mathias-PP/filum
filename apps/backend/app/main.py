@@ -128,6 +128,7 @@ async def publish_diagnose():
             trace.append("session_opened")
             result = await db.execute(
                 select(BiblioCard)
+                .where(BiblioCard.deleted_at.is_(None))
                 .options(selectinload(BiblioCard.sources).selectinload(Source.excerpts))
                 .options(selectinload(BiblioCard.user))
                 .limit(1)

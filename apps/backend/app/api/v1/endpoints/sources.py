@@ -79,7 +79,9 @@ async def list_sources(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(BiblioCard).where(BiblioCard.id == card_id))
+    result = await db.execute(
+        select(BiblioCard).where(BiblioCard.id == card_id, BiblioCard.deleted_at.is_(None))
+    )
     card = result.scalar_one_or_none()
     if not card:
         raise HTTPException(
@@ -95,7 +97,7 @@ async def list_sources(
     source_result = await db.execute(
         select(Source)
         .options(selectinload(Source.excerpts))
-        .where(Source.biblio_card_id == card_id)
+        .where(Source.biblio_card_id == card_id, Source.deleted_at.is_(None))
         .order_by(Source.position)
     )
     return source_result.scalars().all()
@@ -108,7 +110,9 @@ async def create_source(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(BiblioCard).where(BiblioCard.id == card_id))
+    result = await db.execute(
+        select(BiblioCard).where(BiblioCard.id == card_id, BiblioCard.deleted_at.is_(None))
+    )
     card = result.scalar_one_or_none()
 
     if not card:
@@ -186,7 +190,9 @@ async def update_source(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(Source).options(selectinload(Source.excerpts)).where(Source.id == source_id)
+        select(Source)
+        .options(selectinload(Source.excerpts))
+        .where(Source.id == source_id, Source.deleted_at.is_(None))
     )
     source = result.scalar_one_or_none()
 
@@ -196,7 +202,11 @@ async def update_source(
             detail={"code": "not_found", "message": "Source not found"},
         )
 
-    result = await db.execute(select(BiblioCard).where(BiblioCard.id == source.biblio_card_id))
+    result = await db.execute(
+        select(BiblioCard).where(
+            BiblioCard.id == source.biblio_card_id, BiblioCard.deleted_at.is_(None)
+        )
+    )
     card = cast(BiblioCard | None, result.scalar_one_or_none())
 
     if not card:
@@ -243,7 +253,9 @@ async def delete_source(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Source).where(Source.id == source_id))
+    result = await db.execute(
+        select(Source).where(Source.id == source_id, Source.deleted_at.is_(None))
+    )
     source = result.scalar_one_or_none()
 
     if not source:
@@ -252,7 +264,11 @@ async def delete_source(
             detail={"code": "not_found", "message": "Source not found"},
         )
 
-    result = await db.execute(select(BiblioCard).where(BiblioCard.id == source.biblio_card_id))
+    result = await db.execute(
+        select(BiblioCard).where(
+            BiblioCard.id == source.biblio_card_id, BiblioCard.deleted_at.is_(None)
+        )
+    )
     card = cast(BiblioCard | None, result.scalar_one_or_none())
 
     if not card:
@@ -268,6 +284,8 @@ async def delete_source(
         )
 
     # ADR-019 + ADR-020: published cards are mutable.
-
-    await db.delete(source)
+    # Soft-delete: keep the row so historical references (parent_source_id
+    # from other sources, citation graph snapshots, content_attestations)
+    # remain intact. Queries on the public path filter `deleted_at IS NULL`.
+    source.deleted_at = datetime.now().replace(tzinfo=None)
     await db.commit()

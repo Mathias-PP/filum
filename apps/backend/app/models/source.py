@@ -101,6 +101,10 @@ class Source(Base):
     impact_factor: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Soft-delete: a non-null value hides the row from all standard queries.
+    # See migration 008_source_deleted_at + the matching .deleted_at columns
+    # already present on User (TimestampMixin) and BiblioCard.
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
 
     biblio_card: Mapped[BiblioCard] = relationship(
         "BiblioCard",
