@@ -89,30 +89,35 @@ def _generate_state() -> str:
 def _public_callback_url(request: Request) -> str:
     """Build the OAuth callback URL on the *public-facing* origin.
 
-    When the backend sits behind a reverse proxy (Vercel rewrites `/api/*`
-    to Railway in production, vite-dev proxies it to FastAPI), the request
-    arrives at Railway with the original host preserved in
-    ``X-Forwarded-Host``. Using that for the OAuth ``redirect_uri`` ensures:
+    Why this is more involved than it looks: Railway's ingress proxy
+    REWRITES the standard ``X-Forwarded-Host`` and ``X-Forwarded-Proto``
+    headers with its own internal hostname before the request reaches
+    FastAPI. So a previous attempt that read those headers always got
+    ``filum-production-xxxx.up.railway.app`` back, and Google was told
+    to redirect users there — bypassing the SvelteKit proxy at the
+    public Vercel domain, posting cookies on the wrong host, and
+    producing ``invalid_state`` on the callback.
 
-      * Google sends users back to the SAME origin where the state cookie
-        was set (otherwise the cookie isn't on Railway's host and the state
-        check fails),
-      * the post-OAuth ``Set-Cookie filum_session`` lands on the origin where
-        the SPA later calls ``/auth/me`` (otherwise it's a third-party cookie
-        that Safari/ITP silently drops on mobile — the root cause of the
-        "Échec de l'authentification" reported on mobile only, while desktop
-        worked).
+    Resolution order:
+      1. ``X-Filum-Public-Origin`` — custom header set by our SvelteKit
+         proxy (apps/frontend/src/routes/api/[...path]/+server.ts).
+         Non-standard, so Railway leaves it alone.
+      2. ``frontend_base_url`` setting — required to be set on the
+         backend deployment to the public frontend origin in any case
+         (the post-OAuth response already redirects to
+         ``{frontend_base_url}/auth/callback``, so this env var is
+         already canonical).
 
-    Falls back to ``backend_base_url`` for direct (un-proxied) calls, e.g.
-    backend-to-backend or a curl test.
+    No fall-back to ``backend_base_url`` because that's exactly the
+    Railway internal hostname that caused the bug — pointing OAuth
+    there is never correct in this deployment.
     """
-    forwarded_host = request.headers.get("x-forwarded-host")
-    if forwarded_host:
-        # Some proxies append origins; the original is first.
-        forwarded_host = forwarded_host.split(",")[0].strip()
-        forwarded_proto = request.headers.get("x-forwarded-proto", "https").split(",")[0].strip()
-        return f"{forwarded_proto}://{forwarded_host}/api/v1/auth/google/callback"
-    return f"{settings.backend_base_url}/api/v1/auth/google/callback"
+    proxied_origin = request.headers.get("x-filum-public-origin")
+    if proxied_origin:
+        base = proxied_origin.strip().rstrip("/")
+    else:
+        base = settings.frontend_base_url.rstrip("/")
+    return f"{base}/api/v1/auth/google/callback"
 
 
 @router.get("/google/login")

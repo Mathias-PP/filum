@@ -56,11 +56,18 @@ const proxy: RequestHandler = async ({ request, params, url }) => {
   }
   // Tell the FastAPI backend what public origin it is being reached from so
   // it can build the correct OAuth redirect_uri (see _public_callback_url in
-  // apps/backend/app/api/v1/endpoints/auth.py). Without this, Google would
-  // be told to redirect to Railway directly, bypassing this proxy on the
-  // return trip and posting the session cookie on the wrong host.
+  // apps/backend/app/api/v1/endpoints/auth.py).
+  //
+  // We use a CUSTOM header (`X-Filum-Public-Origin`) rather than the standard
+  // `X-Forwarded-Host` / `X-Forwarded-Proto` because Railway's ingress
+  // unconditionally rewrites those with its own internal hostname before the
+  // request reaches FastAPI — a security default that makes the standard
+  // headers useless for our purpose. A custom name slips through.
   const publicHost = url.host;
   const publicProto = url.protocol.replace(':', '');
+  headers.set('x-filum-public-origin', `${publicProto}://${publicHost}`);
+  // Standard forwarded headers kept for any other middleware that respects them;
+  // the backend no longer relies on these for the OAuth flow.
   if (!headers.has('x-forwarded-host')) headers.set('x-forwarded-host', publicHost);
   if (!headers.has('x-forwarded-proto')) headers.set('x-forwarded-proto', publicProto);
 
