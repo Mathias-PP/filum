@@ -199,6 +199,51 @@ class TestAuthService:
         public_key = ed25519.Ed25519PublicKey.from_public_bytes(bytes.fromhex(user.public_key))
         public_key.verify(signature, message)
 
+    async def test_create_user_from_google_slugifies_dotted_email_local_part(self, auth_service):
+        """Dots, plus-tags and other non-slug chars are rewritten to hyphens.
+        Regression: a fresh login with e.g. mathias.pinault@gmail.com used to
+        try to insert username="mathias.pinault" which doesn't match the
+        public /@<username> slug pattern."""
+        user = await auth_service.create_user_from_google(
+            email="mathias.pinault@gmail.com",
+            google_id="gmail-google-id-1",
+            username="mathias.pinault",
+            display_name="Mathias",
+        )
+        assert user.username == "mathias-pinault"
+
+    async def test_create_user_from_google_resolves_username_collision(
+        self, auth_service, db_session
+    ):
+        """Two distinct Google accounts whose email local part collides
+        (e.g. mathias.pinault@hotmail.fr and mathias.pinault@gmail.com)
+        must both succeed. Regression: the second one used to raise an
+        IntegrityError on `username` UNIQUE, surfaced as a generic 500."""
+        first = await auth_service.create_user_from_google(
+            email="mathias.pinault@hotmail.fr",
+            google_id="hotmail-google-id",
+            username="mathias.pinault",
+        )
+        second = await auth_service.create_user_from_google(
+            email="mathias.pinault@gmail.com",
+            google_id="gmail-google-id-2",
+            username="mathias.pinault",
+        )
+        assert first.username == "mathias-pinault"
+        assert second.username == "mathias-pinault-2"
+        assert first.id != second.id
+
+    async def test_create_user_from_google_unusable_local_part_falls_back(self, auth_service):
+        """If the slug after sanitization is empty (extreme edge case), the
+        service falls back to a google_id-derived name rather than crashing."""
+        user = await auth_service.create_user_from_google(
+            email="++@example.com",
+            google_id="weird-google-id-abc123",
+            username="++",
+        )
+        assert user.username.startswith("user-")
+        assert "weird-google-id-abc" in user.username or "weird-google" in user.username
+
 
 class TestAuthSchemas:
     async def test_token_roundtrip_via_create_session(self, auth_service, test_user):
