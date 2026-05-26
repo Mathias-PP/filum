@@ -6,6 +6,51 @@
 
 ---
 
+## ADR-025 — Auth cross-origin : proxy SvelteKit `/api/[...path]/+server.ts` (et pas rewrite Vercel)
+
+**Date** : 2026-05-26
+
+**Contexte**
+Frontend déployé sur Vercel (`https://filum-eight.vercel.app`), backend FastAPI sur Railway (`https://filum-production-07bb.up.railway.app`). Quand le SPA appelait Railway directement depuis Vercel, le `Set-Cookie filum_session` posé par Railway était un cookie tiers du point de vue du navigateur. **Mobile Safari et iOS WebKit (Chrome iOS inclus) bloquent les cookies tiers par défaut via ITP**, donc le cookie de session était droppé silencieusement et le SPA recevait 401 sur le `GET /auth/me` post-OAuth, produisant "Échec de l'authentification" — uniquement sur mobile, jamais sur desktop (qui est plus permissif).
+
+Objectif : rendre l'API first-party du point de vue du navigateur, sans modifier la cible de déploiement (Railway reste backend, Vercel reste frontend).
+
+**Options envisagées**
+
+- **Rewrite Vercel statique dans `vercel.json`** (tentée puis abandonnée — PR #66) : `destination: "https://<backend>/api/$1"`. Le placeholder doit être édité manuellement avant déploiement — pas d'interpolation d'env var dans `vercel.json`. Sur ce projet le placeholder n'avait pas été remplacé → la rewrite était inopérante en prod et le fix « n'avait aucun effet », ce qui est invisible au coup d'œil et difficile à debugger. Pattern rejeté.
+- **Proxy SvelteKit `src/routes/api/[...path]/+server.ts`** (retenue — PR #68 + #75 + #76) : un endpoint catch-all qui lit `BACKEND_URL` server-side et forwarde toutes les méthodes HTTP. Une seule env var à set (pas de fichier statique à éditer). Cohérent en dev et prod.
+- **Authorization header avec JWT en localStorage** (rejetée) : changement complet du modèle d'auth, déconnecté du reste de la session-via-cookie. Trop lourd pour ce besoin précis.
+
+**Justifications**
+
+- Configuration en **une seule étape** : ajouter `BACKEND_URL` aux env vars Vercel. Pas de placeholder dans le code à oublier de remplacer.
+- Cookies first-party automatiquement : le navigateur ne voit qu'une seule origine (Vercel).
+- Le proxy peut **injecter des headers contrôlés** (utilisé pour `X-Filum-Public-Origin`, voir pitfall plus bas).
+- Marche identiquement en dev (default `localhost:8000`, vite proxy fait la même chose en parallèle) et en prod (Vercel serverless).
+
+**Conséquences**
+
+- **Latence** : 1 hop additionnel pour chaque requête API (browser → Vercel edge → Railway). Mesuré ~30-80 ms supplémentaires sur Vercel France. Acceptable pour ce produit.
+- **Cold start** : la fonction proxy est petite (~5 KB JS), cold start négligeable (~50 ms).
+- **Toutes les URLs côté navigateur DOIVENT être relatives** : on ne peut plus jamais utiliser `PUBLIC_API_BASE_URL` dans le `<script>` browser, sinon le proxy est court-circuité. `client.ts` force le path relatif via `import { browser } from '$app/environment'`.
+- Le SSR (sur Vercel) re-traverse le proxy via `fetch` relatif — 1 hop supplémentaire à l'intérieur du même runtime. Performance acceptable.
+
+**Pitfalls rencontrés et résolus dans la même session**
+
+1. **`undici` Set-Cookie mangling (PR #75)** : itérer `response.headers` avec `for (const [name, value] of headers)` en Node fetch collapse plusieurs `Set-Cookie` en un seul header virgule-séparé. Comportement spécifique à undici/Node, différent du fetch des navigateurs. Le browser ne stocke alors pas les cookies correctement. **Solution** : skip explicite de `set-cookie` dans la copie générale puis ré-append individuel via `response.headers.getSetCookie()` (Node 18+ undici, disponible sur Vercel).
+
+2. **Railway clobbering `X-Forwarded-Host` (PR #76)** : l'ingress Railway réécrit unconditionnellement `X-Forwarded-Host` et `X-Forwarded-Proto` avec son propre hostname avant que la requête n'atteigne FastAPI (sécurité standard contre host spoofing). Donc se reposer sur ces headers standards pour reconstruire le `redirect_uri` OAuth ne marche PAS. **Solution** : header custom `X-Filum-Public-Origin` (non standard → Railway le laisse passer), avec fallback `settings.frontend_base_url` (déjà set sur Railway).
+
+3. **Username collision sur signup OAuth (PR #77)** : `email.split("@")[0]` peut générer le même username pour 2 comptes Google différents (`mathias.pinault@hotmail.fr` vs `mathias.pinault@gmail.com`). Colonne `unique=True` → `IntegrityError` → 500 générique. **Solution** : slugification (`mathias-pinault`) + résolution de collision (`-2`, `-3`, …) dans `services/auth.py`.
+
+**Actions requises pour ce setup en prod**
+
+- Vercel env var : `BACKEND_URL=https://filum-production-07bb.up.railway.app`
+- Railway env var : `frontend_base_url=https://filum-eight.vercel.app` (déjà set, utilisé aussi pour le redirect post-OAuth `/auth/callback`)
+- GCP OAuth Client → Authorized redirect URIs : `https://filum-eight.vercel.app/api/v1/auth/google/callback`
+
+---
+
 ## ADR-024 — Hero accueil : WebGL via OGL plutôt que SVG/Canvas 2D/three.js
 
 **Date** : 2026-05-22
