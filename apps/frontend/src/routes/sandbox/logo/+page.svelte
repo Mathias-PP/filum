@@ -2883,6 +2883,215 @@
   </section>
 
   <section class="section-block">
+    <h2 class="section-title">Mixes V09 × V10 × V11 — 5 hybrides topologiques · 2026-05-28</h2>
+    <p class="section-lead">
+      Cinq propositions qui combinent les trois topologies disponibles dans la grille précédente : <strong
+        >V09</strong
+      >
+      (constellation 6 nœuds), <strong>V10</strong>
+      (constellation + Y-fork), <strong>V11</strong> (constellation + parent-lune). Chaque mix raconte
+      une bibliographie de structure différente. Couleurs paramétrables via le même panneau (pulsar, twins,
+      parent, lune, fond) que les 20 variations.
+    </p>
+    <div class="grid grid--dense">
+      <!-- Y01 — V10 + V11 : 2 régulières + Y-fork + parent-lune (canonique) -->
+      <div class="card">
+        <div class="canvas" style="background: {canvasBg}">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <!-- 2 régulières -->
+            {#each [{ x: 3, y: 12 }, { x: 21, y: 12 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <!-- Y-fork au-dessus -->
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <!-- Parent-lune en SE -->
+            <line x1="12" y1="12" x2="17" y2="18" />
+            <line x1="17" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill={pulsarColor} stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            {#each [{ x: 3, y: 12 }, { x: 21, y: 12 }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill={accentColor} stroke="none" />
+            {/each}
+            <circle cx="17" cy="18" r={leafRadius * 1.1} fill={parentColor} stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill={luneColor} stroke="none" />
+          </svg>
+        </div>
+        <div class="num">Y01 · V10+V11</div>
+        <h3>Canonique (toutes les topos)</h3>
+        <p class="caption">
+          2 sources directes + 1 Y-fork (paire citée) + 1 parent-lune (chaîne). Le récit produit
+          complet en un mark.
+        </p>
+      </div>
+
+      <!-- Y02 — V09 + V11 : 4 régulières + parent-lune (densité de sources directes) -->
+      <div class="card">
+        <div class="canvas" style="background: {canvasBg}">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 4, y: 5 }, { x: 20, y: 4 }, { x: 4, y: 19 }, { x: 21, y: 12 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="16" y2="18" />
+            <line x1="16" y1="18" x2="20" y2="21" />
+            <circle cx="12" cy="12" r={centerRadius} fill={pulsarColor} stroke="none" />
+            {#each [{ x: 4, y: 5 }, { x: 20, y: 4 }, { x: 4, y: 19 }, { x: 21, y: 12 }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill={accentColor} stroke="none" />
+            {/each}
+            <circle cx="16" cy="18" r={leafRadius * 1.1} fill={parentColor} stroke="none" />
+            <circle cx="20" cy="21" r={leafRadius * 0.55} fill={luneColor} stroke="none" />
+          </svg>
+        </div>
+        <div class="num">Y02 · V09+V11</div>
+        <h3>Constellation dense + lune</h3>
+        <p class="caption">
+          4 sources directes (constellation pleine) + 1 chaîne parent-lune. Évoque une fiche bien
+          sourcée avec un point d'attestation indirect.
+        </p>
+      </div>
+
+      <!-- Y03 — V09 + V10 : 4 régulières + Y-fork (densité + paire citée) -->
+      <div class="card">
+        <div class="canvas" style="background: {canvasBg}">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 3, y: 12 }, { x: 21, y: 12 }, { x: 4, y: 19 }, { x: 20, y: 19 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="12" y2="5" />
+            <line x1="12" y1="5" x2="7" y2="2" />
+            <line x1="12" y1="5" x2="17" y2="2" />
+            <circle cx="12" cy="12" r={centerRadius} fill={pulsarColor} stroke="none" />
+            <circle cx="7" cy="2" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="17" cy="2" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            {#each [{ x: 3, y: 12 }, { x: 21, y: 12 }, { x: 4, y: 19 }, { x: 20, y: 19 }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill={accentColor} stroke="none" />
+            {/each}
+          </svg>
+        </div>
+        <div class="num">Y03 · V09+V10</div>
+        <h3>Constellation dense + Y-fork</h3>
+        <p class="caption">
+          4 sources directes + 1 Y-fork au-dessus (paire citée ensemble). Bibliographie dense avec
+          une référence groupée saillante.
+        </p>
+      </div>
+
+      <!-- Y04 — V09 + V10 + V11 : 3 régulières + Y-fork + parent-lune (maximaliste) -->
+      <div class="card highlight">
+        <div class="canvas" style="background: {canvasBg}">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 3, y: 12 }, { x: 21, y: 6 }, { x: 4, y: 19 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="12" y2="5" />
+            <line x1="12" y1="5" x2="8" y2="1.5" />
+            <line x1="12" y1="5" x2="16" y2="1.5" />
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="21" y2="21" />
+            <circle cx="12" cy="12" r={centerRadius} fill={pulsarColor} stroke="none" />
+            <circle cx="8" cy="1.5" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="16" cy="1.5" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            {#each [{ x: 3, y: 12 }, { x: 21, y: 6 }, { x: 4, y: 19 }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill={accentColor} stroke="none" />
+            {/each}
+            <circle cx="18" cy="18" r={leafRadius * 1.1} fill={parentColor} stroke="none" />
+            <circle cx="21" cy="21" r={leafRadius * 0.55} fill={luneColor} stroke="none" />
+          </svg>
+        </div>
+        <div class="num">Y04 · V09+V10+V11 ⭐</div>
+        <h3>Maximaliste — 3 topos</h3>
+        <p class="caption">
+          3 sources directes + 1 Y-fork (paire citée) + 1 parent-lune (chaîne). Toutes les
+          structures topologiques de Filum représentées en un seul mark. Le candidat le plus
+          descriptif.
+        </p>
+      </div>
+
+      <!-- Y05 — V10 × 2 + V11 : 2 Y-forks symétriques + parent-lune (citation-heavy) -->
+      <div class="card">
+        <div class="canvas" style="background: {canvasBg}">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <!-- Y-fork supérieur-gauche -->
+            <line x1="12" y1="12" x2="7" y2="6" />
+            <line x1="7" y1="6" x2="3" y2="3" />
+            <line x1="7" y1="6" x2="9" y2="1" />
+            <!-- Y-fork supérieur-droit -->
+            <line x1="12" y1="12" x2="18" y2="7" />
+            <line x1="18" y1="7" x2="22" y2="4" />
+            <line x1="18" y1="7" x2="16" y2="2" />
+            <!-- 1 régulière à gauche -->
+            <line x1="12" y1="12" x2="3" y2="15" />
+            <!-- Parent-lune en SE -->
+            <line x1="12" y1="12" x2="17" y2="19" />
+            <line x1="17" y1="19" x2="20" y2="22" />
+            <circle cx="12" cy="12" r={centerRadius} fill={pulsarColor} stroke="none" />
+            <circle cx="3" cy="3" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="9" cy="1" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="22" cy="4" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="16" cy="2" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="3" cy="15" r={leafRadius * 0.85} fill={accentColor} stroke="none" />
+            <circle cx="17" cy="19" r={leafRadius * 1.1} fill={parentColor} stroke="none" />
+            <circle cx="20" cy="22" r={leafRadius * 0.55} fill={luneColor} stroke="none" />
+          </svg>
+        </div>
+        <div class="num">Y05 · V10×2 + V11</div>
+        <h3>Citation-heavy (2 Y-forks + lune)</h3>
+        <p class="caption">
+          2 Y-forks symétriques en haut + 1 source directe + parent-lune en SE. Une bibliographie
+          riche en citations groupées : deux paires + une chaîne.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-block">
     <h2 class="section-title">Nouvelles directions · 2026-05-28</h2>
     <p class="section-lead">
       Six marks distincts dans des styles modernes — au-delà de la famille arboricole. Le <strong
