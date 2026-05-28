@@ -14,16 +14,19 @@
   let coreHue = $state(0.58);
   let nodeSpread = $state(1.0);
 
+  // Palette tunée 2026 : chroma poussée + bornes blanc/noir évitées pour
+  // garder la cohérence avec le reste de l'UI (jamais de pur RGB primaire).
+  // Inspiration : Linear/Vercel/OpenAI — couleurs nettes mais matérielles,
+  // jamais fluo.
   const NODE_COLORS: [number, number, number][] = [
-    [0.35, 0.55, 0.95], // royal blue — clearly blue
-    [0.55, 0.8, 0.55], // sage green — the ONE green
-    [0.4, 0.78, 0.92], // sky blue — second blue
-    [0.85, 0.55, 0.55], // dusty rose-red
-    [0.85, 0.72, 0.48], // warm amber — the ONE orange
-    [0.72, 0.55, 0.85], // soft violet — cool accent
-    // Extras (used only if nodeCount > 6)
-    [0.85, 0.8, 0.55], // soft yellow
-    [0.55, 0.82, 0.65], // jade green
+    [0.32, 0.56, 1.0], // electric cobalt
+    [0.45, 0.86, 0.55], // emerald
+    [0.3, 0.82, 1.0], // cyan azure
+    [0.98, 0.45, 0.5], // coral red
+    [1.0, 0.72, 0.36], // sunlit amber
+    [0.78, 0.5, 1.0], // violet
+    [1.0, 0.86, 0.42], // gold
+    [0.45, 0.92, 0.75], // jade
   ];
 
   // Fixed virtual light direction (normalized): upper-left, slightly toward viewer
@@ -94,82 +97,43 @@
       return clamp(p - 1.0, 0.0, 1.0);
     }
 
-    // A glowing exoplanet-like orb lit by the pulsar.
-    // 'lightFrom2D' is the direction in screen-space TOWARD the pulsar (XY).
-    // 'biome' (0..3) picks a surface pattern style; 'seed' offsets the noise.
-    vec4 nodeSphere(vec2 uv, vec2 c, float r, vec3 baseCol, vec2 lightFrom2D, float biome, float seed) {
+    // Sphère épurée — pas de pattern procédural. La node est une bille
+    // matérielle éclairée par le pulsar : terminator net, rim atmosphérique
+    // serrée, hot spec discret. Le but : lisibilité produit, jamais "demo
+    // shader". Edge AA réduit (0.8×) pour des contours nets.
+    vec4 nodeSphere(vec2 uv, vec2 c, float r, vec3 baseCol, vec2 lightFrom2D) {
       vec2 d = uv - c;
       float r2 = r * r;
       float d2 = dot(d, d);
       float dist = sqrt(d2);
-      float aa = uAaPixel.x * 1.4;
+      float aa = uAaPixel.x * 0.8;
       float alpha = 1.0 - smoothstep(r - aa, r + aa, dist);
       if (alpha <= 0.0) return vec4(0.0);
       float zSq = max(r2 - d2, 0.0);
       float zLocal = sqrt(zSq) / r;
       vec3 n = vec3(d.x / r, d.y / r, zLocal);
-      // Spherical surface coords (rough, view-aligned — fine for small orbs)
-      vec2 sp = n.xy + vec2(seed, seed * 0.7);
-      // Almost imperceptibly slow rotation
-      float rot = uTime * 0.0006 * (0.7 + 0.6 * fract(seed * 7.31));
-      vec2 rsp = vec2(sp.x * cos(rot) - sp.y * sin(rot), sp.x * sin(rot) + sp.y * cos(rot));
 
-      // Per-biome surface pattern — sharper feature definition, gentle color shift
-      float pattern = 0.5;
-      if (biome < 0.5) {
-        // 0 — gas giant: well-defined bands with subtle turbulence between them
-        float warp = fbm(rsp * 3.0) - 0.5;
-        float bands = sin((rsp.y + warp * 0.55) * 6.5);
-        // Sharpen the bands a bit
-        bands = sign(bands) * pow(abs(bands), 0.7);
-        pattern = bands * 0.5 + 0.5;
-      } else if (biome < 1.5) {
-        // 1 — rocky / continents with crisp coastlines
-        float h = fbm(rsp * 4.0);
-        pattern = smoothstep(0.44, 0.52, h);
-      } else if (biome < 2.5) {
-        // 2 — strongly marbled / swirly: domain warping for distinguished features
-        float warp = fbm(rsp * 2.0);
-        vec2 q = rsp * 3.5 + vec2(warp * 2.2, fbm(rsp * 2.3) * 2.0);
-        float v = fbm(q);
-        // Sharpen the contrast of the pattern (but apply gently to color)
-        pattern = smoothstep(0.35, 0.65, v);
-      } else {
-        // 3 — icy / fine network of cracks
-        float v = fbm(rsp * 6.0);
-        pattern = 1.0 - smoothstep(0.42, 0.48, abs(v - 0.5));
-      }
-      // Very subtle tone variation — features are PRESENT but barely shift the color
-      vec3 darkCol  = baseCol * 0.94;
-      vec3 lightCol = mix(baseCol, vec3(1.0), 0.025);
-      vec3 surfaceCol = mix(darkCol, lightCol, pattern);
-      // Soft hue variation across the surface (very gentle, breaks uniformity)
-      vec3 tintA = mix(baseCol, vec3(baseCol.g, baseCol.b, baseCol.r), 0.18);
-      vec3 tintB = mix(baseCol, vec3(baseCol.b, baseCol.r, baseCol.g), 0.18);
-      float tintMix = fbm(rsp * 1.8) * 0.5 + 0.5;
-      vec3 sideTint = mix(tintA, tintB, tintMix);
-      surfaceCol = mix(surfaceCol, sideTint, (1.0 - pattern) * 0.20);
-
-      // Lighting from pulsar direction
+      // Lighting from pulsar direction (2D screen-space).
       vec3 L = normalize(vec3(lightFrom2D.x, lightFrom2D.y, 0.35));
       float lam = max(dot(n, L), 0.0);
-      // Soft terminator — lifted floor so the dark side still shows the pattern
-      // (no more "features disappearing as the planet orbits")
-      float diffuseAmt = mix(0.45, 1.10, smoothstep(0.0, 0.70, lam));
-      // Tight specular (oceans/icy reflective)
-      vec3 viewDir = vec3(0.0, 0.0, 1.0);
-      vec3 h = normalize(L + viewDir);
-      float specPow = mix(28.0, 70.0, pattern);
-      float spec = pow(max(dot(n, h), 0.0), specPow) * mix(0.18, 0.45, pattern);
-      vec3 specCol = mix(baseCol, vec3(1.0), 0.7) * spec;
-      // Atmospheric rim (Fresnel) in the node's own hue — visible halo of air
-      float fres = pow(1.0 - zLocal, 2.5);
-      vec3 atmoRim = mix(baseCol, vec3(1.0), 0.15) * fres * 1.0;
-      // Night-side glow includes the surface pattern (not just flat color) so
-      // features remain consistently visible as the planet orbits the pulsar.
-      vec3 nightSide = surfaceCol * 0.22 * (1.0 - lam);
+      // Terminator courbe naturelle : pas de floor relevé (qui aplatit le volume).
+      float diffuseAmt = mix(0.18, 1.15, smoothstep(0.0, 0.65, lam));
 
-      vec3 col = surfaceCol * diffuseAmt + specCol + atmoRim + nightSide;
+      // Specular serré (matériau dur, surface brillante)
+      vec3 viewDir = vec3(0.0, 0.0, 1.0);
+      vec3 hVec = normalize(L + viewDir);
+      float spec = pow(max(dot(n, hVec), 0.0), 48.0) * 0.55;
+      vec3 specCol = mix(baseCol, vec3(1.0), 0.85) * spec;
+
+      // Rim atmosphérique (Fresnel) — fin, propre, dans la teinte du nœud.
+      // Boostée pour faire "pop" le contour côté nuit.
+      float fres = pow(1.0 - zLocal, 3.0);
+      vec3 atmoRim = mix(baseCol, vec3(1.0), 0.22) * fres * 1.35;
+
+      // Night side : très léger glow couleur (jamais noir total — lisibilité)
+      vec3 nightSide = baseCol * 0.16 * (1.0 - lam);
+
+      vec3 col = baseCol * diffuseAmt + specCol + atmoRim + nightSide;
       return vec4(col, alpha);
     }
 
@@ -286,7 +250,8 @@
 
       // --- Pulsar (3D sphere — position controlled by JS for click-drag) ---
       vec2 coreC = uMouse;  // uMouse repurposed as "pulsar position" (set by JS)
-      float coreR = 0.085 * (1.0 + 0.10 * uHoverCore);  // grows slightly on hover
+      // Scale ×1.3 demandé : 0.085 → 0.110
+      float coreR = 0.110 * (1.0 + 0.10 * uHoverCore);
       float pulse = 0.5 + 0.5 * sin(uTime * uPulseSpeed * 2.0);
       float coreRPulsed = coreR * (0.985 + 0.030 * pulse);
       vec3 coreColor = hueShift(uCoreHue);
@@ -319,7 +284,13 @@
       float flare = pow(flPattern, 5.0) * flFalloff * 1.6;
       col += coreColor * flare;
 
-      // Connection lines node→core (always visible — no popping based on z)
+      // ====================================================================
+      // CONNEXIONS pulsar↔nœud — lignes lumineuses + "data pulse" qui voyage
+      // ====================================================================
+      // Renforcement vs. avant : ligne plus épaisse, intensité ×1.6, et un
+      // petit packet de lumière (gauss bump) qui glisse du pulsar vers le
+      // nœud — évoque le flux d'attestation/référence. Esthétique data-viz
+      // 2026 (Linear / Vercel state graphs).
       for (int i = 0; i < 8; i++) {
         float active = step(float(i) + 0.5, float(uNodeCount));
         vec4 n = uNodes[i];
@@ -330,13 +301,26 @@
         vec2 rel = uv - a;
         float along = dot(rel, dir);
         float across = length(rel - dir * along);
-        float onSeg = step(n.w * 1.05, along) * step(along, lineLen - coreRPulsed * 1.02);
-        float aa = uAaPixel.x * 1.2;
-        float lineMask = (1.0 - smoothstep(0.0015 - aa, 0.0015 + aa, across)) * onSeg;
-        // Subtle depth modulation (lines further back are slightly dimmer, but
-        // never disappear).
+        float onSeg = step(n.w * 1.02, along) * step(along, lineLen - coreRPulsed * 1.00);
+        float aa = uAaPixel.x * 1.1;
+        // Core line — un peu plus épaisse pour lire à toutes les tailles
+        float lineMask = (1.0 - smoothstep(0.0022 - aa, 0.0022 + aa, across)) * onSeg;
+        // Subtle wider glow autour de la ligne (haze)
+        float lineHaze = exp(-across * 220.0) * onSeg * 0.35;
         float depthFade = 0.55 + 0.45 * clamp(n.z / 0.35 + 0.5, 0.0, 1.0);
-        col += uNodeColors[i] * lineMask * 0.32 * depthFade * active;
+        vec3 lineColor = mix(uNodeColors[i], vec3(1.0), 0.15);
+        col += lineColor * (lineMask * 0.85 + lineHaze) * depthFade * active;
+
+        // Data pulse : Gaussian bump qui glisse du nœud vers le pulsar.
+        // Phase indépendante par nœud → asynchrone, vivant.
+        float lt = fract(uTime * 0.32 + float(i) * 0.137);
+        float pulsePos = lt * (lineLen - n.w - coreRPulsed) + n.w;
+        float pulseDist = abs(along - pulsePos);
+        // Gaussian thin → effet trait lumineux qui parcourt la ligne
+        float dataPulse = exp(-pulseDist * pulseDist * 4500.0)
+                       * exp(-across * across * 90000.0)
+                       * onSeg;
+        col += mix(uNodeColors[i], vec3(1.0), 0.55) * dataPulse * 1.4 * depthFade * active;
       }
 
       // Pulsar sphere — hot blue main-sequence star (Rigel/Spica style)
@@ -413,20 +397,16 @@
         // side" faces the pulsar.
         vec2 toCore = coreC - n.xy;
         vec2 lightDir2D = normalize(toCore + vec2(0.0001));
-        // Biome and seed derived from index — deterministic per node.
-        float biome = mod(float(i), 4.0);
-        float seed = float(i) * 13.37;
-        vec4 sh = nodeSphere(uv, n.xy, nodeR, nodeColor, lightDir2D, biome, seed);
+        vec4 sh = nodeSphere(uv, n.xy, nodeR, nodeColor, lightDir2D);
         vec3 lit = sh.rgb * (depthBright + 0.40 * hover);
 
-        // Soft outer glow (additive, exp falloff — clean). Intensifies on hover.
-        // Occlusion also fades the glow (so a node passing behind doesn't have
-        // a stranded halo bleeding past the pulsar's silhouette).
+        // Glow extérieur additif — rim tight + wide. Renforcé pour pop la
+        // couleur autour de chaque nœud sans saturer le centre.
         float dN = length(uv - n.xy);
         float glowOut = max(dN - nodeR * 0.95, 0.0);
         float glowBoost = 1.0 + 1.30 * hover;
-        float glowRim  = exp(-glowOut * 28.0) * 0.45 * glowBoost;
-        float glowWide = exp(-glowOut * 9.0)  * 0.20 * glowBoost;
+        float glowRim  = exp(-glowOut * 32.0) * 0.62 * glowBoost;
+        float glowWide = exp(-glowOut * 10.0) * 0.28 * glowBoost;
         col += nodeColor * (glowRim + glowWide) * depthBright * mask * (1.0 - occlude);
 
         col = mix(col, lit, sh.a * mask * (1.0 - occlude));
@@ -565,7 +545,7 @@
       const cy = coreDisp.y;
       const dx = currentMouse.x - cx;
       const dy = currentMouse.y - cy;
-      const coreHitR = 0.085 * 1.2;
+      const coreHitR = 0.110 * 1.2;
       if (dx * dx + dy * dy < coreHitR * coreHitR) {
         draggingCore = true;
         wrapEl.setPointerCapture?.(e.pointerId);
@@ -604,16 +584,17 @@
       radius: number;
       colorIdx: number;
     };
+    // Scale graphe ×1.3 demandé : orbites et rayons nœuds multipliés par 1.3.
+    const G_SCALE = 1.3;
     const NODES: NodeParam[] = Array.from({ length: 8 }, (_, i) => {
-      const t = i / 6;
       return {
         baseAngle: (i / 6) * Math.PI * 2,
-        orbitRx: 0.48 + 0.1 * Math.sin(i * 2.3),
-        orbitRy: 0.36 + 0.08 * Math.cos(i * 1.7),
-        orbitRz: 0.28 + 0.08 * Math.sin(i * 1.1 + 1.0),
+        orbitRx: (0.48 + 0.1 * Math.sin(i * 2.3)) * G_SCALE,
+        orbitRy: (0.36 + 0.08 * Math.cos(i * 1.7)) * G_SCALE,
+        orbitRz: (0.28 + 0.08 * Math.sin(i * 1.1 + 1.0)) * G_SCALE,
         tilt: i * 0.45,
         speed: 0.85 + 0.3 * Math.sin(i * 1.9), // multiplied by orbitSpeed
-        radius: 0.038 + 0.012 * Math.sin(i * 1.3),
+        radius: (0.038 + 0.012 * Math.sin(i * 1.3)) * G_SCALE,
         colorIdx: i,
       };
     });
@@ -623,7 +604,7 @@
       x: 0,
       y: 0,
       z: 0,
-      r: 0.04,
+      r: 0.05,
       colorIdx: 0,
     }));
     // Per-node displacement from its orbital position (for click-and-drag).
