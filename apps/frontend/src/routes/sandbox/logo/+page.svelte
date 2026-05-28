@@ -107,6 +107,1562 @@
   </header>
 
   <section class="section-block">
+    <h2 class="section-title">Pulsar-graph — 40 propositions couleur expertes · 2026-05-28</h2>
+    <p class="section-lead">
+      Quarante propositions <strong>couleurs fixées par variation</strong> — pas paramétrables, chacune
+      incarne une direction de marque précise. Mixes demandés (V1, V2, V4, V9, V10, V11, V12, V18) combinés
+      à six familles de palette et à neuf effets nouveaux différents de ceux des V06-V08-V17-V18 (drop-shadow,
+      line weight variable, dashed, diffraction X-spikes, ring orbital, hollow/filled mix, gradient sur
+      les lignes, frosted blur, multi-stroke).
+    </p>
+    <details class="design-rationale">
+      <summary>Mon avis sur les choix de couleur (en tant que designer logo)</summary>
+      <p>
+        Filum vend de la <em>rigueur</em> et de la <em>traçabilité</em>, pas de l'effervescence
+        SaaS. Les meilleurs marks dans cet espace (ORCID, Crossref, Wikipedia, JSTOR) sont soit
+        monochromes soit bi-chromes, jamais maximalistes.
+      </p>
+      <ul>
+        <li>
+          <strong>Editorial Indigo</strong> (#4A6CF7 mono) — recommandation #1. Coherence parfaite avec
+          l'accent existant du design system, fonctionne en favicon 16 px, fonctionne sans accroc en darkmode.
+          C'est le choix le moins risqué.
+        </li>
+        <li>
+          <strong>Editorial Duo</strong> (#1A1A1A + #4A6CF7) — recommandation #2. La couleur souligne
+          ce qui compte : le pulsar reste noir (autorité scolaire) ou les twins en bleu (citation). Hiérarchie
+          immédiate.
+        </li>
+        <li>
+          <strong>Astronomical Pair</strong> (#3454D1 indigo + #F4A261 amber) — recommandé pour le lockup
+          avec wordmark, plus chaleureux. Bleu-orange est un classique astronomique qui parle à la cible
+          vulgarisateurs scientifiques.
+        </li>
+        <li>
+          <strong>Hero Echo</strong> (palette intégrale du nouveau hero : cobalt, coral, amber, emerald,
+          violet, gold, cyan, jade) — uniquement pour les usages premium / hero, JAMAIS en favicon. Six
+          couleurs sur un mark 24 px se voient mal.
+        </li>
+        <li>
+          <strong>Verified Stamp</strong> (#059669 vert d'attestation + slate) — alternative intéressante
+          car raconte « vérifié », mais risque de connotation « bio » / écologie. Présentée pour explorer.
+        </li>
+        <li>
+          <strong>Manuscript Sepia</strong> (#8B4513 + #D2B48C) — direction archives / parchemin. Très
+          marquée éditoriale ancienne. Présentée mais peu probable comme choix final (trop niche).
+        </li>
+      </ul>
+      <p>
+        <strong>Ma top-3 finale</strong> : W19 (V11 + V18 z-layered en Editorial Indigo), W03 (V12 minimaliste
+        Editorial Duo), W08 (V11 en Hero Echo pour usage premium).
+      </p>
+    </details>
+    <div class="grid grid--dense">
+      <!-- W01 — V1 centré · Editorial Indigo (mono) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="18" cy="18" r={leafRadius * 1.1} fill="#4A6CF7" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">W01 · V1</div>
+        <h3>Centré · Editorial Indigo</h3>
+        <p class="caption">Mono #4A6CF7. La référence sûre, alignée design system.</p>
+      </div>
+
+      <!-- W02 — V1 + Editorial Duo (noir pulsar + indigo accents) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#1A1A1A"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#1A1A1A" stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="18" cy="18" r={leafRadius * 1.1} fill="#4A6CF7" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">W02 · V1</div>
+        <h3>Centré · Editorial Duo</h3>
+        <p class="caption">Pulsar noir (autorité), leaves indigo. Hiérarchie en 2 couleurs.</p>
+      </div>
+
+      <!-- W03 — V12 lune solo · Editorial Duo (la top-3 personnelle) -->
+      <div class="card highlight">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#1A1A1A"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#1A1A1A" stroke="none" />
+            <circle cx="18" cy="18" r={leafRadius * 1.2} fill="#1A1A1A" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.6} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">W03 · V12 ⭐</div>
+        <h3>Lune solo · Editorial Duo</h3>
+        <p class="caption">Minimalisme absolu : trois nœuds, un seul accent bleu sur la lune.</p>
+      </div>
+
+      <!-- W04 — V12 · Astronomical Pair -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#3454D1"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#3454D1" stroke="none" />
+            <circle cx="18" cy="18" r={leafRadius * 1.2} fill="#3454D1" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.6} fill="#F4A261" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">W04 · V12</div>
+        <h3>Lune solo · Astronomical</h3>
+        <p class="caption">Indigo profond + ambre chaud sur la lune. Astronomique classique.</p>
+      </div>
+
+      <!-- W05 — V11 · Editorial Indigo (mono full) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 4, y: 16 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 4, y: 16 }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            {/each}
+            <circle cx="18" cy="18" r={leafRadius * 1.1} fill="#4A6CF7" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">W05 · V11</div>
+        <h3>Constellation + lune · Indigo</h3>
+        <p class="caption">3 sources directes + 1 parent-lune. Mono indigo, lecture neutre.</p>
+      </div>
+
+      <!-- W06 — V11 · Editorial Duo -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#1A1A1A"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 4, y: 16 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#1A1A1A" stroke="none" />
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 4, y: 16 }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            {/each}
+            <circle cx="18" cy="18" r={leafRadius * 1.1} fill="#1A1A1A" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">W06 · V11</div>
+        <h3>V11 · Editorial Duo</h3>
+        <p class="caption">Pulsar+parent noirs, leaves+lune indigo. Hiérarchie deux plans.</p>
+      </div>
+
+      <!-- W07 — V11 · Astronomical Pair -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#3454D1"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 4, y: 16 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#3454D1" stroke="none" />
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 4, y: 16 }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill="#F4A261" stroke="none" />
+            {/each}
+            <circle cx="18" cy="18" r={leafRadius * 1.1} fill="#3454D1" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#F4A261" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">W07 · V11</div>
+        <h3>V11 · Astronomical Pair</h3>
+        <p class="caption">Pulsar+parent indigo (axe primaire), leaves+lune ambre (satellites).</p>
+      </div>
+
+      <!-- W08 — V11 · Hero Echo (la top-3 personnelle, premium) -->
+      <div class="card highlight">
+        <div class="canvas" style="background: #0d0d12">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#5B7FFF"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 5, y: 6, c: '#52E0C4' }, { x: 19, y: 4, c: '#F87171' }, { x: 4, y: 16, c: '#FCD34D' }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius * 1.1} fill="#FFFFFF" stroke="none" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#5B7FFF" stroke="none" />
+            {#each [{ x: 5, y: 6, c: '#52E0C4' }, { x: 19, y: 4, c: '#F87171' }, { x: 4, y: 16, c: '#FCD34D' }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill={p.c} stroke="none" />
+            {/each}
+            <circle cx="18" cy="18" r={leafRadius * 1.1} fill="#6EE7B7" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#C4B5FD" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">W08 · V11 ⭐</div>
+        <h3>V11 · Hero Echo (premium)</h3>
+        <p class="caption">
+          Palette intégrale du hero, sur fond sombre. Usage premium / lockup hero.
+        </p>
+      </div>
+
+      <!-- W09 — V10 · Editorial Indigo -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 19, y: 13 }, { x: 17, y: 21 }, { x: 4, y: 14 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            {#each [{ x: 19, y: 13 }, { x: 17, y: 21 }, { x: 4, y: 14 }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            {/each}
+          </svg>
+        </div>
+        <div class="num">W09 · V10</div>
+        <h3>Constellation + Y-fork · Indigo</h3>
+        <p class="caption">3 sources directes + un Y-fork. Mono indigo, équilibré.</p>
+      </div>
+
+      <!-- W10 — V10 · Editorial Duo (Y-fork twins accentués) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#1A1A1A"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 19, y: 13 }, { x: 17, y: 21 }, { x: 4, y: 14 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#1A1A1A" stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            {#each [{ x: 19, y: 13 }, { x: 17, y: 21 }, { x: 4, y: 14 }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill="#1A1A1A" stroke="none" />
+            {/each}
+          </svg>
+        </div>
+        <div class="num">W10 · V10</div>
+        <h3>V10 · Editorial Duo</h3>
+        <p class="caption">
+          Tout noir sauf les twins du Y-fork en indigo : la « paire citée » saillit.
+        </p>
+      </div>
+
+      <!-- W11 — V10 · twins Hero Echo (palette colorée sur les twins) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#1F2937"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 19, y: 13 }, { x: 17, y: 21 }, { x: 4, y: 14 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#5B7FFF" stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill="#F87171" stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill="#FCD34D" stroke="none" />
+            {#each [{ x: 19, y: 13 }, { x: 17, y: 21 }, { x: 4, y: 14 }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill="#1F2937" stroke="none" />
+            {/each}
+          </svg>
+        </div>
+        <div class="num">W11 · V10</div>
+        <h3>V10 · twins Hero Echo</h3>
+        <p class="caption">
+          Twins en coral + amber (hero), reste sobre. Y-fork comme accent éditorial.
+        </p>
+      </div>
+
+      <!-- W12 — V9 · Editorial Indigo (constellation mono) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 21, y: 13 }, { x: 17, y: 21 }, { x: 5, y: 19 }, { x: 3, y: 12 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 21, y: 13 }, { x: 17, y: 21 }, { x: 5, y: 19 }, { x: 3, y: 12 }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            {/each}
+          </svg>
+        </div>
+        <div class="num">W12 · V9</div>
+        <h3>Constellation · Indigo</h3>
+        <p class="caption">
+          6 nœuds réguliers, pulsar central. Lecture « étoile + planètes » pure.
+        </p>
+      </div>
+
+      <!-- W13 — V9 · Editorial Duo (hub noir, satellites bleus) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#1A1A1A"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 21, y: 13 }, { x: 17, y: 21 }, { x: 5, y: 19 }, { x: 3, y: 12 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <circle cx="12" cy="12" r={centerRadius} fill="#1A1A1A" stroke="none" />
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 21, y: 13 }, { x: 17, y: 21 }, { x: 5, y: 19 }, { x: 3, y: 12 }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            {/each}
+          </svg>
+        </div>
+        <div class="num">W13 · V9</div>
+        <h3>V9 · Editorial Duo</h3>
+        <p class="caption">Hub noir, satellites bleus. Très lisible, structure claire.</p>
+      </div>
+
+      <!-- W14 — V9 · Hero Echo (maximaliste) -->
+      <div class="card">
+        <div class="canvas" style="background: #0d0d12">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#475569"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 5, y: 6, c: '#5B7FFF' }, { x: 19, y: 4, c: '#F87171' }, { x: 21, y: 13, c: '#FCD34D' }, { x: 17, y: 21, c: '#6EE7B7' }, { x: 5, y: 19, c: '#C4B5FD' }, { x: 3, y: 12, c: '#52E0C4' }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <circle cx="12" cy="12" r={centerRadius * 1.1} fill="#FFFFFF" stroke="none" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#5B7FFF" stroke="none" />
+            {#each [{ x: 5, y: 6, c: '#5B7FFF' }, { x: 19, y: 4, c: '#F87171' }, { x: 21, y: 13, c: '#FCD34D' }, { x: 17, y: 21, c: '#6EE7B7' }, { x: 5, y: 19, c: '#C4B5FD' }, { x: 3, y: 12, c: '#52E0C4' }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill={p.c} stroke="none" />
+            {/each}
+          </svg>
+        </div>
+        <div class="num">W14 · V9</div>
+        <h3>V9 · Hero Echo maximaliste</h3>
+        <p class="caption">
+          6 couleurs hero distinctes sur fond sombre. Démo de richesse, à éviter en favicon.
+        </p>
+      </div>
+
+      <!-- W15 — V2 BL · Editorial Indigo -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="5" y1="19" x2="11" y2="11" />
+            <line x1="11" y1="11" x2="9" y2="5" />
+            <line x1="11" y1="11" x2="17" y2="7" />
+            <line x1="5" y1="19" x2="14" y2="20" />
+            <line x1="14" y1="20" x2="18" y2="22" />
+            <circle cx="5" cy="19" r={centerRadius * 1.05} fill="#4A6CF7" stroke="none" />
+            <circle cx="9" cy="5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="17" cy="7" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="14" cy="20" r={leafRadius * 1.1} fill="#4A6CF7" stroke="none" />
+            <circle cx="18" cy="22" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">W15 · V2</div>
+        <h3>BL · Editorial Indigo</h3>
+        <p class="caption">Pulsar coin SO, ascension NE. Mono indigo, dynamique diagonale.</p>
+      </div>
+
+      <!-- W16 — V2 BL · Editorial Duo -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#1A1A1A"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="5" y1="19" x2="11" y2="11" />
+            <line x1="11" y1="11" x2="9" y2="5" />
+            <line x1="11" y1="11" x2="17" y2="7" />
+            <line x1="5" y1="19" x2="14" y2="20" />
+            <line x1="14" y1="20" x2="18" y2="22" />
+            <circle cx="5" cy="19" r={centerRadius * 1.05} fill="#1A1A1A" stroke="none" />
+            <circle cx="9" cy="5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="17" cy="7" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="14" cy="20" r={leafRadius * 1.1} fill="#1A1A1A" stroke="none" />
+            <circle cx="18" cy="22" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">W16 · V2</div>
+        <h3>BL · Editorial Duo</h3>
+        <p class="caption">
+          Pulsar noir BL ancré, leaves+lune indigo. Composition asymétrique nette.
+        </p>
+      </div>
+
+      <!-- W17 — V4 TL · Editorial Indigo -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="5" y1="5" x2="13" y2="11" />
+            <line x1="13" y1="11" x2="13" y2="18" />
+            <line x1="13" y1="11" x2="20" y2="14" />
+            <line x1="5" y1="5" x2="14" y2="3" />
+            <line x1="14" y1="3" x2="20" y2="2" />
+            <circle cx="5" cy="5" r={centerRadius * 1.05} fill="#4A6CF7" stroke="none" />
+            <circle cx="13" cy="18" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="20" cy="14" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="14" cy="3" r={leafRadius * 1.1} fill="#4A6CF7" stroke="none" />
+            <circle cx="20" cy="2" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">W17 · V4</div>
+        <h3>TL · Editorial Indigo</h3>
+        <p class="caption">Pulsar coin NO. Mono indigo, lecture haut-vers-bas.</p>
+      </div>
+
+      <!-- W18 — V4 TL · Editorial Duo -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#1A1A1A"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="5" y1="5" x2="13" y2="11" />
+            <line x1="13" y1="11" x2="13" y2="18" />
+            <line x1="13" y1="11" x2="20" y2="14" />
+            <line x1="5" y1="5" x2="14" y2="3" />
+            <line x1="14" y1="3" x2="20" y2="2" />
+            <circle cx="5" cy="5" r={centerRadius * 1.05} fill="#1A1A1A" stroke="none" />
+            <circle cx="13" cy="18" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="20" cy="14" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="14" cy="3" r={leafRadius * 1.1} fill="#1A1A1A" stroke="none" />
+            <circle cx="20" cy="2" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">W18 · V4</div>
+        <h3>TL · Editorial Duo</h3>
+        <p class="caption">Pulsar noir coin NO + accents indigo. Format presse / éditorial.</p>
+      </div>
+
+      <!-- W19 — V11 + V18 z-layered · Editorial Indigo (top-3 personnelle) -->
+      <div class="card highlight">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 4, y: 16 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 4, y: 16 }] as p, i (i)}
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={leafRadius * 0.95}
+                fill="#4A6CF7"
+                stroke="#fafbfc"
+                stroke-width={strokeWidth * 0.9}
+              />
+            {/each}
+            <circle
+              cx="18"
+              cy="18"
+              r={leafRadius * 1.2}
+              fill="#4A6CF7"
+              stroke="#fafbfc"
+              stroke-width={strokeWidth * 1.1}
+            />
+            <circle
+              cx="20.5"
+              cy="20.5"
+              r={leafRadius * 0.65}
+              fill="#4A6CF7"
+              stroke="#fafbfc"
+              stroke-width={strokeWidth * 0.7}
+            />
+          </svg>
+        </div>
+        <div class="num">W19 · V11+V18 ⭐</div>
+        <h3>V11 z-layered · Indigo</h3>
+        <p class="caption">
+          Constellation+lune avec stroke-fond autour de chaque sphère → 3D plat élégant.
+        </p>
+      </div>
+
+      <!-- W20 — V11 + V18 · Editorial Duo -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#1A1A1A"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 4, y: 16 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#1A1A1A" stroke="none" />
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 4, y: 16 }] as p, i (i)}
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={leafRadius * 0.95}
+                fill="#4A6CF7"
+                stroke="#fafbfc"
+                stroke-width={strokeWidth * 0.9}
+              />
+            {/each}
+            <circle
+              cx="18"
+              cy="18"
+              r={leafRadius * 1.2}
+              fill="#1A1A1A"
+              stroke="#fafbfc"
+              stroke-width={strokeWidth * 1.1}
+            />
+            <circle
+              cx="20.5"
+              cy="20.5"
+              r={leafRadius * 0.65}
+              fill="#4A6CF7"
+              stroke="#fafbfc"
+              stroke-width={strokeWidth * 0.7}
+            />
+          </svg>
+        </div>
+        <div class="num">W20 · V11+V18</div>
+        <h3>V11 z-layered · Duo</h3>
+        <p class="caption">Z-layered en bichromie. Pulsar noir ancré, satellites bleus pop.</p>
+      </div>
+
+      <!-- W21 — V12 + V18 · Editorial Duo (minimalisme 3D) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#1A1A1A"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#1A1A1A" stroke="none" />
+            <circle
+              cx="18"
+              cy="18"
+              r={leafRadius * 1.3}
+              fill="#1A1A1A"
+              stroke="#fafbfc"
+              stroke-width={strokeWidth * 1.2}
+            />
+            <circle
+              cx="20.5"
+              cy="20.5"
+              r={leafRadius * 0.7}
+              fill="#4A6CF7"
+              stroke="#fafbfc"
+              stroke-width={strokeWidth * 0.8}
+            />
+          </svg>
+        </div>
+        <div class="num">W21 · V12+V18</div>
+        <h3>V12 z-layered · Duo</h3>
+        <p class="caption">
+          Lune solo z-layered. Trois plans visuels distincts, lecture immédiate.
+        </p>
+      </div>
+
+      <!-- W22 — V10 + V18 · Editorial Indigo -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 19, y: 13 }, { x: 17, y: 21 }, { x: 4, y: 14 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            <circle
+              cx="4"
+              cy="2.5"
+              r={leafRadius * 0.95}
+              fill="#4A6CF7"
+              stroke="#fafbfc"
+              stroke-width={strokeWidth * 0.9}
+            />
+            <circle
+              cx="9.5"
+              cy="1.5"
+              r={leafRadius * 0.95}
+              fill="#4A6CF7"
+              stroke="#fafbfc"
+              stroke-width={strokeWidth * 0.9}
+            />
+            {#each [{ x: 19, y: 13 }, { x: 17, y: 21 }, { x: 4, y: 14 }] as p, i (i)}
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={leafRadius * 0.95}
+                fill="#4A6CF7"
+                stroke="#fafbfc"
+                stroke-width={strokeWidth * 0.9}
+              />
+            {/each}
+          </svg>
+        </div>
+        <div class="num">W22 · V10+V18</div>
+        <h3>V10 z-layered · Indigo</h3>
+        <p class="caption">Constellation + Y-fork en z-layered. Tous les nœuds détachés du fond.</p>
+      </div>
+
+      <!-- W23 — V11 + drop shadow · Editorial Indigo (effet NOUVEAU) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <defs>
+              <filter id="w23-shadow" x="-30%" y="-30%" width="160%" height="160%">
+                <feDropShadow
+                  dx="0"
+                  dy="0.6"
+                  stdDeviation="0.4"
+                  flood-color="#1A1A1A"
+                  flood-opacity="0.22"
+                />
+              </filter>
+            </defs>
+            <g filter="url(#w23-shadow)">
+              {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 4, y: 16 }] as p, i (i)}
+                <line x1="12" y1="12" x2={p.x} y2={p.y} />
+              {/each}
+              <line x1="12" y1="12" x2="18" y2="18" />
+              <line x1="18" y1="18" x2="20.5" y2="20.5" />
+              <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+              {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 4, y: 16 }] as p, i (i)}
+                <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+              {/each}
+              <circle cx="18" cy="18" r={leafRadius * 1.1} fill="#4A6CF7" stroke="none" />
+              <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+            </g>
+          </svg>
+        </div>
+        <div class="num">W23 · effet drop-shadow</div>
+        <h3>V11 + soft shadow</h3>
+        <p class="caption">
+          Ombre douce sous chaque élément. Sensation de matérialité, papier-collé.
+        </p>
+      </div>
+
+      <!-- W24 — V11 + drop shadow · Editorial Duo -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#1A1A1A"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <defs>
+              <filter id="w24-shadow" x="-30%" y="-30%" width="160%" height="160%">
+                <feDropShadow
+                  dx="0"
+                  dy="0.6"
+                  stdDeviation="0.4"
+                  flood-color="#1A1A1A"
+                  flood-opacity="0.22"
+                />
+              </filter>
+            </defs>
+            <g filter="url(#w24-shadow)">
+              {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 4, y: 16 }] as p, i (i)}
+                <line x1="12" y1="12" x2={p.x} y2={p.y} />
+              {/each}
+              <line x1="12" y1="12" x2="18" y2="18" />
+              <line x1="18" y1="18" x2="20.5" y2="20.5" />
+              <circle cx="12" cy="12" r={centerRadius} fill="#1A1A1A" stroke="none" />
+              {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 4, y: 16 }] as p, i (i)}
+                <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+              {/each}
+              <circle cx="18" cy="18" r={leafRadius * 1.1} fill="#1A1A1A" stroke="none" />
+              <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+            </g>
+          </svg>
+        </div>
+        <div class="num">W24 · effet drop-shadow</div>
+        <h3>V11 + shadow · Duo</h3>
+        <p class="caption">Ombre douce + bichromie. Editorial press style.</p>
+      </div>
+
+      <!-- W25 — V1 + variable line weight · Indigo (effet NOUVEAU) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="12" y1="12" x2="7" y2="5" stroke-width={strokeWidth * 1.7} />
+            <line x1="7" y1="5" x2="4" y2="2.5" stroke-width={strokeWidth * 0.8} />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" stroke-width={strokeWidth * 0.8} />
+            <line x1="12" y1="12" x2="18" y2="18" stroke-width={strokeWidth * 1.7} />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" stroke-width={strokeWidth * 0.8} />
+            <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="18" cy="18" r={leafRadius * 1.1} fill="#4A6CF7" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">W25 · effet line-weight</div>
+        <h3>V1 · variable weight</h3>
+        <p class="caption">
+          Traits épais près du pulsar, fins vers les feuilles. Hiérarchie subtile.
+        </p>
+      </div>
+
+      <!-- W26 — V11 + variable weight · Astronomical -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#3454D1"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 4, y: 16 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} stroke-width={strokeWidth * 1.4} />
+            {/each}
+            <line x1="12" y1="12" x2="18" y2="18" stroke-width={strokeWidth * 1.6} />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" stroke-width={strokeWidth * 0.7} />
+            <circle cx="12" cy="12" r={centerRadius} fill="#3454D1" stroke="none" />
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 4, y: 16 }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill="#F4A261" stroke="none" />
+            {/each}
+            <circle cx="18" cy="18" r={leafRadius * 1.1} fill="#3454D1" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#F4A261" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">W26 · line-weight + Astro</div>
+        <h3>V11 · weight + astro</h3>
+        <p class="caption">Hiérarchie épaisseur + bi-chromie astronomique. Riche sans saturer.</p>
+      </div>
+
+      <!-- W27 — V12 + dashed lines · Duo (effet NOUVEAU) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#1A1A1A"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-dasharray="1.6 1.2"
+          >
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#1A1A1A" stroke="none" />
+            <circle cx="18" cy="18" r={leafRadius * 1.2} fill="#1A1A1A" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.6} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">W27 · effet dashed</div>
+        <h3>V12 dashed · Duo</h3>
+        <p class="caption">Lignes pointillées : suggère « lien probable », « citation inférée ».</p>
+      </div>
+
+      <!-- W28 — V11 + dashed · Indigo -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-dasharray="1.6 1.2"
+          >
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 4, y: 16 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 4, y: 16 }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            {/each}
+            <circle cx="18" cy="18" r={leafRadius * 1.1} fill="#4A6CF7" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">W28 · effet dashed</div>
+        <h3>V11 dashed · Indigo</h3>
+        <p class="caption">Toutes les connexions pointillées. Plus léger, aérien.</p>
+      </div>
+
+      <!-- W29 — V12 + diffraction X-spikes · Indigo (effet NOUVEAU) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <line
+              x1="12"
+              y1="7"
+              x2="12"
+              y2="17"
+              stroke-width={strokeWidth * 0.5}
+              stroke-opacity="0.8"
+            />
+            <line
+              x1="7"
+              y1="12"
+              x2="17"
+              y2="12"
+              stroke-width={strokeWidth * 0.5}
+              stroke-opacity="0.8"
+            />
+            <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            <circle cx="18" cy="18" r={leafRadius * 1.2} fill="#4A6CF7" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.6} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">W29 · effet X-spikes</div>
+        <h3>V12 + diffraction</h3>
+        <p class="caption">Pulsar avec 4 petits spikes (X). Étoile lointaine, télescope astro.</p>
+      </div>
+
+      <!-- W30 — V11 + diffraction X-spikes · Astronomical -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#3454D1"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 4, y: 16 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <line
+              x1="12"
+              y1="6"
+              x2="12"
+              y2="18"
+              stroke="#F4A261"
+              stroke-width={strokeWidth * 0.5}
+              stroke-opacity="0.9"
+            />
+            <line
+              x1="6"
+              y1="12"
+              x2="18"
+              y2="12"
+              stroke="#F4A261"
+              stroke-width={strokeWidth * 0.5}
+              stroke-opacity="0.9"
+            />
+            <circle cx="12" cy="12" r={centerRadius} fill="#3454D1" stroke="none" />
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 4, y: 16 }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill="#F4A261" stroke="none" />
+            {/each}
+            <circle cx="18" cy="18" r={leafRadius * 1.1} fill="#3454D1" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#F4A261" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">W30 · X-spikes + Astro</div>
+        <h3>V11 + X-spikes ambrés</h3>
+        <p class="caption">Spikes en ambre sur pulsar indigo. Lecture stellaire pleine.</p>
+      </div>
+
+      <!-- W31 — V12 + orbital ring · Editorial Duo (effet NOUVEAU) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#1A1A1A"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <ellipse
+              cx="18"
+              cy="18"
+              rx={leafRadius * 2.6}
+              ry={leafRadius * 1.4}
+              transform="rotate(45 18 18)"
+              stroke="#4A6CF7"
+              stroke-width={strokeWidth * 0.5}
+              fill="none"
+              stroke-dasharray="1.2 0.8"
+            />
+            <circle cx="12" cy="12" r={centerRadius} fill="#1A1A1A" stroke="none" />
+            <circle cx="18" cy="18" r={leafRadius * 1.2} fill="#1A1A1A" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.6} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">W31 · effet orbital ring</div>
+        <h3>V12 + ring orbital</h3>
+        <p class="caption">
+          Ellipse pointillée autour du parent : l'orbite de la lune matérialisée.
+        </p>
+      </div>
+
+      <!-- W32 — V11 + orbital rings autour du pulsar · Indigo -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle
+              cx="12"
+              cy="12"
+              r="9"
+              stroke="#4A6CF7"
+              stroke-width={strokeWidth * 0.3}
+              stroke-opacity="0.4"
+              stroke-dasharray="0.8 0.8"
+              fill="none"
+            />
+            <circle
+              cx="12"
+              cy="12"
+              r="6.2"
+              stroke="#4A6CF7"
+              stroke-width={strokeWidth * 0.3}
+              stroke-opacity="0.4"
+              stroke-dasharray="0.8 0.8"
+              fill="none"
+            />
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 4, y: 16 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 4, y: 16 }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            {/each}
+            <circle cx="18" cy="18" r={leafRadius * 1.1} fill="#4A6CF7" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">W32 · orbital rings</div>
+        <h3>V11 + orbites concentriques</h3>
+        <p class="caption">Deux cercles pointillés très fins : les orbites des satellites.</p>
+      </div>
+
+      <!-- W33 — V12 + hollow parent · Indigo (effet NOUVEAU : mix filled/hollow) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            <circle
+              cx="18"
+              cy="18"
+              r={leafRadius * 1.25}
+              fill="#fafbfc"
+              stroke="#4A6CF7"
+              stroke-width={strokeWidth * 1.3}
+            />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.6} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">W33 · effet hollow</div>
+        <h3>V12 · parent hollow</h3>
+        <p class="caption">
+          Le parent est un anneau, pulsar et lune pleins. Plans visuels différenciés.
+        </p>
+      </div>
+
+      <!-- W34 — V11 + regular nodes hollow · Editorial Duo -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#1A1A1A"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 4, y: 16 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#1A1A1A" stroke="none" />
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 4, y: 16 }] as p, i (i)}
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={leafRadius * 0.95}
+                fill="#fafbfc"
+                stroke="#1A1A1A"
+                stroke-width={strokeWidth}
+              />
+            {/each}
+            <circle cx="18" cy="18" r={leafRadius * 1.1} fill="#1A1A1A" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">W34 · effet hollow mix</div>
+        <h3>V11 · réguliers hollow</h3>
+        <p class="caption">Réguliers en anneaux noirs, pulsar+parent pleins. Hiérarchie 3 plans.</p>
+      </div>
+
+      <!-- W35 — V11 + gradient on lines · Hero Echo (effet NOUVEAU) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <defs>
+              <linearGradient
+                id="w35-line-1"
+                x1="12"
+                y1="12"
+                x2="5"
+                y2="6"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop offset="0%" stop-color="#5B7FFF" />
+                <stop offset="100%" stop-color="#52E0C4" />
+              </linearGradient>
+              <linearGradient
+                id="w35-line-2"
+                x1="12"
+                y1="12"
+                x2="19"
+                y2="4"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop offset="0%" stop-color="#5B7FFF" />
+                <stop offset="100%" stop-color="#F87171" />
+              </linearGradient>
+              <linearGradient
+                id="w35-line-3"
+                x1="12"
+                y1="12"
+                x2="4"
+                y2="16"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop offset="0%" stop-color="#5B7FFF" />
+                <stop offset="100%" stop-color="#FCD34D" />
+              </linearGradient>
+              <linearGradient
+                id="w35-line-4"
+                x1="12"
+                y1="12"
+                x2="18"
+                y2="18"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop offset="0%" stop-color="#5B7FFF" />
+                <stop offset="100%" stop-color="#6EE7B7" />
+              </linearGradient>
+            </defs>
+            <line x1="12" y1="12" x2="5" y2="6" stroke="url(#w35-line-1)" />
+            <line x1="12" y1="12" x2="19" y2="4" stroke="url(#w35-line-2)" />
+            <line x1="12" y1="12" x2="4" y2="16" stroke="url(#w35-line-3)" />
+            <line x1="12" y1="12" x2="18" y2="18" stroke="url(#w35-line-4)" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" stroke="#C4B5FD" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#5B7FFF" stroke="none" />
+            <circle cx="5" cy="6" r={leafRadius * 0.85} fill="#52E0C4" stroke="none" />
+            <circle cx="19" cy="4" r={leafRadius * 0.85} fill="#F87171" stroke="none" />
+            <circle cx="4" cy="16" r={leafRadius * 0.85} fill="#FCD34D" stroke="none" />
+            <circle cx="18" cy="18" r={leafRadius * 1.1} fill="#6EE7B7" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#C4B5FD" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">W35 · effet gradient lines</div>
+        <h3>V11 · gradient lines Hero</h3>
+        <p class="caption">
+          Chaque ligne transitionne du bleu pulsar à la couleur de sa feuille. Spectacle.
+        </p>
+      </div>
+
+      <!-- W36 — V12 + gradient line · Indigo -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <defs>
+              <linearGradient
+                id="w36-line"
+                x1="12"
+                y1="12"
+                x2="20.5"
+                y2="20.5"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop offset="0%" stop-color="#4A6CF7" />
+                <stop offset="100%" stop-color="#A0B0E8" />
+              </linearGradient>
+            </defs>
+            <line x1="12" y1="12" x2="20.5" y2="20.5" stroke="url(#w36-line)" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            <circle cx="18" cy="18" r={leafRadius * 1.2} fill="#4A6CF7" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.6} fill="#A0B0E8" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">W36 · gradient line solo</div>
+        <h3>V12 · gradient fade</h3>
+        <p class="caption">Une seule ligne en gradient : densité bleue qui décroît vers la lune.</p>
+      </div>
+
+      <!-- W37 — V12 + frosted blur backdrop · Hero echo (effet NOUVEAU) -->
+      <div class="card">
+        <div class="canvas" style="background: #0d0d12">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <defs>
+              <filter id="w37-blur" x="-100%" y="-100%" width="300%" height="300%">
+                <feGaussianBlur stdDeviation="2.5" />
+              </filter>
+            </defs>
+            <circle
+              cx="12"
+              cy="12"
+              r="6"
+              fill="#5B7FFF"
+              fill-opacity="0.4"
+              filter="url(#w37-blur)"
+            />
+            <line x1="12" y1="12" x2="18" y2="18" stroke="#FFFFFF" stroke-opacity="0.6" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" stroke="#FFFFFF" stroke-opacity="0.6" />
+            <circle cx="12" cy="12" r={centerRadius * 1.15} fill="#FFFFFF" stroke="none" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#5B7FFF" stroke="none" />
+            <circle cx="18" cy="18" r={leafRadius * 1.2} fill="#6EE7B7" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.6} fill="#C4B5FD" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">W37 · effet frosted blur</div>
+        <h3>V12 · backdrop blur</h3>
+        <p class="caption">
+          Halo flouté derrière le pulsar (filter blur). 3D atmosphérique premium.
+        </p>
+      </div>
+
+      <!-- W38 — V11 + multi-stroke parallel · Indigo (effet NOUVEAU) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ a: { x: 5, y: 6 }, b: { x: 12, y: 12 } }, { a: { x: 19, y: 4 }, b: { x: 12, y: 12 } }, { a: { x: 4, y: 16 }, b: { x: 12, y: 12 } }, { a: { x: 12, y: 12 }, b: { x: 18, y: 18 } }, { a: { x: 18, y: 18 }, b: { x: 20.5, y: 20.5 } }] as ln, i (i)}
+              <line
+                x1={ln.a.x}
+                y1={ln.a.y}
+                x2={ln.b.x}
+                y2={ln.b.y}
+                stroke-width={strokeWidth * 2.4}
+              />
+              <line
+                x1={ln.a.x}
+                y1={ln.a.y}
+                x2={ln.b.x}
+                y2={ln.b.y}
+                stroke="#fafbfc"
+                stroke-width={strokeWidth * 1.1}
+              />
+            {/each}
+            <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 4, y: 16 }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            {/each}
+            <circle cx="18" cy="18" r={leafRadius * 1.1} fill="#4A6CF7" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">W38 · effet multi-stroke</div>
+        <h3>V11 · lignes doubles</h3>
+        <p class="caption">Lignes en double trait (creux au milieu). Métro-cartographique.</p>
+      </div>
+
+      <!-- W39 — V12 · Manuscript Sepia (palette NOUVELLE) -->
+      <div class="card">
+        <div class="canvas" style="background: #f5ead0">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#5C4033"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#5C4033" stroke="none" />
+            <circle cx="18" cy="18" r={leafRadius * 1.2} fill="#8B4513" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.6} fill="#D2B48C" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">W39 · Manuscript Sepia</div>
+        <h3>V12 · Parchemin</h3>
+        <p class="caption">
+          Bruns sépia sur fond parchemin. Direction archives anciennes / scriptorium.
+        </p>
+      </div>
+
+      <!-- W40 — V11 + V18 + drop shadow + Hero Echo : combinatoire maximaliste -->
+      <div class="card">
+        <div class="canvas" style="background: #0d0d12">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#475569"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <defs>
+              <filter id="w40-shadow" x="-30%" y="-30%" width="160%" height="160%">
+                <feDropShadow
+                  dx="0"
+                  dy="0.5"
+                  stdDeviation="0.4"
+                  flood-color="#000"
+                  flood-opacity="0.55"
+                />
+              </filter>
+            </defs>
+            <g filter="url(#w40-shadow)">
+              {#each [{ x: 5, y: 6, c: '#52E0C4' }, { x: 19, y: 4, c: '#F87171' }, { x: 4, y: 16, c: '#FCD34D' }] as p, i (i)}
+                <line x1="12" y1="12" x2={p.x} y2={p.y} />
+              {/each}
+              <line x1="12" y1="12" x2="18" y2="18" />
+              <line x1="18" y1="18" x2="20.5" y2="20.5" />
+              <circle cx="12" cy="12" r={centerRadius * 1.1} fill="#FFFFFF" stroke="none" />
+              <circle
+                cx="12"
+                cy="12"
+                r={centerRadius}
+                fill="#5B7FFF"
+                stroke="#0d0d12"
+                stroke-width={strokeWidth * 0.8}
+              />
+              {#each [{ x: 5, y: 6, c: '#52E0C4' }, { x: 19, y: 4, c: '#F87171' }, { x: 4, y: 16, c: '#FCD34D' }] as p, i (i)}
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={leafRadius * 0.95}
+                  fill={p.c}
+                  stroke="#0d0d12"
+                  stroke-width={strokeWidth * 0.7}
+                />
+              {/each}
+              <circle
+                cx="18"
+                cy="18"
+                r={leafRadius * 1.2}
+                fill="#6EE7B7"
+                stroke="#0d0d12"
+                stroke-width={strokeWidth * 0.9}
+              />
+              <circle
+                cx="20.5"
+                cy="20.5"
+                r={leafRadius * 0.65}
+                fill="#C4B5FD"
+                stroke="#0d0d12"
+                stroke-width={strokeWidth * 0.6}
+              />
+            </g>
+          </svg>
+        </div>
+        <div class="num">W40 · combo maximal</div>
+        <h3>V11 + V18 + shadow + Hero</h3>
+        <p class="caption">
+          Z-layered + drop shadow + palette hero complète. La version « hero of hero ».
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-block">
     <h2 class="section-title">Pulsar-graph — 20 variations · 2026-05-28</h2>
     <p class="section-lead">
       Vingt déclinaisons du mark <strong>#01 (Pulsar-graph)</strong>. Système de couleurs étendu :
@@ -1963,6 +3519,59 @@
   .grid--dense {
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     gap: 0.85rem;
+  }
+
+  /* Bloc « rationale design » repliable */
+  .design-rationale {
+    margin: 0 0 1.5rem;
+    padding: 0.85rem 1rem;
+    background: rgba(74, 108, 247, 0.04);
+    border: 1px solid rgba(74, 108, 247, 0.18);
+    border-radius: 8px;
+    font-size: 0.82rem;
+    color: #334155;
+    line-height: 1.5;
+  }
+  :global(.dark) .design-rationale {
+    background: rgba(107, 138, 255, 0.06);
+    border-color: rgba(107, 138, 255, 0.18);
+    color: #cbd5e1;
+  }
+  .design-rationale > summary {
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #4a6cf7;
+    list-style: none;
+  }
+  .design-rationale > summary::-webkit-details-marker {
+    display: none;
+  }
+  .design-rationale > summary::before {
+    content: '▸ ';
+    display: inline-block;
+    transition: transform 0.15s ease;
+  }
+  .design-rationale[open] > summary::before {
+    transform: rotate(90deg);
+  }
+  .design-rationale p,
+  .design-rationale ul {
+    margin: 0.6rem 0 0;
+  }
+  .design-rationale ul {
+    padding-left: 1.2rem;
+  }
+  .design-rationale li {
+    margin: 0.3rem 0;
+  }
+  .design-rationale strong {
+    color: #0f172a;
+  }
+  :global(.dark) .design-rationale strong {
+    color: #f1f5f9;
   }
 
   /* Séparateur dans le panneau de contrôle */
