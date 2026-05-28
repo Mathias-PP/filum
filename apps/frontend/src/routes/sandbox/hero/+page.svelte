@@ -321,8 +321,8 @@
 
       // --- Pulsar (3D sphere — position controlled by JS for click-drag) ---
       vec2 coreC = uMouse;  // uMouse repurposed as "pulsar position" (set by JS)
-      // Scale ×1.3 demandé : 0.085 → 0.110
-      float coreR = 0.110 * (1.0 + 0.10 * uHoverCore);
+      // Pulsar scale : 0.085 → 0.110 (×1.3 pass 1) → 0.143 (×1.3 pass 3.5)
+      float coreR = 0.143 * (1.0 + 0.10 * uHoverCore);
       float pulse = 0.5 + 0.5 * sin(uTime * uPulseSpeed * 2.0);
       float coreRPulsed = coreR * (0.985 + 0.030 * pulse);
       vec3 coreColor = hueShift(uCoreHue);
@@ -332,28 +332,44 @@
       float ang = atan(sd.y, sd.x);
       float haloOut = max(dCore - coreRPulsed * 0.96, 0.0);
 
-      // 1. Tight bright chromosphere (just outside the limb)
-      float chrom = exp(-haloOut * 30.0) * 0.95;
-      // 2. Mid-range corona (medium spread)
-      float corona = exp(-haloOut * 8.0) * 0.45;
-      // 3. Wide diffuse outer halo (extends far)
-      float farHalo = exp(-dCore * 2.5) * 0.35;
+      // 1. Chromosphère brillante (just outside limb) — intensité +30 %
+      float chrom = exp(-haloOut * 30.0) * 1.25;
+      // 2. Corona mid-range — intensité +45 %
+      float corona = exp(-haloOut * 8.0) * 0.65;
+      // 3. Halo diffus large — intensité +60 %
+      float farHalo = exp(-dCore * 2.5) * 0.55;
       vec3 haloColor = mix(coreColor, vec3(1.0), 0.30);
-      col += haloColor * (chrom + corona) * (0.95 + 0.10 * pulse);
-      col += coreColor * farHalo * (0.85 + 0.15 * pulse);
+      col += haloColor * (chrom + corona) * (1.00 + 0.12 * pulse);
+      col += coreColor * farHalo * (0.95 + 0.18 * pulse);
 
-      // 4. Diffraction spikes — short, gentle stellar shimmer
+      // 4. Diffraction spikes — un peu plus visibles
       float spikeH = exp(-pow(abs(sd.y) * 160.0, 1.4)) * exp(-abs(sd.x) * 9.0);
       float spikeV = exp(-pow(abs(sd.x) * 160.0, 1.4)) * exp(-abs(sd.y) * 9.0);
       float spike = (spikeH + spikeV) * (0.90 + 0.15 * pulse);
-      col += mix(coreColor, vec3(1.0), 0.45) * spike * 0.20;
+      col += mix(coreColor, vec3(1.0), 0.45) * spike * 0.32;
 
-      // 6. Asymmetric limb flares / prominences — animated plasma jets
-      float flAng = ang + uTime * 0.08;
-      float flPattern = fbm(vec2(flAng * 1.4, dCore * 14.0) + uTime * 0.05);
-      float flFalloff = exp(-haloOut * 10.0) * step(coreRPulsed * 0.97, dCore);
-      float flare = pow(flPattern, 5.0) * flFalloff * 1.6;
-      col += coreColor * flare;
+      // 5. Tempêtes solaires / prominences plasma — multi-fréquence pour
+      //    avoir plusieurs jets visibles simultanément. Couleur chaude
+      //    (blanc-doré) vs étoile bleue → contraste plasma vs corps.
+      //    Régime sphérique : on mappe l'angle azimutal pour que les jets
+      //    suivent vraiment la rotation autour du limbe.
+      vec3 flareCol = mix(vec3(1.0, 0.85, 0.55), vec3(1.0), 0.20); // plasma chaud
+      // Couche A — gros jets lents, larges, principaux
+      float flAngA = ang * 1.0 + uTime * 0.07;
+      float flA = fbm(vec2(flAngA * 1.2, dCore * 11.0) + uTime * 0.04);
+      float flFalloffA = exp(-haloOut * 7.5) * step(coreRPulsed * 0.95, dCore);
+      float flareA = pow(flA, 3.0) * flFalloffA * 2.8;
+      // Couche B — jets fins plus rapides (turbulence de surface haute)
+      float flAngB = ang * 2.3 - uTime * 0.13;
+      float flB = fbm(vec2(flAngB * 2.6, dCore * 22.0) + uTime * 0.09);
+      float flFalloffB = exp(-haloOut * 14.0) * step(coreRPulsed * 0.97, dCore);
+      float flareB = pow(flB, 4.0) * flFalloffB * 2.2;
+      // Couche C — sursauts brefs très brillants (granulation explosive)
+      float flAngC = ang * 3.1 + uTime * 0.21;
+      float flC = fbm(vec2(flAngC * 3.5, dCore * 30.0) + uTime * 0.15);
+      float burst = smoothstep(0.72, 0.92, flC) * exp(-haloOut * 18.0)
+                  * step(coreRPulsed * 0.98, dCore);
+      col += flareCol * (flareA + flareB) + vec3(1.0, 0.95, 0.80) * burst * 1.8;
 
       // ====================================================================
       // CONNEXIONS pulsar↔nœud — lignes lumineuses + "data pulse" qui voyage
@@ -647,7 +663,7 @@
       const cy = coreDisp.y;
       const dx = currentMouse.x - cx;
       const dy = currentMouse.y - cy;
-      const coreHitR = 0.110 * 1.2;
+      const coreHitR = 0.143 * 1.2;
       if (dx * dx + dy * dy < coreHitR * coreHitR) {
         draggingCore = true;
         wrapEl.setPointerCapture?.(e.pointerId);
