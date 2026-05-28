@@ -403,9 +403,27 @@
         float onSeg = step(n.w * 1.02, along) * step(along, lineLen - ancR * 1.00);
         float aa = uAaPixel.x * 1.1;
         float lineMask = (1.0 - smoothstep(0.0022 - aa, 0.0022 + aa, across)) * onSeg;
-        float lineHaze = exp(-across * 220.0) * onSeg * 0.35;
+        // Taper du haze aux extrémités → pour les lignes Y-fork (qui vont
+        // jusqu'à M, ancR=0), le haze tombe à 0 à M et donc 3 hazes
+        // additives ne créent PAS de halo "tache" à la jonction. Pour les
+        // lignes régulières qui se terminent bien avant l'ancre (régulier,
+        // parent, moon), le taper ne s'active pas (tNorm reste < 0.85).
+        float tNorm = along / lineLen;
+        float endTaper = smoothstep(0.0, 0.08, tNorm) * (1.0 - smoothstep(0.85, 1.0, tNorm));
+        float lineHaze = exp(-across * 220.0) * onSeg * 0.35 * endTaper;
         float depthFade = 0.55 + 0.45 * clamp(n.z / 0.35 + 0.5, 0.0, 1.0);
-        vec3 lineColor = mix(uNodeColors[i], vec3(1.0), 0.15);
+
+        // Y-fork twin detection : anchorR ≈ 0 ET fork actif.
+        // Si oui, on FAIT TRANSITIONNER la couleur de ligne node → trunk
+        // au long du segment. Résultat : à M, les 3 lignes (twin A, twin B,
+        // trunk) sont TOUTES de la même couleur → aucun joint visible,
+        // c'est juste une ligne qui se divise. Comme demandé.
+        bool isYforkTwin = uAnchors[i].z < 0.001 && uForkTrunk.z > 0.5;
+        vec3 nodeBaseCol = mix(uNodeColors[i], vec3(1.0), 0.15);
+        vec3 trunkBaseCol = mix(uForkTrunkColor, vec3(1.0), 0.20);
+        vec3 lineColor = isYforkTwin
+          ? mix(nodeBaseCol, trunkBaseCol, smoothstep(0.15, 1.0, tNorm))
+          : nodeBaseCol;
         col += lineColor * (lineMask * 0.45 + lineHaze * 0.7) * depthFade * active;
 
         // Data pulse : "comète" plus petite et plus lente qui glisse du nœud
@@ -448,7 +466,11 @@
         float onSeg = step(0.0, along) * step(along, lineLen - pR * 1.00);
         float aa = uAaPixel.x * 1.1;
         float lineMask = (1.0 - smoothstep(0.0024 - aa, 0.0024 + aa, across)) * onSeg;
-        float lineHaze = exp(-across * 200.0) * onSeg * 0.30;
+        // Haze tapered à 0 au début (côté M) → cohérence avec les 2 twins
+        // (pas de halo additionné à la jonction).
+        float tNorm = along / lineLen;
+        float endTaper = smoothstep(0.0, 0.08, tNorm) * (1.0 - smoothstep(0.95, 1.0, tNorm));
+        float lineHaze = exp(-across * 200.0) * onSeg * 0.30 * endTaper;
         vec3 trunkColor = mix(uForkTrunkColor, vec3(1.0), 0.20);
         col += trunkColor * (lineMask * 0.50 + lineHaze * 0.7);
 
@@ -463,19 +485,10 @@
         float dataPulse = (head + tail) * lateral * onSeg * env;
         col += mix(uForkTrunkColor, vec3(1.0), 0.50) * dataPulse * 1.2;
 
-        // JUNCTION NODE à M — petit disque + glow rim, couleur trunk.
-        // Rayon ~0.010 NDC : ~4× l'épaisseur de ligne → lit comme un nœud
-        // miniature, jamais comme un défaut de raccord.
-        float distM = length(uv - mPoint);
-        float jR = 0.011;
-        float jAA = uAaPixel.x * 0.8;
-        float jBody = 1.0 - smoothstep(jR - jAA, jR + jAA, distM);
-        // Glow rim Fresnel-like → matériel, propre
-        float jOut = max(distM - jR * 0.95, 0.0);
-        float jGlow = exp(-jOut * 90.0) * 0.45 + exp(-jOut * 22.0) * 0.18;
-        vec3 jColor = mix(uForkTrunkColor, vec3(1.0), 0.30);
-        col = mix(col, jColor * 1.10, jBody);
-        col += jColor * jGlow;
+        // PAS de junction-node visible à M. Les 3 lignes ont déjà convergé
+        // vers la même couleur (trunk color) via le gradient, et le haze
+        // tombe à 0 à M via endTaper. Joint invisible — c'est juste une
+        // ligne qui se divise.
       }
 
       // Pulsar sphere — hot blue main-sequence star (Rigel/Spica style)
@@ -860,6 +873,21 @@
     }
     const NODES: NodeParam[] = Array.from({ length: 8 }, (_, i) => makeNode(i));
 
+    // VIRTUAL FORK BASE — point M qui orbite le pulsar mais qui n'est PAS
+    // un nœud (jamais rendu comme sphère). L'axe pulsar↔M sert d'axe de
+    // rotation pour les deux twins : ils tournent autour de cet axe à
+    // distance R, en restant diamétralement opposés.
+    const VIRTUAL_FORK = {
+      baseAngle: 1.3,
+      orbitRx: 0.46 * G_SCALE,
+      orbitRy: 0.34 * G_SCALE,
+      orbitRz: 0.24 * G_SCALE,
+      tilt: 0.7,
+      speed: 0.95,
+      twinR: 0.16,      // distance des twins à l'axe (rayon de leur cercle)
+      twinSpinSpeed: 2.2, // vitesse de rotation autour de l'axe (×orbitSpeed)
+    };
+
     type Computed = {
       x: number;
       y: number;
@@ -973,34 +1001,81 @@
         computed[i].anchorY = pNode.y;
         computed[i].anchorR = pNode.r;
       }
-      // 2) Y-fork : routage de connexion via un midpoint M dynamique.
-      // Les twins gardent leur orbite normale (calculée passe A) ; on leur
-      // assigne juste une ancre = M (à mi-chemin entre pulsar et centroïde
-      // des deux twins). Plus le trunk M→pulsar sera dessiné séparément.
+      // 2) Y-fork — rotation axiale autour de l'axe pulsar↔M.
+      // M = position du virtual fork base (orbite le pulsar comme un nœud
+      // mais n'est pas rendu). Les twins tournent autour de l'axe pulsar↔M
+      // dans le plan perpendiculaire à cet axe, à distance fixe `twinR`,
+      // diamétralement opposés. Aucun centroïde, aucune circularité : M
+      // est imposé par son orbite, les twins suivent.
       const twinAidx = findByColorIdx(FORK_TWIN_A_COLOR_IDX);
       const twinBidx = findByColorIdx(FORK_TWIN_B_COLOR_IDX);
       let forkActive = 0;
       let forkMx = 0;
       let forkMy = 0;
       if (twinAidx !== -1 && twinBidx !== -1 && twinAidx < n && twinBidx < n) {
-        const ta = computed[twinAidx];
-        const tb = computed[twinBidx];
-        // Centroïde des deux twins
-        const cx = (ta.x + tb.x) * 0.5;
-        const cy = (ta.y + tb.y) * 0.5;
-        // M = 70 % du chemin pulsar→centroïde (était 55 % → trop près du
-        // pulsar, branches trop longues). Trunk plus long, branches plus
-        // courtes → Y mieux équilibré et lisible comme "fork de citation".
-        forkMx = coreDisp.x + 0.70 * (cx - coreDisp.x);
-        forkMy = coreDisp.y + 0.70 * (cy - coreDisp.y);
+        // --- Position 3D de M (orbite régulière autour du pulsar) ---
+        const aP = VIRTUAL_FORK.baseAngle + time * orbitSpeed * VIRTUAL_FORK.speed;
+        const lxP = Math.cos(aP) * VIRTUAL_FORK.orbitRx * spread;
+        const lyP0 = Math.sin(aP) * (
+          VIRTUAL_FORK.orbitRy * (1 - 0.4 * mix01) + VIRTUAL_FORK.orbitRx * 0.4 * mix01
+        ) * spread;
+        const lzP0 = Math.sin(aP + VIRTUAL_FORK.tilt * 0.7) * VIRTUAL_FORK.orbitRz * spread;
+        const csP = Math.cos(VIRTUAL_FORK.tilt);
+        const snP = Math.sin(VIRTUAL_FORK.tilt);
+        const Mx = lxP;
+        const My = lyP0 * csP - lzP0 * snP;
+        const Mz = lyP0 * snP + lzP0 * csP;
+        forkMx = Mx;
+        forkMy = My;
         forkActive = 1;
-        // Pas de tampon vide autour de M : les twins vont JUSQU'À M, et le
-        // junction node (rendu par le shader) couvre proprement le joint.
-        computed[twinAidx].anchorX = forkMx;
-        computed[twinAidx].anchorY = forkMy;
+
+        // --- Axe pulsar→M en 3D ---
+        const axDx = Mx - coreDisp.x;
+        const axDy = My - coreDisp.y;
+        const axDz = Mz;       // pulsar à z = 0
+        const axLen = Math.hypot(axDx, axDy, axDz) || 1;
+        const axNx = axDx / axLen;
+        const axNy = axDy / axLen;
+        const axNz = axDz / axLen;
+
+        // --- 2 vecteurs orthonormés perpendiculaires à l'axe ---
+        // Tangent de référence (évite la dégénérescence quand axe ≈ Y).
+        const tx = Math.abs(axNy) < 0.9 ? 0 : 1;
+        const ty = Math.abs(axNy) < 0.9 ? 1 : 0;
+        const tz = 0;
+        // perp1 = normalize(axN × tangent)
+        let p1x = axNy * tz - axNz * ty;
+        let p1y = axNz * tx - axNx * tz;
+        let p1z = axNx * ty - axNy * tx;
+        const p1len = Math.hypot(p1x, p1y, p1z) || 1;
+        p1x /= p1len; p1y /= p1len; p1z /= p1len;
+        // perp2 = axN × perp1  (déjà unitaire, axN ⊥ perp1)
+        const p2x = axNy * p1z - axNz * p1y;
+        const p2y = axNz * p1x - axNx * p1z;
+        const p2z = axNx * p1y - axNy * p1x;
+
+        // --- Positions des twins : M ± R * (cos*perp1 + sin*perp2) ---
+        const spin = time * orbitSpeed * VIRTUAL_FORK.twinSpinSpeed;
+        const cS = Math.cos(spin);
+        const sS = Math.sin(spin);
+        const R = VIRTUAL_FORK.twinR;
+        const offX = R * (cS * p1x + sS * p2x);
+        const offY = R * (cS * p1y + sS * p2y);
+        const offZ = R * (cS * p1z + sS * p2z);
+
+        // Twin A (twinSide=+1) — un côté de l'axe
+        computed[twinAidx].x = Mx + offX;
+        computed[twinAidx].y = My + offY;
+        computed[twinAidx].z = Mz + offZ;
+        computed[twinAidx].anchorX = Mx;
+        computed[twinAidx].anchorY = My;
         computed[twinAidx].anchorR = 0.0;
-        computed[twinBidx].anchorX = forkMx;
-        computed[twinBidx].anchorY = forkMy;
+        // Twin B (twinSide=-1) — exactement opposé sur l'axe
+        computed[twinBidx].x = Mx - offX;
+        computed[twinBidx].y = My - offY;
+        computed[twinBidx].z = Mz - offZ;
+        computed[twinBidx].anchorX = Mx;
+        computed[twinBidx].anchorY = My;
         computed[twinBidx].anchorR = 0.0;
       }
       // Trunk uniform — utilisé par le shader pour dessiner la ligne
