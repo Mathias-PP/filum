@@ -15,6 +15,17 @@
   let accentColor = $state('#4A6CF7');
   let strokeColor = $state('#4A6CF7');
 
+  // --- Système de couleurs étendu pour le panel "Pulsar-graph 20 variations".
+  // Chaque élément topologique du mark peut être coloré indépendamment :
+  // pulsar central, twins du Y-fork, parent (porte la lune), lune, halo
+  // (effets 3D), et fond du canvas. Le trait reste contrôlé par strokeColor.
+  let pulsarColor = $state('#4A6CF7');
+  let twinColor = $state('#4A6CF7');
+  let parentColor = $state('#4A6CF7');
+  let luneColor = $state('#4A6CF7');
+  let haloColor = $state('#6B8AFF');
+  let canvasBg = $state('#fafbfc');
+
   // Spiral V10 — pré-calcul (les `{@const}` ne sont pas valides hors blocs Svelte)
   const _spiralTurns = 1.8;
   const _spiralSamples = 60;
@@ -94,6 +105,743 @@
     <h1>Sandbox · Logo Filum — 10 nouvelles propositions</h1>
     <p>Logo actuel à gauche en référence. 10 directions différentes ensuite.</p>
   </header>
+
+  <section class="section-block">
+    <h2 class="section-title">Pulsar-graph — 20 variations · 2026-05-28</h2>
+    <p class="section-lead">
+      Vingt déclinaisons du mark <strong>#01 (Pulsar-graph)</strong>. Système de couleurs étendu :
+      chaque élément topologique (pulsar, twins du Y-fork, parent, lune, halo, fond) est
+      indépendamment colorable via le panneau en bas à droite. Variations couvertes : placement du
+      pulsar (centré, coins, bord), niveau de sophistication (minimal plat, halo, gradient radial,
+      chromosphère, z-layered 3D), topologie (Y-fork seul, lune seule, multi-Y-fork, bilatéral,
+      constellation, hybrides), et un lockup mark+wordmark.
+    </p>
+    <div class="grid grid--dense">
+      <!-- V01 — Centré classique -->
+      <div class="card">
+        <div class="canvas" style="background: {canvasBg}">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill={pulsarColor} stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="18" cy="18" r={leafRadius * 1.1} fill={parentColor} stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill={luneColor} stroke="none" />
+          </svg>
+        </div>
+        <div class="num">V01</div>
+        <h3>Centré · classique</h3>
+        <p class="caption">
+          Pulsar centré, Y-fork NW, parent-lune SE. Lecture canonique du graphe.
+        </p>
+      </div>
+
+      <!-- V02 — Bottom-left compact -->
+      <div class="card">
+        <div class="canvas" style="background: {canvasBg}">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="5" y1="19" x2="11" y2="11" />
+            <line x1="11" y1="11" x2="9" y2="5" />
+            <line x1="11" y1="11" x2="17" y2="7" />
+            <line x1="5" y1="19" x2="14" y2="20" />
+            <line x1="14" y1="20" x2="18" y2="22" />
+            <circle cx="5" cy="19" r={centerRadius * 1.05} fill={pulsarColor} stroke="none" />
+            <circle cx="9" cy="5" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="17" cy="7" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="14" cy="20" r={leafRadius * 1.1} fill={parentColor} stroke="none" />
+            <circle cx="18" cy="22" r={leafRadius * 0.55} fill={luneColor} stroke="none" />
+          </svg>
+        </div>
+        <div class="num">V02</div>
+        <h3>Bottom-left</h3>
+        <p class="caption">Pulsar ancré au coin SO. Y-fork qui s'élève en diagonale NE.</p>
+      </div>
+
+      <!-- V03 — Top-right -->
+      <div class="card">
+        <div class="canvas" style="background: {canvasBg}">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="19" y1="5" x2="13" y2="13" />
+            <line x1="13" y1="13" x2="15" y2="19" />
+            <line x1="13" y1="13" x2="7" y2="17" />
+            <line x1="19" y1="5" x2="10" y2="4" />
+            <line x1="10" y1="4" x2="6" y2="2" />
+            <circle cx="19" cy="5" r={centerRadius * 1.05} fill={pulsarColor} stroke="none" />
+            <circle cx="15" cy="19" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="7" cy="17" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="10" cy="4" r={leafRadius * 1.1} fill={parentColor} stroke="none" />
+            <circle cx="6" cy="2" r={leafRadius * 0.55} fill={luneColor} stroke="none" />
+          </svg>
+        </div>
+        <div class="num">V03</div>
+        <h3>Top-right</h3>
+        <p class="caption">Pulsar coin NE. Mêmes éléments en orientation inverse — versatile.</p>
+      </div>
+
+      <!-- V04 — Top-left -->
+      <div class="card">
+        <div class="canvas" style="background: {canvasBg}">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="5" y1="5" x2="13" y2="11" />
+            <line x1="13" y1="11" x2="13" y2="18" />
+            <line x1="13" y1="11" x2="20" y2="14" />
+            <line x1="5" y1="5" x2="14" y2="3" />
+            <line x1="14" y1="3" x2="20" y2="2" />
+            <circle cx="5" cy="5" r={centerRadius * 1.05} fill={pulsarColor} stroke="none" />
+            <circle cx="13" cy="18" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="20" cy="14" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="14" cy="3" r={leafRadius * 1.1} fill={parentColor} stroke="none" />
+            <circle cx="20" cy="2" r={leafRadius * 0.55} fill={luneColor} stroke="none" />
+          </svg>
+        </div>
+        <div class="num">V04</div>
+        <h3>Top-left</h3>
+        <p class="caption">Pulsar coin NO. Y-fork descend en SE, parent file vers E.</p>
+      </div>
+
+      <!-- V05 — Bottom-right -->
+      <div class="card">
+        <div class="canvas" style="background: {canvasBg}">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="19" y1="19" x2="13" y2="13" />
+            <line x1="13" y1="13" x2="7" y2="14" />
+            <line x1="13" y1="13" x2="9" y2="6" />
+            <line x1="19" y1="19" x2="10" y2="20" />
+            <line x1="10" y1="20" x2="5" y2="22" />
+            <circle cx="19" cy="19" r={centerRadius * 1.05} fill={pulsarColor} stroke="none" />
+            <circle cx="7" cy="14" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="9" cy="6" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="10" cy="20" r={leafRadius * 1.1} fill={parentColor} stroke="none" />
+            <circle cx="5" cy="22" r={leafRadius * 0.55} fill={luneColor} stroke="none" />
+          </svg>
+        </div>
+        <div class="num">V05</div>
+        <h3>Bottom-right</h3>
+        <p class="caption">Pulsar coin SE, ouverture vers le NO. Composition asymétrique stable.</p>
+      </div>
+
+      <!-- V06 — Halo (3D léger) -->
+      <div class="card">
+        <div class="canvas" style="background: {canvasBg}">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <!-- Halo translucide autour du pulsar (effet 3D) -->
+            <circle
+              cx="12"
+              cy="12"
+              r={centerRadius * 2.4}
+              fill={haloColor}
+              fill-opacity="0.18"
+              stroke="none"
+            />
+            <circle
+              cx="12"
+              cy="12"
+              r={centerRadius * 1.6}
+              fill={haloColor}
+              fill-opacity="0.28"
+              stroke="none"
+            />
+            <circle cx="12" cy="12" r={centerRadius} fill={pulsarColor} stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="18" cy="18" r={leafRadius * 1.1} fill={parentColor} stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill={luneColor} stroke="none" />
+          </svg>
+        </div>
+        <div class="num">V06</div>
+        <h3>Halo (3D léger)</h3>
+        <p class="caption">
+          Deux couches halo translucide autour du pulsar — sensation de profondeur sans gradient.
+        </p>
+      </div>
+
+      <!-- V07 — Gradient radial (3D sphère) -->
+      <div class="card">
+        <div class="canvas" style="background: {canvasBg}">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <defs>
+              <radialGradient id="v07-pulsar" cx="40%" cy="40%" r="60%">
+                <stop offset="0%" stop-color="white" stop-opacity="0.85" />
+                <stop offset="40%" stop-color={pulsarColor} />
+                <stop offset="100%" stop-color={pulsarColor} stop-opacity="0.55" />
+              </radialGradient>
+            </defs>
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius * 1.15} fill="url(#v07-pulsar)" stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="18" cy="18" r={leafRadius * 1.1} fill={parentColor} stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill={luneColor} stroke="none" />
+          </svg>
+        </div>
+        <div class="num">V07</div>
+        <h3>Gradient radial</h3>
+        <p class="caption">
+          Pulsar rendu comme une sphère par gradient radial (highlight, mid, falloff). 3D plat-2.5D.
+        </p>
+      </div>
+
+      <!-- V08 — Chromosphère ring (3D type étoile) -->
+      <div class="card">
+        <div class="canvas" style="background: {canvasBg}">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <!-- Anneau chromosphère extérieur (très fin, couleur halo) -->
+            <circle
+              cx="12"
+              cy="12"
+              r={centerRadius * 1.4}
+              fill="none"
+              stroke={haloColor}
+              stroke-width={strokeWidth * 0.4}
+              stroke-opacity="0.7"
+            />
+            <circle cx="12" cy="12" r={centerRadius} fill={pulsarColor} stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="18" cy="18" r={leafRadius * 1.1} fill={parentColor} stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill={luneColor} stroke="none" />
+          </svg>
+        </div>
+        <div class="num">V08</div>
+        <h3>Chromosphère</h3>
+        <p class="caption">
+          Pulsar + anneau chromosphère fin (lecture « étoile »). Reprend l'effet du hero pulsar.
+        </p>
+      </div>
+
+      <!-- V09 — Constellation pure -->
+      <div class="card">
+        <div class="canvas" style="background: {canvasBg}">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 21, y: 13 }, { x: 17, y: 21 }, { x: 5, y: 19 }, { x: 3, y: 12 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <circle cx="12" cy="12" r={centerRadius} fill={pulsarColor} stroke="none" />
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 21, y: 13 }, { x: 17, y: 21 }, { x: 5, y: 19 }, { x: 3, y: 12 }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill={accentColor} stroke="none" />
+            {/each}
+          </svg>
+        </div>
+        <div class="num">V09</div>
+        <h3>Constellation (6 nœuds)</h3>
+        <p class="caption">
+          Pulsar + 6 nœuds réguliers en orbite. Pas de lune ni Y-fork, lecture plus « étoile +
+          planètes ».
+        </p>
+      </div>
+
+      <!-- V10 — Constellation + Y-fork accent -->
+      <div class="card">
+        <div class="canvas" style="background: {canvasBg}">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <!-- 3 nœuds réguliers -->
+            {#each [{ x: 19, y: 13 }, { x: 17, y: 21 }, { x: 4, y: 14 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <!-- Y-fork (NW) -->
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill={pulsarColor} stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            {#each [{ x: 19, y: 13 }, { x: 17, y: 21 }, { x: 4, y: 14 }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill={accentColor} stroke="none" />
+            {/each}
+          </svg>
+        </div>
+        <div class="num">V10</div>
+        <h3>Constellation + Y-fork</h3>
+        <p class="caption">
+          3 sources directes + un Y-fork (deux sources liées). Représente une mini-bibliographie
+          hybride.
+        </p>
+      </div>
+
+      <!-- V11 — Constellation + lune -->
+      <div class="card">
+        <div class="canvas" style="background: {canvasBg}">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 4, y: 16 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill={pulsarColor} stroke="none" />
+            {#each [{ x: 5, y: 6 }, { x: 19, y: 4 }, { x: 4, y: 16 }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill={accentColor} stroke="none" />
+            {/each}
+            <circle cx="18" cy="18" r={leafRadius * 1.1} fill={parentColor} stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill={luneColor} stroke="none" />
+          </svg>
+        </div>
+        <div class="num">V11</div>
+        <h3>Constellation + lune</h3>
+        <p class="caption">
+          3 sources directes + un parent-lune. Le système parent-lune raconte « une source citant
+          une autre ».
+        </p>
+      </div>
+
+      <!-- V12 — Lune seule, sober -->
+      <div class="card">
+        <div class="canvas" style="background: {canvasBg}">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill={pulsarColor} stroke="none" />
+            <circle cx="18" cy="18" r={leafRadius * 1.2} fill={parentColor} stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.6} fill={luneColor} stroke="none" />
+          </svg>
+        </div>
+        <div class="num">V12</div>
+        <h3>Lune seule</h3>
+        <p class="caption">
+          Pulsar + un parent + sa lune. Mark minimal qui raconte juste « une source citée par une
+          autre ».
+        </p>
+      </div>
+
+      <!-- V13 — Y-fork seul, dramatique -->
+      <div class="card">
+        <div class="canvas" style="background: {canvasBg}">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="12" y1="20" x2="12" y2="11" />
+            <line x1="12" y1="11" x2="6" y2="4" />
+            <line x1="12" y1="11" x2="18" y2="4" />
+            <circle cx="12" cy="20" r={centerRadius * 1.1} fill={pulsarColor} stroke="none" />
+            <circle cx="6" cy="4" r={leafRadius * 1} fill={twinColor} stroke="none" />
+            <circle cx="18" cy="4" r={leafRadius * 1} fill={twinColor} stroke="none" />
+          </svg>
+        </div>
+        <div class="num">V13</div>
+        <h3>Y-fork pur</h3>
+        <p class="caption">
+          Pulsar en bas + grand Y-fork symétrique. La fourchette de citation comme métaphore unique.
+        </p>
+      </div>
+
+      <!-- V14 — Double Y-fork -->
+      <div class="card">
+        <div class="canvas" style="background: {canvasBg}">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <!-- Y-fork NO -->
+            <line x1="12" y1="12" x2="7" y2="6" />
+            <line x1="7" y1="6" x2="4" y2="3" />
+            <line x1="7" y1="6" x2="9" y2="2" />
+            <!-- Y-fork SE -->
+            <line x1="12" y1="12" x2="17" y2="18" />
+            <line x1="17" y1="18" x2="20" y2="21" />
+            <line x1="17" y1="18" x2="15" y2="22" />
+            <circle cx="12" cy="12" r={centerRadius} fill={pulsarColor} stroke="none" />
+            <circle cx="4" cy="3" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="9" cy="2" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="20" cy="21" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="15" cy="22" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+          </svg>
+        </div>
+        <div class="num">V14</div>
+        <h3>Double Y-fork</h3>
+        <p class="caption">
+          Pulsar central + deux Y-forks diamétralement opposés. Deux paires citées, symétrie en
+          miroir.
+        </p>
+      </div>
+
+      <!-- V15 — Double lune -->
+      <div class="card">
+        <div class="canvas" style="background: {canvasBg}">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="12" y1="12" x2="6" y2="6" />
+            <line x1="6" y1="6" x2="3" y2="4" />
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="21" y2="20" />
+            <circle cx="12" cy="12" r={centerRadius} fill={pulsarColor} stroke="none" />
+            <circle cx="6" cy="6" r={leafRadius * 1.1} fill={parentColor} stroke="none" />
+            <circle cx="3" cy="4" r={leafRadius * 0.55} fill={luneColor} stroke="none" />
+            <circle cx="18" cy="18" r={leafRadius * 1.1} fill={parentColor} stroke="none" />
+            <circle cx="21" cy="20" r={leafRadius * 0.55} fill={luneColor} stroke="none" />
+          </svg>
+        </div>
+        <div class="num">V15</div>
+        <h3>Double lune</h3>
+        <p class="caption">
+          Deux systèmes parent-lune symétriques. Évoque deux chaînes de citation distinctes.
+        </p>
+      </div>
+
+      <!-- V16 — Compose diagonal (BL + TR) -->
+      <div class="card">
+        <div class="canvas" style="background: {canvasBg}">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="5" y1="19" x2="13" y2="11" />
+            <line x1="13" y1="11" x2="19" y2="6" />
+            <line x1="19" y1="6" x2="22" y2="2" />
+            <line x1="19" y1="6" x2="16" y2="2" />
+            <line x1="13" y1="11" x2="9" y2="14" />
+            <line x1="9" y1="14" x2="6" y2="15" />
+            <circle cx="5" cy="19" r={centerRadius * 1.05} fill={pulsarColor} stroke="none" />
+            <circle cx="22" cy="2" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="16" cy="2" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="9" cy="14" r={leafRadius * 1.1} fill={parentColor} stroke="none" />
+            <circle cx="6" cy="15" r={leafRadius * 0.55} fill={luneColor} stroke="none" />
+          </svg>
+        </div>
+        <div class="num">V16</div>
+        <h3>Compose diagonale</h3>
+        <p class="caption">Pulsar BL, Y-fork TR. Axe diagonal lisible immédiatement, dynamique.</p>
+      </div>
+
+      <!-- V17 — Outlined pulsar (no fill) -->
+      <div class="card">
+        <div class="canvas" style="background: {canvasBg}">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <!-- Pulsar = ring, pas filled -->
+            <circle
+              cx="12"
+              cy="12"
+              r={centerRadius * 1.15}
+              fill={canvasBg}
+              stroke={pulsarColor}
+              stroke-width={strokeWidth * 1.4}
+            />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="18" cy="18" r={leafRadius * 1.1} fill={parentColor} stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill={luneColor} stroke="none" />
+          </svg>
+        </div>
+        <div class="num">V17</div>
+        <h3>Pulsar évidé</h3>
+        <p class="caption">Pulsar = anneau (pas filled). Plus architectural, contraste inversé.</p>
+      </div>
+
+      <!-- V18 — Z-layered (3D overlap) -->
+      <div class="card">
+        <div class="canvas" style="background: {canvasBg}">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <!-- Lignes en arrière-plan -->
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <!-- Pulsar -->
+            <circle cx="12" cy="12" r={centerRadius} fill={pulsarColor} stroke="none" />
+            <!-- Parent — outlined avec couleur du fond pour fake depth -->
+            <circle
+              cx="18"
+              cy="18"
+              r={leafRadius * 1.3}
+              fill={parentColor}
+              stroke={canvasBg}
+              stroke-width={strokeWidth * 1.2}
+            />
+            <!-- Lune par-dessus le parent -->
+            <circle
+              cx="20.5"
+              cy="20.5"
+              r={leafRadius * 0.65}
+              fill={luneColor}
+              stroke={canvasBg}
+              stroke-width={strokeWidth * 0.8}
+            />
+            <!-- Twins avec stroke -->
+            <circle
+              cx="4"
+              cy="2.5"
+              r={leafRadius * 0.95}
+              fill={twinColor}
+              stroke={canvasBg}
+              stroke-width={strokeWidth * 0.8}
+            />
+            <circle
+              cx="9.5"
+              cy="1.5"
+              r={leafRadius * 0.95}
+              fill={twinColor}
+              stroke={canvasBg}
+              stroke-width={strokeWidth * 0.8}
+            />
+          </svg>
+        </div>
+        <div class="num">V18</div>
+        <h3>Z-layered (3D overlap)</h3>
+        <p class="caption">
+          Stroke fond autour de chaque sphère → effet de profondeur, faux ordering 3D des plans.
+        </p>
+      </div>
+
+      <!-- V19 — Mark + wordmark lockup -->
+      <div class="card">
+        <div class="canvas" style="background: {canvasBg}">
+          <svg
+            viewBox="0 0 90 24"
+            width={scale * 1.7}
+            height={scale * 0.45}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            style="max-width: 100%; height: auto;"
+          >
+            <!-- Mark à gauche (pulsar-graph compact) -->
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill={pulsarColor} stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="18" cy="18" r={leafRadius * 1.1} fill={parentColor} stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill={luneColor} stroke="none" />
+            <!-- Wordmark à droite -->
+            <text
+              x="30"
+              y="16.5"
+              fill={pulsarColor}
+              stroke="none"
+              font-family="'Source Serif 4', 'Crimson Pro', Georgia, serif"
+              font-size="14"
+              font-weight="500"
+              font-style="italic"
+              letter-spacing="0.5">filum</text
+            >
+          </svg>
+        </div>
+        <div class="num">V19</div>
+        <h3>Mark + wordmark</h3>
+        <p class="caption">
+          Lockup horizontal : mark compact à gauche, « filum » en italique serif à droite. Format
+          header.
+        </p>
+      </div>
+
+      <!-- V20 — Symmetric chevron (bilateral) -->
+      <div class="card">
+        <div class="canvas" style="background: {canvasBg}">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <!-- Bras gauche : Y-fork mirror -->
+            <line x1="12" y1="18" x2="6" y2="11" />
+            <line x1="6" y1="11" x2="3" y2="6" />
+            <line x1="6" y1="11" x2="8" y2="4" />
+            <!-- Bras droit : Y-fork mirror -->
+            <line x1="12" y1="18" x2="18" y2="11" />
+            <line x1="18" y1="11" x2="21" y2="6" />
+            <line x1="18" y1="11" x2="16" y2="4" />
+            <!-- Pulsar en bas -->
+            <circle cx="12" cy="18" r={centerRadius * 1.1} fill={pulsarColor} stroke="none" />
+            <!-- 4 twins -->
+            <circle cx="3" cy="6" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="8" cy="4" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="21" cy="6" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+            <circle cx="16" cy="4" r={leafRadius * 0.85} fill={twinColor} stroke="none" />
+          </svg>
+        </div>
+        <div class="num">V20</div>
+        <h3>Chevron bilatéral</h3>
+        <p class="caption">
+          Pulsar bas-centre, deux Y-forks miroirs en éventail. Très symétrique, lecture héraldique.
+        </p>
+      </div>
+    </div>
+  </section>
 
   <section class="section-block">
     <h2 class="section-title">Nouvelles directions · 2026-05-28</h2>
@@ -976,6 +1724,32 @@
       <span>Couleur trait</span>
       <input type="color" bind:value={strokeColor} />
     </label>
+
+    <div class="panel-sep">Pulsar-graph — couleurs avancées</div>
+    <label>
+      <span>Pulsar</span>
+      <input type="color" bind:value={pulsarColor} />
+    </label>
+    <label>
+      <span>Twins (Y-fork)</span>
+      <input type="color" bind:value={twinColor} />
+    </label>
+    <label>
+      <span>Parent (porte la lune)</span>
+      <input type="color" bind:value={parentColor} />
+    </label>
+    <label>
+      <span>Lune</span>
+      <input type="color" bind:value={luneColor} />
+    </label>
+    <label>
+      <span>Halo (3D)</span>
+      <input type="color" bind:value={haloColor} />
+    </label>
+    <label>
+      <span>Fond canvas</span>
+      <input type="color" bind:value={canvasBg} />
+    </label>
   </aside>
 </div>
 
@@ -1183,5 +1957,26 @@
     box-shadow:
       0 0 0 1px rgba(107, 138, 255, 0.25),
       0 6px 16px rgba(74, 108, 247, 0.12);
+  }
+
+  /* Grille plus dense pour le panel 20-variations (cartes plus compactes) */
+  .grid--dense {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.85rem;
+  }
+
+  /* Séparateur dans le panneau de contrôle */
+  .panel-sep {
+    font-size: 0.62rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #94a3b8;
+    padding-top: 0.5rem;
+    margin-top: 0.3rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+  }
+  :global(.dark) .panel-sep {
+    border-top-color: rgba(255, 255, 255, 0.08);
+    color: #94a3b8;
   }
 </style>
