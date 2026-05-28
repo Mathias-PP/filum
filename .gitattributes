@@ -1,0 +1,21 @@
+# Force LF endings for source files — required for prettier on Linux CI
+# even when contributors push from Windows (core.autocrlf=true).
+
+# Text files (auto-detect, but force LF on commit + checkout)
+* text=auto eol=lf
+
+# Binary files — leave them alone
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.pdf binary
+*.zip binary
+*.tar binary
+*.gz binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary

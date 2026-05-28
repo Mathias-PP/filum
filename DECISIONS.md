@@ -6,6 +6,62 @@
 
 ---
 
+## ADR-026 — Topologie de graphe hero : lune + Y-fork virtuel + perspective 3D ligne/sphère
+
+**Date** : 2026-05-28
+
+**Contexte**
+La première version du hero pulsar (ADR-024, mai 2026) montrait N nœuds tous reliés en étoile au pulsar central. C'est lisible, mais ça ne raconte pas la **topologie d'une vraie fiche bibliographique Filum** : les sources peuvent dépendre d'un autre auteur (citation indirecte, série de papiers d'un même labo) ou être groupées (deux sources qui débattent un même point, citées ensemble). La PR #83 a introduit deux structures topologiques supplémentaires + un fix de perspective 3D pour que le rendu soit cohérent à toutes les positions orbitales.
+
+**Trois mécaniques visuelles ajoutées**
+
+### 1. Lune autour d'un parent (nœud 5 → nœud 1)
+
+- Le nœud 5 (violet, rayon × 0.55) orbite **localement autour du parent** (nœud 1, emerald, rayon × 1.2), pas autour du pulsar.
+- Connexion : lune → parent (pas lune → pulsar). Parent → pulsar comme un nœud régulier.
+- Implémentation : passe B après la passe orbitale classique, override `(x, y, z)` du moon avec `parent.position + Math.cos/sin(t × localSpeed) × localOrbitR` (ellipse + bobbing z).
+- Sens produit : « cette source dépend d'une autre source de la fiche ».
+
+### 2. Y-fork (lien qui se divise vers deux nœuds)
+
+- Deux nœuds (3 coral, 4 amber) partagent un **point de division M virtuel** qui n'est jamais rendu comme sphère.
+- M orbite le pulsar avec ses propres paramètres orbitaux (`VIRTUAL_FORK` côté JS).
+- Les twins **tournent autour de l'axe pulsar↔M en 3D** (perp-vectors construits via deux produits vectoriels, position = M + cos(spin)·perp1 + sin(spin)·perp2) **avec une composante axiale** dans le sens de la prolongation pulsar→M : `branchLen × cos(35°)` au long de l'axe + `branchLen × sin(35°)` perpendiculaire. L'angle total du Y est donc **70°**, jamais droit.
+- Lignes : pulsar → M (trunk) + M → twin A + M → twin B.
+- **Joint à M invisible** :
+  - Gradient de couleur sur la ligne twin : `mix(nodeColor, trunkColor, smoothstep(0.15, 1.0, tNorm))` → à M les 3 lignes ont toutes la couleur du trunk
+  - Endpoint taper sur le haze : `endTaper = smoothstep(0, 0.08, tN) × (1 − smoothstep(0.85, 1.0, tN))` → trois hazes additives ne forment plus de halo
+  - Aucun "junction node" rendu (un disque visible à M avait été testé et rejeté car il lisait comme un nœud parasite)
+- Sens produit : « ces deux sources sont citées ensemble depuis un sous-point de l'argumentation ».
+
+### 3. Perspective 3D ligne/pulsar (cohérence d'occlusion)
+
+- Avant : les lignes étaient dessinées **avant** le pulsar, donc systématiquement recouvertes par sa sphère, même quand leur nœud était devant en perspective.
+- Maintenant : `uAnchors` étendu en vec4 (ajout de `anchorZ`), `uForkTrunk` packé avec `Mz`.
+- **2ᵉ passe lignes après le pulsar** : pour chaque pixel à l'intérieur du disque pulsar, on calcule `pulsarFrontZ = sqrt(coreR² − d²)` (z de la surface frontale 3D de la sphère). Pour chaque ligne : `lineZ(t) = mix(node.z, anchor.z, along/lineLen)`. Si `lineZ > pulsarFrontZ` → la portion de ligne est redessinée par-dessus.
+- Cohérent avec l'occlusion des nœuds eux-mêmes (déjà gérée via `behindMix` per-pixel depuis ADR-024).
+- Résultat : quand un nœud est devant (z > 0), sa ligne passe devant le pulsar. Sinon elle reste cachée. Lecture 3D naturelle.
+
+**Stabilité des biomes (correctif au passage)**
+
+Bug latent depuis ADR-024 : le shader dérivait `biome = mod(float(i), 4.0)` où `i` était le slot trié back-to-front. Quand deux nœuds échangeaient leur z, ils échangeaient leurs slots **et leurs biomes** → impression de « netteté qui change » pendant l'orbite. Fix : nouvel uniform `uNodeIdx[8]` écrit côté JS avec `slice[i].colorIdx`. Biome et seed dérivés de l'**identité** du nœud, plus du slot.
+
+**Bibliothèque de gestes UI volontairement supprimés**
+
+- Plus de breathing animation sur la taille du pulsar (`coreR * (0.985 + 0.030 × pulse)` → `coreR`)
+- Plus de modulation `depthScale` sur les rayons nœuds (la profondeur est lue par luminosité via `depthBright`, pas par taille)
+- Plus de `hover * 0.35` sur la taille des nœuds (l'effet hover passe désormais uniquement par le glow et la luminosité du `lit factor`)
+- Raison : ces animations donnaient l'illusion que le pulsar ou les nœuds changeaient de taille au moment des croisements en z, ce qui parasitait la lecture de profondeur réelle.
+
+**Conséquences**
+
+- Le hero raconte désormais visuellement la **topologie d'un graphe de citations** (étoile + lune + fourchette), pas juste « une étoile au centre avec des planètes ».
+- Coût GPU : la 2ᵉ passe lignes ajoute ~8 × pixel-couvert-par-le-disque-pulsar évaluations. Négligeable car le disque ~3 % de la surface (radius 0.143 / NDC 2 × 2).
+- Pas d'augmentation du chunk WebGL prod (toujours `import('ogl')` lazy).
+- ADR-024 reste la référence pour les contraintes de perf et le contrat fallback SVG.
+
+---
+
 ## ADR-025 — Auth cross-origin : proxy SvelteKit `/api/[...path]/+server.ts` (et pas rewrite Vercel)
 
 **Date** : 2026-05-26
@@ -84,6 +140,9 @@ Le hero du site (accueil `/`) sert d'effet vitrine. Le SVG statique précédent 
 - `pow(x, y)` avec `x < 0` retourne `NaN` en GLSL — qui se propage et noircit toute la frame via `mix`. Toujours `max(x, 0.0)` avant `pow`.
 - Le tonemap Reinhard `col / (1.0 + col)` écrase les couleurs très brillantes (RGB ~1.5 chacun) vers le gris. Pour conserver une teinte forte, **pré-compenser** : utiliser des valeurs HDR > 1.0 avec ratios bleu-dominants marqués.
 - Sur le node count : la distribution angulaire `(i / N) * 2π` doit utiliser `N = NODE_COUNT` exactement, pas un littéral hardcodé — sinon les nœuds 0 et N se superposent à 360° quand on change `NODE_COUNT`.
+
+**Mise à jour 2026-05-28 (PR #83)**
+Refonte complète portée depuis `/sandbox/hero`. La sandbox tunable a servi exactement à l'usage prévu : 12 passes d'itération avec retours utilisateur en boucle courte, puis port d'une seule passe vers le composant prod. Apports majeurs : graphe × 1.3, naine bleue-blanche type Sirius B (rim bleu + centre blanc-chaud, plus de bleu électrique), anneau chromosphérique au limbe (à la place des flares noise-driven qui dessinaient des halos désaxés), nouvelle palette 8 couleurs matérielles, data-pulse comète sur les connexions, trails orbitaux (ring buffer 6 frames), biome stable par identité de nœud (uniform `uNodeIdx`). Le contrat de perf (lazy import, fallback SVG synchrone pour LCP, IntersectionObserver pause, prefers-reduced-motion, DPR ≤ 2, canvas alpha premultiplié) est intact. La topologie de graphe (lune + Y-fork virtuel) et la perspective 3D ligne/pulsar font l'objet d'une **ADR-026** distincte.
 
 ---
 
