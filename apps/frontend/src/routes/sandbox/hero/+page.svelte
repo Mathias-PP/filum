@@ -74,6 +74,11 @@
     // de manière STABLE : si deux nœuds échangent leur z et donc leur slot,
     // leur biome ne change PAS car il est attaché à leur identité.
     uniform float uNodeIdx[8];
+    // Ancre par slot trié : (x, y, anchorR). Pour la plupart des nœuds c'est
+    // le pulsar ; pour les lunes c'est leur parent ; pour les twins Y-fork
+    // c'est leur forkBase. Sert à dessiner ligne + data-pulse de la node
+    // vers son vrai point d'attache (pas forcément le pulsar).
+    uniform vec3 uAnchors[8];
 
     // Hash + value noise
     float hash(vec2 p) {
@@ -385,32 +390,27 @@
       col += flareCol * (flareA + flareB) + vec3(1.0, 0.95, 0.80) * burst * 1.5;
 
       // ====================================================================
-      // CONNEXIONS pulsar↔nœud — lignes lumineuses + "data pulse" qui voyage
+      // CONNEXIONS nœud↔ancre — chaque nœud se relie à SON ancre (pulsar
+      // pour la majorité, parent pour les lunes, forkBase pour les twins).
       // ====================================================================
-      // Renforcement vs. avant : ligne plus épaisse, intensité ×1.6, et un
-      // petit packet de lumière (gauss bump) qui glisse du pulsar vers le
-      // nœud — évoque le flux d'attestation/référence. Esthétique data-viz
-      // 2026 (Linear / Vercel state graphs).
       for (int i = 0; i < 8; i++) {
         float active = step(float(i) + 0.5, float(uNodeCount));
         vec4 n = uNodes[i];
         vec2 a = n.xy;
-        vec2 d = coreC - a;
+        vec2 anc = uAnchors[i].xy;
+        float ancR = uAnchors[i].z;
+        vec2 d = anc - a;
         float lineLen = max(length(d), 0.001);
         vec2 dir = d / lineLen;
         vec2 rel = uv - a;
         float along = dot(rel, dir);
         float across = length(rel - dir * along);
-        float onSeg = step(n.w * 1.02, along) * step(along, lineLen - coreRPulsed * 1.00);
+        float onSeg = step(n.w * 1.02, along) * step(along, lineLen - ancR * 1.00);
         float aa = uAaPixel.x * 1.1;
-        // Core line — un peu plus épaisse pour lire à toutes les tailles
         float lineMask = (1.0 - smoothstep(0.0022 - aa, 0.0022 + aa, across)) * onSeg;
-        // Subtle wider glow autour de la ligne (haze)
         float lineHaze = exp(-across * 220.0) * onSeg * 0.35;
         float depthFade = 0.55 + 0.45 * clamp(n.z / 0.35 + 0.5, 0.0, 1.0);
         vec3 lineColor = mix(uNodeColors[i], vec3(1.0), 0.15);
-        // Intensité ×1.4 vs version originale (0.32 → 0.45) — moins de
-        // poids visuel que la pass 1, le data-pulse fait le job de saillance.
         col += lineColor * (lineMask * 0.45 + lineHaze * 0.7) * depthFade * active;
 
         // Data pulse : "comète" qui glisse du nœud vers le pulsar.
@@ -423,7 +423,7 @@
         // Envelope : 0→1 sur les premiers 8 %, 1→0 sur les derniers 8 %.
         // → fade in / fade out doux, jamais de "pop".
         float env = smoothstep(0.0, 0.08, lt) * (1.0 - smoothstep(0.92, 1.0, lt));
-        float pulsePos = lt * (lineLen - n.w - coreRPulsed) + n.w;
+        float pulsePos = lt * (lineLen - n.w - ancR) + n.w;
         float pulseDist = along - pulsePos;
         // Tête : gaussien serré.
         float head = exp(-pulseDist * pulseDist * 2400.0);
@@ -619,6 +619,11 @@
         // colorIdx du nœud occupant chaque slot trié (réécrit chaque frame
         // par la même boucle qui réordonne uNodes / uNodeColors).
         uNodeIdx: { value: Array.from({ length: 8 }, () => 0) },
+        // Ancre par slot trié (x, y, anchorR) — pulsar pour la majorité,
+        // parent pour les lunes, base pour les twins Y-fork.
+        uAnchors: {
+          value: Array.from({ length: 8 }, () => [0, 0, 0.143] as number[]),
+        },
       },
     });
 
@@ -713,6 +718,13 @@
     io.observe(wrapEl);
 
     // Per-node static parameters (deterministic from index)
+    // - role 'regular' : orbite simplement le pulsar
+    // - role 'parent'  : idem, mais a une lune attachée
+    // - role 'moon'    : orbite son parent (parentColorIdx) au lieu du pulsar
+    // - role 'forkBase': idem regular, mais ancre les deux twins
+    // - role 'forkTwin': orbite un base avec rotation axiale autour de l'axe
+    //                    base↔pulsar (les 2 twins sont diamétralement opposés)
+    type NodeRole = 'regular' | 'parent' | 'moon' | 'forkBase' | 'forkTwin';
     type NodeParam = {
       baseAngle: number;
       orbitRx: number;
@@ -722,32 +734,112 @@
       speed: number;
       radius: number;
       colorIdx: number;
+      role: NodeRole;
+      // pour moon et forkTwin : identité du parent (colorIdx)
+      parentColorIdx: number;
+      // rayon de l'orbite locale autour du parent
+      localOrbitR: number;
+      // vitesse de spin (multipliée par orbitSpeed pour suivre le slider)
+      localSpeed: number;
+      localPhase: number;
+      // pour forkTwin : +1 ou -1 (les deux twins sont opposés sur l'axe)
+      twinSide: number;
     };
     // Scale graphe ×1.3 demandé : orbites et rayons nœuds multipliés par 1.3.
     const G_SCALE = 1.3;
-    const NODES: NodeParam[] = Array.from({ length: 8 }, (_, i) => {
-      return {
+    // Rôles configurés explicitement pour 7 nœuds :
+    //   0 régulier (cobalt)
+    //   1 PARENT (emerald, +20% taille) — ancre node 5 (moon)
+    //   2 FORK BASE (cyan azure) — ancre nodes 3 et 4 (twins)
+    //   3 FORK TWIN +1 (coral, -20%)
+    //   4 FORK TWIN -1 (amber, -20%)
+    //   5 MOON (violet, -45%) du parent 1
+    //   6 régulier (gold)
+    function makeNode(i: number): NodeParam {
+      const baseRadius = (0.038 + 0.012 * Math.sin(i * 1.3)) * 1.5;
+      const orbital = {
         baseAngle: (i / 6) * Math.PI * 2,
         orbitRx: (0.48 + 0.1 * Math.sin(i * 2.3)) * G_SCALE,
         orbitRy: (0.36 + 0.08 * Math.cos(i * 1.7)) * G_SCALE,
         orbitRz: (0.28 + 0.08 * Math.sin(i * 1.1 + 1.0)) * G_SCALE,
         tilt: i * 0.45,
-        speed: 0.85 + 0.3 * Math.sin(i * 1.9), // multiplied by orbitSpeed
-        // Rayon nœud : un peu plus généreux que les orbites (×1.5 vs ×1.3)
-        // — sinon les nœuds paraissent visuellement plus petits après le
-        // scaling parce que leur présence se mesure surtout à la silhouette.
-        radius: (0.038 + 0.012 * Math.sin(i * 1.3)) * 1.5,
+        speed: 0.85 + 0.3 * Math.sin(i * 1.9),
+        radius: baseRadius,
         colorIdx: i,
+        role: 'regular' as NodeRole,
+        parentColorIdx: -1,
+        localOrbitR: 0,
+        localSpeed: 0,
+        localPhase: 0,
+        twinSide: 0,
       };
-    });
+      switch (i) {
+        case 1:
+          return { ...orbital, role: 'parent', radius: baseRadius * 1.2 };
+        case 2:
+          return { ...orbital, role: 'forkBase' };
+        case 3:
+          return {
+            ...orbital,
+            role: 'forkTwin',
+            parentColorIdx: 2,
+            radius: baseRadius * 0.75,
+            localOrbitR: 0.14,
+            localSpeed: 3.5,        // ×orbitSpeed → vitesse de spin du Y
+            localPhase: 0,
+            twinSide: 1,
+          };
+        case 4:
+          return {
+            ...orbital,
+            role: 'forkTwin',
+            parentColorIdx: 2,
+            radius: baseRadius * 0.75,
+            localOrbitR: 0.14,
+            localSpeed: 3.5,
+            localPhase: 0,
+            twinSide: -1,           // toujours opposé du twin +1
+          };
+        case 5:
+          return {
+            ...orbital,
+            role: 'moon',
+            parentColorIdx: 1,
+            radius: baseRadius * 0.55,
+            localOrbitR: 0.13,
+            localSpeed: 4.5,        // lune rapide (×orbitSpeed)
+            localPhase: 1.2,
+          };
+        default:
+          return orbital;
+      }
+    }
+    const NODES: NodeParam[] = Array.from({ length: 8 }, (_, i) => makeNode(i));
 
-    type Computed = { x: number; y: number; z: number; r: number; colorIdx: number };
+    type Computed = {
+      x: number;
+      y: number;
+      z: number;
+      r: number;
+      colorIdx: number;
+      role: NodeRole;
+      // Ancre = point auquel la ligne de connexion de ce nœud aboutit.
+      // Pour régulier/parent/forkBase : c'est le pulsar. Pour moon : son
+      // parent. Pour forkTwin : sa forkBase.
+      anchorX: number;
+      anchorY: number;
+      anchorR: number;
+    };
     const computed: Computed[] = Array.from({ length: 8 }, () => ({
       x: 0,
       y: 0,
       z: 0,
       r: 0.05,
       colorIdx: 0,
+      role: 'regular' as NodeRole,
+      anchorX: 0,
+      anchorY: 0,
+      anchorR: 0.143,
     }));
     // Per-node displacement from its orbital position (for click-and-drag).
     // Decays back to (0, 0) when the node is released — re-joins the orbit.
@@ -778,6 +870,11 @@
       const n = nodeCount;
       const spread = nodeSpread;
       const mix01 = orbitMix;
+      const PULSAR_R = 0.143;
+      // PASSE A : orbite simple autour du pulsar pour tous les nœuds
+      // (régulier / parent / forkBase). Les moon et forkTwin auront leur
+      // position OVERWRITE dans la passe B après que parent/base sont
+      // résolus, sinon ils traînent d'une frame.
       for (let i = 0; i < n; i++) {
         const p = NODES[i];
         const a = p.baseAngle + time * orbitSpeed * p.speed;
@@ -789,23 +886,76 @@
         const sn = Math.sin(p.tilt);
         const ly = ly0 * cs - lz0 * sn;
         const lz = ly0 * sn + lz0 * cs;
-        // Drag handling: if this node is being held, ease displacement
-        // toward (cursor - orbital_pos) so the rendered position tracks the cursor.
-        const isDragging = p.colorIdx === draggingNodeKey;
+        // Drag handling : seul un nœud directement ancré au pulsar accepte
+        // un drag pour simplicité (les moons/twins suivent leur ancre).
+        const isDragging = p.colorIdx === draggingNodeKey && p.role !== 'moon' && p.role !== 'forkTwin';
         const dispTargetX = isDragging ? currentMouse.x - lx : 0;
         const dispTargetY = isDragging ? currentMouse.y - ly : 0;
-        const ease = isDragging ? 0.28 : 0.08; // grab snappy, release smooth
+        const ease = isDragging ? 0.28 : 0.08;
         displacement[i].x += (dispTargetX - displacement[i].x) * ease;
         displacement[i].y += (dispTargetY - displacement[i].y) * ease;
         computed[i].x = lx + displacement[i].x;
         computed[i].y = ly + displacement[i].y;
         computed[i].z = lz;
-        // Taille constante (pas de modulation par z) — sinon les nœuds qui
-        // passent devant ont l'air de "grossir" quand ils survolent le
-        // pulsar. La profondeur est lue par luminosité (depthBright shader),
-        // pas par taille.
         computed[i].r = p.radius;
         computed[i].colorIdx = p.colorIdx;
+        computed[i].role = p.role;
+        // Ancre par défaut = pulsar (régulier / parent / forkBase)
+        computed[i].anchorX = coreDisp.x;
+        computed[i].anchorY = coreDisp.y;
+        computed[i].anchorR = PULSAR_R;
+      }
+      // PASSE B : override pour moon et forkTwin.
+      // Helper : retrouve l'index natif d'un nœud par colorIdx.
+      const findByColorIdx = (cidx: number): number => {
+        for (let k = 0; k < n; k++) if (NODES[k].colorIdx === cidx) return k;
+        return -1;
+      };
+      for (let i = 0; i < n; i++) {
+        const p = NODES[i];
+        if (p.role === 'moon') {
+          const pIdx = findByColorIdx(p.parentColorIdx);
+          if (pIdx === -1) continue;
+          const pNode = computed[pIdx];
+          // Orbite locale 3D autour du parent. Ellipse + bobbing en z pour
+          // un sentiment "lune autour de planète", pas plat.
+          const la = p.localPhase + time * orbitSpeed * p.localSpeed;
+          const mx = Math.cos(la) * p.localOrbitR;
+          const my = Math.sin(la) * p.localOrbitR * 0.6;
+          const mz = Math.sin(la + 0.6) * p.localOrbitR * 0.35;
+          computed[i].x = pNode.x + mx;
+          computed[i].y = pNode.y + my;
+          computed[i].z = pNode.z + mz;
+          computed[i].anchorX = pNode.x;
+          computed[i].anchorY = pNode.y;
+          computed[i].anchorR = pNode.r;
+        } else if (p.role === 'forkTwin') {
+          const bIdx = findByColorIdx(p.parentColorIdx);
+          if (bIdx === -1) continue;
+          const bNode = computed[bIdx];
+          // Axe base → pulsar dans le plan écran. Le twin tourne dans le
+          // plan perpendiculaire à cet axe → "rotation autour de l'axe
+          // base-pulsar" comme demandé.
+          const axDx = coreDisp.x - bNode.x;
+          const axDy = coreDisp.y - bNode.y;
+          const axLen = Math.hypot(axDx, axDy) || 1;
+          const axNx = axDx / axLen;
+          const axNy = axDy / axLen;
+          // Perpendiculaire en plan écran
+          const perpX = -axNy;
+          const perpY = axNx;
+          const spinA = p.localPhase + time * orbitSpeed * p.localSpeed;
+          const cA = Math.cos(spinA);
+          const sA = Math.sin(spinA);
+          // Twin position = base + cos*(perp screen)*R*side + sin*(z axis)*R*side
+          // → toujours diamétralement opposé à l'autre twin.
+          computed[i].x = bNode.x + perpX * cA * p.localOrbitR * p.twinSide;
+          computed[i].y = bNode.y + perpY * cA * p.localOrbitR * p.twinSide;
+          computed[i].z = bNode.z + sA * p.localOrbitR * p.twinSide;
+          computed[i].anchorX = bNode.x;
+          computed[i].anchorY = bNode.y;
+          computed[i].anchorR = bNode.r;
+        }
       }
       // Échantillonnage des trails (ordre natif). Quand l'intervalle TRAIL_DT
       // est écoulé, on shift le ring buffer : t-1 ← t (live), t-2 ← t-1, ...
@@ -837,9 +987,12 @@
       // Write into flat uniform arrays (reorder colors to match sorted nodes).
       // On écrit aussi uNodeIdx[i] = colorIdx — sert au shader pour dériver
       // biome/seed depuis l'identité du nœud (stable au tri).
+      // Et uAnchors[i] = (anchorX, anchorY, anchorR) pour redessiner les
+      // lignes vers le vrai point d'attache (pulsar / parent / forkBase).
       const arr = program.uniforms.uNodes.value as number[][];
       const colArr = program.uniforms.uNodeColors.value as number[][];
       const idxArr = program.uniforms.uNodeIdx.value as number[];
+      const anchArr = program.uniforms.uAnchors.value as number[][];
       for (let i = 0; i < n; i++) {
         arr[i][0] = slice[i].x;
         arr[i][1] = slice[i].y;
@@ -850,6 +1003,9 @@
         colArr[i][1] = c[1];
         colArr[i][2] = c[2];
         idxArr[i] = slice[i].colorIdx;
+        anchArr[i][0] = slice[i].anchorX;
+        anchArr[i][1] = slice[i].anchorY;
+        anchArr[i][2] = slice[i].anchorR;
       }
 
       // --- Mouse picking: find the node under the cursor (front-most only).
