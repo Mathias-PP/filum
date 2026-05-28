@@ -884,8 +884,14 @@
       orbitRz: 0.24 * G_SCALE,
       tilt: 0.7,
       speed: 0.95,
-      twinR: 0.16,      // distance des twins à l'axe (rayon de leur cercle)
-      twinSpinSpeed: 2.2, // vitesse de rotation autour de l'axe (×orbitSpeed)
+      // Longueur d'une branche du Y (distance de M à un twin)
+      branchLen: 0.20,
+      // Demi-angle d'ouverture du Y : 35° → angle TOTAL entre les deux
+      // branches = 70°, jamais 90° et encore moins droit (90° → T, pas Y).
+      // Chaque branche fait 35° avec la prolongation de l'axe pulsar↔M.
+      branchAngleRad: (35 * Math.PI) / 180,
+      // Vitesse de rotation du plan des branches autour de l'axe pulsar↔M
+      twinSpinSpeed: 2.2,
     };
 
     type Computed = {
@@ -1054,26 +1060,42 @@
         const p2y = axNz * p1x - axNx * p1z;
         const p2z = axNx * p1y - axNy * p1x;
 
-        // --- Positions des twins : M ± R * (cos*perp1 + sin*perp2) ---
+        // --- Y-fork géométrique : chaque branche = composante AXIALE (le
+        //     long de la prolongation pulsar↔M, donc AU-DELÀ de M) +
+        //     composante PERPENDICULAIRE rotative. L'angle entre la
+        //     branche et le prolongement de l'axe = branchAngleRad. À 35°,
+        //     l'angle total du Y est 70° — jamais droit, vraiment "fourchu".
         const spin = time * orbitSpeed * VIRTUAL_FORK.twinSpinSpeed;
         const cS = Math.cos(spin);
         const sS = Math.sin(spin);
-        const R = VIRTUAL_FORK.twinR;
-        const offX = R * (cS * p1x + sS * p2x);
-        const offY = R * (cS * p1y + sS * p2y);
-        const offZ = R * (cS * p1z + sS * p2z);
+        const L = VIRTUAL_FORK.branchLen;
+        const distAlong = L * Math.cos(VIRTUAL_FORK.branchAngleRad);
+        const distPerp = L * Math.sin(VIRTUAL_FORK.branchAngleRad);
+        // Composante perpendiculaire (rotative autour de l'axe)
+        const perpRotX = cS * p1x + sS * p2x;
+        const perpRotY = cS * p1y + sS * p2y;
+        const perpRotZ = cS * p1z + sS * p2z;
+        // Composante axiale — TOUJOURS dans le sens prolongation
+        // (au-delà de M, en s'éloignant du pulsar)
+        const aloX = distAlong * axNx;
+        const aloY = distAlong * axNy;
+        const aloZ = distAlong * axNz;
+        // Composante perpendiculaire scalée
+        const perX = distPerp * perpRotX;
+        const perY = distPerp * perpRotY;
+        const perZ = distPerp * perpRotZ;
 
-        // Twin A (twinSide=+1) — un côté de l'axe
-        computed[twinAidx].x = Mx + offX;
-        computed[twinAidx].y = My + offY;
-        computed[twinAidx].z = Mz + offZ;
+        // Twin A : along + perp
+        computed[twinAidx].x = Mx + aloX + perX;
+        computed[twinAidx].y = My + aloY + perY;
+        computed[twinAidx].z = Mz + aloZ + perZ;
         computed[twinAidx].anchorX = Mx;
         computed[twinAidx].anchorY = My;
         computed[twinAidx].anchorR = 0.0;
-        // Twin B (twinSide=-1) — exactement opposé sur l'axe
-        computed[twinBidx].x = Mx - offX;
-        computed[twinBidx].y = My - offY;
-        computed[twinBidx].z = Mz - offZ;
+        // Twin B : along - perp (même axe, perpendiculaire opposé)
+        computed[twinBidx].x = Mx + aloX - perX;
+        computed[twinBidx].y = My + aloY - perY;
+        computed[twinBidx].z = Mz + aloZ - perZ;
         computed[twinBidx].anchorX = Mx;
         computed[twinBidx].anchorY = My;
         computed[twinBidx].anchorR = 0.0;
