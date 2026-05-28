@@ -9,7 +9,7 @@
   let bloomStrength = $state(0.3);
   let pulseSpeed = $state(0.25);
   let orbitSpeed = $state(0.12);
-  let nodeCount = $state(6);
+  let nodeCount = $state(7);
   let orbitMix = $state(0.55);
   let coreHue = $state(0.58);
   let nodeSpread = $state(1.0);
@@ -103,11 +103,15 @@
       return clamp(p - 1.0, 0.0, 1.0);
     }
 
-    // Sphère épurée — pas de pattern procédural. La node est une bille
-    // matérielle éclairée par le pulsar : terminator net, rim atmosphérique
-    // serrée, hot spec discret. Le but : lisibilité produit, jamais "demo
-    // shader". Edge AA réduit (0.8×) pour des contours nets.
-    vec4 nodeSphere(vec2 uv, vec2 c, float r, vec3 baseCol, vec2 lightFrom2D) {
+    // Sphère matérielle avec biome procédural (gas-giant / rocky / marbré /
+    // icy). Différence vs. pass 1 originale :
+    //   • Edge AA 0.8× → limbe net
+    //   • Pattern features durcies via smoothstep tight (contraste +)
+    //   • Color delta dark/light élargi (pattern ressort)
+    //   • Rim atmo 1.25 (1.35 trop ; 1.30 ok ; on garde 1.25 pour du nerf
+    //     sans saturer la silhouette)
+    //   • Terminator courbe naturelle
+    vec4 nodeSphere(vec2 uv, vec2 c, float r, vec3 baseCol, vec2 lightFrom2D, float biome, float seed) {
       vec2 d = uv - c;
       float r2 = r * r;
       float d2 = dot(d, d);
@@ -119,27 +123,62 @@
       float zLocal = sqrt(zSq) / r;
       vec3 n = vec3(d.x / r, d.y / r, zLocal);
 
-      // Lighting from pulsar direction (2D screen-space).
+      // Coordonnées surface (view-aligned, suffisant à petite échelle)
+      vec2 sp = n.xy + vec2(seed, seed * 0.7);
+      float rot = uTime * 0.0006 * (0.7 + 0.6 * fract(seed * 7.31));
+      vec2 rsp = vec2(sp.x * cos(rot) - sp.y * sin(rot),
+                      sp.x * sin(rot) + sp.y * cos(rot));
+
+      // Patterns par biome — features plus définis qu'en pass originale.
+      float pattern = 0.5;
+      if (biome < 0.5) {
+        // 0 — gas giant : bandes nettes
+        float warp = fbm(rsp * 3.2) - 0.5;
+        float bands = sin((rsp.y + warp * 0.55) * 7.0);
+        bands = sign(bands) * pow(abs(bands), 0.55); // crisp band edges
+        pattern = bands * 0.5 + 0.5;
+      } else if (biome < 1.5) {
+        // 1 — rocky / continents — côtes franches
+        float h = fbm(rsp * 4.2);
+        pattern = smoothstep(0.46, 0.50, h);          // step très tight
+      } else if (biome < 2.5) {
+        // 2 — marbré / domain warping
+        float warp = fbm(rsp * 2.0);
+        vec2 q = rsp * 3.5 + vec2(warp * 2.2, fbm(rsp * 2.3) * 2.0);
+        float v = fbm(q);
+        pattern = smoothstep(0.32, 0.68, v);          // contraste élargi
+      } else {
+        // 3 — icy / craquelures fines
+        float v = fbm(rsp * 6.5);
+        pattern = 1.0 - smoothstep(0.43, 0.47, abs(v - 0.5));
+      }
+
+      // Color delta élargi (pattern lisible mais teinte du nœud préservée)
+      vec3 darkCol  = baseCol * 0.86;
+      vec3 lightCol = mix(baseCol, vec3(1.0), 0.10);
+      vec3 surfaceCol = mix(darkCol, lightCol, pattern);
+
+      // Lighting from pulsar
       vec3 L = normalize(vec3(lightFrom2D.x, lightFrom2D.y, 0.35));
       float lam = max(dot(n, L), 0.0);
-      // Terminator courbe naturelle : pas de floor relevé (qui aplatit le volume).
+      // Terminator courbe naturelle (pas de plancher relevé qui aplatit)
       float diffuseAmt = mix(0.18, 1.15, smoothstep(0.0, 0.65, lam));
 
-      // Specular serré (matériau dur, surface brillante)
+      // Specular variable par pattern (pôles brillants sur ice / rocky)
       vec3 viewDir = vec3(0.0, 0.0, 1.0);
       vec3 hVec = normalize(L + viewDir);
-      float spec = pow(max(dot(n, hVec), 0.0), 48.0) * 0.55;
-      vec3 specCol = mix(baseCol, vec3(1.0), 0.85) * spec;
+      float specPow = mix(32.0, 70.0, pattern);
+      float spec = pow(max(dot(n, hVec), 0.0), specPow) * mix(0.25, 0.55, pattern);
+      vec3 specCol = mix(baseCol, vec3(1.0), 0.80) * spec;
 
-      // Rim atmosphérique (Fresnel) — fin, propre, dans la teinte du nœud.
-      // Boostée pour faire "pop" le contour côté nuit.
+      // Rim atmo Fresnel (1.25 — assez net sans étouffer)
       float fres = pow(1.0 - zLocal, 3.0);
-      vec3 atmoRim = mix(baseCol, vec3(1.0), 0.22) * fres * 1.35;
+      vec3 atmoRim = mix(baseCol, vec3(1.0), 0.20) * fres * 1.25;
 
-      // Night side : très léger glow couleur (jamais noir total — lisibilité)
-      vec3 nightSide = baseCol * 0.16 * (1.0 - lam);
+      // Night side : surface pattern visible côté nuit (jamais noir total)
+      vec3 nightSide = surfaceCol * 0.18 * (1.0 - lam);
 
-      vec3 col = baseCol * diffuseAmt + specCol + atmoRim + nightSide;
+      vec3 col = surfaceCol * diffuseAmt + specCol + atmoRim + nightSide;
       return vec4(col, alpha);
     }
 
@@ -341,18 +380,31 @@
         float lineHaze = exp(-across * 220.0) * onSeg * 0.35;
         float depthFade = 0.55 + 0.45 * clamp(n.z / 0.35 + 0.5, 0.0, 1.0);
         vec3 lineColor = mix(uNodeColors[i], vec3(1.0), 0.15);
-        col += lineColor * (lineMask * 0.85 + lineHaze) * depthFade * active;
+        // Intensité ×1.4 vs version originale (0.32 → 0.45) — moins de
+        // poids visuel que la pass 1, le data-pulse fait le job de saillance.
+        col += lineColor * (lineMask * 0.45 + lineHaze * 0.7) * depthFade * active;
 
-        // Data pulse : Gaussian bump qui glisse du nœud vers le pulsar.
-        // Phase indépendante par nœud → asynchrone, vivant.
-        float lt = fract(uTime * 0.32 + float(i) * 0.137);
+        // Data pulse : "comète" qui glisse du nœud vers le pulsar.
+        // Phase indépendante par nœud → flux asynchrone.
+        // Fluidité : (1) envelope smoothstep aux deux extrémités pour éviter
+        // le wrap brutal de fract() qui faisait apparaître/disparaître le
+        // pulse d'un coup. (2) trail comète additionnelle plus large derrière
+        // la tête → le mouvement reste lisible même à framerate variable.
+        float lt = fract(uTime * 0.42 + float(i) * 0.137);
+        // Envelope : 0→1 sur les premiers 8 %, 1→0 sur les derniers 8 %.
+        // → fade in / fade out doux, jamais de "pop".
+        float env = smoothstep(0.0, 0.08, lt) * (1.0 - smoothstep(0.92, 1.0, lt));
         float pulsePos = lt * (lineLen - n.w - coreRPulsed) + n.w;
-        float pulseDist = abs(along - pulsePos);
-        // Gaussian thin → effet trait lumineux qui parcourt la ligne
-        float dataPulse = exp(-pulseDist * pulseDist * 4500.0)
-                       * exp(-across * across * 90000.0)
-                       * onSeg;
-        col += mix(uNodeColors[i], vec3(1.0), 0.55) * dataPulse * 1.4 * depthFade * active;
+        float pulseDist = along - pulsePos;
+        // Tête : gaussien serré.
+        float head = exp(-pulseDist * pulseDist * 2400.0);
+        // Comète : queue exp asymétrique qui s'étire derrière (vers le nœud).
+        // pulseDist > 0 = derrière la tête (vers le pulsar) → pas de queue
+        // pulseDist < 0 = devant (vers le nœud) → queue
+        float tail = exp(pulseDist * 26.0) * step(pulseDist, 0.0) * 0.55;
+        float lateral = exp(-across * across * 50000.0);
+        float dataPulse = (head + tail) * lateral * onSeg * env;
+        col += mix(uNodeColors[i], vec3(1.0), 0.50) * dataPulse * 1.6 * depthFade * active;
       }
 
       // Pulsar sphere — hot blue main-sequence star (Rigel/Spica style)
@@ -361,23 +413,25 @@
         float r2 = coreRPulsed * coreRPulsed;
         float d2 = dot(d, d);
         float dist = sqrt(d2);
-        float aa = uAaPixel.x * 1.4;
+        // AA pulsar réduit (1.4 → 0.9) pour un limbe net comme les nœuds.
+        float aa = uAaPixel.x * 0.9;
         float alpha = 1.0 - smoothstep(coreRPulsed - aa, coreRPulsed + aa, dist);
         if (alpha > 0.0) {
           float zSq = max(r2 - d2, 0.0);
           float zN = sqrt(zSq) / coreRPulsed;
           vec2 sp = d / coreRPulsed;
 
-          // Balanced 3-stop palette — pre-compensated for Reinhard tonemap.
-          // Goal: smooth gradient from blue rim → blue body → blue-cyan center,
-          // never grey/white in the middle, never too dark at the edge.
-          vec3 photoRim    = vec3(0.30, 0.75, 1.50);                 // bright blue (less extreme rim)
-          vec3 photoMid    = vec3(0.70, 1.30, 2.20);                 // electric cyan-blue
-          vec3 photoCenter = vec3(1.20, 1.85, 2.60);                 // bright cyan-blue (still BLUE-dominant)
-          // Re-tint stops by the user-chosen hue (preserve slider effect)
+          // Palette 3 stops — moins de blanc, plus de chroma. Le centre
+          // doit lire BLEU, pas blanc-cassé. Reinhard tone-map mange ~30 %
+          // de luminosité donc on pré-compense en gardant les rouges bas.
+          vec3 photoRim    = vec3(0.25, 0.75, 1.65);                 // bleu profond (rim)
+          vec3 photoMid    = vec3(0.55, 1.30, 2.40);                 // cyan-bleu électrique
+          vec3 photoCenter = vec3(0.85, 1.75, 2.90);                 // cœur cyan-bleu très saturé
+          // Re-tint par teinte slider — plus subtil sur le centre pour
+          // préserver la saturation.
           photoRim    = mix(photoRim,    coreColor * 1.6, 0.25);
-          photoMid    = mix(photoMid,    mix(coreColor, vec3(1.0), 0.30) * 2.2, 0.30);
-          photoCenter = mix(photoCenter, mix(coreColor, vec3(1.0), 0.45) * 2.5, 0.28);
+          photoMid    = mix(photoMid,    coreColor * 2.0, 0.22);
+          photoCenter = mix(photoCenter, coreColor * 2.4, 0.18);
 
           vec3 starSurface = mix(photoRim, photoMid, smoothstep(0.0, 0.55, zN));
           starSurface     = mix(starSurface, photoCenter, smoothstep(0.55, 0.95, zN));
@@ -390,8 +444,10 @@
           starSurface *= 0.97 + 0.06 * (granul - 0.5);
 
           // Hotspot — tight, but ALSO blue-tinted so it doesn't desaturate the center
+          // Hotspot : moins de blanc, plus de cyan saturé → centre lit
+          // toujours BLEU, jamais blanc-cassé.
           float hotspot = pow(zN, 8.0) * 0.45;
-          starSurface += mix(coreColor, vec3(0.85, 0.95, 1.0), 0.35) * hotspot;
+          starSurface += mix(coreColor, vec3(0.55, 0.85, 1.0), 0.30) * hotspot;
 
           // Star scintillation (very subtle global brightness flicker)
           float scint = 0.97 + 0.06 * sin(uTime * 3.1 + fbm(sp * 6.0) * 8.0);
@@ -429,7 +485,9 @@
         // side" faces the pulsar.
         vec2 toCore = coreC - n.xy;
         vec2 lightDir2D = normalize(toCore + vec2(0.0001));
-        vec4 sh = nodeSphere(uv, n.xy, nodeR, nodeColor, lightDir2D);
+        float biome = mod(float(i), 4.0);
+        float seed = float(i) * 13.37;
+        vec4 sh = nodeSphere(uv, n.xy, nodeR, nodeColor, lightDir2D, biome, seed);
         vec3 lit = sh.rgb * (depthBright + 0.40 * hover);
 
         // Glow extérieur additif — rim tight + wide. Renforcé pour pop la
@@ -638,7 +696,10 @@
         orbitRz: (0.28 + 0.08 * Math.sin(i * 1.1 + 1.0)) * G_SCALE,
         tilt: i * 0.45,
         speed: 0.85 + 0.3 * Math.sin(i * 1.9), // multiplied by orbitSpeed
-        radius: (0.038 + 0.012 * Math.sin(i * 1.3)) * G_SCALE,
+        // Rayon nœud : un peu plus généreux que les orbites (×1.5 vs ×1.3)
+        // — sinon les nœuds paraissent visuellement plus petits après le
+        // scaling parce que leur présence se mesure surtout à la silhouette.
+        radius: (0.038 + 0.012 * Math.sin(i * 1.3)) * 1.5,
         colorIdx: i,
       };
     });
