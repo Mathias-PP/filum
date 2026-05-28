@@ -408,34 +408,32 @@
         vec3 lineColor = mix(uNodeColors[i], vec3(1.0), 0.15);
         col += lineColor * (lineMask * 0.45 + lineHaze * 0.7) * depthFade * active;
 
-        // Data pulse : "comète" qui glisse du nœud vers le pulsar.
-        // Phase indépendante par nœud → flux asynchrone.
-        // Fluidité : (1) envelope smoothstep aux deux extrémités pour éviter
-        // le wrap brutal de fract() qui faisait apparaître/disparaître le
-        // pulse d'un coup. (2) trail comète additionnelle plus large derrière
-        // la tête → le mouvement reste lisible même à framerate variable.
-        float lt = fract(uTime * 0.42 + float(i) * 0.137);
-        // Envelope : 0→1 sur les premiers 8 %, 1→0 sur les derniers 8 %.
-        // → fade in / fade out doux, jamais de "pop".
-        float env = smoothstep(0.0, 0.08, lt) * (1.0 - smoothstep(0.92, 1.0, lt));
+        // Data pulse : "comète" plus petite et plus lente qui glisse du nœud
+        // vers son ancre. Phase indépendante → flux asynchrone.
+        // Ralenti (0.42 → 0.25 cycles/s) et envelope élargie (0–15 % / 85–100 %)
+        // pour fluidité maximum, jamais de pop au wrap.
+        float lt = fract(uTime * 0.25 + float(i) * 0.137);
+        float env = smoothstep(0.0, 0.15, lt) * (1.0 - smoothstep(0.85, 1.0, lt));
         float pulsePos = lt * (lineLen - n.w - ancR) + n.w;
         float pulseDist = along - pulsePos;
-        // Tête : gaussien serré.
-        float head = exp(-pulseDist * pulseDist * 2400.0);
-        // Comète : queue exp asymétrique qui s'étire derrière (vers le nœud).
-        // pulseDist > 0 = derrière la tête (vers le pulsar) → pas de queue
-        // pulseDist < 0 = devant (vers le nœud) → queue
-        float tail = exp(pulseDist * 26.0) * step(pulseDist, 0.0) * 0.55;
-        float lateral = exp(-across * across * 50000.0);
+        // Sigma plus serré (2400 → 6000) → packet plus petit, plus net.
+        float head = exp(-pulseDist * pulseDist * 6000.0);
+        // Queue comète plus courte aussi.
+        float tail = exp(pulseDist * 40.0) * step(pulseDist, 0.0) * 0.45;
+        float lateral = exp(-across * across * 80000.0);
         float dataPulse = (head + tail) * lateral * onSeg * env;
-        col += mix(uNodeColors[i], vec3(1.0), 0.50) * dataPulse * 1.6 * depthFade * active;
+        col += mix(uNodeColors[i], vec3(1.0), 0.50) * dataPulse * 1.3 * depthFade * active;
       }
 
       // ====================================================================
-      // Y-FORK TRUNK — tige du Y reliant le midpoint M au pulsar.
+      // Y-FORK TRUNK + JUNCTION NODE
       // ====================================================================
-      // Active seulement si uForkTrunk.z > 0.5 (passé par le JS). Même
-      // mécanique que les lignes de connexion mais entre M et le pulsar.
+      // Le trunk relie le midpoint M au pulsar. On ajoute un PETIT NŒUD-
+      // JUNCTION à M : un disque lumineux dans la teinte du trunk qui
+      // couvre proprement le joint des 3 lignes (twin A, twin B, trunk).
+      // Avant ce fix, le tampon vide autour de M laissait apparaître une
+      // tache transparente. Maintenant le joint lit comme un branch-point
+      // intentionnel, comme dans un graphe de citations.
       if (uForkTrunk.z > 0.5) {
         vec2 mPoint = uForkTrunk.xy;
         float pR = uForkTrunk.w;
@@ -445,26 +443,39 @@
         vec2 rel = uv - mPoint;
         float along = dot(rel, dir);
         float across = length(rel - dir * along);
-        // Start tout près de M (petit buffer pour fusion visuelle avec les
-        // deux branches), fin avant le pulsar.
-        float onSeg = step(0.005, along) * step(along, lineLen - pR * 1.00);
+        // Trunk part bien de M (along = 0) et finit avant le pulsar.
+        // Le junction node ci-dessous masque visuellement la jonction.
+        float onSeg = step(0.0, along) * step(along, lineLen - pR * 1.00);
         float aa = uAaPixel.x * 1.1;
         float lineMask = (1.0 - smoothstep(0.0024 - aa, 0.0024 + aa, across)) * onSeg;
         float lineHaze = exp(-across * 200.0) * onSeg * 0.30;
         vec3 trunkColor = mix(uForkTrunkColor, vec3(1.0), 0.20);
         col += trunkColor * (lineMask * 0.50 + lineHaze * 0.7);
 
-        // Data pulse sur le trunk — M → pulsar (continuité du flux d'in-
-        // formation depuis les twins).
-        float lt = fract(uTime * 0.42 + 0.5);
-        float env = smoothstep(0.0, 0.08, lt) * (1.0 - smoothstep(0.92, 1.0, lt));
-        float pulsePos = lt * (lineLen - 0.005 - pR) + 0.005;
+        // Data pulse trunk — mêmes réglages que les pulses nœud↔ancre.
+        float lt = fract(uTime * 0.25 + 0.5);
+        float env = smoothstep(0.0, 0.15, lt) * (1.0 - smoothstep(0.85, 1.0, lt));
+        float pulsePos = lt * (lineLen - pR);
         float pulseDist = along - pulsePos;
-        float head = exp(-pulseDist * pulseDist * 2400.0);
-        float tail = exp(pulseDist * 26.0) * step(pulseDist, 0.0) * 0.55;
-        float lateral = exp(-across * across * 50000.0);
+        float head = exp(-pulseDist * pulseDist * 6000.0);
+        float tail = exp(pulseDist * 40.0) * step(pulseDist, 0.0) * 0.45;
+        float lateral = exp(-across * across * 80000.0);
         float dataPulse = (head + tail) * lateral * onSeg * env;
-        col += mix(uForkTrunkColor, vec3(1.0), 0.50) * dataPulse * 1.4;
+        col += mix(uForkTrunkColor, vec3(1.0), 0.50) * dataPulse * 1.2;
+
+        // JUNCTION NODE à M — petit disque + glow rim, couleur trunk.
+        // Rayon ~0.010 NDC : ~4× l'épaisseur de ligne → lit comme un nœud
+        // miniature, jamais comme un défaut de raccord.
+        float distM = length(uv - mPoint);
+        float jR = 0.011;
+        float jAA = uAaPixel.x * 0.8;
+        float jBody = 1.0 - smoothstep(jR - jAA, jR + jAA, distM);
+        // Glow rim Fresnel-like → matériel, propre
+        float jOut = max(distM - jR * 0.95, 0.0);
+        float jGlow = exp(-jOut * 90.0) * 0.45 + exp(-jOut * 22.0) * 0.18;
+        vec3 jColor = mix(uForkTrunkColor, vec3(1.0), 0.30);
+        col = mix(col, jColor * 1.10, jBody);
+        col += jColor * jGlow;
       }
 
       // Pulsar sphere — hot blue main-sequence star (Rigel/Spica style)
@@ -977,20 +988,20 @@
         // Centroïde des deux twins
         const cx = (ta.x + tb.x) * 0.5;
         const cy = (ta.y + tb.y) * 0.5;
-        // M = 55 % du chemin entre pulsar et centroïde → trunk court, branches
-        // longues. Résulte en un Y bien identifiable.
-        forkMx = coreDisp.x + 0.55 * (cx - coreDisp.x);
-        forkMy = coreDisp.y + 0.55 * (cy - coreDisp.y);
+        // M = 70 % du chemin pulsar→centroïde (était 55 % → trop près du
+        // pulsar, branches trop longues). Trunk plus long, branches plus
+        // courtes → Y mieux équilibré et lisible comme "fork de citation".
+        forkMx = coreDisp.x + 0.70 * (cx - coreDisp.x);
+        forkMy = coreDisp.y + 0.70 * (cy - coreDisp.y);
         forkActive = 1;
-        // Petit rayon "tampon" autour de M : la ligne du twin s'arrête
-        // juste avant M (sinon les lignes se chevauchent en désordre).
-        const M_BUFFER_R = 0.018;
+        // Pas de tampon vide autour de M : les twins vont JUSQU'À M, et le
+        // junction node (rendu par le shader) couvre proprement le joint.
         computed[twinAidx].anchorX = forkMx;
         computed[twinAidx].anchorY = forkMy;
-        computed[twinAidx].anchorR = M_BUFFER_R;
+        computed[twinAidx].anchorR = 0.0;
         computed[twinBidx].anchorX = forkMx;
         computed[twinBidx].anchorY = forkMy;
-        computed[twinBidx].anchorR = M_BUFFER_R;
+        computed[twinBidx].anchorR = 0.0;
       }
       // Trunk uniform — utilisé par le shader pour dessiner la ligne
       // M ↔ pulsar (la "tige" du Y). Mutation in-place : OGL upload le
