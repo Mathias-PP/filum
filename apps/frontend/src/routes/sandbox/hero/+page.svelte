@@ -768,7 +768,7 @@
           value: new Vec3(
             (NODE_COLORS[FORK_TWIN_A_COLOR_IDX][0] + NODE_COLORS[FORK_TWIN_B_COLOR_IDX][0]) * 0.5,
             (NODE_COLORS[FORK_TWIN_A_COLOR_IDX][1] + NODE_COLORS[FORK_TWIN_B_COLOR_IDX][1]) * 0.5,
-            (NODE_COLORS[FORK_TWIN_A_COLOR_IDX][2] + NODE_COLORS[FORK_TWIN_B_COLOR_IDX][2]) * 0.5,
+            (NODE_COLORS[FORK_TWIN_A_COLOR_IDX][2] + NODE_COLORS[FORK_TWIN_B_COLOR_IDX][2]) * 0.5
           ),
         },
       },
@@ -964,7 +964,7 @@
       tilt: 0.7,
       speed: 0.95,
       // Longueur d'une branche du Y (distance de M à un twin)
-      branchLen: 0.20,
+      branchLen: 0.2,
       // Demi-angle d'ouverture du Y : 35° → angle TOTAL entre les deux
       // branches = 70°, jamais 90° et encore moins droit (90° → T, pas Y).
       // Chaque branche fait 35° avec la prolongation de l'axe pulsar↔M.
@@ -1047,7 +1047,8 @@
         const lz = ly0 * sn + lz0 * cs;
         // Drag handling : seul un nœud directement ancré au pulsar accepte
         // un drag pour simplicité (les moons/twins suivent leur ancre).
-        const isDragging = p.colorIdx === draggingNodeKey && p.role !== 'moon' && p.role !== 'forkTwin';
+        const isDragging =
+          p.colorIdx === draggingNodeKey && p.role !== 'moon' && p.role !== 'forkTwin';
         const dispTargetX = isDragging ? currentMouse.x - lx : 0;
         const dispTargetY = isDragging ? currentMouse.y - ly : 0;
         const ease = isDragging ? 0.28 : 0.08;
@@ -1107,9 +1108,10 @@
         // --- Position 3D de M (orbite régulière autour du pulsar) ---
         const aP = VIRTUAL_FORK.baseAngle + time * orbitSpeed * VIRTUAL_FORK.speed;
         const lxP = Math.cos(aP) * VIRTUAL_FORK.orbitRx * spread;
-        const lyP0 = Math.sin(aP) * (
-          VIRTUAL_FORK.orbitRy * (1 - 0.4 * mix01) + VIRTUAL_FORK.orbitRx * 0.4 * mix01
-        ) * spread;
+        const lyP0 =
+          Math.sin(aP) *
+          (VIRTUAL_FORK.orbitRy * (1 - 0.4 * mix01) + VIRTUAL_FORK.orbitRx * 0.4 * mix01) *
+          spread;
         const lzP0 = Math.sin(aP + VIRTUAL_FORK.tilt * 0.7) * VIRTUAL_FORK.orbitRz * spread;
         const csP = Math.cos(VIRTUAL_FORK.tilt);
         const snP = Math.sin(VIRTUAL_FORK.tilt);
@@ -1124,7 +1126,7 @@
         // --- Axe pulsar→M en 3D ---
         const axDx = Mx - coreDisp.x;
         const axDy = My - coreDisp.y;
-        const axDz = Mz;       // pulsar à z = 0
+        const axDz = Mz; // pulsar à z = 0
         const axLen = Math.hypot(axDx, axDy, axDz) || 1;
         const axNx = axDx / axLen;
         const axNy = axDy / axLen;
@@ -1140,7 +1142,9 @@
         let p1y = axNz * tx - axNx * tz;
         let p1z = axNx * ty - axNy * tx;
         const p1len = Math.hypot(p1x, p1y, p1z) || 1;
-        p1x /= p1len; p1y /= p1len; p1z /= p1len;
+        p1x /= p1len;
+        p1y /= p1len;
+        p1z /= p1len;
         // perp2 = axN × perp1  (déjà unitaire, axN ⊥ perp1)
         const p2x = axNy * p1z - axNz * p1y;
         const p2y = axNz * p1x - axNx * p1z;
