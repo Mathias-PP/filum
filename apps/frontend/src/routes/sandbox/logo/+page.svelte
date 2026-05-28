@@ -1663,6 +1663,489 @@
   </section>
 
   <section class="section-block">
+    <h2 class="section-title">
+      Mixes W22 + W23 + W15 · 2026-05-28 <span class="ref-tag">8 propositions</span>
+    </h2>
+    <p class="section-lead">
+      Croisements ciblés des trois ingrédients <strong>W15</strong> (placement BL / coin SO),
+      <strong>W22</strong> (V10 z-layered) et <strong>W23</strong> (V11 + drop-shadow). Couleur fixée
+      principalement Editorial Indigo ; deux variantes en Editorial Duo pour donner du contraste de marque.
+    </p>
+    <div class="grid grid--dense">
+      <!-- X01 — V11 BL + z-layered + drop-shadow · Editorial Indigo (TRIPLE COMBO) -->
+      <div class="card highlight">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <defs>
+              <filter id="x01-shadow" x="-30%" y="-30%" width="160%" height="160%">
+                <feDropShadow
+                  dx="0"
+                  dy="0.6"
+                  stdDeviation="0.45"
+                  flood-color="#1A1A1A"
+                  flood-opacity="0.22"
+                />
+              </filter>
+            </defs>
+            <g filter="url(#x01-shadow)">
+              {#each [{ x: 10, y: 4 }, { x: 19, y: 3 }, { x: 4, y: 11 }] as p, i (i)}
+                <line x1="5" y1="19" x2={p.x} y2={p.y} />
+              {/each}
+              <line x1="5" y1="19" x2="14" y2="20" />
+              <line x1="14" y1="20" x2="18" y2="22" />
+              <circle cx="5" cy="19" r={centerRadius * 1.05} fill="#4A6CF7" stroke="none" />
+              {#each [{ x: 10, y: 4 }, { x: 19, y: 3 }, { x: 4, y: 11 }] as p, i (i)}
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={leafRadius * 0.95}
+                  fill="#4A6CF7"
+                  stroke="#fafbfc"
+                  stroke-width={strokeWidth * 0.9}
+                />
+              {/each}
+              <circle
+                cx="14"
+                cy="20"
+                r={leafRadius * 1.2}
+                fill="#4A6CF7"
+                stroke="#fafbfc"
+                stroke-width={strokeWidth * 1.1}
+              />
+              <circle
+                cx="18"
+                cy="22"
+                r={leafRadius * 0.65}
+                fill="#4A6CF7"
+                stroke="#fafbfc"
+                stroke-width={strokeWidth * 0.7}
+              />
+            </g>
+          </svg>
+        </div>
+        <div class="num">X01 · W15+W22+W23 ⭐</div>
+        <h3>V11 BL · z-layered · shadow</h3>
+        <p class="caption">
+          Triple combo : placement BL + z-layered + drop-shadow. Mono indigo, sophistication
+          maximum.
+        </p>
+      </div>
+
+      <!-- X02 — V11 BL + drop-shadow · Editorial Indigo -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <defs>
+              <filter id="x02-shadow" x="-30%" y="-30%" width="160%" height="160%">
+                <feDropShadow
+                  dx="0"
+                  dy="0.6"
+                  stdDeviation="0.4"
+                  flood-color="#1A1A1A"
+                  flood-opacity="0.22"
+                />
+              </filter>
+            </defs>
+            <g filter="url(#x02-shadow)">
+              {#each [{ x: 10, y: 4 }, { x: 19, y: 3 }, { x: 4, y: 11 }] as p, i (i)}
+                <line x1="5" y1="19" x2={p.x} y2={p.y} />
+              {/each}
+              <line x1="5" y1="19" x2="14" y2="20" />
+              <line x1="14" y1="20" x2="18" y2="22" />
+              <circle cx="5" cy="19" r={centerRadius * 1.05} fill="#4A6CF7" stroke="none" />
+              {#each [{ x: 10, y: 4 }, { x: 19, y: 3 }, { x: 4, y: 11 }] as p, i (i)}
+                <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+              {/each}
+              <circle cx="14" cy="20" r={leafRadius * 1.1} fill="#4A6CF7" stroke="none" />
+              <circle cx="18" cy="22" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+            </g>
+          </svg>
+        </div>
+        <div class="num">X02 · W15+W23</div>
+        <h3>V11 BL · shadow only</h3>
+        <p class="caption">Placement BL + ombre douce. Plus organique, sans z-layered.</p>
+      </div>
+
+      <!-- X03 — V11 BL + z-layered · Editorial Indigo -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 10, y: 4 }, { x: 19, y: 3 }, { x: 4, y: 11 }] as p, i (i)}
+              <line x1="5" y1="19" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="5" y1="19" x2="14" y2="20" />
+            <line x1="14" y1="20" x2="18" y2="22" />
+            <circle cx="5" cy="19" r={centerRadius * 1.05} fill="#4A6CF7" stroke="none" />
+            {#each [{ x: 10, y: 4 }, { x: 19, y: 3 }, { x: 4, y: 11 }] as p, i (i)}
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={leafRadius * 0.95}
+                fill="#4A6CF7"
+                stroke="#fafbfc"
+                stroke-width={strokeWidth * 0.9}
+              />
+            {/each}
+            <circle
+              cx="14"
+              cy="20"
+              r={leafRadius * 1.2}
+              fill="#4A6CF7"
+              stroke="#fafbfc"
+              stroke-width={strokeWidth * 1.1}
+            />
+            <circle
+              cx="18"
+              cy="22"
+              r={leafRadius * 0.65}
+              fill="#4A6CF7"
+              stroke="#fafbfc"
+              stroke-width={strokeWidth * 0.7}
+            />
+          </svg>
+        </div>
+        <div class="num">X03 · W15+W22</div>
+        <h3>V11 BL · z-layered only</h3>
+        <p class="caption">Placement BL + z-layered. Sans shadow → plus net, plus graphique.</p>
+      </div>
+
+      <!-- X04 — V10 BL + z-layered · Editorial Indigo -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 19, y: 3 }, { x: 22, y: 13 }, { x: 4, y: 11 }] as p, i (i)}
+              <line x1="5" y1="19" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="5" y1="19" x2="11" y2="11" />
+            <line x1="11" y1="11" x2="9" y2="4" />
+            <line x1="11" y1="11" x2="16" y2="5" />
+            <circle cx="5" cy="19" r={centerRadius * 1.05} fill="#4A6CF7" stroke="none" />
+            <circle
+              cx="9"
+              cy="4"
+              r={leafRadius * 0.95}
+              fill="#4A6CF7"
+              stroke="#fafbfc"
+              stroke-width={strokeWidth * 0.9}
+            />
+            <circle
+              cx="16"
+              cy="5"
+              r={leafRadius * 0.95}
+              fill="#4A6CF7"
+              stroke="#fafbfc"
+              stroke-width={strokeWidth * 0.9}
+            />
+            {#each [{ x: 19, y: 3 }, { x: 22, y: 13 }, { x: 4, y: 11 }] as p, i (i)}
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={leafRadius * 0.95}
+                fill="#4A6CF7"
+                stroke="#fafbfc"
+                stroke-width={strokeWidth * 0.9}
+              />
+            {/each}
+          </svg>
+        </div>
+        <div class="num">X04 · W15+W22 (V10)</div>
+        <h3>V10 BL · z-layered</h3>
+        <p class="caption">
+          V10 (constellation + Y-fork) en BL, tout z-layered. Composition dense.
+        </p>
+      </div>
+
+      <!-- X05 — V10 BL + drop-shadow · Editorial Indigo -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <defs>
+              <filter id="x05-shadow" x="-30%" y="-30%" width="160%" height="160%">
+                <feDropShadow
+                  dx="0"
+                  dy="0.6"
+                  stdDeviation="0.4"
+                  flood-color="#1A1A1A"
+                  flood-opacity="0.22"
+                />
+              </filter>
+            </defs>
+            <g filter="url(#x05-shadow)">
+              {#each [{ x: 19, y: 3 }, { x: 22, y: 13 }, { x: 4, y: 11 }] as p, i (i)}
+                <line x1="5" y1="19" x2={p.x} y2={p.y} />
+              {/each}
+              <line x1="5" y1="19" x2="11" y2="11" />
+              <line x1="11" y1="11" x2="9" y2="4" />
+              <line x1="11" y1="11" x2="16" y2="5" />
+              <circle cx="5" cy="19" r={centerRadius * 1.05} fill="#4A6CF7" stroke="none" />
+              <circle cx="9" cy="4" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+              <circle cx="16" cy="5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+              {#each [{ x: 19, y: 3 }, { x: 22, y: 13 }, { x: 4, y: 11 }] as p, i (i)}
+                <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+              {/each}
+            </g>
+          </svg>
+        </div>
+        <div class="num">X05 · W15+W23 (V10)</div>
+        <h3>V10 BL · shadow</h3>
+        <p class="caption">V10 en BL avec drop-shadow uniquement. Lecture organique.</p>
+      </div>
+
+      <!-- X06 — V10 BL + z-layered + drop-shadow · Editorial Indigo -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <defs>
+              <filter id="x06-shadow" x="-30%" y="-30%" width="160%" height="160%">
+                <feDropShadow
+                  dx="0"
+                  dy="0.6"
+                  stdDeviation="0.45"
+                  flood-color="#1A1A1A"
+                  flood-opacity="0.22"
+                />
+              </filter>
+            </defs>
+            <g filter="url(#x06-shadow)">
+              {#each [{ x: 19, y: 3 }, { x: 22, y: 13 }, { x: 4, y: 11 }] as p, i (i)}
+                <line x1="5" y1="19" x2={p.x} y2={p.y} />
+              {/each}
+              <line x1="5" y1="19" x2="11" y2="11" />
+              <line x1="11" y1="11" x2="9" y2="4" />
+              <line x1="11" y1="11" x2="16" y2="5" />
+              <circle cx="5" cy="19" r={centerRadius * 1.05} fill="#4A6CF7" stroke="none" />
+              <circle
+                cx="9"
+                cy="4"
+                r={leafRadius * 0.95}
+                fill="#4A6CF7"
+                stroke="#fafbfc"
+                stroke-width={strokeWidth * 0.9}
+              />
+              <circle
+                cx="16"
+                cy="5"
+                r={leafRadius * 0.95}
+                fill="#4A6CF7"
+                stroke="#fafbfc"
+                stroke-width={strokeWidth * 0.9}
+              />
+              {#each [{ x: 19, y: 3 }, { x: 22, y: 13 }, { x: 4, y: 11 }] as p, i (i)}
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={leafRadius * 0.95}
+                  fill="#4A6CF7"
+                  stroke="#fafbfc"
+                  stroke-width={strokeWidth * 0.9}
+                />
+              {/each}
+            </g>
+          </svg>
+        </div>
+        <div class="num">X06 · W15+W22+W23 (V10)</div>
+        <h3>V10 BL · z + shadow</h3>
+        <p class="caption">
+          V10 triple combo. 3 sources + Y-fork en BL avec les deux effets cumulés.
+        </p>
+      </div>
+
+      <!-- X07 — V11 BL + z-layered + drop-shadow · Editorial Duo -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#1A1A1A"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <defs>
+              <filter id="x07-shadow" x="-30%" y="-30%" width="160%" height="160%">
+                <feDropShadow
+                  dx="0"
+                  dy="0.6"
+                  stdDeviation="0.45"
+                  flood-color="#1A1A1A"
+                  flood-opacity="0.25"
+                />
+              </filter>
+            </defs>
+            <g filter="url(#x07-shadow)">
+              {#each [{ x: 10, y: 4 }, { x: 19, y: 3 }, { x: 4, y: 11 }] as p, i (i)}
+                <line x1="5" y1="19" x2={p.x} y2={p.y} />
+              {/each}
+              <line x1="5" y1="19" x2="14" y2="20" />
+              <line x1="14" y1="20" x2="18" y2="22" />
+              <circle cx="5" cy="19" r={centerRadius * 1.05} fill="#1A1A1A" stroke="none" />
+              {#each [{ x: 10, y: 4 }, { x: 19, y: 3 }, { x: 4, y: 11 }] as p, i (i)}
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={leafRadius * 0.95}
+                  fill="#4A6CF7"
+                  stroke="#fafbfc"
+                  stroke-width={strokeWidth * 0.9}
+                />
+              {/each}
+              <circle
+                cx="14"
+                cy="20"
+                r={leafRadius * 1.2}
+                fill="#1A1A1A"
+                stroke="#fafbfc"
+                stroke-width={strokeWidth * 1.1}
+              />
+              <circle
+                cx="18"
+                cy="22"
+                r={leafRadius * 0.65}
+                fill="#4A6CF7"
+                stroke="#fafbfc"
+                stroke-width={strokeWidth * 0.7}
+              />
+            </g>
+          </svg>
+        </div>
+        <div class="num">X07 · triple combo · Duo</div>
+        <h3>V11 BL · z + shadow · Duo</h3>
+        <p class="caption">Triple combo en bi-chromie : pulsar+parent noirs, satellites bleus.</p>
+      </div>
+
+      <!-- X08 — V10+V11 hybride BL + z-layered · Editorial Duo (topologie complète) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#1A1A1A"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 4, y: 11 }, { x: 22, y: 13 }] as p, i (i)}
+              <line x1="5" y1="19" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="5" y1="19" x2="11" y2="11" />
+            <line x1="11" y1="11" x2="9" y2="4" />
+            <line x1="11" y1="11" x2="17" y2="5" />
+            <line x1="5" y1="19" x2="14" y2="20" />
+            <line x1="14" y1="20" x2="18" y2="22" />
+            <circle cx="5" cy="19" r={centerRadius * 1.05} fill="#1A1A1A" stroke="none" />
+            <circle
+              cx="9"
+              cy="4"
+              r={leafRadius * 0.95}
+              fill="#4A6CF7"
+              stroke="#fafbfc"
+              stroke-width={strokeWidth * 0.9}
+            />
+            <circle
+              cx="17"
+              cy="5"
+              r={leafRadius * 0.95}
+              fill="#4A6CF7"
+              stroke="#fafbfc"
+              stroke-width={strokeWidth * 0.9}
+            />
+            {#each [{ x: 4, y: 11 }, { x: 22, y: 13 }] as p, i (i)}
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={leafRadius * 0.95}
+                fill="#1A1A1A"
+                stroke="#fafbfc"
+                stroke-width={strokeWidth * 0.9}
+              />
+            {/each}
+            <circle
+              cx="14"
+              cy="20"
+              r={leafRadius * 1.2}
+              fill="#1A1A1A"
+              stroke="#fafbfc"
+              stroke-width={strokeWidth * 1.1}
+            />
+            <circle
+              cx="18"
+              cy="22"
+              r={leafRadius * 0.65}
+              fill="#4A6CF7"
+              stroke="#fafbfc"
+              stroke-width={strokeWidth * 0.7}
+            />
+          </svg>
+        </div>
+        <div class="num">X08 · V10+V11+V18 BL · Duo</div>
+        <h3>Topologie complète BL · Duo</h3>
+        <p class="caption">
+          2 sources directes + Y-fork + parent-lune, BL z-layered bi-chromie. Narration produit
+          complète.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-block">
     <h2 class="section-title">Pulsar-graph — 20 variations · 2026-05-28</h2>
     <p class="section-lead">
       Vingt déclinaisons du mark <strong>#01 (Pulsar-graph)</strong>. Système de couleurs étendu :
