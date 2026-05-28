@@ -6,6 +6,41 @@
 
 ## Dernière mise à jour
 
+**2026-05-28 — Refonte complète du hero pulsar (12 passes en sandbox + port prod).**
+
+Session longue d'itération sur `/sandbox/hero` avec retours utilisateur à chaque étape (12 commits, branche `feat/hero-design-iter`), puis port du résultat validé vers le composant prod `apps/frontend/src/lib/components/HeroPulsar.svelte`. La sandbox tunable a servi exactement à l'usage prévu (ADR-024).
+
+**Apports du nouveau hero vs. version précédente :**
+
+- **Graphe agrandi ×1.3** : pulsar 0.085 → 0.143 NDC, orbites et rayons nœuds idem. Plus présent sur le hero du landing.
+- **Nœuds simplifiés + biomes stabilisés** : limbe net (AA 0.8×), color delta resserré (0.05), patterns adoucis. Biome et seed dérivés de l'identité du nœud (uniform `uNodeIdx`), plus du slot trié → fini les "changements de netteté" à chaque croisement en z.
+- **Palette repensée** : 8 couleurs matérielles (cobalt, emerald, cyan azure, coral, amber, violet, gold, jade), jamais fluo. Pulsar passé d'un bleu électrique à une **naine bleue-blanche** (~25 000 K, type Sirius B) avec rim bleu + centre blanc-chaud.
+- **Anneau chromosphérique** rose-saumon discret au limbe (remplace les "vents solaires" multi-couches qui dessinaient des halos désaxés).
+- **Background apaisé** : filaments cosmiques et dust lanes atténués → ne concurrencent plus le pulsar.
+- **Connexions enrichies** :
+  - lignes intensifiées avec **data-pulse comète** (gauss + tail asymétrique, vitesse 0.25 cycles/s, envelope smoothstep 15 %/15 % pour fluidité parfaite)
+  - **trails orbitaux** (ring buffer 6 frames, gauss additif fade exp)
+- **Topologie de graphe** :
+  - **lune** (nœud 5, violet) qui orbite un nœud parent (1, emerald) → connexion lune → parent, parent → pulsar
+  - **Y-fork** (nœuds 3 coral et 4 amber) : leur lignes se rejoignent sur un point virtuel M qui orbite le pulsar, puis trunk M → pulsar. M jamais rendu. Les twins **tournent autour de l'axe pulsar↔M** (3D propre, perp-vectors via produit vectoriel), branches ouvertes à 70° total (35° de chaque côté), jamais d'angle droit. Joint à M invisible (gradient de couleur node→trunk + endpoint taper sur le haze).
+- **Perspective 3D cohérente** : `uAnchors` étendu en vec4 (ajout du Z), `uForkTrunk` packé avec Mz. Nouvelle 2ᵉ passe lignes après le pulsar : pour chaque pixel à l'intérieur du disque pulsar, on calcule `pulsarFrontZ = sqrt(coreR² − d²)` et on redessine les portions de ligne dont `lineZ(t) > pulsarFrontZ`. **Conséquence** : quand un nœud est devant le pulsar (z > 0), sa ligne passe devant ; sinon elle reste cachée. Cohérent avec l'occlusion des nœuds eux-mêmes (déjà géré via `behindMix`).
+- **Stop des animations qui surprenaient** : tailles fixes (plus de breathing pulsar, plus de depthScale nœuds, plus de hover-size — l'effet hover passe maintenant uniquement par luminosité). Rotation propre des nœuds Earth-like discrète (0.03 rad/s ≈ 200s/rev).
+
+**Port prod** : `HeroPulsar.svelte` réécrit en intégrant tout cela. Contraintes prod préservées :
+- Lazy-import OGL (`import('ogl')`) → chunk séparé, 0 KB sur les autres routes
+- SVG fallback synchrone pour LCP, fade out à `webglReady`
+- `prefers-reduced-motion` → skip WebGL
+- IntersectionObserver pause le RAF hors-écran
+- DPR plafonné à 2
+- Canvas en alpha premultiplié, edge fade en transparence → pas de rectangle visible
+- Constantes hardcodées au lieu des sliders sandbox
+
+**Doc mise à jour** : ADR-024 (sandbox→prod cycle) augmentée d'une note sur le port du 28/05. Nouvelle ADR-026 sur la topologie de graphe (lune, Y-fork virtuel, perspective 3D). DECISIONS.md complétée. `.docs/05-design-system.md` mis à jour avec la nouvelle palette nœuds + pulsar.
+
+**Build vérifié** : `pnpm build` OK, `svelte-check` 0 erreur, `pnpm lint` (eslint + prettier) propre.
+
+---
+
 **2026-05-26 (soir) — Audit complet du repo et nettoyage. 4 PR poussées en phases.**
 
 Audit déclenché par la demande utilisateur : cohérence doc/code, anticipation des bottlenecks, nettoyage des branches obsolètes. Délégué l'audit code à un agent Explore, sanity-checké ses findings (3 hallucinations sur 8 dans son rapport — corrigées avant action). Résultat livré en 4 phases, chacune une PR distincte sur main.
