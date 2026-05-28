@@ -136,33 +136,37 @@
       float spinSpeed = 0.13 * (0.7 + 0.6 * fract(seed * 7.31));
       vec2 rsp = sp + vec2(uTime * spinSpeed, 0.0);
 
-      // Patterns par biome — features plus définis qu'en pass originale.
+      // Patterns par biome — features adoucies (smoothstep élargi, bandes
+      // moins puissantes). Combinées au color delta serré (0.05), elles
+      // donnent une texture organique sans dominer la couleur du nœud.
       float pattern = 0.5;
       if (biome < 0.5) {
-        // 0 — gas giant : bandes nettes
+        // 0 — gas giant : bandes douces
         float warp = fbm(rsp * 3.2) - 0.5;
-        float bands = sin((rsp.y + warp * 0.55) * 7.0);
-        bands = sign(bands) * pow(abs(bands), 0.55); // crisp band edges
+        float bands = sin((rsp.y + warp * 0.55) * 6.0);
+        bands = sign(bands) * pow(abs(bands), 0.85); // bordures plus douces
         pattern = bands * 0.5 + 0.5;
       } else if (biome < 1.5) {
-        // 1 — rocky / continents — côtes franches
-        float h = fbm(rsp * 4.2);
-        pattern = smoothstep(0.46, 0.50, h);          // step très tight
+        // 1 — rocky / continents — côtes graduelles (élargi 0.46-0.50 → 0.40-0.56)
+        float h = fbm(rsp * 4.0);
+        pattern = smoothstep(0.40, 0.56, h);
       } else if (biome < 2.5) {
-        // 2 — marbré / domain warping
+        // 2 — marbré — gradient large (0.32-0.68 → 0.28-0.72)
         float warp = fbm(rsp * 2.0);
         vec2 q = rsp * 3.5 + vec2(warp * 2.2, fbm(rsp * 2.3) * 2.0);
         float v = fbm(q);
-        pattern = smoothstep(0.32, 0.68, v);          // contraste élargi
+        pattern = smoothstep(0.28, 0.72, v);
       } else {
-        // 3 — icy / craquelures fines
+        // 3 — icy / craquelures — élargi (0.43-0.47 → 0.40-0.50)
         float v = fbm(rsp * 6.5);
-        pattern = 1.0 - smoothstep(0.43, 0.47, abs(v - 0.5));
+        pattern = 1.0 - smoothstep(0.40, 0.50, abs(v - 0.5));
       }
 
-      // Color delta élargi (pattern lisible mais teinte du nœud préservée)
-      vec3 darkCol  = baseCol * 0.86;
-      vec3 lightCol = mix(baseCol, vec3(1.0), 0.10);
+      // Color delta resserré (delta 0.14 → 0.05) — les marbrures restent
+      // visibles mais bien plus discrètes, surtout sur les nœuds saturés
+      // (violet, emerald) où le contraste précédent dominait la couleur.
+      vec3 darkCol  = baseCol * 0.92;
+      vec3 lightCol = mix(baseCol, vec3(1.0), 0.05);
       vec3 surfaceCol = mix(darkCol, lightCol, pattern);
 
       // Lighting from pulsar
@@ -210,38 +214,35 @@
       // 1) Deep void base — darker than before
       col = vec3(0.004, 0.005, 0.010);
 
-      // 2) MATRIX — cosmic web of filaments. Two ridged-noise scales.
+      // 2) MATRIX — fond très atténué : on garde l'effet "structure cosmique"
+      //    mais à intensité ~40 % de la précédente, et avec un blend doux
+      //    (lit / cool plus proches) → plus de "courbes quart-de-cercle"
+      //    visibles qui faisaient de la concurrence au pulsar.
       vec2 matUv = uv * 1.2 + driftA;
       float m1 = fbm(matUv);
       float m2 = fbm(matUv * 2.3 + vec2(5.0));
       float ridge1 = 1.0 - abs(m1 - 0.5) * 2.0;
       float ridge2 = 1.0 - abs(m2 - 0.5) * 2.0;
-      float webBase = pow(ridge1, 1.4) * 0.6 + pow(ridge2, 2.0) * 0.4;
-      // Large-scale density modulates brightness
+      // Exposants plus élevés → filaments plus rares et plus discrets
+      float webBase = pow(ridge1, 2.5) * 0.4 + pow(ridge2, 3.0) * 0.2;
       float density = fbm(uv * 0.5 + driftB);
 
-      // 3) Matrix brightness — deep-blue tint instead of grey. The lit stops
-      //    push more into B than RG so filaments read as cool cosmic dust,
-      //    never washed-out white.
-      vec3 cool = vec3(0.008, 0.012, 0.028);   // base — deep indigo void
-      vec3 lit  = vec3(0.028, 0.040, 0.095);   // lit — clear cobalt-blue (not whitish)
-      vec3 matrix = mix(cool, lit, smoothstep(0.25, 0.90, webBase));
-      matrix *= 0.50 + 0.70 * density;
+      // 3) Matrix brightness — gradient plus serré, base plus sombre.
+      vec3 cool = vec3(0.006, 0.009, 0.022);
+      vec3 lit  = vec3(0.014, 0.022, 0.052);   // ~ moitié de la précédente
+      vec3 matrix = mix(cool, lit, smoothstep(0.35, 0.85, webBase));
+      matrix *= 0.50 + 0.50 * density;
       col += matrix;
 
-      // A very faint warm tint in the densest knots (suggests dust glow without
-      // creating bright patches — strictly bounded by the web pattern).
-      float warmKnot = smoothstep(0.70, 0.95, webBase) * density;
-      col += vec3(0.045, 0.025, 0.015) * warmKnot;
-
-      // 4) Very subtle dust lanes — anisotropic ridged carving.
+      // 4) Dust lanes : intensité 0.50 → 0.20 (à peine perceptibles, jamais
+      //    en concurrence avec le pulsar).
       vec2 dustUv = uv * vec2(1.4, 0.9) + vec2(2.0, -1.5) + driftB;
       float dustField = fbm(dustUv);
       float dustField2 = fbm(dustUv * 2.5 + vec2(7.0));
       float dustRidge = 1.0 - abs(dustField - 0.5) * 2.0;
       dustRidge *= 0.6 + 0.4 * dustField2;
-      float dustMask = smoothstep(0.62, 0.95, dustRidge);
-      col *= 1.0 - dustMask * 0.50;
+      float dustMask = smoothstep(0.72, 0.95, dustRidge);
+      col *= 1.0 - dustMask * 0.20;
 
       // NOTE: colored emission regions and distant galaxy disks were removed —
       // they read as luminous patches rather than as cosmic structure.
@@ -331,7 +332,9 @@
       // Pulsar scale : 0.085 → 0.110 (×1.3 pass 1) → 0.143 (×1.3 pass 3.5)
       float coreR = 0.143 * (1.0 + 0.10 * uHoverCore);
       float pulse = 0.5 + 0.5 * sin(uTime * uPulseSpeed * 2.0);
-      float coreRPulsed = coreR * (0.985 + 0.030 * pulse);
+      // Taille constante : pas de breathing pour éviter l'illusion que le
+      // pulsar "change de taille" quand un nœud passe devant.
+      float coreRPulsed = coreR;
       vec3 coreColor = hueShift(uCoreHue);
       // --- Stellar corona: multi-layered halo + diffraction spikes ---
       vec2 sd = uv - coreC;
@@ -480,7 +483,9 @@
           starSurface *= scint;
 
           // Pulse breathing
-          starSurface *= 0.94 + 0.08 * pulse;
+          // Subtle brightness pulse only (no size change). Garde l'étoile
+          // "vivante" sans gonfler ni rétrécir.
+          starSurface *= 0.97 + 0.04 * pulse;
 
           col = mix(col, starSurface * limb, alpha);
         }
@@ -784,7 +789,6 @@
         const sn = Math.sin(p.tilt);
         const ly = ly0 * cs - lz0 * sn;
         const lz = ly0 * sn + lz0 * cs;
-        const depthScale = 0.85 + 0.3 * (lz / 0.35);
         // Drag handling: if this node is being held, ease displacement
         // toward (cursor - orbital_pos) so the rendered position tracks the cursor.
         const isDragging = p.colorIdx === draggingNodeKey;
@@ -796,7 +800,11 @@
         computed[i].x = lx + displacement[i].x;
         computed[i].y = ly + displacement[i].y;
         computed[i].z = lz;
-        computed[i].r = p.radius * depthScale;
+        // Taille constante (pas de modulation par z) — sinon les nœuds qui
+        // passent devant ont l'air de "grossir" quand ils survolent le
+        // pulsar. La profondeur est lue par luminosité (depthBright shader),
+        // pas par taille.
+        computed[i].r = p.radius;
         computed[i].colorIdx = p.colorIdx;
       }
       // Échantillonnage des trails (ordre natif). Quand l'intervalle TRAIL_DT
