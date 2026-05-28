@@ -79,13 +79,12 @@
     // de manière STABLE : si deux nœuds échangent leur z et donc leur slot,
     // leur biome ne change PAS car il est attaché à leur identité.
     uniform float uNodeIdx[8];
-    // Ancre par slot trié : (x, y, anchorR). Pour la plupart des nœuds c'est
-    // le pulsar ; pour les lunes c'est leur parent ; pour les twins Y-fork
-    // c'est le point M (midpoint partagé). Sert à dessiner ligne + data-pulse
-    // de la node vers son vrai point d'attache.
-    uniform vec3 uAnchors[8];
-    // Y-fork trunk : (Mx, My, active, pulsarR). La "tige" du Y qui relie
-    // le midpoint au pulsar. active=0 : pas de Y-fork à dessiner.
+    // Ancre par slot trié : (x, y, z, r). Le composant z permet de
+    // calculer la profondeur 3D de la ligne nœud↔ancre à chaque pixel,
+    // pour déterminer si elle passe devant ou derrière le pulsar.
+    uniform vec4 uAnchors[8];
+    // Y-fork trunk : (Mx, My, Mz, active). active=0 : pas de Y-fork à
+    // dessiner. Mz nécessaire pour la perspective du trunk vs pulsar.
     uniform vec4 uForkTrunk;
     uniform vec3 uForkTrunkColor;
 
@@ -392,8 +391,10 @@
         float active = step(float(i) + 0.5, float(uNodeCount));
         vec4 n = uNodes[i];
         vec2 a = n.xy;
-        vec2 anc = uAnchors[i].xy;
-        float ancR = uAnchors[i].z;
+        vec3 anc3 = uAnchors[i].xyz;
+        vec2 anc = anc3.xy;
+        float ancZ = anc3.z;
+        float ancR = uAnchors[i].w;
         vec2 d = anc - a;
         float lineLen = max(length(d), 0.001);
         vec2 dir = d / lineLen;
@@ -418,7 +419,7 @@
         // au long du segment. Résultat : à M, les 3 lignes (twin A, twin B,
         // trunk) sont TOUTES de la même couleur → aucun joint visible,
         // c'est juste une ligne qui se divise. Comme demandé.
-        bool isYforkTwin = uAnchors[i].z < 0.001 && uForkTrunk.z > 0.5;
+        bool isYforkTwin = uAnchors[i].w < 0.001 && uForkTrunk.w > 0.5;
         vec3 nodeBaseCol = mix(uNodeColors[i], vec3(1.0), 0.15);
         vec3 trunkBaseCol = mix(uForkTrunkColor, vec3(1.0), 0.20);
         vec3 lineColor = isYforkTwin
@@ -452,9 +453,10 @@
       // Avant ce fix, le tampon vide autour de M laissait apparaître une
       // tache transparente. Maintenant le joint lit comme un branch-point
       // intentionnel, comme dans un graphe de citations.
-      if (uForkTrunk.z > 0.5) {
+      if (uForkTrunk.w > 0.5) {
         vec2 mPoint = uForkTrunk.xy;
-        float pR = uForkTrunk.w;
+        float mZ = uForkTrunk.z;
+        float pR = coreR; // pulsar radius (constante hardcodée maintenant)
         vec2 d = coreC - mPoint;
         float lineLen = max(length(d), 0.001);
         vec2 dir = d / lineLen;
@@ -543,6 +545,85 @@
           starSurface *= 0.97 + 0.04 * pulse;
 
           col = mix(col, starSurface * limb, alpha);
+        }
+      }
+
+      // ====================================================================
+      // CONNEXIONS — PASSE 2 : portions des lignes qui passent DEVANT le
+      // pulsar. Pour chaque pixel à l'intérieur du disque du pulsar, on
+      // calcule la z 3D de la ligne en ce point (interp node.z → anchor.z),
+      // on compare à la z frontale du pulsar (sqrt(coreR² − d²)). Si la
+      // ligne est devant, on la redessine. Sinon on laisse le pulsar
+      // recouvrir (déjà fait via la passe 1 + pulsar mix).
+      // ====================================================================
+      {
+        vec2 dCoreL = uv - coreC;
+        float dCore2L = dot(dCoreL, dCoreL);
+        float coreR2 = coreRPulsed * coreRPulsed;
+        if (dCore2L < coreR2) {
+          float pulsarFrontZ = sqrt(coreR2 - dCore2L);
+          // Re-dessine les lignes nœud→ancre
+          for (int i = 0; i < 8; i++) {
+            float active = step(float(i) + 0.5, float(uNodeCount));
+            if (active < 0.5) continue;
+            vec4 n = uNodes[i];
+            vec3 anc3 = uAnchors[i].xyz;
+            vec2 anc = anc3.xy;
+            float ancZ = anc3.z;
+            float ancR = uAnchors[i].w;
+            vec2 d = anc - n.xy;
+            float lineLen = max(length(d), 0.001);
+            vec2 dir = d / lineLen;
+            vec2 rel = uv - n.xy;
+            float along = dot(rel, dir);
+            float across = length(rel - dir * along);
+            float onSeg = step(n.w * 1.02, along) * step(along, lineLen - ancR * 1.00);
+            if (onSeg < 0.5) continue;
+            float tParam = clamp(along / lineLen, 0.0, 1.0);
+            float lineZ = mix(n.z, ancZ, tParam);
+            if (lineZ <= pulsarFrontZ) continue;
+            // OK — ligne devant le pulsar à ce pixel. Mêmes valeurs que
+            // la passe 1.
+            float aaL = uAaPixel.x * 1.1;
+            float lineMaskL = (1.0 - smoothstep(0.0022 - aaL, 0.0022 + aaL, across)) * onSeg;
+            float tNormL = along / lineLen;
+            float endTaperL = smoothstep(0.0, 0.08, tNormL) * (1.0 - smoothstep(0.85, 1.0, tNormL));
+            float lineHazeL = exp(-across * 220.0) * onSeg * 0.35 * endTaperL;
+            float depthFadeL = 0.55 + 0.45 * clamp(n.z / 0.35 + 0.5, 0.0, 1.0);
+            bool isYforkTwinL = uAnchors[i].w < 0.001 && uForkTrunk.w > 0.5;
+            vec3 nodeBaseColL = mix(uNodeColors[i], vec3(1.0), 0.15);
+            vec3 trunkBaseColL = mix(uForkTrunkColor, vec3(1.0), 0.20);
+            vec3 lineColorL = isYforkTwinL
+              ? mix(nodeBaseColL, trunkBaseColL, smoothstep(0.15, 1.0, tNormL))
+              : nodeBaseColL;
+            col += lineColorL * (lineMaskL * 0.45 + lineHazeL * 0.7) * depthFadeL;
+          }
+          // Re-dessine le trunk Y-fork s'il est devant le pulsar
+          if (uForkTrunk.w > 0.5) {
+            vec2 mPt = uForkTrunk.xy;
+            float mZT = uForkTrunk.z;
+            vec2 dT = coreC - mPt;
+            float lineLenT = max(length(dT), 0.001);
+            vec2 dirT = dT / lineLenT;
+            vec2 relT = uv - mPt;
+            float alongT = dot(relT, dirT);
+            float acrossT = length(relT - dirT * alongT);
+            float onSegT = step(0.0, alongT) * step(alongT, lineLenT - coreR * 1.00);
+            if (onSegT >= 0.5) {
+              float tT = clamp(alongT / lineLenT, 0.0, 1.0);
+              // Trunk : M (z = mZT) → pulsar (z = 0)
+              float trunkZ = mix(mZT, 0.0, tT);
+              if (trunkZ > pulsarFrontZ) {
+                float aaT = uAaPixel.x * 1.1;
+                float lineMaskT = (1.0 - smoothstep(0.0024 - aaT, 0.0024 + aaT, acrossT)) * onSegT;
+                float tNormT = alongT / lineLenT;
+                float endTaperT = smoothstep(0.0, 0.08, tNormT) * (1.0 - smoothstep(0.95, 1.0, tNormT));
+                float lineHazeT = exp(-acrossT * 200.0) * onSegT * 0.30 * endTaperT;
+                vec3 trunkColorT = mix(uForkTrunkColor, vec3(1.0), 0.20);
+                col += trunkColorT * (lineMaskT * 0.50 + lineHazeT * 0.7);
+              }
+            }
+          }
         }
       }
 
@@ -676,14 +757,12 @@
         // colorIdx du nœud occupant chaque slot trié (réécrit chaque frame
         // par la même boucle qui réordonne uNodes / uNodeColors).
         uNodeIdx: { value: Array.from({ length: 8 }, () => 0) },
-        // Ancre par slot trié (x, y, anchorR) — pulsar pour la majorité,
-        // parent pour les lunes, point M pour les twins Y-fork.
+        // Ancre par slot trié : (x, y, z, r). Z permet l'occlusion 3D.
         uAnchors: {
-          value: Array.from({ length: 8 }, () => [0, 0, 0.143] as number[]),
+          value: Array.from({ length: 8 }, () => [0, 0, 0, 0.143] as number[]),
         },
-        // Y-fork trunk : (Mx, My, active, pulsarR). Décrit la "tige" du Y
-        // qui prolonge le point M jusqu'au pulsar.
-        uForkTrunk: { value: [0, 0, 0, 0.143] as number[] },
+        // Y-fork trunk : (Mx, My, Mz, active). active=0 → désactivé.
+        uForkTrunk: { value: [0, 0, 0, 0] as number[] },
         // Couleur du trunk : mix des deux twins (calculée statiquement).
         uForkTrunkColor: {
           value: new Vec3(
@@ -901,11 +980,12 @@
       r: number;
       colorIdx: number;
       role: NodeRole;
-      // Ancre = point auquel la ligne de connexion de ce nœud aboutit.
-      // Pour régulier/parent/forkBase : c'est le pulsar. Pour moon : son
-      // parent. Pour forkTwin : sa forkBase.
+      // Ancre 3D où aboutit la ligne de connexion. Z nécessaire pour
+      // calculer la profondeur 3D de la ligne pixel par pixel et décider
+      // si elle passe devant ou derrière le pulsar.
       anchorX: number;
       anchorY: number;
+      anchorZ: number;
       anchorR: number;
     };
     const computed: Computed[] = Array.from({ length: 8 }, () => ({
@@ -917,6 +997,7 @@
       role: 'regular' as NodeRole,
       anchorX: 0,
       anchorY: 0,
+      anchorZ: 0,
       anchorR: 0.143,
     }));
     // Per-node displacement from its orbital position (for click-and-drag).
@@ -979,8 +1060,10 @@
         computed[i].colorIdx = p.colorIdx;
         computed[i].role = p.role;
         // Ancre par défaut = pulsar (régulier / parent / forkBase)
+        // Pulsar à z=0 dans le repère 3D
         computed[i].anchorX = coreDisp.x;
         computed[i].anchorY = coreDisp.y;
+        computed[i].anchorZ = 0;
         computed[i].anchorR = PULSAR_R;
       }
       // PASSE B : override position pour moon (orbite locale autour du
@@ -1005,6 +1088,7 @@
         computed[i].z = pNode.z + mz;
         computed[i].anchorX = pNode.x;
         computed[i].anchorY = pNode.y;
+        computed[i].anchorZ = pNode.z;
         computed[i].anchorR = pNode.r;
       }
       // 2) Y-fork — rotation axiale autour de l'axe pulsar↔M.
@@ -1018,6 +1102,7 @@
       let forkActive = 0;
       let forkMx = 0;
       let forkMy = 0;
+      let forkMz = 0;
       if (twinAidx !== -1 && twinBidx !== -1 && twinAidx < n && twinBidx < n) {
         // --- Position 3D de M (orbite régulière autour du pulsar) ---
         const aP = VIRTUAL_FORK.baseAngle + time * orbitSpeed * VIRTUAL_FORK.speed;
@@ -1033,6 +1118,7 @@
         const Mz = lyP0 * snP + lzP0 * csP;
         forkMx = Mx;
         forkMy = My;
+        forkMz = Mz;
         forkActive = 1;
 
         // --- Axe pulsar→M en 3D ---
@@ -1091,6 +1177,7 @@
         computed[twinAidx].z = Mz + aloZ + perZ;
         computed[twinAidx].anchorX = Mx;
         computed[twinAidx].anchorY = My;
+        computed[twinAidx].anchorZ = Mz;
         computed[twinAidx].anchorR = 0.0;
         // Twin B : along - perp (même axe, perpendiculaire opposé)
         computed[twinBidx].x = Mx + aloX - perX;
@@ -1098,16 +1185,17 @@
         computed[twinBidx].z = Mz + aloZ - perZ;
         computed[twinBidx].anchorX = Mx;
         computed[twinBidx].anchorY = My;
+        computed[twinBidx].anchorZ = Mz;
         computed[twinBidx].anchorR = 0.0;
       }
-      // Trunk uniform — utilisé par le shader pour dessiner la ligne
-      // M ↔ pulsar (la "tige" du Y). Mutation in-place : OGL upload le
-      // tableau à chaque draw.
+      // Trunk uniform : (Mx, My, Mz, active). Mz nécessaire pour
+      // l'occlusion 3D du trunk vs pulsar. Le pulsarR est désormais
+      // hardcodé dans le shader (constante = PULSAR_R = coreR).
       const trunkU = program.uniforms.uForkTrunk.value as number[];
       trunkU[0] = forkMx;
       trunkU[1] = forkMy;
-      trunkU[2] = forkActive;
-      trunkU[3] = PULSAR_R;
+      trunkU[2] = forkMz;
+      trunkU[3] = forkActive;
       // Échantillonnage des trails (ordre natif). Quand l'intervalle TRAIL_DT
       // est écoulé, on shift le ring buffer : t-1 ← t (live), t-2 ← t-1, ...
       if (time - lastTrailSample >= TRAIL_DT) {
@@ -1136,10 +1224,7 @@
       // Sort back-to-front
       const slice = computed.slice(0, n).sort((a, b) => a.z - b.z);
       // Write into flat uniform arrays (reorder colors to match sorted nodes).
-      // On écrit aussi uNodeIdx[i] = colorIdx — sert au shader pour dériver
-      // biome/seed depuis l'identité du nœud (stable au tri).
-      // Et uAnchors[i] = (anchorX, anchorY, anchorR) pour redessiner les
-      // lignes vers le vrai point d'attache (pulsar / parent / forkBase).
+      // uAnchors[i] = (x, y, z, r) — z permet l'occlusion 3D ligne/pulsar.
       const arr = program.uniforms.uNodes.value as number[][];
       const colArr = program.uniforms.uNodeColors.value as number[][];
       const idxArr = program.uniforms.uNodeIdx.value as number[];
@@ -1156,7 +1241,8 @@
         idxArr[i] = slice[i].colorIdx;
         anchArr[i][0] = slice[i].anchorX;
         anchArr[i][1] = slice[i].anchorY;
-        anchArr[i][2] = slice[i].anchorR;
+        anchArr[i][2] = slice[i].anchorZ;
+        anchArr[i][3] = slice[i].anchorR;
       }
 
       // --- Mouse picking: find the node under the cursor (front-most only).
