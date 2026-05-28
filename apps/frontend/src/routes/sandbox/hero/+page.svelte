@@ -14,6 +14,11 @@
   let coreHue = $state(0.58);
   let nodeSpread = $state(1.0);
 
+  // Identité des deux twins du Y-fork (par colorIdx). Définis ici pour
+  // pouvoir nourrir la couleur du trunk dès la création du program GL.
+  const FORK_TWIN_A_COLOR_IDX = 3;
+  const FORK_TWIN_B_COLOR_IDX = 4;
+
   // Palette tunée 2026 : chroma poussée + bornes blanc/noir évitées pour
   // garder la cohérence avec le reste de l'UI (jamais de pur RGB primaire).
   // Inspiration : Linear/Vercel/OpenAI — couleurs nettes mais matérielles,
@@ -76,9 +81,13 @@
     uniform float uNodeIdx[8];
     // Ancre par slot trié : (x, y, anchorR). Pour la plupart des nœuds c'est
     // le pulsar ; pour les lunes c'est leur parent ; pour les twins Y-fork
-    // c'est leur forkBase. Sert à dessiner ligne + data-pulse de la node
-    // vers son vrai point d'attache (pas forcément le pulsar).
+    // c'est le point M (midpoint partagé). Sert à dessiner ligne + data-pulse
+    // de la node vers son vrai point d'attache.
     uniform vec3 uAnchors[8];
+    // Y-fork trunk : (Mx, My, active, pulsarR). La "tige" du Y qui relie
+    // le midpoint au pulsar. active=0 : pas de Y-fork à dessiner.
+    uniform vec4 uForkTrunk;
+    uniform vec3 uForkTrunkColor;
 
     // Hash + value noise
     float hash(vec2 p) {
@@ -133,12 +142,11 @@
       float zLocal = sqrt(zSq) / r;
       vec3 n = vec3(d.x / r, d.y / r, zLocal);
 
-      // Rotation propre Earth-like : phase horizontale qui défile (axe Y
-      // vertical). Sur sphère view-aligned, c'est un fake mais à petite
-      // échelle l'œil lit ça comme "la planète tourne". Vitesse variée par
-      // nœud (~25 à 50 s par rotation) — vivant sans devenir distrayant.
+      // Rotation propre très lente (Earth-like discret). 0.03 rad/s ≈ 200s
+      // par rev — perceptible si on regarde fixe, jamais distrayant ni
+      // "brusque".
       vec2 sp = n.xy + vec2(seed, seed * 0.7);
-      float spinSpeed = 0.13 * (0.7 + 0.6 * fract(seed * 7.31));
+      float spinSpeed = 0.03 * (0.7 + 0.6 * fract(seed * 7.31));
       vec2 rsp = sp + vec2(uTime * spinSpeed, 0.0);
 
       // Patterns par biome — features adoucies (smoothstep élargi, bandes
@@ -334,8 +342,10 @@
 
       // --- Pulsar (3D sphere — position controlled by JS for click-drag) ---
       vec2 coreC = uMouse;  // uMouse repurposed as "pulsar position" (set by JS)
-      // Pulsar scale : 0.085 → 0.110 (×1.3 pass 1) → 0.143 (×1.3 pass 3.5)
-      float coreR = 0.143 * (1.0 + 0.10 * uHoverCore);
+      // Pulsar scale FIXE — l'effet hover passe par la luminosité (halo),
+      // jamais par la taille. Sinon visuellement on perçoit un "gonflement"
+      // quand un nœud passe sous le curseur et frôle le pulsar.
+      float coreR = 0.143;
       float pulse = 0.5 + 0.5 * sin(uTime * uPulseSpeed * 2.0);
       // Taille constante : pas de breathing pour éviter l'illusion que le
       // pulsar "change de taille" quand un nœud passe devant.
@@ -363,31 +373,16 @@
       float spike = (spikeH + spikeV) * (0.90 + 0.15 * pulse);
       col += mix(coreColor, vec3(1.0), 0.45) * spike * 0.20;
 
-      // 5. Tempêtes solaires — 3 couches additives, plasma chaud blanc-doré
-      //    vs corps bleu de l'étoile. Coord ANGULAIRE : on injecte
-      //    vec2(cos(ang*k + phase), sin(...)) dans fbm au lieu de l'angle
-      //    brut. Sans ça, atan2 saute de +π à -π sur l'axe x négatif et la
-      //    discontinuité dessine une cicatrice horizontale à gauche du
-      //    pulsar. Avec (cos,sin) la coord est périodique sans couture.
-      vec3 flareCol = mix(vec3(1.0, 0.85, 0.55), vec3(1.0), 0.20);
-      // Couche A — gros jets lents, larges
-      vec2 cA = vec2(cos(ang * 1.0 + uTime * 0.07), sin(ang * 1.0 + uTime * 0.07));
-      float flA = fbm(cA * 1.6 + vec2(dCore * 11.0, uTime * 0.04));
-      float flareA = pow(flA, 3.0)
-                   * exp(-haloOut * 7.5) * step(coreRPulsed * 0.95, dCore)
-                   * 2.4;
-      // Couche B — jets fins rapides (turbulence haute)
-      vec2 cB = vec2(cos(ang * 2.3 - uTime * 0.13), sin(ang * 2.3 - uTime * 0.13));
-      float flB = fbm(cB * 3.0 + vec2(dCore * 22.0, uTime * 0.09));
-      float flareB = pow(flB, 4.0)
-                   * exp(-haloOut * 14.0) * step(coreRPulsed * 0.97, dCore)
-                   * 1.8;
-      // Couche C — sursauts brefs (granulation explosive)
-      vec2 cC = vec2(cos(ang * 3.1 + uTime * 0.21), sin(ang * 3.1 + uTime * 0.21));
-      float flC = fbm(cC * 4.0 + vec2(dCore * 30.0, uTime * 0.15));
-      float burst = smoothstep(0.72, 0.92, flC)
-                  * exp(-haloOut * 18.0) * step(coreRPulsed * 0.98, dCore);
-      col += flareCol * (flareA + flareB) + vec3(1.0, 0.95, 0.80) * burst * 1.5;
+      // 5. Anneau chromosphérique fin — remplace les flares multi-couches.
+      //    Toujours CENTRÉ (pas de noise → pas de "halos désaxés derrière le
+      //    pulsar"). Couleur pinkish-warm comme la vraie chromosphère d'une
+      //    étoile bleue type O/B. Très fin, juste à l'extérieur du limbe.
+      //    Modulation très subtile et lente du rayon (battement chromosphère).
+      float chromoBreath = 1.0 + 0.04 * sin(uTime * 0.6);
+      float chromoFalloff = exp(-haloOut * 65.0 * chromoBreath);
+      float chromoMask = chromoFalloff * step(coreRPulsed * 0.985, dCore);
+      vec3 chromoCol = vec3(1.00, 0.55, 0.50);  // rose-saumon, classique
+      col += chromoCol * chromoMask * 0.55;
 
       // ====================================================================
       // CONNEXIONS nœud↔ancre — chaque nœud se relie à SON ancre (pulsar
@@ -434,6 +429,42 @@
         float lateral = exp(-across * across * 50000.0);
         float dataPulse = (head + tail) * lateral * onSeg * env;
         col += mix(uNodeColors[i], vec3(1.0), 0.50) * dataPulse * 1.6 * depthFade * active;
+      }
+
+      // ====================================================================
+      // Y-FORK TRUNK — tige du Y reliant le midpoint M au pulsar.
+      // ====================================================================
+      // Active seulement si uForkTrunk.z > 0.5 (passé par le JS). Même
+      // mécanique que les lignes de connexion mais entre M et le pulsar.
+      if (uForkTrunk.z > 0.5) {
+        vec2 mPoint = uForkTrunk.xy;
+        float pR = uForkTrunk.w;
+        vec2 d = coreC - mPoint;
+        float lineLen = max(length(d), 0.001);
+        vec2 dir = d / lineLen;
+        vec2 rel = uv - mPoint;
+        float along = dot(rel, dir);
+        float across = length(rel - dir * along);
+        // Start tout près de M (petit buffer pour fusion visuelle avec les
+        // deux branches), fin avant le pulsar.
+        float onSeg = step(0.005, along) * step(along, lineLen - pR * 1.00);
+        float aa = uAaPixel.x * 1.1;
+        float lineMask = (1.0 - smoothstep(0.0024 - aa, 0.0024 + aa, across)) * onSeg;
+        float lineHaze = exp(-across * 200.0) * onSeg * 0.30;
+        vec3 trunkColor = mix(uForkTrunkColor, vec3(1.0), 0.20);
+        col += trunkColor * (lineMask * 0.50 + lineHaze * 0.7);
+
+        // Data pulse sur le trunk — M → pulsar (continuité du flux d'in-
+        // formation depuis les twins).
+        float lt = fract(uTime * 0.42 + 0.5);
+        float env = smoothstep(0.0, 0.08, lt) * (1.0 - smoothstep(0.92, 1.0, lt));
+        float pulsePos = lt * (lineLen - 0.005 - pR) + 0.005;
+        float pulseDist = along - pulsePos;
+        float head = exp(-pulseDist * pulseDist * 2400.0);
+        float tail = exp(pulseDist * 26.0) * step(pulseDist, 0.0) * 0.55;
+        float lateral = exp(-across * across * 50000.0);
+        float dataPulse = (head + tail) * lateral * onSeg * env;
+        col += mix(uForkTrunkColor, vec3(1.0), 0.50) * dataPulse * 1.4;
       }
 
       // Pulsar sphere — hot blue main-sequence star (Rigel/Spica style)
@@ -500,7 +531,9 @@
 
         // Hover: enlarge the radius and brighten the orb
         float hover = uHoverNode[i];
-        float nodeR = n.w * (1.0 + 0.35 * hover);
+        // Taille fixe — l'effet hover passe uniquement par le glow (gérée
+        // plus bas via glowBoost), jamais par la taille du nœud.
+        float nodeR = n.w;
 
         // Per-pixel occlusion by the pulsar (smooth, depth-aware).
         // pulsarCoverage: 1 inside pulsar disk, 0 outside, AA at edge.
@@ -620,9 +653,20 @@
         // par la même boucle qui réordonne uNodes / uNodeColors).
         uNodeIdx: { value: Array.from({ length: 8 }, () => 0) },
         // Ancre par slot trié (x, y, anchorR) — pulsar pour la majorité,
-        // parent pour les lunes, base pour les twins Y-fork.
+        // parent pour les lunes, point M pour les twins Y-fork.
         uAnchors: {
           value: Array.from({ length: 8 }, () => [0, 0, 0.143] as number[]),
+        },
+        // Y-fork trunk : (Mx, My, active, pulsarR). Décrit la "tige" du Y
+        // qui prolonge le point M jusqu'au pulsar.
+        uForkTrunk: { value: [0, 0, 0, 0.143] as number[] },
+        // Couleur du trunk : mix des deux twins (calculée statiquement).
+        uForkTrunkColor: {
+          value: new Vec3(
+            (NODE_COLORS[FORK_TWIN_A_COLOR_IDX][0] + NODE_COLORS[FORK_TWIN_B_COLOR_IDX][0]) * 0.5,
+            (NODE_COLORS[FORK_TWIN_A_COLOR_IDX][1] + NODE_COLORS[FORK_TWIN_B_COLOR_IDX][1]) * 0.5,
+            (NODE_COLORS[FORK_TWIN_A_COLOR_IDX][2] + NODE_COLORS[FORK_TWIN_B_COLOR_IDX][2]) * 0.5,
+          ),
         },
       },
     });
@@ -749,12 +793,17 @@
     const G_SCALE = 1.3;
     // Rôles configurés explicitement pour 7 nœuds :
     //   0 régulier (cobalt)
-    //   1 PARENT (emerald, +20% taille) — ancre node 5 (moon)
-    //   2 FORK BASE (cyan azure) — ancre nodes 3 et 4 (twins)
-    //   3 FORK TWIN +1 (coral, -20%)
-    //   4 FORK TWIN -1 (amber, -20%)
+    //   1 PARENT (emerald, +20% taille) — ancre la MOON 5
+    //   2 régulier (cyan azure)
+    //   3 FORK TWIN (coral) — partage un trunk Y-fork avec node 4
+    //   4 FORK TWIN (amber) — partage le trunk avec node 3
     //   5 MOON (violet, -45%) du parent 1
     //   6 régulier (gold)
+    // Twins 3 et 4 : orbites normales autour du pulsar, MAIS leur ligne de
+    // connexion se rejoint sur un point M (midpoint dynamique) et un trunk
+    // M→pulsar prolonge l'ensemble. Aucune mécanique orbitale partagée.
+    // Les colorIdx des twins sont déclarés au niveau module (cf. en haut du
+    // <script>) car utilisés dès la création du program GL.
     function makeNode(i: number): NodeParam {
       const baseRadius = (0.038 + 0.012 * Math.sin(i * 1.3)) * 1.5;
       const orbital = {
@@ -776,38 +825,22 @@
       switch (i) {
         case 1:
           return { ...orbital, role: 'parent', radius: baseRadius * 1.2 };
-        case 2:
-          return { ...orbital, role: 'forkBase' };
         case 3:
-          return {
-            ...orbital,
-            role: 'forkTwin',
-            parentColorIdx: 2,
-            radius: baseRadius * 0.75,
-            localOrbitR: 0.14,
-            localSpeed: 3.5,        // ×orbitSpeed → vitesse de spin du Y
-            localPhase: 0,
-            twinSide: 1,
-          };
+          // Twin "A" du Y-fork : orbite NORMALE, marquage role pour
+          // déclencher le routage de connexion vers M.
+          return { ...orbital, role: 'forkTwin', twinSide: 1 };
         case 4:
-          return {
-            ...orbital,
-            role: 'forkTwin',
-            parentColorIdx: 2,
-            radius: baseRadius * 0.75,
-            localOrbitR: 0.14,
-            localSpeed: 3.5,
-            localPhase: 0,
-            twinSide: -1,           // toujours opposé du twin +1
-          };
+          // Twin "B" du Y-fork : orbite NORMALE, marquage role.
+          return { ...orbital, role: 'forkTwin', twinSide: -1 };
         case 5:
           return {
             ...orbital,
             role: 'moon',
             parentColorIdx: 1,
             radius: baseRadius * 0.55,
-            localOrbitR: 0.13,
-            localSpeed: 4.5,        // lune rapide (×orbitSpeed)
+            // Distance lune-parent bien lisible (0.13 → 0.28).
+            localOrbitR: 0.28,
+            localSpeed: 4.5,
             localPhase: 1.2,
           };
         default:
@@ -905,58 +938,68 @@
         computed[i].anchorY = coreDisp.y;
         computed[i].anchorR = PULSAR_R;
       }
-      // PASSE B : override pour moon et forkTwin.
-      // Helper : retrouve l'index natif d'un nœud par colorIdx.
+      // PASSE B : override position pour moon (orbite locale autour du
+      // parent), et override ANCRE pour les twins Y-fork (point M partagé).
       const findByColorIdx = (cidx: number): number => {
         for (let k = 0; k < n; k++) if (NODES[k].colorIdx === cidx) return k;
         return -1;
       };
+      // 1) Moons : position locale autour du parent
       for (let i = 0; i < n; i++) {
         const p = NODES[i];
-        if (p.role === 'moon') {
-          const pIdx = findByColorIdx(p.parentColorIdx);
-          if (pIdx === -1) continue;
-          const pNode = computed[pIdx];
-          // Orbite locale 3D autour du parent. Ellipse + bobbing en z pour
-          // un sentiment "lune autour de planète", pas plat.
-          const la = p.localPhase + time * orbitSpeed * p.localSpeed;
-          const mx = Math.cos(la) * p.localOrbitR;
-          const my = Math.sin(la) * p.localOrbitR * 0.6;
-          const mz = Math.sin(la + 0.6) * p.localOrbitR * 0.35;
-          computed[i].x = pNode.x + mx;
-          computed[i].y = pNode.y + my;
-          computed[i].z = pNode.z + mz;
-          computed[i].anchorX = pNode.x;
-          computed[i].anchorY = pNode.y;
-          computed[i].anchorR = pNode.r;
-        } else if (p.role === 'forkTwin') {
-          const bIdx = findByColorIdx(p.parentColorIdx);
-          if (bIdx === -1) continue;
-          const bNode = computed[bIdx];
-          // Axe base → pulsar dans le plan écran. Le twin tourne dans le
-          // plan perpendiculaire à cet axe → "rotation autour de l'axe
-          // base-pulsar" comme demandé.
-          const axDx = coreDisp.x - bNode.x;
-          const axDy = coreDisp.y - bNode.y;
-          const axLen = Math.hypot(axDx, axDy) || 1;
-          const axNx = axDx / axLen;
-          const axNy = axDy / axLen;
-          // Perpendiculaire en plan écran
-          const perpX = -axNy;
-          const perpY = axNx;
-          const spinA = p.localPhase + time * orbitSpeed * p.localSpeed;
-          const cA = Math.cos(spinA);
-          const sA = Math.sin(spinA);
-          // Twin position = base + cos*(perp screen)*R*side + sin*(z axis)*R*side
-          // → toujours diamétralement opposé à l'autre twin.
-          computed[i].x = bNode.x + perpX * cA * p.localOrbitR * p.twinSide;
-          computed[i].y = bNode.y + perpY * cA * p.localOrbitR * p.twinSide;
-          computed[i].z = bNode.z + sA * p.localOrbitR * p.twinSide;
-          computed[i].anchorX = bNode.x;
-          computed[i].anchorY = bNode.y;
-          computed[i].anchorR = bNode.r;
-        }
+        if (p.role !== 'moon') continue;
+        const pIdx = findByColorIdx(p.parentColorIdx);
+        if (pIdx === -1) continue;
+        const pNode = computed[pIdx];
+        const la = p.localPhase + time * orbitSpeed * p.localSpeed;
+        const mx = Math.cos(la) * p.localOrbitR;
+        const my = Math.sin(la) * p.localOrbitR * 0.6;
+        const mz = Math.sin(la + 0.6) * p.localOrbitR * 0.35;
+        computed[i].x = pNode.x + mx;
+        computed[i].y = pNode.y + my;
+        computed[i].z = pNode.z + mz;
+        computed[i].anchorX = pNode.x;
+        computed[i].anchorY = pNode.y;
+        computed[i].anchorR = pNode.r;
       }
+      // 2) Y-fork : routage de connexion via un midpoint M dynamique.
+      // Les twins gardent leur orbite normale (calculée passe A) ; on leur
+      // assigne juste une ancre = M (à mi-chemin entre pulsar et centroïde
+      // des deux twins). Plus le trunk M→pulsar sera dessiné séparément.
+      const twinAidx = findByColorIdx(FORK_TWIN_A_COLOR_IDX);
+      const twinBidx = findByColorIdx(FORK_TWIN_B_COLOR_IDX);
+      let forkActive = 0;
+      let forkMx = 0;
+      let forkMy = 0;
+      if (twinAidx !== -1 && twinBidx !== -1 && twinAidx < n && twinBidx < n) {
+        const ta = computed[twinAidx];
+        const tb = computed[twinBidx];
+        // Centroïde des deux twins
+        const cx = (ta.x + tb.x) * 0.5;
+        const cy = (ta.y + tb.y) * 0.5;
+        // M = 55 % du chemin entre pulsar et centroïde → trunk court, branches
+        // longues. Résulte en un Y bien identifiable.
+        forkMx = coreDisp.x + 0.55 * (cx - coreDisp.x);
+        forkMy = coreDisp.y + 0.55 * (cy - coreDisp.y);
+        forkActive = 1;
+        // Petit rayon "tampon" autour de M : la ligne du twin s'arrête
+        // juste avant M (sinon les lignes se chevauchent en désordre).
+        const M_BUFFER_R = 0.018;
+        computed[twinAidx].anchorX = forkMx;
+        computed[twinAidx].anchorY = forkMy;
+        computed[twinAidx].anchorR = M_BUFFER_R;
+        computed[twinBidx].anchorX = forkMx;
+        computed[twinBidx].anchorY = forkMy;
+        computed[twinBidx].anchorR = M_BUFFER_R;
+      }
+      // Trunk uniform — utilisé par le shader pour dessiner la ligne
+      // M ↔ pulsar (la "tige" du Y). Mutation in-place : OGL upload le
+      // tableau à chaque draw.
+      const trunkU = program.uniforms.uForkTrunk.value as number[];
+      trunkU[0] = forkMx;
+      trunkU[1] = forkMy;
+      trunkU[2] = forkActive;
+      trunkU[3] = PULSAR_R;
       // Échantillonnage des trails (ordre natif). Quand l'intervalle TRAIL_DT
       // est écoulé, on shift le ring buffer : t-1 ← t (live), t-2 ← t-1, ...
       if (time - lastTrailSample >= TRAIL_DT) {
