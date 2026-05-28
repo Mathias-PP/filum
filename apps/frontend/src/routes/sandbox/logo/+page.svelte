@@ -95,530 +95,574 @@
     <p>Logo actuel à gauche en référence. 10 directions différentes ensuite.</p>
   </header>
 
-  <div class="grid">
-    <!-- RÉFÉRENCE — Logo actuel -->
-    <div class="card reference">
-      <div class="canvas">
-        <svg
-          viewBox="0 0 24 24"
-          width={scale}
-          height={scale}
-          fill="none"
-          stroke={strokeColor}
-          stroke-width={strokeWidth}
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          style="color: {accentColor}"
-        >
-          <circle cx="12" cy="12" r={centerRadius} fill="currentColor" stroke="none" />
-          {#each currentLogo.branches as b, i (i)}
-            <line x1="12" y1="12" x2={b.mid.x} y2={b.mid.y} />
-            {#each b.leaves as l}
-              <line x1={b.mid.x} y1={b.mid.y} x2={l.x} y2={l.y} />
-              <circle cx={l.x} cy={l.y} r={leafRadius} fill="currentColor" stroke="none" />
+  <section class="section-block">
+    <h2 class="section-title">Nouvelles directions · 2026-05-28</h2>
+    <p class="section-lead">
+      Six marks distincts dans des styles modernes — au-delà de la famille arboricole. Le <strong
+        >#01</strong
+      > reprend explicitement la topologie du nouveau hero (pulsar central, lune autour d'un parent, Y-fork
+      qui se divise vers deux sources). Les cinq autres explorent monogramme typographique, geste continu,
+      sceau certifié et axe diagonal de filiation. Tous monochromes, SVG 24×24, dimensionnables.
+    </p>
+    <div class="grid">
+      <!-- 01 — PULSAR-GRAPH (écho hero : lune + Y-fork) -->
+      <div class="card highlight">
+        <div class="canvas">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            style="color: {accentColor}"
+          >
+            <!-- Trunk pulsar → point M virtuel (Y-fork) -->
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <!-- Y-fork : deux branches qui partent de M vers les twins -->
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <!-- Connexion parent → pulsar -->
+            <line x1="12" y1="12" x2="18" y2="18" />
+            <!-- Connexion lune → parent -->
+            <line x1="18" y1="18" x2="20.5" y2="20.5" />
+            <!-- Pulsar central -->
+            <circle cx="12" cy="12" r={centerRadius} fill="currentColor" stroke="none" />
+            <!-- Twins du Y-fork -->
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill="currentColor" stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill="currentColor" stroke="none" />
+            <!-- Parent + lune (lune plus petite) -->
+            <circle cx="18" cy="18" r={leafRadius * 1.1} fill="currentColor" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="currentColor" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">01</div>
+        <h3>Pulsar-graph</h3>
+        <p class="caption">
+          Écho direct du nouveau hero. Pulsar central, Y-fork de citation (un lien qui se divise
+          vers deux sources), parent avec lune en mini-orbite. La topologie du graphe
+          bibliographique en miniature — raconte le produit en un coup d'œil.
+        </p>
+      </div>
+
+      <!-- 02 — F MONOGRAMME À POINT (typographique, autoritaire) -->
+      <div class="card">
+        <div class="canvas">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth * 1.5}
+            stroke-linecap="square"
+            stroke-linejoin="miter"
+            style="color: {accentColor}"
+          >
+            <!-- Vertical stem -->
+            <line x1="6" y1="3" x2="6" y2="21" />
+            <!-- Top horizontal -->
+            <line x1="6" y1="3" x2="17" y2="3" />
+            <!-- Middle horizontal terminé par le point de citation -->
+            <line x1="6" y1="11" x2="13" y2="11" />
+            <circle cx="13" cy="11" r="1.4" fill="currentColor" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">02</div>
+        <h3>F monogramme à point</h3>
+        <p class="caption">
+          Lettre F autoritaire, stem épais, terminaisons droites. Le point en bout de trait médian
+          symbolise la citation : la lettre s'arrête sur une source précise. Très robuste en favicon
+          16 px.
+        </p>
+      </div>
+
+      <!-- 03 — FILAMENT (geste continu) -->
+      <div class="card">
+        <div class="canvas">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth * 1.4}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            style="color: {accentColor}"
+          >
+            <!-- Un seul trait : arc montant à gauche, descente verticale, sortie horizontale -->
+            <path d="M 4 19 Q 4 6 11 5 L 11 19 L 21 19" />
+            <!-- Petit nœud terminal -->
+            <circle cx="21" cy="19" r="1.1" fill="currentColor" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">03</div>
+        <h3>Filament (geste continu)</h3>
+        <p class="caption">
+          Un seul trait, dessiné comme un fil aiguillé : montée courbe à gauche, descente droite,
+          sortie horizontale, point d'attache à la fin. Évoque le « filum » originel (fil en latin),
+          étymologie du nom. Élégant, manuscrit.
+        </p>
+      </div>
+
+      <!-- 04 — « i » PULSAR (typo + symbole) -->
+      <div class="card">
+        <div class="canvas">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth * 1.3}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            style="color: {accentColor}"
+          >
+            <!-- Lowercase i stem -->
+            <line x1="12" y1="11" x2="12" y2="20" />
+            <!-- Antennes de filiation (deux fins traits au-dessus du titre) -->
+            <line x1="11" y1="3.2" x2="9.4" y2="1" stroke-width={strokeWidth * 0.8} />
+            <line x1="13" y1="3.2" x2="14.6" y2="1" stroke-width={strokeWidth * 0.8} />
+            <!-- Tittle surdimensionné = pulsar -->
+            <circle cx="12" cy="5.5" r="2.3" fill="currentColor" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">04</div>
+        <h3>« i » pulsar</h3>
+        <p class="caption">
+          Lettre « i » lowercase, le point du i remplacé par le pulsar surdimensionné, et deux fines
+          antennes au-dessus suggérant la filiation des sources. Se lit comme un fragment de « filum
+          » — wordmark friendly, hybride typo/symbole.
+        </p>
+      </div>
+
+      <!-- 05 — SCEAU CERTIFIÉ -->
+      <div class="card">
+        <div class="canvas">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth * 1.4}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            style="color: {accentColor}"
+          >
+            <!-- Cadre carré arrondi -->
+            <rect x="3" y="3" width="18" height="18" rx="3.5" />
+            <!-- Cercle concentrique interne -->
+            <circle cx="12" cy="12" r="5.5" stroke-width={strokeWidth * 0.9} />
+            <!-- Point central -->
+            <circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">05</div>
+        <h3>Sceau certifié</h3>
+        <p class="caption">
+          Cadre carré arrondi + cercle concentrique + point central. Esthétique d'un tampon officiel
+          ou d'un sceau d'attestation. Bonne silhouette en favicon — reconnaissable dès 12 px.
+          Aligné avec le sens « attestation » du produit.
+        </p>
+      </div>
+
+      <!-- 06 — AXE DE FILIATION (diagonale) -->
+      <div class="card">
+        <div class="canvas">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            style="color: {accentColor}"
+          >
+            <!-- Diagonale -->
+            <line x1="4" y1="20" x2="20" y2="4" />
+            <!-- Source (extrémité bas-gauche) -->
+            <circle cx="4" cy="20" r="1.6" fill="currentColor" stroke="none" />
+            <!-- Attestation centrale (le plus gros) -->
+            <circle cx="12" cy="12" r={centerRadius * 0.9} fill="currentColor" stroke="none" />
+            <!-- Citation (extrémité haut-droite) -->
+            <circle cx="20" cy="4" r="1.6" fill="currentColor" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">06</div>
+        <h3>Axe de filiation</h3>
+        <p class="caption">
+          Trois nœuds alignés sur une diagonale : source → attestation centrale → citation. La
+          filiation comme un axe net, sans détour. Géométrie minimale, très lisible à toutes les
+          tailles, lecture instantanée.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-block legacy">
+    <h2 class="section-title">
+      Variations arboricoles · 2026-05-22 <span class="ref-tag">référence</span>
+    </h2>
+    <p class="section-lead">
+      Famille phylogénétique itérée précédemment (V1–V11). Conservées pour comparaison.
+    </p>
+    <div class="grid">
+      <!-- RÉFÉRENCE — Logo actuel -->
+      <div class="card reference">
+        <div class="canvas">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            style="color: {accentColor}"
+          >
+            <circle cx="12" cy="12" r={centerRadius} fill="currentColor" stroke="none" />
+            {#each currentLogo.branches as b, i (i)}
+              <line x1="12" y1="12" x2={b.mid.x} y2={b.mid.y} />
+              {#each b.leaves as l}
+                <line x1={b.mid.x} y1={b.mid.y} x2={l.x} y2={l.y} />
+                <circle cx={l.x} cy={l.y} r={leafRadius} fill="currentColor" stroke="none" />
+              {/each}
             {/each}
-          {/each}
-        </svg>
+          </svg>
+        </div>
+        <h3>Référence</h3>
+        <p class="caption">Logo actuel — point de comparaison.</p>
       </div>
-      <h3>Référence</h3>
-      <p class="caption">Logo actuel — point de comparaison.</p>
-    </div>
 
-    <!-- V1 — Cladogramme vertical SYMÉTRIQUE (V8 + V11 : verticalité + symétrie) -->
-    <div class="card">
-      <div class="canvas">
-        <svg
-          viewBox="0 0 24 24"
-          width={scale}
-          height={scale}
-          fill="none"
-          stroke={strokeColor}
-          stroke-width={strokeWidth}
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          style="color: {accentColor}"
-        >
-          <circle cx="12" cy="22" r={centerRadius * 1.05} fill="currentColor" stroke="none" />
-          <line x1="12" y1="22" x2="12" y2="17" />
-          <!-- Première bifurcation symétrique -->
-          <line x1="5" y1="17" x2="19" y2="17" />
-          <line x1="5" y1="17" x2="5" y2="11" />
-          <line x1="19" y1="17" x2="19" y2="11" />
-          <!-- Bifurcations symétriques de profondeur 2 -->
-          <line x1="2" y1="11" x2="8" y2="11" />
-          <line x1="2" y1="11" x2="2" y2="3" />
-          <line x1="8" y1="11" x2="8" y2="3" />
-          <line x1="16" y1="11" x2="22" y2="11" />
-          <line x1="16" y1="11" x2="16" y2="3" />
-          <line x1="22" y1="11" x2="22" y2="3" />
-          {#each [2, 8, 16, 22] as x}
-            <circle cx={x} cy="3" r={leafRadius * 1.05} fill="currentColor" stroke="none" />
-          {/each}
-        </svg>
+      <!-- V1 — Cladogramme vertical SYMÉTRIQUE (V8 + V11 : verticalité + symétrie) -->
+      <div class="card">
+        <div class="canvas">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            style="color: {accentColor}"
+          >
+            <circle cx="12" cy="22" r={centerRadius * 1.05} fill="currentColor" stroke="none" />
+            <line x1="12" y1="22" x2="12" y2="17" />
+            <!-- Première bifurcation symétrique -->
+            <line x1="5" y1="17" x2="19" y2="17" />
+            <line x1="5" y1="17" x2="5" y2="11" />
+            <line x1="19" y1="17" x2="19" y2="11" />
+            <!-- Bifurcations symétriques de profondeur 2 -->
+            <line x1="2" y1="11" x2="8" y2="11" />
+            <line x1="2" y1="11" x2="2" y2="3" />
+            <line x1="8" y1="11" x2="8" y2="3" />
+            <line x1="16" y1="11" x2="22" y2="11" />
+            <line x1="16" y1="11" x2="16" y2="3" />
+            <line x1="22" y1="11" x2="22" y2="3" />
+            {#each [2, 8, 16, 22] as x}
+              <circle cx={x} cy="3" r={leafRadius * 1.05} fill="currentColor" stroke="none" />
+            {/each}
+          </svg>
+        </div>
+        <h3>V1 — Cladogramme vertical symétrique</h3>
+        <p class="caption">
+          Cousin parfaitement symétrique de V8. Racine en bas, 4 feuilles alignées. Versions binaire
+          propre.
+        </p>
       </div>
-      <h3>V1 — Cladogramme vertical symétrique</h3>
-      <p class="caption">
-        Cousin parfaitement symétrique de V8. Racine en bas, 4 feuilles alignées. Versions binaire
-        propre.
-      </p>
-    </div>
 
-    <!-- V2 — Dendrogramme horizontal asymétrique (V3 + V8 : horizontal + profondeurs variables) -->
-    <div class="card">
-      <div class="canvas">
-        <svg
-          viewBox="0 0 24 24"
-          width={scale}
-          height={scale}
-          fill="none"
-          stroke={strokeColor}
-          stroke-width={strokeWidth}
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          style="color: {accentColor}"
-        >
-          <circle cx="2" cy="12" r={centerRadius * 1.05} fill="currentColor" stroke="none" />
-          <line x1="2" y1="12" x2="7" y2="12" />
-          <line x1="7" y1="6" x2="7" y2="18" />
-          <!-- Haut : bifurcation profonde -->
-          <line x1="7" y1="6" x2="12" y2="6" />
-          <line x1="12" y1="3" x2="12" y2="9" />
-          <line x1="12" y1="3" x2="22" y2="3" />
-          <line x1="12" y1="9" x2="17" y2="9" />
-          <line x1="17" y1="6" x2="17" y2="12" />
-          <line x1="17" y1="6" x2="22" y2="6" />
-          <line x1="17" y1="12" x2="22" y2="12" />
-          <!-- Bas : direct (profondeur 1, comme V3) -->
-          <line x1="7" y1="18" x2="22" y2="18" />
-          <line x1="7" y1="18" x2="7" y2="21" />
-          <line x1="22" y1="18" x2="22" y2="21" />
-          <!-- 5 feuilles aux profondeurs variables -->
-          {#each [{ x: 22, y: 3 }, { x: 22, y: 6 }, { x: 22, y: 12 }, { x: 22, y: 18 }, { x: 22, y: 21 }] as p, i (i)}
-            <circle cx={p.x} cy={p.y} r={leafRadius} fill="currentColor" stroke="none" />
-          {/each}
-        </svg>
+      <!-- V2 — Dendrogramme horizontal asymétrique (V3 + V8 : horizontal + profondeurs variables) -->
+      <div class="card">
+        <div class="canvas">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            style="color: {accentColor}"
+          >
+            <circle cx="2" cy="12" r={centerRadius * 1.05} fill="currentColor" stroke="none" />
+            <line x1="2" y1="12" x2="7" y2="12" />
+            <line x1="7" y1="6" x2="7" y2="18" />
+            <!-- Haut : bifurcation profonde -->
+            <line x1="7" y1="6" x2="12" y2="6" />
+            <line x1="12" y1="3" x2="12" y2="9" />
+            <line x1="12" y1="3" x2="22" y2="3" />
+            <line x1="12" y1="9" x2="17" y2="9" />
+            <line x1="17" y1="6" x2="17" y2="12" />
+            <line x1="17" y1="6" x2="22" y2="6" />
+            <line x1="17" y1="12" x2="22" y2="12" />
+            <!-- Bas : direct (profondeur 1, comme V3) -->
+            <line x1="7" y1="18" x2="22" y2="18" />
+            <line x1="7" y1="18" x2="7" y2="21" />
+            <line x1="22" y1="18" x2="22" y2="21" />
+            <!-- 5 feuilles aux profondeurs variables -->
+            {#each [{ x: 22, y: 3 }, { x: 22, y: 6 }, { x: 22, y: 12 }, { x: 22, y: 18 }, { x: 22, y: 21 }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius} fill="currentColor" stroke="none" />
+            {/each}
+          </svg>
+        </div>
+        <h3>V2 — Cladogramme horizontal à profondeurs variables</h3>
+        <p class="caption">
+          V3 horizontalement, mais avec branches de profondeurs inégales (V8 idée). Suggère que
+          certaines sources ont une chaîne de citations plus longue.
+        </p>
       </div>
-      <h3>V2 — Cladogramme horizontal à profondeurs variables</h3>
-      <p class="caption">
-        V3 horizontalement, mais avec branches de profondeurs inégales (V8 idée). Suggère que
-        certaines sources ont une chaîne de citations plus longue.
-      </p>
-    </div>
 
-    <!-- V3 — Dendrogramme horizontal -->
-    <div class="card">
-      <div class="canvas">
-        <svg
-          viewBox="0 0 24 24"
-          width={scale}
-          height={scale}
-          fill="none"
-          stroke={strokeColor}
-          stroke-width={strokeWidth}
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          style="color: {accentColor}"
-        >
-          <!-- Racine à gauche -->
-          <circle cx="2" cy="12" r={centerRadius * 1.05} fill="currentColor" stroke="none" />
-          <!-- Tronc -->
-          <line x1="2" y1="12" x2="7" y2="12" />
-          <!-- Première bifurcation -->
-          <line x1="7" y1="6" x2="7" y2="18" />
-          <!-- Branches du haut -->
-          <line x1="7" y1="6" x2="12" y2="6" />
-          <line x1="12" y1="3" x2="12" y2="9" />
-          <line x1="12" y1="3" x2="18" y2="3" />
-          <line x1="12" y1="9" x2="18" y2="9" />
-          <!-- Branches du bas -->
-          <line x1="7" y1="18" x2="12" y2="18" />
-          <line x1="12" y1="15" x2="12" y2="21" />
-          <line x1="12" y1="15" x2="18" y2="15" />
-          <line x1="12" y1="21" x2="18" y2="21" />
-          <!-- Feuilles -->
-          {#each [3, 9, 15, 21] as y, i (i)}
-            <circle cx="18" cy={y} r={leafRadius} fill="currentColor" stroke="none" />
-          {/each}
-        </svg>
+      <!-- V3 — Dendrogramme horizontal -->
+      <div class="card">
+        <div class="canvas">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            style="color: {accentColor}"
+          >
+            <!-- Racine à gauche -->
+            <circle cx="2" cy="12" r={centerRadius * 1.05} fill="currentColor" stroke="none" />
+            <!-- Tronc -->
+            <line x1="2" y1="12" x2="7" y2="12" />
+            <!-- Première bifurcation -->
+            <line x1="7" y1="6" x2="7" y2="18" />
+            <!-- Branches du haut -->
+            <line x1="7" y1="6" x2="12" y2="6" />
+            <line x1="12" y1="3" x2="12" y2="9" />
+            <line x1="12" y1="3" x2="18" y2="3" />
+            <line x1="12" y1="9" x2="18" y2="9" />
+            <!-- Branches du bas -->
+            <line x1="7" y1="18" x2="12" y2="18" />
+            <line x1="12" y1="15" x2="12" y2="21" />
+            <line x1="12" y1="15" x2="18" y2="15" />
+            <line x1="12" y1="21" x2="18" y2="21" />
+            <!-- Feuilles -->
+            {#each [3, 9, 15, 21] as y, i (i)}
+              <circle cx="18" cy={y} r={leafRadius} fill="currentColor" stroke="none" />
+            {/each}
+          </svg>
+        </div>
+        <h3>V3 — Dendrogramme horizontal</h3>
+        <p class="caption">
+          Arbre phylogénétique classique. Racine à gauche, ramifications par angles droits, feuilles
+          alignées à droite.
+        </p>
       </div>
-      <h3>V3 — Dendrogramme horizontal</h3>
-      <p class="caption">
-        Arbre phylogénétique classique. Racine à gauche, ramifications par angles droits, feuilles
-        alignées à droite.
-      </p>
-    </div>
 
-    <!-- V4 — Dendrogramme radial (V3 + V11 : phylogénie en disposition radiale) -->
-    <div class="card">
-      <div class="canvas">
-        <svg
-          viewBox="0 0 24 24"
-          width={scale}
-          height={scale}
-          fill="none"
-          stroke={strokeColor}
-          stroke-width={strokeWidth}
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          style="color: {accentColor}"
-        >
-          <circle cx="12" cy="12" r={centerRadius} fill="currentColor" stroke="none" />
-          <!-- 6 radials. Sur chaque branche, après une portion droite, un Y -->
-          {#each [-90, -30, 30, 90, 150, 210] as deg, i (i)}
-            {@const rad = (deg * Math.PI) / 180}
-            {@const mid = { x: 12 + 5.5 * Math.cos(rad), y: 12 + 5.5 * Math.sin(rad) }}
-            {@const perp = { x: -Math.sin(rad), y: Math.cos(rad) }}
-            {@const f1 = {
-              x: mid.x + 4.5 * Math.cos(rad) - 1.6 * perp.x,
-              y: mid.y + 4.5 * Math.sin(rad) - 1.6 * perp.y,
-            }}
-            {@const f2 = {
-              x: mid.x + 4.5 * Math.cos(rad) + 1.6 * perp.x,
-              y: mid.y + 4.5 * Math.sin(rad) + 1.6 * perp.y,
-            }}
-            <!-- Branche radiale droite -->
-            <line x1="12" y1="12" x2={mid.x} y2={mid.y} />
-            <!-- Trait latéral perpendiculaire (style cladogramme rectangulaire) -->
-            <line
-              x1={mid.x - 1.6 * perp.x}
-              y1={mid.y - 1.6 * perp.y}
-              x2={mid.x + 1.6 * perp.x}
-              y2={mid.y + 1.6 * perp.y}
-            />
-            <!-- Deux feuilles -->
-            <line x1={mid.x - 1.6 * perp.x} y1={mid.y - 1.6 * perp.y} x2={f1.x} y2={f1.y} />
-            <line x1={mid.x + 1.6 * perp.x} y1={mid.y + 1.6 * perp.y} x2={f2.x} y2={f2.y} />
-            <circle cx={f1.x} cy={f1.y} r={leafRadius * 0.95} fill="currentColor" stroke="none" />
-            <circle cx={f2.x} cy={f2.y} r={leafRadius * 0.95} fill="currentColor" stroke="none" />
-          {/each}
-        </svg>
-      </div>
-      <h3>V4 — Cladogramme radial</h3>
-      <p class="caption">
-        V3 disposé radialement (V11 layout). 6 directions, chacune avec un mini-cladogramme
-        rectangulaire. Le motif phylogénétique se répète tout autour.
-      </p>
-    </div>
-
-    <!-- V5 — Graphe organique asymétrique (mix forks + simples) -->
-    <div class="card">
-      <div class="canvas">
-        <svg
-          viewBox="0 0 24 24"
-          width={scale}
-          height={scale}
-          fill="none"
-          stroke={strokeColor}
-          stroke-width={strokeWidth}
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          style="color: {accentColor}"
-        >
-          <circle cx="12" cy="12" r={centerRadius} fill="currentColor" stroke="none" />
-          <!-- Branche fork haut -->
-          <line x1="12" y1="12" x2="11" y2="5" />
-          <line x1="11" y1="5" x2="8" y2="2.5" />
-          <line x1="11" y1="5" x2="14" y2="2" />
-          <circle cx="8" cy="2.5" r={leafRadius} fill="currentColor" stroke="none" />
-          <circle cx="14" cy="2" r={leafRadius} fill="currentColor" stroke="none" />
-          <!-- Branche simple droite -->
-          <line x1="12" y1="12" x2="21" y2="10" />
-          <circle cx="21" cy="10" r={leafRadius * 1.15} fill="currentColor" stroke="none" />
-          <!-- Branche fork bas-droite -->
-          <line x1="12" y1="12" x2="17" y2="17.5" />
-          <line x1="17" y1="17.5" x2="20" y2="20" />
-          <line x1="17" y1="17.5" x2="18" y2="21.5" />
-          <circle cx="20" cy="20" r={leafRadius} fill="currentColor" stroke="none" />
-          <circle cx="18" cy="21.5" r={leafRadius} fill="currentColor" stroke="none" />
-          <!-- Branche simple bas -->
-          <line x1="12" y1="12" x2="9" y2="21" />
-          <circle cx="9" cy="21" r={leafRadius * 1.15} fill="currentColor" stroke="none" />
-          <!-- Branche fork gauche -->
-          <line x1="12" y1="12" x2="4" y2="14" />
-          <line x1="4" y1="14" x2="1.5" y2="17" />
-          <line x1="4" y1="14" x2="2" y2="11" />
-          <circle cx="1.5" cy="17" r={leafRadius} fill="currentColor" stroke="none" />
-          <circle cx="2" cy="11" r={leafRadius} fill="currentColor" stroke="none" />
-          <!-- Branche simple haut-gauche -->
-          <line x1="12" y1="12" x2="4.5" y2="5" />
-          <circle cx="4.5" cy="5" r={leafRadius * 1.15} fill="currentColor" stroke="none" />
-        </svg>
-      </div>
-      <h3>V5 — Graphe organique</h3>
-      <p class="caption">
-        6 branches à angles libres : 3 forks (2 feuilles) + 3 simples (1 feuille). Asymétrie qui
-        rappelle un vrai graphe de citations.
-      </p>
-    </div>
-
-    <!-- V6 — Fork+simple à 4 axes (V11 minimaliste, ordre 2) -->
-    <div class="card">
-      <div class="canvas">
-        <svg
-          viewBox="0 0 24 24"
-          width={scale}
-          height={scale}
-          fill="none"
-          stroke={strokeColor}
-          stroke-width={strokeWidth}
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          style="color: {accentColor}"
-        >
-          <circle cx="12" cy="12" r={centerRadius} fill="currentColor" stroke="none" />
-          <!-- 4 branches à 90° : alternance fork (horizontaux) / simple (verticaux) -->
-          {#each [0, 90, 180, 270] as deg, i (i)}
-            {@const rad = (deg * Math.PI) / 180}
-            {@const isFork = i % 2 === 0}
-            {@const branchLen = isFork ? 6.5 : 10}
-            {@const mid = { x: 12 + branchLen * Math.cos(rad), y: 12 + branchLen * Math.sin(rad) }}
-            <line x1="12" y1="12" x2={mid.x} y2={mid.y} />
-            {#if isFork}
-              {@const leafR = 10}
-              {@const spread = (28 * Math.PI) / 180}
-              {@const leaf1 = {
-                x: 12 + leafR * Math.cos(rad - spread),
-                y: 12 + leafR * Math.sin(rad - spread),
+      <!-- V4 — Dendrogramme radial (V3 + V11 : phylogénie en disposition radiale) -->
+      <div class="card">
+        <div class="canvas">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            style="color: {accentColor}"
+          >
+            <circle cx="12" cy="12" r={centerRadius} fill="currentColor" stroke="none" />
+            <!-- 6 radials. Sur chaque branche, après une portion droite, un Y -->
+            {#each [-90, -30, 30, 90, 150, 210] as deg, i (i)}
+              {@const rad = (deg * Math.PI) / 180}
+              {@const mid = { x: 12 + 5.5 * Math.cos(rad), y: 12 + 5.5 * Math.sin(rad) }}
+              {@const perp = { x: -Math.sin(rad), y: Math.cos(rad) }}
+              {@const f1 = {
+                x: mid.x + 4.5 * Math.cos(rad) - 1.6 * perp.x,
+                y: mid.y + 4.5 * Math.sin(rad) - 1.6 * perp.y,
               }}
-              {@const leaf2 = {
-                x: 12 + leafR * Math.cos(rad + spread),
-                y: 12 + leafR * Math.sin(rad + spread),
+              {@const f2 = {
+                x: mid.x + 4.5 * Math.cos(rad) + 1.6 * perp.x,
+                y: mid.y + 4.5 * Math.sin(rad) + 1.6 * perp.y,
               }}
-              <line x1={mid.x} y1={mid.y} x2={leaf1.x} y2={leaf1.y} />
-              <line x1={mid.x} y1={mid.y} x2={leaf2.x} y2={leaf2.y} />
-              <circle cx={leaf1.x} cy={leaf1.y} r={leafRadius} fill="currentColor" stroke="none" />
-              <circle cx={leaf2.x} cy={leaf2.y} r={leafRadius} fill="currentColor" stroke="none" />
-            {:else}
-              <circle
-                cx={mid.x}
-                cy={mid.y}
-                r={leafRadius * 1.15}
-                fill="currentColor"
-                stroke="none"
+              <!-- Branche radiale droite -->
+              <line x1="12" y1="12" x2={mid.x} y2={mid.y} />
+              <!-- Trait latéral perpendiculaire (style cladogramme rectangulaire) -->
+              <line
+                x1={mid.x - 1.6 * perp.x}
+                y1={mid.y - 1.6 * perp.y}
+                x2={mid.x + 1.6 * perp.x}
+                y2={mid.y + 1.6 * perp.y}
               />
-            {/if}
-          {/each}
-        </svg>
+              <!-- Deux feuilles -->
+              <line x1={mid.x - 1.6 * perp.x} y1={mid.y - 1.6 * perp.y} x2={f1.x} y2={f1.y} />
+              <line x1={mid.x + 1.6 * perp.x} y1={mid.y + 1.6 * perp.y} x2={f2.x} y2={f2.y} />
+              <circle cx={f1.x} cy={f1.y} r={leafRadius * 0.95} fill="currentColor" stroke="none" />
+              <circle cx={f2.x} cy={f2.y} r={leafRadius * 0.95} fill="currentColor" stroke="none" />
+            {/each}
+          </svg>
+        </div>
+        <h3>V4 — Cladogramme radial</h3>
+        <p class="caption">
+          V3 disposé radialement (V11 layout). 6 directions, chacune avec un mini-cladogramme
+          rectangulaire. Le motif phylogénétique se répète tout autour.
+        </p>
       </div>
-      <h3>V6 — Fork+simple à 4 axes</h3>
-      <p class="caption">
-        Version minimaliste de V11 : 2 forks (horizontaux) + 2 simples (verticaux). Symétrie d'ordre
-        2. Plus aéré, plus moderne.
-      </p>
-    </div>
 
-    <!-- V7 — Radial à profondeurs variables (V5 + V8 : mix forks + simples ET sous-feuilles) -->
-    <div class="card">
-      <div class="canvas">
-        <svg
-          viewBox="0 0 24 24"
-          width={scale}
-          height={scale}
-          fill="none"
-          stroke={strokeColor}
-          stroke-width={strokeWidth}
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          style="color: {accentColor}"
-        >
-          <circle cx="12" cy="12" r={centerRadius} fill="currentColor" stroke="none" />
-          <!-- 6 branches dont 3 forkées + 3 simples, et 2 forks ont une SOUS-feuille
-               (profondeur supplémentaire = source d'une source). -->
-          {#each [{ deg: -90, kind: 'fork-deep' }, { deg: -30, kind: 'simple' }, { deg: 30, kind: 'fork' }, { deg: 90, kind: 'fork-deep' }, { deg: 150, kind: 'simple' }, { deg: 210, kind: 'fork' }] as b, i (i)}
-            {@const rad = (b.deg * Math.PI) / 180}
-            {@const midR = 5.5}
-            {@const leafR = 9.5}
-            {@const mid = { x: 12 + midR * Math.cos(rad), y: 12 + midR * Math.sin(rad) }}
-            {@const simpleEnd = { x: 12 + leafR * Math.cos(rad), y: 12 + leafR * Math.sin(rad) }}
-            {@const spread = (22 * Math.PI) / 180}
-            {@const leaf1 = {
-              x: 12 + leafR * Math.cos(rad - spread),
-              y: 12 + leafR * Math.sin(rad - spread),
-            }}
-            {@const leaf2 = {
-              x: 12 + leafR * Math.cos(rad + spread),
-              y: 12 + leafR * Math.sin(rad + spread),
-            }}
-            {@const subSpread = (14 * Math.PI) / 180}
-            {@const sub1 = {
-              x: 12 + (leafR + 3) * Math.cos(rad - spread - subSpread),
-              y: 12 + (leafR + 3) * Math.sin(rad - spread - subSpread),
-            }}
-            <line
-              x1="12"
-              y1="12"
-              x2={b.kind === 'simple' ? simpleEnd.x : mid.x}
-              y2={b.kind === 'simple' ? simpleEnd.y : mid.y}
-            />
-            {#if b.kind === 'simple'}
-              <circle
-                cx={simpleEnd.x}
-                cy={simpleEnd.y}
-                r={leafRadius * 1.1}
-                fill="currentColor"
-                stroke="none"
-              />
-            {:else}
-              <line x1={mid.x} y1={mid.y} x2={leaf1.x} y2={leaf1.y} />
-              <line x1={mid.x} y1={mid.y} x2={leaf2.x} y2={leaf2.y} />
-              <circle cx={leaf1.x} cy={leaf1.y} r={leafRadius} fill="currentColor" stroke="none" />
-              <circle cx={leaf2.x} cy={leaf2.y} r={leafRadius} fill="currentColor" stroke="none" />
-              {#if b.kind === 'fork-deep'}
-                <line x1={leaf1.x} y1={leaf1.y} x2={sub1.x} y2={sub1.y} />
+      <!-- V5 — Graphe organique asymétrique (mix forks + simples) -->
+      <div class="card">
+        <div class="canvas">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            style="color: {accentColor}"
+          >
+            <circle cx="12" cy="12" r={centerRadius} fill="currentColor" stroke="none" />
+            <!-- Branche fork haut -->
+            <line x1="12" y1="12" x2="11" y2="5" />
+            <line x1="11" y1="5" x2="8" y2="2.5" />
+            <line x1="11" y1="5" x2="14" y2="2" />
+            <circle cx="8" cy="2.5" r={leafRadius} fill="currentColor" stroke="none" />
+            <circle cx="14" cy="2" r={leafRadius} fill="currentColor" stroke="none" />
+            <!-- Branche simple droite -->
+            <line x1="12" y1="12" x2="21" y2="10" />
+            <circle cx="21" cy="10" r={leafRadius * 1.15} fill="currentColor" stroke="none" />
+            <!-- Branche fork bas-droite -->
+            <line x1="12" y1="12" x2="17" y2="17.5" />
+            <line x1="17" y1="17.5" x2="20" y2="20" />
+            <line x1="17" y1="17.5" x2="18" y2="21.5" />
+            <circle cx="20" cy="20" r={leafRadius} fill="currentColor" stroke="none" />
+            <circle cx="18" cy="21.5" r={leafRadius} fill="currentColor" stroke="none" />
+            <!-- Branche simple bas -->
+            <line x1="12" y1="12" x2="9" y2="21" />
+            <circle cx="9" cy="21" r={leafRadius * 1.15} fill="currentColor" stroke="none" />
+            <!-- Branche fork gauche -->
+            <line x1="12" y1="12" x2="4" y2="14" />
+            <line x1="4" y1="14" x2="1.5" y2="17" />
+            <line x1="4" y1="14" x2="2" y2="11" />
+            <circle cx="1.5" cy="17" r={leafRadius} fill="currentColor" stroke="none" />
+            <circle cx="2" cy="11" r={leafRadius} fill="currentColor" stroke="none" />
+            <!-- Branche simple haut-gauche -->
+            <line x1="12" y1="12" x2="4.5" y2="5" />
+            <circle cx="4.5" cy="5" r={leafRadius * 1.15} fill="currentColor" stroke="none" />
+          </svg>
+        </div>
+        <h3>V5 — Graphe organique</h3>
+        <p class="caption">
+          6 branches à angles libres : 3 forks (2 feuilles) + 3 simples (1 feuille). Asymétrie qui
+          rappelle un vrai graphe de citations.
+        </p>
+      </div>
+
+      <!-- V6 — Fork+simple à 4 axes (V11 minimaliste, ordre 2) -->
+      <div class="card">
+        <div class="canvas">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            style="color: {accentColor}"
+          >
+            <circle cx="12" cy="12" r={centerRadius} fill="currentColor" stroke="none" />
+            <!-- 4 branches à 90° : alternance fork (horizontaux) / simple (verticaux) -->
+            {#each [0, 90, 180, 270] as deg, i (i)}
+              {@const rad = (deg * Math.PI) / 180}
+              {@const isFork = i % 2 === 0}
+              {@const branchLen = isFork ? 6.5 : 10}
+              {@const mid = {
+                x: 12 + branchLen * Math.cos(rad),
+                y: 12 + branchLen * Math.sin(rad),
+              }}
+              <line x1="12" y1="12" x2={mid.x} y2={mid.y} />
+              {#if isFork}
+                {@const leafR = 10}
+                {@const spread = (28 * Math.PI) / 180}
+                {@const leaf1 = {
+                  x: 12 + leafR * Math.cos(rad - spread),
+                  y: 12 + leafR * Math.sin(rad - spread),
+                }}
+                {@const leaf2 = {
+                  x: 12 + leafR * Math.cos(rad + spread),
+                  y: 12 + leafR * Math.sin(rad + spread),
+                }}
+                <line x1={mid.x} y1={mid.y} x2={leaf1.x} y2={leaf1.y} />
+                <line x1={mid.x} y1={mid.y} x2={leaf2.x} y2={leaf2.y} />
                 <circle
-                  cx={sub1.x}
-                  cy={sub1.y}
-                  r={leafRadius * 0.75}
+                  cx={leaf1.x}
+                  cy={leaf1.y}
+                  r={leafRadius}
+                  fill="currentColor"
+                  stroke="none"
+                />
+                <circle
+                  cx={leaf2.x}
+                  cy={leaf2.y}
+                  r={leafRadius}
+                  fill="currentColor"
+                  stroke="none"
+                />
+              {:else}
+                <circle
+                  cx={mid.x}
+                  cy={mid.y}
+                  r={leafRadius * 1.15}
                   fill="currentColor"
                   stroke="none"
                 />
               {/if}
-            {/if}
-          {/each}
-        </svg>
+            {/each}
+          </svg>
+        </div>
+        <h3>V6 — Fork+simple à 4 axes</h3>
+        <p class="caption">
+          Version minimaliste de V11 : 2 forks (horizontaux) + 2 simples (verticaux). Symétrie
+          d'ordre 2. Plus aéré, plus moderne.
+        </p>
       </div>
-      <h3>V7 — Radial à profondeurs variables</h3>
-      <p class="caption">
-        Mix de V5 (forks/simples) + V8 (profondeurs variables) en disposition radiale. 2 forks
-        profonds (sous-feuille), 1 fork simple, 2 simples directs.
-      </p>
-    </div>
 
-    <!-- V8 — Dendrogramme vertical à profondeurs variables -->
-    <div class="card">
-      <div class="canvas">
-        <svg
-          viewBox="0 0 24 24"
-          width={scale}
-          height={scale}
-          fill="none"
-          stroke={strokeColor}
-          stroke-width={strokeWidth}
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          style="color: {accentColor}"
-        >
-          <!-- Racine -->
-          <circle cx="12" cy="22" r={centerRadius * 1.05} fill="currentColor" stroke="none" />
-          <line x1="12" y1="22" x2="12" y2="17" />
-          <!-- Bifurcation principale -->
-          <line x1="6" y1="17" x2="18" y2="17" />
-          <line x1="6" y1="17" x2="6" y2="12" />
-          <line x1="18" y1="17" x2="18" y2="11" />
-          <!-- Gauche : bifurcation à profondeur 2 -->
-          <line x1="3" y1="12" x2="9" y2="12" />
-          <line x1="3" y1="12" x2="3" y2="6" />
-          <line x1="9" y1="12" x2="9" y2="8" />
-          <line x1="3" y1="6" x2="3" y2="2" />
-          <line x1="9" y1="8" x2="9" y2="2" />
-          <!-- Droite : bifurcation à profondeur asymétrique -->
-          <line x1="15" y1="11" x2="21" y2="11" />
-          <line x1="15" y1="11" x2="15" y2="5" />
-          <line x1="21" y1="11" x2="21" y2="9" />
-          <line x1="15" y1="5" x2="15" y2="2" />
-          <line x1="21" y1="9" x2="18" y2="9" />
-          <line x1="21" y1="9" x2="21" y2="2" />
-          <line x1="18" y1="9" x2="18" y2="2" />
-          <!-- Feuilles : 5 -->
-          {#each [3, 9, 15, 18, 21] as x}
-            <circle cx={x} cy="2" r={leafRadius * 0.95} fill="currentColor" stroke="none" />
-          {/each}
-        </svg>
-      </div>
-      <h3>V8 — Dendrogramme vertical à profondeurs variables</h3>
-      <p class="caption">
-        Phylogénie verticale, racine en bas. Branches à profondeurs irrégulières — certaines sources
-        sont citées par chaîne plus longue.
-      </p>
-    </div>
-
-    <!-- V9 — Triskèle phylogénétique (V11 symétrie 3 + V8 mini-dendrogrammes verticaux) -->
-    <div class="card">
-      <div class="canvas">
-        <svg
-          viewBox="0 0 24 24"
-          width={scale}
-          height={scale}
-          fill="none"
-          stroke={strokeColor}
-          stroke-width={strokeWidth}
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          style="color: {accentColor}"
-        >
-          <circle cx="12" cy="12" r={centerRadius} fill="currentColor" stroke="none" />
-          <!-- 3 branches symétriques (120°), chacune est un mini-cladogramme rectangulaire -->
-          {#each [-90, 30, 150] as deg, i (i)}
-            {@const rad = (deg * Math.PI) / 180}
-            {@const tan = { x: -Math.sin(rad), y: Math.cos(rad) }}
-            <!-- Branche radiale principale -->
-            {@const p1 = { x: 12 + 5.5 * Math.cos(rad), y: 12 + 5.5 * Math.sin(rad) }}
-            {@const p2 = { x: 12 + 8.5 * Math.cos(rad), y: 12 + 8.5 * Math.sin(rad) }}
-            <line x1="12" y1="12" x2={p2.x} y2={p2.y} />
-            <!-- Bifurcation perpendiculaire -->
-            {@const cross1 = { x: p1.x + 2.8 * tan.x, y: p1.y + 2.8 * tan.y }}
-            {@const cross2 = { x: p1.x - 2.8 * tan.x, y: p1.y - 2.8 * tan.y }}
-            <line x1={cross1.x} y1={cross1.y} x2={cross2.x} y2={cross2.y} />
-            <!-- Feuilles à l'extérieur -->
-            {@const leaf1 = {
-              x: cross1.x + 2.5 * Math.cos(rad),
-              y: cross1.y + 2.5 * Math.sin(rad),
-            }}
-            {@const leaf2 = {
-              x: cross2.x + 2.5 * Math.cos(rad),
-              y: cross2.y + 2.5 * Math.sin(rad),
-            }}
-            <line x1={cross1.x} y1={cross1.y} x2={leaf1.x} y2={leaf1.y} />
-            <line x1={cross2.x} y1={cross2.y} x2={leaf2.x} y2={leaf2.y} />
-            <circle cx={p2.x} cy={p2.y} r={leafRadius} fill="currentColor" stroke="none" />
-            <circle
-              cx={leaf1.x}
-              cy={leaf1.y}
-              r={leafRadius * 0.85}
-              fill="currentColor"
-              stroke="none"
-            />
-            <circle
-              cx={leaf2.x}
-              cy={leaf2.y}
-              r={leafRadius * 0.85}
-              fill="currentColor"
-              stroke="none"
-            />
-          {/each}
-        </svg>
-      </div>
-      <h3>V9 — Triskèle phylogénétique</h3>
-      <p class="caption">
-        3 branches à 120° (symétrie de V11), chacune un mini-cladogramme rectangulaire avec 3
-        feuilles. Croise la pureté géométrique du triskèle avec la rigueur du cladogramme.
-      </p>
-    </div>
-
-    <!-- V11 — Fork + simple alternés (symétrie 3 fois) — refonte du V8 précédent demandé -->
-    <div class="card">
-      <div class="canvas">
-        <svg
-          viewBox="0 0 24 24"
-          width={scale}
-          height={scale}
-          fill="none"
-          stroke={strokeColor}
-          stroke-width={strokeWidth}
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          style="color: {accentColor}"
-        >
-          <circle cx="12" cy="12" r={centerRadius} fill="currentColor" stroke="none" />
-          <!-- 6 branches à 60° : alternance fork / simple → symétrie d'ordre 3 -->
-          {#each [-90, -30, 30, 90, 150, 210] as deg, i (i)}
-            {@const rad = (deg * Math.PI) / 180}
-            {@const isFork = i % 2 === 0}
-            {@const branchLen = isFork ? 6 : 9.2}
-            {@const mid = { x: 12 + branchLen * Math.cos(rad), y: 12 + branchLen * Math.sin(rad) }}
-            <line x1="12" y1="12" x2={mid.x} y2={mid.y} />
-            {#if isFork}
-              {@const leafR = 9.2}
+      <!-- V7 — Radial à profondeurs variables (V5 + V8 : mix forks + simples ET sous-feuilles) -->
+      <div class="card">
+        <div class="canvas">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            style="color: {accentColor}"
+          >
+            <circle cx="12" cy="12" r={centerRadius} fill="currentColor" stroke="none" />
+            <!-- 6 branches dont 3 forkées + 3 simples, et 2 forks ont une SOUS-feuille
+               (profondeur supplémentaire = source d'une source). -->
+            {#each [{ deg: -90, kind: 'fork-deep' }, { deg: -30, kind: 'simple' }, { deg: 30, kind: 'fork' }, { deg: 90, kind: 'fork-deep' }, { deg: 150, kind: 'simple' }, { deg: 210, kind: 'fork' }] as b, i (i)}
+              {@const rad = (b.deg * Math.PI) / 180}
+              {@const midR = 5.5}
+              {@const leafR = 9.5}
+              {@const mid = { x: 12 + midR * Math.cos(rad), y: 12 + midR * Math.sin(rad) }}
+              {@const simpleEnd = { x: 12 + leafR * Math.cos(rad), y: 12 + leafR * Math.sin(rad) }}
               {@const spread = (22 * Math.PI) / 180}
               {@const leaf1 = {
                 x: 12 + leafR * Math.cos(rad - spread),
@@ -628,67 +672,284 @@
                 x: 12 + leafR * Math.cos(rad + spread),
                 y: 12 + leafR * Math.sin(rad + spread),
               }}
-              <line x1={mid.x} y1={mid.y} x2={leaf1.x} y2={leaf1.y} />
-              <line x1={mid.x} y1={mid.y} x2={leaf2.x} y2={leaf2.y} />
-              <circle cx={leaf1.x} cy={leaf1.y} r={leafRadius} fill="currentColor" stroke="none" />
-              <circle cx={leaf2.x} cy={leaf2.y} r={leafRadius} fill="currentColor" stroke="none" />
-            {:else}
+              {@const subSpread = (14 * Math.PI) / 180}
+              {@const sub1 = {
+                x: 12 + (leafR + 3) * Math.cos(rad - spread - subSpread),
+                y: 12 + (leafR + 3) * Math.sin(rad - spread - subSpread),
+              }}
+              <line
+                x1="12"
+                y1="12"
+                x2={b.kind === 'simple' ? simpleEnd.x : mid.x}
+                y2={b.kind === 'simple' ? simpleEnd.y : mid.y}
+              />
+              {#if b.kind === 'simple'}
+                <circle
+                  cx={simpleEnd.x}
+                  cy={simpleEnd.y}
+                  r={leafRadius * 1.1}
+                  fill="currentColor"
+                  stroke="none"
+                />
+              {:else}
+                <line x1={mid.x} y1={mid.y} x2={leaf1.x} y2={leaf1.y} />
+                <line x1={mid.x} y1={mid.y} x2={leaf2.x} y2={leaf2.y} />
+                <circle
+                  cx={leaf1.x}
+                  cy={leaf1.y}
+                  r={leafRadius}
+                  fill="currentColor"
+                  stroke="none"
+                />
+                <circle
+                  cx={leaf2.x}
+                  cy={leaf2.y}
+                  r={leafRadius}
+                  fill="currentColor"
+                  stroke="none"
+                />
+                {#if b.kind === 'fork-deep'}
+                  <line x1={leaf1.x} y1={leaf1.y} x2={sub1.x} y2={sub1.y} />
+                  <circle
+                    cx={sub1.x}
+                    cy={sub1.y}
+                    r={leafRadius * 0.75}
+                    fill="currentColor"
+                    stroke="none"
+                  />
+                {/if}
+              {/if}
+            {/each}
+          </svg>
+        </div>
+        <h3>V7 — Radial à profondeurs variables</h3>
+        <p class="caption">
+          Mix de V5 (forks/simples) + V8 (profondeurs variables) en disposition radiale. 2 forks
+          profonds (sous-feuille), 1 fork simple, 2 simples directs.
+        </p>
+      </div>
+
+      <!-- V8 — Dendrogramme vertical à profondeurs variables -->
+      <div class="card">
+        <div class="canvas">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            style="color: {accentColor}"
+          >
+            <!-- Racine -->
+            <circle cx="12" cy="22" r={centerRadius * 1.05} fill="currentColor" stroke="none" />
+            <line x1="12" y1="22" x2="12" y2="17" />
+            <!-- Bifurcation principale -->
+            <line x1="6" y1="17" x2="18" y2="17" />
+            <line x1="6" y1="17" x2="6" y2="12" />
+            <line x1="18" y1="17" x2="18" y2="11" />
+            <!-- Gauche : bifurcation à profondeur 2 -->
+            <line x1="3" y1="12" x2="9" y2="12" />
+            <line x1="3" y1="12" x2="3" y2="6" />
+            <line x1="9" y1="12" x2="9" y2="8" />
+            <line x1="3" y1="6" x2="3" y2="2" />
+            <line x1="9" y1="8" x2="9" y2="2" />
+            <!-- Droite : bifurcation à profondeur asymétrique -->
+            <line x1="15" y1="11" x2="21" y2="11" />
+            <line x1="15" y1="11" x2="15" y2="5" />
+            <line x1="21" y1="11" x2="21" y2="9" />
+            <line x1="15" y1="5" x2="15" y2="2" />
+            <line x1="21" y1="9" x2="18" y2="9" />
+            <line x1="21" y1="9" x2="21" y2="2" />
+            <line x1="18" y1="9" x2="18" y2="2" />
+            <!-- Feuilles : 5 -->
+            {#each [3, 9, 15, 18, 21] as x}
+              <circle cx={x} cy="2" r={leafRadius * 0.95} fill="currentColor" stroke="none" />
+            {/each}
+          </svg>
+        </div>
+        <h3>V8 — Dendrogramme vertical à profondeurs variables</h3>
+        <p class="caption">
+          Phylogénie verticale, racine en bas. Branches à profondeurs irrégulières — certaines
+          sources sont citées par chaîne plus longue.
+        </p>
+      </div>
+
+      <!-- V9 — Triskèle phylogénétique (V11 symétrie 3 + V8 mini-dendrogrammes verticaux) -->
+      <div class="card">
+        <div class="canvas">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            style="color: {accentColor}"
+          >
+            <circle cx="12" cy="12" r={centerRadius} fill="currentColor" stroke="none" />
+            <!-- 3 branches symétriques (120°), chacune est un mini-cladogramme rectangulaire -->
+            {#each [-90, 30, 150] as deg, i (i)}
+              {@const rad = (deg * Math.PI) / 180}
+              {@const tan = { x: -Math.sin(rad), y: Math.cos(rad) }}
+              <!-- Branche radiale principale -->
+              {@const p1 = { x: 12 + 5.5 * Math.cos(rad), y: 12 + 5.5 * Math.sin(rad) }}
+              {@const p2 = { x: 12 + 8.5 * Math.cos(rad), y: 12 + 8.5 * Math.sin(rad) }}
+              <line x1="12" y1="12" x2={p2.x} y2={p2.y} />
+              <!-- Bifurcation perpendiculaire -->
+              {@const cross1 = { x: p1.x + 2.8 * tan.x, y: p1.y + 2.8 * tan.y }}
+              {@const cross2 = { x: p1.x - 2.8 * tan.x, y: p1.y - 2.8 * tan.y }}
+              <line x1={cross1.x} y1={cross1.y} x2={cross2.x} y2={cross2.y} />
+              <!-- Feuilles à l'extérieur -->
+              {@const leaf1 = {
+                x: cross1.x + 2.5 * Math.cos(rad),
+                y: cross1.y + 2.5 * Math.sin(rad),
+              }}
+              {@const leaf2 = {
+                x: cross2.x + 2.5 * Math.cos(rad),
+                y: cross2.y + 2.5 * Math.sin(rad),
+              }}
+              <line x1={cross1.x} y1={cross1.y} x2={leaf1.x} y2={leaf1.y} />
+              <line x1={cross2.x} y1={cross2.y} x2={leaf2.x} y2={leaf2.y} />
+              <circle cx={p2.x} cy={p2.y} r={leafRadius} fill="currentColor" stroke="none" />
               <circle
-                cx={mid.x}
-                cy={mid.y}
-                r={leafRadius * 1.15}
+                cx={leaf1.x}
+                cy={leaf1.y}
+                r={leafRadius * 0.85}
                 fill="currentColor"
                 stroke="none"
               />
-            {/if}
-          {/each}
-        </svg>
+              <circle
+                cx={leaf2.x}
+                cy={leaf2.y}
+                r={leafRadius * 0.85}
+                fill="currentColor"
+                stroke="none"
+              />
+            {/each}
+          </svg>
+        </div>
+        <h3>V9 — Triskèle phylogénétique</h3>
+        <p class="caption">
+          3 branches à 120° (symétrie de V11), chacune un mini-cladogramme rectangulaire avec 3
+          feuilles. Croise la pureté géométrique du triskèle avec la rigueur du cladogramme.
+        </p>
       </div>
-      <h3>V11 — Fork + simple alternés</h3>
-      <p class="caption">
-        3 branches forkées (2 feuilles) et 3 branches simples (1 feuille) alternées tous les 60°
-        autour du centre. Symétrie d'ordre 3 parfaite. Évolution symétrique de la version
-        précédente.
-      </p>
-    </div>
 
-    <!-- V10 — Cladogramme horizontal symétrique compact (V3 + V11 : binaire pur) -->
-    <div class="card">
-      <div class="canvas">
-        <svg
-          viewBox="0 0 24 24"
-          width={scale}
-          height={scale}
-          fill="none"
-          stroke={strokeColor}
-          stroke-width={strokeWidth}
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          style="color: {accentColor}"
-        >
-          <circle cx="3" cy="12" r={centerRadius * 1.1} fill="currentColor" stroke="none" />
-          <line x1="3" y1="12" x2="10" y2="12" />
-          <line x1="10" y1="5" x2="10" y2="19" />
-          <line x1="10" y1="5" x2="15" y2="5" />
-          <line x1="10" y1="19" x2="15" y2="19" />
-          <line x1="15" y1="2" x2="15" y2="8" />
-          <line x1="15" y1="16" x2="15" y2="22" />
-          <line x1="15" y1="2" x2="21" y2="2" />
-          <line x1="15" y1="8" x2="21" y2="8" />
-          <line x1="15" y1="16" x2="21" y2="16" />
-          <line x1="15" y1="22" x2="21" y2="22" />
-          {#each [2, 8, 16, 22] as y}
-            <circle cx="21" cy={y} r={leafRadius} fill="currentColor" stroke="none" />
-          {/each}
-        </svg>
+      <!-- V11 — Fork + simple alternés (symétrie 3 fois) — refonte du V8 précédent demandé -->
+      <div class="card">
+        <div class="canvas">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            style="color: {accentColor}"
+          >
+            <circle cx="12" cy="12" r={centerRadius} fill="currentColor" stroke="none" />
+            <!-- 6 branches à 60° : alternance fork / simple → symétrie d'ordre 3 -->
+            {#each [-90, -30, 30, 90, 150, 210] as deg, i (i)}
+              {@const rad = (deg * Math.PI) / 180}
+              {@const isFork = i % 2 === 0}
+              {@const branchLen = isFork ? 6 : 9.2}
+              {@const mid = {
+                x: 12 + branchLen * Math.cos(rad),
+                y: 12 + branchLen * Math.sin(rad),
+              }}
+              <line x1="12" y1="12" x2={mid.x} y2={mid.y} />
+              {#if isFork}
+                {@const leafR = 9.2}
+                {@const spread = (22 * Math.PI) / 180}
+                {@const leaf1 = {
+                  x: 12 + leafR * Math.cos(rad - spread),
+                  y: 12 + leafR * Math.sin(rad - spread),
+                }}
+                {@const leaf2 = {
+                  x: 12 + leafR * Math.cos(rad + spread),
+                  y: 12 + leafR * Math.sin(rad + spread),
+                }}
+                <line x1={mid.x} y1={mid.y} x2={leaf1.x} y2={leaf1.y} />
+                <line x1={mid.x} y1={mid.y} x2={leaf2.x} y2={leaf2.y} />
+                <circle
+                  cx={leaf1.x}
+                  cy={leaf1.y}
+                  r={leafRadius}
+                  fill="currentColor"
+                  stroke="none"
+                />
+                <circle
+                  cx={leaf2.x}
+                  cy={leaf2.y}
+                  r={leafRadius}
+                  fill="currentColor"
+                  stroke="none"
+                />
+              {:else}
+                <circle
+                  cx={mid.x}
+                  cy={mid.y}
+                  r={leafRadius * 1.15}
+                  fill="currentColor"
+                  stroke="none"
+                />
+              {/if}
+            {/each}
+          </svg>
+        </div>
+        <h3>V11 — Fork + simple alternés</h3>
+        <p class="caption">
+          3 branches forkées (2 feuilles) et 3 branches simples (1 feuille) alternées tous les 60°
+          autour du centre. Symétrie d'ordre 3 parfaite. Évolution symétrique de la version
+          précédente.
+        </p>
       </div>
-      <h3>V10 — Cladogramme horizontal compact</h3>
-      <p class="caption">
-        V3 simplifié à l'os : arbre binaire parfait à 2 niveaux, 4 feuilles symétriques. Cadre
-        serré, idéal pour bandeau ou favicon.
-      </p>
+
+      <!-- V10 — Cladogramme horizontal symétrique compact (V3 + V11 : binaire pur) -->
+      <div class="card">
+        <div class="canvas">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke={strokeColor}
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            style="color: {accentColor}"
+          >
+            <circle cx="3" cy="12" r={centerRadius * 1.1} fill="currentColor" stroke="none" />
+            <line x1="3" y1="12" x2="10" y2="12" />
+            <line x1="10" y1="5" x2="10" y2="19" />
+            <line x1="10" y1="5" x2="15" y2="5" />
+            <line x1="10" y1="19" x2="15" y2="19" />
+            <line x1="15" y1="2" x2="15" y2="8" />
+            <line x1="15" y1="16" x2="15" y2="22" />
+            <line x1="15" y1="2" x2="21" y2="2" />
+            <line x1="15" y1="8" x2="21" y2="8" />
+            <line x1="15" y1="16" x2="21" y2="16" />
+            <line x1="15" y1="22" x2="21" y2="22" />
+            {#each [2, 8, 16, 22] as y}
+              <circle cx="21" cy={y} r={leafRadius} fill="currentColor" stroke="none" />
+            {/each}
+          </svg>
+        </div>
+        <h3>V10 — Cladogramme horizontal compact</h3>
+        <p class="caption">
+          V3 simplifié à l'os : arbre binaire parfait à 2 niveaux, 4 feuilles symétriques. Cadre
+          serré, idéal pour bandeau ou favicon.
+        </p>
+      </div>
     </div>
-  </div>
+  </section>
 
   <aside class="panel">
     <label>
@@ -842,5 +1103,85 @@
     border-radius: 6px;
     background: none;
     cursor: pointer;
+  }
+
+  /* --- Panel de prototypes — section headers --- */
+  .section-block {
+    margin: 0 0 3rem;
+  }
+  .section-block.legacy {
+    margin-top: 4rem;
+    padding-top: 2.5rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+  }
+  :global(.dark) .section-block.legacy {
+    border-top-color: rgba(255, 255, 255, 0.08);
+  }
+  .section-title {
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin: 0 0 0.5rem;
+    color: #475569;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  :global(.dark) .section-title {
+    color: #cbd5e1;
+  }
+  .ref-tag {
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    padding: 0.1rem 0.45rem;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 999px;
+    color: #64748b;
+    font-weight: 400;
+  }
+  :global(.dark) .ref-tag {
+    border-color: rgba(255, 255, 255, 0.18);
+    color: #94a3b8;
+  }
+  .section-lead {
+    font-size: 0.85rem;
+    line-height: 1.55;
+    color: #475569;
+    max-width: 68ch;
+    margin: 0 0 1.5rem;
+  }
+  :global(.dark) .section-lead {
+    color: #94a3b8;
+  }
+  .section-lead strong {
+    font-weight: 600;
+    color: #0f172a;
+  }
+  :global(.dark) .section-lead strong {
+    color: #e2e8f0;
+  }
+
+  /* --- Carte numérotée style "panel pro" --- */
+  .num {
+    font-size: 0.62rem;
+    letter-spacing: 0.22em;
+    font-variant-numeric: tabular-nums;
+    color: #94a3b8;
+    text-align: center;
+    margin: 0.6rem 0 -0.1rem;
+    text-transform: uppercase;
+  }
+  .card.highlight {
+    border-color: #4a6cf7;
+    box-shadow:
+      0 0 0 1px rgba(74, 108, 247, 0.15),
+      0 6px 16px rgba(74, 108, 247, 0.08);
+  }
+  :global(.dark) .card.highlight {
+    border-color: rgba(107, 138, 255, 0.5);
+    box-shadow:
+      0 0 0 1px rgba(107, 138, 255, 0.25),
+      0 6px 16px rgba(74, 108, 247, 0.12);
   }
 </style>
