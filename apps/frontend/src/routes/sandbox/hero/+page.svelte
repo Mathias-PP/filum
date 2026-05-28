@@ -69,6 +69,11 @@
     // stable, indépendante du tri rendering).
     uniform vec4 uTrails[48];
     uniform vec3 uTrailColors[8];
+    // Identité du nœud par slot de rendering (= colorIdx du nœud occupant
+    // ce slot après tri back-to-front). Utilisé pour dériver biome et seed
+    // de manière STABLE : si deux nœuds échangent leur z et donc leur slot,
+    // leur biome ne change PAS car il est attaché à leur identité.
+    uniform float uNodeIdx[8];
 
     // Hash + value noise
     float hash(vec2 p) {
@@ -123,11 +128,13 @@
       float zLocal = sqrt(zSq) / r;
       vec3 n = vec3(d.x / r, d.y / r, zLocal);
 
-      // Coordonnées surface (view-aligned, suffisant à petite échelle)
+      // Rotation propre Earth-like : phase horizontale qui défile (axe Y
+      // vertical). Sur sphère view-aligned, c'est un fake mais à petite
+      // échelle l'œil lit ça comme "la planète tourne". Vitesse variée par
+      // nœud (~25 à 50 s par rotation) — vivant sans devenir distrayant.
       vec2 sp = n.xy + vec2(seed, seed * 0.7);
-      float rot = uTime * 0.0006 * (0.7 + 0.6 * fract(seed * 7.31));
-      vec2 rsp = vec2(sp.x * cos(rot) - sp.y * sin(rot),
-                      sp.x * sin(rot) + sp.y * cos(rot));
+      float spinSpeed = 0.13 * (0.7 + 0.6 * fract(seed * 7.31));
+      vec2 rsp = sp + vec2(uTime * spinSpeed, 0.0);
 
       // Patterns par biome — features plus définis qu'en pass originale.
       float pattern = 0.5;
@@ -332,44 +339,47 @@
       float ang = atan(sd.y, sd.x);
       float haloOut = max(dCore - coreRPulsed * 0.96, 0.0);
 
-      // 1. Chromosphère brillante (just outside limb) — intensité +30 %
-      float chrom = exp(-haloOut * 30.0) * 1.25;
-      // 2. Corona mid-range — intensité +45 %
-      float corona = exp(-haloOut * 8.0) * 0.65;
-      // 3. Halo diffus large — intensité +60 %
-      float farHalo = exp(-dCore * 2.5) * 0.55;
+      // 1. Chromosphère brillante (just outside limb) — niveau pass 3
+      float chrom = exp(-haloOut * 30.0) * 0.95;
+      // 2. Corona mid-range — niveau pass 3
+      float corona = exp(-haloOut * 8.0) * 0.45;
+      // 3. Halo diffus large — niveau pass 3
+      float farHalo = exp(-dCore * 2.5) * 0.35;
       vec3 haloColor = mix(coreColor, vec3(1.0), 0.30);
-      col += haloColor * (chrom + corona) * (1.00 + 0.12 * pulse);
-      col += coreColor * farHalo * (0.95 + 0.18 * pulse);
+      col += haloColor * (chrom + corona) * (0.95 + 0.10 * pulse);
+      col += coreColor * farHalo * (0.85 + 0.15 * pulse);
 
-      // 4. Diffraction spikes — un peu plus visibles
+      // 4. Diffraction spikes — pass 3 (discrets)
       float spikeH = exp(-pow(abs(sd.y) * 160.0, 1.4)) * exp(-abs(sd.x) * 9.0);
       float spikeV = exp(-pow(abs(sd.x) * 160.0, 1.4)) * exp(-abs(sd.y) * 9.0);
       float spike = (spikeH + spikeV) * (0.90 + 0.15 * pulse);
-      col += mix(coreColor, vec3(1.0), 0.45) * spike * 0.32;
+      col += mix(coreColor, vec3(1.0), 0.45) * spike * 0.20;
 
-      // 5. Tempêtes solaires / prominences plasma — multi-fréquence pour
-      //    avoir plusieurs jets visibles simultanément. Couleur chaude
-      //    (blanc-doré) vs étoile bleue → contraste plasma vs corps.
-      //    Régime sphérique : on mappe l'angle azimutal pour que les jets
-      //    suivent vraiment la rotation autour du limbe.
-      vec3 flareCol = mix(vec3(1.0, 0.85, 0.55), vec3(1.0), 0.20); // plasma chaud
-      // Couche A — gros jets lents, larges, principaux
-      float flAngA = ang * 1.0 + uTime * 0.07;
-      float flA = fbm(vec2(flAngA * 1.2, dCore * 11.0) + uTime * 0.04);
-      float flFalloffA = exp(-haloOut * 7.5) * step(coreRPulsed * 0.95, dCore);
-      float flareA = pow(flA, 3.0) * flFalloffA * 2.8;
-      // Couche B — jets fins plus rapides (turbulence de surface haute)
-      float flAngB = ang * 2.3 - uTime * 0.13;
-      float flB = fbm(vec2(flAngB * 2.6, dCore * 22.0) + uTime * 0.09);
-      float flFalloffB = exp(-haloOut * 14.0) * step(coreRPulsed * 0.97, dCore);
-      float flareB = pow(flB, 4.0) * flFalloffB * 2.2;
-      // Couche C — sursauts brefs très brillants (granulation explosive)
-      float flAngC = ang * 3.1 + uTime * 0.21;
-      float flC = fbm(vec2(flAngC * 3.5, dCore * 30.0) + uTime * 0.15);
-      float burst = smoothstep(0.72, 0.92, flC) * exp(-haloOut * 18.0)
-                  * step(coreRPulsed * 0.98, dCore);
-      col += flareCol * (flareA + flareB) + vec3(1.0, 0.95, 0.80) * burst * 1.8;
+      // 5. Tempêtes solaires — 3 couches additives, plasma chaud blanc-doré
+      //    vs corps bleu de l'étoile. Coord ANGULAIRE : on injecte
+      //    vec2(cos(ang*k + phase), sin(...)) dans fbm au lieu de l'angle
+      //    brut. Sans ça, atan2 saute de +π à -π sur l'axe x négatif et la
+      //    discontinuité dessine une cicatrice horizontale à gauche du
+      //    pulsar. Avec (cos,sin) la coord est périodique sans couture.
+      vec3 flareCol = mix(vec3(1.0, 0.85, 0.55), vec3(1.0), 0.20);
+      // Couche A — gros jets lents, larges
+      vec2 cA = vec2(cos(ang * 1.0 + uTime * 0.07), sin(ang * 1.0 + uTime * 0.07));
+      float flA = fbm(cA * 1.6 + vec2(dCore * 11.0, uTime * 0.04));
+      float flareA = pow(flA, 3.0)
+                   * exp(-haloOut * 7.5) * step(coreRPulsed * 0.95, dCore)
+                   * 2.4;
+      // Couche B — jets fins rapides (turbulence haute)
+      vec2 cB = vec2(cos(ang * 2.3 - uTime * 0.13), sin(ang * 2.3 - uTime * 0.13));
+      float flB = fbm(cB * 3.0 + vec2(dCore * 22.0, uTime * 0.09));
+      float flareB = pow(flB, 4.0)
+                   * exp(-haloOut * 14.0) * step(coreRPulsed * 0.97, dCore)
+                   * 1.8;
+      // Couche C — sursauts brefs (granulation explosive)
+      vec2 cC = vec2(cos(ang * 3.1 + uTime * 0.21), sin(ang * 3.1 + uTime * 0.21));
+      float flC = fbm(cC * 4.0 + vec2(dCore * 30.0, uTime * 0.15));
+      float burst = smoothstep(0.72, 0.92, flC)
+                  * exp(-haloOut * 18.0) * step(coreRPulsed * 0.98, dCore);
+      col += flareCol * (flareA + flareB) + vec3(1.0, 0.95, 0.80) * burst * 1.5;
 
       // ====================================================================
       // CONNEXIONS pulsar↔nœud — lignes lumineuses + "data pulse" qui voyage
@@ -437,17 +447,18 @@
           float zN = sqrt(zSq) / coreRPulsed;
           vec2 sp = d / coreRPulsed;
 
-          // Palette 3 stops — moins de blanc, plus de chroma. Le centre
-          // doit lire BLEU, pas blanc-cassé. Reinhard tone-map mange ~30 %
-          // de luminosité donc on pré-compense en gardant les rouges bas.
-          vec3 photoRim    = vec3(0.25, 0.75, 1.65);                 // bleu profond (rim)
-          vec3 photoMid    = vec3(0.55, 1.30, 2.40);                 // cyan-bleu électrique
-          vec3 photoCenter = vec3(0.85, 1.75, 2.90);                 // cœur cyan-bleu très saturé
-          // Re-tint par teinte slider — plus subtil sur le centre pour
-          // préserver la saturation.
-          photoRim    = mix(photoRim,    coreColor * 1.6, 0.25);
-          photoMid    = mix(photoMid,    coreColor * 2.0, 0.22);
-          photoCenter = mix(photoCenter, coreColor * 2.4, 0.18);
+          // Palette naine bleue-blanche (~25 000 K, type Sirius B). Le
+          // RIM lit bleu intense, le CENTRE blanc-chaud avec un voile cyan,
+          // jamais électrique. Reinhard tonemap mange ~30 % → on prépousse
+          // les stops au-dessus de 1.0 en valeur linéaire.
+          vec3 photoRim    = vec3(0.50, 0.85, 1.50);  // rim bleu net
+          vec3 photoMid    = vec3(1.05, 1.45, 2.05);  // transition cyan-blanc
+          vec3 photoCenter = vec3(1.90, 2.10, 2.50);  // cœur blanc-chaud légèrement bleuté
+          // Re-tint par slider — atténué (0.18 / 0.15 / 0.10) pour ne pas
+          // re-saturer en bleu quand on bouge la teinte.
+          photoRim    = mix(photoRim,    coreColor * 1.5, 0.18);
+          photoMid    = mix(photoMid,    coreColor * 1.7, 0.15);
+          photoCenter = mix(photoCenter, coreColor * 2.0, 0.10);
 
           vec3 starSurface = mix(photoRim, photoMid, smoothstep(0.0, 0.55, zN));
           starSurface     = mix(starSurface, photoCenter, smoothstep(0.55, 0.95, zN));
@@ -460,10 +471,9 @@
           starSurface *= 0.97 + 0.06 * (granul - 0.5);
 
           // Hotspot — tight, but ALSO blue-tinted so it doesn't desaturate the center
-          // Hotspot : moins de blanc, plus de cyan saturé → centre lit
-          // toujours BLEU, jamais blanc-cassé.
+          // Hotspot blanc-chaud légèrement bleuté (naine blanche/bleue).
           float hotspot = pow(zN, 8.0) * 0.45;
-          starSurface += mix(coreColor, vec3(0.55, 0.85, 1.0), 0.30) * hotspot;
+          starSurface += mix(coreColor, vec3(0.95, 0.97, 1.0), 0.40) * hotspot;
 
           // Star scintillation (very subtle global brightness flicker)
           float scint = 0.97 + 0.06 * sin(uTime * 3.1 + fbm(sp * 6.0) * 8.0);
@@ -501,8 +511,11 @@
         // side" faces the pulsar.
         vec2 toCore = coreC - n.xy;
         vec2 lightDir2D = normalize(toCore + vec2(0.0001));
-        float biome = mod(float(i), 4.0);
-        float seed = float(i) * 13.37;
+        // biome & seed dérivés de l'IDENTITÉ du nœud (uNodeIdx[i] = colorIdx),
+        // pas du slot trié. Sinon, à chaque croisement en z, deux nœuds
+        // échangent leurs slots et donc leurs biomes → "netteté qui change".
+        float biome = mod(uNodeIdx[i], 4.0);
+        float seed = uNodeIdx[i] * 13.37;
         vec4 sh = nodeSphere(uv, n.xy, nodeR, nodeColor, lightDir2D, biome, seed);
         vec3 lit = sh.rgb * (depthBright + 0.40 * hover);
 
@@ -598,6 +611,9 @@
         uHoverCore: { value: 0 },
         uTrails: { value: trailsArr },
         uTrailColors: { value: trailColorsArr },
+        // colorIdx du nœud occupant chaque slot trié (réécrit chaque frame
+        // par la même boucle qui réordonne uNodes / uNodeColors).
+        uNodeIdx: { value: Array.from({ length: 8 }, () => 0) },
       },
     });
 
@@ -811,8 +827,11 @@
       // Sort back-to-front
       const slice = computed.slice(0, n).sort((a, b) => a.z - b.z);
       // Write into flat uniform arrays (reorder colors to match sorted nodes).
+      // On écrit aussi uNodeIdx[i] = colorIdx — sert au shader pour dériver
+      // biome/seed depuis l'identité du nœud (stable au tri).
       const arr = program.uniforms.uNodes.value as number[][];
       const colArr = program.uniforms.uNodeColors.value as number[][];
+      const idxArr = program.uniforms.uNodeIdx.value as number[];
       for (let i = 0; i < n; i++) {
         arr[i][0] = slice[i].x;
         arr[i][1] = slice[i].y;
@@ -822,6 +841,7 @@
         colArr[i][0] = c[0];
         colArr[i][1] = c[1];
         colArr[i][2] = c[2];
+        idxArr[i] = slice[i].colorIdx;
       }
 
       // --- Mouse picking: find the node under the cursor (front-most only).
