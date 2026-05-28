@@ -63,6 +63,12 @@
     uniform vec3 uLightDir;
     uniform float uHoverNode[8];  // 0..1 per node — 1 = fully hovered
     uniform float uHoverCore;     // 0..1 — pulsar hover state
+    // Trails orbitaux : 8 nodes × 6 history points = 48 entries, ordre natif
+    // (jamais réordonné par le tri back-to-front). Chaque entrée vec4 :
+    // (x, y, z, unused). Les couleurs viennent de uTrailColors (identité
+    // stable, indépendante du tri rendering).
+    uniform vec4 uTrails[48];
+    uniform vec3 uTrailColors[8];
 
     // Hash + value noise
     float hash(vec2 p) {
@@ -245,6 +251,32 @@
           float sy = exp(-abs(fp.y) * 50.0) * exp(-abs(fp.x) * 250.0);
           float spikes = (sx + sy) * 0.45;
           col += starCol * (core + spikes) * twinkle * 0.9;
+        }
+      }
+
+      // ====================================================================
+      // TRAILS ORBITAUX — sillage de chaque nœud sur son orbite récente
+      // ====================================================================
+      // Chaque nœud laisse 6 "fantômes" gaussiens fade. On les dessine AVANT
+      // le pulsar et les nœuds — ils passent dessous, c'est ce qui donne la
+      // sensation de "passé". L'intensité décroît exponentiellement avec
+      // l'âge ; la couleur est celle du nœud, dimmed par sa profondeur.
+      for (int i = 0; i < 8; i++) {
+        float active = step(float(i) + 0.5, float(uNodeCount));
+        if (active < 0.5) continue;
+        vec3 trailCol = uTrailColors[i];
+        for (int j = 0; j < 6; j++) {
+          vec4 t = uTrails[i * 6 + j];
+          // age 0 = most recent ghost, age 1 = oldest. Falloff exponentiel.
+          float age = float(j) / 5.0;
+          float ageFade = exp(-age * 2.4);
+          float depthDim = 0.55 + 0.45 * clamp(t.w / 0.35 + 0.5, 0.0, 1.0);
+          vec2 dT = uv - t.xy;
+          float dT2 = dot(dT, dT);
+          // Gaussian dot. Plus le segment est ancien, plus il est diffus.
+          float sigma = mix(0.012, 0.020, age);
+          float intensity = exp(-dT2 / (sigma * sigma)) * 0.18 * ageFade * depthDim;
+          col += trailCol * intensity;
         }
       }
 
@@ -457,8 +489,18 @@
     }
     // OGL detects array uniforms via Array.isArray() — must be plain Array,
     // not Float32Array. Each element is itself a plain Array (vec4 or vec3).
-    const nodesArr: number[][] = Array.from({ length: 8 }, () => [0, 0, 0, 0.04]);
+    const nodesArr: number[][] = Array.from({ length: 8 }, () => [0, 0, 0, 0.05]);
     const colorsArr: number[][] = Array.from({ length: 8 }, (_, i) => {
+      const c = NODE_COLORS[i % NODE_COLORS.length];
+      return [c[0], c[1], c[2]];
+    });
+    // 8 nodes × 6 history points. Layout: [n0_t-1, n0_t-2, ..., n0_t-6, n1_t-1, ...].
+    // vec4 = (x, y, z, 0). z dim les segments back-orbit comme leur nœud vivant.
+    // Ordre natif (jamais réordonné par le tri back-to-front).
+    const TRAIL_HISTORY = 6;
+    const trailsArr: number[][] = Array.from({ length: 8 * TRAIL_HISTORY }, () => [0, 0, 0, 0]);
+    // Couleurs trails dans l'ordre natif (identité de nœud, jamais réordonnée).
+    const trailColorsArr: number[][] = Array.from({ length: 8 }, (_, i) => {
       const c = NODE_COLORS[i % NODE_COLORS.length];
       return [c[0], c[1], c[2]];
     });
@@ -480,6 +522,8 @@
         uLightDir: { value: new Vec3(LIGHT_DIR[0], LIGHT_DIR[1], LIGHT_DIR[2]) },
         uHoverNode: { value: Array.from({ length: 8 }, () => 0) },
         uHoverCore: { value: 0 },
+        uTrails: { value: trailsArr },
+        uTrailColors: { value: trailColorsArr },
       },
     });
 
@@ -617,6 +661,12 @@
     let hoverCoreTarget = 0;
 
     const start = performance.now();
+    // Trail sampling : on enregistre une position toutes les TRAIL_DT secondes
+    // par nœud, pas à chaque frame — sinon la trace devient une bande épaisse
+    // peu lisible. ~80ms entre deux échantillons donne 6 points sur ~500ms,
+    // soit ~quart d'orbite à vitesse par défaut.
+    const TRAIL_DT = 0.08;
+    let lastTrailSample = -Infinity;
     function loop(t: number) {
       rafId = 0;
       if (!visible) return;
@@ -656,6 +706,31 @@
         computed[i].r = p.radius * depthScale;
         computed[i].colorIdx = p.colorIdx;
       }
+      // Échantillonnage des trails (ordre natif). Quand l'intervalle TRAIL_DT
+      // est écoulé, on shift le ring buffer : t-1 ← t (live), t-2 ← t-1, ...
+      if (time - lastTrailSample >= TRAIL_DT) {
+        lastTrailSample = time;
+        const trails = program.uniforms.uTrails.value as number[][];
+        for (let i = 0; i < 8; i++) {
+          // Shift from oldest to newest : slot k ← slot k-1.
+          for (let k = TRAIL_HISTORY - 1; k > 0; k--) {
+            const dst = trails[i * TRAIL_HISTORY + k];
+            const src = trails[i * TRAIL_HISTORY + k - 1];
+            dst[0] = src[0];
+            dst[1] = src[1];
+            dst[2] = src[2];
+            dst[3] = src[3];
+          }
+          // Slot 0 ← position vivante actuelle de ce nœud (identité, pas tri).
+          const live = computed[i];
+          const head = trails[i * TRAIL_HISTORY + 0];
+          head[0] = live.x;
+          head[1] = live.y;
+          head[2] = live.z;
+          head[3] = 0;
+        }
+      }
+
       // Sort back-to-front
       const slice = computed.slice(0, n).sort((a, b) => a.z - b.z);
       // Write into flat uniform arrays (reorder colors to match sorted nodes).
