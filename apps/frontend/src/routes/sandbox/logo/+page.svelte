@@ -3092,6 +3092,1419 @@
   </section>
 
   <section class="section-block">
+    <h2 class="section-title">
+      Y01 — 30 déclinaisons · 2026-05-28 <span class="ref-tag"
+        >10 dispositions · 10 couleurs · 10 effets</span
+      >
+    </h2>
+    <p class="section-lead">
+      Trente versions du Y01 (canonique <strong>V10+V11</strong>) organisées en 3 batches :
+      <strong>Z01-Z10</strong> dispositions de nœuds variées (avec un nœud en plus ou en moins),
+      <strong>Z11-Z20</strong> meilleures combinaisons de couleurs (hero, palette auteur-kind réelle
+      de la démo, sober editorial, dégradés), <strong>Z21-Z30</strong> designs moins classiques (effets
+      3D, halo, pulsar évidé, wordmark, gradients, etc.).
+    </p>
+
+    <h3 class="section-subtitle">Batch A — Z01-Z10 · Dispositions de nœuds</h3>
+    <div class="grid grid--dense">
+      <!-- Z01 — Miroir vertical (Y-fork bas, parent-lune NE) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 3, y: 12 }, { x: 21, y: 12 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="7" y2="19" />
+            <line x1="7" y1="19" x2="4" y2="21.5" />
+            <line x1="7" y1="19" x2="9.5" y2="22.5" />
+            <line x1="12" y1="12" x2="17" y2="6" />
+            <line x1="17" y1="6" x2="20.5" y2="3.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            <circle cx="4" cy="21.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="9.5" cy="22.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            {#each [{ x: 3, y: 12 }, { x: 21, y: 12 }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            {/each}
+            <circle cx="17" cy="6" r={leafRadius * 1.1} fill="#4A6CF7" stroke="none" />
+            <circle cx="20.5" cy="3.5" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">Z01</div>
+        <h3>Miroir vertical</h3>
+        <p class="caption">Y-fork en bas, parent-lune en NE. Lecture inversée du canonique.</p>
+      </div>
+
+      <!-- Z02 — Rotation 90° (réguliers haut/bas, Y-fork droite, lune SW) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 12, y: 3 }, { x: 12, y: 21 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="19" y2="7" />
+            <line x1="19" y1="7" x2="22" y2="4" />
+            <line x1="19" y1="7" x2="22.5" y2="9.5" />
+            <line x1="12" y1="12" x2="6" y2="17" />
+            <line x1="6" y1="17" x2="3.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            <circle cx="22" cy="4" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="22.5" cy="9.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            {#each [{ x: 12, y: 3 }, { x: 12, y: 21 }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            {/each}
+            <circle cx="6" cy="17" r={leafRadius * 1.1} fill="#4A6CF7" stroke="none" />
+            <circle cx="3.5" cy="20.5" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">Z02</div>
+        <h3>Rotation 90° (axe vertical)</h3>
+        <p class="caption">Réguliers haut/bas, Y-fork droite, parent-lune SW. Composition rotée.</p>
+      </div>
+
+      <!-- Z03 — Y01 - 1 régulier (5 nœuds) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="12" y1="12" x2="3" y2="12" />
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <line x1="12" y1="12" x2="17" y2="18" />
+            <line x1="17" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="3" cy="12" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="17" cy="18" r={leafRadius * 1.1} fill="#4A6CF7" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">Z03</div>
+        <h3>Allégé (−1 régulier)</h3>
+        <p class="caption">
+          5 nœuds. Pulsar + 1 régulier W + Y-fork NE + parent-lune SE. Plus aéré.
+        </p>
+      </div>
+
+      <!-- Z04 — Y01 + 1 régulier (7 nœuds) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 3, y: 12 }, { x: 21, y: 12 }, { x: 12, y: 22 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <line x1="12" y1="12" x2="17" y2="18" />
+            <line x1="17" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            {#each [{ x: 3, y: 12 }, { x: 21, y: 12 }, { x: 12, y: 22 }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            {/each}
+            <circle cx="17" cy="18" r={leafRadius * 1.1} fill="#4A6CF7" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">Z04</div>
+        <h3>Dense (+1 régulier)</h3>
+        <p class="caption">7 nœuds. Y01 + 1 régulier en S. Bibliographie plus fournie.</p>
+      </div>
+
+      <!-- Z05 — Parent-lune SW + Y-fork NE + 2 régulières -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 22, y: 13 }, { x: 4, y: 4 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="17" y2="5" />
+            <line x1="17" y1="5" x2="20" y2="2" />
+            <line x1="17" y1="5" x2="20.5" y2="8" />
+            <line x1="12" y1="12" x2="7" y2="18" />
+            <line x1="7" y1="18" x2="3.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            <circle cx="20" cy="2" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="20.5" cy="8" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            {#each [{ x: 22, y: 13 }, { x: 4, y: 4 }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            {/each}
+            <circle cx="7" cy="18" r={leafRadius * 1.1} fill="#4A6CF7" stroke="none" />
+            <circle cx="3.5" cy="20.5" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">Z05</div>
+        <h3>Pivoté (Y-fork NE, lune SW)</h3>
+        <p class="caption">
+          6 nœuds. Topologie Y01 mais Y-fork en haut-droite, parent-lune en bas-gauche.
+        </p>
+      </div>
+
+      <!-- Z06 — Axe horizontal (Y-fork W, parent-lune E, réguliers N/S) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 12, y: 3 }, { x: 12, y: 21 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="5" y2="12" />
+            <line x1="5" y1="12" x2="2" y2="9" />
+            <line x1="5" y1="12" x2="2" y2="15" />
+            <line x1="12" y1="12" x2="19" y2="14" />
+            <line x1="19" y1="14" x2="22.5" y2="16" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            <circle cx="2" cy="9" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="2" cy="15" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            {#each [{ x: 12, y: 3 }, { x: 12, y: 21 }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            {/each}
+            <circle cx="19" cy="14" r={leafRadius * 1.1} fill="#4A6CF7" stroke="none" />
+            <circle cx="22.5" cy="16" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">Z06</div>
+        <h3>Axe horizontal</h3>
+        <p class="caption">
+          Y-fork à l'ouest, parent-lune à l'est, réguliers nord/sud. Symétrie horizontale.
+        </p>
+      </div>
+
+      <!-- Z07 — Compact bas (pulsar BL placement, tout au-dessus à droite) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 4, y: 14 }, { x: 22, y: 18 }] as p, i (i)}
+              <line x1="6" y1="20" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="6" y1="20" x2="11" y2="11" />
+            <line x1="11" y1="11" x2="8" y2="5" />
+            <line x1="11" y1="11" x2="16" y2="6" />
+            <line x1="6" y1="20" x2="17" y2="16" />
+            <line x1="17" y1="16" x2="22" y2="12" />
+            <circle cx="6" cy="20" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            <circle cx="8" cy="5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="16" cy="6" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            {#each [{ x: 4, y: 14 }, { x: 22, y: 18 }] as p, i (i)}
+              <circle cx={p.x} cy={p.y} r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            {/each}
+            <circle cx="17" cy="16" r={leafRadius * 1.1} fill="#4A6CF7" stroke="none" />
+            <circle cx="22" cy="12" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">Z07</div>
+        <h3>Pulsar BL · graphe NE</h3>
+        <p class="caption">
+          Pulsar coin SO, tout le graphe au-dessus. Composition diagonale ascendante.
+        </p>
+      </div>
+
+      <!-- Z08 — Vertical stack (Y-fork tout en haut, pulsar milieu-haut, parent-lune en bas) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="12" y1="10" x2="3" y2="12" />
+            <line x1="12" y1="10" x2="21" y2="12" />
+            <line x1="12" y1="10" x2="12" y2="5" />
+            <line x1="12" y1="5" x2="8" y2="2" />
+            <line x1="12" y1="5" x2="16" y2="2" />
+            <line x1="12" y1="10" x2="12" y2="17" />
+            <line x1="12" y1="17" x2="12" y2="22" />
+            <circle cx="12" cy="10" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            <circle cx="8" cy="2" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="16" cy="2" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="3" cy="12" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="21" cy="12" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="12" cy="17" r={leafRadius * 1.1} fill="#4A6CF7" stroke="none" />
+            <circle cx="12" cy="22" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">Z08</div>
+        <h3>Stack vertical</h3>
+        <p class="caption">
+          Y-fork tout en haut, pulsar+régulières au milieu, parent-lune en bas. Lecture verticale
+          stricte.
+        </p>
+      </div>
+
+      <!-- Z09 — Triangle symétrique (Y-fork sommet, parent-lune SE, régulier SW) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="12" y1="14" x2="12" y2="6" />
+            <line x1="12" y1="6" x2="6" y2="2" />
+            <line x1="12" y1="6" x2="18" y2="2" />
+            <line x1="12" y1="14" x2="18" y2="20" />
+            <line x1="18" y1="20" x2="22" y2="22.5" />
+            <line x1="12" y1="14" x2="6" y2="20" />
+            <circle cx="12" cy="14" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            <circle cx="6" cy="2" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="18" cy="2" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="18" cy="20" r={leafRadius * 1.1} fill="#4A6CF7" stroke="none" />
+            <circle cx="22" cy="22.5" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+            <circle cx="6" cy="20" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">Z09</div>
+        <h3>Triangle symétrique</h3>
+        <p class="caption">
+          Y-fork au sommet, parent-lune SE, régulier SW. Composition triangulaire équilibrée.
+        </p>
+      </div>
+
+      <!-- Z10 — Double Y-fork + lune unique (3 paires citées + 1 chaîne) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="12" y1="12" x2="6" y2="6" />
+            <line x1="6" y1="6" x2="3" y2="3" />
+            <line x1="6" y1="6" x2="8" y2="2" />
+            <line x1="12" y1="12" x2="18" y2="6" />
+            <line x1="18" y1="6" x2="21" y2="3" />
+            <line x1="18" y1="6" x2="16" y2="2" />
+            <line x1="12" y1="12" x2="17" y2="18" />
+            <line x1="17" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            <circle cx="3" cy="3" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="8" cy="2" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="21" cy="3" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="16" cy="2" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="17" cy="18" r={leafRadius * 1.1} fill="#4A6CF7" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">Z10</div>
+        <h3>Double Y-fork + lune</h3>
+        <p class="caption">
+          Deux Y-forks au-dessus + parent-lune SE. 7 nœuds — bibliographie à deux paires citées.
+        </p>
+      </div>
+    </div>
+
+    <h3 class="section-subtitle">Batch B — Z11-Z20 · Combinaisons de couleurs</h3>
+    <div class="grid grid--dense">
+      <!-- Z11 — Hero echo full (cobalt + coral + amber + emerald + violet) -->
+      <div class="card">
+        <div class="canvas" style="background: #0d0d12">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#475569"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 3, y: 12 }, { x: 21, y: 12 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <line x1="12" y1="12" x2="17" y2="18" />
+            <line x1="17" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius * 1.1} fill="#FFFFFF" stroke="none" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#5B7FFF" stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill="#F87171" stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill="#FCD34D" stroke="none" />
+            <circle cx="3" cy="12" r={leafRadius * 0.85} fill="#52E0C4" stroke="none" />
+            <circle cx="21" cy="12" r={leafRadius * 0.85} fill="#FFD969" stroke="none" />
+            <circle cx="17" cy="18" r={leafRadius * 1.1} fill="#6EE7B7" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#C4B5FD" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">Z11 · Hero Echo full</div>
+        <h3>Palette hero intégrale</h3>
+        <p class="caption">
+          Pulsar bleu naine + coral/amber/cyan/gold + emerald/violet. Maximaliste hero.
+        </p>
+      </div>
+
+      <!-- Z12 — Hero echo soft (mêmes teintes mais plus pastel, fond clair) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#94A3B8"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 3, y: 12 }, { x: 21, y: 12 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <line x1="12" y1="12" x2="17" y2="18" />
+            <line x1="17" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill="#FBA5A5" stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill="#FCE3A2" stroke="none" />
+            <circle cx="3" cy="12" r={leafRadius * 0.85} fill="#A6E8DA" stroke="none" />
+            <circle cx="21" cy="12" r={leafRadius * 0.85} fill="#FDDB94" stroke="none" />
+            <circle cx="17" cy="18" r={leafRadius * 1.1} fill="#A8E4C5" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#D4CAFD" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">Z12 · Hero Echo pastel</div>
+        <h3>Hero soft (fond clair)</h3>
+        <p class="caption">
+          Palette hero éclaircie, pulsar indigo profond. Vibe scolaire / éditorial sain.
+        </p>
+      </div>
+
+      <!-- Z13 — Démo auteur-kind RÉEL (chercheur, media, institution, individu, etc.) -->
+      <div class="card highlight">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#475569"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 3, y: 12 }, { x: 21, y: 12 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <line x1="12" y1="12" x2="17" y2="18" />
+            <line x1="17" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#1F2937" stroke="none" />
+            <!-- twins = chercheur (vert) + media (ambre) -->
+            <circle
+              cx="4"
+              cy="2.5"
+              r={leafRadius * 0.9}
+              fill="#C0DD97"
+              stroke="#639922"
+              stroke-width={strokeWidth * 0.5}
+            />
+            <circle
+              cx="9.5"
+              cy="1.5"
+              r={leafRadius * 0.9}
+              fill="#FAC775"
+              stroke="#EF9F27"
+              stroke-width={strokeWidth * 0.5}
+            />
+            <!-- régulières = laboratoire (sky) + gouvernement (rose) -->
+            <circle
+              cx="3"
+              cy="12"
+              r={leafRadius * 0.9}
+              fill="#BAE6FD"
+              stroke="#0EA5E9"
+              stroke-width={strokeWidth * 0.5}
+            />
+            <circle
+              cx="21"
+              cy="12"
+              r={leafRadius * 0.9}
+              fill="#F2A7BE"
+              stroke="#D4456E"
+              stroke-width={strokeWidth * 0.5}
+            />
+            <!-- parent = institution-publique (bleu) -->
+            <circle
+              cx="17"
+              cy="18"
+              r={leafRadius * 1.2}
+              fill="#B5D4F4"
+              stroke="#378ADD"
+              stroke-width={strokeWidth * 0.6}
+            />
+            <!-- lune = individu (violet) -->
+            <circle
+              cx="20.5"
+              cy="20.5"
+              r={leafRadius * 0.6}
+              fill="#CECBF6"
+              stroke="#7F77DD"
+              stroke-width={strokeWidth * 0.4}
+            />
+          </svg>
+        </div>
+        <div class="num">Z13 · Démo auteur-kind ⭐</div>
+        <h3>Palette auteur-kind RÉELLE</h3>
+        <p class="caption">
+          Couleurs exactes du graphe démo (ADR-020) : chercheur vert + média ambre + labo sky + gouv
+          rose + institution bleu + individu violet. Pulsar slate. Cohérence produit absolue.
+        </p>
+      </div>
+
+      <!-- Z14 — Démo auteur-kind tous chercheurs (mono palette vert) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#639922"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 3, y: 12 }, { x: 21, y: 12 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <line x1="12" y1="12" x2="17" y2="18" />
+            <line x1="17" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#173404" stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill="#C0DD97" stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill="#C0DD97" stroke="none" />
+            <circle cx="3" cy="12" r={leafRadius * 0.85} fill="#C0DD97" stroke="none" />
+            <circle cx="21" cy="12" r={leafRadius * 0.85} fill="#C0DD97" stroke="none" />
+            <circle cx="17" cy="18" r={leafRadius * 1.1} fill="#639922" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#173404" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">Z14 · mono chercheur</div>
+        <h3>Tout chercheur (mono vert)</h3>
+        <p class="caption">
+          Palette « toutes sources scientifiques » : 3 niveaux de vert (fill, stroke, text).
+          Identité forte vulgarisateurs sci.
+        </p>
+      </div>
+
+      <!-- Z15 — Sober bold : pulsar noir saturé + accents indigo -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#0F172A"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 3, y: 12 }, { x: 21, y: 12 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <line x1="12" y1="12" x2="17" y2="18" />
+            <line x1="17" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius * 1.15} fill="#0F172A" stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill="#3B82F6" stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill="#3B82F6" stroke="none" />
+            <circle cx="3" cy="12" r={leafRadius * 0.85} fill="#0F172A" stroke="none" />
+            <circle cx="21" cy="12" r={leafRadius * 0.85} fill="#0F172A" stroke="none" />
+            <circle cx="17" cy="18" r={leafRadius * 1.1} fill="#0F172A" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#3B82F6" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">Z15 · Sober bold</div>
+        <h3>Pulsar noir + accents bleu</h3>
+        <p class="caption">
+          Le pulsar et les régulières en noir saturé, twins Y-fork + lune en indigo bright.
+          Bichromie autoritaire.
+        </p>
+      </div>
+
+      <!-- Z16 — Astronomical + emerald accent -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#3454D1"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 3, y: 12 }, { x: 21, y: 12 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <line x1="12" y1="12" x2="17" y2="18" />
+            <line x1="17" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#3454D1" stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill="#F4A261" stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill="#F4A261" stroke="none" />
+            <circle cx="3" cy="12" r={leafRadius * 0.85} fill="#3454D1" stroke="none" />
+            <circle cx="21" cy="12" r={leafRadius * 0.85} fill="#3454D1" stroke="none" />
+            <circle cx="17" cy="18" r={leafRadius * 1.1} fill="#4CAF80" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#E76F51" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">Z16 · Astro + emerald</div>
+        <h3>Astronomical + 2 accents</h3>
+        <p class="caption">
+          Indigo + amber Y-fork + emerald parent + coral lune. Quadrichromie naturelle.
+        </p>
+      </div>
+
+      <!-- Z17 — Inverse contrast (fond sombre, accents pastel) -->
+      <div class="card">
+        <div class="canvas" style="background: #1F2937">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#94A3B8"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 3, y: 12 }, { x: 21, y: 12 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <line x1="12" y1="12" x2="17" y2="18" />
+            <line x1="17" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#FFFFFF" stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill="#A6E8DA" stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill="#FCE3A2" stroke="none" />
+            <circle cx="3" cy="12" r={leafRadius * 0.85} fill="#A0B0E8" stroke="none" />
+            <circle cx="21" cy="12" r={leafRadius * 0.85} fill="#A0B0E8" stroke="none" />
+            <circle cx="17" cy="18" r={leafRadius * 1.1} fill="#FBA5A5" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#D4CAFD" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">Z17 · Dark mode pastel</div>
+        <h3>Sombre + accents pastel</h3>
+        <p class="caption">
+          Pulsar blanc sur fond slate sombre, accents pastel multi-couleur. Dark mode dashboard.
+        </p>
+      </div>
+
+      <!-- Z18 — Dégradé monochrome (4 saturations indigo) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#94A3B8"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 3, y: 12 }, { x: 21, y: 12 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <line x1="12" y1="12" x2="17" y2="18" />
+            <line x1="17" y1="18" x2="20.5" y2="20.5" />
+            <!-- Dégradé : pulsar foncé → lune clair -->
+            <circle cx="12" cy="12" r={centerRadius} fill="#1E3A8A" stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill="#3B82F6" stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill="#3B82F6" stroke="none" />
+            <circle cx="3" cy="12" r={leafRadius * 0.85} fill="#60A5FA" stroke="none" />
+            <circle cx="21" cy="12" r={leafRadius * 0.85} fill="#60A5FA" stroke="none" />
+            <circle cx="17" cy="18" r={leafRadius * 1.1} fill="#93C5FD" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#BFDBFE" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">Z18 · Dégradé saturation</div>
+        <h3>Dégradé monochrome bleu</h3>
+        <p class="caption">
+          4 saturations d'indigo (foncé pulsar → clair lune). Hiérarchie par luminosité.
+        </p>
+      </div>
+
+      <!-- Z19 — Filum brand bleu + accent coral chaud (warm/cool tension) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 3, y: 12 }, { x: 21, y: 12 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <line x1="12" y1="12" x2="17" y2="18" />
+            <line x1="17" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="3" cy="12" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="21" cy="12" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="17" cy="18" r={leafRadius * 1.1} fill="#4A6CF7" stroke="none" />
+            <!-- Coral accent SEULEMENT sur la lune -->
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.65} fill="#F87171" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">Z19 · Filum + 1 accent</div>
+        <h3>Mono indigo + lune coral</h3>
+        <p class="caption">
+          Tout indigo de marque + UN seul point coral sur la lune. Le détail qui chante.
+        </p>
+      </div>
+
+      <!-- Z20 — Quadrichromie pondérée (chaque rôle = couleur distincte mais sourde) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#475569"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 3, y: 12 }, { x: 21, y: 12 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <line x1="12" y1="12" x2="17" y2="18" />
+            <line x1="17" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#1E3A8A" stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill="#D97706" stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill="#D97706" stroke="none" />
+            <circle cx="3" cy="12" r={leafRadius * 0.85} fill="#475569" stroke="none" />
+            <circle cx="21" cy="12" r={leafRadius * 0.85} fill="#475569" stroke="none" />
+            <circle cx="17" cy="18" r={leafRadius * 1.1} fill="#047857" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#7C3AED" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">Z20 · Quadrichromie rôles</div>
+        <h3>4 couleurs = 4 types</h3>
+        <p class="caption">
+          Indigo (pulsar) + amber (twins) + slate (réguliers) + emerald (parent) + violet (lune).
+          Chaque rôle = sa teinte.
+        </p>
+      </div>
+    </div>
+
+    <h3 class="section-subtitle">Batch C — Z21-Z30 · Designs moins classiques</h3>
+    <div class="grid grid--dense">
+      <!-- Z21 — Pulsar gradient radial (3D sphère) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <defs>
+              <radialGradient id="z21-pulsar" cx="40%" cy="40%" r="60%">
+                <stop offset="0%" stop-color="white" stop-opacity="0.9" />
+                <stop offset="45%" stop-color="#4A6CF7" />
+                <stop offset="100%" stop-color="#1E3A8A" />
+              </radialGradient>
+            </defs>
+            {#each [{ x: 3, y: 12 }, { x: 21, y: 12 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <line x1="12" y1="12" x2="17" y2="18" />
+            <line x1="17" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius * 1.2} fill="url(#z21-pulsar)" stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="3" cy="12" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="21" cy="12" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="17" cy="18" r={leafRadius * 1.1} fill="#4A6CF7" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">Z21 · gradient radial</div>
+        <h3>Pulsar sphère 3D</h3>
+        <p class="caption">
+          Pulsar rendu comme une sphère via gradient (highlight, mid, falloff foncé). Effet 2.5D
+          propre.
+        </p>
+      </div>
+
+      <!-- Z22 — Halo translucide multicouche -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 3, y: 12 }, { x: 21, y: 12 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <line x1="12" y1="12" x2="17" y2="18" />
+            <line x1="17" y1="18" x2="20.5" y2="20.5" />
+            <circle
+              cx="12"
+              cy="12"
+              r={centerRadius * 3}
+              fill="#6B8AFF"
+              fill-opacity="0.08"
+              stroke="none"
+            />
+            <circle
+              cx="12"
+              cy="12"
+              r={centerRadius * 2}
+              fill="#6B8AFF"
+              fill-opacity="0.16"
+              stroke="none"
+            />
+            <circle
+              cx="12"
+              cy="12"
+              r={centerRadius * 1.4}
+              fill="#6B8AFF"
+              fill-opacity="0.28"
+              stroke="none"
+            />
+            <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="3" cy="12" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="21" cy="12" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="17" cy="18" r={leafRadius * 1.1} fill="#4A6CF7" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">Z22 · halo multicouche</div>
+        <h3>Halo 3D autour pulsar</h3>
+        <p class="caption">
+          3 couches translucides autour du pulsar (8%, 16%, 28%). Atmosphère stellaire douce.
+        </p>
+      </div>
+
+      <!-- Z23 — Pulsar évidé (anneau) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 3, y: 12 }, { x: 21, y: 12 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <line x1="12" y1="12" x2="17" y2="18" />
+            <line x1="17" y1="18" x2="20.5" y2="20.5" />
+            <circle
+              cx="12"
+              cy="12"
+              r={centerRadius * 1.2}
+              fill="#fafbfc"
+              stroke="#4A6CF7"
+              stroke-width={strokeWidth * 1.4}
+            />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="3" cy="12" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="21" cy="12" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="17" cy="18" r={leafRadius * 1.1} fill="#4A6CF7" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">Z23 · pulsar évidé</div>
+        <h3>Pulsar anneau (hollow)</h3>
+        <p class="caption">Pulsar non rempli, anneau. Plus architectural, contraste inversé.</p>
+      </div>
+
+      <!-- Z24 — Mark + wordmark horizontal (lockup header) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 80 24"
+            width={scale * 1.6}
+            height={scale * 0.5}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            style="max-width: 100%; height: auto;"
+          >
+            {#each [{ x: 3, y: 12 }, { x: 21, y: 12 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <line x1="12" y1="12" x2="17" y2="18" />
+            <line x1="17" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="3" cy="12" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="21" cy="12" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="17" cy="18" r={leafRadius * 1.1} fill="#4A6CF7" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+            <text
+              x="32"
+              y="16.5"
+              fill="#1A1A1A"
+              stroke="none"
+              font-family="'Source Serif 4', 'Crimson Pro', Georgia, serif"
+              font-size="13"
+              font-weight="500"
+              font-style="italic"
+              letter-spacing="0.5"
+            >
+              filum
+            </text>
+          </svg>
+        </div>
+        <div class="num">Z24 · lockup horizontal</div>
+        <h3>Mark + wordmark serif italique</h3>
+        <p class="caption">
+          Y01 + « filum » serif italique à droite. Format header / favicon-plus-wordmark.
+        </p>
+      </div>
+
+      <!-- Z25 — Mark + wordmark vertical -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 36"
+            width={scale * 0.7}
+            height={scale * 1.05}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 3, y: 12 }, { x: 21, y: 12 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <line x1="12" y1="12" x2="17" y2="18" />
+            <line x1="17" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="3" cy="12" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="21" cy="12" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+            <circle cx="17" cy="18" r={leafRadius * 1.1} fill="#4A6CF7" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+            <text
+              x="12"
+              y="32"
+              text-anchor="middle"
+              fill="#1A1A1A"
+              stroke="none"
+              font-family="'Source Serif 4', Georgia, serif"
+              font-size="6"
+              font-weight="500"
+              letter-spacing="1.2"
+            >
+              FILUM
+            </text>
+          </svg>
+        </div>
+        <div class="num">Z25 · lockup vertical</div>
+        <h3>Mark + wordmark stacked</h3>
+        <p class="caption">
+          Mark au-dessus, « FILUM » all-caps lettrispacé en dessous. Format carte de visite / sceau.
+        </p>
+      </div>
+
+      <!-- Z26 — Frosted blur backdrop (glow atmosphérique) -->
+      <div class="card">
+        <div class="canvas" style="background: #0d0d12">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <defs>
+              <filter id="z26-blur" x="-100%" y="-100%" width="300%" height="300%">
+                <feGaussianBlur stdDeviation="2.5" />
+              </filter>
+            </defs>
+            <circle
+              cx="12"
+              cy="12"
+              r="6"
+              fill="#5B7FFF"
+              fill-opacity="0.45"
+              filter="url(#z26-blur)"
+            />
+            <g stroke="#FFFFFF" stroke-opacity="0.55">
+              {#each [{ x: 3, y: 12 }, { x: 21, y: 12 }] as p, i (i)}
+                <line x1="12" y1="12" x2={p.x} y2={p.y} />
+              {/each}
+              <line x1="12" y1="12" x2="7" y2="5" />
+              <line x1="7" y1="5" x2="4" y2="2.5" />
+              <line x1="7" y1="5" x2="9.5" y2="1.5" />
+              <line x1="12" y1="12" x2="17" y2="18" />
+              <line x1="17" y1="18" x2="20.5" y2="20.5" />
+            </g>
+            <circle cx="12" cy="12" r={centerRadius * 1.15} fill="#FFFFFF" stroke="none" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#5B7FFF" stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill="#A0B0E8" stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill="#A0B0E8" stroke="none" />
+            <circle cx="3" cy="12" r={leafRadius * 0.85} fill="#A0B0E8" stroke="none" />
+            <circle cx="21" cy="12" r={leafRadius * 0.85} fill="#A0B0E8" stroke="none" />
+            <circle cx="17" cy="18" r={leafRadius * 1.1} fill="#A0B0E8" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#FFFFFF" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">Z26 · frosted blur</div>
+        <h3>Halo flouté + dark</h3>
+        <p class="caption">
+          Backdrop blur (filter Gaussian) derrière le pulsar. Premium atmosphérique dashboard.
+        </p>
+      </div>
+
+      <!-- Z27 — Z-layered (stroke fond autour de chaque sphère) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            {#each [{ x: 3, y: 12 }, { x: 21, y: 12 }] as p, i (i)}
+              <line x1="12" y1="12" x2={p.x} y2={p.y} />
+            {/each}
+            <line x1="12" y1="12" x2="7" y2="5" />
+            <line x1="7" y1="5" x2="4" y2="2.5" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" />
+            <line x1="12" y1="12" x2="17" y2="18" />
+            <line x1="17" y1="18" x2="20.5" y2="20.5" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            {#each [{ x: 4, y: 2.5 }, { x: 9.5, y: 1.5 }, { x: 3, y: 12 }, { x: 21, y: 12 }] as p, i (i)}
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={leafRadius * 0.95}
+                fill="#4A6CF7"
+                stroke="#fafbfc"
+                stroke-width={strokeWidth * 0.9}
+              />
+            {/each}
+            <circle
+              cx="17"
+              cy="18"
+              r={leafRadius * 1.2}
+              fill="#4A6CF7"
+              stroke="#fafbfc"
+              stroke-width={strokeWidth * 1.1}
+            />
+            <circle
+              cx="20.5"
+              cy="20.5"
+              r={leafRadius * 0.65}
+              fill="#4A6CF7"
+              stroke="#fafbfc"
+              stroke-width={strokeWidth * 0.7}
+            />
+          </svg>
+        </div>
+        <div class="num">Z27 · z-layered</div>
+        <h3>Stroke fond 3D plat</h3>
+        <p class="caption">
+          Chaque sphère détachée du fond via stroke blanc. Faux ordering 3D, lecture sophistiquée.
+        </p>
+      </div>
+
+      <!-- Z28 — Drop-shadow soft -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#4A6CF7"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <defs>
+              <filter id="z28-shadow" x="-30%" y="-30%" width="160%" height="160%">
+                <feDropShadow
+                  dx="0"
+                  dy="0.7"
+                  stdDeviation="0.45"
+                  flood-color="#1A1A1A"
+                  flood-opacity="0.22"
+                />
+              </filter>
+            </defs>
+            <g filter="url(#z28-shadow)">
+              {#each [{ x: 3, y: 12 }, { x: 21, y: 12 }] as p, i (i)}
+                <line x1="12" y1="12" x2={p.x} y2={p.y} />
+              {/each}
+              <line x1="12" y1="12" x2="7" y2="5" />
+              <line x1="7" y1="5" x2="4" y2="2.5" />
+              <line x1="7" y1="5" x2="9.5" y2="1.5" />
+              <line x1="12" y1="12" x2="17" y2="18" />
+              <line x1="17" y1="18" x2="20.5" y2="20.5" />
+              <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+              <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+              <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+              <circle cx="3" cy="12" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+              <circle cx="21" cy="12" r={leafRadius * 0.85} fill="#4A6CF7" stroke="none" />
+              <circle cx="17" cy="18" r={leafRadius * 1.1} fill="#4A6CF7" stroke="none" />
+              <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#4A6CF7" stroke="none" />
+            </g>
+          </svg>
+        </div>
+        <div class="num">Z28 · drop-shadow</div>
+        <h3>Ombre douce</h3>
+        <p class="caption">
+          Y01 avec ombre douce sous chaque élément. Sensation papier-collé matérielle.
+        </p>
+      </div>
+
+      <!-- Z29 — Lignes en gradient (chaque ligne fade vers la feuille) -->
+      <div class="card">
+        <div class="canvas" style="background: #fafbfc">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <defs>
+              <linearGradient
+                id="z29-l1"
+                x1="12"
+                y1="12"
+                x2="3"
+                y2="12"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop offset="0%" stop-color="#4A6CF7" />
+                <stop offset="100%" stop-color="#F87171" />
+              </linearGradient>
+              <linearGradient
+                id="z29-l2"
+                x1="12"
+                y1="12"
+                x2="21"
+                y2="12"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop offset="0%" stop-color="#4A6CF7" />
+                <stop offset="100%" stop-color="#FCD34D" />
+              </linearGradient>
+              <linearGradient
+                id="z29-l3"
+                x1="12"
+                y1="12"
+                x2="7"
+                y2="5"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop offset="0%" stop-color="#4A6CF7" />
+                <stop offset="100%" stop-color="#52E0C4" />
+              </linearGradient>
+              <linearGradient
+                id="z29-l4"
+                x1="12"
+                y1="12"
+                x2="17"
+                y2="18"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop offset="0%" stop-color="#4A6CF7" />
+                <stop offset="100%" stop-color="#6EE7B7" />
+              </linearGradient>
+            </defs>
+            <line x1="12" y1="12" x2="3" y2="12" stroke="url(#z29-l1)" />
+            <line x1="12" y1="12" x2="21" y2="12" stroke="url(#z29-l2)" />
+            <line x1="12" y1="12" x2="7" y2="5" stroke="url(#z29-l3)" />
+            <line x1="7" y1="5" x2="4" y2="2.5" stroke="#52E0C4" />
+            <line x1="7" y1="5" x2="9.5" y2="1.5" stroke="#52E0C4" />
+            <line x1="12" y1="12" x2="17" y2="18" stroke="url(#z29-l4)" />
+            <line x1="17" y1="18" x2="20.5" y2="20.5" stroke="#C4B5FD" />
+            <circle cx="12" cy="12" r={centerRadius} fill="#4A6CF7" stroke="none" />
+            <circle cx="4" cy="2.5" r={leafRadius * 0.85} fill="#52E0C4" stroke="none" />
+            <circle cx="9.5" cy="1.5" r={leafRadius * 0.85} fill="#52E0C4" stroke="none" />
+            <circle cx="3" cy="12" r={leafRadius * 0.85} fill="#F87171" stroke="none" />
+            <circle cx="21" cy="12" r={leafRadius * 0.85} fill="#FCD34D" stroke="none" />
+            <circle cx="17" cy="18" r={leafRadius * 1.1} fill="#6EE7B7" stroke="none" />
+            <circle cx="20.5" cy="20.5" r={leafRadius * 0.55} fill="#C4B5FD" stroke="none" />
+          </svg>
+        </div>
+        <div class="num">Z29 · gradient lines</div>
+        <h3>Lignes color-fade</h3>
+        <p class="caption">
+          Chaque ligne transitionne du pulsar bleu à la couleur de sa feuille. Spectacle hero.
+        </p>
+      </div>
+
+      <!-- Z30 — Maximaliste : combo de tous les effets (z + shadow + halo + hero) -->
+      <div class="card highlight">
+        <div class="canvas" style="background: #0d0d12">
+          <svg
+            viewBox="0 0 24 24"
+            width={scale}
+            height={scale}
+            fill="none"
+            stroke="#475569"
+            stroke-width={strokeWidth}
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <defs>
+              <filter id="z30-shadow" x="-30%" y="-30%" width="160%" height="160%">
+                <feDropShadow
+                  dx="0"
+                  dy="0.5"
+                  stdDeviation="0.4"
+                  flood-color="#000"
+                  flood-opacity="0.55"
+                />
+              </filter>
+              <radialGradient id="z30-pulsar" cx="40%" cy="40%" r="60%">
+                <stop offset="0%" stop-color="white" stop-opacity="0.95" />
+                <stop offset="55%" stop-color="#5B7FFF" />
+                <stop offset="100%" stop-color="#2542A8" />
+              </radialGradient>
+            </defs>
+            <!-- Halo derrière -->
+            <circle
+              cx="12"
+              cy="12"
+              r={centerRadius * 2.5}
+              fill="#5B7FFF"
+              fill-opacity="0.18"
+              stroke="none"
+            />
+            <g filter="url(#z30-shadow)">
+              {#each [{ x: 3, y: 12 }, { x: 21, y: 12 }] as p, i (i)}
+                <line x1="12" y1="12" x2={p.x} y2={p.y} />
+              {/each}
+              <line x1="12" y1="12" x2="7" y2="5" />
+              <line x1="7" y1="5" x2="4" y2="2.5" />
+              <line x1="7" y1="5" x2="9.5" y2="1.5" />
+              <line x1="12" y1="12" x2="17" y2="18" />
+              <line x1="17" y1="18" x2="20.5" y2="20.5" />
+              <circle
+                cx="12"
+                cy="12"
+                r={centerRadius * 1.25}
+                fill="url(#z30-pulsar)"
+                stroke="none"
+              />
+              <circle
+                cx="4"
+                cy="2.5"
+                r={leafRadius * 0.95}
+                fill="#F87171"
+                stroke="#0d0d12"
+                stroke-width={strokeWidth * 0.7}
+              />
+              <circle
+                cx="9.5"
+                cy="1.5"
+                r={leafRadius * 0.95}
+                fill="#FCD34D"
+                stroke="#0d0d12"
+                stroke-width={strokeWidth * 0.7}
+              />
+              <circle
+                cx="3"
+                cy="12"
+                r={leafRadius * 0.95}
+                fill="#52E0C4"
+                stroke="#0d0d12"
+                stroke-width={strokeWidth * 0.7}
+              />
+              <circle
+                cx="21"
+                cy="12"
+                r={leafRadius * 0.95}
+                fill="#FFD969"
+                stroke="#0d0d12"
+                stroke-width={strokeWidth * 0.7}
+              />
+              <circle
+                cx="17"
+                cy="18"
+                r={leafRadius * 1.2}
+                fill="#6EE7B7"
+                stroke="#0d0d12"
+                stroke-width={strokeWidth * 0.9}
+              />
+              <circle
+                cx="20.5"
+                cy="20.5"
+                r={leafRadius * 0.65}
+                fill="#C4B5FD"
+                stroke="#0d0d12"
+                stroke-width={strokeWidth * 0.6}
+              />
+            </g>
+          </svg>
+        </div>
+        <div class="num">Z30 · maximalist ⭐</div>
+        <h3>Combo tout-en-un</h3>
+        <p class="caption">
+          Gradient radial pulsar + halo + z-layered + drop-shadow + palette hero. La version « hero
+          of hero ».
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-block">
     <h2 class="section-title">Nouvelles directions · 2026-05-28</h2>
     <p class="section-lead">
       Six marks distincts dans des styles modernes — au-delà de la famille arboricole. Le <strong
@@ -4205,6 +5618,19 @@
     box-shadow:
       0 0 0 1px rgba(107, 138, 255, 0.25),
       0 6px 16px rgba(74, 108, 247, 0.12);
+  }
+
+  /* Sous-titre de section (Batch A / B / C) */
+  .section-subtitle {
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin: 1.6rem 0 0.6rem;
+    color: #475569;
+  }
+  :global(.dark) .section-subtitle {
+    color: #cbd5e1;
   }
 
   /* Grille plus dense pour le panel 20-variations (cartes plus compactes) */
