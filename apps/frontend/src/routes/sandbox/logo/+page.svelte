@@ -510,6 +510,187 @@
   // horizontal (n1.y ≠ n2.y systématiquement). Compositions organiques,
   // moins rigides que Y01.
   // ====================================================================
+  // Helper : raccourcit une ligne pour qu'elle ne touche pas les sphères.
+  // p1/p2 : centres des sphères ; r1/r2 : leurs rayons ; gap : marge
+  // additionnelle visible. Retourne x1/y1/x2/y2 du segment de ligne.
+  function shortLine(p1: Pt, p2: Pt, r1: number, r2: number, gap = 0.4) {
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    const ux = dx / len;
+    const uy = dy / len;
+    return {
+      x1: p1.x + ux * (r1 + gap),
+      y1: p1.y + uy * (r1 + gap),
+      x2: p2.x - ux * (r2 + gap),
+      y2: p2.y - uy * (r2 + gap),
+    };
+  }
+
+  // ====================================================================
+  // BATCH A v4 — 30 nouvelles dispositions (4e refonte).
+  // Conservé strictement comme Y01 : Y-fork NW (M(7,5) + twins(4,2.5) +
+  // (9.5,1.5)) + parent-lune SE (parent(17,18), lune(20.5,20.5)).
+  // Pulsar toujours centré (12,12).
+  // 25 variants à 2 nœuds normaux (n1.y ≠ n2.y, jamais alignés H)
+  // + 5 variants à 3 nœuds normaux.
+  // ====================================================================
+  const Y01_FORK_M: Pt = { x: 7, y: 5 };
+  const Y01_TWIN_A: Pt = { x: 4, y: 2.5 };
+  const Y01_TWIN_B: Pt = { x: 9.5, y: 1.5 };
+  const Y01_PARENT: Pt = { x: 17, y: 18 };
+  const Y01_LUNE: Pt = { x: 20.5, y: 20.5 };
+  function pv(id: string, title: string, caption: string, normals: Pt[]): PosVariant {
+    return {
+      id,
+      title,
+      caption,
+      pulsar: PC,
+      normals,
+      forkM: Y01_FORK_M,
+      twinA: Y01_TWIN_A,
+      twinB: Y01_TWIN_B,
+      parent: Y01_PARENT,
+      lune: Y01_LUNE,
+    };
+  }
+  const BATCH_A_V4: PosVariant[] = [
+    // — 25 variants avec 2 nœuds normaux (n1.y ≠ n2.y) —
+    pv('CB01', 'NW haut + SE bas', 'Diagonale NW-SE, normaux à hauteurs différentes.', [
+      { x: 5, y: 5 },
+      { x: 20, y: 18 },
+    ]),
+    pv('CB02', 'N haut + ESE bas', 'Axe vertical N + ESE décalé en y.', [
+      { x: 12, y: 4 },
+      { x: 21, y: 17 },
+    ]),
+    pv('CB03', 'NNW + SSE', 'NNW (haut) + SSE (très bas), axe quasi-vertical décalé.', [
+      { x: 6, y: 5 },
+      { x: 13, y: 21 },
+    ]),
+    pv('CB04', 'NE haut + SSW', 'NE coin + SSW bas, diagonale.', [
+      { x: 20, y: 5 },
+      { x: 8, y: 21 },
+    ]),
+    pv('CB05', 'WNW + SSE', 'WNW (ouest haut) + SSE (sud bas).', [
+      { x: 5, y: 8 },
+      { x: 15, y: 22 },
+    ]),
+    pv('CB06', 'N + WSW', 'N proche du sommet + WSW.', [
+      { x: 11, y: 4 },
+      { x: 5, y: 17 },
+    ]),
+    pv('CB07', 'ENE + SSE', 'ENE (haut-droit-mid) + SSE (sud bas).', [
+      { x: 20, y: 9 },
+      { x: 13, y: 22 },
+    ]),
+    pv('CB08', 'W + NNE', 'W (mid-gauche) + NNE (haut-droit-haut).', [
+      { x: 4, y: 11 },
+      { x: 15, y: 4 },
+    ]),
+    pv('CB09', 'N(top) + E', 'N coin très haut + E milieu-droit.', [
+      { x: 11, y: 3 },
+      { x: 22, y: 14 },
+    ]),
+    pv('CB10', 'NNW + ESE', 'NNW proche sommet + ESE mid-bas.', [
+      { x: 7, y: 3 },
+      { x: 20, y: 16 },
+    ]),
+    pv('CB11', 'WNW + SSE', 'WNW mid-gauche + SSE bas.', [
+      { x: 5, y: 10 },
+      { x: 13, y: 22 },
+    ]),
+    pv('CB12', 'NE + WSW', 'NE coin + WSW (asymétrie diagonale).', [
+      { x: 20, y: 7 },
+      { x: 5, y: 15 },
+    ]),
+    pv('CB13', 'N(close) + E', 'N proche pulsar + E un peu plus loin.', [
+      { x: 11, y: 5 },
+      { x: 22, y: 12 },
+    ]),
+    pv('CB14', 'N(top) + SSW', 'N très haut + SSW bas-gauche.', [
+      { x: 11, y: 3 },
+      { x: 7, y: 21 },
+    ]),
+    pv('CB15', 'E(close) + SW', 'E proche pulsar + SW (asymétrie).', [
+      { x: 20, y: 11 },
+      { x: 6, y: 20 },
+    ]),
+    pv('CB16', 'N + ESE', 'N (haut central) + ESE (mid-bas-droit).', [
+      { x: 11, y: 4 },
+      { x: 20, y: 15 },
+    ]),
+    pv('CB17', 'NW + SSE', 'NW (gauche haut) + SSE.', [
+      { x: 5, y: 7 },
+      { x: 13, y: 21 },
+    ]),
+    pv('CB18', 'NE + SW', 'NE + SW (diagonale, paire opposée).', [
+      { x: 20, y: 8 },
+      { x: 8, y: 20 },
+    ]),
+    pv('CB19', 'WNW + E', 'WNW (mid-gauche) + E (mid-droit-bas).', [
+      { x: 4, y: 9 },
+      { x: 22, y: 16 },
+    ]),
+    pv('CB20', 'N(close) + ESE', 'N proche pulsar + ESE plus bas.', [
+      { x: 11, y: 5 },
+      { x: 22, y: 18 },
+    ]),
+    pv('CB21', 'NNW(top) + E', 'NNW très haut + E proche mid.', [
+      { x: 7, y: 4 },
+      { x: 22, y: 11 },
+    ]),
+    pv('CB22', 'W + NNE', 'W (gauche mid) + NNE (top droit).', [
+      { x: 5, y: 11 },
+      { x: 15, y: 3 },
+    ]),
+    pv('CB23', 'ENE + SSE', 'ENE + SSE.', [
+      { x: 20, y: 10 },
+      { x: 13, y: 22 },
+    ]),
+    pv('CB24', 'WNW + NNE', 'WNW + NNE (les deux en haut).', [
+      { x: 5, y: 9 },
+      { x: 13, y: 4 },
+    ]),
+    pv('CB25', 'ESE + SSW', 'ESE + SSW (les deux en bas mais éloignés).', [
+      { x: 20, y: 15 },
+      { x: 7, y: 22 },
+    ]),
+
+    // — 5 variants avec 3 nœuds normaux —
+    pv(
+      'CB26',
+      '3n : triangle top+bottom',
+      '3 normaux en triangle (haut-gauche, haut-droit, bas).',
+      [
+        { x: 5, y: 5 },
+        { x: 20, y: 5 },
+        { x: 12, y: 21 },
+      ]
+    ),
+    pv('CB27', '3n : axe vertical + droite', '3 normaux : pair haut/bas + un à droite.', [
+      { x: 11, y: 4 },
+      { x: 11, y: 22 },
+      { x: 22, y: 13 },
+    ]),
+    pv('CB28', '3n : arc supérieur', '3 normaux en arc au-dessus du pulsar (NW, N, NE).', [
+      { x: 5, y: 6 },
+      { x: 12, y: 3 },
+      { x: 19, y: 6 },
+    ]),
+    pv('CB29', '3n : diagonale 3 points', "3 normaux le long d'une diagonale NW-SE.", [
+      { x: 4, y: 4 },
+      { x: 13, y: 13 },
+      { x: 22, y: 22 },
+    ]),
+    pv('CB30', '3n : distribués 120°', '3 normaux distribués à 120° autour du pulsar.', [
+      { x: 5, y: 8 },
+      { x: 20, y: 8 },
+      { x: 12, y: 22 },
+    ]),
+  ];
+
+  // (Old BATCH_A_V3 conservé en archive — non rendu)
   const BATCH_A_V3: PosVariant[] = [
     {
       id: 'CA01',
@@ -2779,6 +2960,542 @@
       title: 'Combo maximal Z13',
       caption:
         '3D slate + halo blanc + z-layered + lignes gradient + satellites Z13. La carte « hero of hero » de Philum.',
+      pulsarFill: '#1F2937',
+      pulsarGradient: ['#FFFFFF', '#475569', '#0F172A'],
+      pulsarHalo: '#FFFFFF',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+      lineGradientEnd: '#94A3B8',
+      zLayered: true,
+    },
+  ];
+
+  // ====================================================================
+  // BATCH W v3 — 30 variants avec EFFETS CUMULÉS (W15 référence) :
+  //   • Bord plus foncé sur TOUS les cercles (pulsar + satellites)
+  //   • Lignes qui NE touchent PAS les cercles (gap, via shortLine)
+  //   • Cercles à pleine taille (pas réduits)
+  // Palette Z13 auteur-kind dominante. 30 variants déclinent les effets
+  // halo, sphère 3D, z-layered, lignes gradient.
+  // ====================================================================
+  const BATCH_W_V3: WVariant[] = [
+    // — Groupe 1 : W15 + gap pur (sans halo ni 3D) (3) —
+    {
+      id: 'WV01',
+      title: 'W15 + gap (canonique)',
+      caption: 'W15 référence avec lignes raccourcies (gap). Dark rim + Z13 + gap pur.',
+      highlight: true,
+      pulsarFill: '#1F2937',
+      pulsarRim: '#000000',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WV02',
+      title: 'W15 + gap + rims épais',
+      caption: 'Identique WV01 mais rims plus épais (à voir au rendu, via stroke-width).',
+      pulsarFill: '#1F2937',
+      pulsarRim: '#000000',
+      twinFill: '#C0DD97',
+      twinRim: '#3F6F1A',
+      parentFill: '#B5D4F4',
+      parentRim: '#1F5BB5',
+      luneFill: '#CECBF6',
+      luneRim: '#5C50B5',
+      normalFill: '#FAC775',
+      normalRim: '#C57E10',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WV03',
+      title: 'W15 + gap + lignes claires',
+      caption: 'Lignes en gris très clair pour aération maximale.',
+      pulsarFill: '#1F2937',
+      pulsarRim: '#000000',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#94A3B8',
+    },
+
+    // — Groupe 2 : W15 + gap + halo coloré (5) —
+    {
+      id: 'WV04',
+      title: '+ halo blanc',
+      caption: 'W15 + gap + halo blanc autour pulsar. Aura quasar discrète.',
+      pulsarFill: '#1F2937',
+      pulsarRim: '#000000',
+      pulsarHalo: '#FFFFFF',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WV05',
+      title: '+ halo cyan',
+      caption: 'W15 + gap + halo cyan. Trou de ver.',
+      pulsarFill: '#1F2937',
+      pulsarRim: '#000000',
+      pulsarHalo: '#67E8F9',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WV06',
+      title: '+ halo emerald',
+      caption: 'W15 + gap + halo emerald (vert chercheur). Identité scientifique.',
+      pulsarFill: '#1F2937',
+      pulsarRim: '#000000',
+      pulsarHalo: '#6EE7B7',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WV07',
+      title: '+ halo violet',
+      caption: 'W15 + gap + halo violet (individu). Vibe éditoriale.',
+      pulsarFill: '#1F2937',
+      pulsarRim: '#000000',
+      pulsarHalo: '#C4B5FD',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WV08',
+      title: '+ halo gold',
+      caption: 'W15 + gap + halo gold (média). Chaleur éditoriale.',
+      pulsarFill: '#1F2937',
+      pulsarRim: '#000000',
+      pulsarHalo: '#FCD34D',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+
+    // — Groupe 3 : W15 + gap + sphère 3D pulsar coloré (6) —
+    {
+      id: 'WV09',
+      title: '+ 3D slate',
+      caption: 'W15 + gap + sphère 3D slate. Profondeur matérielle.',
+      highlight: true,
+      pulsarFill: '#1F2937',
+      pulsarGradient: ['#FFFFFF', '#475569', '#0F172A'],
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WV10',
+      title: '+ 3D blue',
+      caption: 'W15 + gap + sphère 3D bleu institution.',
+      pulsarFill: '#3B82F6',
+      pulsarGradient: ['#FFFFFF', '#3B82F6', '#1E3A8A'],
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WV11',
+      title: '+ 3D emerald',
+      caption: 'W15 + gap + sphère 3D emerald chercheur.',
+      pulsarFill: '#10B981',
+      pulsarGradient: ['#FFFFFF', '#10B981', '#064E3B'],
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WV12',
+      title: '+ 3D violet',
+      caption: 'W15 + gap + sphère 3D violet individu.',
+      pulsarFill: '#8B5CF6',
+      pulsarGradient: ['#FFFFFF', '#8B5CF6', '#5B21B6'],
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WV13',
+      title: '+ 3D cyan',
+      caption: 'W15 + gap + sphère 3D cyan (style W25 mais avec Z13).',
+      pulsarFill: '#06B6D4',
+      pulsarGradient: ['#FFFFFF', '#06B6D4', '#155E75'],
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WV14',
+      title: '+ 3D gold',
+      caption: 'W15 + gap + sphère 3D gold média.',
+      pulsarFill: '#F59E0B',
+      pulsarGradient: ['#FFFFFF', '#F59E0B', '#78350F'],
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+
+    // — Groupe 4 : W15 + gap + 3D + halo combinés (7) —
+    {
+      id: 'WV15',
+      title: '+ 3D slate + halo blanc',
+      caption: 'Profondeur slate + aura blanche.',
+      pulsarFill: '#1F2937',
+      pulsarGradient: ['#FFFFFF', '#475569', '#0F172A'],
+      pulsarHalo: '#FFFFFF',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WV16',
+      title: '+ 3D slate + halo cyan',
+      caption: 'Profondeur slate + aura cyan.',
+      pulsarFill: '#1F2937',
+      pulsarGradient: ['#FFFFFF', '#475569', '#0F172A'],
+      pulsarHalo: '#67E8F9',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WV17',
+      title: '+ 3D slate + halo emerald',
+      caption: 'Profondeur slate + aura emerald.',
+      pulsarFill: '#1F2937',
+      pulsarGradient: ['#FFFFFF', '#475569', '#0F172A'],
+      pulsarHalo: '#6EE7B7',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WV18',
+      title: '+ 3D slate + halo violet',
+      caption: 'Profondeur slate + aura violet.',
+      pulsarFill: '#1F2937',
+      pulsarGradient: ['#FFFFFF', '#475569', '#0F172A'],
+      pulsarHalo: '#C4B5FD',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WV19',
+      title: '+ 3D slate + halo gold',
+      caption: 'Profondeur slate + aura gold.',
+      pulsarFill: '#1F2937',
+      pulsarGradient: ['#FFFFFF', '#475569', '#0F172A'],
+      pulsarHalo: '#FCD34D',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WV20',
+      title: '+ 3D blue + halo blanc',
+      caption: 'Sphère 3D bleu institution + aura blanche.',
+      pulsarFill: '#3B82F6',
+      pulsarGradient: ['#FFFFFF', '#3B82F6', '#1E3A8A'],
+      pulsarHalo: '#FFFFFF',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WV21',
+      title: '+ 3D violet + halo blanc',
+      caption: 'Sphère 3D violet + aura blanche.',
+      pulsarFill: '#8B5CF6',
+      pulsarGradient: ['#FFFFFF', '#8B5CF6', '#5B21B6'],
+      pulsarHalo: '#FFFFFF',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+
+    // — Groupe 5 : W15 + gap + z-layered satellites (3) —
+    {
+      id: 'WV22',
+      title: '+ z-layered',
+      caption: 'W15 + gap + satellites détachés par stroke blanc (z-layered).',
+      pulsarFill: '#1F2937',
+      pulsarRim: '#000000',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+      zLayered: true,
+    },
+    {
+      id: 'WV23',
+      title: '+ z-layered + halo blanc',
+      caption: 'W15 + gap + z-layered + halo blanc.',
+      pulsarFill: '#1F2937',
+      pulsarRim: '#000000',
+      pulsarHalo: '#FFFFFF',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+      zLayered: true,
+    },
+    {
+      id: 'WV24',
+      title: '+ z-layered + 3D slate',
+      caption: 'W15 + gap + z-layered + sphère 3D slate.',
+      pulsarFill: '#1F2937',
+      pulsarGradient: ['#FFFFFF', '#475569', '#0F172A'],
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+      zLayered: true,
+    },
+
+    // — Groupe 6 : combos maximaux (6) —
+    {
+      id: 'WV25',
+      title: 'Combo : 3D + halo + z-layered (slate)',
+      caption: 'Sphère 3D slate + halo blanc + z-layered + gap + dark rim.',
+      highlight: true,
+      pulsarFill: '#1F2937',
+      pulsarGradient: ['#FFFFFF', '#475569', '#0F172A'],
+      pulsarHalo: '#FFFFFF',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+      zLayered: true,
+    },
+    {
+      id: 'WV26',
+      title: 'Combo cyan max + Z13',
+      caption: 'Sphère 3D cyan + halo cyan + z-layered + Z13 sats + gap.',
+      pulsarFill: '#06B6D4',
+      pulsarGradient: ['#FFFFFF', '#06B6D4', '#155E75'],
+      pulsarHalo: '#67E8F9',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+      zLayered: true,
+    },
+    {
+      id: 'WV27',
+      title: 'Combo emerald max + Z13',
+      caption: 'Sphère 3D emerald + halo emerald + z-layered + Z13 sats + gap.',
+      pulsarFill: '#10B981',
+      pulsarGradient: ['#FFFFFF', '#10B981', '#064E3B'],
+      pulsarHalo: '#6EE7B7',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+      zLayered: true,
+    },
+    {
+      id: 'WV28',
+      title: 'Combo violet max + Z13',
+      caption: 'Sphère 3D violet + halo violet + z-layered + Z13 sats + gap.',
+      pulsarFill: '#8B5CF6',
+      pulsarGradient: ['#FFFFFF', '#8B5CF6', '#5B21B6'],
+      pulsarHalo: '#C4B5FD',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+      zLayered: true,
+    },
+    {
+      id: 'WV29',
+      title: 'Combo gold max + Z13',
+      caption: 'Sphère 3D gold + halo gold + z-layered + Z13 sats + gap.',
+      pulsarFill: '#F59E0B',
+      pulsarGradient: ['#FFFFFF', '#F59E0B', '#78350F'],
+      pulsarHalo: '#FCD34D',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+      zLayered: true,
+    },
+    {
+      id: 'WV30',
+      title: 'Maximaliste final',
+      caption:
+        'Sphère 3D slate + halo blanc + z-layered + gap + lignes en gradient subtle + dark rims forcés. La carte « hero of hero » de Philum.',
+      highlight: true,
       pulsarFill: '#1F2937',
       pulsarGradient: ['#FFFFFF', '#475569', '#0F172A'],
       pulsarHalo: '#FFFFFF',
@@ -5875,15 +6592,17 @@
       3D, halo, pulsar évidé, wordmark, gradients, etc.).
     </p>
 
-    <h3 class="section-subtitle">Batch A v2 — CA01-CA30 · 30 dispositions HARMONIEUSES</h3>
+    <h3 class="section-subtitle">Batch A v4 — CB01-CB30 · Y01 special nodes + normaux variés</h3>
     <p class="section-lead">
-      Refonte v3. Toujours <strong>pulsar centré (12, 12)</strong>, <strong>2 nœuds normaux</strong>
-      + Y-fork + parent-lune. Les 2 normaux ne sont JAMAIS sur le même axe horizontal (n1.y ≠ n2.y systématiquement).
-      Compositions organiques, moins rigides que Y01 — chaque variant cherche un équilibre asymétrique
-      entre les 4 directions autour du pulsar.
+      Refonte v4 selon préférences user. <strong
+        >Nœuds spéciaux conservés exactement comme Y01</strong
+      >
+      (Y-fork NW + parent-lune SE, jamais déplacés). Seuls les nœuds normaux varient :
+      <strong>25 variants à 2 normaux</strong> (n1.y ≠ n2.y, jamais l'alignement horizontal de Y01)
+      + <strong>5 variants à 3 normaux</strong> (CB26-CB30). Pulsar centré (12, 12).
     </p>
     <div class="grid grid--dense">
-      {#each BATCH_A_V3 as v (v.id)}
+      {#each BATCH_A_V4 as v (v.id)}
         <div class="card">
           <div class="canvas" style="background: #fafbfc">
             <svg
@@ -6319,17 +7038,31 @@
       </div>
     </div>
 
-    <h3 class="section-subtitle">Batch W v2 — 5 conservés + 25 variations · FOND BLANC</h3>
+    <h3 class="section-subtitle">Batch W v3 — 30 variants avec lignes GAPPED + dark rim</h3>
     <p class="section-lead">
-      Refonte v2 selon préférences user. Les <strong>5 premières cartes</strong> sont conservées à
-      l'identique (bordure bleue) : <strong>W05</strong> Quasar, <strong>W08</strong>
-      Auteur-kind + halo, <strong>W15</strong> Z13 auteur-kind, <strong>W24</strong> 3D + Z13,
-      <strong>W25</strong> Combo cyan max. Les 25 suivantes (WK01-WK25) combinent et déclinent ces 5 directions
-      : halos colorés (cyan, emerald, violet, gold), sphère 3D pulsar variée, z-layered, satellites Z13
-      dominants. Tous sur fond blanc, traits fins (0.5).
+      Refonte v3 selon préférences user. Tous les variants cumulent :
+      <strong>1) bord plus foncé</strong> sur tous les cercles (pulsar + satellites) ;
+      <strong>2) lignes qui ne touchent PAS les cercles</strong> (gap calculé via shortLine, cercles à
+      taille pleine). W15 référence (Z13 auteur-kind). 30 variants déclinent halos colorés, sphères 3D,
+      z-layered, combos. Tous fond blanc.
     </p>
     <div class="grid grid--dense">
-      {#each BATCH_W_V2 as v (v.id)}
+      {#each BATCH_W_V3 as v (v.id)}
+        {@const PUL = { x: 12, y: 12 }}
+        {@const NA = { x: 3, y: 12 }}
+        {@const NB = { x: 21, y: 12 }}
+        {@const FM = { x: 7, y: 5 }}
+        {@const TA = { x: 4, y: 2.5 }}
+        {@const TB = { x: 9.5, y: 1.5 }}
+        {@const PA = { x: 17, y: 18 }}
+        {@const LU = { x: 20.5, y: 20.5 }}
+        {@const lA = shortLine(PUL, NA, centerRadius, leafRadius * 0.85)}
+        {@const lB = shortLine(PUL, NB, centerRadius, leafRadius * 0.85)}
+        {@const lF = shortLine(PUL, FM, centerRadius, 0)}
+        {@const lTA = shortLine(FM, TA, 0, leafRadius * 0.85)}
+        {@const lTB = shortLine(FM, TB, 0, leafRadius * 0.85)}
+        {@const lP = shortLine(PUL, PA, centerRadius, leafRadius * 1.1)}
+        {@const lL = shortLine(PA, LU, leafRadius * 1.1, leafRadius * 0.55)}
         <div class="card" class:highlight={v.highlight}>
           <div class="canvas" style="background: #FFFFFF">
             <svg
@@ -6367,13 +7100,13 @@
                 </defs>
               {/if}
               <g stroke={v.lineGradientEnd ? `url(#grad-line-${v.id})` : v.lineStroke}>
-                <line x1="12" y1="12" x2="3" y2="12" />
-                <line x1="12" y1="12" x2="21" y2="12" />
-                <line x1="12" y1="12" x2="7" y2="5" />
-                <line x1="7" y1="5" x2="4" y2="2.5" />
-                <line x1="7" y1="5" x2="9.5" y2="1.5" />
-                <line x1="12" y1="12" x2="17" y2="18" />
-                <line x1="17" y1="18" x2="20.5" y2="20.5" />
+                <line x1={lA.x1} y1={lA.y1} x2={lA.x2} y2={lA.y2} />
+                <line x1={lB.x1} y1={lB.y1} x2={lB.x2} y2={lB.y2} />
+                <line x1={lF.x1} y1={lF.y1} x2={lF.x2} y2={lF.y2} />
+                <line x1={lTA.x1} y1={lTA.y1} x2={lTA.x2} y2={lTA.y2} />
+                <line x1={lTB.x1} y1={lTB.y1} x2={lTB.x2} y2={lTB.y2} />
+                <line x1={lP.x1} y1={lP.y1} x2={lP.x2} y2={lP.y2} />
+                <line x1={lL.x1} y1={lL.y1} x2={lL.x2} y2={lL.y2} />
               </g>
               {#if v.pulsarHalo}
                 <circle
