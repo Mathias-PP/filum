@@ -3513,6 +3513,723 @@
     },
   ];
 
+  // ====================================================================
+  // BATCH W v4 — 40 variants avec STROKE FOND BLANC (style V18) +
+  // dark rim sur chaque sphère. Disposition fixée à CB12 (NE + WSW
+  // normaux, Y-fork NW conservé, parent-lune SE conservé).
+  // Rendu : pour chaque sphère, double cercle = stroke blanc large (fond
+  // qui « casse » la ligne) + cercle coloré avec dark rim par-dessus.
+  // 30 cartes basées sur préférences user, 10 cartes innovantes (★).
+  // ====================================================================
+  type WV4Variant = WVariant & {
+    xSpikes?: boolean;
+    orbitalRings?: boolean;
+    dashedLines?: boolean;
+    hollowPulsar?: boolean;
+    squarePulsar?: boolean;
+    thickLines?: boolean;
+  };
+  const BATCH_W_V4: WV4Variant[] = [
+    // — Groupe A : W15 base + stroke fond + dark rim (5) —
+    {
+      id: 'WX01',
+      title: 'W15 + stroke fond (canonique)',
+      caption: 'Z13 auteur-kind + dark rim + stroke fond blanc (style V18) sur chaque sphère.',
+      highlight: true,
+      pulsarFill: '#1F2937',
+      pulsarRim: '#000000',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WX02',
+      title: '+ halo blanc',
+      caption: 'WX01 + halo blanc autour du pulsar.',
+      pulsarFill: '#1F2937',
+      pulsarRim: '#000000',
+      pulsarHalo: '#FFFFFF',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WX03',
+      title: '+ halo cyan',
+      caption: 'WX01 + halo cyan (style ZB14 trou de ver).',
+      pulsarFill: '#1F2937',
+      pulsarRim: '#000000',
+      pulsarHalo: '#67E8F9',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WX04',
+      title: '+ halo emerald',
+      caption: 'WX01 + halo emerald chercheur.',
+      pulsarFill: '#1F2937',
+      pulsarRim: '#000000',
+      pulsarHalo: '#6EE7B7',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WX05',
+      title: '+ halo violet',
+      caption: 'WX01 + halo violet (style ZB15 aurore).',
+      pulsarFill: '#1F2937',
+      pulsarRim: '#000000',
+      pulsarHalo: '#C4B5FD',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+
+    // — Groupe B : Sphère 3D pulsar + Z13 + fond + rim (8) —
+    {
+      id: 'WX06',
+      title: '+ 3D slate',
+      caption: 'Z13 + sphère 3D slate (radial gradient) + stroke fond.',
+      highlight: true,
+      pulsarFill: '#1F2937',
+      pulsarGradient: ['#FFFFFF', '#475569', '#0F172A'],
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WX07',
+      title: '+ 3D bleu institution',
+      caption: 'Sphère 3D bleu + Z13 + fond.',
+      pulsarFill: '#3B82F6',
+      pulsarGradient: ['#FFFFFF', '#3B82F6', '#1E3A8A'],
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WX08',
+      title: '+ 3D emerald',
+      caption: 'Sphère 3D emerald + Z13 + fond.',
+      pulsarFill: '#10B981',
+      pulsarGradient: ['#FFFFFF', '#10B981', '#064E3B'],
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WX09',
+      title: '+ 3D violet',
+      caption: 'Sphère 3D violet + Z13 + fond.',
+      pulsarFill: '#8B5CF6',
+      pulsarGradient: ['#FFFFFF', '#8B5CF6', '#5B21B6'],
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WX10',
+      title: '+ 3D cyan',
+      caption: 'Sphère 3D cyan + Z13 + fond.',
+      pulsarFill: '#06B6D4',
+      pulsarGradient: ['#FFFFFF', '#06B6D4', '#155E75'],
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WX11',
+      title: '+ 3D gold',
+      caption: 'Sphère 3D gold média + Z13 + fond.',
+      pulsarFill: '#F59E0B',
+      pulsarGradient: ['#FFFFFF', '#F59E0B', '#78350F'],
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WX12',
+      title: '+ 3D coral',
+      caption: 'Sphère 3D coral + Z13 + fond.',
+      pulsarFill: '#F87171',
+      pulsarGradient: ['#FFFFFF', '#F87171', '#991B1B'],
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WX13',
+      title: '+ 3D slate + halo blanc',
+      caption: 'Sphère 3D slate + halo blanc + Z13 + fond. Le « hero » premium.',
+      highlight: true,
+      pulsarFill: '#1F2937',
+      pulsarGradient: ['#FFFFFF', '#475569', '#0F172A'],
+      pulsarHalo: '#FFFFFF',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+
+    // — Groupe C : 3D + halo coloré + Z13 + fond (8) —
+    {
+      id: 'WX14',
+      title: '3D slate + halo cyan',
+      caption: 'Combo slate + cyan + Z13 + fond.',
+      pulsarFill: '#1F2937',
+      pulsarGradient: ['#FFFFFF', '#475569', '#0F172A'],
+      pulsarHalo: '#67E8F9',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WX15',
+      title: '3D slate + halo emerald',
+      caption: 'Combo slate + emerald + Z13 + fond.',
+      pulsarFill: '#1F2937',
+      pulsarGradient: ['#FFFFFF', '#475569', '#0F172A'],
+      pulsarHalo: '#6EE7B7',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WX16',
+      title: '3D slate + halo violet',
+      caption: 'Combo slate + violet + Z13 + fond.',
+      pulsarFill: '#1F2937',
+      pulsarGradient: ['#FFFFFF', '#475569', '#0F172A'],
+      pulsarHalo: '#C4B5FD',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WX17',
+      title: '3D slate + halo gold',
+      caption: 'Combo slate + gold + Z13 + fond.',
+      pulsarFill: '#1F2937',
+      pulsarGradient: ['#FFFFFF', '#475569', '#0F172A'],
+      pulsarHalo: '#FCD34D',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WX18',
+      title: '3D bleu + halo blanc',
+      caption: 'Combo bleu institution + halo blanc + Z13 + fond.',
+      pulsarFill: '#3B82F6',
+      pulsarGradient: ['#FFFFFF', '#3B82F6', '#1E3A8A'],
+      pulsarHalo: '#FFFFFF',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WX19',
+      title: '3D emerald + halo blanc',
+      caption: 'Combo emerald + halo blanc + Z13 + fond.',
+      pulsarFill: '#10B981',
+      pulsarGradient: ['#FFFFFF', '#10B981', '#064E3B'],
+      pulsarHalo: '#FFFFFF',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WX20',
+      title: '3D violet + halo blanc',
+      caption: 'Combo violet + halo blanc + Z13 + fond.',
+      pulsarFill: '#8B5CF6',
+      pulsarGradient: ['#FFFFFF', '#8B5CF6', '#5B21B6'],
+      pulsarHalo: '#FFFFFF',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WX21',
+      title: '3D cyan + halo cyan',
+      caption: 'Mono cyan max (W25 réinterprété) + Z13 sats + fond.',
+      pulsarFill: '#06B6D4',
+      pulsarGradient: ['#FFFFFF', '#06B6D4', '#155E75'],
+      pulsarHalo: '#67E8F9',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+
+    // — Groupe D : Quasar (pulsar blanc + halo coloré) + Z13 + fond (5) —
+    {
+      id: 'WX22',
+      title: 'Quasar W05 + Z13',
+      caption: 'Pulsar blanc + halo bleu institution + Z13 sats + fond.',
+      pulsarFill: '#FFFFFF',
+      pulsarRim: '#1E40AF',
+      pulsarHalo: '#3B82F6',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WX23',
+      title: 'Quasar halo emerald',
+      caption: 'Pulsar blanc + halo emerald + Z13 + fond.',
+      pulsarFill: '#FFFFFF',
+      pulsarRim: '#047857',
+      pulsarHalo: '#10B981',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WX24',
+      title: 'Quasar halo violet',
+      caption: 'Pulsar blanc + halo violet + Z13 + fond.',
+      pulsarFill: '#FFFFFF',
+      pulsarRim: '#7C3AED',
+      pulsarHalo: '#8B5CF6',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WX25',
+      title: 'Quasar halo gold',
+      caption: 'Pulsar blanc + halo gold + Z13 + fond.',
+      pulsarFill: '#FFFFFF',
+      pulsarRim: '#92400E',
+      pulsarHalo: '#F59E0B',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WX26',
+      title: 'Quasar halo coral',
+      caption: 'Pulsar blanc + halo coral + Z13 + fond.',
+      pulsarFill: '#FFFFFF',
+      pulsarRim: '#991B1B',
+      pulsarHalo: '#F87171',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+
+    // — Groupe E : Combos maximaux (4) —
+    {
+      id: 'WX27',
+      title: 'Combo slate max',
+      caption: '3D slate + halo blanc + Z13 + fond. Premium discret.',
+      highlight: true,
+      pulsarFill: '#1F2937',
+      pulsarGradient: ['#FFFFFF', '#475569', '#0F172A'],
+      pulsarHalo: '#FFFFFF',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WX28',
+      title: 'Combo cyan max',
+      caption: '3D cyan + halo cyan + Z13 + fond.',
+      pulsarFill: '#06B6D4',
+      pulsarGradient: ['#FFFFFF', '#06B6D4', '#155E75'],
+      pulsarHalo: '#67E8F9',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WX29',
+      title: 'Combo emerald max',
+      caption: '3D emerald + halo emerald + Z13 + fond.',
+      pulsarFill: '#10B981',
+      pulsarGradient: ['#FFFFFF', '#10B981', '#064E3B'],
+      pulsarHalo: '#6EE7B7',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+    },
+    {
+      id: 'WX30',
+      title: 'Maximaliste classique',
+      caption: '3D slate + halo blanc + Z13 + fond + lignes gradient subtle.',
+      pulsarFill: '#1F2937',
+      pulsarGradient: ['#FFFFFF', '#475569', '#0F172A'],
+      pulsarHalo: '#FFFFFF',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+      lineGradientEnd: '#94A3B8',
+    },
+
+    // ════════════════════════════════════════════════════════════════
+    // ★ INNOVATIONS (WX31-WX40) — mes propres suggestions
+    // ════════════════════════════════════════════════════════════════
+    {
+      id: 'WX31',
+      title: '★ X-spikes diffraction',
+      caption:
+        'Pulsar 3D + 4 fines lignes de diffraction stellaire (croix). Évoque l’étoile lointaine.',
+      pulsarFill: '#1F2937',
+      pulsarGradient: ['#FFFFFF', '#475569', '#0F172A'],
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+      xSpikes: true,
+    },
+    {
+      id: 'WX32',
+      title: '★ Anneaux orbitaux',
+      caption: '2 anneaux concentriques pointillés autour du pulsar — orbites cosmiques.',
+      pulsarFill: '#1F2937',
+      pulsarGradient: ['#FFFFFF', '#475569', '#0F172A'],
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+      orbitalRings: true,
+    },
+    {
+      id: 'WX33',
+      title: '★ Lignes pointillées',
+      caption: 'Lignes en dasharray + 3D + Z13 + fond. Vibe data-graph / blueprint.',
+      pulsarFill: '#1F2937',
+      pulsarGradient: ['#FFFFFF', '#475569', '#0F172A'],
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+      dashedLines: true,
+    },
+    {
+      id: 'WX34',
+      title: '★ Pulsar évidé',
+      caption: 'Pulsar en anneau (fill blanc + rim épais). Z13 + fond. Style minimal / outline.',
+      pulsarFill: '#FFFFFF',
+      pulsarRim: '#1F2937',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+      hollowPulsar: true,
+    },
+    {
+      id: 'WX35',
+      title: '★ Lignes gradient hero',
+      caption: '3D slate + lignes en gradient slate→cyan + Z13 + fond.',
+      pulsarFill: '#1F2937',
+      pulsarGradient: ['#FFFFFF', '#475569', '#0F172A'],
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#1F2937',
+      lineGradientEnd: '#06B6D4',
+    },
+    {
+      id: 'WX36',
+      title: '★ Pulsar carré arrondi',
+      caption: 'Pulsar en rect arrondi (8% radius). Z13 + fond. Modernité tech.',
+      pulsarFill: '#1F2937',
+      pulsarRim: '#000000',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+      squarePulsar: true,
+    },
+    {
+      id: 'WX37',
+      title: '★ Lignes épaisses',
+      caption: 'Lignes ×1.8 plus épaisses pour solidité + 3D + Z13 + fond.',
+      pulsarFill: '#1F2937',
+      pulsarGradient: ['#FFFFFF', '#475569', '#0F172A'],
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+      thickLines: true,
+    },
+    {
+      id: 'WX38',
+      title: '★ X-spikes + halo',
+      caption: 'X-spikes + halo blanc + 3D + Z13 + fond. Étoile éclatante.',
+      pulsarFill: '#1F2937',
+      pulsarGradient: ['#FFFFFF', '#475569', '#0F172A'],
+      pulsarHalo: '#FFFFFF',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+      xSpikes: true,
+    },
+    {
+      id: 'WX39',
+      title: '★ Orbites + halo cyan',
+      caption: 'Anneaux orbitaux + halo cyan + 3D + Z13 + fond. Cosmique.',
+      pulsarFill: '#1F2937',
+      pulsarGradient: ['#FFFFFF', '#475569', '#0F172A'],
+      pulsarHalo: '#67E8F9',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+      orbitalRings: true,
+    },
+    {
+      id: 'WX40',
+      title: '★ Avant-garde max',
+      caption:
+        'TOUT cumulé : 3D + halo blanc + X-spikes + orbites + lignes gradient + Z13 + fond + dark rim.',
+      highlight: true,
+      pulsarFill: '#1F2937',
+      pulsarGradient: ['#FFFFFF', '#475569', '#0F172A'],
+      pulsarHalo: '#FFFFFF',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#1F2937',
+      lineGradientEnd: '#06B6D4',
+      xSpikes: true,
+      orbitalRings: true,
+    },
+  ];
+
   // Spiral V10 — pré-calcul (les `{@const}` ne sont pas valides hors blocs Svelte)
   const _spiralTurns = 1.8;
   const _spiralSamples = 60;
@@ -7036,6 +7753,289 @@
           Deux Y-forks au-dessus + parent-lune SE. 7 nœuds — bibliographie à deux paires citées.
         </p>
       </div>
+    </div>
+
+    <h3 class="section-subtitle">
+      Batch W v4 — 40 variants STROKE FOND BLANC (style V18) + disposition CB12
+    </h3>
+    <p class="section-lead">
+      Refonte v4 : l’effet souhaité est un <strong
+        >stroke fond blanc épais autour de chaque sphère</strong
+      >
+      (comme V18) qui « casse » visuellement la ligne juste avant le cercle — pas un vrai gap dans la
+      ligne. Chaque sphère = double cercle : stroke blanc large (fond) + cercle coloré avec
+      <strong>dark rim fin</strong> par-dessus. Disposition fixée à <strong>CB12</strong> (normaux NE
+      à (20,7) + WSW à (5,15), Y-fork NW conservé, parent-lune SE conservé). 30 cartes basées sur les
+      préférences accumulées (Z13 auteur-kind, halos colorés ZB14/ZB15, sphère 3D ZC33, combos maximaux),
+      10 cartes innovantes marquées ★ (X-spikes, anneaux orbitaux, lignes pointillées, pulsar évidé, pulsar
+      rect arrondi, etc.).
+    </p>
+    <div class="grid grid--dense">
+      {#each BATCH_W_V4 as v (v.id)}
+        <div class="card" class:highlight={v.highlight}>
+          <div class="canvas" style="background: #FFFFFF">
+            <svg
+              viewBox="0 0 24 24"
+              width={scale}
+              height={scale}
+              fill="none"
+              stroke={v.lineStroke}
+              stroke-width="0.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              {#if v.pulsarGradient || v.lineGradientEnd}
+                <defs>
+                  {#if v.pulsarGradient}
+                    <radialGradient id="grad-pulsar-v4-{v.id}" cx="40%" cy="40%" r="60%">
+                      <stop offset="0%" stop-color={v.pulsarGradient[0]} />
+                      <stop offset="55%" stop-color={v.pulsarGradient[1]} />
+                      <stop offset="100%" stop-color={v.pulsarGradient[2]} />
+                    </radialGradient>
+                  {/if}
+                  {#if v.lineGradientEnd}
+                    <linearGradient
+                      id="grad-line-v4-{v.id}"
+                      x1="0"
+                      y1="0"
+                      x2="24"
+                      y2="24"
+                      gradientUnits="userSpaceOnUse"
+                    >
+                      <stop offset="0%" stop-color={v.lineStroke} />
+                      <stop offset="100%" stop-color={v.lineGradientEnd} />
+                    </linearGradient>
+                  {/if}
+                </defs>
+              {/if}
+              <!-- Lignes pleines (centre→centre). Le « gap » visuel viendra du stroke fond blanc des sphères. -->
+              <g
+                stroke={v.lineGradientEnd ? `url(#grad-line-v4-${v.id})` : v.lineStroke}
+                stroke-width={v.thickLines ? 0.9 : 0.5}
+                stroke-dasharray={v.dashedLines ? '0.8 0.6' : undefined}
+              >
+                <line x1="12" y1="12" x2="20" y2="7" />
+                <line x1="12" y1="12" x2="5" y2="15" />
+                <line x1="12" y1="12" x2="7" y2="5" />
+                <line x1="7" y1="5" x2="4" y2="2.5" />
+                <line x1="7" y1="5" x2="9.5" y2="1.5" />
+                <line x1="12" y1="12" x2="17" y2="18" />
+                <line x1="17" y1="18" x2="20.5" y2="20.5" />
+              </g>
+
+              <!-- Halo coloré pulsar (sous tout le reste) -->
+              {#if v.pulsarHalo}
+                <circle
+                  cx="12"
+                  cy="12"
+                  r={centerRadius * 2.4}
+                  fill={v.pulsarHalo}
+                  fill-opacity="0.14"
+                  stroke="none"
+                />
+                <circle
+                  cx="12"
+                  cy="12"
+                  r={centerRadius * 1.7}
+                  fill={v.pulsarHalo}
+                  fill-opacity="0.28"
+                  stroke="none"
+                />
+              {/if}
+
+              <!-- Anneaux orbitaux (★ WX32, WX39) -->
+              {#if v.orbitalRings}
+                <circle
+                  cx="12"
+                  cy="12"
+                  r={centerRadius * 1.6}
+                  fill="none"
+                  stroke="#94A3B8"
+                  stroke-width="0.25"
+                  stroke-dasharray="0.4 0.5"
+                />
+                <circle
+                  cx="12"
+                  cy="12"
+                  r={centerRadius * 2.05}
+                  fill="none"
+                  stroke="#CBD5E1"
+                  stroke-width="0.22"
+                  stroke-dasharray="0.4 0.5"
+                />
+              {/if}
+
+              <!-- Pulsar : stroke fond blanc épais d'abord, puis fill coloré + dark rim -->
+              {#if v.squarePulsar}
+                <rect
+                  x={12 - centerRadius}
+                  y={12 - centerRadius}
+                  width={centerRadius * 2}
+                  height={centerRadius * 2}
+                  rx={centerRadius * 0.35}
+                  fill="none"
+                  stroke="#FFFFFF"
+                  stroke-width="1.6"
+                />
+                <rect
+                  x={12 - centerRadius}
+                  y={12 - centerRadius}
+                  width={centerRadius * 2}
+                  height={centerRadius * 2}
+                  rx={centerRadius * 0.35}
+                  fill={v.pulsarGradient ? `url(#grad-pulsar-v4-${v.id})` : v.pulsarFill}
+                  stroke={v.pulsarRim ?? 'none'}
+                  stroke-width={v.pulsarRim ? 0.4 : 0}
+                />
+              {:else}
+                <circle
+                  cx="12"
+                  cy="12"
+                  r={centerRadius}
+                  fill="none"
+                  stroke="#FFFFFF"
+                  stroke-width="1.6"
+                />
+                <circle
+                  cx="12"
+                  cy="12"
+                  r={centerRadius}
+                  fill={v.pulsarGradient ? `url(#grad-pulsar-v4-${v.id})` : v.pulsarFill}
+                  stroke={v.pulsarRim ?? 'none'}
+                  stroke-width={v.pulsarRim ? (v.hollowPulsar ? 0.7 : 0.4) : 0}
+                />
+              {/if}
+
+              <!-- X-spikes (★ WX31, WX38, WX40) — par-dessus le pulsar -->
+              {#if v.xSpikes}
+                <g stroke="#FFFFFF" stroke-width="0.35" stroke-linecap="round" opacity="0.85">
+                  <line x1={12 - centerRadius * 2} y1="12" x2={12 + centerRadius * 2} y2="12" />
+                  <line x1="12" y1={12 - centerRadius * 2} x2="12" y2={12 + centerRadius * 2} />
+                  <line
+                    x1={12 - centerRadius * 1.4}
+                    y1={12 - centerRadius * 1.4}
+                    x2={12 + centerRadius * 1.4}
+                    y2={12 + centerRadius * 1.4}
+                  />
+                  <line
+                    x1={12 - centerRadius * 1.4}
+                    y1={12 + centerRadius * 1.4}
+                    x2={12 + centerRadius * 1.4}
+                    y2={12 - centerRadius * 1.4}
+                  />
+                </g>
+              {/if}
+
+              <!-- Satellites : pour chaque sphère, stroke fond blanc large + cercle coloré dark rim -->
+              <!-- twin A (4, 2.5) -->
+              <circle
+                cx="4"
+                cy="2.5"
+                r={leafRadius * 0.85}
+                fill="none"
+                stroke="#FFFFFF"
+                stroke-width="1.4"
+              />
+              <circle
+                cx="4"
+                cy="2.5"
+                r={leafRadius * 0.85}
+                fill={v.twinFill}
+                stroke={v.twinRim ?? 'none'}
+                stroke-width={v.twinRim ? 0.4 : 0}
+              />
+              <!-- twin B (9.5, 1.5) -->
+              <circle
+                cx="9.5"
+                cy="1.5"
+                r={leafRadius * 0.85}
+                fill="none"
+                stroke="#FFFFFF"
+                stroke-width="1.4"
+              />
+              <circle
+                cx="9.5"
+                cy="1.5"
+                r={leafRadius * 0.85}
+                fill={v.twinFill}
+                stroke={v.twinRim ?? 'none'}
+                stroke-width={v.twinRim ? 0.4 : 0}
+              />
+              <!-- normal A (20, 7) -->
+              <circle
+                cx="20"
+                cy="7"
+                r={leafRadius * 0.85}
+                fill="none"
+                stroke="#FFFFFF"
+                stroke-width="1.4"
+              />
+              <circle
+                cx="20"
+                cy="7"
+                r={leafRadius * 0.85}
+                fill={v.normalFill}
+                stroke={v.normalRim ?? 'none'}
+                stroke-width={v.normalRim ? 0.4 : 0}
+              />
+              <!-- normal B (5, 15) -->
+              <circle
+                cx="5"
+                cy="15"
+                r={leafRadius * 0.85}
+                fill="none"
+                stroke="#FFFFFF"
+                stroke-width="1.4"
+              />
+              <circle
+                cx="5"
+                cy="15"
+                r={leafRadius * 0.85}
+                fill={v.normalFill}
+                stroke={v.normalRim ?? 'none'}
+                stroke-width={v.normalRim ? 0.4 : 0}
+              />
+              <!-- parent (17, 18) -->
+              <circle
+                cx="17"
+                cy="18"
+                r={leafRadius * 1.1}
+                fill="none"
+                stroke="#FFFFFF"
+                stroke-width="1.5"
+              />
+              <circle
+                cx="17"
+                cy="18"
+                r={leafRadius * 1.1}
+                fill={v.parentFill}
+                stroke={v.parentRim ?? 'none'}
+                stroke-width={v.parentRim ? 0.45 : 0}
+              />
+              <!-- lune (20.5, 20.5) -->
+              <circle
+                cx="20.5"
+                cy="20.5"
+                r={leafRadius * 0.55}
+                fill="none"
+                stroke="#FFFFFF"
+                stroke-width="1.2"
+              />
+              <circle
+                cx="20.5"
+                cy="20.5"
+                r={leafRadius * 0.55}
+                fill={v.luneFill}
+                stroke={v.luneRim ?? 'none'}
+                stroke-width={v.luneRim ? 0.35 : 0}
+              />
+            </svg>
+          </div>
+          <div class="num">{v.id}</div>
+          <h3>{v.title}</h3>
+          <p class="caption">{v.caption}</p>
+        </div>
+      {/each}
     </div>
 
     <h3 class="section-subtitle">Batch W v3 — 30 variants avec lignes GAPPED + dark rim</h3>
