@@ -98,7 +98,7 @@
           </button>
           <a href="/" class="flex items-center gap-2">
             <Logo size={28} className="text-info" />
-            <span class="text-base font-serif font-medium text-ink-primary">Filum</span>
+            <span class="text-base font-serif font-medium text-ink-primary">Philum</span>
           </a>
         </div>
 
@@ -222,7 +222,7 @@
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <div class="flex flex-col md:flex-row items-center justify-between gap-3 text-sm">
         <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-ink-tertiary">
-          <span>© 2026 Filum</span>
+          <span>© 2026 Philum</span>
           <span aria-hidden="true">·</span>
           <a href="/about" class="hover:text-ink-primary transition-colors">À propos</a>
           <span aria-hidden="true">·</span>

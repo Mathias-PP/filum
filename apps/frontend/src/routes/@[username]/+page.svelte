@@ -26,7 +26,7 @@
 </script>
 
 <svelte:head>
-  <title>{profile?.display_name || username} - Filum</title>
+  <title>{profile?.display_name || username} - Philum</title>
 </svelte:head>
 
 <div class="min-h-screen bg-surface-secondary">

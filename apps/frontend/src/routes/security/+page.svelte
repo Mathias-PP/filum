@@ -1,15 +1,15 @@
 <svelte:head>
-  <title>Sécurité — Filum</title>
+  <title>Sécurité — Philum</title>
   <meta
     name="description"
-    content="Comment Filum garantit l'identité des créateur·ice·s et l'authenticité de leurs revendications de contenu : signature Ed25519, hash SHA-256, gestion des clés."
+    content="Comment Philum garantit l'identité des créateur·ice·s et l'authenticité de leurs revendications de contenu : signature Ed25519, hash SHA-256, gestion des clés."
   />
 </svelte:head>
 
 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
   <h1 class="text-3xl sm:text-4xl font-bold text-ink-primary mb-4">Sécurité et cryptographie</h1>
   <p class="text-xl text-ink-secondary mb-12">
-    Filum est conçu pour que vos revendications de contenu soient
+    Philum est conçu pour que vos revendications de contenu soient
     <strong>vérifiables</strong> par n'importe qui. Voici comment.
   </p>
 
@@ -22,13 +22,13 @@
     <p class="text-ink-secondary leading-relaxed">
       Ce qui est signé, ce sont vos <strong>liens créateur·ice ↔ contenu</strong> : à chaque fois
       que vous revendiquez un contenu original (vidéo, article, podcast, post…), un triplet (votre
-      identité Filum, l'URL du contenu, la date d'attestation) est signé avec votre clé Ed25519.
+      identité Philum, l'URL du contenu, la date d'attestation) est signé avec votre clé Ed25519.
       Cela prouve que <em>vous</em> revendiquez <em>ce contenu</em> à <em>cette date précise</em>.
     </p>
 
     <h2 class="text-2xl font-semibold text-ink-primary mt-12 mb-4">Signature Ed25519</h2>
     <p class="text-ink-secondary leading-relaxed">
-      Filum utilise Ed25519, un standard moderne de signature numérique reconnu pour sa sécurité et
+      Philum utilise Ed25519, un standard moderne de signature numérique reconnu pour sa sécurité et
       sa rapidité, utilisé notamment par <strong>SSH, Tor, OpenBSD et les blockchains</strong>.
     </p>
 
@@ -91,7 +91,7 @@
       n'importe qui de vérifier vos signatures.
     </p>
     <p class="text-ink-secondary leading-relaxed">
-      Ce modèle signifie que Filum lui-même ne peut pas signer à votre place sans votre session. La
+      Ce modèle signifie que Philum lui-même ne peut pas signer à votre place sans votre session. La
       signature est déclenchée uniquement après authentification.
     </p>
 

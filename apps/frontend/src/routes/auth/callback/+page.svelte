@@ -35,7 +35,7 @@
 </script>
 
 <svelte:head>
-  <title>Authentification — Filum</title>
+  <title>Authentification — Philum</title>
 </svelte:head>
 
 <div class="flex items-center justify-center min-h-[60vh]">

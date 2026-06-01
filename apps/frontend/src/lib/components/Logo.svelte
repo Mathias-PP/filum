@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Filum logo — V11 design (validated in /sandbox/logo).
+  // Philum logo — V11 design (validated in /sandbox/logo).
   // Structure: 6 branches around a central node, alternating fork (2 leaves)
   // and simple (1 leaf), at 60° intervals — perfect 3-fold rotational symmetry.
   // - 3 forks at angles -90°, 30°, 150°: junction at distance 6, leaves at

@@ -76,7 +76,7 @@
       ...(card.description ? { description: card.description } : {}),
       publisher: {
         '@type': 'Organization',
-        name: 'Filum',
+        name: 'Philum',
         url: 'https://filum-eight.vercel.app/',
       },
       mainEntityOfPage: publicUrl,
@@ -86,14 +86,14 @@
 </script>
 
 <svelte:head>
-  <title>{card.title} — Filum</title>
+  <title>{card.title} — Philum</title>
   <meta name="description" content={card.description ?? card.title} />
   <meta property="og:title" content={card.title} />
   <meta property="og:description" content={card.description ?? card.title} />
   <meta property="og:type" content="article" />
   <meta property="og:url" content={publicUrl} />
   <meta property="og:image" content={ogImageUrl} />
-  <meta property="og:site_name" content="Filum" />
+  <meta property="og:site_name" content="Philum" />
   <meta property="article:author" content={card.creator.display_name ?? card.creator.slug} />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:image" content={ogImageUrl} />

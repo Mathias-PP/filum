@@ -1,8 +1,8 @@
 <svelte:head>
-  <title>Confidentialité — Filum</title>
+  <title>Confidentialité — Philum</title>
   <meta
     name="description"
-    content="Politique de confidentialité de Filum : données collectées, durée de conservation, droits."
+    content="Politique de confidentialité de Philum : données collectées, durée de conservation, droits."
   />
 </svelte:head>
 
@@ -11,7 +11,7 @@
 
   <div class="prose prose-slate max-w-none space-y-6 text-ink-secondary">
     <p class="text-lg">
-      Filum collecte le minimum d'informations nécessaires au fonctionnement du service. Cette page
+      Philum collecte le minimum d'informations nécessaires au fonctionnement du service. Cette page
       détaillera bientôt notre politique complète. En attendant, voici l'essentiel.
     </p>
 

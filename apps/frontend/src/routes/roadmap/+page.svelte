@@ -1,15 +1,15 @@
 <svelte:head>
-  <title>Feuille de route — Filum</title>
+  <title>Feuille de route — Philum</title>
   <meta
     name="description"
-    content="La feuille de route de Filum : ce qui est disponible, ce qui arrive, et ce qui est prévu pour le futur."
+    content="La feuille de route de Philum : ce qui est disponible, ce qui arrive, et ce qui est prévu pour le futur."
   />
 </svelte:head>
 
 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
   <h1 class="text-3xl sm:text-4xl font-bold text-ink-primary mb-4">Feuille de route</h1>
   <p class="text-xl text-ink-secondary mb-12">
-    Filum est en construction active. Voici les grandes étapes, passées et à venir.
+    Philum est en construction active. Voici les grandes étapes, passées et à venir.
   </p>
 
   <div class="space-y-12">
@@ -216,7 +216,7 @@
             class="w-5 h-5 text-ink-tertiary shrink-0 mt-0.5 flex items-center justify-center text-sm"
             >→</span
           >
-          Filum Desktop (application de bureau)
+          Philum Desktop (application de bureau)
         </li>
       </ul>
     </div>
