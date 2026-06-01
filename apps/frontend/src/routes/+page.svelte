@@ -16,10 +16,10 @@
 </script>
 
 <svelte:head>
-  <title>Filum — Votre bibliographie devient une galaxie</title>
+  <title>Philum — Votre bibliographie devient une galaxie</title>
   <meta
     name="description"
-    content="Filum transforme votre bibliographie en un graphe interactif : sources organisées, archivées, et chaque création que vous revendiquez est attestée cryptographiquement."
+    content="Philum transforme votre bibliographie en un graphe interactif : sources organisées, archivées, et chaque création que vous revendiquez est attestée cryptographiquement."
   />
 </svelte:head>
 
@@ -111,7 +111,7 @@
       <div class="text-center mb-12" use:reveal>
         <h2 class="font-serif text-3xl md:text-4xl text-ink-primary mb-4">Pour qui ?</h2>
         <p class="text-lg text-ink-secondary max-w-2xl mx-auto">
-          Filum s'adresse à tou·te·s les créateur·ice·s qui veulent rendre visible la qualité de
+          Philum s'adresse à tou·te·s les créateur·ice·s qui veulent rendre visible la qualité de
           leurs références.
         </p>
       </div>

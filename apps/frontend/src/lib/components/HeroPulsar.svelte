@@ -1097,7 +1097,7 @@
     class="fallback"
     class:hidden={webglReady}
     role="img"
-    aria-label="Illustration : étoile bleue centrale entourée de planètes en orbite, représentant les sources reliées au nœud central Filum"
+    aria-label="Illustration : étoile bleue centrale entourée de planètes en orbite, représentant les sources reliées au nœud central Philum"
   >
     <defs>
       <radialGradient id="hp-halo" cx="50%" cy="50%" r="50%">
