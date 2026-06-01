@@ -1,6 +1,7 @@
 <script lang="ts">
   // Logo Philum sandbox — 10 nouvelles propositions
-  // Philum = "fil" en latin (étymologie volontairement exploitée dans certaines variantes).
+  // Philum ⟵ inspiré de phylum biologique (du grec phûlon, "lignée") — chaque variante mark
+  // évoque l'arbre de filiation des sources, certaines aussi le fil (homophonie filum/fil).
   // Toutes en SVG 24×24, monochrome currentColor.
 
   let strokeWidth = $state(1.5);
