@@ -241,7 +241,7 @@
 </script>
 
 <svelte:head>
-  <title>Ajouter des sources - Filum</title>
+  <title>Ajouter des sources - Philum</title>
 </svelte:head>
 
 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -414,9 +414,9 @@
           <label for="source-archive-url" class="block text-sm font-medium text-slate-700">
             Lien archivé <span class="text-slate-500 font-normal">(optionnel)</span>
             <span class="text-xs text-slate-500 font-normal block mt-0.5">
-              Laisser vide pour que Filum tente un archivage automatique via Wayback Machine. Sinon,
-              coller ici un snapshot existant (ex. <code>https://web.archive.org/web/…</code>) ou
-              tout autre miroir d'archive.
+              Laisser vide pour que Philum tente un archivage automatique via Wayback Machine.
+              Sinon, coller ici un snapshot existant (ex. <code>https://web.archive.org/web/…</code
+              >) ou tout autre miroir d'archive.
             </span>
           </label>
           <input

@@ -1,15 +1,15 @@
 <svelte:head>
-  <title>Fonctionnalités — Filum</title>
+  <title>Fonctionnalités — Philum</title>
   <meta
     name="description"
-    content="Découvrez toutes les fonctionnalités de Filum : graphe interactif, signature cryptographique, archivage, extraction automatique et plus."
+    content="Découvrez toutes les fonctionnalités de Philum : graphe interactif, signature cryptographique, archivage, extraction automatique et plus."
   />
 </svelte:head>
 
 <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
   <h1 class="text-3xl sm:text-4xl font-bold text-ink-primary mb-4">Fonctionnalités</h1>
   <p class="text-xl text-ink-secondary mb-12 max-w-3xl">
-    Filum est conçu pour les créateur·ice·s qui veulent rendre visible la qualité de leurs
+    Philum est conçu pour les créateur·ice·s qui veulent rendre visible la qualité de leurs
     références. Voici ce que la plateforme offre aujourd'hui et ce qui est en préparation.
   </p>
 
@@ -79,8 +79,8 @@
       </div>
       <h3 class="text-lg font-semibold text-ink-primary mb-2">Extraction automatique</h3>
       <p class="text-ink-secondary text-sm">
-        Collez une URL : Filum extrait automatiquement le titre, les auteurs, la date de publication
-        et une description. Plus besoin de tout remplir à la main.
+        Collez une URL : Philum extrait automatiquement le titre, les auteurs, la date de
+        publication et une description. Plus besoin de tout remplir à la main.
       </p>
     </div>
 
@@ -124,7 +124,7 @@
     <div class="bg-surface-secondary rounded-xl p-6 border border-border border-dashed hover-lift">
       <h3 class="text-lg font-semibold text-ink-primary mb-2">Copier-coller de bibliographie</h3>
       <p class="text-ink-secondary text-sm">
-        Collez votre bibliographie existante (depuis un article, YouTube, votre site) et Filum
+        Collez votre bibliographie existante (depuis un article, YouTube, votre site) et Philum
         génère automatiquement une fiche avec les sources pré-remplies.
       </p>
     </div>
@@ -165,11 +165,11 @@
     <div class="bg-surface-secondary rounded-xl p-6 border border-border border-dashed hover-lift">
       <h3 class="text-lg font-semibold text-ink-primary mb-2">API publique</h3>
       <p class="text-ink-secondary text-sm">
-        Intégrez Filum dans vos outils : API REST publique et serveur MCP pour les agents IA.
+        Intégrez Philum dans vos outils : API REST publique et serveur MCP pour les agents IA.
       </p>
     </div>
     <div class="bg-surface-secondary rounded-xl p-6 border border-border border-dashed hover-lift">
-      <h3 class="text-lg font-semibold text-ink-primary mb-2">Filum Desktop</h3>
+      <h3 class="text-lg font-semibold text-ink-primary mb-2">Philum Desktop</h3>
       <p class="text-ink-secondary text-sm">
         Application de bureau pour gérer vos références hors ligne, avec synchronisation et
         intégration aux outils locaux.

@@ -53,7 +53,7 @@
 </script>
 
 <svelte:head>
-  <title>Tableau de bord — Filum</title>
+  <title>Tableau de bord — Philum</title>
 </svelte:head>
 
 <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

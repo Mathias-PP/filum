@@ -1,24 +1,24 @@
 <svelte:head>
-  <title>À propos — Filum</title>
+  <title>À propos — Philum</title>
   <meta
     name="description"
-    content="Filum est un outil de gestion de références bibliographiques qui transforme votre bibliographie en graphe interactif et vérifiable."
+    content="Philum est un outil de gestion de références bibliographiques qui transforme votre bibliographie en graphe interactif et vérifiable."
   />
 </svelte:head>
 
 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-  <h1 class="text-3xl sm:text-4xl font-bold text-ink-primary mb-8">À propos de Filum</h1>
+  <h1 class="text-3xl sm:text-4xl font-bold text-ink-primary mb-8">À propos de Philum</h1>
 
   <section class="prose prose-slate dark:prose-invert max-w-none">
     <p class="text-lg text-ink-secondary leading-relaxed">
-      Filum est un outil de gestion de références bibliographiques qui permet aux créateur·ice·s de
+      Philum est un outil de gestion de références bibliographiques qui permet aux créateur·ice·s de
       contenu de constituer, organiser et partager leurs sources de manière transparente et
       vérifiable.
     </p>
 
     <h2 class="text-2xl font-semibold text-ink-primary mt-12 mb-4">L'histoire</h2>
     <p class="text-ink-secondary leading-relaxed">
-      Filum est né d'un constat simple : sur YouTube, Twitch, Twitter, dans les newsletters et les
+      Philum est né d'un constat simple : sur YouTube, Twitch, Twitter, dans les newsletters et les
       blogs, les créateur·ice·s citent des sources, mais ces citations sont souvent perdues dans le
       flux, difficiles à retrouver, impossibles à vérifier.
     </p>
@@ -28,7 +28,7 @@
       vulgaristeur s'appuie sur une thèse ? Qui vérifie que la source existe vraiment ?
     </p>
     <p class="text-ink-secondary leading-relaxed">
-      Filum répond à ce problème en offrant un espace dédié où chaque source est documentée et
+      Philum répond à ce problème en offrant un espace dédié où chaque source est documentée et
       archivée, et où chaque revendication d'un contenu original par son créateur·ice est attestée
       par signature cryptographique.
     </p>
@@ -57,20 +57,24 @@
       </div>
     </div>
 
-    <h2 class="text-2xl font-semibold text-ink-primary mt-12 mb-4">Pourquoi Filum ?</h2>
+    <h2 class="text-2xl font-semibold text-ink-primary mt-12 mb-4">Pourquoi Philum ?</h2>
     <p class="text-ink-secondary leading-relaxed">
       Parce que citer ses références est un geste essentiel du travail intellectuel, mais qu'il est
-      rarement mis en valeur. Filum le rend visible, vérifiable et durable : un service public pour
+      rarement mis en valeur. Philum le rend visible, vérifiable et durable : un service public pour
       la qualité de l'information en ligne.
     </p>
     <p class="text-ink-secondary leading-relaxed">
-      Le nom « Filum » vient du latin : le fil qui relie les choses. Comme le fil d'Ariane, comme le
-      fil d'une argumentation, comme le fil qui tisse une bibliographie cohérente.
+      Le nom « Philum » s'inspire du <em>phylum</em> biologique — la grande branche de l'arbre du
+      vivant qui regroupe les espèces par parenté évolutive (du grec <em>phûlon</em>, « lignée,
+      descendance »). Comme un phylum, une fiche Philum dessine un arbre de filiation : chaque
+      affirmation reliée à ses sources, chaque source à ses origines. Le nom évoque aussi
+      phonétiquement le fil — celui d'Ariane, celui d'une argumentation, celui qui tisse une
+      bibliographie cohérente.
     </p>
 
     <h2 class="text-2xl font-semibold text-ink-primary mt-12 mb-4">Qui est-ce que ça concerne ?</h2>
     <p class="text-ink-secondary leading-relaxed mb-6">
-      Filum s'adresse à tou·te·s les créateur·ice·s qui veulent rendre visible la qualité de leurs
+      Philum s'adresse à tou·te·s les créateur·ice·s qui veulent rendre visible la qualité de leurs
       références, y compris celles et ceux qui ne se reconnaissent pas dans les catégories
       traditionnelles.
     </p>
@@ -105,7 +109,7 @@
 
     <h2 class="text-2xl font-semibold text-ink-primary mt-12 mb-4">Technologie</h2>
     <p class="text-ink-secondary leading-relaxed">
-      Filum utilise la cryptographie Ed25519 pour signer chaque revendication de contenu original
+      Philum utilise la cryptographie Ed25519 pour signer chaque revendication de contenu original
       (vidéo, article, podcast…) par son créateur·ice, garantissant que ces attestations proviennent
       bien de la personne qu'elles désignent et qu'elles datent bien du moment indiqué. L'archivage
       des sources via Wayback Machine permet de préserver les références même si les pages

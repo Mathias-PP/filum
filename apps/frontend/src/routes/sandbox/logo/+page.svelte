@@ -1,6 +1,7 @@
 <script lang="ts">
-  // Logo Filum sandbox — 10 nouvelles propositions
-  // Filum = "fil" en latin (étymologie volontairement exploitée dans certaines variantes).
+  // Logo Philum sandbox — 10 nouvelles propositions
+  // Philum ⟵ inspiré de phylum biologique (du grec phûlon, "lignée") — chaque variante mark
+  // évoque l'arbre de filiation des sources, certaines aussi le fil (homophonie filum/fil).
   // Toutes en SVG 24×24, monochrome currentColor.
 
   let strokeWidth = $state(1.5);
@@ -1858,13 +1859,13 @@
 </script>
 
 <svelte:head>
-  <title>Sandbox · Logo Filum</title>
+  <title>Sandbox · Logo Philum</title>
   <meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
 <div class="page">
   <header class="bar">
-    <h1>Sandbox · Logo Filum — 10 nouvelles propositions</h1>
+    <h1>Sandbox · Logo Philum — 10 nouvelles propositions</h1>
     <p>Logo actuel à gauche en référence. 10 directions différentes ensuite.</p>
   </header>
 
