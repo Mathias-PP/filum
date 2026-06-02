@@ -64,8 +64,10 @@
       la qualité de l'information en ligne.
     </p>
     <p class="text-ink-secondary leading-relaxed">
-      Le nom « Philum » vient du latin : le fil qui relie les choses. Comme le fil d'Ariane, comme
-      le fil d'une argumentation, comme le fil qui tisse une bibliographie cohérente.
+      Le nom « Philum » s'inspire du <em>phylum</em> biologique : la branche de l'arbre du vivant qui
+      regroupe les espèces par parenté évolutive. Comme un phylum, une fiche Philum dessine un arbre de
+      filiation : chaque affirmation reliée à ses sources, chaque source à ses origines. Le nom évoque
+      aussi le fil : celui d'Ariane, celui d'une argumentation qui tisse une bibliographie cohérente.
     </p>
 
     <h2 class="text-2xl font-semibold text-ink-primary mt-12 mb-4">Qui est-ce que ça concerne ?</h2>

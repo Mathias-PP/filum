@@ -6,6 +6,28 @@
 
 ---
 
+## [Unreleased] — Logo refonte itérative + sandbox customizer (2026-06-02)
+
+### Added
+- **`/sandbox/logo`** : trois nouveaux batchs explorant la signature visuelle.
+  - **Batch A v4** (40 dispositions de nœuds) avec Y01 special nodes + 2 normaux variés (préférence user : éviter l'alignement horizontal symétrique).
+  - **Batch W v4** (40 variants couleurs) avec disposition CB12 (NE + WSW) + **stroke fond blanc style V18** sur chaque sphère (cassure visuelle de la ligne au bord du cercle) + dark rim fin. Cumule Z13 auteur-kind, halos colorés, sphère 3D, quasar, X-spikes, anneaux orbitaux.
+  - **Batch W v5** (30 variants exploratoires) sans contrainte de fond/rim : mono couleur, palette hero Z12, gradients, duotones.
+- **`/sandbox/customize`** : page de customisation pleinement interactive du logo.
+  - 4 sous-sandboxes (Référence clair / Dark theme / Logo + wordmark / Noir & blanc) avec configs indépendantes.
+  - Drag souris sur tous les nœuds (pulsar, normaux, jonction Y-fork, twins, parent, lune) — conversion coords via `getScreenCTM().inverse()`.
+  - Style **par nœud individuel** : chaque normal/twin/parent/lune porte son propre fill, rim, rimWidth, size.
+  - Add/remove dynamique des normaux, bouton « appliquer ce style à tous ».
+  - Zoom canvas 30%–300% via slider.
+  - 8 palettes prédéfinies (Z13, Z13 + 3D, Z12 pastel, mono slate/blue/emerald, dark, N&B) qui itèrent sur tous les nœuds.
+  - Wordmark configurable (texte, position X/Y, taille, couleur, police serif/sans, graisse, letter-spacing).
+  - Export SVG par sandbox, copier-coller config entre sandboxes.
+
+### Changed
+- **Étymologie du nom Philum** (`/about`) : reformulée en référence au *phylum* biologique (branche de l'arbre du vivant) plutôt qu'au latin *filum*.
+
+---
+
 ## [Unreleased] — UI polish : dark mode, hero, hover effects, CTA fix (2026-05-15)
 
 ### Added
