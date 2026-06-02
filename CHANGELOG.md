@@ -6,6 +6,22 @@
 
 ---
 
+## [Unreleased] — Philum v1 logo déployé site-wide (2026-06-02)
+
+### Changed
+- **`Logo.svelte`** : refonte complète vers le design Philum v1 validé en `/sandbox/customize`. Composition Pulsar-graph (pulsar central + 2 normaux NE/WSW + Y-fork NW + parent-lune SE) avec palette Z13 auteur-kind, stroke fond blanc V18 et dark rim fin. Pulsar 3D via radial gradient pour le variant `color`.
+- **Composant Logo** accepte désormais 3 props :
+  - `variant: 'color' | 'dark' | 'bw'` — `color` (couleur sur fond clair, défaut), `dark` (blanc sur fond sombre), `bw` (impression noir & blanc).
+  - `withWordmark: boolean` — ajoute « Philum » serif Georgia à droite du graph.
+  - `size` et `className` conservés.
+- **`+layout.svelte`** : nav header utilise désormais `<Logo variant="color">` sur fond clair et `<Logo variant="dark">` sur fond sombre (swap via `block dark:hidden` / `hidden dark:block`).
+- **`static/favicon.svg`** : redessiné en cohérence avec le variant `color` du nouveau Logo (version statique sans gradient pour rendu propre à 16/32 px).
+
+### Removed
+- Ancien design Logo V11 (6 branches monochromes à 60°) — remplacé par Philum v1.
+
+---
+
 ## [Unreleased] — Logo refonte itérative + sandbox customizer (2026-06-02)
 
 ### Added
