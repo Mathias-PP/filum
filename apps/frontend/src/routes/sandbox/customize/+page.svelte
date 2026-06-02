@@ -2,14 +2,14 @@
   // ====================================================================
   // Sandbox personnalisable du logo Philum
   // 4 sous-sandboxes : Référence (clair), Dark, Wordmark, N&B
-  // Copier-coller la config entre sous-sandboxes possible.
+  // Drag souris sur les nœuds, ajout/suppression de normaux, zoom canvas.
   // ====================================================================
 
+  type Node = { angle: number; distance: number };
+
   type Config = {
-    // canvas
     bgColor: string;
 
-    // Pulsar
     pulsarX: number;
     pulsarY: number;
     pulsarSize: number;
@@ -25,11 +25,8 @@
     pulsarGradientMid: string;
     pulsarGradientLo: string;
 
-    // Normal nodes
-    normalCount: number; // 0–6
-    normalStartAngle: number; // degrés (origine droite = 0, sens horaire)
-    normalSpread: number; // arc total de répartition (degrés)
-    normalDistance: number;
+    // Liste de normaux (angle absolu depuis pulsar, distance)
+    normals: Node[];
     normalSize: number;
     normalFill: string;
     normalRim: string;
@@ -37,10 +34,10 @@
 
     // Y-fork
     yforkEnabled: boolean;
-    yforkAngle: number;
+    yforkAngle: number; // angle depuis pulsar
     yforkDistance: number;
-    twinSpread: number; // angle entre les deux twins
-    twinDistance: number; // distance depuis forkM
+    twinA: Node; // angle absolu depuis forkM
+    twinB: Node;
     twinSize: number;
     twinFill: string;
     twinRim: string;
@@ -55,8 +52,8 @@
     parentRim: string;
     parentRimWidth: number;
     luneEnabled: boolean;
-    luneAngleFromParent: number;
-    luneDistanceFromParent: number;
+    luneAngle: number; // angle absolu depuis parent
+    luneDistance: number;
     luneSize: number;
     luneFill: string;
     luneRim: string;
@@ -70,16 +67,14 @@
     lineDashed: boolean;
     lineDashArray: string;
 
-    // Stroke fond (V18 style)
     fondEnabled: boolean;
     fondColor: string;
     fondWidth: number;
 
-    // Wordmark
     wordmarkEnabled: boolean;
     wordmarkText: string;
-    wordmarkX: number; // décalage horizontal depuis la droite du logo (en unités SVG, viewBox du logo = 24)
-    wordmarkY: number; // décalage vertical (centre vertical = 12)
+    wordmarkX: number;
+    wordmarkY: number;
     wordmarkSize: number;
     wordmarkColor: string;
     wordmarkFont: 'serif' | 'sans';
@@ -89,10 +84,30 @@
 
   const PALETTES: { name: string; apply: (c: Config) => void }[] = [
     {
-      name: 'Z13 auteur-kind',
+      name: 'Z13 auteur-kind (défaut)',
       apply: (c) => {
         c.pulsarFill = '#1F2937';
         c.pulsarRim = '#000000';
+        c.normalFill = '#FAC775';
+        c.normalRim = '#EF9F27';
+        c.twinFill = '#C0DD97';
+        c.twinRim = '#639922';
+        c.parentFill = '#B5D4F4';
+        c.parentRim = '#378ADD';
+        c.luneFill = '#CECBF6';
+        c.luneRim = '#7F77DD';
+        c.lineStroke = '#475569';
+      },
+    },
+    {
+      name: 'Z13 + 3D pulsar slate',
+      apply: (c) => {
+        c.pulsarFill = '#1F2937';
+        c.pulsarRim = '#000000';
+        c.pulsarGradient = true;
+        c.pulsarGradientHi = '#FFFFFF';
+        c.pulsarGradientMid = '#475569';
+        c.pulsarGradientLo = '#0F172A';
         c.normalFill = '#FAC775';
         c.normalRim = '#EF9F27';
         c.twinFill = '#C0DD97';
@@ -172,7 +187,7 @@
       },
     },
     {
-      name: 'Dark theme (blanc sur fond sombre)',
+      name: 'Dark theme',
       apply: (c) => {
         const w = '#F8FAFC';
         c.bgColor = '#0F172A';
@@ -192,7 +207,7 @@
       },
     },
     {
-      name: 'Noir & blanc (impression)',
+      name: 'Noir & blanc',
       apply: (c) => {
         const k = '#000000';
         c.bgColor = '#FFFFFF';
@@ -210,26 +225,6 @@
         c.fondColor = '#FFFFFF';
         c.wordmarkColor = k;
         c.pulsarGradient = false;
-      },
-    },
-    {
-      name: '3D slate + Z13 sats',
-      apply: (c) => {
-        c.pulsarFill = '#1F2937';
-        c.pulsarRim = '#000000';
-        c.pulsarGradient = true;
-        c.pulsarGradientHi = '#FFFFFF';
-        c.pulsarGradientMid = '#475569';
-        c.pulsarGradientLo = '#0F172A';
-        c.normalFill = '#FAC775';
-        c.normalRim = '#EF9F27';
-        c.twinFill = '#C0DD97';
-        c.twinRim = '#639922';
-        c.parentFill = '#B5D4F4';
-        c.parentRim = '#378ADD';
-        c.luneFill = '#CECBF6';
-        c.luneRim = '#7F77DD';
-        c.lineStroke = '#475569';
       },
     },
   ];
@@ -251,10 +246,11 @@
       pulsarGradientHi: '#FFFFFF',
       pulsarGradientMid: '#475569',
       pulsarGradientLo: '#0F172A',
-      normalCount: 2,
-      normalStartAngle: -32,
-      normalSpread: 190,
-      normalDistance: 9.4,
+      // Disposition CB12 par défaut : 2 normaux NE + WSW
+      normals: [
+        { angle: -32, distance: 9.4 }, // NE (≈20, 7)
+        { angle: 157, distance: 7.6 }, // WSW (≈5, 15)
+      ],
       normalSize: 1.5,
       normalFill: '#FAC775',
       normalRim: '#EF9F27',
@@ -262,8 +258,8 @@
       yforkEnabled: true,
       yforkAngle: -126,
       yforkDistance: 8.6,
-      twinSpread: 45,
-      twinDistance: 5.0,
+      twinA: { angle: -148, distance: 5.0 },
+      twinB: { angle: -104, distance: 5.0 },
       twinSize: 1.5,
       twinFill: '#C0DD97',
       twinRim: '#639922',
@@ -276,8 +272,8 @@
       parentRim: '#378ADD',
       parentRimWidth: 0.45,
       luneEnabled: true,
-      luneAngleFromParent: 45,
-      luneDistanceFromParent: 4.5,
+      luneAngle: 50,
+      luneDistance: 4.5,
       luneSize: 0.95,
       luneFill: '#CECBF6',
       luneRim: '#7F77DD',
@@ -305,18 +301,18 @@
 
   function darkPreset(): Config {
     const c = defaultConfig();
-    PALETTES[5].apply(c);
+    PALETTES[6].apply(c);
     return c;
   }
   function wordmarkPreset(): Config {
     const c = defaultConfig();
-    PALETTES[7].apply(c);
+    PALETTES[1].apply(c); // 3D pulsar slate + Z13 sats
     c.wordmarkEnabled = true;
     return c;
   }
   function bwPreset(): Config {
     const c = defaultConfig();
-    PALETTES[6].apply(c);
+    PALETTES[7].apply(c);
     return c;
   }
 
@@ -330,20 +326,9 @@
   let configs = $state<Config[]>([defaultConfig(), darkPreset(), wordmarkPreset(), bwPreset()]);
   let active = $state(0);
   let copyFromIdx = $state(0);
+  let zoom = $state(1);
 
   let c = $derived(configs[active]);
-  let g = $derived(geomOf(configs[active]));
-  let vbW = $derived(
-    configs[active].wordmarkEnabled
-      ? 24 +
-          configs[active].wordmarkX +
-          configs[active].wordmarkText.length * configs[active].wordmarkSize * 0.55
-      : 24
-  );
-
-  function active_cfg(): Config {
-    return configs[active];
-  }
 
   function applyPalette(p: { apply: (c: Config) => void }) {
     p.apply(configs[active]);
@@ -359,6 +344,17 @@
   function resetActive() {
     const presets = [defaultConfig, darkPreset, wordmarkPreset, bwPreset];
     configs[active] = presets[active]();
+    configs = configs;
+  }
+
+  function addNormal() {
+    const cfg = configs[active];
+    const lastAngle = cfg.normals.length > 0 ? cfg.normals[cfg.normals.length - 1].angle : 0;
+    cfg.normals.push({ angle: lastAngle + 60, distance: 9 });
+    configs = configs;
+  }
+  function removeNormal(i: number) {
+    configs[active].normals.splice(i, 1);
     configs = configs;
   }
 
@@ -380,22 +376,14 @@
 
   function geomOf(c: Config): Geom {
     const pulsar: Pt = { x: c.pulsarX, y: c.pulsarY };
-    const normals: Pt[] = [];
-    if (c.normalCount > 0) {
-      const step = c.normalCount === 1 ? 0 : c.normalSpread / (c.normalCount - 1);
-      for (let i = 0; i < c.normalCount; i++) {
-        const a = c.normalStartAngle + step * i;
-        normals.push(polar(pulsar.x, pulsar.y, a, c.normalDistance));
-      }
-    }
+    const normals = c.normals.map((n) => polar(pulsar.x, pulsar.y, n.angle, n.distance));
     let forkM: Pt | null = null;
     let twins: [Pt, Pt] | null = null;
     if (c.yforkEnabled) {
       forkM = polar(pulsar.x, pulsar.y, c.yforkAngle, c.yforkDistance);
-      const half = c.twinSpread / 2;
       twins = [
-        polar(forkM.x, forkM.y, c.yforkAngle - half, c.twinDistance),
-        polar(forkM.x, forkM.y, c.yforkAngle + half, c.twinDistance),
+        polar(forkM.x, forkM.y, c.twinA.angle, c.twinA.distance),
+        polar(forkM.x, forkM.y, c.twinB.angle, c.twinB.distance),
       ];
     }
     let parent: Pt | null = null;
@@ -403,16 +391,20 @@
     if (c.parentEnabled) {
       parent = polar(pulsar.x, pulsar.y, c.parentAngle, c.parentDistance);
       if (c.luneEnabled) {
-        lune = polar(
-          parent.x,
-          parent.y,
-          c.parentAngle + c.luneAngleFromParent,
-          c.luneDistanceFromParent
-        );
+        lune = polar(parent.x, parent.y, c.luneAngle, c.luneDistance);
       }
     }
     return { pulsar, normals, forkM, twins, parent, lune };
   }
+
+  let g = $derived(geomOf(configs[active]));
+  let vbW = $derived(
+    configs[active].wordmarkEnabled
+      ? 24 +
+          configs[active].wordmarkX +
+          configs[active].wordmarkText.length * configs[active].wordmarkSize * 0.55
+      : 24
+  );
 
   function exportSVG(idx: number) {
     const el = document.getElementById(`preview-svg-${idx}`);
@@ -426,6 +418,84 @@
     a.click();
     URL.revokeObjectURL(url);
   }
+
+  // ----- Drag souris -----
+  type DragKind = 'pulsar' | 'normal' | 'fork' | 'twinA' | 'twinB' | 'parent' | 'lune';
+  let dragging = $state<{ kind: DragKind; idx?: number } | null>(null);
+  let svgEl: SVGSVGElement | null = $state(null);
+
+  function svgPoint(evt: MouseEvent | PointerEvent): { x: number; y: number } | null {
+    if (!svgEl) return null;
+    const pt = svgEl.createSVGPoint();
+    pt.x = evt.clientX;
+    pt.y = evt.clientY;
+    const ctm = svgEl.getScreenCTM();
+    if (!ctm) return null;
+    const p = pt.matrixTransform(ctm.inverse());
+    return { x: p.x, y: p.y };
+  }
+
+  function startDrag(kind: DragKind, idx?: number) {
+    return (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragging = { kind, idx };
+      window.addEventListener('mousemove', onDragMove);
+      window.addEventListener('mouseup', stopDrag);
+    };
+  }
+
+  function onDragMove(e: MouseEvent) {
+    if (!dragging) return;
+    const p = svgPoint(e);
+    if (!p) return;
+    const cfg = configs[active];
+    const { kind, idx } = dragging;
+    if (kind === 'pulsar') {
+      cfg.pulsarX = Math.max(0, Math.min(24, p.x));
+      cfg.pulsarY = Math.max(0, Math.min(24, p.y));
+    } else if (kind === 'normal' && idx !== undefined) {
+      const dx = p.x - cfg.pulsarX;
+      const dy = p.y - cfg.pulsarY;
+      cfg.normals[idx] = {
+        angle: (Math.atan2(dy, dx) * 180) / Math.PI,
+        distance: Math.sqrt(dx * dx + dy * dy),
+      };
+    } else if (kind === 'fork') {
+      const dx = p.x - cfg.pulsarX;
+      const dy = p.y - cfg.pulsarY;
+      cfg.yforkAngle = (Math.atan2(dy, dx) * 180) / Math.PI;
+      cfg.yforkDistance = Math.sqrt(dx * dx + dy * dy);
+    } else if (kind === 'twinA' || kind === 'twinB') {
+      const fork = polar(cfg.pulsarX, cfg.pulsarY, cfg.yforkAngle, cfg.yforkDistance);
+      const dx = p.x - fork.x;
+      const dy = p.y - fork.y;
+      const node = {
+        angle: (Math.atan2(dy, dx) * 180) / Math.PI,
+        distance: Math.sqrt(dx * dx + dy * dy),
+      };
+      if (kind === 'twinA') cfg.twinA = node;
+      else cfg.twinB = node;
+    } else if (kind === 'parent') {
+      const dx = p.x - cfg.pulsarX;
+      const dy = p.y - cfg.pulsarY;
+      cfg.parentAngle = (Math.atan2(dy, dx) * 180) / Math.PI;
+      cfg.parentDistance = Math.sqrt(dx * dx + dy * dy);
+    } else if (kind === 'lune') {
+      const parent = polar(cfg.pulsarX, cfg.pulsarY, cfg.parentAngle, cfg.parentDistance);
+      const dx = p.x - parent.x;
+      const dy = p.y - parent.y;
+      cfg.luneAngle = (Math.atan2(dy, dx) * 180) / Math.PI;
+      cfg.luneDistance = Math.sqrt(dx * dx + dy * dy);
+    }
+    configs = configs;
+  }
+
+  function stopDrag() {
+    dragging = null;
+    window.removeEventListener('mousemove', onDragMove);
+    window.removeEventListener('mouseup', stopDrag);
+  }
 </script>
 
 <svelte:head>
@@ -436,13 +506,12 @@
   <header class="hdr">
     <h1>Sandbox personnalisable du logo</h1>
     <p>
-      4 sous-sandboxes (référence / dark / wordmark / N&amp;B). Palettes prédéfinies cliquables,
-      couleurs ajustables au pixel près. Copier la config d'une sandbox à l'autre via le menu «
-      Copier depuis ».
+      Défaut basé sur Z13 auteur-kind. 4 sous-sandboxes (référence / dark / wordmark / N&amp;B).
+      Glisse les nœuds à la souris pour les repositionner, ajoute/supprime des normaux, zoome dans
+      l'aperçu.
     </p>
   </header>
 
-  <!-- Tabs -->
   <nav class="tabs">
     {#each SANDBOX_LABELS as label, i (i)}
       <button type="button" class="tab" class:active={active === i} onclick={() => (active = i)}>
@@ -452,213 +521,236 @@
   </nav>
 
   <div class="layout">
-    <!-- Preview -->
     <section class="preview">
+      <div class="zoom-bar">
+        <button type="button" onclick={() => (zoom = Math.max(0.3, zoom - 0.15))}>−</button>
+        <input type="range" min="0.3" max="3" step="0.05" bind:value={zoom} />
+        <button type="button" onclick={() => (zoom = Math.min(3, zoom + 0.15))}>+</button>
+        <span class="zoom-val">{Math.round(zoom * 100)}%</span>
+        <button type="button" class="zoom-reset" onclick={() => (zoom = 1)}>100%</button>
+      </div>
+
       <div class="canvas" style="background: {c.bgColor}">
-        <svg
-          id="preview-svg-{active}"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 {vbW} 24"
-          width="100%"
-          height="auto"
-          preserveAspectRatio="xMidYMid meet"
-        >
-          {#if c.pulsarGradient || c.lineGradient}
-            <defs>
-              {#if c.pulsarGradient}
-                <radialGradient id="grad-p-{active}" cx="40%" cy="40%" r="60%">
-                  <stop offset="0%" stop-color={c.pulsarGradientHi} />
-                  <stop offset="55%" stop-color={c.pulsarGradientMid} />
-                  <stop offset="100%" stop-color={c.pulsarGradientLo} />
-                </radialGradient>
-              {/if}
-              {#if c.lineGradient}
-                <linearGradient
-                  id="grad-l-{active}"
-                  x1="0"
-                  y1="0"
-                  x2="24"
-                  y2="24"
-                  gradientUnits="userSpaceOnUse"
-                >
-                  <stop offset="0%" stop-color={c.lineStroke} />
-                  <stop offset="100%" stop-color={c.lineGradientEnd} />
-                </linearGradient>
-              {/if}
-            </defs>
-          {/if}
-
-          <!-- Lignes -->
-          <g
-            fill="none"
-            stroke={c.lineGradient ? `url(#grad-l-${active})` : c.lineStroke}
-            stroke-width={c.lineWidth}
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-dasharray={c.lineDashed ? c.lineDashArray : undefined}
+        <div class="zoom-wrap" style="transform: scale({zoom})">
+          <svg
+            bind:this={svgEl}
+            id="preview-svg-{active}"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 {vbW} 24"
+            width="100%"
+            height="auto"
+            preserveAspectRatio="xMidYMid meet"
           >
-            {#each g.normals as n (n.x + '-' + n.y)}
-              <line x1={g.pulsar.x} y1={g.pulsar.y} x2={n.x} y2={n.y} />
-            {/each}
-            {#if g.forkM && g.twins}
-              <line x1={g.pulsar.x} y1={g.pulsar.y} x2={g.forkM.x} y2={g.forkM.y} />
-              <line x1={g.forkM.x} y1={g.forkM.y} x2={g.twins[0].x} y2={g.twins[0].y} />
-              <line x1={g.forkM.x} y1={g.forkM.y} x2={g.twins[1].x} y2={g.twins[1].y} />
+            {#if c.pulsarGradient || c.lineGradient}
+              <defs>
+                {#if c.pulsarGradient}
+                  <radialGradient id="grad-p-{active}" cx="40%" cy="40%" r="60%">
+                    <stop offset="0%" stop-color={c.pulsarGradientHi} />
+                    <stop offset="55%" stop-color={c.pulsarGradientMid} />
+                    <stop offset="100%" stop-color={c.pulsarGradientLo} />
+                  </radialGradient>
+                {/if}
+                {#if c.lineGradient}
+                  <linearGradient
+                    id="grad-l-{active}"
+                    x1="0"
+                    y1="0"
+                    x2="24"
+                    y2="24"
+                    gradientUnits="userSpaceOnUse"
+                  >
+                    <stop offset="0%" stop-color={c.lineStroke} />
+                    <stop offset="100%" stop-color={c.lineGradientEnd} />
+                  </linearGradient>
+                {/if}
+              </defs>
             {/if}
-            {#if g.parent}
-              <line x1={g.pulsar.x} y1={g.pulsar.y} x2={g.parent.x} y2={g.parent.y} />
-              {#if g.lune}
-                <line x1={g.parent.x} y1={g.parent.y} x2={g.lune.x} y2={g.lune.y} />
-              {/if}
-            {/if}
-          </g>
 
-          <!-- Halo pulsar -->
-          {#if c.pulsarHaloEnabled}
-            <circle
-              cx={g.pulsar.x}
-              cy={g.pulsar.y}
-              r={c.pulsarSize * c.pulsarHaloSize}
-              fill={c.pulsarHaloColor}
-              fill-opacity={c.pulsarHaloOpacity * 0.5}
-            />
-            <circle
-              cx={g.pulsar.x}
-              cy={g.pulsar.y}
-              r={c.pulsarSize * (c.pulsarHaloSize * 0.7)}
-              fill={c.pulsarHaloColor}
-              fill-opacity={c.pulsarHaloOpacity}
-            />
-          {/if}
-
-          <!-- Stroke fond pulsar -->
-          {#if c.fondEnabled}
-            <circle
-              cx={g.pulsar.x}
-              cy={g.pulsar.y}
-              r={c.pulsarSize}
+            <g
               fill="none"
-              stroke={c.fondColor}
-              stroke-width={c.fondWidth}
-            />
-          {/if}
-          <!-- Pulsar -->
-          <circle
-            cx={g.pulsar.x}
-            cy={g.pulsar.y}
-            r={c.pulsarSize}
-            fill={c.pulsarGradient ? `url(#grad-p-${active})` : c.pulsarFill}
-            stroke={c.pulsarRimWidth > 0 ? c.pulsarRim : 'none'}
-            stroke-width={c.pulsarRimWidth}
-          />
+              stroke={c.lineGradient ? `url(#grad-l-${active})` : c.lineStroke}
+              stroke-width={c.lineWidth}
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-dasharray={c.lineDashed ? c.lineDashArray : undefined}
+            >
+              {#each g.normals as n (n.x + '-' + n.y)}
+                <line x1={g.pulsar.x} y1={g.pulsar.y} x2={n.x} y2={n.y} />
+              {/each}
+              {#if g.forkM && g.twins}
+                <line x1={g.pulsar.x} y1={g.pulsar.y} x2={g.forkM.x} y2={g.forkM.y} />
+                <line x1={g.forkM.x} y1={g.forkM.y} x2={g.twins[0].x} y2={g.twins[0].y} />
+                <line x1={g.forkM.x} y1={g.forkM.y} x2={g.twins[1].x} y2={g.twins[1].y} />
+              {/if}
+              {#if g.parent}
+                <line x1={g.pulsar.x} y1={g.pulsar.y} x2={g.parent.x} y2={g.parent.y} />
+                {#if g.lune}
+                  <line x1={g.parent.x} y1={g.parent.y} x2={g.lune.x} y2={g.lune.y} />
+                {/if}
+              {/if}
+            </g>
 
-          <!-- Satellites : normals -->
-          {#each g.normals as n, i (i)}
+            {#if c.pulsarHaloEnabled}
+              <circle
+                cx={g.pulsar.x}
+                cy={g.pulsar.y}
+                r={c.pulsarSize * c.pulsarHaloSize}
+                fill={c.pulsarHaloColor}
+                fill-opacity={c.pulsarHaloOpacity * 0.5}
+              />
+              <circle
+                cx={g.pulsar.x}
+                cy={g.pulsar.y}
+                r={c.pulsarSize * (c.pulsarHaloSize * 0.7)}
+                fill={c.pulsarHaloColor}
+                fill-opacity={c.pulsarHaloOpacity}
+              />
+            {/if}
+
             {#if c.fondEnabled}
               <circle
-                cx={n.x}
-                cy={n.y}
-                r={c.normalSize}
+                cx={g.pulsar.x}
+                cy={g.pulsar.y}
+                r={c.pulsarSize}
                 fill="none"
                 stroke={c.fondColor}
                 stroke-width={c.fondWidth}
               />
             {/if}
             <circle
-              cx={n.x}
-              cy={n.y}
-              r={c.normalSize}
-              fill={c.normalFill}
-              stroke={c.normalRimWidth > 0 ? c.normalRim : 'none'}
-              stroke-width={c.normalRimWidth}
+              cx={g.pulsar.x}
+              cy={g.pulsar.y}
+              r={c.pulsarSize}
+              fill={c.pulsarGradient ? `url(#grad-p-${active})` : c.pulsarFill}
+              stroke={c.pulsarRimWidth > 0 ? c.pulsarRim : 'none'}
+              stroke-width={c.pulsarRimWidth}
+              class="draggable"
+              onmousedown={startDrag('pulsar')}
             />
-          {/each}
 
-          <!-- Twins -->
-          {#if g.twins}
-            {#each g.twins as t, i (i)}
+            {#each g.normals as n, i (i)}
               {#if c.fondEnabled}
                 <circle
-                  cx={t.x}
-                  cy={t.y}
-                  r={c.twinSize}
+                  cx={n.x}
+                  cy={n.y}
+                  r={c.normalSize}
                   fill="none"
                   stroke={c.fondColor}
                   stroke-width={c.fondWidth}
                 />
               {/if}
               <circle
-                cx={t.x}
-                cy={t.y}
-                r={c.twinSize}
-                fill={c.twinFill}
-                stroke={c.twinRimWidth > 0 ? c.twinRim : 'none'}
-                stroke-width={c.twinRimWidth}
+                cx={n.x}
+                cy={n.y}
+                r={c.normalSize}
+                fill={c.normalFill}
+                stroke={c.normalRimWidth > 0 ? c.normalRim : 'none'}
+                stroke-width={c.normalRimWidth}
+                class="draggable"
+                onmousedown={startDrag('normal', i)}
               />
             {/each}
-          {/if}
 
-          <!-- Parent -->
-          {#if g.parent}
-            {#if c.fondEnabled}
+            {#if g.forkM && g.twins}
+              <!-- Poignée invisible pour forkM (sinon non draggable, c'est juste un point) -->
+              <circle
+                cx={g.forkM.x}
+                cy={g.forkM.y}
+                r="0.7"
+                fill="rgba(0,0,0,0.001)"
+                stroke="rgba(99,102,241,0.4)"
+                stroke-width="0.1"
+                stroke-dasharray="0.2 0.2"
+                class="draggable"
+                onmousedown={startDrag('fork')}
+              />
+              {#each g.twins as t, i (i)}
+                {#if c.fondEnabled}
+                  <circle
+                    cx={t.x}
+                    cy={t.y}
+                    r={c.twinSize}
+                    fill="none"
+                    stroke={c.fondColor}
+                    stroke-width={c.fondWidth}
+                  />
+                {/if}
+                <circle
+                  cx={t.x}
+                  cy={t.y}
+                  r={c.twinSize}
+                  fill={c.twinFill}
+                  stroke={c.twinRimWidth > 0 ? c.twinRim : 'none'}
+                  stroke-width={c.twinRimWidth}
+                  class="draggable"
+                  onmousedown={startDrag(i === 0 ? 'twinA' : 'twinB')}
+                />
+              {/each}
+            {/if}
+
+            {#if g.parent}
+              {#if c.fondEnabled}
+                <circle
+                  cx={g.parent.x}
+                  cy={g.parent.y}
+                  r={c.parentSize}
+                  fill="none"
+                  stroke={c.fondColor}
+                  stroke-width={c.fondWidth}
+                />
+              {/if}
               <circle
                 cx={g.parent.x}
                 cy={g.parent.y}
                 r={c.parentSize}
-                fill="none"
-                stroke={c.fondColor}
-                stroke-width={c.fondWidth}
+                fill={c.parentFill}
+                stroke={c.parentRimWidth > 0 ? c.parentRim : 'none'}
+                stroke-width={c.parentRimWidth}
+                class="draggable"
+                onmousedown={startDrag('parent')}
               />
             {/if}
-            <circle
-              cx={g.parent.x}
-              cy={g.parent.y}
-              r={c.parentSize}
-              fill={c.parentFill}
-              stroke={c.parentRimWidth > 0 ? c.parentRim : 'none'}
-              stroke-width={c.parentRimWidth}
-            />
-          {/if}
-          <!-- Lune -->
-          {#if g.lune}
-            {#if c.fondEnabled}
+            {#if g.lune}
+              {#if c.fondEnabled}
+                <circle
+                  cx={g.lune.x}
+                  cy={g.lune.y}
+                  r={c.luneSize}
+                  fill="none"
+                  stroke={c.fondColor}
+                  stroke-width={c.fondWidth}
+                />
+              {/if}
               <circle
                 cx={g.lune.x}
                 cy={g.lune.y}
                 r={c.luneSize}
-                fill="none"
-                stroke={c.fondColor}
-                stroke-width={c.fondWidth}
+                fill={c.luneFill}
+                stroke={c.luneRimWidth > 0 ? c.luneRim : 'none'}
+                stroke-width={c.luneRimWidth}
+                class="draggable"
+                onmousedown={startDrag('lune')}
               />
             {/if}
-            <circle
-              cx={g.lune.x}
-              cy={g.lune.y}
-              r={c.luneSize}
-              fill={c.luneFill}
-              stroke={c.luneRimWidth > 0 ? c.luneRim : 'none'}
-              stroke-width={c.luneRimWidth}
-            />
-          {/if}
 
-          <!-- Wordmark -->
-          {#if c.wordmarkEnabled}
-            <text
-              x={24 + c.wordmarkX}
-              y={c.wordmarkY}
-              fill={c.wordmarkColor}
-              font-family={c.wordmarkFont === 'serif'
-                ? 'Georgia, serif'
-                : 'Inter, system-ui, sans-serif'}
-              font-size={c.wordmarkSize}
-              font-weight={c.wordmarkWeight}
-              letter-spacing={c.wordmarkLetterSpacing}
-              dominant-baseline="middle"
-            >
-              {c.wordmarkText}
-            </text>
-          {/if}
-        </svg>
+            {#if c.wordmarkEnabled}
+              <text
+                x={24 + c.wordmarkX}
+                y={c.wordmarkY}
+                fill={c.wordmarkColor}
+                font-family={c.wordmarkFont === 'serif'
+                  ? 'Georgia, serif'
+                  : 'Inter, system-ui, sans-serif'}
+                font-size={c.wordmarkSize}
+                font-weight={c.wordmarkWeight}
+                letter-spacing={c.wordmarkLetterSpacing}
+                dominant-baseline="middle"
+              >
+                {c.wordmarkText}
+              </text>
+            {/if}
+          </svg>
+        </div>
       </div>
 
       <div class="preview-actions">
@@ -669,10 +761,9 @@
           {/each}
         </select>
         <button type="button" onclick={() => copyFrom(copyFromIdx)}>⧉ Copier depuis</button>
-        <button type="button" class="danger" onclick={resetActive}>↺ Reset cette sandbox</button>
+        <button type="button" class="danger" onclick={resetActive}>↺ Reset</button>
       </div>
 
-      <!-- Mini-aperçus des 4 sandboxes -->
       <div class="minis">
         {#each configs as cfg, i (i)}
           {@const g2 = geomOf(cfg)}
@@ -759,9 +850,7 @@
       </div>
     </section>
 
-    <!-- Controls -->
     <section class="controls">
-      <!-- Palettes -->
       <details open>
         <summary>Palettes prédéfinies</summary>
         <div class="palettes">
@@ -771,20 +860,19 @@
         </div>
       </details>
 
-      <!-- Fond -->
       <details open>
         <summary>Canvas + stroke fond</summary>
         <div class="row">
-          <label>Couleur de fond</label>
+          <label>Fond canvas</label>
           <input type="color" bind:value={configs[active].bgColor} />
           <input type="text" bind:value={configs[active].bgColor} class="hex" />
         </div>
         <div class="row">
-          <label>Stroke fond activé</label>
+          <label>Stroke fond actif</label>
           <input type="checkbox" bind:checked={configs[active].fondEnabled} />
         </div>
         <div class="row">
-          <label>Couleur du fond stroke</label>
+          <label>Couleur fond stroke</label>
           <input type="color" bind:value={configs[active].fondColor} />
           <input type="text" bind:value={configs[active].fondColor} class="hex" />
         </div>
@@ -796,9 +884,8 @@
         </div>
       </details>
 
-      <!-- Pulsar -->
       <details open>
-        <summary>Pulsar (nœud central)</summary>
+        <summary>Pulsar</summary>
         <div class="slider">
           <label>Position X <span class="val">{configs[active].pulsarX.toFixed(2)}</span></label>
           <input type="range" min="0" max="24" step="0.1" bind:value={configs[active].pulsarX} />
@@ -823,7 +910,7 @@
           <input type="text" bind:value={configs[active].pulsarFill} class="hex" />
         </div>
         <div class="row">
-          <label>Rim (contour)</label>
+          <label>Rim</label>
           <input type="color" bind:value={configs[active].pulsarRim} />
           <input type="text" bind:value={configs[active].pulsarRim} class="hex" />
         </div>
@@ -841,25 +928,28 @@
           />
         </div>
         <div class="row">
-          <label>Gradient 3D activé</label>
+          <label>Gradient 3D</label>
           <input type="checkbox" bind:checked={configs[active].pulsarGradient} />
         </div>
         {#if configs[active].pulsarGradient}
           <div class="row">
-            <label>Gradient — point lumineux</label>
-            <input type="color" bind:value={configs[active].pulsarGradientHi} />
+            <label>Hi (lumière)</label><input
+              type="color"
+              bind:value={configs[active].pulsarGradientHi}
+            />
           </div>
           <div class="row">
-            <label>Gradient — mid</label>
-            <input type="color" bind:value={configs[active].pulsarGradientMid} />
+            <label>Mid</label><input type="color" bind:value={configs[active].pulsarGradientMid} />
           </div>
           <div class="row">
-            <label>Gradient — ombre</label>
-            <input type="color" bind:value={configs[active].pulsarGradientLo} />
+            <label>Lo (ombre)</label><input
+              type="color"
+              bind:value={configs[active].pulsarGradientLo}
+            />
           </div>
         {/if}
         <div class="row">
-          <label>Halo activé</label>
+          <label>Halo</label>
           <input type="checkbox" bind:checked={configs[active].pulsarHaloEnabled} />
         </div>
         {#if configs[active].pulsarHaloEnabled}
@@ -870,8 +960,7 @@
           </div>
           <div class="slider">
             <label
-              >Halo taille (× pulsar) <span class="val"
-                >{configs[active].pulsarHaloSize.toFixed(2)}</span
+              >Halo taille × <span class="val">{configs[active].pulsarHaloSize.toFixed(2)}</span
               ></label
             >
             <input
@@ -898,54 +987,30 @@
         {/if}
       </details>
 
-      <!-- Normal nodes -->
-      <details>
-        <summary>Nœuds normaux (sources isolées)</summary>
-        <div class="slider">
-          <label>Nombre <span class="val">{configs[active].normalCount}</span></label>
-          <input type="range" min="0" max="6" step="1" bind:value={configs[active].normalCount} />
+      <details open>
+        <summary>Nœuds normaux ({configs[active].normals.length})</summary>
+        <div class="row">
+          <button type="button" class="add-btn" onclick={addNormal}>➕ Ajouter un normal</button>
         </div>
-        <div class="slider">
-          <label
-            >Angle de départ (°) <span class="val"
-              >{configs[active].normalStartAngle.toFixed(0)}</span
-            ></label
-          >
-          <input
-            type="range"
-            min="-180"
-            max="180"
-            step="1"
-            bind:value={configs[active].normalStartAngle}
-          />
-        </div>
-        <div class="slider">
-          <label
-            >Arc de répartition (°) <span class="val"
-              >{configs[active].normalSpread.toFixed(0)}</span
-            ></label
-          >
-          <input
-            type="range"
-            min="0"
-            max="360"
-            step="1"
-            bind:value={configs[active].normalSpread}
-          />
-        </div>
-        <div class="slider">
-          <label
-            >Distance au pulsar <span class="val">{configs[active].normalDistance.toFixed(2)}</span
-            ></label
-          >
-          <input
-            type="range"
-            min="2"
-            max="15"
-            step="0.1"
-            bind:value={configs[active].normalDistance}
-          />
-        </div>
+        <p class="hint">Glisse-les directement dans l'aperçu pour les repositionner.</p>
+        {#each configs[active].normals as n, i (i)}
+          <div class="node-row">
+            <strong>#{i + 1}</strong>
+            <button type="button" class="del-btn" onclick={() => removeNormal(i)} title="Supprimer"
+              >✕</button
+            >
+            <div class="slider">
+              <label>Angle <span class="val">{n.angle.toFixed(0)}°</span></label>
+              <input type="range" min="-180" max="180" step="1" bind:value={n.angle} />
+            </div>
+            <div class="slider">
+              <label>Distance <span class="val">{n.distance.toFixed(2)}</span></label>
+              <input type="range" min="2" max="15" step="0.1" bind:value={n.distance} />
+            </div>
+          </div>
+        {/each}
+        <hr class="divider" />
+        <p class="hint">Style commun aux normaux :</p>
         <div class="slider">
           <label>Taille <span class="val">{configs[active].normalSize.toFixed(2)}</span></label>
           <input
@@ -981,17 +1046,17 @@
         </div>
       </details>
 
-      <!-- Y-fork -->
       <details>
         <summary>Y-fork (paire citée)</summary>
         <div class="row">
-          <label>Y-fork activé</label>
+          <label>Activé</label>
           <input type="checkbox" bind:checked={configs[active].yforkEnabled} />
         </div>
         {#if configs[active].yforkEnabled}
+          <p class="hint">Glisse la jonction (petit pointillé) et chaque twin dans l'aperçu.</p>
           <div class="slider">
             <label
-              >Angle Y-fork (°) <span class="val">{configs[active].yforkAngle.toFixed(0)}</span
+              >Angle jonction <span class="val">{configs[active].yforkAngle.toFixed(0)}°</span
               ></label
             >
             <input
@@ -1017,20 +1082,20 @@
           </div>
           <div class="slider">
             <label
-              >Écart twins (°) <span class="val">{configs[active].twinSpread.toFixed(0)}</span
+              >Twin A — angle <span class="val">{configs[active].twinA.angle.toFixed(0)}°</span
               ></label
             >
             <input
               type="range"
-              min="10"
+              min="-180"
               max="180"
               step="1"
-              bind:value={configs[active].twinSpread}
+              bind:value={configs[active].twinA.angle}
             />
           </div>
           <div class="slider">
             <label
-              >Distance twins <span class="val">{configs[active].twinDistance.toFixed(2)}</span
+              >Twin A — distance <span class="val">{configs[active].twinA.distance.toFixed(2)}</span
               ></label
             >
             <input
@@ -1038,7 +1103,33 @@
               min="1"
               max="10"
               step="0.1"
-              bind:value={configs[active].twinDistance}
+              bind:value={configs[active].twinA.distance}
+            />
+          </div>
+          <div class="slider">
+            <label
+              >Twin B — angle <span class="val">{configs[active].twinB.angle.toFixed(0)}°</span
+              ></label
+            >
+            <input
+              type="range"
+              min="-180"
+              max="180"
+              step="1"
+              bind:value={configs[active].twinB.angle}
+            />
+          </div>
+          <div class="slider">
+            <label
+              >Twin B — distance <span class="val">{configs[active].twinB.distance.toFixed(2)}</span
+              ></label
+            >
+            <input
+              type="range"
+              min="1"
+              max="10"
+              step="0.1"
+              bind:value={configs[active].twinB.distance}
             />
           </div>
           <div class="slider">
@@ -1054,18 +1145,18 @@
             />
           </div>
           <div class="row">
-            <label>Fill twins</label>
+            <label>Fill</label>
             <input type="color" bind:value={configs[active].twinFill} />
             <input type="text" bind:value={configs[active].twinFill} class="hex" />
           </div>
           <div class="row">
-            <label>Rim twins</label>
+            <label>Rim</label>
             <input type="color" bind:value={configs[active].twinRim} />
             <input type="text" bind:value={configs[active].twinRim} class="hex" />
           </div>
           <div class="slider">
             <label
-              >Épaisseur rim twins <span class="val">{configs[active].twinRimWidth.toFixed(2)}</span
+              >Épaisseur rim <span class="val">{configs[active].twinRimWidth.toFixed(2)}</span
               ></label
             >
             <input
@@ -1079,7 +1170,6 @@
         {/if}
       </details>
 
-      <!-- Parent + Lune -->
       <details>
         <summary>Parent + Lune</summary>
         <div class="row">
@@ -1089,7 +1179,7 @@
         {#if configs[active].parentEnabled}
           <div class="slider">
             <label
-              >Angle parent (°) <span class="val">{configs[active].parentAngle.toFixed(0)}</span
+              >Angle parent <span class="val">{configs[active].parentAngle.toFixed(0)}°</span
               ></label
             >
             <input
@@ -1156,22 +1246,19 @@
           {#if configs[active].luneEnabled}
             <div class="slider">
               <label
-                >Angle lune depuis parent (°) <span class="val"
-                  >{configs[active].luneAngleFromParent.toFixed(0)}</span
-                ></label
+                >Angle lune <span class="val">{configs[active].luneAngle.toFixed(0)}°</span></label
               >
               <input
                 type="range"
                 min="-180"
                 max="180"
                 step="1"
-                bind:value={configs[active].luneAngleFromParent}
+                bind:value={configs[active].luneAngle}
               />
             </div>
             <div class="slider">
               <label
-                >Distance lune <span class="val"
-                  >{configs[active].luneDistanceFromParent.toFixed(2)}</span
+                >Distance lune <span class="val">{configs[active].luneDistance.toFixed(2)}</span
                 ></label
               >
               <input
@@ -1179,7 +1266,7 @@
                 min="1"
                 max="8"
                 step="0.1"
-                bind:value={configs[active].luneDistanceFromParent}
+                bind:value={configs[active].luneDistance}
               />
             </div>
             <div class="slider">
@@ -1222,9 +1309,8 @@
         {/if}
       </details>
 
-      <!-- Lignes -->
       <details>
-        <summary>Lignes (connexions)</summary>
+        <summary>Lignes</summary>
         <div class="row">
           <label>Couleur</label>
           <input type="color" bind:value={configs[active].lineStroke} />
@@ -1241,7 +1327,7 @@
           />
         </div>
         <div class="row">
-          <label>Gradient activé</label>
+          <label>Gradient</label>
           <input type="checkbox" bind:checked={configs[active].lineGradient} />
         </div>
         {#if configs[active].lineGradient}
@@ -1252,22 +1338,21 @@
           </div>
         {/if}
         <div class="row">
-          <label>Lignes pointillées</label>
+          <label>Pointillé</label>
           <input type="checkbox" bind:checked={configs[active].lineDashed} />
         </div>
         {#if configs[active].lineDashed}
           <div class="row">
-            <label>Pattern (ex: 0.8 0.6)</label>
+            <label>Pattern</label>
             <input type="text" bind:value={configs[active].lineDashArray} class="hex" />
           </div>
         {/if}
       </details>
 
-      <!-- Wordmark -->
       <details>
-        <summary>Wordmark (nom « Philum »)</summary>
+        <summary>Wordmark (« Philum »)</summary>
         <div class="row">
-          <label>Wordmark activé</label>
+          <label>Activé</label>
           <input type="checkbox" bind:checked={configs[active].wordmarkEnabled} />
         </div>
         {#if configs[active].wordmarkEnabled}
@@ -1276,10 +1361,7 @@
             <input type="text" bind:value={configs[active].wordmarkText} class="hex" />
           </div>
           <div class="slider">
-            <label
-              >Décalage X (après logo) <span class="val"
-                >{configs[active].wordmarkX.toFixed(1)}</span
-              ></label
+            <label>Décalage X <span class="val">{configs[active].wordmarkX.toFixed(1)}</span></label
             >
             <input
               type="range"
@@ -1290,10 +1372,7 @@
             />
           </div>
           <div class="slider">
-            <label
-              >Position Y (centre vertical) <span class="val"
-                >{configs[active].wordmarkY.toFixed(1)}</span
-              ></label
+            <label>Position Y <span class="val">{configs[active].wordmarkY.toFixed(1)}</span></label
             >
             <input
               type="range"
@@ -1304,10 +1383,7 @@
             />
           </div>
           <div class="slider">
-            <label
-              >Taille (px SVG) <span class="val">{configs[active].wordmarkSize.toFixed(1)}</span
-              ></label
-            >
+            <label>Taille <span class="val">{configs[active].wordmarkSize.toFixed(1)}</span></label>
             <input
               type="range"
               min="3"
@@ -1325,7 +1401,7 @@
             <label>Police</label>
             <select bind:value={configs[active].wordmarkFont}>
               <option value="serif">Serif (Georgia)</option>
-              <option value="sans">Sans-serif (Inter)</option>
+              <option value="sans">Sans (Inter)</option>
             </select>
           </div>
           <div class="slider">
@@ -1404,7 +1480,7 @@
   }
   .layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 380px;
+    grid-template-columns: minmax(0, 1fr) 400px;
     gap: 1.5rem;
   }
   @media (max-width: 1024px) {
@@ -1417,6 +1493,44 @@
     flex-direction: column;
     gap: 1rem;
   }
+  .zoom-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    background: rgb(var(--bg-secondary));
+    border: 1px solid rgb(var(--border));
+    border-radius: 8px;
+  }
+  .zoom-bar input[type='range'] {
+    flex: 1;
+  }
+  .zoom-bar button {
+    padding: 0.2rem 0.6rem;
+    min-width: 32px;
+    border: 1px solid rgb(var(--border));
+    background: rgb(var(--bg-primary));
+    color: rgb(var(--text-primary));
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .zoom-bar button:hover {
+    background: rgb(var(--bg-tertiary));
+  }
+  .zoom-val {
+    font-family: ui-monospace, monospace;
+    font-size: 0.8rem;
+    background: rgb(var(--bg-primary));
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    min-width: 50px;
+    text-align: center;
+    border: 1px solid rgb(var(--border));
+  }
+  .zoom-reset {
+    font-size: 0.72rem;
+  }
   .canvas {
     border: 1px solid rgb(var(--border));
     border-radius: 12px;
@@ -1425,6 +1539,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
     background-image:
       linear-gradient(
         45deg,
@@ -1445,9 +1560,24 @@
       0 0,
       8px 8px;
   }
+  .zoom-wrap {
+    transform-origin: center center;
+    transition: transform 0.05s linear;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
   .canvas svg {
     max-width: 100%;
     max-height: 320px;
+    user-select: none;
+  }
+  .draggable {
+    cursor: grab;
+  }
+  .draggable:active {
+    cursor: grabbing;
   }
   .preview-actions {
     display: flex;
@@ -1641,5 +1771,62 @@
     background: rgb(var(--info));
     color: white;
     border-color: rgb(var(--info));
+  }
+  .add-btn {
+    padding: 0.4rem 0.6rem;
+    border: 1px dashed rgb(var(--info));
+    background: rgba(var(--info), 0.08);
+    color: rgb(var(--info));
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 600;
+    grid-column: 1 / -1;
+  }
+  .add-btn:hover {
+    background: rgba(var(--info), 0.18);
+  }
+  .del-btn {
+    padding: 0.15rem 0.45rem;
+    border: 1px solid rgba(var(--danger), 0.3);
+    background: transparent;
+    color: rgb(var(--danger));
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    line-height: 1;
+  }
+  .del-btn:hover {
+    background: rgba(var(--danger), 0.1);
+  }
+  .node-row {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    gap: 0.3rem 0.5rem;
+    align-items: center;
+    padding: 0.5rem;
+    margin: 0.4rem 0;
+    border: 1px solid rgb(var(--border));
+    border-radius: 6px;
+    background: rgb(var(--bg-primary));
+  }
+  .node-row strong {
+    font-size: 0.78rem;
+    color: rgb(var(--text-secondary));
+  }
+  .node-row .slider {
+    grid-column: 1 / -1;
+    margin: 0.2rem 0;
+  }
+  .hint {
+    font-size: 0.75rem;
+    color: rgb(var(--text-tertiary));
+    margin: 0.3rem 0;
+    font-style: italic;
+  }
+  .divider {
+    border: none;
+    border-top: 1px solid rgb(var(--border));
+    margin: 0.6rem 0;
   }
 </style>
