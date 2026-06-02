@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
@@ -14,6 +14,10 @@ from app.db.database import Base
 if TYPE_CHECKING:
     from app.models.biblio_card import BiblioCard
     from app.models.source_excerpt import SourceExcerpt
+
+
+def _utcnow_naive() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 class SourceFormat(str, Enum):
@@ -99,7 +103,7 @@ class Source(Base):
     subscribers_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     views_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     impact_factor: Mapped[float | None] = mapped_column(Float, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow_naive)
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # Soft-delete: a non-null value hides the row from all standard queries.
     # See migration 008_source_deleted_at + the matching .deleted_at columns

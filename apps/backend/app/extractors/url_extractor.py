@@ -20,7 +20,7 @@ from bs4 import BeautifulSoup
 logger = logging.getLogger(__name__)
 
 _HEADERS = {
-    "User-Agent": "Filum/0.1 (https://github.com/Mathias-PP/filum; mailto:mathias.pinault@hotmail.fr)"
+    "User-Agent": "Philum/0.1 (https://github.com/Mathias-PP/filum; mailto:contact@philum.app)"
 }
 _TIMEOUT = 8.0
 

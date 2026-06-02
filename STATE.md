@@ -6,6 +6,34 @@
 
 ## Dernière mise à jour
 
+**2026-06-02 — Audit improvements : privacy, deps, déprecations, et 3 windmills retirés.**
+
+Session de vérification croisée du plan d'audit contre le code réel. 3 problèmes retirés (faux positifs), 4 corrections appliquées en PR #92 (`feat/audit-improvements`).
+
+**Corrections appliquées :**
+- **Privacy leak** : email personnel développeur remplacé par `contact@philum.app` dans User-Agent de `url_extractor.py`
+- **Dépendance obsolète** : `python-jose` → `pyjwt` dans `requirements.txt` (CVE)
+- **Dockerfile.migrate** : aligné sur `pyproject.toml` + `uv sync --frozen`
+- **Deprecation warnings** : `datetime.utcnow()` remplacé dans 3 modèles (`source.py`, `biblio_card.py`, `audit_event.py`)
+
+**Moulins à vents retirés (vérifiés contre le code réel) :**
+- ❌ IndexError `users.py:68-69` : guard `if cards` bien présent, aucun bug
+- ❌ CSRF SameSite=None : proxy + CORS + JSON API = protection complète
+- ❌ AES-GCM key derivation : 128-bit effectif, toujours sécurisé (NSPM 2022)
+
+**Docs créées/mises à jour :**
+- `.docs/15-audit-improvements-plan.md` : plan complet vérifié, items retirés vs. maintenus
+- `STATE.md` : cette entrée
+- `.docs/14-philum-rename-migration.md` : noté changement User-Agent
+
+**Non traité (documenté) :**
+- Wayback queue durability (`asyncio.create_task` perdu au restart) — déjà documenté F5
+- Renommage Filum→Philum phases 2-4 — toujours en attente
+
+Doc `.docs/15-audit-improvements-plan.md` sert de document de référence pour les items à traiter plus tard (queue Wayback, risque juridique, cleanup legacy).
+
+---
+
 **2026-05-28 — Refonte complète du hero pulsar (12 passes en sandbox + port prod).**
 
 Session longue d'itération sur `/sandbox/hero` avec retours utilisateur à chaque étape (12 commits, branche `feat/hero-design-iter`), puis port du résultat validé vers le composant prod `apps/frontend/src/lib/components/HeroPulsar.svelte`. La sandbox tunable a servi exactement à l'usage prévu (ADR-024).
