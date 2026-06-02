@@ -16,6 +16,10 @@ if TYPE_CHECKING:
     from app.models.user import User
 
 
+def _utcnow_naive() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
+
+
 class CardStatus(str, Enum):
     DRAFT = "draft"
     PUBLISHED = "published"
@@ -66,7 +70,7 @@ class BiblioCard(Base):
         index=True,
     )
     published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow_naive)
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
