@@ -1,11 +1,17 @@
 <script lang="ts">
   // ====================================================================
   // Sandbox personnalisable du logo Philum
-  // 4 sous-sandboxes : Référence (clair), Dark, Wordmark, N&B
-  // Drag souris sur les nœuds, ajout/suppression de normaux, zoom canvas.
+  // Chaque nœud porte ses propres style (taille, fill, rim, rimWidth).
   // ====================================================================
 
-  type Node = { angle: number; distance: number };
+  type Node = {
+    angle: number;
+    distance: number;
+    size: number;
+    fill: string;
+    rim: string;
+    rimWidth: number;
+  };
 
   type Config = {
     bgColor: string;
@@ -25,41 +31,19 @@
     pulsarGradientMid: string;
     pulsarGradientLo: string;
 
-    // Liste de normaux (angle absolu depuis pulsar, distance)
     normals: Node[];
-    normalSize: number;
-    normalFill: string;
-    normalRim: string;
-    normalRimWidth: number;
 
-    // Y-fork
     yforkEnabled: boolean;
-    yforkAngle: number; // angle depuis pulsar
+    yforkAngle: number;
     yforkDistance: number;
-    twinA: Node; // angle absolu depuis forkM
+    twinA: Node;
     twinB: Node;
-    twinSize: number;
-    twinFill: string;
-    twinRim: string;
-    twinRimWidth: number;
 
-    // Parent + Lune
     parentEnabled: boolean;
-    parentAngle: number;
-    parentDistance: number;
-    parentSize: number;
-    parentFill: string;
-    parentRim: string;
-    parentRimWidth: number;
+    parent: Node;
     luneEnabled: boolean;
-    luneAngle: number; // angle absolu depuis parent
-    luneDistance: number;
-    luneSize: number;
-    luneFill: string;
-    luneRim: string;
-    luneRimWidth: number;
+    lune: Node;
 
-    // Lignes
     lineStroke: string;
     lineWidth: number;
     lineGradient: boolean;
@@ -82,20 +66,39 @@
     wordmarkLetterSpacing: number;
   };
 
+  // Helpers pour styliser en bulk
+  function styleAll(c: Config, fn: (n: Node) => void) {
+    c.normals.forEach(fn);
+    fn(c.twinA);
+    fn(c.twinB);
+    fn(c.parent);
+    fn(c.lune);
+  }
+  function setNormalStyle(c: Config, fill: string, rim: string) {
+    c.normals.forEach((n) => {
+      n.fill = fill;
+      n.rim = rim;
+    });
+  }
+  function setTwinStyle(c: Config, fill: string, rim: string) {
+    c.twinA.fill = fill;
+    c.twinA.rim = rim;
+    c.twinB.fill = fill;
+    c.twinB.rim = rim;
+  }
+
   const PALETTES: { name: string; apply: (c: Config) => void }[] = [
     {
       name: 'Z13 auteur-kind (défaut)',
       apply: (c) => {
         c.pulsarFill = '#1F2937';
         c.pulsarRim = '#000000';
-        c.normalFill = '#FAC775';
-        c.normalRim = '#EF9F27';
-        c.twinFill = '#C0DD97';
-        c.twinRim = '#639922';
-        c.parentFill = '#B5D4F4';
-        c.parentRim = '#378ADD';
-        c.luneFill = '#CECBF6';
-        c.luneRim = '#7F77DD';
+        setNormalStyle(c, '#FAC775', '#EF9F27');
+        setTwinStyle(c, '#C0DD97', '#639922');
+        c.parent.fill = '#B5D4F4';
+        c.parent.rim = '#378ADD';
+        c.lune.fill = '#CECBF6';
+        c.lune.rim = '#7F77DD';
         c.lineStroke = '#475569';
       },
     },
@@ -108,14 +111,12 @@
         c.pulsarGradientHi = '#FFFFFF';
         c.pulsarGradientMid = '#475569';
         c.pulsarGradientLo = '#0F172A';
-        c.normalFill = '#FAC775';
-        c.normalRim = '#EF9F27';
-        c.twinFill = '#C0DD97';
-        c.twinRim = '#639922';
-        c.parentFill = '#B5D4F4';
-        c.parentRim = '#378ADD';
-        c.luneFill = '#CECBF6';
-        c.luneRim = '#7F77DD';
+        setNormalStyle(c, '#FAC775', '#EF9F27');
+        setTwinStyle(c, '#C0DD97', '#639922');
+        c.parent.fill = '#B5D4F4';
+        c.parent.rim = '#378ADD';
+        c.lune.fill = '#CECBF6';
+        c.lune.rim = '#7F77DD';
         c.lineStroke = '#475569';
       },
     },
@@ -124,14 +125,12 @@
       apply: (c) => {
         c.pulsarFill = '#4A6CF7';
         c.pulsarRim = '#1E40AF';
-        c.normalFill = '#A6E8DA';
-        c.normalRim = '#5DBDA3';
-        c.twinFill = '#FBA5A5';
-        c.twinRim = '#DC8585';
-        c.parentFill = '#A8E4C5';
-        c.parentRim = '#5BB58E';
-        c.luneFill = '#FCE3A2';
-        c.luneRim = '#D4B872';
+        setNormalStyle(c, '#A6E8DA', '#5DBDA3');
+        setTwinStyle(c, '#FBA5A5', '#DC8585');
+        c.parent.fill = '#A8E4C5';
+        c.parent.rim = '#5BB58E';
+        c.lune.fill = '#FCE3A2';
+        c.lune.rim = '#D4B872';
         c.lineStroke = '#94A3B8';
       },
     },
@@ -141,14 +140,10 @@
         const v = '#1F2937';
         c.pulsarFill = v;
         c.pulsarRim = v;
-        c.normalFill = v;
-        c.normalRim = v;
-        c.twinFill = v;
-        c.twinRim = v;
-        c.parentFill = v;
-        c.parentRim = v;
-        c.luneFill = v;
-        c.luneRim = v;
+        styleAll(c, (n) => {
+          n.fill = v;
+          n.rim = v;
+        });
         c.lineStroke = v;
       },
     },
@@ -158,14 +153,10 @@
         const v = '#4A6CF7';
         c.pulsarFill = v;
         c.pulsarRim = v;
-        c.normalFill = v;
-        c.normalRim = v;
-        c.twinFill = v;
-        c.twinRim = v;
-        c.parentFill = v;
-        c.parentRim = v;
-        c.luneFill = v;
-        c.luneRim = v;
+        styleAll(c, (n) => {
+          n.fill = v;
+          n.rim = v;
+        });
         c.lineStroke = v;
       },
     },
@@ -175,14 +166,10 @@
         const v = '#10B981';
         c.pulsarFill = v;
         c.pulsarRim = v;
-        c.normalFill = v;
-        c.normalRim = v;
-        c.twinFill = v;
-        c.twinRim = v;
-        c.parentFill = v;
-        c.parentRim = v;
-        c.luneFill = v;
-        c.luneRim = v;
+        styleAll(c, (n) => {
+          n.fill = v;
+          n.rim = v;
+        });
         c.lineStroke = v;
       },
     },
@@ -193,14 +180,10 @@
         c.bgColor = '#0F172A';
         c.pulsarFill = w;
         c.pulsarRim = w;
-        c.normalFill = w;
-        c.normalRim = w;
-        c.twinFill = w;
-        c.twinRim = w;
-        c.parentFill = w;
-        c.parentRim = w;
-        c.luneFill = w;
-        c.luneRim = w;
+        styleAll(c, (n) => {
+          n.fill = w;
+          n.rim = w;
+        });
         c.lineStroke = w;
         c.fondColor = '#0F172A';
         c.wordmarkColor = w;
@@ -213,14 +196,10 @@
         c.bgColor = '#FFFFFF';
         c.pulsarFill = k;
         c.pulsarRim = k;
-        c.normalFill = k;
-        c.normalRim = k;
-        c.twinFill = k;
-        c.twinRim = k;
-        c.parentFill = k;
-        c.parentRim = k;
-        c.luneFill = k;
-        c.luneRim = k;
+        styleAll(c, (n) => {
+          n.fill = k;
+          n.rim = k;
+        });
         c.lineStroke = k;
         c.fondColor = '#FFFFFF';
         c.wordmarkColor = k;
@@ -246,38 +225,47 @@
       pulsarGradientHi: '#FFFFFF',
       pulsarGradientMid: '#475569',
       pulsarGradientLo: '#0F172A',
-      // Disposition CB12 par défaut : 2 normaux NE + WSW
       normals: [
-        { angle: -32, distance: 9.4 }, // NE (≈20, 7)
-        { angle: 157, distance: 7.6 }, // WSW (≈5, 15)
+        { angle: -32, distance: 9.4, size: 1.5, fill: '#FAC775', rim: '#EF9F27', rimWidth: 0.4 },
+        { angle: 157, distance: 7.6, size: 1.5, fill: '#FAC775', rim: '#EF9F27', rimWidth: 0.4 },
       ],
-      normalSize: 1.5,
-      normalFill: '#FAC775',
-      normalRim: '#EF9F27',
-      normalRimWidth: 0.4,
       yforkEnabled: true,
       yforkAngle: -126,
       yforkDistance: 8.6,
-      twinA: { angle: -148, distance: 5.0 },
-      twinB: { angle: -104, distance: 5.0 },
-      twinSize: 1.5,
-      twinFill: '#C0DD97',
-      twinRim: '#639922',
-      twinRimWidth: 0.4,
+      twinA: {
+        angle: -148,
+        distance: 5.0,
+        size: 1.5,
+        fill: '#C0DD97',
+        rim: '#639922',
+        rimWidth: 0.4,
+      },
+      twinB: {
+        angle: -104,
+        distance: 5.0,
+        size: 1.5,
+        fill: '#C0DD97',
+        rim: '#639922',
+        rimWidth: 0.4,
+      },
       parentEnabled: true,
-      parentAngle: 50,
-      parentDistance: 7.8,
-      parentSize: 1.95,
-      parentFill: '#B5D4F4',
-      parentRim: '#378ADD',
-      parentRimWidth: 0.45,
+      parent: {
+        angle: 50,
+        distance: 7.8,
+        size: 1.95,
+        fill: '#B5D4F4',
+        rim: '#378ADD',
+        rimWidth: 0.45,
+      },
       luneEnabled: true,
-      luneAngle: 50,
-      luneDistance: 4.5,
-      luneSize: 0.95,
-      luneFill: '#CECBF6',
-      luneRim: '#7F77DD',
-      luneRimWidth: 0.35,
+      lune: {
+        angle: 50,
+        distance: 4.5,
+        size: 0.95,
+        fill: '#CECBF6',
+        rim: '#7F77DD',
+        rimWidth: 0.35,
+      },
       lineStroke: '#475569',
       lineWidth: 0.5,
       lineGradient: false,
@@ -306,7 +294,7 @@
   }
   function wordmarkPreset(): Config {
     const c = defaultConfig();
-    PALETTES[1].apply(c); // 3D pulsar slate + Z13 sats
+    PALETTES[1].apply(c);
     c.wordmarkEnabled = true;
     return c;
   }
@@ -334,13 +322,11 @@
     p.apply(configs[active]);
     configs = configs;
   }
-
   function copyFrom(srcIdx: number) {
     if (srcIdx === active) return;
     configs[active] = structuredClone($state.snapshot(configs[srcIdx])) as Config;
     configs = configs;
   }
-
   function resetActive() {
     const presets = [defaultConfig, darkPreset, wordmarkPreset, bwPreset];
     configs[active] = presets[active]();
@@ -349,16 +335,32 @@
 
   function addNormal() {
     const cfg = configs[active];
-    const lastAngle = cfg.normals.length > 0 ? cfg.normals[cfg.normals.length - 1].angle : 0;
-    cfg.normals.push({ angle: lastAngle + 60, distance: 9 });
+    // hérite du style du dernier normal (s'il existe)
+    const last = cfg.normals[cfg.normals.length - 1];
+    cfg.normals.push({
+      angle: last ? last.angle + 60 : 0,
+      distance: last ? last.distance : 9,
+      size: last ? last.size : 1.5,
+      fill: last ? last.fill : '#FAC775',
+      rim: last ? last.rim : '#EF9F27',
+      rimWidth: last ? last.rimWidth : 0.4,
+    });
     configs = configs;
   }
   function removeNormal(i: number) {
     configs[active].normals.splice(i, 1);
     configs = configs;
   }
+  function applyStyleToAllNormals(from: Node) {
+    configs[active].normals.forEach((n) => {
+      n.size = from.size;
+      n.fill = from.fill;
+      n.rim = from.rim;
+      n.rimWidth = from.rimWidth;
+    });
+    configs = configs;
+  }
 
-  // ----- Géométrie -----
   function polar(cx: number, cy: number, deg: number, dist: number) {
     const r = (deg * Math.PI) / 180;
     return { x: cx + Math.cos(r) * dist, y: cy + Math.sin(r) * dist };
@@ -389,10 +391,8 @@
     let parent: Pt | null = null;
     let lune: Pt | null = null;
     if (c.parentEnabled) {
-      parent = polar(pulsar.x, pulsar.y, c.parentAngle, c.parentDistance);
-      if (c.luneEnabled) {
-        lune = polar(parent.x, parent.y, c.luneAngle, c.luneDistance);
-      }
+      parent = polar(pulsar.x, pulsar.y, c.parent.angle, c.parent.distance);
+      if (c.luneEnabled) lune = polar(parent.x, parent.y, c.lune.angle, c.lune.distance);
     }
     return { pulsar, normals, forkM, twins, parent, lune };
   }
@@ -419,12 +419,12 @@
     URL.revokeObjectURL(url);
   }
 
-  // ----- Drag souris -----
+  // Drag souris
   type DragKind = 'pulsar' | 'normal' | 'fork' | 'twinA' | 'twinB' | 'parent' | 'lune';
   let dragging = $state<{ kind: DragKind; idx?: number } | null>(null);
   let svgEl: SVGSVGElement | null = $state(null);
 
-  function svgPoint(evt: MouseEvent | PointerEvent): { x: number; y: number } | null {
+  function svgPoint(evt: MouseEvent): { x: number; y: number } | null {
     if (!svgEl) return null;
     const pt = svgEl.createSVGPoint();
     pt.x = evt.clientX;
@@ -444,7 +444,6 @@
       window.addEventListener('mouseup', stopDrag);
     };
   }
-
   function onDragMove(e: MouseEvent) {
     if (!dragging) return;
     const p = svgPoint(e);
@@ -455,42 +454,38 @@
       cfg.pulsarX = Math.max(0, Math.min(24, p.x));
       cfg.pulsarY = Math.max(0, Math.min(24, p.y));
     } else if (kind === 'normal' && idx !== undefined) {
-      const dx = p.x - cfg.pulsarX;
-      const dy = p.y - cfg.pulsarY;
-      cfg.normals[idx] = {
-        angle: (Math.atan2(dy, dx) * 180) / Math.PI,
-        distance: Math.sqrt(dx * dx + dy * dy),
-      };
+      const dx = p.x - cfg.pulsarX,
+        dy = p.y - cfg.pulsarY;
+      cfg.normals[idx].angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+      cfg.normals[idx].distance = Math.sqrt(dx * dx + dy * dy);
     } else if (kind === 'fork') {
-      const dx = p.x - cfg.pulsarX;
-      const dy = p.y - cfg.pulsarY;
+      const dx = p.x - cfg.pulsarX,
+        dy = p.y - cfg.pulsarY;
       cfg.yforkAngle = (Math.atan2(dy, dx) * 180) / Math.PI;
       cfg.yforkDistance = Math.sqrt(dx * dx + dy * dy);
     } else if (kind === 'twinA' || kind === 'twinB') {
       const fork = polar(cfg.pulsarX, cfg.pulsarY, cfg.yforkAngle, cfg.yforkDistance);
-      const dx = p.x - fork.x;
-      const dy = p.y - fork.y;
-      const node = {
-        angle: (Math.atan2(dy, dx) * 180) / Math.PI,
-        distance: Math.sqrt(dx * dx + dy * dy),
-      };
-      if (kind === 'twinA') cfg.twinA = node;
-      else cfg.twinB = node;
+      const dx = p.x - fork.x,
+        dy = p.y - fork.y;
+      const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const t = kind === 'twinA' ? cfg.twinA : cfg.twinB;
+      t.angle = angle;
+      t.distance = dist;
     } else if (kind === 'parent') {
-      const dx = p.x - cfg.pulsarX;
-      const dy = p.y - cfg.pulsarY;
-      cfg.parentAngle = (Math.atan2(dy, dx) * 180) / Math.PI;
-      cfg.parentDistance = Math.sqrt(dx * dx + dy * dy);
+      const dx = p.x - cfg.pulsarX,
+        dy = p.y - cfg.pulsarY;
+      cfg.parent.angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+      cfg.parent.distance = Math.sqrt(dx * dx + dy * dy);
     } else if (kind === 'lune') {
-      const parent = polar(cfg.pulsarX, cfg.pulsarY, cfg.parentAngle, cfg.parentDistance);
-      const dx = p.x - parent.x;
-      const dy = p.y - parent.y;
-      cfg.luneAngle = (Math.atan2(dy, dx) * 180) / Math.PI;
-      cfg.luneDistance = Math.sqrt(dx * dx + dy * dy);
+      const par = polar(cfg.pulsarX, cfg.pulsarY, cfg.parent.angle, cfg.parent.distance);
+      const dx = p.x - par.x,
+        dy = p.y - par.y;
+      cfg.lune.angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+      cfg.lune.distance = Math.sqrt(dx * dx + dy * dy);
     }
     configs = configs;
   }
-
   function stopDrag() {
     dragging = null;
     window.removeEventListener('mousemove', onDragMove);
@@ -506,9 +501,9 @@
   <header class="hdr">
     <h1>Sandbox personnalisable du logo</h1>
     <p>
-      Défaut basé sur Z13 auteur-kind. 4 sous-sandboxes (référence / dark / wordmark / N&amp;B).
-      Glisse les nœuds à la souris pour les repositionner, ajoute/supprime des normaux, zoome dans
-      l'aperçu.
+      Chaque nœud porte ses propres style (taille, fill, rim) modifiable individuellement. Glisse
+      les nœuds dans l'aperçu, ajoute/supprime des normaux, zoome dans le canvas. Les palettes
+      prédéfinies appliquent un style à tous les nœuds d'un coup.
     </p>
   </header>
 
@@ -628,31 +623,31 @@
               onmousedown={startDrag('pulsar')}
             />
 
-            {#each g.normals as n, i (i)}
+            {#each c.normals as n, i (i)}
+              {@const pos = g.normals[i]}
               {#if c.fondEnabled}
                 <circle
-                  cx={n.x}
-                  cy={n.y}
-                  r={c.normalSize}
+                  cx={pos.x}
+                  cy={pos.y}
+                  r={n.size}
                   fill="none"
                   stroke={c.fondColor}
                   stroke-width={c.fondWidth}
                 />
               {/if}
               <circle
-                cx={n.x}
-                cy={n.y}
-                r={c.normalSize}
-                fill={c.normalFill}
-                stroke={c.normalRimWidth > 0 ? c.normalRim : 'none'}
-                stroke-width={c.normalRimWidth}
+                cx={pos.x}
+                cy={pos.y}
+                r={n.size}
+                fill={n.fill}
+                stroke={n.rimWidth > 0 ? n.rim : 'none'}
+                stroke-width={n.rimWidth}
                 class="draggable"
                 onmousedown={startDrag('normal', i)}
               />
             {/each}
 
             {#if g.forkM && g.twins}
-              <!-- Poignée invisible pour forkM (sinon non draggable, c'est juste un point) -->
               <circle
                 cx={g.forkM.x}
                 cy={g.forkM.y}
@@ -664,24 +659,25 @@
                 class="draggable"
                 onmousedown={startDrag('fork')}
               />
-              {#each g.twins as t, i (i)}
+              {#each [c.twinA, c.twinB] as t, i (i)}
+                {@const pos = g.twins[i]}
                 {#if c.fondEnabled}
                   <circle
-                    cx={t.x}
-                    cy={t.y}
-                    r={c.twinSize}
+                    cx={pos.x}
+                    cy={pos.y}
+                    r={t.size}
                     fill="none"
                     stroke={c.fondColor}
                     stroke-width={c.fondWidth}
                   />
                 {/if}
                 <circle
-                  cx={t.x}
-                  cy={t.y}
-                  r={c.twinSize}
-                  fill={c.twinFill}
-                  stroke={c.twinRimWidth > 0 ? c.twinRim : 'none'}
-                  stroke-width={c.twinRimWidth}
+                  cx={pos.x}
+                  cy={pos.y}
+                  r={t.size}
+                  fill={t.fill}
+                  stroke={t.rimWidth > 0 ? t.rim : 'none'}
+                  stroke-width={t.rimWidth}
                   class="draggable"
                   onmousedown={startDrag(i === 0 ? 'twinA' : 'twinB')}
                 />
@@ -693,7 +689,7 @@
                 <circle
                   cx={g.parent.x}
                   cy={g.parent.y}
-                  r={c.parentSize}
+                  r={c.parent.size}
                   fill="none"
                   stroke={c.fondColor}
                   stroke-width={c.fondWidth}
@@ -702,10 +698,10 @@
               <circle
                 cx={g.parent.x}
                 cy={g.parent.y}
-                r={c.parentSize}
-                fill={c.parentFill}
-                stroke={c.parentRimWidth > 0 ? c.parentRim : 'none'}
-                stroke-width={c.parentRimWidth}
+                r={c.parent.size}
+                fill={c.parent.fill}
+                stroke={c.parent.rimWidth > 0 ? c.parent.rim : 'none'}
+                stroke-width={c.parent.rimWidth}
                 class="draggable"
                 onmousedown={startDrag('parent')}
               />
@@ -715,7 +711,7 @@
                 <circle
                   cx={g.lune.x}
                   cy={g.lune.y}
-                  r={c.luneSize}
+                  r={c.lune.size}
                   fill="none"
                   stroke={c.fondColor}
                   stroke-width={c.fondWidth}
@@ -724,10 +720,10 @@
               <circle
                 cx={g.lune.x}
                 cy={g.lune.y}
-                r={c.luneSize}
-                fill={c.luneFill}
-                stroke={c.luneRimWidth > 0 ? c.luneRim : 'none'}
-                stroke-width={c.luneRimWidth}
+                r={c.lune.size}
+                fill={c.lune.fill}
+                stroke={c.lune.rimWidth > 0 ? c.lune.rim : 'none'}
+                stroke-width={c.lune.rimWidth}
                 class="draggable"
                 onmousedown={startDrag('lune')}
               />
@@ -810,24 +806,34 @@
                   r={cfg.pulsarSize}
                   fill={cfg.pulsarFill}
                 />
-                {#each g2.normals as n (n.x + '-' + n.y)}
-                  <circle cx={n.x} cy={n.y} r={cfg.normalSize} fill={cfg.normalFill} />
+                {#each cfg.normals as n, j (j)}
+                  {@const np = g2.normals[j]}
+                  <circle cx={np.x} cy={np.y} r={n.size} fill={n.fill} />
                 {/each}
                 {#if g2.twins}
-                  {#each g2.twins as t, j (j)}
-                    <circle cx={t.x} cy={t.y} r={cfg.twinSize} fill={cfg.twinFill} />
-                  {/each}
+                  <circle
+                    cx={g2.twins[0].x}
+                    cy={g2.twins[0].y}
+                    r={cfg.twinA.size}
+                    fill={cfg.twinA.fill}
+                  />
+                  <circle
+                    cx={g2.twins[1].x}
+                    cy={g2.twins[1].y}
+                    r={cfg.twinB.size}
+                    fill={cfg.twinB.fill}
+                  />
                 {/if}
                 {#if g2.parent}
                   <circle
                     cx={g2.parent.x}
                     cy={g2.parent.y}
-                    r={cfg.parentSize}
-                    fill={cfg.parentFill}
+                    r={cfg.parent.size}
+                    fill={cfg.parent.fill}
                   />
                 {/if}
                 {#if g2.lune}
-                  <circle cx={g2.lune.x} cy={g2.lune.y} r={cfg.luneSize} fill={cfg.luneFill} />
+                  <circle cx={g2.lune.x} cy={g2.lune.y} r={cfg.lune.size} fill={cfg.lune.fill} />
                 {/if}
                 {#if cfg.wordmarkEnabled}
                   <text
@@ -852,7 +858,7 @@
 
     <section class="controls">
       <details open>
-        <summary>Palettes prédéfinies</summary>
+        <summary>Palettes prédéfinies (appliquent à tous les nœuds)</summary>
         <div class="palettes">
           {#each PALETTES as p (p.name)}
             <button type="button" class="palette" onclick={() => applyPalette(p)}>{p.name}</button>
@@ -992,13 +998,24 @@
         <div class="row">
           <button type="button" class="add-btn" onclick={addNormal}>➕ Ajouter un normal</button>
         </div>
-        <p class="hint">Glisse-les directement dans l'aperçu pour les repositionner.</p>
+        <p class="hint">Chaque normal a son propre style. Glisse-les dans l'aperçu.</p>
         {#each configs[active].normals as n, i (i)}
           <div class="node-row">
-            <strong>#{i + 1}</strong>
-            <button type="button" class="del-btn" onclick={() => removeNormal(i)} title="Supprimer"
-              >✕</button
-            >
+            <div class="node-hdr">
+              <strong>Normal #{i + 1}</strong>
+              <button
+                type="button"
+                class="bulk-btn"
+                onclick={() => applyStyleToAllNormals(n)}
+                title="Appliquer ce style à tous les normaux">⇶ tous</button
+              >
+              <button
+                type="button"
+                class="del-btn"
+                onclick={() => removeNormal(i)}
+                title="Supprimer">✕</button
+              >
+            </div>
             <div class="slider">
               <label>Angle <span class="val">{n.angle.toFixed(0)}°</span></label>
               <input type="range" min="-180" max="180" step="1" bind:value={n.angle} />
@@ -1007,43 +1024,26 @@
               <label>Distance <span class="val">{n.distance.toFixed(2)}</span></label>
               <input type="range" min="2" max="15" step="0.1" bind:value={n.distance} />
             </div>
+            <div class="slider">
+              <label>Taille <span class="val">{n.size.toFixed(2)}</span></label>
+              <input type="range" min="0.3" max="4" step="0.05" bind:value={n.size} />
+            </div>
+            <div class="row">
+              <label>Fill</label>
+              <input type="color" bind:value={n.fill} />
+              <input type="text" bind:value={n.fill} class="hex" />
+            </div>
+            <div class="row">
+              <label>Rim</label>
+              <input type="color" bind:value={n.rim} />
+              <input type="text" bind:value={n.rim} class="hex" />
+            </div>
+            <div class="slider">
+              <label>Épaisseur rim <span class="val">{n.rimWidth.toFixed(2)}</span></label>
+              <input type="range" min="0" max="2" step="0.05" bind:value={n.rimWidth} />
+            </div>
           </div>
         {/each}
-        <hr class="divider" />
-        <p class="hint">Style commun aux normaux :</p>
-        <div class="slider">
-          <label>Taille <span class="val">{configs[active].normalSize.toFixed(2)}</span></label>
-          <input
-            type="range"
-            min="0.3"
-            max="4"
-            step="0.05"
-            bind:value={configs[active].normalSize}
-          />
-        </div>
-        <div class="row">
-          <label>Fill</label>
-          <input type="color" bind:value={configs[active].normalFill} />
-          <input type="text" bind:value={configs[active].normalFill} class="hex" />
-        </div>
-        <div class="row">
-          <label>Rim</label>
-          <input type="color" bind:value={configs[active].normalRim} />
-          <input type="text" bind:value={configs[active].normalRim} class="hex" />
-        </div>
-        <div class="slider">
-          <label
-            >Épaisseur rim <span class="val">{configs[active].normalRimWidth.toFixed(2)}</span
-            ></label
-          >
-          <input
-            type="range"
-            min="0"
-            max="2"
-            step="0.05"
-            bind:value={configs[active].normalRimWidth}
-          />
-        </div>
       </details>
 
       <details>
@@ -1053,7 +1053,7 @@
           <input type="checkbox" bind:checked={configs[active].yforkEnabled} />
         </div>
         {#if configs[active].yforkEnabled}
-          <p class="hint">Glisse la jonction (petit pointillé) et chaque twin dans l'aperçu.</p>
+          <p class="hint">Glisse la jonction (pointillé) et chaque twin dans l'aperçu.</p>
           <div class="slider">
             <label
               >Angle jonction <span class="val">{configs[active].yforkAngle.toFixed(0)}°</span
@@ -1080,93 +1080,37 @@
               bind:value={configs[active].yforkDistance}
             />
           </div>
-          <div class="slider">
-            <label
-              >Twin A — angle <span class="val">{configs[active].twinA.angle.toFixed(0)}°</span
-              ></label
-            >
-            <input
-              type="range"
-              min="-180"
-              max="180"
-              step="1"
-              bind:value={configs[active].twinA.angle}
-            />
-          </div>
-          <div class="slider">
-            <label
-              >Twin A — distance <span class="val">{configs[active].twinA.distance.toFixed(2)}</span
-              ></label
-            >
-            <input
-              type="range"
-              min="1"
-              max="10"
-              step="0.1"
-              bind:value={configs[active].twinA.distance}
-            />
-          </div>
-          <div class="slider">
-            <label
-              >Twin B — angle <span class="val">{configs[active].twinB.angle.toFixed(0)}°</span
-              ></label
-            >
-            <input
-              type="range"
-              min="-180"
-              max="180"
-              step="1"
-              bind:value={configs[active].twinB.angle}
-            />
-          </div>
-          <div class="slider">
-            <label
-              >Twin B — distance <span class="val">{configs[active].twinB.distance.toFixed(2)}</span
-              ></label
-            >
-            <input
-              type="range"
-              min="1"
-              max="10"
-              step="0.1"
-              bind:value={configs[active].twinB.distance}
-            />
-          </div>
-          <div class="slider">
-            <label
-              >Taille twins <span class="val">{configs[active].twinSize.toFixed(2)}</span></label
-            >
-            <input
-              type="range"
-              min="0.3"
-              max="4"
-              step="0.05"
-              bind:value={configs[active].twinSize}
-            />
-          </div>
-          <div class="row">
-            <label>Fill</label>
-            <input type="color" bind:value={configs[active].twinFill} />
-            <input type="text" bind:value={configs[active].twinFill} class="hex" />
-          </div>
-          <div class="row">
-            <label>Rim</label>
-            <input type="color" bind:value={configs[active].twinRim} />
-            <input type="text" bind:value={configs[active].twinRim} class="hex" />
-          </div>
-          <div class="slider">
-            <label
-              >Épaisseur rim <span class="val">{configs[active].twinRimWidth.toFixed(2)}</span
-              ></label
-            >
-            <input
-              type="range"
-              min="0"
-              max="2"
-              step="0.05"
-              bind:value={configs[active].twinRimWidth}
-            />
-          </div>
+          {#each [{ key: 'A', t: configs[active].twinA }, { key: 'B', t: configs[active].twinB }] as tw (tw.key)}
+            <div class="node-row">
+              <div class="node-hdr"><strong>Twin {tw.key}</strong></div>
+              <div class="slider">
+                <label>Angle <span class="val">{tw.t.angle.toFixed(0)}°</span></label>
+                <input type="range" min="-180" max="180" step="1" bind:value={tw.t.angle} />
+              </div>
+              <div class="slider">
+                <label>Distance <span class="val">{tw.t.distance.toFixed(2)}</span></label>
+                <input type="range" min="1" max="10" step="0.1" bind:value={tw.t.distance} />
+              </div>
+              <div class="slider">
+                <label>Taille <span class="val">{tw.t.size.toFixed(2)}</span></label>
+                <input type="range" min="0.3" max="4" step="0.05" bind:value={tw.t.size} />
+              </div>
+              <div class="row">
+                <label>Fill</label>
+                <input type="color" bind:value={tw.t.fill} />
+                <input type="text" bind:value={tw.t.fill} class="hex" />
+              </div>
+              <div class="row">
+                <label>Rim</label>
+                <input type="color" bind:value={tw.t.rim} />
+                <input type="text" bind:value={tw.t.rim} class="hex" />
+              </div>
+              <div class="slider">
+                <label>Épaisseur rim <span class="val">{tw.t.rimWidth.toFixed(2)}</span></label>
+                <input type="range" min="0" max="2" step="0.05" bind:value={tw.t.rimWidth} />
+              </div>
+            </div>
+          {/each}
         {/if}
       </details>
 
@@ -1177,124 +1121,57 @@
           <input type="checkbox" bind:checked={configs[active].parentEnabled} />
         </div>
         {#if configs[active].parentEnabled}
-          <div class="slider">
-            <label
-              >Angle parent <span class="val">{configs[active].parentAngle.toFixed(0)}°</span
-              ></label
-            >
-            <input
-              type="range"
-              min="-180"
-              max="180"
-              step="1"
-              bind:value={configs[active].parentAngle}
-            />
-          </div>
-          <div class="slider">
-            <label
-              >Distance parent <span class="val">{configs[active].parentDistance.toFixed(2)}</span
-              ></label
-            >
-            <input
-              type="range"
-              min="2"
-              max="14"
-              step="0.1"
-              bind:value={configs[active].parentDistance}
-            />
-          </div>
-          <div class="slider">
-            <label
-              >Taille parent <span class="val">{configs[active].parentSize.toFixed(2)}</span></label
-            >
-            <input
-              type="range"
-              min="0.3"
-              max="5"
-              step="0.05"
-              bind:value={configs[active].parentSize}
-            />
-          </div>
-          <div class="row">
-            <label>Fill parent</label>
-            <input type="color" bind:value={configs[active].parentFill} />
-            <input type="text" bind:value={configs[active].parentFill} class="hex" />
-          </div>
-          <div class="row">
-            <label>Rim parent</label>
-            <input type="color" bind:value={configs[active].parentRim} />
-            <input type="text" bind:value={configs[active].parentRim} class="hex" />
-          </div>
-          <div class="slider">
-            <label
-              >Épaisseur rim parent <span class="val"
-                >{configs[active].parentRimWidth.toFixed(2)}</span
-              ></label
-            >
-            <input
-              type="range"
-              min="0"
-              max="2"
-              step="0.05"
-              bind:value={configs[active].parentRimWidth}
-            />
-          </div>
-          <div class="row">
-            <label>Lune activée</label>
-            <input type="checkbox" bind:checked={configs[active].luneEnabled} />
-          </div>
-          {#if configs[active].luneEnabled}
+          <div class="node-row">
+            <div class="node-hdr"><strong>Parent</strong></div>
             <div class="slider">
               <label
-                >Angle lune <span class="val">{configs[active].luneAngle.toFixed(0)}°</span></label
+                >Angle <span class="val">{configs[active].parent.angle.toFixed(0)}°</span></label
               >
               <input
                 type="range"
                 min="-180"
                 max="180"
                 step="1"
-                bind:value={configs[active].luneAngle}
+                bind:value={configs[active].parent.angle}
               />
             </div>
             <div class="slider">
               <label
-                >Distance lune <span class="val">{configs[active].luneDistance.toFixed(2)}</span
+                >Distance <span class="val">{configs[active].parent.distance.toFixed(2)}</span
                 ></label
               >
               <input
                 type="range"
-                min="1"
-                max="8"
+                min="2"
+                max="14"
                 step="0.1"
-                bind:value={configs[active].luneDistance}
+                bind:value={configs[active].parent.distance}
               />
             </div>
             <div class="slider">
-              <label
-                >Taille lune <span class="val">{configs[active].luneSize.toFixed(2)}</span></label
+              <label>Taille <span class="val">{configs[active].parent.size.toFixed(2)}</span></label
               >
               <input
                 type="range"
-                min="0.2"
-                max="3"
+                min="0.3"
+                max="5"
                 step="0.05"
-                bind:value={configs[active].luneSize}
+                bind:value={configs[active].parent.size}
               />
             </div>
             <div class="row">
-              <label>Fill lune</label>
-              <input type="color" bind:value={configs[active].luneFill} />
-              <input type="text" bind:value={configs[active].luneFill} class="hex" />
+              <label>Fill</label>
+              <input type="color" bind:value={configs[active].parent.fill} />
+              <input type="text" bind:value={configs[active].parent.fill} class="hex" />
             </div>
             <div class="row">
-              <label>Rim lune</label>
-              <input type="color" bind:value={configs[active].luneRim} />
-              <input type="text" bind:value={configs[active].luneRim} class="hex" />
+              <label>Rim</label>
+              <input type="color" bind:value={configs[active].parent.rim} />
+              <input type="text" bind:value={configs[active].parent.rim} class="hex" />
             </div>
             <div class="slider">
               <label
-                >Épaisseur rim lune <span class="val"
-                  >{configs[active].luneRimWidth.toFixed(2)}</span
+                >Épaisseur rim <span class="val">{configs[active].parent.rimWidth.toFixed(2)}</span
                 ></label
               >
               <input
@@ -1302,8 +1179,78 @@
                 min="0"
                 max="2"
                 step="0.05"
-                bind:value={configs[active].luneRimWidth}
+                bind:value={configs[active].parent.rimWidth}
               />
+            </div>
+          </div>
+          <div class="row">
+            <label>Lune activée</label>
+            <input type="checkbox" bind:checked={configs[active].luneEnabled} />
+          </div>
+          {#if configs[active].luneEnabled}
+            <div class="node-row">
+              <div class="node-hdr"><strong>Lune</strong></div>
+              <div class="slider">
+                <label
+                  >Angle (depuis parent) <span class="val"
+                    >{configs[active].lune.angle.toFixed(0)}°</span
+                  ></label
+                >
+                <input
+                  type="range"
+                  min="-180"
+                  max="180"
+                  step="1"
+                  bind:value={configs[active].lune.angle}
+                />
+              </div>
+              <div class="slider">
+                <label
+                  >Distance <span class="val">{configs[active].lune.distance.toFixed(2)}</span
+                  ></label
+                >
+                <input
+                  type="range"
+                  min="1"
+                  max="8"
+                  step="0.1"
+                  bind:value={configs[active].lune.distance}
+                />
+              </div>
+              <div class="slider">
+                <label>Taille <span class="val">{configs[active].lune.size.toFixed(2)}</span></label
+                >
+                <input
+                  type="range"
+                  min="0.2"
+                  max="3"
+                  step="0.05"
+                  bind:value={configs[active].lune.size}
+                />
+              </div>
+              <div class="row">
+                <label>Fill</label>
+                <input type="color" bind:value={configs[active].lune.fill} />
+                <input type="text" bind:value={configs[active].lune.fill} class="hex" />
+              </div>
+              <div class="row">
+                <label>Rim</label>
+                <input type="color" bind:value={configs[active].lune.rim} />
+                <input type="text" bind:value={configs[active].lune.rim} class="hex" />
+              </div>
+              <div class="slider">
+                <label
+                  >Épaisseur rim <span class="val">{configs[active].lune.rimWidth.toFixed(2)}</span
+                  ></label
+                >
+                <input
+                  type="range"
+                  min="0"
+                  max="2"
+                  step="0.05"
+                  bind:value={configs[active].lune.rimWidth}
+                />
+              </div>
             </div>
           {/if}
         {/if}
@@ -1468,7 +1415,6 @@
     border-radius: 8px 8px 0 0;
     cursor: pointer;
     font-size: 0.85rem;
-    transition: all 0.12s;
   }
   .tab:hover {
     background: rgb(var(--bg-tertiary));
@@ -1799,34 +1745,43 @@
   .del-btn:hover {
     background: rgba(var(--danger), 0.1);
   }
+  .bulk-btn {
+    padding: 0.15rem 0.45rem;
+    border: 1px solid rgba(var(--info), 0.3);
+    background: transparent;
+    color: rgb(var(--info));
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.72rem;
+    line-height: 1;
+  }
+  .bulk-btn:hover {
+    background: rgba(var(--info), 0.1);
+  }
   .node-row {
-    display: grid;
-    grid-template-columns: auto auto 1fr;
-    gap: 0.3rem 0.5rem;
-    align-items: center;
-    padding: 0.5rem;
+    padding: 0.55rem;
     margin: 0.4rem 0;
     border: 1px solid rgb(var(--border));
     border-radius: 6px;
     background: rgb(var(--bg-primary));
   }
-  .node-row strong {
-    font-size: 0.78rem;
-    color: rgb(var(--text-secondary));
+  .node-hdr {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem;
+    margin-bottom: 0.3rem;
+    padding-bottom: 0.3rem;
+    border-bottom: 1px dashed rgb(var(--border));
   }
-  .node-row .slider {
-    grid-column: 1 / -1;
-    margin: 0.2rem 0;
+  .node-hdr strong {
+    font-size: 0.8rem;
+    color: rgb(var(--text-primary));
   }
   .hint {
     font-size: 0.75rem;
     color: rgb(var(--text-tertiary));
     margin: 0.3rem 0;
     font-style: italic;
-  }
-  .divider {
-    border: none;
-    border-top: 1px solid rgb(var(--border));
-    margin: 0.6rem 0;
   }
 </style>
