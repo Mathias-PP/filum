@@ -3,6 +3,8 @@
 > Document d'accompagnement de la PR `feat/rename-philum`.
 > **État de cette PR : Phase 1 uniquement (texte visible frontend).**
 > Phases 2-4 documentées ci-dessous pour exécution séparée.
+>
+> **Mise à jour 2026-06-02** : La PR `feat/audit-improvements` a renommé `"Filum/0.1"` → `"Philum/0.1"` dans le User-Agent de `url_extractor.py`. Le reste du rename est toujours en attente, Phases 2-4 non planifiées.
 
 ## Pourquoi ce document
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
@@ -66,7 +66,7 @@ class BiblioCard(Base):
         index=True,
     )
     published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None))
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 

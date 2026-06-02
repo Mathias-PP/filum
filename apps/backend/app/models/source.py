@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
@@ -99,7 +99,7 @@ class Source(Base):
     subscribers_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     views_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     impact_factor: Mapped[float | None] = mapped_column(Float, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None))
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # Soft-delete: a non-null value hides the row from all standard queries.
     # See migration 008_source_deleted_at + the matching .deleted_at columns
