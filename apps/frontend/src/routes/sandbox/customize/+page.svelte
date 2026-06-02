@@ -4,6 +4,8 @@
   // Chaque nœud porte ses propres style (taille, fill, rim, rimWidth).
   // ====================================================================
 
+  import { onMount } from 'svelte';
+
   type Node = {
     angle: number;
     distance: number;
@@ -15,6 +17,9 @@
 
   type Config = {
     bgColor: string;
+
+    // Échelle globale (multiplie les distances + tailles autour du pulsar)
+    globalScale: number;
 
     pulsarX: number;
     pulsarY: number;
@@ -211,6 +216,7 @@
   function defaultConfig(): Config {
     return {
       bgColor: '#FFFFFF',
+      globalScale: 0.85,
       pulsarX: 12,
       pulsarY: 12,
       pulsarSize: 2.5,
@@ -417,13 +423,17 @@
   type DragKind = 'pulsar' | 'normal' | 'fork' | 'twinA' | 'twinB' | 'parent' | 'lune';
   let dragging = $state<{ kind: DragKind; idx?: number } | null>(null);
   let svgEl: SVGSVGElement | null = $state(null);
+  let logoGroupEl: SVGGElement | null = $state(null);
 
   function svgPoint(evt: MouseEvent): { x: number; y: number } | null {
-    if (!svgEl) return null;
+    // Utiliser le groupe logo si dispo (respecte le transform de scale global),
+    // sinon fallback sur le SVG racine.
+    const ref: SVGGraphicsElement | null = logoGroupEl ?? svgEl;
+    if (!ref || !svgEl) return null;
     const pt = svgEl.createSVGPoint();
     pt.x = evt.clientX;
     pt.y = evt.clientY;
-    const ctm = svgEl.getScreenCTM();
+    const ctm = ref.getScreenCTM();
     if (!ctm) return null;
     const p = pt.matrixTransform(ctm.inverse());
     return { x: p.x, y: p.y };
@@ -483,6 +493,120 @@
     dragging = null;
     window.removeEventListener('mousemove', onDragMove);
     window.removeEventListener('mouseup', stopDrag);
+  }
+
+  // ----- Sauvegardes (localStorage + import/export JSON) -----
+  type SaveEntry = { name: string; createdAt: string; configs: Config[] };
+  const STORAGE_KEY = 'philum-customizer-saves-v1';
+
+  let saves = $state<SaveEntry[]>([]);
+  let saveName = $state('');
+  let importInput: HTMLInputElement | null = $state(null);
+
+  onMount(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) saves = parsed as SaveEntry[];
+      }
+    } catch {
+      // ignore storage errors (private mode, quota, etc.)
+    }
+  });
+
+  function persistSaves() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(saves));
+    } catch {
+      // ignore
+    }
+  }
+
+  function saveCurrent() {
+    const name = saveName.trim();
+    if (!name) return;
+    const entry: SaveEntry = {
+      name,
+      createdAt: new Date().toISOString(),
+      configs: structuredClone($state.snapshot(configs)) as Config[],
+    };
+    const idx = saves.findIndex((s) => s.name === name);
+    if (idx >= 0) {
+      if (!confirm(`Une sauvegarde « ${name} » existe déjà. Écraser ?`)) return;
+      saves[idx] = entry;
+    } else {
+      saves.push(entry);
+    }
+    persistSaves();
+    saveName = '';
+  }
+
+  function loadSave(s: SaveEntry) {
+    if (!confirm(`Charger « ${s.name} » ? Les 4 sous-sandboxes actuelles seront remplacées.`))
+      return;
+    configs = structuredClone(s.configs) as Config[];
+  }
+
+  function deleteSave(s: SaveEntry) {
+    if (!confirm(`Supprimer la sauvegarde « ${s.name} » ?`)) return;
+    saves = saves.filter((x) => x.name !== s.name);
+    persistSaves();
+  }
+
+  function exportAllSaves() {
+    const payload = { version: 1, exportedAt: new Date().toISOString(), saves };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `philum-customizer-saves-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportSingleSave(s: SaveEntry) {
+    const blob = new Blob([JSON.stringify({ version: 1, saves: [s] }, null, 2)], {
+      type: 'application/json',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `philum-customizer-${s.name.replace(/[^a-z0-9-_]/gi, '_')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function triggerImport() {
+    importInput?.click();
+  }
+
+  function onImportFile(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(String(reader.result));
+        const imported: SaveEntry[] = Array.isArray(data) ? data : (data.saves ?? []);
+        if (!Array.isArray(imported) || imported.length === 0) {
+          alert('Fichier JSON invalide : aucune sauvegarde trouvée.');
+          return;
+        }
+        const map = new Map<string, SaveEntry>();
+        for (const s of saves) map.set(s.name, s);
+        for (const s of imported) map.set(s.name, s);
+        saves = Array.from(map.values());
+        persistSaves();
+        alert(`${imported.length} sauvegarde(s) importée(s).`);
+      } catch (err) {
+        alert(`Erreur lors de l'import : ${err}`);
+      } finally {
+        input.value = '';
+      }
+    };
+    reader.readAsText(file);
   }
 </script>
 
@@ -555,110 +679,78 @@
             {/if}
 
             <g
-              fill="none"
-              stroke={c.lineGradient ? `url(#grad-l-${active})` : c.lineStroke}
-              stroke-width={c.lineWidth}
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-dasharray={c.lineDashed ? c.lineDashArray : undefined}
+              bind:this={logoGroupEl}
+              transform="translate({c.pulsarX} {c.pulsarY}) scale({c.globalScale}) translate({-c.pulsarX} {-c.pulsarY})"
             >
-              {#each g.normals as n (n.x + '-' + n.y)}
-                <line x1={g.pulsar.x} y1={g.pulsar.y} x2={n.x} y2={n.y} />
-              {/each}
-              {#if g.forkM && g.twins}
-                <line x1={g.pulsar.x} y1={g.pulsar.y} x2={g.forkM.x} y2={g.forkM.y} />
-                <line x1={g.forkM.x} y1={g.forkM.y} x2={g.twins[0].x} y2={g.twins[0].y} />
-                <line x1={g.forkM.x} y1={g.forkM.y} x2={g.twins[1].x} y2={g.twins[1].y} />
-              {/if}
-              {#if g.parent}
-                <line x1={g.pulsar.x} y1={g.pulsar.y} x2={g.parent.x} y2={g.parent.y} />
-                {#if g.lune}
-                  <line x1={g.parent.x} y1={g.parent.y} x2={g.lune.x} y2={g.lune.y} />
-                {/if}
-              {/if}
-            </g>
-
-            {#if c.pulsarHaloEnabled}
-              <circle
-                cx={g.pulsar.x}
-                cy={g.pulsar.y}
-                r={c.pulsarSize * c.pulsarHaloSize}
-                fill={c.pulsarHaloColor}
-                fill-opacity={c.pulsarHaloOpacity * 0.5}
-              />
-              <circle
-                cx={g.pulsar.x}
-                cy={g.pulsar.y}
-                r={c.pulsarSize * (c.pulsarHaloSize * 0.7)}
-                fill={c.pulsarHaloColor}
-                fill-opacity={c.pulsarHaloOpacity}
-              />
-            {/if}
-
-            {#if c.fondEnabled}
-              <circle
-                cx={g.pulsar.x}
-                cy={g.pulsar.y}
-                r={c.pulsarSize}
+              <g
                 fill="none"
-                stroke={c.fondColor}
-                stroke-width={c.fondWidth}
-              />
-            {/if}
-            <circle
-              cx={g.pulsar.x}
-              cy={g.pulsar.y}
-              r={c.pulsarSize}
-              fill={c.pulsarGradient ? `url(#grad-p-${active})` : c.pulsarFill}
-              stroke={c.pulsarRimWidth > 0 ? c.pulsarRim : 'none'}
-              stroke-width={c.pulsarRimWidth}
-              class="draggable"
-              onmousedown={startDrag('pulsar')}
-            />
+                stroke={c.lineGradient ? `url(#grad-l-${active})` : c.lineStroke}
+                stroke-width={c.lineWidth}
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-dasharray={c.lineDashed ? c.lineDashArray : undefined}
+              >
+                {#each g.normals as n (n.x + '-' + n.y)}
+                  <line x1={g.pulsar.x} y1={g.pulsar.y} x2={n.x} y2={n.y} />
+                {/each}
+                {#if g.forkM && g.twins}
+                  <line x1={g.pulsar.x} y1={g.pulsar.y} x2={g.forkM.x} y2={g.forkM.y} />
+                  <line x1={g.forkM.x} y1={g.forkM.y} x2={g.twins[0].x} y2={g.twins[0].y} />
+                  <line x1={g.forkM.x} y1={g.forkM.y} x2={g.twins[1].x} y2={g.twins[1].y} />
+                {/if}
+                {#if g.parent}
+                  <line x1={g.pulsar.x} y1={g.pulsar.y} x2={g.parent.x} y2={g.parent.y} />
+                  {#if g.lune}
+                    <line x1={g.parent.x} y1={g.parent.y} x2={g.lune.x} y2={g.lune.y} />
+                  {/if}
+                {/if}
+              </g>
 
-            {#each c.normals as n, i (i)}
-              {@const pos = g.normals[i]}
+              {#if c.pulsarHaloEnabled}
+                <circle
+                  cx={g.pulsar.x}
+                  cy={g.pulsar.y}
+                  r={c.pulsarSize * c.pulsarHaloSize}
+                  fill={c.pulsarHaloColor}
+                  fill-opacity={c.pulsarHaloOpacity * 0.5}
+                />
+                <circle
+                  cx={g.pulsar.x}
+                  cy={g.pulsar.y}
+                  r={c.pulsarSize * (c.pulsarHaloSize * 0.7)}
+                  fill={c.pulsarHaloColor}
+                  fill-opacity={c.pulsarHaloOpacity}
+                />
+              {/if}
+
               {#if c.fondEnabled}
                 <circle
-                  cx={pos.x}
-                  cy={pos.y}
-                  r={n.size}
+                  cx={g.pulsar.x}
+                  cy={g.pulsar.y}
+                  r={c.pulsarSize}
                   fill="none"
                   stroke={c.fondColor}
                   stroke-width={c.fondWidth}
                 />
               {/if}
               <circle
-                cx={pos.x}
-                cy={pos.y}
-                r={n.size}
-                fill={n.fill}
-                stroke={n.rimWidth > 0 ? n.rim : 'none'}
-                stroke-width={n.rimWidth}
+                cx={g.pulsar.x}
+                cy={g.pulsar.y}
+                r={c.pulsarSize}
+                fill={c.pulsarGradient ? `url(#grad-p-${active})` : c.pulsarFill}
+                stroke={c.pulsarRimWidth > 0 ? c.pulsarRim : 'none'}
+                stroke-width={c.pulsarRimWidth}
                 class="draggable"
-                onmousedown={startDrag('normal', i)}
+                onmousedown={startDrag('pulsar')}
               />
-            {/each}
 
-            {#if g.forkM && g.twins}
-              <circle
-                cx={g.forkM.x}
-                cy={g.forkM.y}
-                r="0.7"
-                fill="rgba(0,0,0,0.001)"
-                stroke="rgba(99,102,241,0.4)"
-                stroke-width="0.1"
-                stroke-dasharray="0.2 0.2"
-                class="draggable"
-                onmousedown={startDrag('fork')}
-              />
-              {#each [c.twinA, c.twinB] as t, i (i)}
-                {@const pos = g.twins[i]}
+              {#each c.normals as n, i (i)}
+                {@const pos = g.normals[i]}
                 {#if c.fondEnabled}
                   <circle
                     cx={pos.x}
                     cy={pos.y}
-                    r={t.size}
+                    r={n.size}
                     fill="none"
                     stroke={c.fondColor}
                     stroke-width={c.fondWidth}
@@ -667,60 +759,97 @@
                 <circle
                   cx={pos.x}
                   cy={pos.y}
-                  r={t.size}
-                  fill={t.fill}
-                  stroke={t.rimWidth > 0 ? t.rim : 'none'}
-                  stroke-width={t.rimWidth}
+                  r={n.size}
+                  fill={n.fill}
+                  stroke={n.rimWidth > 0 ? n.rim : 'none'}
+                  stroke-width={n.rimWidth}
                   class="draggable"
-                  onmousedown={startDrag(i === 0 ? 'twinA' : 'twinB')}
+                  onmousedown={startDrag('normal', i)}
                 />
               {/each}
-            {/if}
 
-            {#if g.parent}
-              {#if c.fondEnabled}
+              {#if g.forkM && g.twins}
+                <circle
+                  cx={g.forkM.x}
+                  cy={g.forkM.y}
+                  r="0.7"
+                  fill="rgba(0,0,0,0.001)"
+                  stroke="rgba(99,102,241,0.4)"
+                  stroke-width="0.1"
+                  stroke-dasharray="0.2 0.2"
+                  class="draggable"
+                  onmousedown={startDrag('fork')}
+                />
+                {#each [c.twinA, c.twinB] as t, i (i)}
+                  {@const pos = g.twins[i]}
+                  {#if c.fondEnabled}
+                    <circle
+                      cx={pos.x}
+                      cy={pos.y}
+                      r={t.size}
+                      fill="none"
+                      stroke={c.fondColor}
+                      stroke-width={c.fondWidth}
+                    />
+                  {/if}
+                  <circle
+                    cx={pos.x}
+                    cy={pos.y}
+                    r={t.size}
+                    fill={t.fill}
+                    stroke={t.rimWidth > 0 ? t.rim : 'none'}
+                    stroke-width={t.rimWidth}
+                    class="draggable"
+                    onmousedown={startDrag(i === 0 ? 'twinA' : 'twinB')}
+                  />
+                {/each}
+              {/if}
+
+              {#if g.parent}
+                {#if c.fondEnabled}
+                  <circle
+                    cx={g.parent.x}
+                    cy={g.parent.y}
+                    r={c.parent.size}
+                    fill="none"
+                    stroke={c.fondColor}
+                    stroke-width={c.fondWidth}
+                  />
+                {/if}
                 <circle
                   cx={g.parent.x}
                   cy={g.parent.y}
                   r={c.parent.size}
-                  fill="none"
-                  stroke={c.fondColor}
-                  stroke-width={c.fondWidth}
+                  fill={c.parent.fill}
+                  stroke={c.parent.rimWidth > 0 ? c.parent.rim : 'none'}
+                  stroke-width={c.parent.rimWidth}
+                  class="draggable"
+                  onmousedown={startDrag('parent')}
                 />
               {/if}
-              <circle
-                cx={g.parent.x}
-                cy={g.parent.y}
-                r={c.parent.size}
-                fill={c.parent.fill}
-                stroke={c.parent.rimWidth > 0 ? c.parent.rim : 'none'}
-                stroke-width={c.parent.rimWidth}
-                class="draggable"
-                onmousedown={startDrag('parent')}
-              />
-            {/if}
-            {#if g.lune}
-              {#if c.fondEnabled}
+              {#if g.lune}
+                {#if c.fondEnabled}
+                  <circle
+                    cx={g.lune.x}
+                    cy={g.lune.y}
+                    r={c.lune.size}
+                    fill="none"
+                    stroke={c.fondColor}
+                    stroke-width={c.fondWidth}
+                  />
+                {/if}
                 <circle
                   cx={g.lune.x}
                   cy={g.lune.y}
                   r={c.lune.size}
-                  fill="none"
-                  stroke={c.fondColor}
-                  stroke-width={c.fondWidth}
+                  fill={c.lune.fill}
+                  stroke={c.lune.rimWidth > 0 ? c.lune.rim : 'none'}
+                  stroke-width={c.lune.rimWidth}
+                  class="draggable"
+                  onmousedown={startDrag('lune')}
                 />
               {/if}
-              <circle
-                cx={g.lune.x}
-                cy={g.lune.y}
-                r={c.lune.size}
-                fill={c.lune.fill}
-                stroke={c.lune.rimWidth > 0 ? c.lune.rim : 'none'}
-                stroke-width={c.lune.rimWidth}
-                class="draggable"
-                onmousedown={startDrag('lune')}
-              />
-            {/if}
+            </g>
 
             {#if c.wordmarkEnabled}
               <text
@@ -773,61 +902,65 @@
                 preserveAspectRatio="xMidYMid meet"
               >
                 <g
-                  fill="none"
-                  stroke={cfg.lineStroke}
-                  stroke-width={cfg.lineWidth}
-                  stroke-linecap="round"
+                  transform="translate({cfg.pulsarX} {cfg.pulsarY}) scale({cfg.globalScale}) translate({-cfg.pulsarX} {-cfg.pulsarY})"
                 >
-                  {#each g2.normals as n (n.x + '-' + n.y)}
-                    <line x1={g2.pulsar.x} y1={g2.pulsar.y} x2={n.x} y2={n.y} />
+                  <g
+                    fill="none"
+                    stroke={cfg.lineStroke}
+                    stroke-width={cfg.lineWidth}
+                    stroke-linecap="round"
+                  >
+                    {#each g2.normals as n (n.x + '-' + n.y)}
+                      <line x1={g2.pulsar.x} y1={g2.pulsar.y} x2={n.x} y2={n.y} />
+                    {/each}
+                    {#if g2.forkM && g2.twins}
+                      <line x1={g2.pulsar.x} y1={g2.pulsar.y} x2={g2.forkM.x} y2={g2.forkM.y} />
+                      <line x1={g2.forkM.x} y1={g2.forkM.y} x2={g2.twins[0].x} y2={g2.twins[0].y} />
+                      <line x1={g2.forkM.x} y1={g2.forkM.y} x2={g2.twins[1].x} y2={g2.twins[1].y} />
+                    {/if}
+                    {#if g2.parent}
+                      <line x1={g2.pulsar.x} y1={g2.pulsar.y} x2={g2.parent.x} y2={g2.parent.y} />
+                      {#if g2.lune}
+                        <line x1={g2.parent.x} y1={g2.parent.y} x2={g2.lune.x} y2={g2.lune.y} />
+                      {/if}
+                    {/if}
+                  </g>
+                  <circle
+                    cx={g2.pulsar.x}
+                    cy={g2.pulsar.y}
+                    r={cfg.pulsarSize}
+                    fill={cfg.pulsarFill}
+                  />
+                  {#each cfg.normals as n, j (j)}
+                    {@const np = g2.normals[j]}
+                    <circle cx={np.x} cy={np.y} r={n.size} fill={n.fill} />
                   {/each}
-                  {#if g2.forkM && g2.twins}
-                    <line x1={g2.pulsar.x} y1={g2.pulsar.y} x2={g2.forkM.x} y2={g2.forkM.y} />
-                    <line x1={g2.forkM.x} y1={g2.forkM.y} x2={g2.twins[0].x} y2={g2.twins[0].y} />
-                    <line x1={g2.forkM.x} y1={g2.forkM.y} x2={g2.twins[1].x} y2={g2.twins[1].y} />
+                  {#if g2.twins}
+                    <circle
+                      cx={g2.twins[0].x}
+                      cy={g2.twins[0].y}
+                      r={cfg.twinA.size}
+                      fill={cfg.twinA.fill}
+                    />
+                    <circle
+                      cx={g2.twins[1].x}
+                      cy={g2.twins[1].y}
+                      r={cfg.twinB.size}
+                      fill={cfg.twinB.fill}
+                    />
                   {/if}
                   {#if g2.parent}
-                    <line x1={g2.pulsar.x} y1={g2.pulsar.y} x2={g2.parent.x} y2={g2.parent.y} />
-                    {#if g2.lune}
-                      <line x1={g2.parent.x} y1={g2.parent.y} x2={g2.lune.x} y2={g2.lune.y} />
-                    {/if}
+                    <circle
+                      cx={g2.parent.x}
+                      cy={g2.parent.y}
+                      r={cfg.parent.size}
+                      fill={cfg.parent.fill}
+                    />
+                  {/if}
+                  {#if g2.lune}
+                    <circle cx={g2.lune.x} cy={g2.lune.y} r={cfg.lune.size} fill={cfg.lune.fill} />
                   {/if}
                 </g>
-                <circle
-                  cx={g2.pulsar.x}
-                  cy={g2.pulsar.y}
-                  r={cfg.pulsarSize}
-                  fill={cfg.pulsarFill}
-                />
-                {#each cfg.normals as n, j (j)}
-                  {@const np = g2.normals[j]}
-                  <circle cx={np.x} cy={np.y} r={n.size} fill={n.fill} />
-                {/each}
-                {#if g2.twins}
-                  <circle
-                    cx={g2.twins[0].x}
-                    cy={g2.twins[0].y}
-                    r={cfg.twinA.size}
-                    fill={cfg.twinA.fill}
-                  />
-                  <circle
-                    cx={g2.twins[1].x}
-                    cy={g2.twins[1].y}
-                    r={cfg.twinB.size}
-                    fill={cfg.twinB.fill}
-                  />
-                {/if}
-                {#if g2.parent}
-                  <circle
-                    cx={g2.parent.x}
-                    cy={g2.parent.y}
-                    r={cfg.parent.size}
-                    fill={cfg.parent.fill}
-                  />
-                {/if}
-                {#if g2.lune}
-                  <circle cx={g2.lune.x} cy={g2.lune.y} r={cfg.lune.size} fill={cfg.lune.fill} />
-                {/if}
                 {#if cfg.wordmarkEnabled}
                   <text
                     x={24 + cfg.wordmarkX}
@@ -850,6 +983,78 @@
     </section>
 
     <section class="controls">
+      <details open>
+        <summary>Sauvegardes ({saves.length})</summary>
+        <p class="hint">
+          Une sauvegarde inclut les 4 sous-sandboxes. Stockage local (navigateur) + export/import
+          JSON pour partager entre sessions ou machines.
+        </p>
+        <div class="row save-row">
+          <input
+            type="text"
+            placeholder="Nom de la sauvegarde…"
+            bind:value={saveName}
+            class="save-name"
+            onkeydown={(e) => {
+              if (e.key === 'Enter') saveCurrent();
+            }}
+          />
+          <button type="button" class="add-btn" onclick={saveCurrent} disabled={!saveName.trim()}>
+            💾 Sauvegarder
+          </button>
+        </div>
+        <div class="row save-row">
+          <button
+            type="button"
+            onclick={exportAllSaves}
+            disabled={saves.length === 0}
+            class="ie-btn">⤓ Exporter tout (JSON)</button
+          >
+          <button type="button" onclick={triggerImport} class="ie-btn">⤒ Importer JSON</button>
+          <input
+            bind:this={importInput}
+            type="file"
+            accept="application/json,.json"
+            style="display:none"
+            onchange={onImportFile}
+          />
+        </div>
+        {#if saves.length > 0}
+          <div class="saves-list">
+            {#each saves as s (s.name)}
+              <div class="save-entry">
+                <div class="save-info">
+                  <strong>{s.name}</strong>
+                  <span class="save-date"
+                    >{new Date(s.createdAt).toLocaleString('fr-FR', {
+                      dateStyle: 'short',
+                      timeStyle: 'short',
+                    })}</span
+                  >
+                </div>
+                <div class="save-actions">
+                  <button type="button" class="bulk-btn" onclick={() => loadSave(s)} title="Charger"
+                    >↺</button
+                  >
+                  <button
+                    type="button"
+                    class="bulk-btn"
+                    onclick={() => exportSingleSave(s)}
+                    title="Exporter JSON">⤓</button
+                  >
+                  <button
+                    type="button"
+                    class="del-btn"
+                    onclick={() => deleteSave(s)}
+                    title="Supprimer">✕</button
+                  >
+                </div>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </details>
+
       <details open>
         <summary>Palettes prédéfinies (appliquent à tous les nœuds)</summary>
         <div class="palettes">
@@ -885,6 +1090,24 @@
 
       <details open>
         <summary>Pulsar</summary>
+        <div class="slider">
+          <label
+            >🌐 Échelle globale du logo <span class="val"
+              >{Math.round(configs[active].globalScale * 100)}%</span
+            ></label
+          >
+          <input
+            type="range"
+            min="0.3"
+            max="2"
+            step="0.02"
+            bind:value={configs[active].globalScale}
+          />
+        </div>
+        <p class="hint">
+          Scale toutes les distances/tailles autour du pulsar (modifie le SVG exporté). Distinct du
+          zoom d'aperçu.
+        </p>
         <div class="slider">
           <label>Position X <span class="val">{configs[active].pulsarX.toFixed(2)}</span></label>
           <input type="range" min="0" max="24" step="0.1" bind:value={configs[active].pulsarX} />
@@ -1776,5 +1999,80 @@
     color: rgb(var(--text-tertiary));
     margin: 0.3rem 0;
     font-style: italic;
+  }
+  .save-row {
+    grid-template-columns: 1fr auto;
+    margin: 0.4rem 0;
+  }
+  .save-row .save-name {
+    padding: 0.35rem 0.5rem;
+    border: 1px solid rgb(var(--border));
+    border-radius: 4px;
+    background: rgb(var(--bg-primary));
+    color: rgb(var(--text-primary));
+    font-size: 0.82rem;
+    width: 100%;
+    font-family: inherit;
+  }
+  .ie-btn {
+    padding: 0.35rem 0.6rem;
+    border: 1px solid rgb(var(--border));
+    background: rgb(var(--bg-primary));
+    color: rgb(var(--text-primary));
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.78rem;
+  }
+  .ie-btn:hover:not(:disabled) {
+    background: rgb(var(--bg-tertiary));
+  }
+  .ie-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .saves-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-top: 0.5rem;
+    max-height: 240px;
+    overflow-y: auto;
+  }
+  .save-entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.4rem 0.55rem;
+    border: 1px solid rgb(var(--border));
+    border-radius: 5px;
+    background: rgb(var(--bg-primary));
+    font-size: 0.8rem;
+  }
+  .save-info {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .save-info strong {
+    color: rgb(var(--text-primary));
+    font-size: 0.84rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .save-date {
+    font-size: 0.68rem;
+    color: rgb(var(--text-tertiary));
+    font-family: ui-monospace, monospace;
+  }
+  .save-actions {
+    display: flex;
+    gap: 0.25rem;
+    flex-shrink: 0;
+  }
+  .save-actions .bulk-btn,
+  .save-actions .del-btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.85rem;
   }
 </style>
