@@ -320,17 +320,14 @@
 
   function applyPalette(p: { apply: (c: Config) => void }) {
     p.apply(configs[active]);
-    configs = configs;
   }
   function copyFrom(srcIdx: number) {
     if (srcIdx === active) return;
     configs[active] = structuredClone($state.snapshot(configs[srcIdx])) as Config;
-    configs = configs;
   }
   function resetActive() {
     const presets = [defaultConfig, darkPreset, wordmarkPreset, bwPreset];
     configs[active] = presets[active]();
-    configs = configs;
   }
 
   function addNormal() {
@@ -345,11 +342,9 @@
       rim: last ? last.rim : '#EF9F27',
       rimWidth: last ? last.rimWidth : 0.4,
     });
-    configs = configs;
   }
   function removeNormal(i: number) {
     configs[active].normals.splice(i, 1);
-    configs = configs;
   }
   function applyStyleToAllNormals(from: Node) {
     configs[active].normals.forEach((n) => {
@@ -358,7 +353,6 @@
       n.rim = from.rim;
       n.rimWidth = from.rimWidth;
     });
-    configs = configs;
   }
 
   function polar(cx: number, cy: number, deg: number, dist: number) {
@@ -484,7 +478,6 @@
       cfg.lune.angle = (Math.atan2(dy, dx) * 180) / Math.PI;
       cfg.lune.distance = Math.sqrt(dx * dx + dy * dy);
     }
-    configs = configs;
   }
   function stopDrag() {
     dragging = null;

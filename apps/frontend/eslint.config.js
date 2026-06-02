@@ -39,4 +39,13 @@ export default [
       'no-unused-vars': 'off',
     },
   },
+  // Sandbox pages : outils internes de design, on relâche les contraintes a11y
+  // (labels non liés, mousedown sur <circle>) qui ne s'appliquent pas vraiment
+  // à un éditeur SVG interactif.
+  {
+    files: ['**/routes/sandbox/**/*.svelte'],
+    rules: {
+      'svelte/valid-compile': 'off',
+    },
+  },
 ];
