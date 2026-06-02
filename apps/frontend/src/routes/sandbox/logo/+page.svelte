@@ -4230,6 +4230,441 @@
     },
   ];
 
+  // ====================================================================
+  // BATCH W v5 — 30 variants exploratoires. Pas de X-spikes, pas de rect.
+  // Liberté : noFond (pas de stroke blanc), noRim (pas de dark rim),
+  // mono couleur, gradients, palettes hero. Toujours disposition CB12.
+  // ====================================================================
+  type WV5Variant = WV4Variant & { noFond?: boolean; noRim?: boolean };
+  const BATCH_W_V5: WV5Variant[] = [
+    // — Groupe 1 : Mono couleur (6) —
+    {
+      id: 'WY01',
+      title: 'Mono slate',
+      caption: 'Tout slate #1F2937, lignes incluses. Minimal, sans rim, sans fond.',
+      pulsarFill: '#1F2937',
+      twinFill: '#1F2937',
+      parentFill: '#1F2937',
+      luneFill: '#1F2937',
+      normalFill: '#1F2937',
+      lineStroke: '#1F2937',
+      noFond: true,
+      noRim: true,
+    },
+    {
+      id: 'WY02',
+      title: 'Mono hero blue',
+      caption: 'Tout #4A6CF7 (la couleur signature du hero).',
+      pulsarFill: '#4A6CF7',
+      twinFill: '#4A6CF7',
+      parentFill: '#4A6CF7',
+      luneFill: '#4A6CF7',
+      normalFill: '#4A6CF7',
+      lineStroke: '#4A6CF7',
+      noFond: true,
+      noRim: true,
+    },
+    {
+      id: 'WY03',
+      title: 'Mono emerald',
+      caption: 'Tout emerald #10B981.',
+      pulsarFill: '#10B981',
+      twinFill: '#10B981',
+      parentFill: '#10B981',
+      luneFill: '#10B981',
+      normalFill: '#10B981',
+      lineStroke: '#10B981',
+      noFond: true,
+      noRim: true,
+    },
+    {
+      id: 'WY04',
+      title: 'Mono violet',
+      caption: 'Tout violet #8B5CF6.',
+      pulsarFill: '#8B5CF6',
+      twinFill: '#8B5CF6',
+      parentFill: '#8B5CF6',
+      luneFill: '#8B5CF6',
+      normalFill: '#8B5CF6',
+      lineStroke: '#8B5CF6',
+      noFond: true,
+      noRim: true,
+    },
+    {
+      id: 'WY05',
+      title: 'Mono cyan',
+      caption: 'Tout cyan #06B6D4.',
+      pulsarFill: '#06B6D4',
+      twinFill: '#06B6D4',
+      parentFill: '#06B6D4',
+      luneFill: '#06B6D4',
+      normalFill: '#06B6D4',
+      lineStroke: '#06B6D4',
+      noFond: true,
+      noRim: true,
+    },
+    {
+      id: 'WY06',
+      title: 'Mono gold',
+      caption: 'Tout gold #F59E0B.',
+      pulsarFill: '#F59E0B',
+      twinFill: '#F59E0B',
+      parentFill: '#F59E0B',
+      luneFill: '#F59E0B',
+      normalFill: '#F59E0B',
+      lineStroke: '#F59E0B',
+      noFond: true,
+      noRim: true,
+    },
+
+    // — Groupe 2 : Hero echo Z12 pastel (5) —
+    {
+      id: 'WY07',
+      title: 'Z12 hero echo',
+      caption: 'Palette Z12 pastel signature du hero. Pas de rim, pas de fond.',
+      highlight: true,
+      pulsarFill: '#4A6CF7',
+      twinFill: '#FBA5A5',
+      parentFill: '#A8E4C5',
+      luneFill: '#FCE3A2',
+      normalFill: '#A6E8DA',
+      lineStroke: '#94A3B8',
+      noFond: true,
+      noRim: true,
+    },
+    {
+      id: 'WY08',
+      title: 'Z12 + rim subtil',
+      caption: 'Z12 + dark rim léger (sans stroke fond).',
+      pulsarFill: '#4A6CF7',
+      pulsarRim: '#1E40AF',
+      twinFill: '#FBA5A5',
+      twinRim: '#DC8585',
+      parentFill: '#A8E4C5',
+      parentRim: '#5BB58E',
+      luneFill: '#FCE3A2',
+      luneRim: '#D4B872',
+      normalFill: '#A6E8DA',
+      normalRim: '#5DBDA3',
+      lineStroke: '#94A3B8',
+      noFond: true,
+    },
+    {
+      id: 'WY09',
+      title: 'Z12 + lignes gradient',
+      caption: 'Z12 pastel + lignes en gradient blue→pastel.',
+      pulsarFill: '#4A6CF7',
+      twinFill: '#FBA5A5',
+      parentFill: '#A8E4C5',
+      luneFill: '#FCE3A2',
+      normalFill: '#A6E8DA',
+      lineStroke: '#4A6CF7',
+      lineGradientEnd: '#FBA5A5',
+      noFond: true,
+      noRim: true,
+    },
+    {
+      id: 'WY10',
+      title: 'Z12 + 3D pulsar hero',
+      caption: 'Z12 sats + pulsar 3D bleu hero (gradient radial).',
+      pulsarFill: '#4A6CF7',
+      pulsarGradient: ['#FFFFFF', '#4A6CF7', '#1E40AF'],
+      twinFill: '#FBA5A5',
+      parentFill: '#A8E4C5',
+      luneFill: '#FCE3A2',
+      normalFill: '#A6E8DA',
+      lineStroke: '#94A3B8',
+      noFond: true,
+      noRim: true,
+    },
+    {
+      id: 'WY11',
+      title: 'Z12 inversion',
+      caption: 'Pulsar pastel pêche, sats bleu hero. Inversion ludique.',
+      pulsarFill: '#FBA5A5',
+      twinFill: '#4A6CF7',
+      parentFill: '#4A6CF7',
+      luneFill: '#4A6CF7',
+      normalFill: '#4A6CF7',
+      lineStroke: '#FBA5A5',
+      noFond: true,
+      noRim: true,
+    },
+
+    // — Groupe 3 : Gradients (5) —
+    {
+      id: 'WY12',
+      title: '3D pulsar slate only',
+      caption: 'Pulsar 3D slate + Z13 sats plats, sans fond, sans rim.',
+      pulsarFill: '#1F2937',
+      pulsarGradient: ['#FFFFFF', '#475569', '#0F172A'],
+      twinFill: '#C0DD97',
+      parentFill: '#B5D4F4',
+      luneFill: '#CECBF6',
+      normalFill: '#FAC775',
+      lineStroke: '#475569',
+      noFond: true,
+      noRim: true,
+    },
+    {
+      id: 'WY13',
+      title: '3D pulsar emerald',
+      caption: 'Pulsar 3D emerald + Z13 sats plats.',
+      pulsarFill: '#10B981',
+      pulsarGradient: ['#FFFFFF', '#10B981', '#064E3B'],
+      twinFill: '#C0DD97',
+      parentFill: '#B5D4F4',
+      luneFill: '#CECBF6',
+      normalFill: '#FAC775',
+      lineStroke: '#475569',
+      noFond: true,
+      noRim: true,
+    },
+    {
+      id: 'WY14',
+      title: 'Gradient slate→cyan',
+      caption: 'Pulsar gradient slate→cyan + lignes même gradient.',
+      pulsarFill: '#1F2937',
+      pulsarGradient: ['#FFFFFF', '#475569', '#0F172A'],
+      twinFill: '#C0DD97',
+      parentFill: '#B5D4F4',
+      luneFill: '#CECBF6',
+      normalFill: '#FAC775',
+      lineStroke: '#1F2937',
+      lineGradientEnd: '#06B6D4',
+      noFond: true,
+      noRim: true,
+    },
+    {
+      id: 'WY15',
+      title: 'Gradient violet→rose',
+      caption: 'Pulsar 3D violet + lignes gradient violet→rose.',
+      pulsarFill: '#8B5CF6',
+      pulsarGradient: ['#FFFFFF', '#8B5CF6', '#5B21B6'],
+      twinFill: '#C0DD97',
+      parentFill: '#B5D4F4',
+      luneFill: '#CECBF6',
+      normalFill: '#FAC775',
+      lineStroke: '#8B5CF6',
+      lineGradientEnd: '#F87171',
+      noFond: true,
+      noRim: true,
+    },
+    {
+      id: 'WY16',
+      title: 'Gradient bleu→emerald',
+      caption: 'Pulsar 3D bleu + lignes gradient bleu→emerald + Z13.',
+      pulsarFill: '#3B82F6',
+      pulsarGradient: ['#FFFFFF', '#3B82F6', '#1E3A8A'],
+      twinFill: '#C0DD97',
+      parentFill: '#B5D4F4',
+      luneFill: '#CECBF6',
+      normalFill: '#FAC775',
+      lineStroke: '#3B82F6',
+      lineGradientEnd: '#10B981',
+      noFond: true,
+      noRim: true,
+    },
+
+    // — Groupe 4 : Pulsar hero blue + déclinaisons (5) —
+    {
+      id: 'WY17',
+      title: 'Hero blue + Z13',
+      caption: 'Pulsar plat #4A6CF7 + Z13 sats, lignes slate, sans fond, sans rim.',
+      pulsarFill: '#4A6CF7',
+      twinFill: '#C0DD97',
+      parentFill: '#B5D4F4',
+      luneFill: '#CECBF6',
+      normalFill: '#FAC775',
+      lineStroke: '#475569',
+      noFond: true,
+      noRim: true,
+    },
+    {
+      id: 'WY18',
+      title: 'Hero blue + Z12',
+      caption: 'Pulsar plat hero blue + Z12 pastel sats.',
+      highlight: true,
+      pulsarFill: '#4A6CF7',
+      twinFill: '#FBA5A5',
+      parentFill: '#A8E4C5',
+      luneFill: '#FCE3A2',
+      normalFill: '#A6E8DA',
+      lineStroke: '#94A3B8',
+      noFond: true,
+      noRim: true,
+    },
+    {
+      id: 'WY19',
+      title: 'Hero blue 3D + Z13',
+      caption: 'Pulsar 3D bleu hero + Z13 sats. Sans fond, sans rim.',
+      pulsarFill: '#4A6CF7',
+      pulsarGradient: ['#FFFFFF', '#4A6CF7', '#1E3A8A'],
+      twinFill: '#C0DD97',
+      parentFill: '#B5D4F4',
+      luneFill: '#CECBF6',
+      normalFill: '#FAC775',
+      lineStroke: '#475569',
+      noFond: true,
+      noRim: true,
+    },
+    {
+      id: 'WY20',
+      title: 'Hero blue + lignes gradient',
+      caption: 'Hero blue + lignes gradient blue→pastel + Z13.',
+      pulsarFill: '#4A6CF7',
+      twinFill: '#C0DD97',
+      parentFill: '#B5D4F4',
+      luneFill: '#CECBF6',
+      normalFill: '#FAC775',
+      lineStroke: '#4A6CF7',
+      lineGradientEnd: '#A8E4C5',
+      noFond: true,
+      noRim: true,
+    },
+    {
+      id: 'WY21',
+      title: 'Hero blue + halo bleu',
+      caption: 'Pulsar hero blue + halo bleu subtle même teinte + Z13.',
+      pulsarFill: '#4A6CF7',
+      pulsarHalo: '#A0B4FF',
+      twinFill: '#C0DD97',
+      parentFill: '#B5D4F4',
+      luneFill: '#CECBF6',
+      normalFill: '#FAC775',
+      lineStroke: '#475569',
+      noFond: true,
+      noRim: true,
+    },
+
+    // — Groupe 5 : Minimal Z13 / variantes plates (5) —
+    {
+      id: 'WY22',
+      title: 'Z13 minimal',
+      caption: 'Z13 fills purs, lignes slate, sans rim, sans fond.',
+      pulsarFill: '#1F2937',
+      twinFill: '#C0DD97',
+      parentFill: '#B5D4F4',
+      luneFill: '#CECBF6',
+      normalFill: '#FAC775',
+      lineStroke: '#475569',
+      noFond: true,
+      noRim: true,
+    },
+    {
+      id: 'WY23',
+      title: 'Z13 lignes pastel',
+      caption: 'Z13 fills + lignes pastel pêche (vibe douce).',
+      pulsarFill: '#1F2937',
+      twinFill: '#C0DD97',
+      parentFill: '#B5D4F4',
+      luneFill: '#CECBF6',
+      normalFill: '#FAC775',
+      lineStroke: '#FBA5A5',
+      noFond: true,
+      noRim: true,
+    },
+    {
+      id: 'WY24',
+      title: 'Z13 lignes hero blue',
+      caption: 'Z13 fills + lignes #4A6CF7 (pont vers hero).',
+      pulsarFill: '#1F2937',
+      twinFill: '#C0DD97',
+      parentFill: '#B5D4F4',
+      luneFill: '#CECBF6',
+      normalFill: '#FAC775',
+      lineStroke: '#4A6CF7',
+      noFond: true,
+      noRim: true,
+    },
+    {
+      id: 'WY25',
+      title: 'Tout sauf rim',
+      caption: 'Z13 + stroke fond blanc gardé, mais SANS dark rim. Effet souple.',
+      pulsarFill: '#1F2937',
+      twinFill: '#C0DD97',
+      parentFill: '#B5D4F4',
+      luneFill: '#CECBF6',
+      normalFill: '#FAC775',
+      lineStroke: '#475569',
+      noRim: true,
+    },
+    {
+      id: 'WY26',
+      title: 'Tout sauf fond',
+      caption: 'Z13 + dark rim gardé, mais SANS stroke fond blanc.',
+      pulsarFill: '#1F2937',
+      pulsarRim: '#000000',
+      twinFill: '#C0DD97',
+      twinRim: '#639922',
+      parentFill: '#B5D4F4',
+      parentRim: '#378ADD',
+      luneFill: '#CECBF6',
+      luneRim: '#7F77DD',
+      normalFill: '#FAC775',
+      normalRim: '#EF9F27',
+      lineStroke: '#475569',
+      noFond: true,
+    },
+
+    // — Groupe 6 : Duotone / bicolore (4) —
+    {
+      id: 'WY27',
+      title: 'Duotone slate+bleu',
+      caption: 'Pulsar slate, tous les sats bleu hero. Bicolore franc.',
+      pulsarFill: '#1F2937',
+      twinFill: '#4A6CF7',
+      parentFill: '#4A6CF7',
+      luneFill: '#4A6CF7',
+      normalFill: '#4A6CF7',
+      lineStroke: '#475569',
+      noFond: true,
+      noRim: true,
+    },
+    {
+      id: 'WY28',
+      title: 'Duotone inversé',
+      caption: 'Pulsar blanc rim slate, sats slate plats. Inverse minimal.',
+      pulsarFill: '#FFFFFF',
+      pulsarRim: '#1F2937',
+      twinFill: '#1F2937',
+      parentFill: '#1F2937',
+      luneFill: '#1F2937',
+      normalFill: '#1F2937',
+      lineStroke: '#1F2937',
+      noFond: true,
+    },
+    {
+      id: 'WY29',
+      title: 'Duotone hero blue + coral',
+      caption: 'Pulsar hero blue, sats coral. Contraste chaud/froid.',
+      pulsarFill: '#4A6CF7',
+      twinFill: '#F87171',
+      parentFill: '#F87171',
+      luneFill: '#F87171',
+      normalFill: '#F87171',
+      lineStroke: '#94A3B8',
+      noFond: true,
+      noRim: true,
+    },
+    {
+      id: 'WY30',
+      title: 'Hero gradient global',
+      caption: 'Pulsar gradient hero blue + lignes gradient même axe + Z13 sats.',
+      highlight: true,
+      pulsarFill: '#4A6CF7',
+      pulsarGradient: ['#FFFFFF', '#4A6CF7', '#1E40AF'],
+      twinFill: '#C0DD97',
+      parentFill: '#B5D4F4',
+      luneFill: '#CECBF6',
+      normalFill: '#FAC775',
+      lineStroke: '#4A6CF7',
+      lineGradientEnd: '#94A3B8',
+      noFond: true,
+      noRim: true,
+    },
+  ];
+
   // Spiral V10 — pré-calcul (les `{@const}` ne sont pas valides hors blocs Svelte)
   const _spiralTurns = 1.8;
   const _spiralSamples = 60;
@@ -7753,6 +8188,129 @@
           Deux Y-forks au-dessus + parent-lune SE. 7 nœuds — bibliographie à deux paires citées.
         </p>
       </div>
+    </div>
+
+    <h3 class="section-subtitle">
+      Batch W v5 — 30 variants exploratoires (mono, gradients, palettes hero)
+    </h3>
+    <p class="section-lead">
+      Liberté totale : pas forcément de dark rim, pas forcément de stroke fond, pas de quasar, pas
+      de X-spikes, pas de pulsar carré. Disposition CB12 conservée. 6 mono couleur, 5 echo Z12
+      pastel hero, 5 avec gradients, 5 pulsar hero blue, 5 minimaux Z13, 4 duotones.
+    </p>
+    <div class="grid grid--dense">
+      {#each BATCH_W_V5 as v (v.id)}
+        <div class="card" class:highlight={v.highlight}>
+          <div class="canvas" style="background: #FFFFFF">
+            <svg
+              viewBox="0 0 24 24"
+              width={scale}
+              height={scale}
+              fill="none"
+              stroke={v.lineStroke}
+              stroke-width="0.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              {#if v.pulsarGradient || v.lineGradientEnd}
+                <defs>
+                  {#if v.pulsarGradient}
+                    <radialGradient id="grad-pulsar-v5-{v.id}" cx="40%" cy="40%" r="60%">
+                      <stop offset="0%" stop-color={v.pulsarGradient[0]} />
+                      <stop offset="55%" stop-color={v.pulsarGradient[1]} />
+                      <stop offset="100%" stop-color={v.pulsarGradient[2]} />
+                    </radialGradient>
+                  {/if}
+                  {#if v.lineGradientEnd}
+                    <linearGradient
+                      id="grad-line-v5-{v.id}"
+                      x1="0"
+                      y1="0"
+                      x2="24"
+                      y2="24"
+                      gradientUnits="userSpaceOnUse"
+                    >
+                      <stop offset="0%" stop-color={v.lineStroke} />
+                      <stop offset="100%" stop-color={v.lineGradientEnd} />
+                    </linearGradient>
+                  {/if}
+                </defs>
+              {/if}
+              <g stroke={v.lineGradientEnd ? `url(#grad-line-v5-${v.id})` : v.lineStroke}>
+                <line x1="12" y1="12" x2="20" y2="7" />
+                <line x1="12" y1="12" x2="5" y2="15" />
+                <line x1="12" y1="12" x2="7" y2="5" />
+                <line x1="7" y1="5" x2="4" y2="2.5" />
+                <line x1="7" y1="5" x2="9.5" y2="1.5" />
+                <line x1="12" y1="12" x2="17" y2="18" />
+                <line x1="17" y1="18" x2="20.5" y2="20.5" />
+              </g>
+
+              {#if v.pulsarHalo}
+                <circle
+                  cx="12"
+                  cy="12"
+                  r={centerRadius * 2.4}
+                  fill={v.pulsarHalo}
+                  fill-opacity="0.14"
+                  stroke="none"
+                />
+                <circle
+                  cx="12"
+                  cy="12"
+                  r={centerRadius * 1.7}
+                  fill={v.pulsarHalo}
+                  fill-opacity="0.28"
+                  stroke="none"
+                />
+              {/if}
+
+              {#if !v.noFond}
+                <circle
+                  cx="12"
+                  cy="12"
+                  r={centerRadius}
+                  fill="none"
+                  stroke="#FFFFFF"
+                  stroke-width="1.6"
+                />
+              {/if}
+              <circle
+                cx="12"
+                cy="12"
+                r={centerRadius}
+                fill={v.pulsarGradient ? `url(#grad-pulsar-v5-${v.id})` : v.pulsarFill}
+                stroke={!v.noRim && v.pulsarRim ? v.pulsarRim : 'none'}
+                stroke-width={!v.noRim && v.pulsarRim ? 0.4 : 0}
+              />
+
+              {#each [{ x: 4, y: 2.5, r: leafRadius * 0.85, fill: v.twinFill, rim: v.twinRim, fw: 1.4, rw: 0.4 }, { x: 9.5, y: 1.5, r: leafRadius * 0.85, fill: v.twinFill, rim: v.twinRim, fw: 1.4, rw: 0.4 }, { x: 20, y: 7, r: leafRadius * 0.85, fill: v.normalFill, rim: v.normalRim, fw: 1.4, rw: 0.4 }, { x: 5, y: 15, r: leafRadius * 0.85, fill: v.normalFill, rim: v.normalRim, fw: 1.4, rw: 0.4 }, { x: 17, y: 18, r: leafRadius * 1.1, fill: v.parentFill, rim: v.parentRim, fw: 1.5, rw: 0.45 }, { x: 20.5, y: 20.5, r: leafRadius * 0.55, fill: v.luneFill, rim: v.luneRim, fw: 1.2, rw: 0.35 }] as s (s.x + '-' + s.y)}
+                {#if !v.noFond}
+                  <circle
+                    cx={s.x}
+                    cy={s.y}
+                    r={s.r}
+                    fill="none"
+                    stroke="#FFFFFF"
+                    stroke-width={s.fw}
+                  />
+                {/if}
+                <circle
+                  cx={s.x}
+                  cy={s.y}
+                  r={s.r}
+                  fill={s.fill}
+                  stroke={!v.noRim && s.rim ? s.rim : 'none'}
+                  stroke-width={!v.noRim && s.rim ? s.rw : 0}
+                />
+              {/each}
+            </svg>
+          </div>
+          <div class="num">{v.id}</div>
+          <h3>{v.title}</h3>
+          <p class="caption">{v.caption}</p>
+        </div>
+      {/each}
     </div>
 
     <h3 class="section-subtitle">
