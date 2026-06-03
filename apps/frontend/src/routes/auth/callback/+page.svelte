@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import { api } from '$lib/api';
   import { auth } from '$lib/stores/auth';
+  import { Logo } from '$lib/components';
 
   let statusMessage = "Finalisation de l'authentification…";
 
@@ -40,6 +41,10 @@
 
 <div class="flex items-center justify-center min-h-[60vh]">
   <div class="text-center">
+    <div class="flex justify-center mb-5">
+      <Logo size={56} variant="color" className="block dark:hidden" />
+      <Logo size={56} variant="dark" className="hidden dark:block" />
+    </div>
     <div
       class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"
     ></div>

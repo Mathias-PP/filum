@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { Button } from '$lib/components';
+  import { Button, Logo } from '$lib/components';
 
   const status = $derived($page.status);
   const message = $derived($page.error?.message ?? '');
@@ -12,6 +12,10 @@
 </svelte:head>
 
 <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
+  <div class="flex justify-center mb-6">
+    <Logo size={72} variant="color" className="block dark:hidden" />
+    <Logo size={72} variant="dark" className="hidden dark:block" />
+  </div>
   <p class="text-7xl font-bold text-blue-600 mb-4">{status}</p>
   <h1 class="text-3xl font-bold text-ink-primary mb-4">
     {#if isNotFound}
