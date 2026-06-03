@@ -1,10 +1,12 @@
 # Renommage Filum → Philum — Plan de migration
 
-> Document d'accompagnement de la PR `feat/rename-philum`.
-> **État de cette PR : Phase 1 uniquement (texte visible frontend).**
-> Phases 2-4 documentées ci-dessous pour exécution séparée.
->
-> **Mise à jour 2026-06-02** : La PR `feat/audit-improvements` a renommé `"Filum/0.1"` → `"Philum/0.1"` dans le User-Agent de `url_extractor.py`. Le reste du rename est toujours en attente, Phases 2-4 non planifiées.
+> **État (2026-06-02)** :
+> - ✅ **Phase 1 — Texte visible frontend** : MERGÉE (via PR `feat/rename-philum`, complétée par PR #91 logo Philum v1 + étymologie phylum biologique sur `/about`).
+> - ✅ **Bonus** : User-Agent backend `"Filum/0.1"` → `"Philum/0.1"` dans `url_extractor.py` (PR #92 audit-improvements).
+> - ⏳ **Phases 2-4** : non planifiées. **Recommandation** : créer une issue GitHub par phase plutôt qu'attendre un gros chantier coordonné. Triggers naturels :
+>   - Phase 2 (docs `.md`) → quand on publie une doc externe
+>   - Phase 3 (config infra, env vars) → quand on bascule de Railway vers Infomaniak ou autre
+>   - Phase 4 (identifiants techniques — URL repo, package npm, cookies, headers) → quand on branche le domaine custom `philum.app` et qu'on republie le package
 
 ## Pourquoi ce document
 

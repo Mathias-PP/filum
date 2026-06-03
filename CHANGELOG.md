@@ -22,6 +22,30 @@
 
 ---
 
+## [Unreleased] — Philum v1 logo site-wide + audit improvements + CI bumps (2026-06-02)
+
+### Added (PR #91 — feat/philum-v1-logo, mergée)
+- **`Logo.svelte`** refondu vers le design Philum v1 validé en `/sandbox/customize` : Pulsar-graph (CB12 disposition + Z13 palette + stroke fond V18 + dark rim fin + pulsar 3D radial gradient).
+- **3 variants** via prop `variant: 'color' | 'dark' | 'bw'` + option `withWordmark`.
+- **Layout navbar** swap automatique `color` ↔ `dark` selon le thème.
+- **`favicon.svg`** redessiné cohérent avec le nouveau logo.
+
+### Fixed (PR #92 — feat/audit-improvements, mergée)
+- **Privacy leak** : email personnel développeur (`mathias.pinault@hotmail.fr`) remplacé par `contact@philum.app` dans le User-Agent envoyé par `url_extractor.py` à chaque site scrapé.
+- **CVE `python-jose`** : remplacé par `pyjwt` dans `requirements.txt` (déjà utilisé partout, aligné sur `pyproject.toml`).
+- **Déprécations `datetime.utcnow()`** : 3 modèles (`source.py`, `biblio_card.py`, `audit_event.py`) factorisent désormais un helper `_utcnow_naive()` cohérent avec `source_excerpt.py`.
+- **`Dockerfile.migrate`** : aligné sur le Dockerfile principal (`pyproject.toml` + `uv sync --frozen`).
+
+### Changed (PR #93 — chore/deps/github-actions-bump, mergée)
+- **GitHub Actions** : `pnpm/action-setup` v4 → v6, `actions/setup-python` v5 → v6, `actions/checkout` v4 → v6 (consolidation des PRs dependabot #88, #89, #90).
+
+### Docs
+- **`STATE.md`** réécrit en version courte (1 page, structure fixe). Historique détaillé déplacé dans `CHANGELOG.md`.
+- **`.docs/14-philum-rename-migration.md`** : Phase 1 marquée MERGÉE, Phases 2-4 reformulées comme triggers naturels.
+- **`.docs/13-…-followups.md` ↔ `.docs/15-audit-improvements-plan.md`** : cross-références ajoutées (les 2 docs servent des usages distincts : 13 = items long terme priorisés, 15 = session-specific juin 2026 + windmills documentés).
+
+---
+
 ## [Unreleased] — Logo refonte itérative + sandbox customizer (2026-06-02)
 
 ### Added

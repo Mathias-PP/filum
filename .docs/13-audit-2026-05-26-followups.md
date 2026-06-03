@@ -2,6 +2,8 @@
 
 > Suivi des items long-terme issus de l'audit complet du 26 mai 2026.
 > Les phases 1–4 ont été livrées dans la même session (PRs #79, #80, #81 + cleanup branches). Cette page liste ce qui n'a **pas** été traité immédiatement, avec contexte, niveau d'urgence, effort estimé, et déclencheurs naturels.
+>
+> **Voir aussi** : [`15-audit-improvements-plan.md`](./15-audit-improvements-plan.md) — audit complémentaire du 2 juin 2026 (privacy leak User-Agent, déprécations `datetime.utcnow`, CVE `python-jose`, + windmills documentés pour ne pas re-auditer).
 
 ## Comment l'utiliser
 
