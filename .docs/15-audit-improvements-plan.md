@@ -1,7 +1,9 @@
 # Plan d'améliorations post-audit — Juin 2026
 
-> PR associée : `feat/audit-improvements`
-> Date : 2026-06-02
+> PR associée : `feat/audit-improvements` (PR #92, mergée 2026-06-02).
+> Date de l'audit : 2026-06-02.
+>
+> **Voir aussi** : [`13-audit-2026-05-26-followups.md`](./13-audit-2026-05-26-followups.md) — items long terme structurés P1/P2/P3 issus de l'audit du 26 mai. **Ce doc-ci** est spécifique à la session du 2 juin : il liste ce qui a été corrigé immédiatement, ce qui a été vérifié et retiré (windmills), et ce qui a été déplacé vers le suivi long terme. Pour décider quoi faire **ensuite**, lire `13-audit-…-followups.md` (priorisation + triggers).
 
 ## Contexte
 
