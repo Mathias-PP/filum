@@ -96,9 +96,9 @@
               <span></span>
             </div>
           </button>
-          <a href="/" class="flex items-center gap-2" aria-label="Philum — accueil">
-            <Logo size={28} variant="color" className="block dark:hidden" />
-            <Logo size={28} variant="dark" className="hidden dark:block" />
+          <a href="/" class="flex items-center gap-2.5" aria-label="Philum — accueil">
+            <Logo size={42} variant="color" className="block dark:hidden" />
+            <Logo size={42} variant="dark" className="hidden dark:block" />
             <span class="text-base font-serif font-medium text-ink-primary">Philum</span>
           </a>
         </div>
@@ -223,6 +223,8 @@
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <div class="flex flex-col md:flex-row items-center justify-between gap-3 text-sm">
         <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-ink-tertiary">
+          <Logo size={20} variant="color" className="block dark:hidden" />
+          <Logo size={20} variant="dark" className="hidden dark:block" />
           <span>© 2026 Philum</span>
           <span aria-hidden="true">·</span>
           <a href="/about" class="hover:text-ink-primary transition-colors">À propos</a>
