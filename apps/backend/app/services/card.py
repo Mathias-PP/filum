@@ -136,7 +136,8 @@ class CardService:
             1 for s in sources if s.author_kind == AuthorKind.INSTITUTION_PUBLIQUE.value
         )
         individu = sum(1 for s in sources if s.author_kind == AuthorKind.INDIVIDU.value)
-        all_archived = all(s.archive_status == ArchiveStatus.ARCHIVED.value for s in sources)
+        archived_count = sum(1 for s in sources if s.archive_status == ArchiveStatus.ARCHIVED.value)
+        all_archived = total > 0 and archived_count == total
 
         return CardStats(
             total_sources=total,
@@ -144,6 +145,7 @@ class CardService:
             media=media,
             institution_publique=institution_publique,
             individu=individu,
+            archived_count=archived_count,
             all_archived=all_archived,
         )
 
