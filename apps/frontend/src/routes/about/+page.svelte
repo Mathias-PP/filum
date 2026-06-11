@@ -1,3 +1,7 @@
+<script lang="ts">
+  import { reveal } from '$lib/actions/reveal';
+</script>
+
 <svelte:head>
   <title>À propos — Philum</title>
   <meta
@@ -7,7 +11,10 @@
 </svelte:head>
 
 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-  <h1 class="text-3xl sm:text-4xl font-bold text-ink-primary mb-8">À propos de Philum</h1>
+  <div use:reveal>
+    <p class="page-overline">Le projet</p>
+    <h1 class="text-3xl sm:text-4xl font-bold text-ink-primary mb-8">À propos de Philum</h1>
+  </div>
 
   <section class="prose prose-slate dark:prose-invert max-w-none">
     <p class="text-lg text-ink-secondary leading-relaxed">
@@ -35,20 +42,32 @@
 
     <h2 class="text-2xl font-semibold text-ink-primary mt-12 mb-4">Nos valeurs</h2>
     <div class="space-y-4 not-prose">
-      <div class="bg-surface-secondary rounded-xl p-5">
+      <div
+        class="bg-surface-secondary border border-border rounded-xl p-5 hover-lift"
+        use:reveal
+        style="transition-delay: 0ms"
+      >
         <h3 class="font-semibold text-ink-primary mb-1">Transparence</h3>
         <p class="text-sm text-ink-secondary">
           Chaque source est visible, chaque citation est traçable. Rien n'est caché.
         </p>
       </div>
-      <div class="bg-surface-secondary rounded-xl p-5">
+      <div
+        class="bg-surface-secondary border border-border rounded-xl p-5 hover-lift"
+        use:reveal
+        style="transition-delay: 80ms"
+      >
         <h3 class="font-semibold text-ink-primary mb-1">Pérennité</h3>
         <p class="text-sm text-ink-secondary">
           Les sources sont archivées. Les signatures sont vérifiables. Ce qui est publié aujourd'hui
           le reste demain.
         </p>
       </div>
-      <div class="bg-surface-secondary rounded-xl p-5">
+      <div
+        class="bg-surface-secondary border border-border rounded-xl p-5 hover-lift"
+        use:reveal
+        style="transition-delay: 160ms"
+      >
         <h3 class="font-semibold text-ink-primary mb-1">Liberté</h3>
         <p class="text-sm text-ink-secondary">
           Pas de lock-in. Les données sont exportables, l'API est ouverte. Vous gardez le contrôle
@@ -76,28 +95,40 @@
       références, y compris celles et ceux qui ne se reconnaissent pas dans les catégories
       traditionnelles.
     </p>
-    <div class="grid gap-6 not-prose mt-6">
-      <div class="bg-surface-secondary rounded-xl p-6">
+    <div class="grid sm:grid-cols-2 gap-4 not-prose mt-6">
+      <div class="bg-surface-secondary border border-border rounded-xl p-6 hover-lift" use:reveal>
         <h3 class="text-lg font-semibold text-ink-primary mb-2">Vulgarisateurs scientifiques</h3>
         <p class="text-ink-secondary">
           Montrez la rigueur de votre travail en rendant chaque source visible et vérifiable par
           votre audience.
         </p>
       </div>
-      <div class="bg-surface-secondary rounded-xl p-6">
+      <div
+        class="bg-surface-secondary border border-border rounded-xl p-6 hover-lift"
+        use:reveal
+        style="transition-delay: 60ms"
+      >
         <h3 class="text-lg font-semibold text-ink-primary mb-2">Journalistes</h3>
         <p class="text-ink-secondary">
           Protégez vos sources dans le temps et prouvez votre méthodologie face aux critiques.
         </p>
       </div>
-      <div class="bg-surface-secondary rounded-xl p-6">
+      <div
+        class="bg-surface-secondary border border-border rounded-xl p-6 hover-lift"
+        use:reveal
+        style="transition-delay: 120ms"
+      >
         <h3 class="text-lg font-semibold text-ink-primary mb-2">Chercheurs</h3>
         <p class="text-ink-secondary">
           Partagez vos bibliographies sous forme navigable et facilitez la vérification par vos
           pairs.
         </p>
       </div>
-      <div class="bg-surface-secondary rounded-xl p-6">
+      <div
+        class="bg-surface-secondary border border-border rounded-xl p-6 hover-lift"
+        use:reveal
+        style="transition-delay: 180ms"
+      >
         <h3 class="text-lg font-semibold text-ink-primary mb-2">Créateur·ice·s de contenu</h3>
         <p class="text-ink-secondary">
           Chaque source mérite d'être citée, quel que soit votre format.
@@ -117,7 +148,9 @@
     <p class="text-ink-secondary leading-relaxed">
       Pour les détails techniques complets (signature, hachage, gestion des clés), rendez-vous sur
       la page
-      <a href="/security" class="text-blue-600 hover:text-blue-800 underline">Sécurité</a>.
+      <a href="/security" class="text-info underline underline-offset-2 hover:opacity-80"
+        >Sécurité</a
+      >.
     </p>
 
     <h2 class="text-2xl font-semibold text-ink-primary mt-12 mb-4">Contribuer</h2>
@@ -125,7 +158,7 @@
       Le projet est ouvert sur
       <a
         href="https://github.com/Mathias-PP/filum"
-        class="text-blue-600 hover:text-blue-800 underline">GitHub</a
+        class="text-info underline underline-offset-2 hover:opacity-80">GitHub</a
       >.
     </p>
   </section>

@@ -268,18 +268,7 @@
     }
   }
 
-  /* === REVEAL animation (uses data-reveal attr added by action) === */
-  :global([data-reveal]) {
-    opacity: 0;
-    transform: translateY(16px);
-    transition:
-      opacity 600ms cubic-bezier(0.2, 0.7, 0.3, 1),
-      transform 600ms cubic-bezier(0.2, 0.7, 0.3, 1);
-  }
-  :global([data-reveal].is-revealed) {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  /* Reveal animation styles are global in app.css ([data-reveal]). */
 
   /* === STEP / AUDIENCE cards === */
   .step-card {

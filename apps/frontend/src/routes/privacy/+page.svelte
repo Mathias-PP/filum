@@ -1,3 +1,7 @@
+<script lang="ts">
+  import { reveal } from '$lib/actions/reveal';
+</script>
+
 <svelte:head>
   <title>Confidentialité — Philum</title>
   <meta
@@ -7,7 +11,10 @@
 </svelte:head>
 
 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-  <h1 class="text-4xl font-bold text-ink-primary mb-6">Confidentialité</h1>
+  <div use:reveal>
+    <p class="page-overline">Vos données</p>
+    <h1 class="text-3xl sm:text-4xl font-bold text-ink-primary mb-6">Confidentialité</h1>
+  </div>
 
   <div class="prose prose-slate max-w-none space-y-6 text-ink-secondary">
     <p class="text-lg">
@@ -38,7 +45,10 @@
       <p>
         Conformément au RGPD, vous pouvez à tout moment accéder, exporter, rectifier ou supprimer
         vos données. Contactez-nous via
-        <a class="text-blue-600 hover:underline" href="https://github.com/Mathias-PP/filum/issues">
+        <a
+          class="text-info underline underline-offset-2 hover:opacity-80"
+          href="https://github.com/Mathias-PP/filum/issues"
+        >
           GitHub Issues
         </a> pour exercer ces droits.
       </p>
