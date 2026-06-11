@@ -473,11 +473,16 @@
             vec2 rel = uv - n.xy;
             float along = dot(rel, dir);
             float across = length(rel - dir * along);
-            float onSeg = step(n.w * 1.02, along) * step(along, lineLen - ancR * 1.00);
+            // Segment étendu jusqu'au centre de l'ancre : le clip 3D
+            // (lineZ vs pulsarFrontZ) fait plonger la ligne dans la
+            // surface du pulsar au point d'intersection exact.
+            float onSeg = step(n.w * 1.02, along) * step(along, lineLen);
             if (onSeg < 0.5) continue;
             float tParam = clamp(along / lineLen, 0.0, 1.0);
             float lineZ = mix(n.z, ancZ, tParam);
-            if (lineZ <= pulsarFrontZ) continue;
+            // Transition progressive à l'entrée/sortie de la surface.
+            float frontMix = smoothstep(0.0, coreRPulsed * 0.22, lineZ - pulsarFrontZ);
+            if (frontMix <= 0.001) continue;
             float aaL = uAaPixel.x * 1.1;
             float lineMaskL = (1.0 - smoothstep(0.0022 - aaL, 0.0022 + aaL, across)) * onSeg;
             float tNormL = along / lineLen;
@@ -490,7 +495,11 @@
             vec3 lineColorL = isYforkTwinL
               ? mix(nodeBaseColL, trunkBaseColL, smoothstep(0.15, 1.0, tNormL))
               : nodeBaseColL;
-            col += lineColorL * (lineMaskL * 0.45 + lineHazeL * 0.7) * depthFadeL;
+            // Mix opaque (pas additif) : la ligne reste lisible sur la
+            // photosphère très lumineuse du pulsar.
+            vec3 overColL = lineColorL * (0.55 + 0.65 * depthFadeL);
+            col = mix(col, overColL, lineMaskL * frontMix * 0.85);
+            col += lineColorL * lineHazeL * 0.5 * depthFadeL * frontMix;
           }
           if (uForkTrunk.w > 0.5) {
             vec2 mPt = uForkTrunk.xy;
@@ -501,18 +510,21 @@
             vec2 relT = uv - mPt;
             float alongT = dot(relT, dirT);
             float acrossT = length(relT - dirT * alongT);
-            float onSegT = step(0.0, alongT) * step(alongT, lineLenT - coreR * 1.00);
+            float onSegT = step(0.0, alongT) * step(alongT, lineLenT);
             if (onSegT >= 0.5) {
               float tT = clamp(alongT / lineLenT, 0.0, 1.0);
               float trunkZ = mix(mZT, 0.0, tT);
-              if (trunkZ > pulsarFrontZ) {
+              float frontMixT = smoothstep(0.0, coreRPulsed * 0.22, trunkZ - pulsarFrontZ);
+              if (frontMixT > 0.001) {
                 float aaT = uAaPixel.x * 1.1;
                 float lineMaskT = (1.0 - smoothstep(0.0024 - aaT, 0.0024 + aaT, acrossT)) * onSegT;
                 float tNormT = alongT / lineLenT;
                 float endTaperT = smoothstep(0.0, 0.08, tNormT) * (1.0 - smoothstep(0.95, 1.0, tNormT));
                 float lineHazeT = exp(-acrossT * 200.0) * onSegT * 0.30 * endTaperT;
                 vec3 trunkColorT = mix(uForkTrunkColor, vec3(1.0), 0.20);
-                col += trunkColorT * (lineMaskT * 0.50 + lineHazeT * 0.7);
+                vec3 overColT = trunkColorT * 1.1;
+                col = mix(col, overColT, lineMaskT * frontMixT * 0.85);
+                col += trunkColorT * lineHazeT * 0.5 * frontMixT;
               }
             }
           }
@@ -843,13 +855,16 @@
             const sn = Math.sin(p.tilt);
             const ly = ly0 * cs - lz0 * sn;
             const lz = ly0 * sn + lz0 * cs;
-            const isDragging =
-              p.colorIdx === draggingNodeKey && p.role !== 'moon' && p.role !== 'forkTwin';
-            const dispTargetX = isDragging ? currentMouse.x - lx : 0;
-            const dispTargetY = isDragging ? currentMouse.y - ly : 0;
-            const ease = isDragging ? 0.28 : 0.08;
-            displacement[i].x += (dispTargetX - displacement[i].x) * ease;
-            displacement[i].y += (dispTargetY - displacement[i].y) * ease;
+            // Drag : les moons/twins sont gérés en passe B (leur position
+            // dérivée y est recalculée, le drag s'applique par-dessus).
+            if (p.role !== 'moon' && p.role !== 'forkTwin') {
+              const isDragging = p.colorIdx === draggingNodeKey;
+              const dispTargetX = isDragging ? currentMouse.x - lx : 0;
+              const dispTargetY = isDragging ? currentMouse.y - ly : 0;
+              const ease = isDragging ? 0.28 : 0.08;
+              displacement[i].x += (dispTargetX - displacement[i].x) * ease;
+              displacement[i].y += (dispTargetY - displacement[i].y) * ease;
+            }
             computed[i].x = lx + displacement[i].x;
             computed[i].y = ly + displacement[i].y;
             computed[i].z = lz;
@@ -867,6 +882,18 @@
             for (let k = 0; k < NODE_COUNT; k++) if (NODES[k].colorIdx === cidx) return k;
             return -1;
           };
+          // Drag pour nœuds dérivés (moon / twins) : le déplacement s'applique
+          // par-dessus la position dérivée, retour easé à la libération.
+          const applyDerivedDrag = (idx: number, bx: number, by: number) => {
+            const isDragging = NODES[idx].colorIdx === draggingNodeKey;
+            const dtx = isDragging ? currentMouse.x - bx : 0;
+            const dty = isDragging ? currentMouse.y - by : 0;
+            const ease = isDragging ? 0.28 : 0.08;
+            displacement[idx].x += (dtx - displacement[idx].x) * ease;
+            displacement[idx].y += (dty - displacement[idx].y) * ease;
+            computed[idx].x = bx + displacement[idx].x;
+            computed[idx].y = by + displacement[idx].y;
+          };
           for (let i = 0; i < NODE_COUNT; i++) {
             const p = NODES[i];
             if (p.role !== 'moon') continue;
@@ -877,8 +904,7 @@
             const mx = Math.cos(la) * p.localOrbitR;
             const my = Math.sin(la) * p.localOrbitR * 0.6;
             const mz = Math.sin(la + 0.6) * p.localOrbitR * 0.35;
-            computed[i].x = pNode.x + mx;
-            computed[i].y = pNode.y + my;
+            applyDerivedDrag(i, pNode.x + mx, pNode.y + my);
             computed[i].z = pNode.z + mz;
             computed[i].anchorX = pNode.x;
             computed[i].anchorY = pNode.y;
@@ -955,16 +981,14 @@
             const perY = distPerp * perpRotY;
             const perZ = distPerp * perpRotZ;
 
-            computed[twinAidx].x = Mx + aloX + perX;
-            computed[twinAidx].y = My + aloY + perY;
+            applyDerivedDrag(twinAidx, Mx + aloX + perX, My + aloY + perY);
             computed[twinAidx].z = Mz + aloZ + perZ;
             computed[twinAidx].anchorX = Mx;
             computed[twinAidx].anchorY = My;
             computed[twinAidx].anchorZ = Mz;
             computed[twinAidx].anchorR = 0.0;
 
-            computed[twinBidx].x = Mx + aloX - perX;
-            computed[twinBidx].y = My + aloY - perY;
+            applyDerivedDrag(twinBidx, Mx + aloX - perX, My + aloY - perY);
             computed[twinBidx].z = Mz + aloZ - perZ;
             computed[twinBidx].anchorX = Mx;
             computed[twinBidx].anchorY = My;
