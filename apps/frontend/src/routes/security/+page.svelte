@@ -1,3 +1,7 @@
+<script lang="ts">
+  import { reveal } from '$lib/actions/reveal';
+</script>
+
 <svelte:head>
   <title>Sécurité — Philum</title>
   <meta
@@ -7,11 +11,14 @@
 </svelte:head>
 
 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-  <h1 class="text-3xl sm:text-4xl font-bold text-ink-primary mb-4">Sécurité et cryptographie</h1>
-  <p class="text-xl text-ink-secondary mb-12">
-    Philum est conçu pour que vos revendications de contenu soient
-    <strong>vérifiables</strong> par n'importe qui. Voici comment.
-  </p>
+  <div use:reveal>
+    <p class="page-overline">Confiance</p>
+    <h1 class="text-3xl sm:text-4xl font-bold text-ink-primary mb-4">Sécurité et cryptographie</h1>
+    <p class="text-xl text-ink-secondary mb-12">
+      Philum est conçu pour que vos revendications de contenu soient
+      <strong>vérifiables</strong> par n'importe qui. Voici comment.
+    </p>
+  </div>
 
   <section class="prose prose-slate dark:prose-invert max-w-none">
     <h2 class="text-2xl font-semibold text-ink-primary mt-12 mb-4">Ce qui est signé</h2>
@@ -33,26 +40,25 @@
     </p>
 
     <h2 class="text-2xl font-semibold text-ink-primary mt-12 mb-4">Comment ça fonctionne</h2>
-    <ol class="list-decimal pl-6 space-y-4 text-ink-secondary">
-      <li>
-        <strong class="text-ink-primary">Canonicalisation</strong> : le triplet à signer (votre id, URL
-        du contenu, date d'attestation) est sérialisé selon la norme RFC 8785 (JSON Canonicalization Scheme).
-        Cela garantit que deux sérialisations du même triplet produisent exactement le même résultat.
-      </li>
-      <li>
-        <strong class="text-ink-primary">Hachage</strong> : le contenu canonicalisé est passé dans SHA-256,
-        produisant une empreinte unique de 32 octets.
-      </li>
-      <li>
-        <strong class="text-ink-primary">Signature</strong> : l'empreinte est signée avec votre clé privée
-        Ed25519, produisant une signature de 64 octets. La clé privée est chiffrée sur le serveur avec
-        AES-256-GCM.
-      </li>
-      <li>
-        <strong class="text-ink-primary">Stockage</strong> : la signature et l'empreinte sont stockées
-        avec l'attestation de contenu.
-      </li>
-    </ol>
+    <div class="not-prose space-y-3">
+      {#each [{ n: 1, title: 'Canonicalisation', desc: "Le triplet à signer (votre id, URL du contenu, date d'attestation) est sérialisé selon la norme RFC 8785 (JSON Canonicalization Scheme). Cela garantit que deux sérialisations du même triplet produisent exactement le même résultat." }, { n: 2, title: 'Hachage', desc: 'Le contenu canonicalisé est passé dans SHA-256, produisant une empreinte unique de 32 octets.' }, { n: 3, title: 'Signature', desc: "L'empreinte est signée avec votre clé privée Ed25519, produisant une signature de 64 octets. La clé privée est chiffrée sur le serveur avec AES-256-GCM." }, { n: 4, title: 'Stockage', desc: "La signature et l'empreinte sont stockées avec l'attestation de contenu." }] as step, i (step.n)}
+        <div
+          class="flex items-start gap-4 bg-surface-secondary border border-border rounded-xl p-5 hover-lift"
+          use:reveal
+          style="transition-delay: {i * 70}ms"
+        >
+          <span
+            class="icon-bubble w-8 h-8 rounded-full bg-info-bg text-info flex items-center justify-center font-serif font-medium shrink-0"
+          >
+            {step.n}
+          </span>
+          <div>
+            <h3 class="font-semibold text-ink-primary mb-1">{step.title}</h3>
+            <p class="text-sm text-ink-secondary leading-relaxed">{step.desc}</p>
+          </div>
+        </div>
+      {/each}
+    </div>
 
     <h2 class="text-2xl font-semibold text-ink-primary mt-12 mb-4">Vérification</h2>
     <p class="text-ink-secondary leading-relaxed mb-4">

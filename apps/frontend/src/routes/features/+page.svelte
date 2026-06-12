@@ -1,3 +1,42 @@
+<script lang="ts">
+  import { reveal } from '$lib/actions/reveal';
+
+  const upcoming = [
+    {
+      title: 'Copier-coller de bibliographie',
+      desc: 'Collez votre bibliographie existante (depuis un article, YouTube, votre site) et Philum génère automatiquement une fiche avec les sources pré-remplies.',
+    },
+    {
+      title: 'Citations intelligentes',
+      desc: "L'IA identifie l'emplacement exact de chaque citation dans le document source, pour y accéder en un clic.",
+    },
+    {
+      title: 'Import Zotero / Obsidian',
+      desc: "Importez vos collections depuis Zotero, Obsidian, BibTeX et d'autres gestionnaires de références.",
+    },
+    {
+      title: 'Bibliographies collaboratives',
+      desc: 'Créez et éditez une fiche à plusieurs, avec contrôle de version et historique des modifications.',
+    },
+    {
+      title: 'Export PDF / CSV / Excel',
+      desc: 'Exportez vos fiches dans tous les formats : PDF, CSV, Excel, JSON, BibTeX, CSL-JSON.',
+    },
+    {
+      title: 'Extension navigateur',
+      desc: 'Ajoutez une source en un clic depuis votre navigateur, sans quitter la page que vous consultez.',
+    },
+    {
+      title: 'API publique',
+      desc: 'Intégrez Philum dans vos outils : API REST publique et serveur MCP pour les agents IA.',
+    },
+    {
+      title: 'Philum Desktop',
+      desc: 'Application de bureau pour gérer vos références hors ligne, avec synchronisation et intégration aux outils locaux.',
+    },
+  ];
+</script>
+
 <svelte:head>
   <title>Fonctionnalités — Philum</title>
   <meta
@@ -7,17 +46,24 @@
 </svelte:head>
 
 <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-  <h1 class="text-3xl sm:text-4xl font-bold text-ink-primary mb-4">Fonctionnalités</h1>
-  <p class="text-xl text-ink-secondary mb-12 max-w-3xl">
-    Philum est conçu pour les créateur·ice·s qui veulent rendre visible la qualité de leurs
-    références. Voici ce que la plateforme offre aujourd'hui et ce qui est en préparation.
-  </p>
+  <div use:reveal>
+    <p class="page-overline">Produit</p>
+    <h1 class="text-3xl sm:text-4xl font-bold text-ink-primary mb-4">Fonctionnalités</h1>
+    <p class="text-xl text-ink-secondary mb-12 max-w-3xl">
+      Philum est conçu pour les créateur·ice·s qui veulent rendre visible la qualité de leurs
+      références. Voici ce que la plateforme offre aujourd'hui et ce qui est en préparation.
+    </p>
+  </div>
 
-  <h2 class="text-2xl font-semibold text-ink-primary mb-6">Disponibles aujourd'hui</h2>
+  <h2 class="text-2xl font-semibold text-ink-primary mb-6" use:reveal>Disponibles aujourd'hui</h2>
   <div class="grid md:grid-cols-2 gap-6 mb-16">
-    <div class="bg-surface-primary border border-border rounded-xl p-6 hover-lift">
+    <div
+      class="bg-surface-primary border border-border rounded-xl p-6 hover-lift"
+      use:reveal
+      style="transition-delay: 0ms"
+    >
       <div
-        class="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center mb-3"
+        class="icon-bubble w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center mb-3"
       >
         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
           ><path
@@ -32,9 +78,13 @@
       </p>
     </div>
 
-    <div class="bg-surface-primary border border-border rounded-xl p-6 hover-lift">
+    <div
+      class="bg-surface-primary border border-border rounded-xl p-6 hover-lift"
+      use:reveal
+      style="transition-delay: 60ms"
+    >
       <div
-        class="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center mb-3"
+        class="icon-bubble w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center mb-3"
       >
         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
           ><path
@@ -50,9 +100,13 @@
       </p>
     </div>
 
-    <div class="bg-surface-primary border border-border rounded-xl p-6 hover-lift">
+    <div
+      class="bg-surface-primary border border-border rounded-xl p-6 hover-lift"
+      use:reveal
+      style="transition-delay: 120ms"
+    >
       <div
-        class="w-10 h-10 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center mb-3"
+        class="icon-bubble w-10 h-10 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center mb-3"
       >
         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
           ><path
@@ -67,9 +121,13 @@
       </p>
     </div>
 
-    <div class="bg-surface-primary border border-border rounded-xl p-6 hover-lift">
+    <div
+      class="bg-surface-primary border border-border rounded-xl p-6 hover-lift"
+      use:reveal
+      style="transition-delay: 180ms"
+    >
       <div
-        class="w-10 h-10 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center mb-3"
+        class="icon-bubble w-10 h-10 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center mb-3"
       >
         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
           ><path
@@ -84,9 +142,13 @@
       </p>
     </div>
 
-    <div class="bg-surface-primary border border-border rounded-xl p-6 hover-lift">
+    <div
+      class="bg-surface-primary border border-border rounded-xl p-6 hover-lift"
+      use:reveal
+      style="transition-delay: 240ms"
+    >
       <div
-        class="w-10 h-10 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center mb-3"
+        class="icon-bubble w-10 h-10 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center mb-3"
       >
         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
           ><path
@@ -102,9 +164,13 @@
       </p>
     </div>
 
-    <div class="bg-surface-primary border border-border rounded-xl p-6 hover-lift">
+    <div
+      class="bg-surface-primary border border-border rounded-xl p-6 hover-lift"
+      use:reveal
+      style="transition-delay: 300ms"
+    >
       <div
-        class="w-10 h-10 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center mb-3"
+        class="icon-bubble w-10 h-10 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center mb-3"
       >
         <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
           ><path
@@ -120,62 +186,25 @@
     </div>
   </div>
 
-  <h2 id="a-venir" class="text-2xl font-semibold text-ink-primary mb-6">En préparation</h2>
+  <h2 id="a-venir" class="text-2xl font-semibold text-ink-primary mb-6" use:reveal>
+    En préparation
+  </h2>
   <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-    <div class="bg-surface-secondary rounded-xl p-6 border border-border border-dashed hover-lift">
-      <h3 class="text-lg font-semibold text-ink-primary mb-2">Copier-coller de bibliographie</h3>
-      <p class="text-ink-secondary text-sm">
-        Collez votre bibliographie existante (depuis un article, YouTube, votre site) et Philum
-        génère automatiquement une fiche avec les sources pré-remplies.
-      </p>
-    </div>
-    <div class="bg-surface-secondary rounded-xl p-6 border border-border border-dashed hover-lift">
-      <h3 class="text-lg font-semibold text-ink-primary mb-2">Citations intelligentes</h3>
-      <p class="text-ink-secondary text-sm">
-        L'IA identifie l'emplacement exact de chaque citation dans le document source, pour y
-        accéder en un clic.
-      </p>
-    </div>
-    <div class="bg-surface-secondary rounded-xl p-6 border border-border border-dashed hover-lift">
-      <h3 class="text-lg font-semibold text-ink-primary mb-2">Import Zotero / Obsidian</h3>
-      <p class="text-ink-secondary text-sm">
-        Importez vos collections depuis Zotero, Obsidian, BibTeX et d'autres gestionnaires de
-        références.
-      </p>
-    </div>
-    <div class="bg-surface-secondary rounded-xl p-6 border border-border border-dashed hover-lift">
-      <h3 class="text-lg font-semibold text-ink-primary mb-2">Bibliographies collaboratives</h3>
-      <p class="text-ink-secondary text-sm">
-        Créez et éditez une fiche à plusieurs, avec contrôle de version et historique des
-        modifications.
-      </p>
-    </div>
-    <div class="bg-surface-secondary rounded-xl p-6 border border-border border-dashed hover-lift">
-      <h3 class="text-lg font-semibold text-ink-primary mb-2">Export PDF / CSV / Excel</h3>
-      <p class="text-ink-secondary text-sm">
-        Exportez vos fiches dans tous les formats : PDF, CSV, Excel, JSON, BibTeX, CSL-JSON.
-      </p>
-    </div>
-    <div class="bg-surface-secondary rounded-xl p-6 border border-border border-dashed hover-lift">
-      <h3 class="text-lg font-semibold text-ink-primary mb-2">Extension navigateur</h3>
-      <p class="text-ink-secondary text-sm">
-        Ajoutez une source en un clic depuis votre navigateur, sans quitter la page que vous
-        consultez.
-      </p>
-    </div>
-    <div class="bg-surface-secondary rounded-xl p-6 border border-border border-dashed hover-lift">
-      <h3 class="text-lg font-semibold text-ink-primary mb-2">API publique</h3>
-      <p class="text-ink-secondary text-sm">
-        Intégrez Philum dans vos outils : API REST publique et serveur MCP pour les agents IA.
-      </p>
-    </div>
-    <div class="bg-surface-secondary rounded-xl p-6 border border-border border-dashed hover-lift">
-      <h3 class="text-lg font-semibold text-ink-primary mb-2">Philum Desktop</h3>
-      <p class="text-ink-secondary text-sm">
-        Application de bureau pour gérer vos références hors ligne, avec synchronisation et
-        intégration aux outils locaux.
-      </p>
-    </div>
+    {#each upcoming as feature, i (feature.title)}
+      <div
+        class="relative bg-surface-secondary rounded-xl p-6 border border-border border-dashed hover-lift"
+        use:reveal
+        style="transition-delay: {(i % 3) * 60}ms"
+      >
+        <span
+          class="absolute top-4 right-4 text-[0.65rem] font-semibold uppercase tracking-wider text-info bg-info-bg px-2 py-0.5 rounded-full"
+        >
+          À venir
+        </span>
+        <h3 class="text-lg font-semibold text-ink-primary mb-2 pr-16">{feature.title}</h3>
+        <p class="text-ink-secondary text-sm">{feature.desc}</p>
+      </div>
+    {/each}
   </div>
   <p class="text-sm text-ink-tertiary">
     Ces fonctionnalités sont en cours de développement. Leur ordre d'arrivée peut varier.

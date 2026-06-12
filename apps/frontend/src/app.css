@@ -53,6 +53,35 @@
 }
 
 @layer base {
+  ::selection {
+    background: rgb(var(--info) / 0.22);
+    color: rgb(var(--text-primary));
+  }
+
+  /* Thin themed scrollbar (WebKit + Firefox) */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--border-strong)) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--border-strong));
+    border-radius: 8px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--text-tertiary));
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
   body {
     @apply bg-surface-secondary text-ink-primary font-sans antialiased;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
@@ -181,10 +210,60 @@
 .hover-lift {
   transition:
     transform 180ms cubic-bezier(0.2, 0.7, 0.3, 1),
-    border-color 180ms ease;
+    border-color 180ms ease,
+    box-shadow 180ms ease;
 }
 .hover-lift:hover {
   transform: translateY(-3px);
+  border-color: rgb(var(--border-strong));
+  box-shadow:
+    0 8px 24px -8px rgb(var(--text-primary) / 0.12),
+    0 2px 6px -2px rgb(var(--text-primary) / 0.06);
+}
+.dark .hover-lift:hover {
+  box-shadow:
+    0 8px 24px -8px rgb(0 0 0 / 0.5),
+    0 0 0 1px rgb(var(--info) / 0.12);
+}
+
+/* Icon bubble micro-interaction: scales when its parent card is hovered */
+.icon-bubble {
+  transition: transform 220ms cubic-bezier(0.34, 1.4, 0.4, 1);
+}
+.hover-lift:hover .icon-bubble {
+  transform: scale(1.12) rotate(-4deg);
+}
+
+/* Page header: small-caps overline above page titles */
+.page-overline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgb(var(--info));
+  margin-bottom: 0.75rem;
+}
+.page-overline::before {
+  content: '';
+  width: 1.5rem;
+  height: 1px;
+  background: rgb(var(--info) / 0.6);
+}
+
+/* Reveal-on-scroll (shared with the homepage `reveal` action) */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 600ms cubic-bezier(0.2, 0.7, 0.3, 1),
+    transform 600ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+[data-reveal].is-revealed {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* Dark mode form label fix */
