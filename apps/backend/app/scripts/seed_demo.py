@@ -144,6 +144,10 @@ def _demo_sources() -> list[dict]:
             "parent_index": None,
             "citations_count": 987,
             "impact_factor": 8.1,
+            "archive_url": (
+                "https://web.archive.org/web/20240601000000/"
+                "https://www.cell.com/current-biology/fulltext/S0960-9822(10)01007-0"
+            ),
         },
         {
             "url": "https://www.nature.com/articles/35021052",
@@ -180,6 +184,10 @@ def _demo_sources() -> list[dict]:
             "parent_index": 2,
             "citations_count": 2890,
             "impact_factor": 50.5,
+            "archive_url": (
+                "https://web.archive.org/web/20240601000000/"
+                "https://www.nature.com/articles/nature11028"
+            ),
             "excerpts": [
                 (
                     "L'activation optogénétique d'un sous-ensemble de neurones du gyrus denté "
@@ -199,6 +207,10 @@ def _demo_sources() -> list[dict]:
             "parent_index": None,
             "citations_count": 3120,
             "impact_factor": 3.3,
+            "archive_url": (
+                "https://web.archive.org/web/20240601000000/"
+                "https://learnmem.cshlp.org/content/12/4/361.full"
+            ),
             "conflict_of_interest": (
                 "L'auteure a témoigné comme experte rémunérée dans plusieurs procès "
                 "(défense, identification oculaire). Cette activité est documentée "
@@ -222,6 +234,11 @@ def _demo_sources() -> list[dict]:
             "annotation": "Ressource pédagogique NIH sur le sommeil et son rôle dans la consolidation mnésique.",
             "is_pivot": False,
             "parent_index": None,
+            "archive_url": (
+                "https://web.archive.org/web/20240601000000/"
+                "https://www.ninds.nih.gov/health-information/public-education/"
+                "brain-basics/brain-basics-understanding-sleep"
+            ),
             "excerpts": [
                 (
                     "Le sommeil, en particulier les phases lentes profondes et le REM, "
@@ -239,6 +256,9 @@ def _demo_sources() -> list[dict]:
             "annotation": "Site du laboratoire de référence sur l'encodage et le rappel chez l'humain.",
             "is_pivot": False,
             "parent_index": None,
+            "archive_url": (
+                "https://web.archive.org/web/20240601000000/https://memorylab.stanford.edu/"
+            ),
         },
         {
             "url": "https://www.inserm.fr/dossier/memoire/",
@@ -250,6 +270,9 @@ def _demo_sources() -> list[dict]:
             "annotation": "Dossier de synthèse Inserm sur la mémoire, en français, à destination grand public.",
             "is_pivot": False,
             "parent_index": None,
+            "archive_url": (
+                "https://web.archive.org/web/20240601000000/https://www.inserm.fr/dossier/memoire/"
+            ),
         },
         # --- Tier 3 — Press ---
         {
@@ -305,6 +328,10 @@ def _demo_sources() -> list[dict]:
             ),
             "is_pivot": False,
             "parent_index": 5,
+            "archive_url": (
+                "https://web.archive.org/web/20240601000000/"
+                "https://www.nature.com/articles/d41586-022-04123-3"
+            ),
         },
         # --- Tier 4 — Original ---
         {
@@ -322,6 +349,9 @@ def _demo_sources() -> list[dict]:
             "parent_index": 3,
             "subscribers_count": 4_500_000,
             "views_count": 2_300_000,
+            "archive_url": (
+                "https://web.archive.org/web/20240601000000/https://lexfridman.com/karim-nader/"
+            ),
             "conflict_of_interest": (
                 "Lex Fridman est un podcasteur indépendant financé par des sponsors. "
                 "Il n'est pas chercheur ; ses entretiens sont éditorialisés."
@@ -354,6 +384,10 @@ def _demo_sources() -> list[dict]:
             ),
             "is_pivot": False,
             "parent_index": None,
+            "archive_url": (
+                "https://web.archive.org/web/20240601000000/"
+                "https://www.simonandschuster.com/books/Remember/Lisa-Genova/9781982171544"
+            ),
             "conflict_of_interest": (
                 "Auteure également romancière à succès ; le livre est commercialisé "
                 "par un éditeur grand public, ce qui peut orienter le ton vulgarisateur."
@@ -409,6 +443,10 @@ def _demo_sources() -> list[dict]:
             "is_pivot": False,
             "parent_index": 1,
             "views_count": 1_800_000,
+            "archive_url": (
+                "https://web.archive.org/web/20240601000000/"
+                "https://www.youtube.com/watch?v=H8UQdB3vG6A"
+            ),
         },
         {
             "url": "https://lea-marchand.filum.app/notes/loftus-interview-2025",
@@ -441,6 +479,10 @@ def _demo_sources() -> list[dict]:
             "is_pivot": False,
             "parent_index": None,
             "impact_factor": None,
+            "archive_url": (
+                "https://web.archive.org/web/20240601000000/"
+                "https://wellcomecollection.org/works/pb7xkuyz"
+            ),
         },
     ]
 
@@ -542,9 +584,19 @@ async def _get_or_create_demo_card(
 
     await db.commit()
 
-    # Create a ContentAttestation for the demo content URL
+    # Create a ContentAttestation for the demo content URL (idempotent:
+    # without this check, every backend restart re-running the seed would
+    # accumulate a duplicate attestation row).
     attestation = None
     if card.content_url:
+        existing = await db.execute(
+            select(ContentAttestation).where(
+                ContentAttestation.user_id == user.id,
+                ContentAttestation.content_url == card.content_url,
+            )
+        )
+        attestation = existing.scalars().first()
+    if card.content_url and attestation is None:
         now = _utcnow_naive()
         content_to_sign = {
             "user_id": str(user.id),

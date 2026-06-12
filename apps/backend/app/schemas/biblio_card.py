@@ -62,6 +62,7 @@ class CardStats(BaseModel):
     media: int = 0
     institution_publique: int = 0
     individu: int = 0
+    archived_count: int = 0
     all_archived: bool = False
 
 

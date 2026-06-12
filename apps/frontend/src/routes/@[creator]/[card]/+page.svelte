@@ -221,9 +221,11 @@
           </div>
           <div class="text-center p-3 sm:p-4 bg-surface-secondary rounded-lg">
             <p class="text-xl sm:text-2xl font-bold text-ink-secondary">
-              {card.stats.all_archived ? '✓' : '…'}
+              {card.stats.all_archived
+                ? '✓'
+                : `${card.stats.archived_count}/${card.stats.total_sources}`}
             </p>
-            <p class="text-xs sm:text-sm text-ink-tertiary">Archivés</p>
+            <p class="text-xs sm:text-sm text-ink-tertiary">Archivées</p>
           </div>
         </div>
       </div>

@@ -42,6 +42,7 @@ export interface CardStats {
   media: number;
   institution_publique: number;
   individu: number;
+  archived_count: number;
   all_archived: boolean;
 }
 

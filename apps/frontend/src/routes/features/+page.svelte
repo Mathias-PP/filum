@@ -94,10 +94,11 @@
           /></svg
         >
       </div>
-      <h3 class="text-lg font-semibold text-ink-primary mb-2">6 types de sources</h3>
+      <h3 class="text-lg font-semibold text-ink-primary mb-2">Taxonomie à trois axes</h3>
       <p class="text-ink-secondary text-sm">
-        Articles scientifiques, sources institutionnelles, presse, vidéos, images, sources
-        originales : chaque type a son propre affichage et son propre poids dans le graphe.
+        Chaque source est décrite par son format (texte, vidéo, audio, image, données), sa catégorie
+        (article scientifique, presse, podcast, notes…) et le type d'auteur·ice (chercheur·euse,
+        média, institution…). Chacune a son propre affichage dans le graphe.
       </p>
     </div>
 
