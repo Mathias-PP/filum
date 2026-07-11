@@ -131,7 +131,8 @@
     <div class="max-w-4xl mx-auto px-4 text-center" use:reveal>
       <h2 class="font-serif text-3xl md:text-4xl text-white mb-4">Prêt à commencer&nbsp;?</h2>
       <p class="text-lg text-slate-300 mb-8">
-        Vous citez déjà vos sources. Philum les rend visibles, vérifiables et impossibles à perdre.
+        Connectez vos sources entre elles : votre bibliographie devient visible, navigable et
+        vérifiable par tous.
       </p>
       {#if isAuthenticated}
         <a href="/dashboard" class="hero-cta-light">Accéder au tableau de bord</a>
