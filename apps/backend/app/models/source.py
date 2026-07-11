@@ -5,7 +5,7 @@ from enum import Enum
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -63,10 +63,6 @@ class ArchiveStatus(str, Enum):
 
 class Source(Base):
     __tablename__ = "sources"
-    __table_args__ = (
-        Index("ix_sources_url_trgm", "url"),
-        Index("ix_sources_archive", "archive_status"),
-    )
 
     id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True),

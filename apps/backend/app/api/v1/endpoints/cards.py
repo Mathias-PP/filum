@@ -141,14 +141,9 @@ async def update_card(
     if card_data.platform is not None:
         card.platform = card_data.platform.value
 
-    from app.db.database import async_session_maker
-
-    async with async_session_maker() as db:
-        db.add(card)
-        await db.commit()
-        await db.refresh(card)
-
-    return card
+    # The card is already attached to the request session (via CardService);
+    # opening a second session here raised InvalidRequestError. Commit in place.
+    return await card_service.save_card(card)
 
 
 @router.post("/cards/{card_id}/publish", response_model=dict)

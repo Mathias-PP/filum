@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.db.database import get_db
-from app.models.biblio_card import BiblioCard
+from app.models.biblio_card import BiblioCard, CardStatus
+from app.models.source import Source
 from app.models.user import User
 from app.services.auth import AuthService
 
@@ -43,18 +43,27 @@ async def get_user_profile(
             detail={"code": "not_found", "message": "User not found"},
         )
 
-    # Import Source locally to use its deleted_at column on the eager-load.
-    from app.models.source import Source
-
+    # Public profile: only PUBLISHED cards (drafts were leaking here), and
+    # count sources in SQL instead of eager-loading every Source row.
     cards_result = await db.execute(
-        select(BiblioCard)
-        .where(BiblioCard.user_id == user.id, BiblioCard.deleted_at.is_(None))
-        .options(selectinload(BiblioCard.sources.and_(Source.deleted_at.is_(None))))
+        select(BiblioCard, func.count(Source.id).label("source_count"))
+        .outerjoin(
+            Source,
+            (Source.biblio_card_id == BiblioCard.id) & Source.deleted_at.is_(None),
+        )
+        .where(
+            BiblioCard.user_id == user.id,
+            BiblioCard.deleted_at.is_(None),
+            BiblioCard.status == CardStatus.PUBLISHED,
+        )
+        .group_by(BiblioCard.id)
         .order_by(BiblioCard.published_at.desc())
     )
-    cards = list(cards_result.scalars().all())
+    rows = cards_result.all()
+    cards = [row[0] for row in rows]
+    source_counts = {row[0].id: row[1] for row in rows}
 
-    total_sources = sum(len(c.sources) for c in cards)
+    total_sources = sum(source_counts.values())
 
     return {
         "slug": user.username,
@@ -77,7 +86,7 @@ async def get_user_profile(
                 "slug": c.slug,
                 "title": c.title,
                 "published_at": c.published_at.isoformat() if c.published_at else None,
-                "total_sources": len(c.sources),
+                "total_sources": source_counts[c.id],
             }
             for c in cards
         ],

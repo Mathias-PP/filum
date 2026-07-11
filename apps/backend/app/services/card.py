@@ -53,13 +53,9 @@ class CardService:
     async def get_card_by_slug(
         self, user_slug: str, card_slug: str, published_only: bool = True
     ) -> BiblioCard | None:
-        user_result = await self._db.execute(select(User).where(User.username == user_slug))
-        user = user_result.scalar_one_or_none()
-        if not user:
-            return None
-
         query = (
             select(BiblioCard)
+            .join(User, BiblioCard.user_id == User.id)
             .options(
                 selectinload(BiblioCard.sources.and_(Source.deleted_at.is_(None))).selectinload(
                     Source.excerpts
@@ -67,7 +63,7 @@ class CardService:
             )
             .options(selectinload(BiblioCard.user))
             .where(
-                BiblioCard.user_id == user.id,
+                User.username == user_slug,
                 BiblioCard.slug == card_slug,
                 BiblioCard.deleted_at.is_(None),
             )
@@ -106,6 +102,12 @@ class CardService:
 
         result = await self._db.execute(query)
         return list(result.scalars().all())
+
+    async def save_card(self, card: BiblioCard) -> BiblioCard:
+        """Commit pending mutations on a card already attached to this session."""
+        await self._db.commit()
+        await self._db.refresh(card)
+        return card
 
     async def publish_card(self, card: BiblioCard) -> dict:
         # Capture scalar values from relations BEFORE commit.

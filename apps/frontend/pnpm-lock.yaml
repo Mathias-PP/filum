@@ -16,9 +16,6 @@ importers:
       d3:
         specifier: ^7.9.0
         version: 7.9.0
-      lucide-svelte:
-        specifier: ^0.460.0
-        version: 0.460.1(svelte@5.55.9(@typescript-eslint/types@8.59.3))
       ogl:
         specifier: ^1.0.11
         version: 1.0.11
@@ -2619,14 +2616,6 @@ packages:
         integrity: sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ==,
       }
 
-  lucide-svelte@0.460.1:
-    resolution:
-      {
-        integrity: sha512-guJjJSeWlKivsEG51Xg41egunBMJcobhDmkLv/NYTXmXyCEwxMf1A+HX7RvDEKiXbXYgtLImih67tI08MSUOkA==,
-      }
-    peerDependencies:
-      svelte: ^3 || ^4 || ^5.0.0-next.42
-
   lz-string@1.5.0:
     resolution:
       {
@@ -5086,10 +5075,6 @@ snapshots:
   loupe@3.2.1: {}
 
   lru-cache@10.4.3: {}
-
-  lucide-svelte@0.460.1(svelte@5.55.9(@typescript-eslint/types@8.59.3)):
-    dependencies:
-      svelte: 5.55.9(@typescript-eslint/types@8.59.3)
 
   lz-string@1.5.0: {}
 

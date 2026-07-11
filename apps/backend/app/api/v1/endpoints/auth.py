@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import secrets
 
 import httpx
@@ -207,10 +208,12 @@ async def google_callback(
                 detail={"code": "missing_id_token", "message": "No id_token in response"},
             )
 
-        # Verify id_token signature via Google's JWKS
+        # Verify id_token signature via Google's JWKS. The JWKS fetch is a
+        # synchronous urllib call inside PyJWT — run it in a worker thread so
+        # it doesn't block the event loop for the whole round-trip to Google.
         try:
             jwks_client = PyJWKClient(GOOGLE_JWKS_URI)
-            signing_key = jwks_client.get_signing_key_from_jwt(id_token)
+            signing_key = await asyncio.to_thread(jwks_client.get_signing_key_from_jwt, id_token)
             google_info: dict = jwt.decode(
                 id_token,
                 signing_key.key,
