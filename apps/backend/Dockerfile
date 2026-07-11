@@ -9,10 +9,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN pip install uv
 
-COPY pyproject.toml uv.lock* ./
+# Non-root : limite l'impact d'une éventuelle RCE dans le conteneur.
+RUN useradd --create-home app && chown app:app /app
+USER app
+
+COPY --chown=app:app pyproject.toml uv.lock* ./
 RUN uv sync --frozen --no-install-project
 
-COPY . .
+COPY --chown=app:app . .
 
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1

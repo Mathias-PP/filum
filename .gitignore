@@ -89,6 +89,13 @@ uploads/
 *.backup
 *.old
 
+# === Dumps base de données (jamais publier — repo public) ===
+# NB : pas de *.sql global, les modèles dbt (apps/analytics) sont des .sql versionnés.
+*.sql.gz
+*.dump
+railway_dump.sql
+infra/oracle/backups/
+
 # === Documentation générée ===
 docs/_build/
 site/
