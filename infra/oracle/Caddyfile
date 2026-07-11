@@ -1,0 +1,7 @@
+# TLS automatique (Let's Encrypt) sur le domaine défini par API_DOMAIN
+# dans infra/oracle/.env. Ports 80 et 443 requis ouverts (security list
+# Oracle + iptables de la VM — voir README.md).
+{$API_DOMAIN} {
+	encode gzip
+	reverse_proxy backend:8000
+}
