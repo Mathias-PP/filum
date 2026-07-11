@@ -28,14 +28,14 @@ Console Oracle → menu ☰ → **Compute** → **Instances** → **Create insta
 1. **Name** : `philum-api`.
 2. **Placement** : laisser l'AD par défaut.
 3. **Image and shape** → **Edit** :
-   - **Image** : *Ubuntu* → **Canonical Ubuntu 24.04** (⚠️ vérifier que l'architecture affichée est **aarch64**, elle s'ajuste avec le shape).
-   - **Shape** : **Ampere** → `VM.Standard.A1.Flex` → **2 OCPU / 12 GB RAM** (le quota Always Free total est 4 OCPU / 24 GB — on garde de la marge pour une éventuelle 2ᵉ VM).
+   - **Image** : *Ubuntu* → **Canonical Ubuntu 24.04** en build **aarch64** (si seule la variante « Minimal aarch64 » est proposée avec le shape Ampere, elle convient — voir la note post-installation à l'étape 4).
+   - **Shape** : **Ampere** → `VM.Standard.A1.Flex` → **2 OCPU / 12 GB RAM = le maximum Always Free**. ⚠️ Depuis le 15 juin 2026, le quota gratuit est de 1 500 OCPU-heures + 9 000 GB-heures/mois, soit exactement 2 OCPU / 12 GB en continu (c'était 4/24 avant — beaucoup de tutoriels sont périmés). Allouer plus consommerait le quota mensuel avant la fin du mois et l'instance serait stoppée. Source : [doc Oracle Always Free](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm).
 4. **Primary VNIC** : laisser le VCN par défaut (« Create new virtual cloud network »), sous-réseau public, **Assign a public IPv4 address = Yes**.
 5. **Add SSH keys** : **Paste public keys** → coller le contenu de `oracle_philum.pub`.
 6. **Boot volume** : 50 GB par défaut (Always Free couvre jusqu'à 200 GB au total).
 7. **Create**.
 
-> 💥 **Erreur « Out of host capacity »** : classique sur les shapes ARM gratuits. Solutions : réessayer (parfois plusieurs fois par jour), changer d'Availability Domain à l'étape Placement, ou réduire à 1 OCPU / 6 GB. La capacité se libère souvent tôt le matin. C'est le seul vrai obstacle du process — persévérer.
+> 💥 **Erreur « Out of host capacity »** : classique sur les shapes ARM gratuits. Solutions : réessayer (parfois plusieurs fois par jour), changer d'Availability Domain à l'étape Placement, ou réduire à 1 OCPU / 6 GB (suffisant pour Philum ; redimensionnable plus tard via stop → Edit shape, sous réserve de capacité). La capacité se libère souvent tôt le matin. C'est le seul vrai obstacle du process — persévérer.
 
 Quand l'instance est **Running**, noter son **Public IP**.
 
@@ -82,6 +82,8 @@ Puis sur la VM :
 
 ```bash
 sudo apt-get update && sudo apt-get upgrade -y
+# Les paquets suivants manquent sur l'image "Minimal" (no-op sur l'image complète) :
+sudo apt-get install -y curl git iptables-persistent
 curl -fsSL https://get.docker.com | sudo sh
 sudo usermod -aG docker ubuntu
 exit   # se reconnecter pour que le groupe docker prenne effet
