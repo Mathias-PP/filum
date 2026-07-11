@@ -27,6 +27,11 @@ SLEEP_SECONDS=300
 #     --sort-by TIMECREATED --query 'data[0].{id:id,name:"display-name"}'
 # ─────────────────────────────────────────────────────────────────────
 
+# tr -d '\r\n' : une clé générée côté Windows contient des CRLF qui
+# rendent le JSON --metadata invalide.
+SSH_KEY=$(tr -d '\r\n' < "$SSH_PUB_FILE")
+METADATA=$(printf '{"ssh_authorized_keys": "%s"}' "$SSH_KEY")
+
 attempt=0
 while true; do
   attempt=$((attempt + 1))
@@ -40,7 +45,7 @@ while true; do
     --subnet-id "$SUBNET_OCID" \
     --assign-public-ip true \
     --display-name "$DISPLAY_NAME" \
-    --metadata "{\"ssh_authorized_keys\": \"$(cat "$SSH_PUB_FILE")\"}"; then
+    --metadata "$METADATA"; then
     echo "✅ SUCCÈS — instance créée. Voir la console : Compute → Instances."
     exit 0
   fi
