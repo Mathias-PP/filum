@@ -105,7 +105,7 @@
 
     <div class="space-y-1.5">
       <label for="title" class="block text-sm font-medium text-ink-secondary">
-        Titre du contenu <span class="text-red-500">*</span>
+        Titre du contenu <span class="text-danger">*</span>
       </label>
       <input
         id="title"
@@ -120,7 +120,7 @@
 
     <div class="space-y-1.5">
       <label for="slug" class="block text-sm font-medium text-ink-secondary">
-        Identifiant URL <span class="text-red-500">*</span>
+        Identifiant URL <span class="text-danger">*</span>
       </label>
       <div class="flex items-center gap-2">
         <span class="text-ink-tertiary text-sm shrink-0">/@{$currentUser?.username ?? 'vous'}/</span
