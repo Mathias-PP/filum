@@ -32,7 +32,7 @@
     <p class="text-ink-secondary leading-relaxed">
       Un vidéaste cite une étude ? Elle est noyée dans la description, parfois sans lien. Un
       journaliste mentionne un rapport ? Bonne chance pour le retrouver six mois plus tard. Un
-      vulgaristeur s'appuie sur une thèse ? Qui vérifie que la source existe vraiment ?
+      vulgarisateur s'appuie sur une thèse ? Qui vérifie que la source existe vraiment ?
     </p>
     <p class="text-ink-secondary leading-relaxed">
       Philum répond à ce problème en offrant un espace dédié où chaque source est documentée et

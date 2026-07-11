@@ -2,7 +2,13 @@
 
 > Snapshot vivant, 1 page max. **Pour l'historique détaillé** : voir [`CHANGELOG.md`](./CHANGELOG.md). **Pour les items long terme** : voir [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md).
 
-**Dernière mise à jour : 2026-06-02**
+**Dernière mise à jour : 2026-07-11**
+
+---
+
+## 🚨 P0 — Backend Railway DOWN (vérifié 2026-07-11)
+
+Toutes les requêtes vers `filum-production-07bb.up.railway.app` renvoient `{"status":"error","code":404,"message":"Application not found"}`. Fiche démo 404, login mort, tous les parcours dynamiques HS. Le frontend Vercel est up. **Action manuelle requise** : vérifier le service Railway (crash-loop ? domaine détaché ? projet suspendu ?). Détails : [`UX-WALKTHROUGH-REPORT.md`](./UX-WALKTHROUGH-REPORT.md).
 
 ---
 
@@ -23,7 +29,8 @@ Avant cette phase, la **Phase 1 (MVP complet)** était terminée : jalons M1 (OA
 
 | # | Branche | État CI | Sujet |
 |---|---|---|---|
-| #94 | `feat/logo-improvements` | en cours | Améliorations affichage logo (taille navbar, favicon N&B, footer/error/callback) |
+| #100 | `refactor/code-optimizations` | ✅ verte | Optimisations code (index morts, requête slug unique, dead code frontend, lucide-svelte retiré) |
+| #101 | `fix/ux-walkthrough` | en cours | Fixes UX walkthrough (dark mode wizard, ConfirmDialog source, redirect publication, proxy 503) + rapport |
 
 > _Quand cette section est vide, plus rien n'est en attente côté review humaine._
 
@@ -32,7 +39,7 @@ Avant cette phase, la **Phase 1 (MVP complet)** était terminée : jalons M1 (OA
 ## URLs production
 
 - **Frontend** : https://filum-eight.vercel.app
-- **Backend** : https://filum-production-07bb.up.railway.app — `/health` ✓ (vérifié 2026-06-02)
+- **Backend** : https://filum-production-07bb.up.railway.app — ❌ **DOWN, 404 "Application not found"** (vérifié 2026-07-11, cf. P0 ci-dessus)
 - **API docs** : https://filum-production-07bb.up.railway.app/api/v1/docs
 - **Fiche démo** : https://filum-eight.vercel.app/@example/memoire-et-cerveau
 
