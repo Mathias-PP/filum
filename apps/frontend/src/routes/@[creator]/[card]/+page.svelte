@@ -10,6 +10,7 @@
     Skeleton,
   } from '$lib/components';
   import { slide } from 'svelte/transition';
+  import { page } from '$app/stores';
   import { currentUser } from '$lib/stores/auth';
 
   interface PageData {
@@ -51,7 +52,8 @@
     }
   }
 
-  const publicUrl = $derived(`https://filum-eight.vercel.app/@${creatorSlug}/${cardSlug}`);
+  const siteOrigin = $derived($page.url.origin);
+  const publicUrl = $derived(`${siteOrigin}/@${creatorSlug}/${cardSlug}`);
   const isOwner = $derived($currentUser?.username === creatorSlug);
 
   const jsonLd = $derived.by(() => {
@@ -70,14 +72,14 @@
       author: {
         '@type': 'Person',
         name: card.creator.display_name ?? card.creator.slug,
-        url: `https://filum-eight.vercel.app/@${creatorSlug}`,
+        url: `${siteOrigin}/@${creatorSlug}`,
       },
       ...(card.published_at ? { datePublished: card.published_at } : {}),
       ...(card.description ? { description: card.description } : {}),
       publisher: {
         '@type': 'Organization',
         name: 'Philum',
-        url: 'https://filum-eight.vercel.app/',
+        url: `${siteOrigin}/`,
       },
       mainEntityOfPage: publicUrl,
       citation: citations,
@@ -183,7 +185,12 @@
           class="h-[75vh] min-h-[500px] rounded-xl bg-surface-primary border border-border overflow-hidden relative"
         >
           {#if GraphComponent}
-            <GraphComponent {card} />
+            <!-- Re-mount the d3 simulation when navigating between cards:
+                 the graph builds its nodes once on mount and doesn't react
+                 to a card prop swap. -->
+            {#key card.id}
+              <GraphComponent {card} />
+            {/key}
           {:else}
             <div class="absolute inset-0 p-6 flex flex-col items-center justify-center gap-4">
               <Skeleton variant="graph" height="100%" class="absolute inset-0 opacity-50" />

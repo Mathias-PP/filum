@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import textwrap
+from functools import lru_cache
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -14,13 +15,18 @@ FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 FONT_PATH_SERIF = "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"
 
 
+@lru_cache(maxsize=8)
+def _font(path: str, size: int) -> ImageFont.FreeTypeFont:
+    return ImageFont.truetype(path, size)
+
+
 def generate_og_image(title: str, creator: str | None = None) -> bytes:
     img = Image.new("RGB", (WIDTH, HEIGHT), BG_COLOR)
     draw = ImageDraw.Draw(img)
 
-    title_font = ImageFont.truetype(FONT_PATH_SERIF, 48)
-    subtitle_font = ImageFont.truetype(FONT_PATH, 24)
-    small_font = ImageFont.truetype(FONT_PATH, 20)
+    title_font = _font(FONT_PATH_SERIF, 48)
+    subtitle_font = _font(FONT_PATH, 24)
+    small_font = _font(FONT_PATH, 20)
 
     accent_bar = Image.new("RGB", (6, HEIGHT), ACCENT_COLOR)
     img.paste(accent_bar, (0, 0))

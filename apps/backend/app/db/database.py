@@ -36,7 +36,7 @@ class TimestampMixin:
         default=None,
         server_default=func.now(),
     )
-    updated_at: Mapped[datetime | None] = mapped_column(default=None, onupdate=None)
+    updated_at: Mapped[datetime | None] = mapped_column(default=None, onupdate=func.now())
     deleted_at: Mapped[datetime | None] = mapped_column(default=None)
 
 

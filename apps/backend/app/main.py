@@ -109,18 +109,18 @@ async def publish_diagnose():
     """Exercise the publish code path on the demo user's seeded card.
 
     No auth required. Returns step-by-step trace so we can pinpoint
-    exactly where production publish fails. Safe because it acts only on
-    the seeded demo card and reverts via rollback at the end.
+    exactly where production publish fails. Dry-run: the UPDATE is flushed
+    (exercising the exact DB write path) then rolled back — never committed.
     """
     import traceback
+    from datetime import UTC, datetime
 
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
 
     from app.db.database import async_session_maker
-    from app.models.biblio_card import BiblioCard
+    from app.models.biblio_card import BiblioCard, CardStatus
     from app.models.source import Source
-    from app.services.card import CardService
 
     trace: list[str] = []
     try:
@@ -142,18 +142,24 @@ async def publish_diagnose():
             if not card.user:
                 return {"ok": False, "trace": trace, "reason": "card_has_no_user"}
             trace.append(f"user_loaded username={card.user.username}")
-            trace.append("calling_publish_card")
-            svc = CardService(db)
-            result_dict = await svc.publish_card(card)
-            trace.append("publish_returned")
-            # rollback to avoid actually altering prod data via diagnose
+            # Mirror CardService.publish_card WITHOUT its commit: flush emits
+            # the same UPDATE (naive datetime, enum coercion) but stays inside
+            # the transaction, and the rollback below reverts it. The previous
+            # version called publish_card(), whose internal commit made the
+            # "rollback" a no-op — every diagnose hit silently published a card.
+            username = card.user.username
+            card_slug = card.slug
+            card.published_at = datetime.now(UTC).replace(tzinfo=None)
+            card.status = CardStatus.PUBLISHED
+            trace.append("flushing_publish_update")
+            await db.flush()
+            trace.append("flush_ok")
             await db.rollback()
             trace.append("rolled_back")
             return {
                 "ok": True,
                 "trace": trace,
-                "result_keys": sorted(result_dict.keys()),
-                "public_url": result_dict.get("public_url"),
+                "public_url": f"{settings.frontend_base_url}/@{username}/{card_slug}",
             }
     except Exception as exc:
         return {
@@ -167,7 +173,14 @@ async def publish_diagnose():
 
 @app.get("/health/seed")
 async def seed_health():
-    """Diagnose: does the demo user + card exist?"""
+    """Diagnose: does the demo user + card exist? Debug-only.
+
+    Enumerates every username and card slug, so it must not be reachable
+    on a production deployment (debug=false).
+    """
+    if not settings.debug:
+        raise HTTPException(status_code=404, detail="Not found")
+
     from sqlalchemy import select
 
     from app.db.database import async_session_maker

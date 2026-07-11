@@ -26,6 +26,12 @@ from app.services.wayback import WaybackService
 router = APIRouter(prefix="/sources", tags=["sources"])
 settings = get_settings()
 
+# The event loop only keeps WEAK references to tasks: a fire-and-forget
+# create_task() can be garbage-collected mid-flight, silently dropping the
+# Wayback archive job (source stuck in "pending"). Hold a strong reference
+# until the task completes.
+_background_tasks: set[asyncio.Task] = set()
+
 
 class ExtractResponse(BaseModel):
     title: str | None
@@ -53,7 +59,9 @@ async def extract_url_metadata(
     etc.) is rejected up-front. See `app.core.url_safety`.
     """
     try:
-        assert_url_is_safe(str(url))
+        # assert_url_is_safe does a blocking socket.getaddrinfo (DNS) — run it
+        # in a worker thread so slow DNS doesn't stall the event loop.
+        await asyncio.to_thread(assert_url_is_safe, str(url))
     except UnsafeUrlError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -186,7 +194,9 @@ async def create_source(
                 wayback = WaybackService(bg_db, settings.wayback_api_key)
                 await wayback.archive_url(source_id_bg, source_url_bg)
 
-        asyncio.create_task(_archive_bg())
+        task = asyncio.create_task(_archive_bg())
+        _background_tasks.add(task)
+        task.add_done_callback(_background_tasks.discard)
 
     return source
 
