@@ -3,7 +3,7 @@
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
   import { api } from '$lib/api';
-  import { Button, ProgressSteps } from '$lib/components';
+  import { Button, ConfirmDialog, ProgressSteps } from '$lib/components';
   import { AUTHOR_COLORS, authorLabel } from '$lib/utils/author-colors';
   import type { AuthorKind, Card, Source, SourceCategory, SourceFormat } from '$lib/api';
 
@@ -172,6 +172,8 @@
     }
   }
 
+  let confirmDeleteId = $state<string | null>(null);
+
   async function removeSource(id: string) {
     try {
       await api.sources.delete(id);
@@ -179,6 +181,8 @@
       if (editingSourceId === id) resetForm();
     } catch (err) {
       addError = err instanceof Error ? err.message : 'Erreur lors de la suppression';
+    } finally {
+      confirmDeleteId = null;
     }
   }
 
@@ -186,16 +190,21 @@
     publishError = null;
     publishing = true;
     try {
-      await api.cards.publish(cardId);
-      goto('/dashboard');
+      const res = await api.cards.publish(cardId);
+      // Land on the freshly published public page rather than back on the
+      // dashboard — the user gets to see (and share) the result immediately.
+      let publicPath = '/dashboard';
+      try {
+        publicPath = new URL(res.public_url).pathname;
+      } catch {
+        // keep dashboard fallback
+      }
+      goto(publicPath);
     } catch (err) {
       console.error('publish error:', err);
       if (err instanceof TypeError && err.message === 'Failed to fetch') {
-        // Real network/CORS failure OR backend died mid-response (e.g. MissingGreenlet
-        // before the publish endpoint's try/except wrapper). Surface a hint so it's
-        // easier to diagnose than the generic "check your connection".
         publishError =
-          "La requête de publication n'a pas abouti (aucune réponse du serveur). Ouvre la console (F12 → Network) pour voir le statut HTTP de POST /cards/.../publish et signale-le.";
+          'La publication n’a pas abouti : le serveur n’a pas répondu. Vérifiez votre connexion puis réessayez — votre brouillon et vos sources sont conservés.';
       } else {
         publishError = err instanceof Error ? err.message : 'Erreur lors de la publication';
       }
@@ -259,26 +268,26 @@
   <ProgressSteps steps={wizardSteps} current={1} class="mb-8" />
 
   {#if loadError}
-    <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 mb-6">
+    <div class="rounded-lg bg-danger-bg border border-danger/30 px-4 py-3 text-sm text-danger mb-6">
       {loadError}
     </div>
   {/if}
 
   <!-- Add / edit source form -->
   <div
-    class="bg-white border rounded-xl p-6 mb-6 {isEditing
-      ? 'border-blue-300 ring-1 ring-blue-200'
-      : 'border-slate-200'}"
+    class="bg-surface-primary border rounded-xl p-6 mb-6 {isEditing
+      ? 'border-info/50 ring-1 ring-info/30'
+      : 'border-border'}"
   >
     <div class="flex items-center justify-between mb-4">
-      <h2 class="text-lg font-semibold text-slate-900">
+      <h2 class="text-lg font-semibold text-ink-primary">
         {isEditing ? 'Modifier la source' : 'Ajouter une source'}
       </h2>
       {#if isEditing}
         <button
           type="button"
           onclick={cancelEdit}
-          class="text-sm text-slate-500 hover:text-slate-900 transition-colors"
+          class="text-sm text-ink-tertiary hover:text-ink-primary transition-colors"
         >
           Annuler
         </button>
@@ -287,15 +296,15 @@
 
     <form onsubmit={submitSource} class="space-y-4">
       {#if addError}
-        <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+        <div class="rounded-lg bg-danger-bg border border-danger/30 px-4 py-3 text-sm text-danger">
           {addError}
         </div>
       {/if}
 
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div class="sm:col-span-2 space-y-1.5">
-          <label for="source-url" class="block text-sm font-medium text-slate-700">
-            URL <span class="text-red-500">*</span>
+          <label for="source-url" class="block text-sm font-medium text-ink-secondary">
+            URL <span class="text-danger">*</span>
           </label>
           <div class="relative">
             <input
@@ -307,30 +316,30 @@
               required
               readonly={isEditing}
               placeholder="https://doi.org/..."
-              class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-slate-400 read-only:bg-slate-50 read-only:text-slate-500 read-only:cursor-not-allowed"
+              class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary read-only:bg-surface-tertiary read-only:text-ink-tertiary read-only:cursor-not-allowed"
             />
             {#if extracting}
               <div
-                class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"
+                class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-info border-t-transparent rounded-full animate-spin"
               ></div>
             {/if}
           </div>
           {#if isEditing}
-            <p class="text-xs text-slate-500">
+            <p class="text-xs text-ink-tertiary">
               L'URL d'une source ne peut pas être modifiée (préserve l'archivage Wayback).
             </p>
           {/if}
         </div>
 
         <div class="space-y-1.5">
-          <label for="source-format" class="block text-sm font-medium text-slate-700">
-            Format <span class="text-red-500">*</span>
+          <label for="source-format" class="block text-sm font-medium text-ink-secondary">
+            Format <span class="text-danger">*</span>
           </label>
           <select
             id="source-format"
             value={sourceFormat}
             onchange={(e) => (sourceFormat = (e.target as HTMLSelectElement).value as SourceFormat)}
-            class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
           >
             {#each formatOptions as opt}
               <option value={opt.value}>{opt.label}</option>
@@ -339,15 +348,15 @@
         </div>
 
         <div class="space-y-1.5">
-          <label for="source-category" class="block text-sm font-medium text-slate-700">
-            Catégorie <span class="text-red-500">*</span>
+          <label for="source-category" class="block text-sm font-medium text-ink-secondary">
+            Catégorie <span class="text-danger">*</span>
           </label>
           <select
             id="source-category"
             value={sourceCategory}
             onchange={(e) =>
               (sourceCategory = (e.target as HTMLSelectElement).value as SourceCategory)}
-            class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
           >
             {#each categoryOptions as opt}
               <option value={opt.value}>{opt.label}</option>
@@ -356,15 +365,17 @@
         </div>
 
         <div class="sm:col-span-2 space-y-1.5">
-          <label for="source-author-kind" class="block text-sm font-medium text-slate-700">
-            Type d'auteur <span class="text-red-500">*</span>
-            <span class="text-xs text-slate-500 font-normal">— colore le nœud dans le graphe</span>
+          <label for="source-author-kind" class="block text-sm font-medium text-ink-secondary">
+            Type d'auteur <span class="text-danger">*</span>
+            <span class="text-xs text-ink-tertiary font-normal"
+              >— colore le nœud dans le graphe</span
+            >
           </label>
           <select
             id="source-author-kind"
             value={authorKind}
             onchange={(e) => (authorKind = (e.target as HTMLSelectElement).value as AuthorKind)}
-            class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
             style:border-left="4px solid {AUTHOR_COLORS[authorKind].stroke}"
           >
             {#each authorKindOptions as opt}
@@ -374,18 +385,20 @@
         </div>
 
         <div class="space-y-1.5">
-          <label for="source-title" class="block text-sm font-medium text-slate-700"> Titre </label>
+          <label for="source-title" class="block text-sm font-medium text-ink-secondary">
+            Titre
+          </label>
           <input
             id="source-title"
             type="text"
             bind:value={sourceTitle}
             placeholder="Titre de la source"
-            class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-slate-400"
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
           />
         </div>
 
         <div class="space-y-1.5">
-          <label for="source-authors" class="block text-sm font-medium text-slate-700">
+          <label for="source-authors" class="block text-sm font-medium text-ink-secondary">
             Auteurs
           </label>
           <input
@@ -393,12 +406,12 @@
             type="text"
             bind:value={authors}
             placeholder="Dupont J., Martin A."
-            class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-slate-400"
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
           />
         </div>
 
         <div class="sm:col-span-2 space-y-1.5">
-          <label for="source-annotation" class="block text-sm font-medium text-slate-700">
+          <label for="source-annotation" class="block text-sm font-medium text-ink-secondary">
             Annotation
           </label>
           <textarea
@@ -406,14 +419,14 @@
             bind:value={annotation}
             rows={2}
             placeholder="Pourquoi cette source est-elle importante ?"
-            class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-slate-400 resize-none"
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary resize-none"
           ></textarea>
         </div>
 
         <div class="sm:col-span-2 space-y-1.5">
-          <label for="source-archive-url" class="block text-sm font-medium text-slate-700">
-            Lien archivé <span class="text-slate-500 font-normal">(optionnel)</span>
-            <span class="text-xs text-slate-500 font-normal block mt-0.5">
+          <label for="source-archive-url" class="block text-sm font-medium text-ink-secondary">
+            Lien archivé <span class="text-ink-tertiary font-normal">(optionnel)</span>
+            <span class="text-xs text-ink-tertiary font-normal block mt-0.5">
               Laisser vide pour que Philum tente un archivage automatique via Wayback Machine.
               Sinon, coller ici un snapshot existant (ex. <code>https://web.archive.org/web/…</code
               >) ou tout autre miroir d'archive.
@@ -424,29 +437,31 @@
             type="url"
             bind:value={archiveUrl}
             placeholder="https://web.archive.org/web/2026.../https://..."
-            class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-slate-400 font-mono text-sm"
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary font-mono text-sm"
           />
         </div>
 
         <div class="sm:col-span-2">
           <label class="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" bind:checked={isPivot} class="rounded border-slate-300" />
-            <span class="text-sm text-slate-700">Source clé (★ structurante du raisonnement)</span>
+            <input type="checkbox" bind:checked={isPivot} class="rounded border-border-strong" />
+            <span class="text-sm text-ink-secondary"
+              >Source clé (★ structurante du raisonnement)</span
+            >
           </label>
         </div>
 
         {#if sources.length > 0}
           <div class="sm:col-span-2 space-y-1.5">
-            <label for="source-parent" class="block text-sm font-medium text-slate-700">
+            <label for="source-parent" class="block text-sm font-medium text-ink-secondary">
               Cette source en cite une autre déjà ajoutée ?
-              <span class="text-xs text-slate-500 font-normal"
+              <span class="text-xs text-ink-tertiary font-normal"
                 >— affichée en pointillés dans le graphe</span
               >
             </label>
             <select
               id="source-parent"
               bind:value={parentSourceId}
-              class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
             >
               <option value="">— Aucun lien parent —</option>
               {#each sources.filter((s) => s.id !== editingSourceId) as s}
@@ -484,7 +499,7 @@
   <!-- Sources list -->
   {#if sources.length > 0}
     <div class="mb-8">
-      <h2 class="text-lg font-semibold text-slate-900 mb-3">
+      <h2 class="text-lg font-semibold text-ink-primary mb-3">
         Sources ajoutées ({sources.length})
       </h2>
       <div class="space-y-2">
@@ -492,9 +507,9 @@
           {@const color = AUTHOR_COLORS[source.author_kind]}
           {@const isThisEditing = editingSourceId === source.id}
           <div
-            class="flex items-start justify-between gap-3 bg-white border rounded-lg px-4 py-3 transition-colors {isThisEditing
-              ? 'border-blue-300 ring-1 ring-blue-200'
-              : 'border-slate-200'}"
+            class="flex items-start justify-between gap-3 bg-surface-primary border rounded-lg px-4 py-3 transition-colors {isThisEditing
+              ? 'border-info/50 ring-1 ring-info/30'
+              : 'border-border'}"
           >
             <div class="flex items-start gap-3 min-w-0">
               <span
@@ -505,13 +520,13 @@
                 {color.label}
               </span>
               <div class="min-w-0">
-                <p class="text-sm font-medium text-slate-900 truncate">
+                <p class="text-sm font-medium text-ink-primary truncate">
                   {source.title ?? source.url}
                 </p>
                 {#if source.authors}
-                  <p class="text-xs text-slate-500">{source.authors}</p>
+                  <p class="text-xs text-ink-tertiary">{source.authors}</p>
                 {/if}
-                <p class="text-xs text-slate-400 truncate">{source.url}</p>
+                <p class="text-xs text-ink-tertiary truncate">{source.url}</p>
               </div>
             </div>
             <div class="flex items-center gap-1 shrink-0">
@@ -519,7 +534,7 @@
                 type="button"
                 onclick={() => startEdit(source)}
                 disabled={isThisEditing}
-                class="p-1.5 text-slate-400 hover:text-blue-600 disabled:text-blue-600 disabled:cursor-default transition-colors"
+                class="p-1.5 text-ink-tertiary hover:text-info disabled:text-info disabled:cursor-default transition-colors"
                 aria-label="Modifier la source"
                 title="Modifier"
               >
@@ -538,8 +553,8 @@
               </button>
               <button
                 type="button"
-                onclick={() => removeSource(source.id)}
-                class="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
+                onclick={() => (confirmDeleteId = source.id)}
+                class="p-1.5 text-ink-tertiary hover:text-danger transition-colors"
                 aria-label="Supprimer la source"
                 title="Supprimer"
               >
@@ -560,22 +575,24 @@
       </div>
     </div>
   {:else}
-    <div class="text-center py-8 text-slate-500 mb-8">
+    <div class="text-center py-8 text-ink-tertiary mb-8">
       <p class="text-sm">Aucune source ajoutée pour l'instant.</p>
     </div>
   {/if}
 
   <!-- Publish -->
-  <div class="border-t border-slate-200 pt-6">
+  <div class="border-t border-border pt-6">
     {#if publishError}
-      <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 mb-4">
+      <div
+        class="rounded-lg bg-danger-bg border border-danger/30 px-4 py-3 text-sm text-danger mb-4"
+      >
         {publishError}
       </div>
     {/if}
 
     <div class="flex items-center justify-between">
       <div>
-        <p class="text-sm text-slate-600">
+        <p class="text-sm text-ink-secondary">
           {sources.length === 0
             ? 'Ajoutez au moins une source avant de publier.'
             : `${sources.length} source${sources.length > 1 ? 's' : ''} prête${sources.length > 1 ? 's' : ''}.`}
@@ -594,3 +611,13 @@
     </div>
   </div>
 </div>
+
+<ConfirmDialog
+  open={confirmDeleteId !== null}
+  title="Supprimer cette source ?"
+  message="La source sera retirée de la fiche. Cette action est définitive."
+  confirmLabel="Supprimer"
+  variant="danger"
+  onConfirm={() => (confirmDeleteId ? removeSource(confirmDeleteId) : undefined)}
+  onCancel={() => (confirmDeleteId = null)}
+/>

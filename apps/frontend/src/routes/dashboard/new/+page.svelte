@@ -2,6 +2,7 @@
   import { goto } from '$app/navigation';
   import { api } from '$lib/api';
   import { Button, ProgressSteps } from '$lib/components';
+  import { currentUser } from '$lib/stores/auth';
   import type { Platform, ContentType } from '$lib/api';
 
   const steps = [
@@ -97,13 +98,13 @@
 
   <form onsubmit={handleSubmit} class="space-y-6">
     {#if error}
-      <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+      <div class="rounded-lg bg-danger-bg border border-danger/30 px-4 py-3 text-sm text-danger">
         {error}
       </div>
     {/if}
 
     <div class="space-y-1.5">
-      <label for="title" class="block text-sm font-medium text-slate-700">
+      <label for="title" class="block text-sm font-medium text-ink-secondary">
         Titre du contenu <span class="text-red-500">*</span>
       </label>
       <input
@@ -113,16 +114,17 @@
         oninput={onTitleInput}
         required
         placeholder="Ex: La mémoire et le cerveau — ce que dit la science"
-        class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-slate-400"
+        class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
       />
     </div>
 
     <div class="space-y-1.5">
-      <label for="slug" class="block text-sm font-medium text-slate-700">
+      <label for="slug" class="block text-sm font-medium text-ink-secondary">
         Identifiant URL <span class="text-red-500">*</span>
       </label>
       <div class="flex items-center gap-2">
-        <span class="text-slate-400 text-sm shrink-0">/@vous/</span>
+        <span class="text-ink-tertiary text-sm shrink-0">/@{$currentUser?.username ?? 'vous'}/</span
+        >
         <input
           id="slug"
           type="text"
@@ -131,14 +133,14 @@
           required
           pattern="[a-z0-9-]+"
           placeholder="memoire-et-cerveau"
-          class="flex-1 px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-slate-400"
+          class="flex-1 px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
         />
       </div>
-      <p class="text-xs text-slate-500">Lettres minuscules, chiffres et tirets uniquement.</p>
+      <p class="text-xs text-ink-tertiary">Lettres minuscules, chiffres et tirets uniquement.</p>
     </div>
 
     <div class="space-y-1.5">
-      <label for="description" class="block text-sm font-medium text-slate-700">
+      <label for="description" class="block text-sm font-medium text-ink-secondary">
         Description
       </label>
       <textarea
@@ -147,12 +149,12 @@
         oninput={(e) => (description = (e.target as HTMLTextAreaElement).value)}
         rows={3}
         placeholder="Résumé de votre contenu..."
-        class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-slate-400 resize-none"
+        class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary resize-none"
       ></textarea>
     </div>
 
     <div class="space-y-1.5">
-      <label for="content-url" class="block text-sm font-medium text-slate-700">
+      <label for="content-url" class="block text-sm font-medium text-ink-secondary">
         URL du contenu
       </label>
       <input
@@ -161,18 +163,19 @@
         value={contentUrl}
         oninput={(e) => (contentUrl = (e.target as HTMLInputElement).value)}
         placeholder="https://youtube.com/watch?v=..."
-        class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-slate-400"
+        class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
       />
     </div>
 
     <div class="grid grid-cols-2 gap-4">
       <div class="space-y-1.5">
-        <label for="platform" class="block text-sm font-medium text-slate-700">Plateforme</label>
+        <label for="platform" class="block text-sm font-medium text-ink-secondary">Plateforme</label
+        >
         <select
           id="platform"
           value={platform}
           onchange={(e) => (platform = (e.target as HTMLSelectElement).value as Platform)}
-          class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
         >
           {#each platforms as p}
             <option value={p.value}>{p.label}</option>
@@ -181,14 +184,14 @@
       </div>
 
       <div class="space-y-1.5">
-        <label for="content-type" class="block text-sm font-medium text-slate-700"
+        <label for="content-type" class="block text-sm font-medium text-ink-secondary"
           >Type de contenu</label
         >
         <select
           id="content-type"
           value={contentType}
           onchange={(e) => (contentType = (e.target as HTMLSelectElement).value as ContentType)}
-          class="w-full px-4 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
         >
           {#each contentTypes as ct}
             <option value={ct.value}>{ct.label}</option>

@@ -74,12 +74,27 @@ const proxy: RequestHandler = async ({ request, params, url }) => {
   const hasBody = request.method !== 'GET' && request.method !== 'HEAD';
   const body = hasBody ? await request.arrayBuffer() : undefined;
 
-  const upstreamResp = await fetch(upstream, {
-    method: request.method,
-    headers,
-    body,
-    redirect: 'manual',
-  });
+  let upstreamResp: Response;
+  try {
+    upstreamResp = await fetch(upstream, {
+      method: request.method,
+      headers,
+      body,
+      redirect: 'manual',
+    });
+  } catch {
+    // Backend unreachable (DNS/network/down). Return a structured 503 so the
+    // frontend can show a friendly message instead of an unhandled crash.
+    return new Response(
+      JSON.stringify({
+        detail: {
+          code: 'backend_unreachable',
+          message: 'Le serveur est momentanément indisponible. Réessayez dans quelques instants.',
+        },
+      }),
+      { status: 503, headers: { 'content-type': 'application/json' } }
+    );
+  }
 
   const respHeaders = new Headers();
   for (const [name, value] of upstreamResp.headers) {
