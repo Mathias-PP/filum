@@ -7,11 +7,12 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: filum
-      POSTGRES_PASSWORD: filum_dev_password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-filum_dev_password}
       POSTGRES_DB: filum_dev
       PGDATA: /var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      # 127.0.0.1 : ne jamais exposer Postgres sur le réseau local/public.
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./apps/backend/alembic/init.sql:/docker-entrypoint-initdb.d/init.sql:ro

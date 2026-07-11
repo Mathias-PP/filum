@@ -108,10 +108,13 @@ async def database_health():
 async def publish_diagnose():
     """Exercise the publish code path on the demo user's seeded card.
 
-    No auth required. Returns step-by-step trace so we can pinpoint
-    exactly where production publish fails. Dry-run: the UPDATE is flushed
-    (exercising the exact DB write path) then rolled back — never committed.
+    Debug-only: returns tracebacks and internal paths, so it must not be
+    reachable on a production deployment (debug=false). Dry-run: the UPDATE
+    is flushed (exercising the exact DB write path) then rolled back.
     """
+    if not settings.debug:
+        raise HTTPException(status_code=404, detail="Not found")
+
     import traceback
     from datetime import UTC, datetime
 

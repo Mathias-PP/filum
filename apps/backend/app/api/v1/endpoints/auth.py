@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_401_UNAUTHORIZED
 
 from app.core.config import get_settings
+from app.core.rate_limit import limiter
 from app.db.database import get_db
 from app.models.user import User
 from app.schemas.user import UserResponse
@@ -123,6 +124,7 @@ def _public_callback_url(request: Request) -> str:
 
 
 @router.get("/google/login")
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
 async def google_login(request: Request):
     if not settings.google_client_id:
         raise HTTPException(
@@ -149,6 +151,7 @@ async def google_login(request: Request):
 
 
 @router.get("/google/callback")
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
 async def google_callback(
     request: Request,
     code: str | None = Query(None),

@@ -10,6 +10,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 env:
   PYTHON_VERSION: "3.12"
   NODE_VERSION: "22"
@@ -28,7 +31,8 @@ jobs:
           fetch-depth: 0
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@v0.36.0
+        # Pin SHA (= v0.36.0) : un tag est mutable, un SHA non.
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         with:
           scan-type: 'fs'
           scan-ref: '.'
@@ -44,7 +48,8 @@ jobs:
 
       - name: Check for secrets in code
         if: github.event_name == 'pull_request'
-        uses: trufflesecurity/trufflehog@main
+        # Pin SHA (= v3.95.9) : @main exécuterait n'importe quel commit upstream.
+        uses: trufflesecurity/trufflehog@27b0417c16317ca9a472a9a8092acce143b49c55
         with:
           path: ./
           base: ${{ github.event.pull_request.base.sha }}
