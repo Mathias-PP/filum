@@ -2,7 +2,7 @@
 
 > Snapshot vivant, 1 page max. **Pour l'historique détaillé** : voir [`CHANGELOG.md`](./CHANGELOG.md). **Pour les items long terme** : voir [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md).
 
-**Dernière mise à jour : 2026-07-11**
+**Dernière mise à jour : 2026-07-13**
 
 ---
 
@@ -31,6 +31,9 @@ Avant cette phase, la **Phase 1 (MVP complet)** était terminée : jalons M1 (OA
 |---|---|---|---|
 | #100 | `refactor/code-optimizations` | ✅ verte | Optimisations code (index morts, requête slug unique, dead code frontend, lucide-svelte retiré) |
 | #101 | `fix/ux-walkthrough` | en cours | Fixes UX walkthrough (dark mode wizard, ConfirmDialog source, redirect publication, proxy 503) + rapport |
+| en attente | `feat/waitlist` | — | Waitlist POST /waitlist + WaitlistForm home (plan acquisition PR 1/3) |
+| en attente | `feat/card-claim` | — | Seed & claim v1 : is_seed, claim_requests, ClaimBanner (PR 2/3) |
+| en attente | `feat/mcp-server` | — | Serveur MCP read-only sur /mcp (PR 3/3) |
 
 > _Quand cette section est vide, plus rien n'est en attente côté review humaine._
 
