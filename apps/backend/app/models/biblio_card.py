@@ -69,6 +69,7 @@ class BiblioCard(Base):
         default="draft",
         index=True,
     )
+    is_seed: Mapped[bool] = mapped_column(default=False, nullable=False)
     published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow_naive)
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
