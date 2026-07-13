@@ -191,6 +191,15 @@ export const api = {
       return request<AttestationVerifyResponse>(`/attestations/${attestationId}/verify`);
     },
   },
+
+  waitlist: {
+    join: async (email: string, context: string = 'home'): Promise<{ ok: boolean }> => {
+      return request<{ ok: boolean }>('/waitlist', {
+        method: 'POST',
+        body: JSON.stringify({ email, context }),
+      });
+    },
+  },
 };
 
 export { ApiError };
