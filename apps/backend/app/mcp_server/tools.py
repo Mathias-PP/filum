@@ -74,9 +74,7 @@ async def get_source(db: AsyncSession, source_id: str) -> dict[str, Any] | None:
         sid = UUID(source_id)
     except ValueError:
         return None
-    source = await db.scalar(
-        select(Source).where(Source.id == sid, Source.deleted_at.is_(None))
-    )
+    source = await db.scalar(select(Source).where(Source.id == sid, Source.deleted_at.is_(None)))
     if source is None:
         return None
     return {
