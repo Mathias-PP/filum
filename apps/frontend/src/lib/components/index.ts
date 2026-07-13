@@ -13,3 +13,4 @@ export { default as ThemeToggle } from './ThemeToggle.svelte';
 export { default as AuthorKindBadge } from './AuthorKindBadge.svelte';
 export { default as FormatBadge } from './FormatBadge.svelte';
 export { default as CategoryBadge } from './CategoryBadge.svelte';
+export { default as ClaimBanner } from './ClaimBanner.svelte';

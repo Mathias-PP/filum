@@ -191,6 +191,18 @@ export const api = {
       return request<AttestationVerifyResponse>(`/attestations/${attestationId}/verify`);
     },
   },
+
+  claims: {
+    create: async (
+      cardId: string,
+      data: { email: string; channel_url: string; message?: string }
+    ): Promise<{ ok: boolean }> => {
+      return request<{ ok: boolean }>(`/cards/${cardId}/claim-requests`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+  },
 };
 
 export { ApiError };

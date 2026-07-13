@@ -17,6 +17,7 @@ export interface Card {
   platform: Platform;
   content_type: ContentType;
   status: CardStatus;
+  is_seed: boolean;
   published_at: string | null;
   created_at: string;
   updated_at: string | null;
