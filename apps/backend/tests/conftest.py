@@ -24,6 +24,7 @@ import app.models.biblio_card  # noqa: E402, F401
 import app.models.source  # noqa: E402, F401
 import app.models.source_excerpt  # noqa: E402, F401
 import app.models.audit_event  # noqa: E402, F401
+import app.models.waitlist_entry  # noqa: E402, F401
 
 
 @pytest_asyncio.fixture
