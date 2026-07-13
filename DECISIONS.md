@@ -6,6 +6,24 @@
 
 ---
 
+## ADR-027 — Serveur MCP in-process sur l'app FastAPI (plutôt que service séparé)
+
+**Date :** 2026-07-13
+
+**Contexte :** Le plan d'acquisition requiert un serveur MCP pour exposer le graphe de fiches aux assistants IA (Claude, ChatGPT, Perplexity). Deux topologies possibles : (A) service MCP autonome (container séparé), (B) montage in-process sur l'app FastAPI existante via FastMCP.
+
+**Décision :** Option B — montage in-process (`app.mount("/mcp", mcp_http_app)`) avec lifespan imbriqué.
+
+**Raisons :**
+- Pré-MVP avec une seule VM Oracle ; zéro surcharge opérationnelle.
+- FastMCP 3.x fournit `mcp.http_app(path="/")` qui se monte directement sur ASGI.
+- Les tools MCP sont des fonctions pures testables indépendamment du protocole MCP.
+- Les performances read-only ne justifient pas la complexité d'un service séparé avant > 1 000 appels/jour.
+
+**Conséquences :** Si le trafic MCP devient significatif, migrer vers un service séparé partageant la même base de données. Pas de changement de contrat API pour les clients MCP.
+
+---
+
 ## ADR-026 — Topologie de graphe hero : lune + Y-fork virtuel + perspective 3D ligne/sphère
 
 **Date** : 2026-05-28
