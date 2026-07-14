@@ -29,11 +29,9 @@ Avant cette phase, la **Phase 1 (MVP complet)** était terminée : jalons M1 (OA
 
 | # | Branche | État CI | Sujet |
 |---|---|---|---|
-| #100 | `refactor/code-optimizations` | ✅ verte | Optimisations code (index morts, requête slug unique, dead code frontend, lucide-svelte retiré) |
-| #101 | `fix/ux-walkthrough` | en cours | Fixes UX walkthrough (dark mode wizard, ConfirmDialog source, redirect publication, proxy 503) + rapport |
-| en attente | `feat/waitlist` | — | Waitlist POST /waitlist + WaitlistForm home (plan acquisition PR 1/3) |
-| en attente | `feat/card-claim` | — | Seed & claim v1 : is_seed, claim_requests, ClaimBanner (PR 2/3) |
-| en attente | `feat/mcp-server` | — | Serveur MCP read-only sur /mcp (PR 3/3) |
+| #115 | `docs/declencheur-adoption` | en cours | Doc .docs/16 : déclencheur d'adoption + premières ventes |
+
+> Mergées le 2026-07-14 : #112 waitlist, #113 seed & claim, #114 serveur MCP (/mcp, FastMCP), #109 vite 6.4.3. Plan acquisition 3/3 livré (pas encore déployé).
 
 > _Quand cette section est vide, plus rien n'est en attente côté review humaine._
 
