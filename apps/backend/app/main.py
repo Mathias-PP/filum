@@ -15,6 +15,7 @@ from slowapi.errors import RateLimitExceeded
 from app.api.v1 import create_router
 from app.core.config import get_settings
 from app.core.rate_limit import limiter
+from app.mcp_server.server import mcp_http_app
 
 settings = get_settings()
 logging.basicConfig(
@@ -28,7 +29,8 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     logger.info(f"Starting {settings.app_name} v{settings.app_version}")
     logger.info(f"CORS allowed origins: {settings.cors_origins!r}")
-    yield
+    async with mcp_http_app.lifespan(app):
+        yield
     logger.info("Shutting down...")
 
 
@@ -72,6 +74,7 @@ app.add_middleware(
 )
 
 app.include_router(create_router(), prefix=settings.api_v1_prefix)
+app.mount("/mcp", mcp_http_app)
 
 
 @app.get("/health")
