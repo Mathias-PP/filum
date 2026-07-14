@@ -5,13 +5,21 @@ from app.models.content_attestation import ContentAttestation
 from app.models.source import Source
 from app.models.source_excerpt import SourceExcerpt
 from app.models.user import User
+from app.models.waitlist_entry import WaitlistEntry
 
 __all__ = [
     "User",
     "BiblioCard",
+<<<<<<< HEAD
     "ClaimRequest",
+=======
+>>>>>>> origin/main
     "ContentAttestation",
     "Source",
     "SourceExcerpt",
     "AuditEvent",
+<<<<<<< HEAD
+=======
+    "WaitlistEntry",
+>>>>>>> origin/main
 ]

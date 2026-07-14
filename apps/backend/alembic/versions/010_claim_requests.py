@@ -1,11 +1,8 @@
 """Add is_seed on biblio_cards + claim_requests table.
 
 Revision ID: 010_claim_requests
-Revises: 008_source_soft_del
+Revises: 009_waitlist
 Create Date: 2026-07-13
-
-NOTE: down_revision points to 008_source_soft_del (migration head on main at branch time).
-If PR 1 (009_waitlist) is merged before this one, update down_revision to 009_waitlist.
 """
 
 from __future__ import annotations
@@ -16,7 +13,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "010_claim_requests"
-down_revision: str | None = "008_source_soft_del"
+down_revision: str | None = "009_waitlist"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

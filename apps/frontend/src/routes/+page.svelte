@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Button, HeroPulsar } from '$lib/components';
+  import { Button, HeroPulsar, WaitlistForm } from '$lib/components';
   import { reveal } from '$lib/actions/reveal';
   import type { User } from '$lib/api';
 
@@ -158,6 +158,12 @@
           </svg>
           Continuer avec Google
         </a>
+        <div class="mt-10 border-t border-white/10 pt-10">
+          <p class="text-sm text-slate-400 mb-4">
+            Créateur·ice ? On crée votre fiche — recevez une notification à l'ouverture.
+          </p>
+          <WaitlistForm context="home-cta" />
+        </div>
       {/if}
     </div>
   </section>
