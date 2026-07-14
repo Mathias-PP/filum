@@ -10,16 +10,10 @@ from app.models.waitlist_entry import WaitlistEntry
 __all__ = [
     "User",
     "BiblioCard",
-<<<<<<< HEAD
     "ClaimRequest",
-=======
->>>>>>> origin/main
     "ContentAttestation",
     "Source",
     "SourceExcerpt",
     "AuditEvent",
-<<<<<<< HEAD
-=======
     "WaitlistEntry",
->>>>>>> origin/main
 ]
