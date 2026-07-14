@@ -7,6 +7,7 @@
     FormatBadge,
     CategoryBadge,
     Button,
+    ClaimBanner,
     Skeleton,
   } from '$lib/components';
   import { slide } from 'svelte/transition';
@@ -178,6 +179,15 @@
         </div>
       </div>
     </header>
+
+    {#if card.is_seed}
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+        <ClaimBanner
+          cardId={card.id}
+          creatorName={card.creator.display_name ?? card.creator.slug}
+        />
+      </div>
+    {/if}
 
     <section class="bg-surface-secondary">
       <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">

@@ -10,6 +10,8 @@ from starlette.status import HTTP_401_UNAUTHORIZED
 
 from app.core.rate_limit import limiter
 from app.db.database import get_db
+from app.models.biblio_card import BiblioCard
+from app.models.claim_request import ClaimRequest
 from app.models.user import User
 from app.schemas.biblio_card import (
     CardCreate,
@@ -18,6 +20,7 @@ from app.schemas.biblio_card import (
     CardUpdate,
     CreatorInfo,
 )
+from app.schemas.claim import ClaimRequestCreate, ClaimRequestResponse
 from app.schemas.source import SourceResponse
 from app.services.auth import AuthService
 from app.services.card import CardService
@@ -246,6 +249,7 @@ async def get_public_card(
         platform=card.platform,
         content_type=card.content_type,
         status=card.status,
+        is_seed=card.is_seed,
         published_at=card.published_at,
         created_at=card.created_at,
         updated_at=card.updated_at,
@@ -259,6 +263,41 @@ async def get_public_card(
         sources=sources_response,
         stats=stats,
     )
+
+
+@router.post(
+    "/cards/{card_id}/claim-requests",
+    response_model=ClaimRequestResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+@limiter.limit("5/hour")
+async def create_claim_request(
+    request: Request,
+    card_id: UUID,
+    payload: ClaimRequestCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    card = await db.get(BiblioCard, card_id)
+    if card is None or card.deleted_at is not None or card.status != "published":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": "Card not found"},
+        )
+    if not card.is_seed:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": "not_claimable", "message": "This card is not a seed card"},
+        )
+    db.add(
+        ClaimRequest(
+            card_id=card.id,
+            email=payload.email.lower().strip(),
+            channel_url=payload.channel_url.strip(),
+            message=payload.message,
+        )
+    )
+    await db.commit()
+    return ClaimRequestResponse()
 
 
 # Card-level /verify endpoint removed (ADR-019 pivot to content attestations).

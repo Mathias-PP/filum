@@ -85,6 +85,7 @@ class CardResponse(BaseModel):
     platform: Platform
     content_type: ContentType
     status: CardStatus
+    is_seed: bool = False
     published_at: datetime | None
     created_at: datetime
     updated_at: datetime | None

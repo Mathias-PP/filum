@@ -192,6 +192,18 @@ export const api = {
     },
   },
 
+  claims: {
+    create: async (
+      cardId: string,
+      data: { email: string; channel_url: string; message?: string }
+    ): Promise<{ ok: boolean }> => {
+      return request<{ ok: boolean }>(`/cards/${cardId}/claim-requests`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+  },
+
   waitlist: {
     join: async (email: string, context: string = 'home'): Promise<{ ok: boolean }> => {
       return request<{ ok: boolean }>('/waitlist', {
