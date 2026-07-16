@@ -41,6 +41,8 @@
   // URL extraction
   let extracting = $state(false);
   let lastExtractedUrl = $state('');
+  // Taxonomie suggérée par l'extracteur (Crossref ou LLM) — indicateur UI
+  let taxonomySuggested = $state(false);
 
   // Relative — routed through the SvelteKit /api proxy for first-party cookies.
   const EXTRACT_API = '/api/v1/sources/extract';
@@ -55,6 +57,21 @@
         const data = await response.json();
         if (data.title) sourceTitle = data.title;
         if (data.authors) authors = data.authors;
+        // Taxonomie suggérée (validée contre les enums connus côté client)
+        let suggested = false;
+        if (data.format && formatOptions.some((o) => o.value === data.format)) {
+          sourceFormat = data.format;
+          suggested = true;
+        }
+        if (data.category && categoryOptions.some((o) => o.value === data.category)) {
+          sourceCategory = data.category;
+          suggested = true;
+        }
+        if (data.author_kind && authorKindOptions.includes(data.author_kind)) {
+          authorKind = data.author_kind;
+          suggested = true;
+        }
+        taxonomySuggested = suggested;
       }
     } catch {
       // silent fail — user can fill manually
@@ -68,6 +85,7 @@
     if (value !== lastExtractedUrl) {
       sourceTitle = '';
       authors = '';
+      taxonomySuggested = false;
     }
   }
 
@@ -96,6 +114,7 @@
     parentSourceId = '';
     archiveUrl = '';
     lastExtractedUrl = '';
+    taxonomySuggested = false;
     editingSourceId = null;
     addError = null;
   }
@@ -113,6 +132,7 @@
     parentSourceId = source.parent_source_id ?? '';
     archiveUrl = source.archive_url ?? '';
     lastExtractedUrl = source.url;
+    taxonomySuggested = false;
     addError = null;
     if (typeof document !== 'undefined') {
       document
@@ -334,6 +354,9 @@
         <div class="space-y-1.5">
           <label for="source-format" class="block text-sm font-medium text-ink-secondary">
             Format <span class="text-danger">*</span>
+            {#if taxonomySuggested}
+              <span class="text-xs text-info font-normal">— suggéré</span>
+            {/if}
           </label>
           <select
             id="source-format"
@@ -350,6 +373,9 @@
         <div class="space-y-1.5">
           <label for="source-category" class="block text-sm font-medium text-ink-secondary">
             Catégorie <span class="text-danger">*</span>
+            {#if taxonomySuggested}
+              <span class="text-xs text-info font-normal">— suggéré</span>
+            {/if}
           </label>
           <select
             id="source-category"
@@ -370,6 +396,9 @@
             <span class="text-xs text-ink-tertiary font-normal"
               >— colore le nœud dans le graphe</span
             >
+            {#if taxonomySuggested}
+              <span class="text-xs text-info font-normal">— suggéré</span>
+            {/if}
           </label>
           <select
             id="source-author-kind"
