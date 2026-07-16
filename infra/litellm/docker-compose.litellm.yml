@@ -1,0 +1,27 @@
+# Overlay LiteLLM : à combiner avec l'un des composes de infra/oracle/.
+# Depuis infra/oracle/ :
+#   docker compose -f docker-compose.micro.yml -f ../litellm/docker-compose.litellm.yml up -d
+# Le backend joint le proxy via http://litellm:4000 (même réseau compose).
+services:
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    container_name: philum-litellm
+    restart: always
+    env_file: ../litellm/.env
+    command: ['--config', '/etc/litellm/config.yaml', '--port', '4000']
+    volumes:
+      - ../litellm/config.yaml:/etc/litellm/config.yaml:ro
+    expose:
+      - '4000'
+    mem_limit: 300m
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '20m'
+        max-file: '5'
+
+  backend:
+    environment:
+      litellm_base_url: http://litellm:4000
+    depends_on:
+      - litellm
