@@ -40,6 +40,10 @@ class ExtractResponse(BaseModel):
     description: str | None
     citations_count: int | None
     impact_factor: float | None
+    # Suggestions de taxonomie ADR-020 (Crossref ou LLM, null si indéterminé).
+    format: str | None = None
+    category: str | None = None
+    author_kind: str | None = None
 
 
 async def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
@@ -75,6 +79,9 @@ async def extract_url_metadata(
         description=meta.description,
         citations_count=meta.citations_count,
         impact_factor=meta.impact_factor,
+        format=meta.format,
+        category=meta.category,
+        author_kind=meta.author_kind,
     )
 
 
