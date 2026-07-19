@@ -6,8 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_db
 from app.models.biblio_card import BiblioCard, CardStatus
+from app.models.linked_account import LinkedAccount
 from app.models.source import Source
 from app.models.user import User
+from app.schemas.linked_account import LinkedAccountOut, LinkedAccountsUpdate
 from app.services.auth import AuthService
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -27,6 +29,54 @@ async def get_current_user(
             detail={"code": "unauthorized", "message": "Not authenticated"},
         )
     return user
+
+
+async def _linked_accounts_for(db: AsyncSession, user_id) -> list[LinkedAccount]:
+    result = await db.execute(
+        select(LinkedAccount)
+        .where(LinkedAccount.user_id == user_id)
+        .order_by(LinkedAccount.created_at)
+    )
+    return list(result.scalars().all())
+
+
+@router.get("/me/linked-accounts", response_model=list[LinkedAccountOut])
+async def get_my_linked_accounts(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await _linked_accounts_for(db, current_user.id)
+
+
+@router.put("/me/linked-accounts", response_model=list[LinkedAccountOut])
+async def replace_my_linked_accounts(
+    payload: LinkedAccountsUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Remplace la liste complète (sémantique PUT — simple pour la v0)."""
+    existing = await _linked_accounts_for(db, current_user.id)
+    for acc in existing:
+        await db.delete(acc)
+    # Flush les DELETE avant les INSERT, sinon la contrainte unique peut
+    # sauter si une même (platform, url) est re-soumise.
+    await db.flush()
+    seen: set[tuple[str, str]] = set()
+    for item in payload.accounts:
+        key = (item.platform.value, item.url)
+        if key in seen:
+            continue
+        seen.add(key)
+        db.add(
+            LinkedAccount(
+                user_id=current_user.id,
+                platform=item.platform.value,
+                url=item.url,
+                handle=item.handle,
+            )
+        )
+    await db.commit()
+    return await _linked_accounts_for(db, current_user.id)
 
 
 @router.get("/@{slug}", response_model=dict)
@@ -65,12 +115,23 @@ async def get_user_profile(
 
     total_sources = sum(source_counts.values())
 
+    linked = await _linked_accounts_for(db, user.id)
+
     return {
         "slug": user.username,
         "display_name": user.display_name,
         "description": user.bio,
         "avatar_url": user.avatar_url,
         "public_key": user.public_key,
+        "linked_accounts": [
+            {
+                "platform": a.platform,
+                "url": a.url,
+                "handle": a.handle,
+                "verified": a.verified,
+            }
+            for a in linked
+        ],
         "stats": {
             "total_cards": len(cards),
             "total_sources": total_sources,

@@ -7,6 +7,8 @@ import type {
   Card,
   CardDetail,
   CardCreate,
+  LinkedAccount,
+  LinkedAccountIn,
   Source,
   SourceCreate,
   User,
@@ -172,6 +174,17 @@ export const api = {
   users: {
     getProfile: async (slug: string): Promise<UserProfile> => {
       return request<UserProfile>(`/users/@${slug}`);
+    },
+
+    getLinkedAccounts: async (): Promise<LinkedAccount[]> => {
+      return request<LinkedAccount[]>('/users/me/linked-accounts');
+    },
+
+    setLinkedAccounts: async (accounts: LinkedAccountIn[]): Promise<LinkedAccount[]> => {
+      return request<LinkedAccount[]>('/users/me/linked-accounts', {
+        method: 'PUT',
+        body: JSON.stringify({ accounts }),
+      });
     },
   },
 

@@ -8,6 +8,15 @@
   let loading = $state(true);
   let error = $state<string | null>(null);
 
+  const platformLabels: Record<string, string> = {
+    youtube: 'YouTube',
+    instagram: 'Instagram',
+    x: 'X',
+    tiktok: 'TikTok',
+    twitch: 'Twitch',
+    site: 'Site web',
+  };
+
   const username = $page.params.username ?? '';
 
   $effect(() => {
@@ -56,6 +65,39 @@
             </h1>
             {#if profile.description}
               <p class="text-ink-secondary mb-4">{profile.description}</p>
+            {/if}
+            {#if profile.linked_accounts.length > 0}
+              <div class="flex flex-wrap gap-2 mb-4">
+                {#each profile.linked_accounts as account (account.platform + account.url)}
+                  <a
+                    href={account.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-border bg-surface-secondary text-sm text-ink-secondary hover:text-ink-primary hover:border-ink-tertiary transition-colors"
+                  >
+                    <span class="font-medium"
+                      >{platformLabels[account.platform] ?? account.platform}</span
+                    >
+                    {#if account.handle}
+                      <span class="text-ink-tertiary">{account.handle}</span>
+                    {/if}
+                    {#if account.verified}
+                      <svg
+                        class="w-3.5 h-3.5 text-info"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                        aria-label="Compte vérifié"
+                      >
+                        <path
+                          fill-rule="evenodd"
+                          d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+                          clip-rule="evenodd"
+                        />
+                      </svg>
+                    {/if}
+                  </a>
+                {/each}
+              </div>
             {/if}
             <div class="flex flex-wrap gap-4 text-sm text-ink-tertiary">
               <span>{profile.stats.total_cards} fiches</span>

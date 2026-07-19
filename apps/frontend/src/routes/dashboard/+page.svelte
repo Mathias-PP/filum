@@ -3,12 +3,57 @@
   import { currentUser } from '$lib/stores';
   import { api } from '$lib/api';
   import { Button, Skeleton, EmptyState, ConfirmDialog, toast } from '$lib/components';
-  import type { Card as CardType } from '$lib/api';
+  import type { Card as CardType, LinkedAccountIn, LinkedPlatform } from '$lib/api';
 
   let loading = $state(true);
   let userCards = $state<CardType[]>([]);
   let confirmOpen = $state(false);
   let confirmTarget = $state<CardType | null>(null);
+
+  let accounts = $state<LinkedAccountIn[]>([]);
+  let accountsLoaded = $state(false);
+  let accountsSaving = $state(false);
+  let accountsDirty = $state(false);
+
+  const platformOptions: Array<{ value: LinkedPlatform; label: string }> = [
+    { value: 'youtube', label: 'YouTube' },
+    { value: 'instagram', label: 'Instagram' },
+    { value: 'x', label: 'X' },
+    { value: 'tiktok', label: 'TikTok' },
+    { value: 'twitch', label: 'Twitch' },
+    { value: 'site', label: 'Site web' },
+  ];
+
+  function addAccountRow() {
+    accounts = [...accounts, { platform: 'youtube', url: '', handle: '' }];
+    accountsDirty = true;
+  }
+
+  function removeAccountRow(index: number) {
+    accounts = accounts.filter((_, i) => i !== index);
+    accountsDirty = true;
+  }
+
+  async function saveAccounts() {
+    accountsSaving = true;
+    try {
+      const payload = accounts
+        .filter((a) => a.url.trim().length > 0)
+        .map((a) => ({
+          platform: a.platform,
+          url: a.url.trim(),
+          handle: a.handle?.trim() || null,
+        }));
+      const saved = await api.users.setLinkedAccounts(payload);
+      accounts = saved.map((a) => ({ platform: a.platform, url: a.url, handle: a.handle ?? '' }));
+      accountsDirty = false;
+      toast.success('Plateformes enregistrées.');
+    } catch (err) {
+      toast.danger(err instanceof Error ? err.message : "Erreur lors de l'enregistrement");
+    } finally {
+      accountsSaving = false;
+    }
+  }
 
   const drafts = $derived(userCards.filter((c) => c.status === 'draft'));
   const published = $derived(userCards.filter((c) => c.status === 'published'));
@@ -40,6 +85,18 @@
       toast.danger(err instanceof Error ? err.message : 'Erreur de chargement des fiches');
     } finally {
       loading = false;
+    }
+    try {
+      const existing = await api.users.getLinkedAccounts();
+      accounts = existing.map((a) => ({
+        platform: a.platform,
+        url: a.url,
+        handle: a.handle ?? '',
+      }));
+    } catch {
+      // Section non bloquante : le dashboard reste utilisable sans.
+    } finally {
+      accountsLoaded = true;
     }
   });
 
@@ -209,6 +266,85 @@
       {/if}
     </div>
   {/if}
+
+  <section class="mt-12">
+    <h2 class="text-xs font-medium uppercase tracking-wider text-ink-tertiary mb-1">
+      Mes plateformes
+    </h2>
+    <p class="text-sm text-ink-secondary mb-4">
+      Liez vos comptes (YouTube, X, TikTok…) : ils apparaîtront sur votre profil public.
+    </p>
+    {#if !accountsLoaded}
+      <Skeleton variant="card" height="3rem" />
+    {:else}
+      <div class="space-y-2">
+        {#each accounts as account, i (i)}
+          <div class="account-row">
+            <select
+              class="account-input w-32 flex-shrink-0"
+              bind:value={account.platform}
+              onchange={() => (accountsDirty = true)}
+              aria-label="Plateforme"
+            >
+              {#each platformOptions as opt (opt.value)}
+                <option value={opt.value}>{opt.label}</option>
+              {/each}
+            </select>
+            <input
+              type="url"
+              class="account-input flex-1 min-w-0"
+              placeholder="https://youtube.com/@machaine"
+              bind:value={account.url}
+              oninput={() => (accountsDirty = true)}
+              aria-label="URL du compte"
+            />
+            <input
+              type="text"
+              class="account-input w-36 flex-shrink-0 hidden sm:block"
+              placeholder="@handle (optionnel)"
+              bind:value={account.handle}
+              oninput={() => (accountsDirty = true)}
+              aria-label="Handle"
+            />
+            <button
+              type="button"
+              class="action-icon"
+              onclick={() => removeAccountRow(i)}
+              aria-label="Retirer cette plateforme"
+              title="Retirer"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                aria-hidden="true"
+              >
+                <line x1="6" y1="6" x2="18" y2="18" />
+                <line x1="6" y1="18" x2="18" y2="6" />
+              </svg>
+            </button>
+          </div>
+        {/each}
+        <div class="flex items-center gap-2 pt-1">
+          <Button
+            variant="secondary"
+            size="sm"
+            onclick={addAccountRow}
+            disabled={accounts.length >= 12}
+          >
+            + Ajouter une plateforme
+          </Button>
+          {#if accountsDirty}
+            <Button variant="primary" size="sm" onclick={saveAccounts} loading={accountsSaving}>
+              Enregistrer
+            </Button>
+          {/if}
+        </div>
+      </div>
+    {/if}
+  </section>
 </div>
 
 <ConfirmDialog
@@ -261,6 +397,27 @@
     font-weight: 500;
     background: rgb(var(--success-bg));
     color: rgb(var(--success));
+  }
+  .account-row {
+    background: rgb(var(--bg-primary));
+    border: 1px solid rgb(var(--border));
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .account-input {
+    border: 1px solid rgb(var(--border));
+    border-radius: 6px;
+    padding: 0.375rem 0.5rem;
+    font-size: 0.875rem;
+    background: rgb(var(--bg-primary));
+    color: rgb(var(--text-primary));
+  }
+  .account-input:focus {
+    outline: none;
+    border-color: rgb(var(--border-strong));
   }
   .action-icon {
     padding: 0.375rem;
