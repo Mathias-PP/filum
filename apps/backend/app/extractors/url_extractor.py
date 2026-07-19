@@ -280,17 +280,82 @@ def _parse_jsonld_metadata(soup: BeautifulSoup) -> ExtractedMetadata | None:
 # ── DOI extraction ──────────────────────────────────────────────────────
 
 
+# Suffixes de chemin ajoutés par les éditeurs après le DOI dans leurs URLs
+# (ex. Wiley /doi/full/10.1002/xxx, T&F /doi/pdf/10.1080/yyy/abstract).
+_DOI_PATH_SUFFIXES = re.compile(r"/(?:full|abstract|pdf|epdf|epub|meta|figures|references)$", re.I)
+
+
 def _extract_doi(url: str) -> str | None:
-    """Return bare DOI from a URL like https://doi.org/10.xxx/yyy or https://dx.doi.org/..."""
+    """Return bare DOI from a URL.
+
+    Handles doi.org/dx.doi.org links, ``doi:`` prefixes, and DOIs embedded in
+    publisher URL paths (Wiley, Springer, PLOS, Taylor & Francis, PNAS…).
+    """
     patterns = [
         r"(?:https?://)?(?:dx\.)?doi\.org/([^\s?#]+)",
         r"doi:\s*([^\s?#]+)",
+        # DOI dans le chemin d'une URL d'éditeur : /doi/10.1002/…, /article/10.1007/…
+        r"/(10\.\d{4,9}/[^\s?#]+)",
     ]
     for p in patterns:
         m = re.search(p, url, re.IGNORECASE)
         if m:
-            return m.group(1).strip()
+            doi = m.group(1).strip().rstrip(".,;)")
+            doi = _DOI_PATH_SUFFIXES.sub("", doi)
+            return doi
     return None
+
+
+def _extract_pii(url: str) -> str | None:
+    """Return the Elsevier PII from a ScienceDirect/Elsevier URL.
+
+    Ex. https://www.sciencedirect.com/science/article/abs/pii/S0165032717310960
+    → ``S0165032717310960``. Ces pages bloquent le scraping (anti-bot), mais
+    Crossref indexe le PII brut comme ``alternative-id`` — vérifié : la requête
+    ``works?filter=alternative-id:<PII>`` retourne bien l'article.
+    """
+    host = (urlparse(url).hostname or "").lower()
+    if not (host.endswith("sciencedirect.com") or host.endswith("elsevier.com")):
+        return None
+    m = re.search(r"/pii/(S\d{15}[\dX])", url, re.IGNORECASE)
+    return m.group(1).upper() if m else None
+
+
+def _parse_crossref_work(data: dict) -> ExtractedMetadata:
+    title_list = data.get("title") or []
+    title = title_list[0] if title_list else None
+    authors_raw = data.get("author") or []
+    authors = (
+        ", ".join(
+            f"{a.get('family', '')} {a.get('given', '')[:1]}."
+            for a in authors_raw[:5]
+            if a.get("family")
+        )
+        or None
+    )
+    date_parts = (data.get("published-print") or data.get("published-online") or {}).get(
+        "date-parts"
+    )
+    published_at: str | None = None
+    if date_parts and date_parts[0]:
+        parts = date_parts[0]
+        if len(parts) >= 3:
+            published_at = f"{parts[0]:04d}-{parts[1]:02d}-{parts[2]:02d}"
+        elif len(parts) == 2:
+            published_at = f"{parts[0]:04d}-{parts[1]:02d}-01"
+        elif len(parts) == 1:
+            published_at = f"{parts[0]:04d}-01-01"
+    citations_count = data.get("is-referenced-by-count")
+    abstract = data.get("abstract")
+    if abstract:
+        abstract = re.sub(r"<[^>]+>", "", abstract).strip()
+    return ExtractedMetadata(
+        title=title,
+        authors=authors,
+        published_at=published_at,
+        description=abstract,
+        citations_count=citations_count,
+    )
 
 
 async def _crossref(doi: str) -> ExtractedMetadata | None:
@@ -300,43 +365,25 @@ async def _crossref(doi: str) -> ExtractedMetadata | None:
             r = await client.get(url)
         if r.status_code != 200:
             return None
-        data = r.json().get("message", {})
-        title_list = data.get("title") or []
-        title = title_list[0] if title_list else None
-        authors_raw = data.get("author") or []
-        authors = (
-            ", ".join(
-                f"{a.get('family', '')} {a.get('given', '')[:1]}."
-                for a in authors_raw[:5]
-                if a.get("family")
-            )
-            or None
-        )
-        date_parts = (data.get("published-print") or data.get("published-online") or {}).get(
-            "date-parts"
-        )
-        published_at: str | None = None
-        if date_parts and date_parts[0]:
-            parts = date_parts[0]
-            if len(parts) >= 3:
-                published_at = f"{parts[0]:04d}-{parts[1]:02d}-{parts[2]:02d}"
-            elif len(parts) == 2:
-                published_at = f"{parts[0]:04d}-{parts[1]:02d}-01"
-            elif len(parts) == 1:
-                published_at = f"{parts[0]:04d}-01-01"
-        citations_count = data.get("is-referenced-by-count")
-        abstract = data.get("abstract")
-        if abstract:
-            abstract = re.sub(r"<[^>]+>", "", abstract).strip()
-        return ExtractedMetadata(
-            title=title,
-            authors=authors,
-            published_at=published_at,
-            description=abstract,
-            citations_count=citations_count,
-        )
+        return _parse_crossref_work(r.json().get("message", {}))
     except Exception as e:
         logger.debug("Crossref lookup failed for doi=%s: %s", doi, e)
+        return None
+
+
+async def _crossref_by_pii(pii: str) -> ExtractedMetadata | None:
+    url = f"https://api.crossref.org/works?filter=alternative-id:{pii}&rows=1"
+    try:
+        async with httpx.AsyncClient(headers=_HEADERS, timeout=_TIMEOUT) as client:
+            r = await client.get(url)
+        if r.status_code != 200:
+            return None
+        items = r.json().get("message", {}).get("items") or []
+        if not items:
+            return None
+        return _parse_crossref_work(items[0])
+    except Exception as e:
+        logger.debug("Crossref lookup failed for pii=%s: %s", pii, e)
         return None
 
 
@@ -407,14 +454,21 @@ async def extract(url: str) -> ExtractedMetadata:
 
     result = ExtractedMetadata()
 
+    crossref_meta: ExtractedMetadata | None = None
     doi = _extract_doi(url)
     if doi:
         crossref_meta = await _crossref(doi)
-        if crossref_meta:
-            result = crossref_meta
-            result.format = "texte"
-            result.category = "article-scientifique"
-            result.author_kind = "chercheur"
+    if crossref_meta is None:
+        # ScienceDirect/Elsevier : pas de DOI dans l'URL et scraping bloqué
+        # (anti-bot), mais le PII de l'URL est indexé par Crossref.
+        pii = _extract_pii(url)
+        if pii:
+            crossref_meta = await _crossref_by_pii(pii)
+    if crossref_meta:
+        result = crossref_meta
+        result.format = "texte"
+        result.category = "article-scientifique"
+        result.author_kind = "chercheur"
 
     page_text: str | None = None
     if result.title is None or result.authors is None:
