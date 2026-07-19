@@ -33,19 +33,9 @@ Avant : Phase 2 (identité visuelle Pulsar-graph + audit) et Phase 1 (MVP comple
 
 ## PRs ouvertes
 
-| # | Branche | Base | Sujet |
-|---|---|---|---|
-| #135 | `feat/import-files` | main | Imports fichiers + multi-liens + biblio collée (livre le contenu échoué des PRs empilées #133/#134) |
-| #136 | `feat/excerpts-ai` | ⚠️ `feat/import-files` | Citations IA — **merger #135 d'abord puis rebaser la base sur main** |
-| #137 | `fix/session-loss` | main | Session 7 jours + dashboard 401 explicite (fix du P0 « fiches disparues ») |
-| #138 | `feat/docx-export` | main | Export Word (.docx) |
-| #139 | `fix/metadata-doi-pii` | main | Métadonnées ScienceDirect (PII→Crossref) + DOI éditeurs |
-| #140 | `chore/deps-security` | main | Patch 4 vulnérabilités Dependabot frontend |
-| #141 | `fix/mcp-hardening` | main | Sécurité MCP : fuite sources de brouillons + wildcards LIKE |
-| #142 | `feat/browser-extension` | main | Extension navigateur MV3 (ajout source en un clic) |
-| #143 | `feat/api-docs` | main | Page `/developers` : docs API publique + MCP |
+_Aucune._ Toutes les PRs #135-#144 ont été mergées le 2026-07-19 (imports, citations IA, session 7j, export docx, métadonnées PII, deps sécurité, durcissement MCP, extension MV3, page /developers, docs). Suite des merges vérifiée sur main : backend 182/182 tests, frontend check/build OK. Les 11 vieilles PRs Dependabot < #100 ont été fermées le même jour (remplacées par le patch groupé #140 + overrides pnpm).
 
-> Mergées le 2026-07-19 : #121-#134 (exports, imports, citations IA, graph colors, etc.). Avant : #116-#120 (infra GCP + LLM extract), #112-#115 (waitlist, seed & claim, MCP, adoption).
+> Mergées avant : #121-#134 (exports, imports, citations IA, graph colors, etc.), #116-#120 (infra GCP + LLM extract), #112-#115 (waitlist, seed & claim, MCP, adoption).
 
 > _Quand cette section est vide, plus rien n'est en attente côté review humaine._
 
