@@ -209,6 +209,12 @@ async def seed_health():
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     errors = exc.errors()
+    # Le ctx pydantic peut contenir l'exception levée par un field_validator
+    # custom (non sérialisable JSON) — on le stringifie.
+    for e in errors:
+        ctx = e.get("ctx")
+        if isinstance(ctx, dict):
+            e["ctx"] = {k: str(v) for k, v in ctx.items()}
     messages = [f"{'.'.join(str(p) for p in e['loc'])}: {e['msg']}" for e in errors]
     return JSONResponse(
         status_code=422,

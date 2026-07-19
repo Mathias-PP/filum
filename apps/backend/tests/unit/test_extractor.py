@@ -21,8 +21,68 @@ from app.extractors.url_extractor import (
     ExtractedMetadata,
     _extract_doi,
     _parse_jsonld_metadata,
+    clean_title,
     extract,
 )
+
+
+class TestCleanTitle:
+    def test_strips_leading_site_name_pipe(self):
+        assert (
+            clean_title(
+                "Frontiers | Cognitive reserve and aging",
+                None,
+                "https://www.frontiersin.org/articles/10.3389/fnagi.2024.1234",
+            )
+            == "Cognitive reserve and aging"
+        )
+
+    def test_strips_trailing_site_name_dash(self):
+        assert (
+            clean_title(
+                "Understanding memory consolidation - Nature",
+                "Nature",
+                "https://www.nature.com/articles/xyz",
+            )
+            == "Understanding memory consolidation"
+        )
+
+    def test_strips_via_og_site_name_when_domain_differs(self):
+        assert (
+            clean_title(
+                "Le Monde | La mémoire des lieux",
+                "Le Monde",
+                "https://lemonde.fr/sciences/article",
+            )
+            == "La mémoire des lieux"
+        )
+
+    def test_keeps_legitimate_pipe_in_title(self):
+        title = "Pipes | A history of plumbing"
+        assert clean_title(title, "Example Blog", "https://example.com/post") == title
+
+    def test_keeps_hyphenated_words(self):
+        title = "Spider-Man et la cognition"
+        assert clean_title(title, "Frontiers", "https://frontiersin.org/x") == title
+
+    def test_keeps_dash_segment_not_matching_site(self):
+        title = "La mémoire - une exploration"
+        assert clean_title(title, "Nature", "https://nature.com/articles/x") == title
+
+    def test_no_over_cleaning_when_remainder_too_short(self):
+        # Si le nettoyage laisse un résidu trop court, on garde l'original.
+        title = "Nature - Vol. 3"
+        assert clean_title(title, "Nature", "https://nature.com/x") == title
+
+    def test_strips_both_ends(self):
+        assert (
+            clean_title(
+                "Frontiers | Cognitive reserve and aging | Frontiers",
+                "Frontiers",
+                "https://frontiersin.org/articles/x",
+            )
+            == "Cognitive reserve and aging"
+        )
 
 
 class TestExtractDoi:

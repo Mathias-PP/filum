@@ -13,6 +13,7 @@ import logging
 import re
 from dataclasses import dataclass
 from datetime import date, datetime
+from urllib.parse import urlparse
 
 import httpx
 from bs4 import BeautifulSoup
@@ -32,7 +33,6 @@ class ExtractedMetadata:
     published_at: str | None = None
     description: str | None = None
     citations_count: int | None = None
-    impact_factor: float | None = None
     # Suggestions de taxonomie ADR-020 (LLM uniquement — les heuristiques
     # Crossref/HTML ne classifient pas). Valeurs des enums schemas.source.
     format: str | None = None
@@ -41,6 +41,64 @@ class ExtractedMetadata:
     # Texte brut de la page, conservé pour éviter un second fetch au stage LLM.
     # Jamais sérialisé vers l'API.
     page_text: str | None = None
+
+
+# ── Title cleaning ──────────────────────────────────────────────────────
+
+# Séparateurs typiques "Titre | Site" : pipe (espaces optionnels), tirets
+# moyens/longs, puces — le tiret simple exige des espaces autour pour ne pas
+# couper les mots composés ("Spider-Man").
+_TITLE_SEP = r"(?:\s*\|\s*|\s+[–—·•]\s+|\s+-\s+)"
+
+
+def _normalize_for_match(s: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", s.lower())
+
+
+def _site_name_candidates(site_name: str | None, url: str) -> set[str]:
+    candidates: set[str] = set()
+    if site_name:
+        candidates.add(_normalize_for_match(site_name))
+    host = (urlparse(url).hostname or "").lower().removeprefix("www.")
+    if host:
+        candidates.add(_normalize_for_match(host))
+        first_label = host.split(".")[0]
+        candidates.add(_normalize_for_match(first_label))
+    return {c for c in candidates if len(c) >= 3}
+
+
+def _segment_matches_site(segment: str, candidates: set[str]) -> bool:
+    seg = _normalize_for_match(segment)
+    if len(seg) < 3:
+        return False
+    # "frontiers" matche "frontiersin" (og:site_name vs domaine et vice versa)
+    return any(seg == c or seg in c or c in seg for c in candidates)
+
+
+def clean_title(title: str, site_name: str | None, url: str) -> str:
+    """Strip a leading/trailing site-name segment from a scraped title.
+
+    Guard against over-cleaning: a segment is only removed when it matches
+    ``og:site_name`` or the URL's hostname — a legitimate "|" or "-" inside
+    the actual title is preserved.
+    """
+    candidates = _site_name_candidates(site_name, url)
+    if not candidates:
+        return title
+    cleaned = title.strip()
+    changed = True
+    while changed:
+        changed = False
+        m = re.match(rf"^(.+?){_TITLE_SEP}(.+)$", cleaned)
+        if m and _segment_matches_site(m.group(1), candidates):
+            cleaned = m.group(2).strip()
+            changed = True
+            continue
+        m = re.match(rf"^(.+){_TITLE_SEP}(.+?)$", cleaned)
+        if m and _segment_matches_site(m.group(2), candidates):
+            cleaned = m.group(1).strip()
+            changed = True
+    return cleaned if len(cleaned) >= 8 else title
 
 
 # ── JSON-LD extraction ──────────────────────────────────────────────────
@@ -321,6 +379,9 @@ async def _html_scrape(url: str) -> ExtractedMetadata | None:
             if authors_raw is None and jsonld_meta.authors:
                 authors_raw = jsonld_meta.authors
 
+        if title:
+            title = clean_title(title, _meta("og:site_name"), url)
+
         return ExtractedMetadata(
             title=title or None,
             authors=authors_raw or None,
@@ -368,7 +429,8 @@ async def extract(url: str) -> ExtractedMetadata:
     if page_text:
         llm_meta = await llm.extract_metadata(page_text, url)
         if llm_meta:
-            result.title = result.title or llm_meta.title
+            if result.title is None and llm_meta.title:
+                result.title = clean_title(llm_meta.title, None, url)
             result.authors = result.authors or llm_meta.authors
             result.published_at = result.published_at or llm_meta.published_at
             result.description = result.description or llm_meta.description

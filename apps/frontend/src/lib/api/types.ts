@@ -120,12 +120,36 @@ export interface SourceCreate {
   archive_url?: string | null;
 }
 
+export type LinkedPlatform = 'youtube' | 'instagram' | 'x' | 'tiktok' | 'twitch' | 'site';
+
+export interface LinkedAccount {
+  id: string;
+  platform: LinkedPlatform;
+  url: string;
+  handle: string | null;
+  verified: boolean;
+}
+
+export interface LinkedAccountIn {
+  platform: LinkedPlatform;
+  url: string;
+  handle?: string | null;
+}
+
+export interface PublicLinkedAccount {
+  platform: LinkedPlatform;
+  url: string;
+  handle: string | null;
+  verified: boolean;
+}
+
 export interface UserProfile {
   slug: string;
   display_name: string | null;
   description: string | null;
   avatar_url: string | null;
   public_key: string;
+  linked_accounts: PublicLinkedAccount[];
   stats: {
     total_cards: number;
     total_sources: number;

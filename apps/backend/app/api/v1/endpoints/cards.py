@@ -4,7 +4,7 @@ import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_401_UNAUTHORIZED
 
@@ -210,6 +210,21 @@ async def publish_card(
         )
 
 
+@router.post("/cards/{card_id}/restore", response_model=CardResponse)
+async def restore_card(
+    card_id: UUID,
+    current_user: User = Depends(get_current_user),
+    card_service: CardService = Depends(get_card_service),
+):
+    card = await card_service.restore_card(card_id, current_user.id)
+    if not card:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": "Card not found or not deleted"},
+        )
+    return card
+
+
 @router.delete("/cards/{card_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_card(
     card_id: UUID,
@@ -262,6 +277,69 @@ async def get_public_card(
         ),
         sources=sources_response,
         stats=stats,
+    )
+
+
+_EXPORT_FORMATS = {
+    "json": ("application/json; charset=utf-8", "json"),
+    "csv": ("text/csv; charset=utf-8", "csv"),
+    "xlsx": (
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "xlsx",
+    ),
+    "bibtex": ("application/x-bibtex; charset=utf-8", "bib"),
+    "markdown": ("text/markdown; charset=utf-8", "md"),
+}
+
+
+@router.get("/@{creator_slug}/{card_slug}/export")
+async def export_public_card(
+    creator_slug: str,
+    card_slug: str,
+    format: str = Query("json"),
+    card_service: CardService = Depends(get_card_service),
+):
+    if format not in _EXPORT_FORMATS:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "validation_error",
+                "message": f"Unknown format '{format}'. "
+                f"Supported: {', '.join(sorted(_EXPORT_FORMATS))}",
+            },
+        )
+    card = await card_service.get_card_by_slug(creator_slug, card_slug)
+    if not card:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": "Card not found"},
+        )
+
+    from app.core.config import get_settings
+    from app.services import export as export_service
+
+    public_url = f"{get_settings().frontend_base_url}/@{creator_slug}/{card_slug}"
+    content: str | bytes
+    if format == "json":
+        content = export_service.export_json(card, public_url)
+    elif format == "csv":
+        # BOM UTF-8 : Excel n'interprete pas l'UTF-8 sans lui.
+        content = "\ufeff" + export_service.export_csv(card)
+    elif format == "xlsx":
+        content = export_service.export_xlsx(card)
+    elif format == "bibtex":
+        content = export_service.export_bibtex(card)
+    else:
+        content = export_service.export_markdown(card, public_url)
+
+    media_type, ext = _EXPORT_FORMATS[format]
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{card_slug}.{ext}"',
+            "Cache-Control": "public, max-age=300",
+        },
     )
 
 

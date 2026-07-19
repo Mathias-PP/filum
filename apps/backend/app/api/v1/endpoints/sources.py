@@ -39,7 +39,6 @@ class ExtractResponse(BaseModel):
     published_at: str | None
     description: str | None
     citations_count: int | None
-    impact_factor: float | None
     # Suggestions de taxonomie ADR-020 (Crossref ou LLM, null si indéterminé).
     format: str | None = None
     category: str | None = None
@@ -78,7 +77,6 @@ async def extract_url_metadata(
         published_at=meta.published_at,
         description=meta.description,
         citations_count=meta.citations_count,
-        impact_factor=meta.impact_factor,
         format=meta.format,
         category=meta.category,
         author_kind=meta.author_kind,
