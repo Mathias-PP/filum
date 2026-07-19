@@ -96,6 +96,9 @@ uploads/
 railway_dump.sql
 infra/oracle/backups/
 
+# === Schéma OpenAPI exporté (artefact de build, cf. generate:api) ===
+apps/backend/openapi.json
+
 # === Documentation générée ===
 docs/_build/
 site/

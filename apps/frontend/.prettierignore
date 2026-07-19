@@ -1,2 +1,5 @@
 .svelte-kit/
 build/
+# pnpm reecrit le lockfile dans son propre style a chaque install ;
+# le laisser sous prettier --check cree un ping-pong de formatage.
+pnpm-lock.yaml

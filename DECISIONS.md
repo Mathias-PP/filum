@@ -6,6 +6,25 @@
 
 ---
 
+## ADR-029 — Types TS générés depuis l'OpenAPI (openapi-typescript)
+
+**Date :** 2026-07-19
+
+**Contexte :** Les types de `apps/frontend/src/lib/api/types.ts` sont écrits à la main et ont déjà divergé du backend (F1 de `.docs/19-roadmap-2026-07.md`). Chaque drift back/front est invisible jusqu'au bug runtime.
+
+**Décision :** Génération de `src/lib/api/generated.ts` via `openapi-typescript` (devDependency frontend, ~0 dep transitive) à partir d'un export offline du schéma :
+
+1. `cd apps/backend && uv run python -m app.scripts.export_openapi > openapi.json` (aucun serveur ni DB requis, env vars factices) ;
+2. `cd apps/frontend && pnpm generate:api`.
+
+`generated.ts` est commité (diff lisible en PR = le drift devient visible en review). `openapi.json` est un artefact gitignoré. Les types manuels `types.ts` restent la surface utilisée par `client.ts` pour l'instant : `generated.ts` sert de référence de vérité et permet une migration progressive des interfaces (les remplacer d'un bloc serait un refactor risqué sans gain immédiat).
+
+**Alternatives écartées :** fetch du schéma sur un serveur lancé (fragile en CI), génération d'un client complet type `openapi-fetch` (change la surface d'appel, hors scope F1).
+
+**Conséquences :** régénérer après tout changement de schéma/endpoint backend ; un `git diff` non vide sur `generated.ts` en PR signale un changement de contrat API.
+
+---
+
 ## ADR-028 — Migration hébergement : Railway → GCP e2-micro (always-free) + Supabase
 
 **Date :** 2026-07-19
