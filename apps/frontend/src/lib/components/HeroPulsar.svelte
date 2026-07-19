@@ -567,10 +567,14 @@
 
       // -- CONNEXIONS PASSE 3 : portions de lignes DEVANT un nœud ancre ------
       // Cas moon dont l'ancre est un autre nœud (pas le pulsar, pas le trunk
-      // virtuel). Même logique que la passe 2 mais avec la sphère ancre
-      // comme occluder. Détection ancre=nœud : ancR > 0 ET position ancre
-      // suffisamment loin du pulsar (les nœuds orbitent à ≥ ~0.3 du pulsar,
-      // seuil 0.05 largement sûr).
+      // virtuel). Contrairement à la passe 2 (pulsar), on ne peut PAS tester
+      // lineZ vs anchorFrontZ à chaque pixel : l'amplitude z de l'orbite
+      // locale de la moon est ~= au rayon du parent, donc la ligne n'est
+      // jamais franchement devant la face avant du parent quand elle
+      // traverse le disque. On utilise à la place un critère global :
+      // "la moon est devant le parent" ⇔ n.z > ancZ. Transition adoucie
+      // sur ancR pour éviter un pop au moment où la moon franchit le plan
+      // z du parent.
       for (int i = 0; i < 8; i++) {
         float active = step(float(i) + 0.5, float(uNodeCount));
         if (active < 0.5) continue;
@@ -579,27 +583,29 @@
         vec2 anc = anc3.xy;
         float ancZ = anc3.z;
         float ancR = uAnchors[i].w;
-        vec2 ancToCore = anc - coreC;
         // Skip si ancre = pulsar OU ancre = trunk virtuel (ancR ~ 0).
         if (ancR < 0.001) continue;
+        vec2 ancToCore = anc - coreC;
         if (dot(ancToCore, ancToCore) < 0.0025) continue;
+        // Ligne concernée uniquement à l'intérieur du disque du parent.
         vec2 dAnc = uv - anc;
         float dAnc2 = dot(dAnc, dAnc);
         float ancR2 = ancR * ancR;
         if (dAnc2 >= ancR2) continue;
-        float anchorFrontZ = ancZ + sqrt(ancR2 - dAnc2);
+        // Critère global : le nœud (moon) est-il devant son parent ?
+        float depthAdvance = n.z - ancZ;
+        float frontMix = smoothstep(0.0, ancR * 0.5, depthAdvance);
+        if (frontMix <= 0.001) continue;
         vec2 d = anc - n.xy;
         float lineLen = max(length(d), 0.001);
         vec2 dir = d / lineLen;
         vec2 rel = uv - n.xy;
         float along = dot(rel, dir);
         float across = length(rel - dir * along);
+        // Segment étendu jusqu'au centre de l'ancre pour couvrir tout le
+        // disque parent (le clip 2D dAnc2 < ancR2 est déjà en place).
         float onSeg = step(n.w * 1.02, along) * step(along, lineLen);
         if (onSeg < 0.5) continue;
-        float tParam = clamp(along / lineLen, 0.0, 1.0);
-        float lineZ = mix(n.z, ancZ, tParam);
-        float frontMix = smoothstep(0.0, ancR * 0.22, lineZ - anchorFrontZ);
-        if (frontMix <= 0.001) continue;
         float aaL = uAaPixel.x * 1.1;
         float lineMaskL = (1.0 - smoothstep(0.0022 - aaL, 0.0022 + aaL, across)) * onSeg;
         float tNormL = along / lineLen;
