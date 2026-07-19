@@ -1,0 +1,138 @@
+:root {
+  color-scheme: light;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+body {
+  width: 340px;
+  margin: 0;
+  padding: 12px 14px 14px;
+  font-size: 13px;
+  color: #1c1917;
+  background: #fafaf9;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.brand {
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+}
+
+#settings-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 15px;
+  color: #78716c;
+  padding: 2px 4px;
+}
+
+.state {
+  padding: 8px 0;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.page-preview {
+  background: #f5f5f4;
+  border: 1px solid #e7e5e4;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+}
+
+.page-title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.page-url {
+  color: #78716c;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+label {
+  display: block;
+  font-weight: 600;
+  margin: 8px 0 3px;
+  color: #44403c;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #d6d3d1;
+  border-radius: 5px;
+  padding: 6px 8px;
+  font-size: 13px;
+  font-family: inherit;
+  background: #fff;
+}
+
+textarea {
+  resize: vertical;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+#submit-btn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 8px;
+  border: none;
+  border-radius: 6px;
+  background: #1c1917;
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+#submit-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.feedback {
+  margin-top: 8px;
+  padding: 7px 9px;
+  border-radius: 5px;
+  font-size: 12px;
+}
+
+.feedback.ok {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.feedback.err {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+a {
+  color: #1d4ed8;
+}

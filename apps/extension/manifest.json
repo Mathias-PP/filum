@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Philum — ajouter une source",
+  "version": "0.1.0",
+  "description": "Ajoute la page courante comme source d'une de vos fiches Philum, en un clic.",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Ajouter à Philum"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": false
+  },
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": [
+    "https://philum-api.duckdns.org/*",
+    "http://localhost:8000/*"
+  ]
+}
