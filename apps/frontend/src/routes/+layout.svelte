@@ -232,6 +232,8 @@
           <a href="/privacy" class="hover:text-ink-primary transition-colors">Confidentialité</a>
           <span aria-hidden="true">·</span>
           <a href="/security" class="hover:text-ink-primary transition-colors">Sécurité</a>
+          <span aria-hidden="true">·</span>
+          <a href="/developers" class="hover:text-ink-primary transition-colors">API</a>
         </div>
         <a
           href="https://github.com/Mathias-PP/filum"
