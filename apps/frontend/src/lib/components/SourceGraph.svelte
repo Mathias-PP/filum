@@ -16,7 +16,7 @@
   import { onDestroy, onMount } from 'svelte';
 
   import type { CardDetail, Source } from '$lib/api';
-  import { AUTHOR_COLORS } from '$lib/utils/author-colors';
+  import { sourceColor, type ColorMode, type NodeColor } from '$lib/utils/author-colors';
   import SourceDetailPanel from './SourceDetailPanel.svelte';
 
   interface Props {
@@ -71,6 +71,24 @@
   let selectedSource = $state<Source | null>(null);
   let panelAnchor = $state<{ x: number; y: number } | null>(null);
 
+  // Axe de couleur des nœuds (ADR-020) : type d'auteur par défaut.
+  let colorMode = $state<ColorMode>('author_kind');
+  const colorModeOptions: { value: ColorMode; label: string }[] = [
+    { value: 'author_kind', label: 'Auteur' },
+    { value: 'format', label: 'Format' },
+    { value: 'category', label: 'Catégorie' },
+  ];
+
+  // Légende : uniquement les valeurs présentes sur la fiche.
+  const legendEntries = $derived.by(() => {
+    const seen = new Map<string, NodeColor>();
+    for (const s of card.sources) {
+      const c = sourceColor(s, colorMode);
+      if (!seen.has(c.label)) seen.set(c.label, c);
+    }
+    return [...seen.values()];
+  });
+
   const cardId = $derived(`card:${card.id}`);
 
   function truncate(text: string, max: number): string {
@@ -103,7 +121,7 @@
     const byAuthorAndParent = new Map<string, typeof card.sources>();
 
     for (const s of card.sources) {
-      const colors = AUTHOR_COLORS[s.author_kind];
+      const colors = sourceColor(s, colorMode);
       const isSecondary = s.parent_source_id !== null;
       let radius = 14;
       if (s.is_pivot) radius += 4;
@@ -311,6 +329,7 @@
 
     nodeG
       .append('circle')
+      .attr('class', 'node-circle')
       .attr('r', (d) => d.radius)
       .attr('fill', (d) => d.fill)
       .attr('stroke', (d) => d.stroke)
@@ -511,6 +530,28 @@
     });
   });
 
+  // Recolore les nœuds au changement d'axe, sans re-monter la simulation.
+  $effect(() => {
+    const mode = colorMode;
+    if (!svgEl) return;
+    select(svgEl)
+      .selectAll<SVGCircleElement, GraphNode>('circle.node-circle')
+      .transition()
+      .duration(250)
+      .attr('fill', (d) => {
+        if (d.kind !== 'source' || !d.source) return d.fill;
+        const c = sourceColor(d.source, mode);
+        d.fill = c.fill;
+        return c.fill;
+      })
+      .attr('stroke', (d) => {
+        if (d.kind !== 'source' || !d.source) return d.stroke;
+        const c = sourceColor(d.source, mode);
+        d.stroke = c.stroke;
+        return c.stroke;
+      });
+  });
+
   // Zoom thresholds for labels
   $effect(() => {
     if (!svgEl) return;
@@ -533,6 +574,28 @@
     role="img"
     aria-label="Graphe interactif des sources"
   ></svg>
+
+  <div
+    class="absolute top-3 left-3 flex items-center rounded-md bg-white/95 border border-slate-200 shadow-sm overflow-hidden text-xs"
+    role="group"
+    aria-label="Axe de couleur des nœuds"
+  >
+    {#each colorModeOptions as opt, i (opt.value)}
+      <button
+        type="button"
+        onclick={() => (colorMode = opt.value)}
+        class="px-2.5 py-1.5 transition-colors {i > 0
+          ? 'border-l border-slate-200'
+          : ''} {colorMode === opt.value
+          ? 'bg-slate-800 text-white font-medium'
+          : 'text-slate-600 hover:bg-slate-50'}"
+        aria-pressed={colorMode === opt.value}
+        title="Colorer par {opt.label.toLowerCase()}"
+      >
+        {opt.label}
+      </button>
+    {/each}
+  </div>
 
   <div class="absolute top-3 right-3 flex flex-col gap-1.5">
     <button
@@ -596,7 +659,7 @@
   <div
     class="absolute bottom-3 left-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs bg-white/90 border border-slate-200 rounded-md px-2.5 py-1.5 backdrop-blur-sm"
   >
-    {#each Object.entries(AUTHOR_COLORS) as [_key, c] (c.label)}
+    {#each legendEntries as c (c.label)}
       <span class="inline-flex items-center gap-1.5 text-slate-700">
         <span
           class="inline-block w-2.5 h-2.5 rounded-full border"
