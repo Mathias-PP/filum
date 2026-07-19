@@ -79,6 +79,48 @@ export const AUTHOR_COLORS: Record<AuthorKind, AuthorColor> = {
   },
 };
 
+/** Axe de couleur du graphe — les 3 axes de la taxonomie ADR-020. */
+export type ColorMode = 'author_kind' | 'format' | 'category';
+
+export interface NodeColor {
+  label: string;
+  fill: string;
+  stroke: string;
+}
+
+export const FORMAT_COLORS: Record<SourceFormat, NodeColor> = {
+  texte: { label: 'Texte', fill: '#C7D2FE', stroke: '#4F46E5' },
+  video: { label: 'Vidéo', fill: '#FECACA', stroke: '#DC2626' },
+  image: { label: 'Image', fill: '#FDE68A', stroke: '#CA8A04' },
+  audio: { label: 'Audio', fill: '#A7F3D0', stroke: '#059669' },
+  data: { label: 'Données', fill: '#BAE6FD', stroke: '#0284C7' },
+};
+
+export const CATEGORY_COLORS: Record<SourceCategory, NodeColor> = {
+  'article-scientifique': { label: 'Article scientifique', fill: '#C0DD97', stroke: '#639922' },
+  preprint: { label: 'Préprint', fill: '#D9F99D', stroke: '#65A30D' },
+  'article-presse': { label: 'Article de presse', fill: '#FAC775', stroke: '#EF9F27' },
+  communique: { label: 'Communiqué', fill: '#FED7AA', stroke: '#EA580C' },
+  documentaire: { label: 'Documentaire', fill: '#F2A7BE', stroke: '#D4456E' },
+  interview: { label: 'Interview', fill: '#FBCFE8', stroke: '#DB2777' },
+  podcast: { label: 'Podcast', fill: '#CECBF6', stroke: '#7F77DD' },
+  blog: { label: 'Blog', fill: '#DDD6FE', stroke: '#7C3AED' },
+  'post-social': { label: 'Post réseaux', fill: '#BAE6FD', stroke: '#0EA5E9' },
+  livre: { label: 'Livre', fill: '#B5D4F4', stroke: '#378ADD' },
+  'page-web': { label: 'Page web', fill: '#CBD5E1', stroke: '#64748B' },
+  notes: { label: 'Notes', fill: '#E7E5E4', stroke: '#78716C' },
+};
+
+export function sourceColor(
+  s: { author_kind: AuthorKind; format: SourceFormat; category: SourceCategory },
+  mode: ColorMode
+): NodeColor {
+  if (mode === 'format') return FORMAT_COLORS[s.format];
+  if (mode === 'category') return CATEGORY_COLORS[s.category];
+  const c = AUTHOR_COLORS[s.author_kind];
+  return { label: c.label, fill: c.fill, stroke: c.stroke };
+}
+
 const FORMAT_LABELS: Record<SourceFormat, string> = {
   texte: 'Texte',
   video: 'Vidéo',
