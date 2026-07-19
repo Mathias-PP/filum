@@ -1,12 +1,22 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import attestations, auth, cards, og, sources, users, waitlist
+from app.api.v1.endpoints import (
+    attestations,
+    auth,
+    cards,
+    imports,
+    og,
+    sources,
+    users,
+    waitlist,
+)
 
 v1_router = APIRouter()
 
 v1_router.include_router(attestations.router)
 v1_router.include_router(auth.router)
 v1_router.include_router(cards.router)
+v1_router.include_router(imports.router)
 v1_router.include_router(og.router)
 v1_router.include_router(sources.router)
 v1_router.include_router(users.router)
