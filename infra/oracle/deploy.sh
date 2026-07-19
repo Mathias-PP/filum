@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
 # Déploiement sur la VM Oracle : à lancer depuis ~/filum/infra/oracle.
-# Usage : ./deploy.sh
+# Usage : ./deploy.sh            (variante ARM, Postgres local)
+#         ./deploy.sh micro     (variante E2.1.Micro, base Supabase)
 set -euo pipefail
 
 cd "$(dirname "$0")"
 
+COMPOSE_ARGS=()
+if [ "${1:-}" = "micro" ]; then
+  COMPOSE_ARGS=(-f docker-compose.micro.yml)
+fi
+
 git pull --ff-only
-docker compose build backend
-docker compose up -d
+docker compose "${COMPOSE_ARGS[@]}" build backend
+docker compose "${COMPOSE_ARGS[@]}" up -d
 docker image prune -f
 
 echo "--- Attente du healthcheck backend..."
