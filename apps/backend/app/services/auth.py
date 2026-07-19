@@ -18,7 +18,9 @@ settings = get_settings()
 logger = logging.getLogger(__name__)
 
 ALGORITHM = "HS256"
-SESSION_EXPIRE_HOURS = 24
+# 7 jours : une session de 24h faisait "disparaître" les fiches aux yeux des
+# créateurs (dashboard vide sur 401 silencieux après expiration).
+SESSION_EXPIRE_HOURS = 24 * 7
 
 # Matches the slug pattern used by the user schema. Lowercase alphanumeric +
 # hyphens, must start with alphanumeric, length 3..81. We intentionally do not

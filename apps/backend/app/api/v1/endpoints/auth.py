@@ -18,7 +18,7 @@ from app.core.rate_limit import limiter
 from app.db.database import get_db
 from app.models.user import User
 from app.schemas.user import UserResponse
-from app.services.auth import AuthService
+from app.services.auth import SESSION_EXPIRE_HOURS, AuthService
 
 settings = get_settings()
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -56,7 +56,7 @@ def _set_session_cookie(response: Response, token: str) -> None:
         key="filum_session",
         value=token,
         httponly=True,
-        max_age=86400,
+        max_age=SESSION_EXPIRE_HOURS * 3600,
         **cookie_config,
     )
 

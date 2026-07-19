@@ -1,11 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { currentUser } from '$lib/stores';
-  import { api } from '$lib/api';
+  import { goto } from '$app/navigation';
+  import { auth, currentUser } from '$lib/stores';
+  import { api, ApiError } from '$lib/api';
   import { Button, Skeleton, EmptyState, ConfirmDialog, toast } from '$lib/components';
   import type { Card as CardType, LinkedAccountIn, LinkedPlatform } from '$lib/api';
 
   let loading = $state(true);
+  let loadFailed = $state(false);
   let userCards = $state<CardType[]>([]);
   let confirmOpen = $state(false);
   let confirmTarget = $state<CardType | null>(null);
@@ -82,6 +84,15 @@
     try {
       userCards = await api.cards.list();
     } catch (err) {
+      // Session expirée : sans cette redirection, le dashboard affichait
+      // "Aucune fiche" — les créateurs croyaient leurs fiches supprimées.
+      if (err instanceof ApiError && err.status === 401) {
+        auth.reset();
+        toast.danger('Votre session a expiré. Reconnectez-vous pour retrouver vos fiches.');
+        goto('/');
+        return;
+      }
+      loadFailed = true;
       toast.danger(err instanceof Error ? err.message : 'Erreur de chargement des fiches');
     } finally {
       loading = false;
@@ -135,6 +146,14 @@
       {#each Array(3) as _, i (i)}
         <Skeleton variant="card" height="5rem" />
       {/each}
+    </div>
+  {:else if loadFailed}
+    <div class="rounded-lg bg-danger-bg border border-danger/30 px-4 py-4 text-sm text-danger">
+      <p class="font-medium mb-1">Impossible de charger vos fiches.</p>
+      <p>
+        Vos fiches ne sont pas perdues — c'est un problème de connexion au serveur. Rechargez la
+        page dans quelques instants.
+      </p>
     </div>
   {:else if userCards.length === 0}
     <EmptyState
