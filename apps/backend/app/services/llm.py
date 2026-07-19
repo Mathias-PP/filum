@@ -170,6 +170,72 @@ async def parse_bibliography(text: str) -> list[LlmBiblioRef] | None:
         return None
 
 
+class LlmExcerpts(BaseModel):
+    excerpts: list[str] = []
+
+
+_EXCERPT_SYSTEM_PROMPT = (
+    "Tu repères dans le texte d'une source les passages les plus cités ou "
+    "citables : les phrases qui portent les affirmations clés du document. "
+    "Réponds UNIQUEMENT avec le JSON demandé. Règles strictes : chaque extrait "
+    "doit être recopié VERBATIM, mot pour mot, tel qu'il apparaît dans le "
+    "texte — aucune reformulation, aucune traduction, aucune coupe interne ; "
+    "2 à 5 extraits maximum, chacun de 1 à 3 phrases ; si un contexte est "
+    "fourni, privilégie les passages qui s'y rapportent."
+)
+
+
+def parse_excerpts_content(content: str) -> list[str] | None:
+    try:
+        return LlmExcerpts.model_validate_json(content).excerpts
+    except ValidationError:
+        return None
+
+
+async def suggest_excerpts(page_text: str, context: str | None = None) -> list[str] | None:
+    """Suggère des citations verbatim via l'alias `excerpt-suggest`. Never raises.
+
+    Retourne None si la couche LLM est désactivée ou en cas d'erreur.
+    L'appelant DOIT vérifier que chaque extrait apparaît réellement dans le
+    texte source (anti-hallucination) avant de l'exposer.
+    """
+    settings = get_settings()
+    if not settings.litellm_base_url:
+        return None
+
+    user_content = f"Texte de la source :\n{page_text[:_MAX_INPUT_CHARS]}"
+    if context:
+        user_content = f"Contexte (fiche du créateur) : {context[:500]}\n\n{user_content}"
+
+    payload = {
+        "model": "excerpt-suggest",
+        "messages": [
+            {"role": "system", "content": _EXCERPT_SYSTEM_PROMPT},
+            {"role": "user", "content": user_content},
+        ],
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {"name": "excerpts", "schema": LlmExcerpts.model_json_schema()},
+        },
+        "temperature": 0,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+            r = await client.post(
+                f"{settings.litellm_base_url.rstrip('/')}/v1/chat/completions",
+                json=payload,
+                headers={"Authorization": f"Bearer {settings.litellm_master_key}"},
+            )
+        if r.status_code != 200:
+            logger.warning("LLM excerpt-suggest HTTP %s: %s", r.status_code, r.text[:200])
+            return None
+        content = r.json()["choices"][0]["message"]["content"]
+        return parse_excerpts_content(content)
+    except Exception as e:
+        logger.warning("LLM excerpt-suggest failed: %s", e)
+        return None
+
+
 async def extract_metadata(page_text: str, url: str) -> LlmSourceMetadata | None:
     """Extrait les métadonnées via l'alias `metadata-extract`. Never raises.
 

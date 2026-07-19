@@ -5,7 +5,15 @@
   import { api } from '$lib/api';
   import { Button, ConfirmDialog, ProgressSteps } from '$lib/components';
   import { AUTHOR_COLORS, authorLabel } from '$lib/utils/author-colors';
-  import type { AuthorKind, Card, Source, SourceCategory, SourceFormat } from '$lib/api';
+  import type {
+    AuthorKind,
+    Card,
+    Source,
+    SourceCategory,
+    SourceExcerpt,
+    SourceFormat,
+    SuggestedExcerpt,
+  } from '$lib/api';
 
   const wizardSteps = [
     { label: 'Informations', description: 'Titre, plateforme' },
@@ -117,6 +125,7 @@
     taxonomySuggested = false;
     editingSourceId = null;
     addError = null;
+    resetExcerptState();
   }
 
   function startEdit(source: Source) {
@@ -134,6 +143,7 @@
     lastExtractedUrl = source.url;
     taxonomySuggested = false;
     addError = null;
+    resetExcerptState();
     if (typeof document !== 'undefined') {
       document
         .getElementById('source-title')
@@ -189,6 +199,85 @@
             : "Erreur lors de l'ajout";
     } finally {
       addLoading = false;
+    }
+  }
+
+  // ── Citations (extraits) — mode édition uniquement (nécessite un id) ──────
+  let excerptText = $state('');
+  let excerptError = $state<string | null>(null);
+  let excerptAdding = $state(false);
+  let suggesting = $state(false);
+  let suggestions = $state<SuggestedExcerpt[]>([]);
+  let suggestInfo = $state<string | null>(null);
+
+  const editingSource = $derived(sources.find((s) => s.id === editingSourceId) ?? null);
+
+  function resetExcerptState() {
+    excerptText = '';
+    excerptError = null;
+    suggestions = [];
+    suggestInfo = null;
+  }
+
+  function updateSourceExcerpts(sourceId: string, excerpts: SourceExcerpt[]) {
+    sources = sources.map((s) => (s.id === sourceId ? { ...s, excerpts } : s));
+  }
+
+  async function addExcerpt(text: string, suggestedByAi = false) {
+    if (!editingSourceId) return;
+    const value = text.trim();
+    if (!value) return;
+    excerptError = null;
+    excerptAdding = true;
+    try {
+      const created = await api.excerpts.create(editingSourceId, {
+        text: value,
+        suggested_by_ai: suggestedByAi,
+      });
+      updateSourceExcerpts(editingSourceId, [...(editingSource?.excerpts ?? []), created]);
+      if (!suggestedByAi) excerptText = '';
+      suggestions = suggestions.filter((sug) => sug.text !== value);
+    } catch (err) {
+      excerptError = err instanceof Error ? err.message : "Erreur lors de l'ajout de la citation";
+    } finally {
+      excerptAdding = false;
+    }
+  }
+
+  async function removeExcerpt(excerptId: string) {
+    if (!editingSourceId) return;
+    excerptError = null;
+    try {
+      await api.excerpts.delete(editingSourceId, excerptId);
+      updateSourceExcerpts(
+        editingSourceId,
+        (editingSource?.excerpts ?? []).filter((x) => x.id !== excerptId)
+      );
+    } catch (err) {
+      excerptError = err instanceof Error ? err.message : 'Erreur lors de la suppression';
+    }
+  }
+
+  async function suggestExcerpts() {
+    if (!editingSourceId) return;
+    excerptError = null;
+    suggestInfo = null;
+    suggestions = [];
+    suggesting = true;
+    try {
+      const res = await api.excerpts.suggest(editingSourceId);
+      if (!res.llm_enabled) {
+        suggestInfo = "La suggestion IA n'est pas configurée sur ce serveur.";
+      } else if (res.suggestions.length === 0) {
+        suggestInfo = 'Aucun passage citable repéré dans le texte de cette source.';
+      } else {
+        suggestions = res.suggestions;
+      }
+    } catch (err) {
+      excerptError =
+        err instanceof Error ? err.message : 'Erreur lors de la suggestion de citations';
+    } finally {
+      suggesting = false;
     }
   }
 
@@ -979,6 +1068,125 @@
             </div>
           {/if}
         </div>
+
+        {#if isEditing && editingSource}
+          <div class="border-t border-border pt-4 space-y-3">
+            <div class="flex items-center justify-between gap-2 flex-wrap">
+              <h3 class="text-sm font-semibold text-ink-primary">
+                Citations
+                <span class="text-xs text-ink-tertiary font-normal"
+                  >— extraits marquants de cette source (max 10)</span
+                >
+              </h3>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                loading={suggesting}
+                disabled={suggesting || excerptAdding}
+                onclick={suggestExcerpts}
+              >
+                {suggesting ? 'Analyse…' : 'Suggérer des citations (IA)'}
+              </Button>
+            </div>
+
+            {#if excerptError}
+              <div
+                class="rounded-lg bg-danger-bg border border-danger/30 px-3 py-2 text-xs text-danger"
+              >
+                {excerptError}
+              </div>
+            {/if}
+            {#if suggestInfo}
+              <div class="rounded-lg bg-info/10 border border-info/30 px-3 py-2 text-xs text-info">
+                {suggestInfo}
+              </div>
+            {/if}
+
+            {#if editingSource.excerpts.length > 0}
+              <ul class="space-y-2">
+                {#each editingSource.excerpts as excerpt (excerpt.id)}
+                  <li
+                    class="flex items-start justify-between gap-2 rounded-lg border border-border bg-surface-secondary/50 px-3 py-2"
+                  >
+                    <p class="text-sm text-ink-secondary italic min-w-0">
+                      «&nbsp;{excerpt.text}&nbsp;»
+                      {#if excerpt.suggested_by_ai}
+                        <span class="text-xs text-ink-tertiary not-italic">(IA)</span>
+                      {/if}
+                    </p>
+                    <button
+                      type="button"
+                      onclick={() => removeExcerpt(excerpt.id)}
+                      class="p-1 shrink-0 text-ink-tertiary hover:text-danger transition-colors"
+                      aria-label="Supprimer cette citation"
+                      title="Supprimer"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        class="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                        <line x1="6" y1="18" x2="18" y2="6" />
+                      </svg>
+                    </button>
+                  </li>
+                {/each}
+              </ul>
+            {/if}
+
+            {#if suggestions.length > 0}
+              <div class="space-y-2">
+                <p class="text-xs font-medium text-ink-secondary">
+                  Suggestions repérées dans le texte (vérifiées mot pour mot) :
+                </p>
+                {#each suggestions as sug (sug.char_offset)}
+                  <div class="rounded-lg border border-info/30 bg-info/5 px-3 py-2 space-y-1.5">
+                    <p class="text-xs text-ink-tertiary">
+                      …{sug.context_before}<span class="text-ink-primary font-medium"
+                        >{sug.text}</span
+                      >{sug.context_after}…
+                    </p>
+                    <div class="flex justify-end">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        disabled={excerptAdding || editingSource.excerpts.length >= 10}
+                        onclick={() => addExcerpt(sug.text, true)}
+                      >
+                        Ajouter
+                      </Button>
+                    </div>
+                  </div>
+                {/each}
+              </div>
+            {/if}
+
+            <div class="flex gap-2">
+              <input
+                type="text"
+                bind:value={excerptText}
+                maxlength={1000}
+                placeholder="Ajouter une citation manuellement…"
+                class="flex-1 px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-tertiary"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                loading={excerptAdding}
+                disabled={excerptAdding || !excerptText.trim()}
+                onclick={() => addExcerpt(excerptText)}
+              >
+                Ajouter
+              </Button>
+            </div>
+          </div>
+        {/if}
 
         <div class="flex justify-end gap-2">
           {#if isEditing}

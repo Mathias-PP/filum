@@ -63,6 +63,19 @@ export interface SourceExcerpt {
   suggested_by_ai: boolean;
 }
 
+export interface SuggestedExcerpt {
+  text: string;
+  char_offset: number;
+  context_before: string;
+  context_after: string;
+}
+
+export interface ExcerptSuggestResponse {
+  suggestions: SuggestedExcerpt[];
+  page_text_length: number;
+  llm_enabled: boolean;
+}
+
 export interface Source {
   id: string;
   url: string;
