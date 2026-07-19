@@ -98,6 +98,46 @@ async def test_get_source_detail(db_session, published_card):
 
 
 @pytest.mark.asyncio
+async def test_get_source_of_draft_card_returns_none(db_session, test_user):
+    from app.mcp_server.tools import get_source
+    from app.models.biblio_card import BiblioCard
+    from app.models.source import Source
+
+    draft = BiblioCard(
+        id=uuid4(),
+        user_id=test_user.id,
+        slug="brouillon-fuite",
+        title="Brouillon prive",
+        content_type="video",
+        platform="youtube",
+        status="draft",
+    )
+    db_session.add(draft)
+    await db_session.flush()
+    source = Source(
+        id=uuid4(),
+        biblio_card_id=draft.id,
+        position=0,
+        url="https://example.org/secret",
+        format="texte",
+        category="article-scientifique",
+        author_kind="chercheur",
+    )
+    db_session.add(source)
+    await db_session.commit()
+
+    assert await get_source(db_session, source_id=str(source.id)) is None
+
+
+@pytest.mark.asyncio
+async def test_search_cards_escapes_like_wildcards(db_session, published_card):
+    from app.mcp_server.tools import search_cards
+
+    assert await search_cards(db_session, query="%") == []
+    assert await search_cards(db_session, query="_emoire") == []
+
+
+@pytest.mark.asyncio
 async def test_find_cards_citing_same_url(db_session, published_card, test_user):
     from app.mcp_server.tools import find_cards_citing
 
