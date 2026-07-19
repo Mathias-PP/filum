@@ -53,6 +53,21 @@
     }
   }
 
+  let exportOpen = $state(false);
+  const exportBase = $derived(`${API_BASE}/api/v1/@${creatorSlug}/${cardSlug}/export`);
+  const exportFormats = [
+    { format: 'json', label: 'JSON' },
+    { format: 'csv', label: 'CSV' },
+    { format: 'xlsx', label: 'Excel (.xlsx)' },
+    { format: 'bibtex', label: 'BibTeX (.bib)' },
+    { format: 'markdown', label: 'Markdown / Obsidian' },
+  ];
+
+  function printCard() {
+    exportOpen = false;
+    if (typeof window !== 'undefined') window.print();
+  }
+
   const siteOrigin = $derived($page.url.origin);
   const publicUrl = $derived(`${siteOrigin}/@${creatorSlug}/${cardSlug}`);
   const isOwner = $derived($currentUser?.username === creatorSlug);
@@ -169,10 +184,47 @@
               </div>
             {/if}
           </div>
+          <div class="relative shrink-0 print:hidden">
+            <button
+              type="button"
+              onclick={() => (exportOpen = !exportOpen)}
+              class="text-xs text-ink-tertiary hover:text-ink-primary transition-colors px-2.5 py-1 rounded-md border border-border hover:border-border-strong"
+              aria-haspopup="menu"
+              aria-expanded={exportOpen}
+            >
+              Exporter
+            </button>
+            {#if exportOpen}
+              <div
+                class="absolute right-0 top-full mt-1 z-30 w-48 rounded-md border border-border bg-surface-primary shadow-lg py-1"
+                role="menu"
+              >
+                {#each exportFormats as fmt (fmt.format)}
+                  <a
+                    href="{exportBase}?format={fmt.format}"
+                    download
+                    onclick={() => (exportOpen = false)}
+                    class="block px-3 py-1.5 text-xs text-ink-secondary hover:bg-surface-tertiary hover:text-ink-primary"
+                    role="menuitem"
+                  >
+                    {fmt.label}
+                  </a>
+                {/each}
+                <button
+                  type="button"
+                  onclick={printCard}
+                  class="block w-full text-left px-3 py-1.5 text-xs text-ink-secondary hover:bg-surface-tertiary hover:text-ink-primary"
+                  role="menuitem"
+                >
+                  PDF (imprimer)
+                </button>
+              </div>
+            {/if}
+          </div>
           <button
             type="button"
             onclick={copyLink}
-            class="text-xs text-ink-tertiary hover:text-ink-primary transition-colors px-2.5 py-1 rounded-md border border-border hover:border-border-strong shrink-0"
+            class="text-xs text-ink-tertiary hover:text-ink-primary transition-colors px-2.5 py-1 rounded-md border border-border hover:border-border-strong shrink-0 print:hidden"
           >
             Partager
           </button>
