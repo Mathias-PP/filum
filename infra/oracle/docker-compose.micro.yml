@@ -1,0 +1,42 @@
+# Variante pour VM.Standard.E2.1.Micro (Always Free x86, 1 GB RAM).
+# Différences avec docker-compose.yml (variante ARM 12 GB) :
+#   - PAS de Postgres local : la base est externe (Supabase), via `database_url`
+#     dans .env. 1 GB de RAM ne permet pas de faire tourner Postgres + API
+#     confortablement, et la donnée doit survivre à la VM.
+#   - PAS de conteneur backup : les backups sont gérés par Supabase.
+# Usage : docker compose -f docker-compose.micro.yml up -d --build
+services:
+  backend:
+    build: ../../apps/backend
+    container_name: philum-backend
+    restart: always
+    env_file: .env
+    expose:
+      - '8000'
+    mem_limit: 450m
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '20m'
+        max-file: '5'
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: philum-caddy
+    restart: always
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      API_DOMAIN: ${API_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    mem_limit: 100m
+    depends_on:
+      - backend
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -1,8 +1,21 @@
 # Déploiement backend sur Oracle Cloud Always Free
 
-Guide complet : VM ARM gratuite **à vie** (pas un trial), Docker Compose (FastAPI + Postgres + Caddy TLS), domaine gratuit DuckDNS. Le frontend reste sur Vercel ; grâce au proxy SvelteKit (ADR-025), **la config Google OAuth ne change pas** — seul `BACKEND_URL` sur Vercel change.
+Guide complet : VM gratuite **à vie** (pas un trial), Docker Compose (FastAPI + Caddy TLS), domaine gratuit DuckDNS. Le frontend reste sur Vercel ; grâce au proxy SvelteKit (ADR-025), **la config Google OAuth ne change pas** — seul `BACKEND_URL` sur Vercel change.
 
-Durée estimée : 1h à 1h30 (dont ~20 min d'attente Oracle).
+Deux variantes selon la VM obtenue :
+
+| | **E2.1.Micro** (x86, 1 GB) — `docker-compose.micro.yml` | **A1.Flex** (ARM, 2 OCPU/12 GB) — `docker-compose.yml` |
+|---|---|---|
+| Disponibilité | **Immédiate** (2 instances gratuites) | « Out of host capacity » chronique (cf. `../oracle-vm-retry.md`) |
+| Postgres | **Externe (Supabase free tier)** | Conteneur local + backups |
+| Étapes spécifiques | 2-micro, 4b (swap), 6 (Supabase) | 2, 6 |
+
+**Stratégie recommandée** : démarrer sur E2.1.Micro aujourd'hui, laisser la boucle
+de retry A1 tourner ; au succès, redéployer sur l'ARM en ~30 min (la VM est
+stateless : la base est chez Supabase, il suffit de rejouer les étapes 4→6 sur la
+nouvelle machine et de re-pointer le DNS DuckDNS). Les deux quotas sont cumulables.
+
+Durée estimée : 1h à 1h30.
 
 ---
 
@@ -21,7 +34,21 @@ Durée estimée : 1h à 1h30 (dont ~20 min d'attente Oracle).
 2. ⚠️ **Le choix de la « Home Region » est définitif.** Prendre **France Central (Paris)** ou **Germany Central (Frankfurt)**. Frankfurt a généralement plus de capacité ARM disponible.
 3. Vérification email + CB (empreinte ~1 €, remboursée). Choisir le compte **Free Tier** ; à la fin du trial de 30 jours, le compte bascule automatiquement en « Always Free » — les ressources Always Free continuent de tourner, rien à faire.
 
-## Étape 2 — Créer la VM (instance Compute)
+## Étape 2-micro — Créer la VM E2.1.Micro (dispo immédiate)
+
+Console Oracle → menu ☰ → **Compute** → **Instances** → **Create instance**.
+
+1. **Name** : `philum-api`.
+2. **Image and shape** → **Edit** :
+   - **Shape** : catégorie **Specialty and previous generation** → `VM.Standard.E2.1.Micro` (étiqueté « Always Free-eligible »). 1 GB RAM, 1/8 de cœur AMD burstable à 100 %.
+   - **Image** : **Canonical Ubuntu 24.04** (x86_64 — l'architecture suit le shape automatiquement).
+3. **Primary VNIC** : VCN par défaut, sous-réseau public, **Assign a public IPv4 address = Yes**.
+4. **Add SSH keys** : coller le contenu de `oracle_philum.pub`.
+5. **Boot volume** : 50 GB. → **Create**. L'instance passe **Running** en ~1 min (pas de pénurie sur ce shape).
+
+Puis suivre **2b** (IP réservée), **3** (ports), **4** (Docker) **+ 4b (swap, obligatoire sur 1 GB)**, **5** (DuckDNS), **6** en variante Supabase.
+
+## Étape 2 — Créer la VM ARM A1.Flex (si capacité disponible)
 
 Console Oracle → menu ☰ → **Compute** → **Instances** → **Create instance**.
 
@@ -89,6 +116,18 @@ sudo usermod -aG docker ubuntu
 exit   # se reconnecter pour que le groupe docker prenne effet
 ```
 
+### 4b — Swap (obligatoire sur E2.1.Micro / 1 GB)
+
+Sans swap, le build Docker et les pics mémoire tuent des process (OOM). 2 GB de swap :
+
+```bash
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
+sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+sudo sysctl vm.swappiness=10 && echo 'vm.swappiness=10' | sudo tee -a /etc/sysctl.d/99-swap.conf
+free -h   # vérifier : ligne Swap = 2.0Gi
+```
+
 ## Étape 5 — Domaine gratuit DuckDNS
 
 1. https://www.duckdns.org → login (GitHub/Google).
@@ -98,6 +137,14 @@ exit   # se reconnecter pour que le groupe docker prenne effet
 (L'IP étant réservée/fixe, pas besoin du cron de mise à jour DuckDNS.)
 
 ## Étape 6 — Déployer l'application
+
+### 6a (variante micro uniquement) — Créer la base Supabase
+
+1. https://supabase.com → New project → région **eu-west-3 (Paris)** (ou la plus proche), free tier.
+2. Noter le mot de passe base. Dashboard → **Connect** → onglet **Session pooler** (port 5432, ⚠️ pas le Transaction pooler 6543 : incompatible asyncpg) → copier la connection string → ce sera `database_url` dans `.env`.
+3. Les migrations Alembic et le seed tournent automatiquement au premier boot du conteneur.
+
+### 6b — Lancer
 
 Sur la VM :
 
@@ -119,7 +166,12 @@ Puis :
 
 ```bash
 chmod +x deploy.sh
-docker compose up -d --build     # premier lancement : build ARM ~3-5 min
+
+# Variante ARM (Postgres local) :
+docker compose up -d --build
+# Variante E2.1.Micro (base Supabase, `database_url` rempli dans .env) :
+docker compose -f docker-compose.micro.yml up -d --build   # build ~5-10 min sur 1/8 cœur
+
 docker logs -f philum-backend    # attendre "Application startup complete"
 ```
 
@@ -154,6 +206,8 @@ scp -i ~/.ssh/oracle_philum railway_dump.sql ubuntu@<PUBLIC_IP>:~
 # Sur la VM (base vierge AVANT le premier docker compose up, sinon drop/recréer) :
 docker exec -i philum-postgres psql -U philum -d philum < ~/railway_dump.sql
 ```
+
+Variante micro (Supabase) : restaurer directement dans Supabase depuis n'importe quelle machine — `psql "<database_url_supabase>" < railway_dump.sql` (avant le premier boot du backend).
 
 Sinon : la base repart de zéro, le seed recrée la fiche démo `/@example/memoire-et-cerveau` automatiquement.
 
