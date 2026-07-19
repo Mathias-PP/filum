@@ -7,8 +7,10 @@ import type {
   Card,
   CardDetail,
   CardCreate,
+  ExcerptSuggestResponse,
   Source,
   SourceCreate,
+  SourceExcerpt,
   User,
   UserProfile,
 } from './types';
@@ -166,6 +168,28 @@ export const api = {
 
     delete: async (sourceId: string): Promise<void> => {
       await request(`/sources/${sourceId}`, { method: 'DELETE' });
+    },
+  },
+
+  excerpts: {
+    create: async (
+      sourceId: string,
+      data: { text: string; suggested_by_ai?: boolean }
+    ): Promise<SourceExcerpt> => {
+      return request<SourceExcerpt>(`/sources/${sourceId}/excerpts`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
+
+    delete: async (sourceId: string, excerptId: string): Promise<void> => {
+      await request(`/sources/${sourceId}/excerpts/${excerptId}`, { method: 'DELETE' });
+    },
+
+    suggest: async (sourceId: string): Promise<ExcerptSuggestResponse> => {
+      return request<ExcerptSuggestResponse>(`/sources/${sourceId}/excerpts/suggest`, {
+        method: 'POST',
+      });
     },
   },
 
