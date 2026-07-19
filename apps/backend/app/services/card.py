@@ -179,3 +179,20 @@ class CardService:
         card.deleted_at = datetime.now(UTC).replace(tzinfo=None)
         await self._db.commit()
         return True
+
+    async def restore_card(self, card_id: UUID, user_id: UUID) -> BiblioCard | None:
+        """Annule un soft-delete : remet ``deleted_at`` a NULL."""
+        result = await self._db.execute(
+            select(BiblioCard).where(
+                BiblioCard.id == card_id,
+                BiblioCard.user_id == user_id,
+                BiblioCard.deleted_at.is_not(None),
+            )
+        )
+        card = result.scalar_one_or_none()
+        if not card:
+            return None
+        card.deleted_at = None
+        await self._db.commit()
+        await self._db.refresh(card)
+        return card
