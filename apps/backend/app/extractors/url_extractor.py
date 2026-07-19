@@ -32,7 +32,6 @@ class ExtractedMetadata:
     published_at: str | None = None
     description: str | None = None
     citations_count: int | None = None
-    impact_factor: float | None = None
     # Suggestions de taxonomie ADR-020 (LLM uniquement — les heuristiques
     # Crossref/HTML ne classifient pas). Valeurs des enums schemas.source.
     format: str | None = None
