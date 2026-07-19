@@ -2,13 +2,20 @@
 
 > Snapshot vivant, 1 page max. **Pour l'historique détaillé** : voir [`CHANGELOG.md`](./CHANGELOG.md). **Pour les items long terme** : voir [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md).
 
-**Dernière mise à jour : 2026-07-13**
+**Dernière mise à jour : 2026-07-19**
 
 ---
 
-## 🚨 P0 — Backend Railway DOWN (vérifié 2026-07-11)
+## ✅ État production vérifié (2026-07-19)
 
-Toutes les requêtes vers `filum-production-07bb.up.railway.app` renvoient `{"status":"error","code":404,"message":"Application not found"}`. Fiche démo 404, login mort, tous les parcours dynamiques HS. Le frontend Vercel est up. **Action manuelle requise** : vérifier le service Railway (crash-loop ? domaine détaché ? projet suspendu ?). Détails : [`UX-WALKTHROUGH-REPORT.md`](./UX-WALKTHROUGH-REPORT.md).
+**Prod migrée Railway → GCP + Supabase** (cf. ADR-028). Vérifié par curl + parcours navigateur :
+- `https://philum-api.duckdns.org/health` → `{"status":"ok","version":"0.1.0"}` (HTTPS Let's Encrypt via Caddy)
+- Fiche démo `https://filum-eight.vercel.app/@example/memoire-et-cerveau` → 200, sources + graphe OK
+- Login Google → dashboard OK (redirect URI DuckDNS ajoutée au client OAuth ; l'URI Railway existe encore, à retirer)
+
+Infra : VM GCP e2-micro us-central1 always-free (Ubuntu 24.04, swap 2 GB, Docker Compose `infra/oracle/docker-compose.micro.yml` : backend + Caddy) · Postgres Supabase free (Session pooler **5432**, jamais 6543) · DuckDNS + IP statique GCP. 10 migrations Alembic + seed démo appliqués sur base neuve (secrets régénérés — l'ancienne `master_encryption_key` Railway était un placeholder).
+
+**Railway est décommissionnable** (laissé en secours quelques jours). Boucle retry Oracle (WSL) toujours active en arrière-plan si A1 Paris se libère.
 
 ---
 
@@ -29,9 +36,9 @@ Avant cette phase, la **Phase 1 (MVP complet)** était terminée : jalons M1 (OA
 
 | # | Branche | État CI | Sujet |
 |---|---|---|---|
-| #115 | `docs/declencheur-adoption` | en cours | Doc .docs/16 : déclencheur d'adoption + premières ventes |
+| #116-#119 | `infra/oracle-micro`, `feat/llm-*` | ✅ verte | Validées, merge en cours (ordre #116 → #117 → #118 → #119) |
 
-> Mergées le 2026-07-14 : #112 waitlist, #113 seed & claim, #114 serveur MCP (/mcp, FastMCP), #109 vite 6.4.3. Plan acquisition 3/3 livré (pas encore déployé).
+> Mergées le 2026-07-14 : #112 waitlist, #113 seed & claim, #114 serveur MCP (/mcp, FastMCP), #115 doc déclencheur d'adoption. #116-#119 (infra E2.1.Micro + chaîne LLM extract) en cours de merge le 2026-07-19.
 
 > _Quand cette section est vide, plus rien n'est en attente côté review humaine._
 
@@ -40,15 +47,16 @@ Avant cette phase, la **Phase 1 (MVP complet)** était terminée : jalons M1 (OA
 ## URLs production
 
 - **Frontend** : https://filum-eight.vercel.app
-- **Backend** : https://filum-production-07bb.up.railway.app — ❌ **DOWN, 404 "Application not found"** (vérifié 2026-07-11, cf. P0 ci-dessus)
-- **API docs** : https://filum-production-07bb.up.railway.app/api/v1/docs
+- **Backend** : https://philum-api.duckdns.org (GCP e2-micro + Caddy, cf. ADR-028)
+- **API docs** : https://philum-api.duckdns.org/api/v1/docs
 - **Fiche démo** : https://filum-eight.vercel.app/@example/memoire-et-cerveau
+- **Ancien backend Railway** : https://filum-production-07bb.up.railway.app — décommissionnable
 
 ---
 
 ## Stack effective
 
-**Backend** : Python 3.12 · FastAPI async · SQLAlchemy 2.x async · Alembic · PostgreSQL (Railway) · Crypto Ed25519 + AES-GCM + HS256 (PyJWT) · Pillow (OG images) · slowapi (rate limit) · pytest (~70 tests).
+**Backend** : Python 3.12 · FastAPI async · SQLAlchemy 2.x async · Alembic · PostgreSQL (Supabase, Session pooler 5432) · Crypto Ed25519 + AES-GCM + HS256 (PyJWT) · Pillow (OG images) · slowapi (rate limit) · pytest (~70 tests) · Hébergé sur GCP e2-micro (Docker Compose + Caddy TLS).
 
 **Frontend** : SvelteKit 2 · Svelte 5 (runes) · TypeScript · Tailwind · D3 v7 (graphe) · OGL (WebGL hero, lazy) · Vercel · pnpm 10 pinné · Logo Philum v1 (Pulsar-graph CB12 + Z13 palette).
 
@@ -66,23 +74,26 @@ Toutes les actions bumpées en juin 2026 (`pnpm v6`, `setup-python v6`, `checkou
 
 ---
 
-## Variables d'environnement (Railway production)
+## Variables d'environnement (production GCP)
+
+Fichier `~/filum/infra/oracle/.env` sur la VM (modèle : `infra/oracle/.env.example`) :
 
 ```
-database_url           = ${{Postgres.DATABASE_URL}}
+database_url           = postgresql://postgres.<ref>:<pwd>@aws-0-us-east-1.pooler.supabase.com:5432/postgres
 session_secret         = <openssl rand -hex 32>
 master_encryption_key  = <openssl rand -hex 32>
 frontend_base_url      = https://filum-eight.vercel.app
-backend_base_url       = https://filum-production-07bb.up.railway.app
-cors_origins           = ["https://filum-eight.vercel.app","http://localhost:5173"]
+backend_base_url       = https://philum-api.duckdns.org
+google_redirect_uri    = https://philum-api.duckdns.org/api/v1/auth/google/callback
+cors_origins           = ["https://filum-eight.vercel.app"]
 google_client_id       = <Google OAuth Client ID>
 google_client_secret   = <Google OAuth Client secret>
-debug                  = false
+API_DOMAIN             = philum-api.duckdns.org   # utilisée par Caddy (TLS)
 ```
 
-⚠️ **Toutes en lowercase** (ADR-010 — pydantic-settings `case_sensitive=True`).
+⚠️ **Toutes en lowercase** (ADR-010 — pydantic-settings `case_sensitive=True`), sauf `API_DOMAIN` (consommée par Caddy, pas par pydantic). ⚠️ Supabase : **Session pooler port 5432**, jamais le Transaction pooler 6543 (casse asyncpg).
 
-Vercel : `BACKEND_URL=https://filum-production-07bb.up.railway.app` (env var serverless, jamais exposée navigateur).
+Vercel : `BACKEND_URL=https://philum-api.duckdns.org` (env var serverless, jamais exposée navigateur).
 
 ---
 
@@ -92,7 +103,7 @@ Vercel : `BACKEND_URL=https://filum-production-07bb.up.railway.app` (env var ser
 |---|---|---|
 | `impact_factor` toujours `null` | Faible | OpenAlex retiré, pas de fallback. Soit rebrancher une source, soit retirer le champ UI. |
 | Test composant Svelte 5 incompat | Faible | À réécrire avec API testing-library compatible Svelte 5. |
-| Wayback queue durability | Moyenne | `asyncio.create_task` perdu au restart Railway. Cf. F5 dans `13-audit-2026-05-26-followups.md`. |
+| Wayback queue durability | Moyenne | `asyncio.create_task` perdu au restart du container backend. Cf. F5 dans `13-audit-2026-05-26-followups.md`. |
 | Pas de domaine custom | Feature | Brancher `philum.app` quand 1er ambassadeur prêt. |
 
 ---
@@ -100,6 +111,11 @@ Vercel : `BACKEND_URL=https://filum-production-07bb.up.railway.app` (env var ser
 ## Prochaines étapes (par ordre d'impact/coût)
 
 > Plan détaillé : [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md).
+
+**Immédiat** (post-migration GCP)
+- **Alerte budget 1 € sur GCP** (Billing → Budgets & alerts) si pas déjà en place — filet de sécurité, pas de plafond natif.
+- **Décommissionner Railway** après quelques jours de recul : supprimer le service + retirer l'ancienne redirect URI Railway du client OAuth Google.
+- **Redéployer la VM avec les PRs #116-#119 mergées** (`git pull` + `docker compose -f docker-compose.micro.yml up -d --build`) pour livrer la chaîne LLM extract en prod.
 
 **Court terme** (semaines)
 - **F1** — `openapi-typescript` (gen auto des types TS depuis OpenAPI, prévient drift back/front) — effort 3-4h.
@@ -130,6 +146,7 @@ Voir [`DECISIONS.md`](./DECISIONS.md) pour le détail. Les plus structurantes :
 - **ADR-024** : sandbox tunable → port prod
 - **ADR-025** : proxy SvelteKit pour OAuth cross-origin
 - **ADR-026** : topologie graphe (lune + Y-fork virtuel + perspective 3D)
+- **ADR-028** : hébergement GCP e2-micro always-free + Supabase (post-Railway)
 
 ---
 
@@ -166,7 +183,7 @@ wsl gh pr list
 3. Pour les items en attente : [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md).
 4. Pour les décisions techniques : [`DECISIONS.md`](./DECISIONS.md).
 5. Pour l'agent IA autonome multi-sessions : [`agent/README.md`](./agent/README.md).
-6. Vérifier l'état avec : `git log --oneline -10`, `wsl gh pr list`, `curl https://filum-production-07bb.up.railway.app/health`.
+6. Vérifier l'état avec : `git log --oneline -10`, `wsl gh pr list`, `curl https://philum-api.duckdns.org/health`.
 7. Choisir une tâche dans « Prochaines étapes » ci-dessus.
 8. Branche `feat/<sujet>` (jamais sur main), PR vers `main`, squash-merge **après validation humaine** explicite.
 
