@@ -6,6 +6,20 @@
 
 ---
 
+## [Unreleased] — Migration hébergement GCP + Supabase (2026-07-19)
+
+### Changed
+- **Hébergement backend** : Railway (DOWN depuis ~2026-07-11) → VM GCP e2-micro always-free us-central1, Docker Compose (`infra/oracle/docker-compose.micro.yml` : backend + Caddy auto-TLS), domaine `philum-api.duckdns.org` avec IP statique. Cf. ADR-028.
+- **Base de données** : Postgres Railway → Supabase free tier (Session pooler 5432). Base neuve : 10 migrations Alembic + seed démo, secrets régénérés (l'ancienne `master_encryption_key` Railway était un placeholder littéral).
+- **Vercel** : `BACKEND_URL` basculée vers `https://philum-api.duckdns.org` ; redirect URI DuckDNS ajoutée au client OAuth Google.
+- Vérifié end-to-end : `/health` HTTPS, fiche démo, login Google → dashboard.
+
+### Notes
+- Oracle Cloud abandonné pour l'instant : 525 tentatives de VM sur 4 jours, 100% « Out of capacity » (boucle retry laissée active).
+- Railway décommissionnable (gardé en secours quelques jours).
+
+---
+
 ## [Unreleased] — Philum v1 logo déployé site-wide (2026-06-02)
 
 ### Changed

@@ -6,6 +6,29 @@
 
 ---
 
+## ADR-028 — Migration hébergement : Railway → GCP e2-micro (always-free) + Supabase
+
+**Date :** 2026-07-19
+
+**Statut :** **Exécutée et vérifiée en production.**
+
+**Contexte :** Le backend Railway est DOWN depuis ~2026-07-11 (404 "Application not found", crédits épuisés). Deux pistes gratuites testées :
+- **Oracle Cloud Always Free** (cible ADR-022 alternative) : 525 tentatives de création de VM sur 4 jours (A1 ARM 2 shapes + E2.1.Micro x86, région Paris), 100% « Out of capacity ». Boucle de retry WSL laissée active pour une migration future éventuelle.
+- **GCP always-free** : e2-micro (1 vCPU partagé, 1 GB RAM) gratuite à vie **uniquement** en us-west1/us-central1/us-east1, avec 30 GB **Standard PD** (Balanced PD facturé) et 1 GB egress/mois.
+
+**Décision :** VM GCP e2-micro us-central1 (Ubuntu 24.04, Docker Compose : backend + Caddy auto-TLS) + **Supabase free tier** pour Postgres (la VM 1 GB ne peut pas héberger la base) + DuckDNS (`philum-api.duckdns.org`) + IP statique GCP. Frontend inchangé sur Vercel (`BACKEND_URL` basculée).
+
+**Points critiques :**
+- **Supabase : Session pooler port 5432 obligatoire** — le Transaction pooler (6543) casse les prepared statements asyncpg.
+- **Swap 2 GB requis** sur la VM avant tout build Docker (1 GB RAM insuffisant).
+- **Pas de plafond de facturation natif GCP** : alerte budget 1 € en filet de sécurité ; l'estimation console (~$7/mois) ignore le crédit free-tier, coût réel 0 €.
+- **Base repartie de zéro** (nouvelles migrations + seed) : la `master_encryption_key` Railway était un placeholder littéral, et seuls le compte développeur + un compte test existaient. Nouveaux secrets générés (`openssl rand -hex 32`).
+- Latence API ~120 ms (VM us-central1 ↔ Supabase us-east-1) vs ~50 ms espérés sur Oracle Paris — acceptable pour le MVP.
+
+**Conséquences :** Railway décommissionnable. ADR-022 (Infomaniak) reste le plan payant souverain si le free tier GCP/Supabase devient limitant. Fichiers d'infra : `infra/oracle/docker-compose.micro.yml` + `infra/oracle/.env.example` (PR #116).
+
+---
+
 ## ADR-027 — Serveur MCP in-process sur l'app FastAPI (plutôt que service séparé)
 
 **Date :** 2026-07-13
