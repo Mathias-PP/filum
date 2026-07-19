@@ -22,6 +22,11 @@
         'Extraction automatique des métadonnées (titre, auteurs, date)',
         'Authentification Google OAuth',
         'Pages publiques avec OpenGraph dynamique',
+        'Export PDF / Word / CSV / Excel / JSON / BibTeX / Obsidian',
+        'Import Zotero / BibTeX / Obsidian / PDF',
+        'Copier-coller de bibliographie pour auto-génération de fiches (IA)',
+        'Repérage automatique des citations dans les sources (IA)',
+        'API publique REST + serveur MCP en lecture',
       ],
     },
     {
@@ -29,10 +34,9 @@
       badge: 'En cours',
       status: 'current',
       items: [
-        'Copier-coller de bibliographie pour auto-génération de fiches',
-        'Import Zotero / BibTeX / Obsidian',
-        'Export PDF / CSV / Excel / JSON / BibTeX',
-        'Repérage automatique des citations dans les sources (IA)',
+        'Extension navigateur (ajout de source en un clic)',
+        'Revendication de fiches amorcées (seed cards)',
+        'Jetons d’API personnels pour les intégrations',
       ],
     },
     {
@@ -41,8 +45,6 @@
       status: 'future',
       items: [
         'Bibliographies collaboratives (édition à plusieurs)',
-        'Extension navigateur (ajout de source en un clic)',
-        'API publique REST + serveur MCP',
         'Score de qualité des références (variété, autorité, diversité)',
         'Plugin WordPress / Notion / Medium',
         'Philum Desktop (application de bureau)',
