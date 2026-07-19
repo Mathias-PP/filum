@@ -35,16 +35,55 @@ class ParseResult:
 _DOI_RE = re.compile(r"\b(10\.\d{4,9}/[^\s\"'<>{}]+)")
 _URL_RE = re.compile(r"https?://[^\s\"'<>)\]}]+")
 
+# Suffixes de chemin ajoutés par les éditeurs après un DOI dans leurs URLs
+# (Wiley /doi/full/10.1002/xxx, T&F /doi/pdf/10.1080/yyy, Frontiers /full,
+# PLOS /article, etc.). Utilisé pour normaliser le DOI extrait d'une URL.
+_DOI_PATH_SUFFIXES = re.compile(r"/(?:full|abstract|pdf|epdf|epub|meta|figures|references)$", re.I)
+
 
 def _doi_to_url(doi: str) -> str:
     return f"https://doi.org/{doi.rstrip('.,;')}"
+
+
+def _doi_from_url(url: str) -> str | None:
+    """Extract a bare DOI from any URL that embeds one.
+
+    Handles doi.org / dx.doi.org and DOIs in publisher URL paths
+    (Frontiers /articles/10.3389/…, Wiley /doi/10.1002/…, Springer
+    /article/10.1007/…). Returns lowercased DOI without trailing
+    publisher suffixes like ``/full`` or ``/pdf``.
+    """
+    patterns = [
+        r"(?:https?://)?(?:dx\.)?doi\.org/([^\s?#]+)",
+        r"/(10\.\d{4,9}/[^\s?#]+)",
+    ]
+    for p in patterns:
+        m = re.search(p, url, re.IGNORECASE)
+        if m:
+            doi = m.group(1).strip().rstrip(".,;)/")
+            doi = _DOI_PATH_SUFFIXES.sub("", doi)
+            return doi.lower()
+    return None
+
+
+def _dedupe_key(url: str) -> str:
+    """Canonical dedup key: DOI when embedded, else the normalized URL.
+
+    Collapses e.g. ``doi.org/10.3389/fpsyg.2018.01561`` and the Frontiers
+    canonical URL ``frontiersin.org/…/10.3389/fpsyg.2018.01561/full`` to
+    the same ref, since they resolve to the same article.
+    """
+    doi = _doi_from_url(url)
+    if doi:
+        return f"doi:{doi}"
+    return url.rstrip("/").lower()
 
 
 def _dedupe(refs: list[ImportedRef]) -> list[ImportedRef]:
     seen: set[str] = set()
     out: list[ImportedRef] = []
     for ref in refs:
-        key = ref.url.rstrip("/").lower()
+        key = _dedupe_key(ref.url)
         if key in seen:
             continue
         seen.add(key)
