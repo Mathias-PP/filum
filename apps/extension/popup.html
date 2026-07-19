@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <span class="brand">Philum</span>
+      <button id="settings-btn" title="Réglages" type="button">⚙</button>
+    </header>
+
+    <div id="state-loading" class="state">Chargement…</div>
+
+    <div id="state-logged-out" class="state hidden">
+      <p>Connectez-vous à Philum dans un onglet, puis rouvrez ce popup.</p>
+      <a id="login-link" href="#" target="_blank" rel="noopener">Ouvrir Philum</a>
+    </div>
+
+    <div id="state-error" class="state hidden">
+      <p id="error-message"></p>
+    </div>
+
+    <form id="state-form" class="hidden">
+      <div class="page-preview">
+        <div id="page-title" class="page-title"></div>
+        <div id="page-url" class="page-url"></div>
+      </div>
+
+      <label for="card-select">Fiche</label>
+      <select id="card-select" required></select>
+
+      <label for="title-input">Titre de la source</label>
+      <input id="title-input" type="text" maxlength="500" />
+
+      <label for="authors-input">Auteur·ice·s</label>
+      <input id="authors-input" type="text" maxlength="500" />
+
+      <div class="row">
+        <div>
+          <label for="category-select">Catégorie</label>
+          <select id="category-select"></select>
+        </div>
+        <div>
+          <label for="format-select">Format</label>
+          <select id="format-select"></select>
+        </div>
+      </div>
+
+      <label for="author-kind-select">Type d'auteur</label>
+      <select id="author-kind-select"></select>
+
+      <label for="annotation-input">Annotation (optionnelle)</label>
+      <textarea id="annotation-input" maxlength="500" rows="2"></textarea>
+
+      <button id="submit-btn" type="submit">Ajouter la source</button>
+      <div id="form-feedback" class="feedback hidden"></div>
+    </form>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
