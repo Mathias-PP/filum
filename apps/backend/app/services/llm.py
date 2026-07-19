@@ -84,6 +84,92 @@ def parse_metadata_content(content: str) -> LlmSourceMetadata | None:
             return None
 
 
+class LlmBiblioRef(BaseModel):
+    """Une référence extraite d'une bibliographie collée en texte libre."""
+
+    title: str | None = None
+    authors: str | None = None
+    year: int | None = None
+    url: str | None = None
+    doi: str | None = None
+    category: SourceCategory | None = None
+
+
+class LlmBiblioRefs(BaseModel):
+    references: list[LlmBiblioRef] = []
+
+
+_BIBLIO_SYSTEM_PROMPT = (
+    "Tu analyses une bibliographie collée en texte libre (références APA, MLA, "
+    "liste à puces, notes en vrac…) et tu en extrais chaque référence. Réponds "
+    "UNIQUEMENT avec le JSON demandé. Règles strictes : n'invente jamais une "
+    "information absente du texte (mets null) ; recopie url et doi exactement "
+    "tels qu'ils apparaissent, sans en fabriquer ; authors = noms séparés par "
+    "des virgules ; category uniquement parmi les valeurs autorisées du schéma, "
+    "null en cas de doute."
+)
+
+
+def parse_biblio_content(content: str) -> list[LlmBiblioRef] | None:
+    """Parse et valide le JSON de l'alias `biblio-parse`. None si invalide."""
+    try:
+        return LlmBiblioRefs.model_validate_json(content).references
+    except ValidationError:
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError:
+            return None
+        if not isinstance(data, dict) or not isinstance(data.get("references"), list):
+            return None
+        # Une catégorie hors taxonomie ne doit pas jeter toute la liste.
+        for ref in data["references"]:
+            if isinstance(ref, dict):
+                ref.pop("category", None)
+        try:
+            return LlmBiblioRefs.model_validate(data).references
+        except ValidationError:
+            return None
+
+
+async def parse_bibliography(text: str) -> list[LlmBiblioRef] | None:
+    """Extrait les références via l'alias `biblio-parse`. Never raises.
+
+    Retourne None si la couche LLM est désactivée ou en cas d'erreur —
+    l'appelant garde le résultat du parsing déterministe.
+    """
+    settings = get_settings()
+    if not settings.litellm_base_url:
+        return None
+
+    payload = {
+        "model": "biblio-parse",
+        "messages": [
+            {"role": "system", "content": _BIBLIO_SYSTEM_PROMPT},
+            {"role": "user", "content": text[:_MAX_INPUT_CHARS]},
+        ],
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {"name": "biblio_refs", "schema": LlmBiblioRefs.model_json_schema()},
+        },
+        "temperature": 0,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+            r = await client.post(
+                f"{settings.litellm_base_url.rstrip('/')}/v1/chat/completions",
+                json=payload,
+                headers={"Authorization": f"Bearer {settings.litellm_master_key}"},
+            )
+        if r.status_code != 200:
+            logger.warning("LLM biblio-parse HTTP %s: %s", r.status_code, r.text[:200])
+            return None
+        content = r.json()["choices"][0]["message"]["content"]
+        return parse_biblio_content(content)
+    except Exception as e:
+        logger.warning("LLM biblio-parse failed: %s", e)
+        return None
+
+
 async def extract_metadata(page_text: str, url: str) -> LlmSourceMetadata | None:
     """Extrait les métadonnées via l'alias `metadata-extract`. Never raises.
 
