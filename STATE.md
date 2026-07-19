@@ -25,7 +25,7 @@ Infra : VM GCP e2-micro us-central1 always-free (Ubuntu 24.04, swap 2 GB, Docker
 
 Livré (mergé ou en PR, cf. tableau) : exports multi-formats (JSON/CSV/BibTeX/Markdown/xlsx/**docx**), imports (BibTeX/CSL-JSON/Markdown/PDF + biblio collée via LLM + multi-liens), citations IA vérifiées verbatim, extraction métadonnées durcie (DOI éditeurs + **PII ScienceDirect via Crossref**), fix session 7 jours (P0 « fiches disparues » = illusion causée par expiration 24h + 401 silencieux du dashboard — **aucune donnée perdue**, vérifié en prod), durcissement sécurité MCP, extension navigateur MV3 (`apps/extension/`), page `/developers` (docs API + MCP).
 
-⚠️ **La VM GCP n'a pas été redéployée depuis ces merges** : exports, session 7j, extraction PII et MCP durci ne seront effectifs en prod qu'après `git pull` + `docker compose up -d --build` sur la VM (manuel).
+✅ **VM GCP redéployée le 2026-07-19** sur `main` (la VM était restée sur la branche `infra/oracle-micro` — piège : toujours vérifier `git branch` avant un pull). Vérifié en prod : exports json/docx/xlsx/bibtex → 200, MCP handshake OK sur `/mcp/`, health OK.
 
 Avant : Phase 2 (identité visuelle Pulsar-graph + audit) et Phase 1 (MVP complet, flow login → création → signature → attestation → publication).
 
@@ -110,8 +110,7 @@ Vercel : `BACKEND_URL=https://philum-api.duckdns.org` (env var serverless, jamai
 > **Roadmap consolidée et priorisée** : [`.docs/19-roadmap-2026-07.md`](./.docs/19-roadmap-2026-07.md). Plan d'audit détaillé : [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md). Comptes plateformes liés : [`.docs/18-linked-accounts.md`](./.docs/18-linked-accounts.md).
 
 **Immédiat** (post-merges du 2026-07-19)
-- **P0 — Redéployer la VM GCP** (`git pull` + `docker compose -f docker-compose.micro.yml up -d --build`) : exports (le « seul PDF marche » venait de là — l'endpoint /export renvoie 404 en prod), session 7j, extraction PII, MCP durci.
-- **Merger #135 avant #136**, puis retarget la base de #136 sur main (piège des PRs empilées).
+- ~~P0 — Redéployer la VM GCP~~ ✅ fait le 2026-07-19 (VM basculée de `infra/oracle-micro` sur `main`, exports + MCP vérifiés en prod).
 - **Alerte budget 1 € sur GCP** (Billing → Budgets & alerts) si pas déjà en place — filet de sécurité, pas de plafond natif.
 - **Décommissionner Railway** : supprimer le service + retirer l'ancienne redirect URI Railway du client OAuth Google.
 
