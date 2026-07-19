@@ -565,6 +565,53 @@
         col = mix(col, lit, sh.a * mask * (1.0 - occlude));
       }
 
+      // -- CONNEXIONS PASSE 3 : portions de lignes DEVANT un nœud ancre ------
+      // Cas moon dont l'ancre est un autre nœud (pas le pulsar, pas le trunk
+      // virtuel). Même logique que la passe 2 mais avec la sphère ancre
+      // comme occluder. Détection ancre=nœud : ancR > 0 ET position ancre
+      // suffisamment loin du pulsar (les nœuds orbitent à ≥ ~0.3 du pulsar,
+      // seuil 0.05 largement sûr).
+      for (int i = 0; i < 8; i++) {
+        float active = step(float(i) + 0.5, float(uNodeCount));
+        if (active < 0.5) continue;
+        vec4 n = uNodes[i];
+        vec3 anc3 = uAnchors[i].xyz;
+        vec2 anc = anc3.xy;
+        float ancZ = anc3.z;
+        float ancR = uAnchors[i].w;
+        vec2 ancToCore = anc - coreC;
+        // Skip si ancre = pulsar OU ancre = trunk virtuel (ancR ~ 0).
+        if (ancR < 0.001) continue;
+        if (dot(ancToCore, ancToCore) < 0.0025) continue;
+        vec2 dAnc = uv - anc;
+        float dAnc2 = dot(dAnc, dAnc);
+        float ancR2 = ancR * ancR;
+        if (dAnc2 >= ancR2) continue;
+        float anchorFrontZ = ancZ + sqrt(ancR2 - dAnc2);
+        vec2 d = anc - n.xy;
+        float lineLen = max(length(d), 0.001);
+        vec2 dir = d / lineLen;
+        vec2 rel = uv - n.xy;
+        float along = dot(rel, dir);
+        float across = length(rel - dir * along);
+        float onSeg = step(n.w * 1.02, along) * step(along, lineLen);
+        if (onSeg < 0.5) continue;
+        float tParam = clamp(along / lineLen, 0.0, 1.0);
+        float lineZ = mix(n.z, ancZ, tParam);
+        float frontMix = smoothstep(0.0, ancR * 0.22, lineZ - anchorFrontZ);
+        if (frontMix <= 0.001) continue;
+        float aaL = uAaPixel.x * 1.1;
+        float lineMaskL = (1.0 - smoothstep(0.0022 - aaL, 0.0022 + aaL, across)) * onSeg;
+        float tNormL = along / lineLen;
+        float endTaperL = smoothstep(0.0, 0.08, tNormL) * (1.0 - smoothstep(0.85, 1.0, tNormL));
+        float lineHazeL = exp(-across * 220.0) * onSeg * 0.35 * endTaperL;
+        float depthFadeL = 0.55 + 0.45 * clamp(n.z / 0.35 + 0.5, 0.0, 1.0);
+        vec3 lineColorL = mix(uNodeColors[i], vec3(1.0), 0.15);
+        vec3 overColL = lineColorL * (0.55 + 0.65 * depthFadeL);
+        col = mix(col, overColL, lineMaskL * frontMix * 0.85);
+        col += lineColorL * lineHazeL * 0.5 * depthFadeL * frontMix;
+      }
+
       // -- Bloom + tonemap + edge alpha (transparent at the edges) -----------
       vec3 bloomBoost = pow(max(col - 0.78, 0.0), vec3(1.7)) * uBloom * 0.30;
       col += bloomBoost;
