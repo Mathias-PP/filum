@@ -9,8 +9,12 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from limits import parse
+from limits.storage import MemoryStorage
+from limits.strategies import MovingWindowRateLimiter
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from app.api.v1 import create_router
 from app.core.config import get_settings
@@ -45,6 +49,29 @@ app = FastAPI(
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
+
+
+_mcp_rate_storage = MemoryStorage()
+_mcp_rate_strategy = MovingWindowRateLimiter(_mcp_rate_storage)
+_mcp_rate_limit = parse("60/minute")
+
+
+@app.middleware("http")
+async def mcp_rate_limit(request: Request, call_next):
+    if request.url.path.startswith("/mcp"):
+        client_ip = get_remote_address(request)
+        if not _mcp_rate_strategy.hit(_mcp_rate_limit, client_ip, "mcp"):
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "error": {
+                        "code": "rate_limit_exceeded",
+                        "message": "Too many requests to /mcp. Limit: 60/minute per IP.",
+                    }
+                },
+                headers={"Retry-After": "60"},
+            )
+    return await call_next(request)
 
 
 @app.middleware("http")
