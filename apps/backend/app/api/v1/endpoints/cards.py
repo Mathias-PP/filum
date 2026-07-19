@@ -210,6 +210,21 @@ async def publish_card(
         )
 
 
+@router.post("/cards/{card_id}/restore", response_model=CardResponse)
+async def restore_card(
+    card_id: UUID,
+    current_user: User = Depends(get_current_user),
+    card_service: CardService = Depends(get_card_service),
+):
+    card = await card_service.restore_card(card_id, current_user.id)
+    if not card:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": "Card not found or not deleted"},
+        )
+    return card
+
+
 @router.delete("/cards/{card_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_card(
     card_id: UUID,
