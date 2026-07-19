@@ -1,0 +1,77 @@
+# Routeur LLM Philum — LiteLLM proxy.
+# Spec complète : .docs/17-llm-strategy.md
+#
+# Chaque `model_name` est un ALIAS DE TÂCHE. Le backend n'appelle que ces
+# alias ; les entrées partageant le même alias forment un pool de fallback
+# (429/panne → provider suivant). Politique de sensibilité :
+#   - metadata-extract, web-search, wayback-match : contenu web PUBLIC
+#     uniquement → tous providers autorisés (y compris Zhipu en dernier recours).
+#   - graph-build, fact-signals : contenu de fiche pré-publication / réputation
+#     → providers EU/US uniquement. NE JAMAIS y ajouter Zhipu direct.
+
+model_list:
+  # ── metadata-extract : URL → titre/auteurs/date/description ──────────
+  - model_name: metadata-extract
+    litellm_params:
+      model: gemini/gemini-3-flash
+      api_key: os.environ/GEMINI_API_KEY
+  - model_name: metadata-extract
+    litellm_params:
+      model: mistral/mistral-small-latest
+      api_key: os.environ/MISTRAL_API_KEY
+  - model_name: metadata-extract
+    litellm_params:
+      model: groq/llama-3.3-70b-versatile
+      api_key: os.environ/GROQ_API_KEY
+
+  # ── web-search : retrouver auteurs/créateurs/contenus ────────────────
+  - model_name: web-search
+    litellm_params:
+      model: gemini/gemini-3-flash
+      api_key: os.environ/GEMINI_API_KEY
+
+  # ── wayback-match : "ce snapshot correspond-il ?" (entrées courtes) ──
+  - model_name: wayback-match
+    litellm_params:
+      model: groq/llama-3.3-70b-versatile
+      api_key: os.environ/GROQ_API_KEY
+  - model_name: wayback-match
+    litellm_params:
+      model: cerebras/llama-3.3-70b
+      api_key: os.environ/CEREBRAS_API_KEY
+  - model_name: wayback-match
+    litellm_params:
+      model: mistral/mistral-small-latest
+      api_key: os.environ/MISTRAL_API_KEY
+
+  # ── graph-build : taxonomie ADR-020 + liens (EU/US uniquement) ───────
+  - model_name: graph-build
+    litellm_params:
+      model: mistral/mistral-small-latest
+      api_key: os.environ/MISTRAL_API_KEY
+  - model_name: graph-build
+    litellm_params:
+      model: gemini/gemini-3-flash
+      api_key: os.environ/GEMINI_API_KEY
+
+  # ── fact-signals : signaux de véracité (EU/US uniquement, post-MVP) ──
+  - model_name: fact-signals
+    litellm_params:
+      model: gemini/gemini-3-flash
+      api_key: os.environ/GEMINI_API_KEY
+  - model_name: fact-signals
+    litellm_params:
+      model: mistral/mistral-large-latest
+      api_key: os.environ/MISTRAL_API_KEY
+
+router_settings:
+  routing_strategy: simple-shuffle
+  num_retries: 2
+  timeout: 45
+
+litellm_settings:
+  drop_params: true
+  set_verbose: false
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
