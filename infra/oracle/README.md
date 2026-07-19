@@ -1,5 +1,7 @@
 # Déploiement backend sur Oracle Cloud Always Free
 
+> **⚠️ État réel (2026-07-19, ADR-028)** : Oracle n'a jamais fourni de VM (« Out of capacity » chronique, cf. `../oracle-vm-retry.md`). La stack de ce dossier (`docker-compose.micro.yml` + Caddy + `.env.example`) est **agnostique du provider** et tourne actuellement en production sur une **VM GCP e2-micro always-free** (us-central1, Ubuntu 24.04, swap 2 GB) + Supabase + DuckDNS. Les étapes 4 à 8 de ce guide restent valables telles quelles sur GCP ; seules les étapes 1-3 (création de la VM Oracle) sont remplacées par la création d'une e2-micro GCP (30 GB **Standard PD** obligatoire, région US only). Le dossier garde son nom pour ne pas casser le chemin `~/filum/infra/oracle/.env` sur la VM déployée.
+
 Guide complet : VM gratuite **à vie** (pas un trial), Docker Compose (FastAPI + Caddy TLS), domaine gratuit DuckDNS. Le frontend reste sur Vercel ; grâce au proxy SvelteKit (ADR-025), **la config Google OAuth ne change pas** — seul `BACKEND_URL` sur Vercel change.
 
 Deux variantes selon la VM obtenue :
