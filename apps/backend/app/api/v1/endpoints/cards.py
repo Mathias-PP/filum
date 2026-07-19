@@ -289,6 +289,10 @@ _EXPORT_FORMATS = {
     ),
     "bibtex": ("application/x-bibtex; charset=utf-8", "bib"),
     "markdown": ("text/markdown; charset=utf-8", "md"),
+    "docx": (
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "docx",
+    ),
 }
 
 
@@ -329,6 +333,8 @@ async def export_public_card(
         content = export_service.export_xlsx(card)
     elif format == "bibtex":
         content = export_service.export_bibtex(card)
+    elif format == "docx":
+        content = export_service.export_docx(card, public_url)
     else:
         content = export_service.export_markdown(card, public_url)
 

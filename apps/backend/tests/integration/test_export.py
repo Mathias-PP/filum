@@ -146,10 +146,28 @@ async def test_export_xlsx_is_valid_zip(client, published_card, test_user):
 
 
 @pytest.mark.asyncio
-async def test_export_unknown_format_422(client, published_card, test_user):
+async def test_export_docx_is_valid_zip(client, published_card, test_user):
     resp = await client.get(
         f"/api/v1/@{test_user.username}/{published_card.slug}/export",
         params={"format": "docx"},
+    )
+    assert resp.status_code == 200
+    assert resp.headers["content-disposition"].endswith('.docx"')
+    with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
+        names = zf.namelist()
+        assert "[Content_Types].xml" in names
+        assert "word/document.xml" in names
+        doc = zf.read("word/document.xml").decode("utf-8")
+        assert "Titre {avec} accolades" in doc
+        assert "(source pivot)" in doc
+        assert "https://example.org/video" in doc
+
+
+@pytest.mark.asyncio
+async def test_export_unknown_format_422(client, published_card, test_user):
+    resp = await client.get(
+        f"/api/v1/@{test_user.username}/{published_card.slug}/export",
+        params={"format": "odt"},
     )
     assert resp.status_code == 422
 
