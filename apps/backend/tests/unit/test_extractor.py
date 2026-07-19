@@ -20,6 +20,7 @@ import pytest
 from app.extractors.url_extractor import (
     ExtractedMetadata,
     _extract_doi,
+    _extract_pii,
     _parse_jsonld_metadata,
     clean_title,
     extract,
@@ -102,6 +103,44 @@ class TestExtractDoi:
 
     def test_strips_query_and_fragment(self):
         assert _extract_doi("https://doi.org/10.1/x?ref=y#sec") == "10.1/x"
+
+    def test_publisher_path_doi_springer(self):
+        assert _extract_doi("https://link.springer.com/article/10.1007/s11229-020-02724-x") == (
+            "10.1007/s11229-020-02724-x"
+        )
+
+    def test_publisher_path_doi_wiley_full(self):
+        assert _extract_doi("https://onlinelibrary.wiley.com/doi/full/10.1002/hipo.22488") == (
+            "10.1002/hipo.22488"
+        )
+
+    def test_publisher_path_doi_strips_trailing_segment(self):
+        assert _extract_doi(
+            "https://onlinelibrary.wiley.com/doi/10.1111/j.1467-8624.2010.01564.x/abstract"
+        ) == ("10.1111/j.1467-8624.2010.01564.x")
+
+
+class TestExtractPii:
+    def test_sciencedirect_abs_url(self):
+        assert (
+            _extract_pii("https://www.sciencedirect.com/science/article/abs/pii/S0165032717310960")
+            == "S0165032717310960"
+        )
+
+    def test_linkinghub_elsevier(self):
+        assert (
+            _extract_pii("https://linkinghub.elsevier.com/retrieve/pii/S0165032717310960")
+            == "S0165032717310960"
+        )
+
+    def test_check_digit_x(self):
+        assert (
+            _extract_pii("https://www.sciencedirect.com/science/article/pii/S089662730800123X")
+            == "S089662730800123X"
+        )
+
+    def test_non_elsevier_host_returns_none(self):
+        assert _extract_pii("https://example.com/pii/S0165032717310960") is None
 
 
 # ---------------------------------------------------------------------------
@@ -278,7 +317,7 @@ class _FakeAsyncClient:
         self._raise = raise_exc
         self.last_url: str | None = None
 
-    async def __aenter__(self) -> "_FakeAsyncClient":
+    async def __aenter__(self) -> _FakeAsyncClient:
         return self
 
     async def __aexit__(self, *_exc) -> None:
@@ -333,6 +372,41 @@ async def test_extract_doi_returns_crossref_metadata(monkeypatch):
     # JATS-style XML tags must be stripped from the abstract
     assert result.description is not None
     assert "<" not in result.description and ">" not in result.description
+
+
+CROSSREF_PII_PAYLOAD = {
+    "message": {
+        "items": [
+            {
+                "title": ["Cognitive bias modification: A review of meta-analyses"],
+                "author": [
+                    {"family": "Jones", "given": "Emma B."},
+                    {"family": "Sharpe", "given": "Louise"},
+                ],
+                "published-print": {"date-parts": [[2017, 12]]},
+                "is-referenced-by-count": 200,
+            }
+        ]
+    }
+}
+
+
+@pytest.mark.asyncio
+async def test_extract_sciencedirect_pii_via_crossref(monkeypatch):
+    """URL ScienceDirect sans DOI : le PII doit être résolu via Crossref."""
+    fake = _FakeAsyncClient(response=_FakeResponse(200, json_body=CROSSREF_PII_PAYLOAD))
+    _patch_async_client(monkeypatch, fake)
+
+    result = await extract(
+        "https://www.sciencedirect.com/science/article/abs/pii/S0165032717310960"
+    )
+
+    assert fake.last_url is not None
+    assert "alternative-id:S0165032717310960" in fake.last_url
+    assert result.title == "Cognitive bias modification: A review of meta-analyses"
+    assert "Jones" in (result.authors or "")
+    assert result.published_at == "2017-12-01"
+    assert result.category == "article-scientifique"
 
 
 # ---------------------------------------------------------------------------
