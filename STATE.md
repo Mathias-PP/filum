@@ -21,27 +21,31 @@ Infra : VM GCP e2-micro us-central1 always-free (Ubuntu 24.04, swap 2 GB, Docker
 
 ## Phase courante
 
-**Phase 2 — Identité visuelle Philum v1 + corrections audit (juin 2026).**
+**Phase 3 — Features d'adoption (juillet 2026) : imports/exports, IA, extension, API.**
 
-- Logo refondu vers Pulsar-graph (CB12 + Z13 + stroke fond V18) déployé site-wide (PR #91 mergée).
-- Customizer de logo `/sandbox/customize` livré : 4 sous-sandboxes, drag, palettes, saves localStorage, export SVG.
-- Audit improvements appliqués : email leak fixé, CVE `python-jose` → `pyjwt`, déprécations `datetime.utcnow()` corrigées (PR #92 mergée).
-- CI infra alignée : `pnpm/action-setup@v6`, `actions/setup-python@v6`, `actions/checkout@v6` (PR #93 mergée).
+Livré (mergé ou en PR, cf. tableau) : exports multi-formats (JSON/CSV/BibTeX/Markdown/xlsx/**docx**), imports (BibTeX/CSL-JSON/Markdown/PDF + biblio collée via LLM + multi-liens), citations IA vérifiées verbatim, extraction métadonnées durcie (DOI éditeurs + **PII ScienceDirect via Crossref**), fix session 7 jours (P0 « fiches disparues » = illusion causée par expiration 24h + 401 silencieux du dashboard — **aucune donnée perdue**, vérifié en prod), durcissement sécurité MCP, extension navigateur MV3 (`apps/extension/`), page `/developers` (docs API + MCP).
 
-Avant cette phase, la **Phase 1 (MVP complet)** était terminée : jalons M1 (OAuth Google) + M2 (auth guard + extracteur URL) + M3 (rate limit, logs, backup) + Axe C (refonte attestation post-ADR-019) tous livrés. Flow end-to-end opérationnel : login → création → signature → attestation → publication.
+⚠️ **La VM GCP n'a pas été redéployée depuis ces merges** : exports, session 7j, extraction PII et MCP durci ne seront effectifs en prod qu'après `git pull` + `docker compose up -d --build` sur la VM (manuel).
+
+Avant : Phase 2 (identité visuelle Pulsar-graph + audit) et Phase 1 (MVP complet, flow login → création → signature → attestation → publication).
 
 ---
 
 ## PRs ouvertes
 
-| # | Branche | État CI | Sujet |
+| # | Branche | Base | Sujet |
 |---|---|---|---|
-| #121 | `fix/title-site-suffix` | à vérifier | Garde-fous titre (retire « Frontiers \| » etc.) |
-| #122 | `feat/multi-link-paste` | à vérifier | Mode multi-liens (coller plusieurs URLs, brouillons pré-remplis) |
-| #123 | `feat/graph-color-modes` | à vérifier | Sélecteur Auteur/Format/Catégorie sur le graphe |
-| — | `docs/linked-accounts-roadmap` | à vérifier | Exploration comptes liés + roadmap consolidée |
+| #135 | `feat/import-files` | main | Imports fichiers + multi-liens + biblio collée (livre le contenu échoué des PRs empilées #133/#134) |
+| #136 | `feat/excerpts-ai` | ⚠️ `feat/import-files` | Citations IA — **merger #135 d'abord puis rebaser la base sur main** |
+| #137 | `fix/session-loss` | main | Session 7 jours + dashboard 401 explicite (fix du P0 « fiches disparues ») |
+| #138 | `feat/docx-export` | main | Export Word (.docx) |
+| #139 | `fix/metadata-doi-pii` | main | Métadonnées ScienceDirect (PII→Crossref) + DOI éditeurs |
+| #140 | `chore/deps-security` | main | Patch 4 vulnérabilités Dependabot frontend |
+| #141 | `fix/mcp-hardening` | main | Sécurité MCP : fuite sources de brouillons + wildcards LIKE |
+| #142 | `feat/browser-extension` | main | Extension navigateur MV3 (ajout source en un clic) |
+| #143 | `feat/api-docs` | main | Page `/developers` : docs API publique + MCP |
 
-> Mergées le 2026-07-19 : #116-#119 (infra GCP micro + chaîne LLM extract), #120 (docs migration GCP). Avant : #112 waitlist, #113 seed & claim, #114 serveur MCP, #115 déclencheur d'adoption.
+> Mergées le 2026-07-19 : #121-#134 (exports, imports, citations IA, graph colors, etc.). Avant : #116-#120 (infra GCP + LLM extract), #112-#115 (waitlist, seed & claim, MCP, adoption).
 
 > _Quand cette section est vide, plus rien n'est en attente côté review humaine._
 
@@ -115,10 +119,11 @@ Vercel : `BACKEND_URL=https://philum-api.duckdns.org` (env var serverless, jamai
 
 > **Roadmap consolidée et priorisée** : [`.docs/19-roadmap-2026-07.md`](./.docs/19-roadmap-2026-07.md). Plan d'audit détaillé : [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md). Comptes plateformes liés : [`.docs/18-linked-accounts.md`](./.docs/18-linked-accounts.md).
 
-**Immédiat** (post-migration GCP)
+**Immédiat** (post-merges du 2026-07-19)
+- **P0 — Redéployer la VM GCP** (`git pull` + `docker compose -f docker-compose.micro.yml up -d --build`) : exports (le « seul PDF marche » venait de là — l'endpoint /export renvoie 404 en prod), session 7j, extraction PII, MCP durci.
+- **Merger #135 avant #136**, puis retarget la base de #136 sur main (piège des PRs empilées).
 - **Alerte budget 1 € sur GCP** (Billing → Budgets & alerts) si pas déjà en place — filet de sécurité, pas de plafond natif.
-- **Décommissionner Railway** après quelques jours de recul : supprimer le service + retirer l'ancienne redirect URI Railway du client OAuth Google.
-- **Redéployer la VM avec les PRs #116-#119 mergées** (`git pull` + `docker compose -f docker-compose.micro.yml up -d --build`) pour livrer la chaîne LLM extract en prod.
+- **Décommissionner Railway** : supprimer le service + retirer l'ancienne redirect URI Railway du client OAuth Google.
 
 **Court terme** (semaines)
 - **F1** — `openapi-typescript` (gen auto des types TS depuis OpenAPI, prévient drift back/front) — effort 3-4h.

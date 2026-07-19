@@ -1,34 +1,37 @@
 <script lang="ts">
   import { reveal } from '$lib/actions/reveal';
 
-  const upcoming = [
+  const shipped = [
     {
       title: 'Copier-coller de bibliographie',
       desc: 'Collez votre bibliographie existante (depuis un article, YouTube, votre site) et Philum génère automatiquement une fiche avec les sources pré-remplies.',
     },
     {
       title: 'Citations intelligentes',
-      desc: "L'IA identifie l'emplacement exact de chaque citation dans le document source, pour y accéder en un clic.",
+      desc: "L'IA repère des citations vérifiées mot pour mot dans le document source, avec leur emplacement exact.",
     },
     {
       title: 'Import Zotero / Obsidian',
-      desc: "Importez vos collections depuis Zotero, Obsidian, BibTeX et d'autres gestionnaires de références.",
+      desc: 'Importez vos collections depuis Zotero (BibTeX, CSL-JSON), Obsidian (Markdown) ou un PDF.',
     },
     {
-      title: 'Bibliographies collaboratives',
-      desc: 'Créez et éditez une fiche à plusieurs, avec contrôle de version et historique des modifications.',
+      title: 'Export multi-formats',
+      desc: 'Exportez vos fiches en PDF, Word, CSV, Excel, JSON, BibTeX ou Markdown pour Obsidian.',
     },
     {
-      title: 'Export PDF / CSV / Excel',
-      desc: 'Exportez vos fiches dans tous les formats : PDF, CSV, Excel, JSON, BibTeX, CSL-JSON.',
+      title: 'API publique + MCP',
+      desc: 'Intégrez Philum dans vos outils : API REST publique et serveur MCP pour les agents IA.',
     },
+  ];
+
+  const upcoming = [
     {
       title: 'Extension navigateur',
       desc: 'Ajoutez une source en un clic depuis votre navigateur, sans quitter la page que vous consultez.',
     },
     {
-      title: 'API publique',
-      desc: 'Intégrez Philum dans vos outils : API REST publique et serveur MCP pour les agents IA.',
+      title: 'Bibliographies collaboratives',
+      desc: 'Créez et éditez une fiche à plusieurs, avec contrôle de version et historique des modifications.',
     },
     {
       title: 'Philum Desktop',
@@ -184,6 +187,27 @@
         raisonnement. Elle apparaît en évidence dans le graphe.
       </p>
     </div>
+  </div>
+
+  <h2 id="recent" class="text-2xl font-semibold text-ink-primary mb-6" use:reveal>
+    Arrivées récemment
+  </h2>
+  <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+    {#each shipped as feature, i (feature.title)}
+      <div
+        class="relative bg-surface-secondary rounded-xl p-6 border border-border hover-lift"
+        use:reveal
+        style="transition-delay: {(i % 3) * 60}ms"
+      >
+        <span
+          class="absolute top-4 right-4 text-[0.65rem] font-semibold uppercase tracking-wider text-success bg-success-bg px-2 py-0.5 rounded-full"
+        >
+          Disponible
+        </span>
+        <h3 class="text-lg font-semibold text-ink-primary mb-2 pr-16">{feature.title}</h3>
+        <p class="text-ink-secondary text-sm">{feature.desc}</p>
+      </div>
+    {/each}
   </div>
 
   <h2 id="a-venir" class="text-2xl font-semibold text-ink-primary mb-6" use:reveal>
