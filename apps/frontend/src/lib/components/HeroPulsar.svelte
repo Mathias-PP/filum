@@ -567,14 +567,11 @@
 
       // -- CONNEXIONS PASSE 3 : portions de lignes DEVANT un nœud ancre ------
       // Cas moon dont l'ancre est un autre nœud (pas le pulsar, pas le trunk
-      // virtuel). Contrairement à la passe 2 (pulsar), on ne peut PAS tester
-      // lineZ vs anchorFrontZ à chaque pixel : l'amplitude z de l'orbite
-      // locale de la moon est ~= au rayon du parent, donc la ligne n'est
-      // jamais franchement devant la face avant du parent quand elle
-      // traverse le disque. On utilise à la place un critère global :
-      // "la moon est devant le parent" ⇔ n.z > ancZ. Transition adoucie
-      // sur ancR pour éviter un pop au moment où la moon franchit le plan
-      // z du parent.
+      // virtuel). Même logique que la passe 2 (pulsar) : test 3D pixel-par-
+      // pixel lineZ vs anchorFrontZ → émergence progressive depuis le bord
+      // du disque parent, comme la ligne noeud→pulsar émerge du bord du
+      // pulsar quand le noeud passe devant. Requiert que la moon ait une
+      // amplitude z > radius parent (assuré côté JS : mz = localOrbitR * 0.9).
       for (int i = 0; i < 8; i++) {
         float active = step(float(i) + 0.5, float(uNodeCount));
         if (active < 0.5) continue;
@@ -587,25 +584,28 @@
         if (ancR < 0.001) continue;
         vec2 ancToCore = anc - coreC;
         if (dot(ancToCore, ancToCore) < 0.0025) continue;
-        // Ligne concernée uniquement à l'intérieur du disque du parent.
+        // Pixel dans le disque 2D du parent ?
         vec2 dAnc = uv - anc;
         float dAnc2 = dot(dAnc, dAnc);
         float ancR2 = ancR * ancR;
         if (dAnc2 >= ancR2) continue;
-        // Critère global : le nœud (moon) est-il devant son parent ?
-        float depthAdvance = n.z - ancZ;
-        float frontMix = smoothstep(0.0, ancR * 0.5, depthAdvance);
-        if (frontMix <= 0.001) continue;
+        // Face avant de la sphère parent à ce pixel.
+        float anchorFrontZ = ancZ + sqrt(ancR2 - dAnc2);
         vec2 d = anc - n.xy;
         float lineLen = max(length(d), 0.001);
         vec2 dir = d / lineLen;
         vec2 rel = uv - n.xy;
         float along = dot(rel, dir);
         float across = length(rel - dir * along);
-        // Segment étendu jusqu'au centre de l'ancre pour couvrir tout le
-        // disque parent (le clip 2D dAnc2 < ancR2 est déjà en place).
         float onSeg = step(n.w * 1.02, along) * step(along, lineLen);
         if (onSeg < 0.5) continue;
+        float tParam = clamp(along / lineLen, 0.0, 1.0);
+        float lineZ = mix(n.z, ancZ, tParam);
+        // Transition douce sur ancR * 0.35 : chaque pixel décide indépen-
+        // damment, la ligne "émerge" naturellement depuis le bord du disque
+        // et disparaît vers le centre (occultée par la face avant du parent).
+        float frontMix = smoothstep(0.0, ancR * 0.35, lineZ - anchorFrontZ);
+        if (frontMix <= 0.001) continue;
         float aaL = uAaPixel.x * 1.1;
         float lineMaskL = (1.0 - smoothstep(0.0022 - aaL, 0.0022 + aaL, across)) * onSeg;
         float tNormL = along / lineLen;
@@ -956,7 +956,12 @@
             const la = p.localPhase + time * ORBIT_SPEED * p.localSpeed;
             const mx = Math.cos(la) * p.localOrbitR;
             const my = Math.sin(la) * p.localOrbitR * 0.6;
-            const mz = Math.sin(la + 0.6) * p.localOrbitR * 0.35;
+            // Amplitude z >= radius parent × 3 pour que la moon passe
+            // franchement devant / derrière son parent en profondeur.
+            // Sans ça, le test 3D "ligne devant sphère parent" n'a rien
+            // à quoi mordre (amplitude z ~= radius parent → aucun pixel
+            // franchement devant).
+            const mz = Math.sin(la + 0.6) * p.localOrbitR * 0.9;
             applyDerivedDrag(i, pNode.x + mx, pNode.y + my);
             computed[i].z = pNode.z + mz;
             computed[i].anchorX = pNode.x;
