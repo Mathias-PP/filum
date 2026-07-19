@@ -16,6 +16,7 @@ from app.models.user import User
 from app.services.import_parsers import (
     ImportedRef,
     ParseResult,
+    _dedupe_key,
     _doi_to_url,
     detect_format,
     parse_file,
@@ -112,17 +113,17 @@ def _merge_llm_refs(base: ParseResult, llm_refs: list[LlmBiblioRef]) -> ParseRes
     année, catégorie) et ajoute les refs dont l'URL/DOI n'a pas été capté.
     Les refs LLM sans lien sont comptées dans skipped (Source exige une URL).
     """
-    by_url = {ref.url.rstrip("/").lower(): ref for ref in base.refs}
+    by_key = {_dedupe_key(ref.url): ref for ref in base.refs}
     skipped = base.skipped
     for ref in llm_refs:
         url = ref.url or (_doi_to_url(ref.doi) if ref.doi else None)
         if not url or not url.startswith(("http://", "https://")):
             skipped += 1
             continue
-        key = url.rstrip("/").lower()
-        existing = by_url.get(key)
+        key = _dedupe_key(url)
+        existing = by_key.get(key)
         if existing is None:
-            by_url[key] = ImportedRef(
+            by_key[key] = ImportedRef(
                 url=url,
                 title=ref.title,
                 authors=ref.authors,
@@ -138,7 +139,7 @@ def _merge_llm_refs(base: ParseResult, llm_refs: list[LlmBiblioRef]) -> ParseRes
             existing.year = ref.year
         if existing.category == "page-web" and ref.category:
             existing.category = ref.category.value
-    return ParseResult(refs=list(by_url.values()), skipped=skipped)
+    return ParseResult(refs=list(by_key.values()), skipped=skipped)
 
 
 @router.post("/import/paste", response_model=ImportParseResponse)

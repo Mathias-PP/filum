@@ -126,3 +126,28 @@ def test_parse_file_dispatch():
     assert len(result.refs) == 2
     result = parse_file(None, b"https://example.org/x-longue-url")
     assert result.refs[0].url == "https://example.org/x-longue-url"
+
+
+def test_dedupe_collapses_doi_and_publisher_url():
+    """Frontiers canonical URL et l'URL doi.org du même DOI = même ref."""
+    text = (
+        "Une biblio :\n"
+        "- https://www.frontiersin.org/journals/psychology/articles/10.3389/fpsyg.2018.01561/full\n"
+        "- https://doi.org/10.3389/fpsyg.2018.01561\n"
+    )
+    result = parse_markdown(text)
+    # Sans le fix : 2 entrées (clés URL différentes). Avec le fix : 1 seule
+    # entrée (clé canonique doi:10.3389/fpsyg.2018.01561).
+    assert len(result.refs) == 1
+
+
+def test_dedupe_key_extraction_from_various_publishers():
+    from app.services.import_parsers import _dedupe_key
+
+    frontiers = "https://www.frontiersin.org/articles/10.3389/fpsyg.2018.01561/full"
+    doi_org = "https://doi.org/10.3389/fpsyg.2018.01561"
+    wiley = "https://onlinelibrary.wiley.com/doi/full/10.1002/hbm.12345"
+    assert _dedupe_key(frontiers) == _dedupe_key(doi_org)
+    assert _dedupe_key(wiley).startswith("doi:10.1002/hbm.12345")
+    # URL sans DOI reste identifiée par sa forme normalisée.
+    assert _dedupe_key("https://example.org/article/") == "https://example.org/article"
