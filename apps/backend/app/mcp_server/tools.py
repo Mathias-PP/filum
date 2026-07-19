@@ -27,8 +27,8 @@ async def search_cards(db: AsyncSession, query: str, limit: int = 10) -> list[di
         .join(User, BiblioCard.user_id == User.id)
         .where(
             _PUBLISHED,
-            func.lower(BiblioCard.title).contains(query.lower())
-            | func.lower(User.username).contains(query.lower()),
+            func.lower(BiblioCard.title).contains(query.lower(), autoescape=True)
+            | func.lower(User.username).contains(query.lower(), autoescape=True),
         )
         .options(selectinload(BiblioCard.user))
         .order_by(BiblioCard.published_at.desc())
@@ -74,7 +74,11 @@ async def get_source(db: AsyncSession, source_id: str) -> dict[str, Any] | None:
         sid = UUID(source_id)
     except ValueError:
         return None
-    source = await db.scalar(select(Source).where(Source.id == sid, Source.deleted_at.is_(None)))
+    source = await db.scalar(
+        select(Source)
+        .join(BiblioCard, Source.biblio_card_id == BiblioCard.id)
+        .where(_PUBLISHED, Source.id == sid, Source.deleted_at.is_(None))
+    )
     if source is None:
         return None
     return {
