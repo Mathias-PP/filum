@@ -192,6 +192,9 @@
         c.lineStroke = w;
         c.fondColor = '#0F172A';
         c.wordmarkColor = w;
+        // Le canonique (variant 'dark') n'a ni gradient 3D ni halo.
+        c.pulsarGradient = false;
+        c.pulsarHaloEnabled = false;
       },
     },
     {
@@ -208,11 +211,17 @@
         c.lineStroke = k;
         c.fondColor = '#FFFFFF';
         c.wordmarkColor = k;
+        // Le canonique (variant 'bw') n'a ni gradient 3D ni halo.
         c.pulsarGradient = false;
+        c.pulsarHaloEnabled = false;
       },
     },
   ];
 
+  // Réplique exacte du logo canonique prod (src/lib/components/Logo.svelte,
+  // variant 'color') : coordonnées cartésiennes converties en polaire autour
+  // du pulsar (12,12). Seule approximation : l'épaisseur du stroke fond est
+  // globale (1.4) alors que le canonique varie de 1.2 (lune) à 1.6 (pulsar).
   function defaultConfig(): Config {
     return {
       bgColor: '#FFFFFF',
@@ -223,51 +232,71 @@
       pulsarFill: '#1F2937',
       pulsarRim: '#000000',
       pulsarRimWidth: 0.4,
-      pulsarHaloEnabled: false,
+      pulsarHaloEnabled: true,
       pulsarHaloColor: '#FFFFFF',
-      pulsarHaloSize: 2.2,
+      pulsarHaloSize: 2.4,
       pulsarHaloOpacity: 0.28,
-      pulsarGradient: false,
+      pulsarGradient: true,
       pulsarGradientHi: '#FFFFFF',
       pulsarGradientMid: '#475569',
       pulsarGradientLo: '#0F172A',
       normals: [
-        { angle: -32, distance: 9.4, size: 1.5, fill: '#FAC775', rim: '#EF9F27', rimWidth: 0.4 },
-        { angle: 157, distance: 7.6, size: 1.5, fill: '#FAC775', rim: '#EF9F27', rimWidth: 0.4 },
+        // canonique (20, 7) et (5, 15)
+        {
+          angle: -32.01,
+          distance: 9.43,
+          size: 1.275,
+          fill: '#FAC775',
+          rim: '#EF9F27',
+          rimWidth: 0.4,
+        },
+        {
+          angle: 156.8,
+          distance: 7.62,
+          size: 1.275,
+          fill: '#FAC775',
+          rim: '#EF9F27',
+          rimWidth: 0.4,
+        },
       ],
       yforkEnabled: true,
-      yforkAngle: -126,
+      // jonction canonique (7, 5)
+      yforkAngle: -125.54,
       yforkDistance: 8.6,
       twinA: {
-        angle: -148,
-        distance: 5.0,
-        size: 1.5,
+        // canonique (4, 2.5), relatif à la jonction
+        angle: -140.19,
+        distance: 3.91,
+        size: 1.275,
         fill: '#C0DD97',
         rim: '#639922',
         rimWidth: 0.4,
       },
       twinB: {
-        angle: -104,
-        distance: 5.0,
-        size: 1.5,
+        // canonique (9.5, 1.5), relatif à la jonction
+        angle: -54.46,
+        distance: 4.3,
+        size: 1.275,
         fill: '#C0DD97',
         rim: '#639922',
         rimWidth: 0.4,
       },
       parentEnabled: true,
       parent: {
-        angle: 50,
-        distance: 7.8,
-        size: 1.95,
+        // canonique (17, 18)
+        angle: 50.19,
+        distance: 7.81,
+        size: 1.65,
         fill: '#B5D4F4',
         rim: '#378ADD',
         rimWidth: 0.45,
       },
       luneEnabled: true,
       lune: {
-        angle: 50,
-        distance: 4.5,
-        size: 0.95,
+        // canonique (20.5, 20.5), relative au parent
+        angle: 35.54,
+        distance: 4.3,
+        size: 0.825,
         fill: '#CECBF6',
         rim: '#7F77DD',
         rimWidth: 0.35,
@@ -284,8 +313,8 @@
       wordmarkEnabled: false,
       wordmarkText: 'Philum',
       wordmarkX: 2.0,
-      wordmarkY: 12,
-      wordmarkSize: 9,
+      wordmarkY: 12.5,
+      wordmarkSize: 11,
       wordmarkColor: '#1F2937',
       wordmarkFont: 'serif',
       wordmarkWeight: 500,
@@ -409,7 +438,11 @@
   function exportSVG(idx: number) {
     const el = document.getElementById(`preview-svg-${idx}`);
     if (!el) return;
-    const xml = new XMLSerializer().serializeToString(el);
+    // Nettoie les artefacts d'édition : poignée de drag du Y-fork + classes.
+    const clone = el.cloneNode(true) as SVGSVGElement;
+    clone.querySelectorAll('[data-helper]').forEach((n) => n.remove());
+    clone.querySelectorAll('[class]').forEach((n) => n.removeAttribute('class'));
+    const xml = new XMLSerializer().serializeToString(clone);
     const blob = new Blob([xml], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -496,19 +529,56 @@
   }
 
   // ----- Sauvegardes (localStorage + import/export JSON) -----
-  type SaveEntry = { name: string; createdAt: string; configs: Config[] };
+  // `configs` = set complet des 4 sous-logos ; `config` = sous-logo seul.
+  type SaveEntry = { name: string; createdAt: string; configs?: Config[]; config?: Config };
   const STORAGE_KEY = 'philum-customizer-saves-v1';
 
   let saves = $state<SaveEntry[]>([]);
   let saveName = $state('');
   let importInput: HTMLInputElement | null = $state(null);
 
+  // Complète une config avec les défauts : les sauvegardes créées avant
+  // l'ajout d'un champ rechargeaient des `undefined` qui cassaient les
+  // sliders (`.toFixed` sur undefined) et la géométrie (NaN).
+  function migrateConfig(raw: unknown): Config {
+    const base = defaultConfig();
+    if (!raw || typeof raw !== 'object') return base;
+    const r = raw as Partial<Config>;
+    const node = (n: Partial<Node> | undefined, d: Node): Node => ({ ...d, ...(n ?? {}) });
+    const merged: Config = { ...base, ...r };
+    merged.normals =
+      Array.isArray(r.normals) && r.normals.length > 0
+        ? r.normals.map((n) => node(n, base.normals[0]))
+        : base.normals;
+    merged.twinA = node(r.twinA, base.twinA);
+    merged.twinB = node(r.twinB, base.twinB);
+    merged.parent = node(r.parent, base.parent);
+    merged.lune = node(r.lune, base.lune);
+    return merged;
+  }
+
+  const TAB_PRESETS = [defaultConfig, darkPreset, wordmarkPreset, bwPreset];
+
+  // Garantit un set de 4 configs complètes (les vieux sets pouvaient en avoir
+  // moins → onglet actif undefined → page blanche).
+  function migrateSet(raw: unknown): Config[] {
+    const arr = Array.isArray(raw) ? raw : [];
+    return TAB_PRESETS.map((preset, i) => (arr[i] ? migrateConfig(arr[i]) : preset()));
+  }
+
+  function migrateEntry(raw: SaveEntry): SaveEntry {
+    const entry: SaveEntry = { name: raw.name, createdAt: raw.createdAt };
+    if (raw.config) entry.config = migrateConfig(raw.config);
+    else entry.configs = migrateSet(raw.configs);
+    return entry;
+  }
+
   onMount(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) saves = parsed as SaveEntry[];
+        if (Array.isArray(parsed)) saves = (parsed as SaveEntry[]).map(migrateEntry);
       }
     } catch {
       // ignore storage errors (private mode, quota, etc.)
@@ -517,20 +587,21 @@
 
   function persistSaves() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(saves));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify($state.snapshot(saves)));
     } catch {
       // ignore
     }
   }
 
-  function saveCurrent() {
+  function saveCurrent(kind: 'set' | 'single') {
     const name = saveName.trim();
     if (!name) return;
-    const entry: SaveEntry = {
-      name,
-      createdAt: new Date().toISOString(),
-      configs: structuredClone($state.snapshot(configs)) as Config[],
-    };
+    const entry: SaveEntry = { name, createdAt: new Date().toISOString() };
+    if (kind === 'set') {
+      entry.configs = structuredClone($state.snapshot(configs)) as Config[];
+    } else {
+      entry.config = structuredClone($state.snapshot(configs[active])) as Config;
+    }
     const idx = saves.findIndex((s) => s.name === name);
     if (idx >= 0) {
       if (!confirm(`Une sauvegarde « ${name} » existe déjà. Écraser ?`)) return;
@@ -543,9 +614,20 @@
   }
 
   function loadSave(s: SaveEntry) {
+    if (!s.configs) return;
     if (!confirm(`Charger « ${s.name} » ? Les 4 sous-sandboxes actuelles seront remplacées.`))
       return;
-    configs = structuredClone(s.configs) as Config[];
+    configs = migrateSet(structuredClone($state.snapshot(s.configs) ?? s.configs));
+  }
+
+  // Charge un sous-logo (sauvegarde individuelle, ou sous-logo i d'un set)
+  // dans l'onglet actif uniquement.
+  function loadSingleInto(s: SaveEntry, srcIdx?: number) {
+    const cfg = s.config ?? (srcIdx !== undefined ? s.configs?.[srcIdx] : undefined);
+    if (!cfg) return;
+    const detail = srcIdx !== undefined ? ` (${SANDBOX_LABELS[srcIdx]})` : '';
+    if (!confirm(`Charger « ${s.name} »${detail} dans l'onglet actif ?`)) return;
+    configs[active] = migrateConfig(structuredClone($state.snapshot(cfg) ?? cfg));
   }
 
   function deleteSave(s: SaveEntry) {
@@ -596,7 +678,7 @@
         }
         const map = new Map<string, SaveEntry>();
         for (const s of saves) map.set(s.name, s);
-        for (const s of imported) map.set(s.name, s);
+        for (const s of imported) map.set(s.name, migrateEntry(s));
         saves = Array.from(map.values());
         persistSaves();
         alert(`${imported.length} sauvegarde(s) importée(s).`);
@@ -778,6 +860,7 @@
                   stroke-width="0.1"
                   stroke-dasharray="0.2 0.2"
                   class="draggable"
+                  data-helper="true"
                   onmousedown={startDrag('fork')}
                 />
                 {#each [c.twinA, c.twinB] as t, i (i)}
@@ -986,8 +1069,9 @@
       <details open>
         <summary>Sauvegardes ({saves.length})</summary>
         <p class="hint">
-          Une sauvegarde inclut les 4 sous-sandboxes. Stockage local (navigateur) + export/import
-          JSON pour partager entre sessions ou machines.
+          « Tout » sauvegarde l'ensemble des 4 sous-logos ; « Onglet actif » sauvegarde uniquement
+          le sous-logo affiché. Stockage local (navigateur) + export/import JSON pour partager entre
+          sessions ou machines.
         </p>
         <div class="row save-row">
           <input
@@ -996,11 +1080,25 @@
             bind:value={saveName}
             class="save-name"
             onkeydown={(e) => {
-              if (e.key === 'Enter') saveCurrent();
+              if (e.key === 'Enter') saveCurrent('set');
             }}
           />
-          <button type="button" class="add-btn" onclick={saveCurrent} disabled={!saveName.trim()}>
-            💾 Sauvegarder
+          <button
+            type="button"
+            class="add-btn"
+            onclick={() => saveCurrent('set')}
+            disabled={!saveName.trim()}
+          >
+            💾 Tout
+          </button>
+          <button
+            type="button"
+            class="add-btn"
+            onclick={() => saveCurrent('single')}
+            disabled={!saveName.trim()}
+            title="Sauvegarder uniquement le sous-logo affiché ({SANDBOX_LABELS[active]})"
+          >
+            💾 Onglet actif
           </button>
         </div>
         <div class="row save-row">
@@ -1025,6 +1123,7 @@
               <div class="save-entry">
                 <div class="save-info">
                   <strong>{s.name}</strong>
+                  <span class="save-kind">{s.config ? 'sous-logo' : 'set ×4'}</span>
                   <span class="save-date"
                     >{new Date(s.createdAt).toLocaleString('fr-FR', {
                       dateStyle: 'short',
@@ -1033,9 +1132,29 @@
                   >
                 </div>
                 <div class="save-actions">
-                  <button type="button" class="bulk-btn" onclick={() => loadSave(s)} title="Charger"
-                    >↺</button
-                  >
+                  {#if s.config}
+                    <button
+                      type="button"
+                      class="bulk-btn"
+                      onclick={() => loadSingleInto(s)}
+                      title="Charger dans l'onglet actif">↺ onglet</button
+                    >
+                  {:else}
+                    <button
+                      type="button"
+                      class="bulk-btn"
+                      onclick={() => loadSave(s)}
+                      title="Charger les 4 sous-logos">↺ tout</button
+                    >
+                    {#each SANDBOX_LABELS as label, i (i)}
+                      <button
+                        type="button"
+                        class="bulk-btn"
+                        onclick={() => loadSingleInto(s, i)}
+                        title="Charger seulement « {label} » dans l'onglet actif">{i + 1}</button
+                      >
+                    {/each}
+                  {/if}
                   <button
                     type="button"
                     class="bulk-btn"
@@ -2064,6 +2183,14 @@
     font-size: 0.68rem;
     color: rgb(var(--text-tertiary));
     font-family: ui-monospace, monospace;
+  }
+  .save-kind {
+    font-size: 0.65rem;
+    padding: 0.05rem 0.35rem;
+    border-radius: 999px;
+    border: 1px solid rgb(var(--border-strong));
+    color: rgb(var(--text-secondary));
+    white-space: nowrap;
   }
   .save-actions {
     display: flex;
