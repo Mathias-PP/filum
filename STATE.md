@@ -36,9 +36,12 @@ Avant cette phase, la **Phase 1 (MVP complet)** était terminée : jalons M1 (OA
 
 | # | Branche | État CI | Sujet |
 |---|---|---|---|
-| #116-#119 | `infra/oracle-micro`, `feat/llm-*` | ✅ verte | Validées, merge en cours (ordre #116 → #117 → #118 → #119) |
+| #121 | `fix/title-site-suffix` | à vérifier | Garde-fous titre (retire « Frontiers \| » etc.) |
+| #122 | `feat/multi-link-paste` | à vérifier | Mode multi-liens (coller plusieurs URLs, brouillons pré-remplis) |
+| #123 | `feat/graph-color-modes` | à vérifier | Sélecteur Auteur/Format/Catégorie sur le graphe |
+| — | `docs/linked-accounts-roadmap` | à vérifier | Exploration comptes liés + roadmap consolidée |
 
-> Mergées le 2026-07-14 : #112 waitlist, #113 seed & claim, #114 serveur MCP (/mcp, FastMCP), #115 doc déclencheur d'adoption. #116-#119 (infra E2.1.Micro + chaîne LLM extract) en cours de merge le 2026-07-19.
+> Mergées le 2026-07-19 : #116-#119 (infra GCP micro + chaîne LLM extract), #120 (docs migration GCP). Avant : #112 waitlist, #113 seed & claim, #114 serveur MCP, #115 déclencheur d'adoption.
 
 > _Quand cette section est vide, plus rien n'est en attente côté review humaine._
 
@@ -110,7 +113,7 @@ Vercel : `BACKEND_URL=https://philum-api.duckdns.org` (env var serverless, jamai
 
 ## Prochaines étapes (par ordre d'impact/coût)
 
-> Plan détaillé : [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md).
+> **Roadmap consolidée et priorisée** : [`.docs/19-roadmap-2026-07.md`](./.docs/19-roadmap-2026-07.md). Plan d'audit détaillé : [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md). Comptes plateformes liés : [`.docs/18-linked-accounts.md`](./.docs/18-linked-accounts.md).
 
 **Immédiat** (post-migration GCP)
 - **Alerte budget 1 € sur GCP** (Billing → Budgets & alerts) si pas déjà en place — filet de sécurité, pas de plafond natif.
