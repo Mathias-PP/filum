@@ -182,6 +182,102 @@ def export_markdown(card: BiblioCard, public_url: str) -> str:
     return "\n".join(lines)
 
 
+# --- DOCX (WordprocessingML minimal, stdlib uniquement) ---------------------
+
+_W_NS = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
+
+
+def _docx_run(
+    text: str, *, bold: bool = False, italic: bool = False, size: int | None = None
+) -> str:
+    props = ""
+    if bold or italic or size:
+        parts = []
+        if bold:
+            parts.append("<w:b/>")
+        if italic:
+            parts.append("<w:i/>")
+        if size:
+            parts.append(f'<w:sz w:val="{size}"/><w:szCs w:val="{size}"/>')
+        props = f"<w:rPr>{''.join(parts)}</w:rPr>"
+    return f'<w:r>{props}<w:t xml:space="preserve">{escape(text)}</w:t></w:r>'
+
+
+def _docx_p(*runs: str) -> str:
+    return f"<w:p>{''.join(runs)}</w:p>"
+
+
+def export_docx(card: BiblioCard, public_url: str) -> bytes:
+    """Document Word minimal : titre, méta, sources numérotées.
+
+    Généré sans dépendance (zipfile + XML), comme le XLSX. Word/LibreOffice
+    ignorent proprement l'absence de styles.xml : la mise en forme passe par
+    des propriétés directes (gras, italique, taille en demi-points).
+    """
+    paragraphs: list[str] = [_docx_p(_docx_run(card.title, bold=True, size=36))]
+
+    creator = card.user.display_name or card.user.username
+    meta = f"Fiche bibliographique de {creator}"
+    if card.published_at:
+        meta += f" — publiée le {card.published_at.date().isoformat()}"
+    paragraphs.append(_docx_p(_docx_run(meta, italic=True)))
+    if card.description:
+        paragraphs.append(_docx_p(_docx_run(card.description)))
+    if card.content_url:
+        paragraphs.append(_docx_p(_docx_run(f"Contenu : {card.content_url}")))
+    paragraphs.append(_docx_p())
+    paragraphs.append(_docx_p(_docx_run(f"Sources ({len(card.sources)})", bold=True, size=28)))
+
+    for i, s in enumerate(card.sources, start=1):
+        title_runs = [_docx_run(f"{i}. "), _docx_run(s.title or s.url, bold=True)]
+        if s.is_pivot:
+            title_runs.append(_docx_run(" (source pivot)"))
+        paragraphs.append(_docx_p(*title_runs))
+        meta_parts = []
+        if s.authors:
+            meta_parts.append(s.authors)
+        if s.published_at:
+            meta_parts.append(s.published_at.date().isoformat())
+        meta_parts.append(s.category)
+        paragraphs.append(_docx_p(_docx_run(" · ".join(meta_parts))))
+        paragraphs.append(_docx_p(_docx_run(s.url)))
+        if s.annotation:
+            paragraphs.append(_docx_p(_docx_run(s.annotation, italic=True)))
+        if s.archive_url:
+            paragraphs.append(_docx_p(_docx_run(f"Archive : {s.archive_url}")))
+        paragraphs.append(_docx_p())
+
+    paragraphs.append(_docx_p(_docx_run(f"Exporté depuis Philum — {public_url}", italic=True)))
+
+    document = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        f"<w:document {_W_NS}><w:body>{''.join(paragraphs)}</w:body></w:document>"
+    )
+    content_types = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+        '<Default Extension="rels" '
+        'ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+        '<Default Extension="xml" ContentType="application/xml"/>'
+        '<Override PartName="/word/document.xml" ContentType="application/vnd.'
+        'openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
+        "</Types>"
+    )
+    rels = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/'
+        '2006/relationships/officeDocument" Target="word/document.xml"/>'
+        "</Relationships>"
+    )
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("[Content_Types].xml", content_types)
+        zf.writestr("_rels/.rels", rels)
+        zf.writestr("word/document.xml", document)
+    return buf.getvalue()
+
+
 # --- XLSX (OOXML minimal, stdlib uniquement) --------------------------------
 
 

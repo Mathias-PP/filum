@@ -59,6 +59,7 @@
     { format: 'json', label: 'JSON' },
     { format: 'csv', label: 'CSV' },
     { format: 'xlsx', label: 'Excel (.xlsx)' },
+    { format: 'docx', label: 'Word (.docx)' },
     { format: 'bibtex', label: 'BibTeX (.bib)' },
     { format: 'markdown', label: 'Markdown / Obsidian' },
   ];
