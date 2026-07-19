@@ -406,6 +406,71 @@
     author_kind: string;
   };
 
+  type ImportResponse = { sources: ImportedDraft[]; skipped: number; format_detected: string };
+
+  async function ingestImported(data: ImportResponse) {
+    const known = new Set([...sources.map((s) => s.url), ...drafts.map((d) => d.url)]);
+    let added = 0;
+    let duplicates = 0;
+    const needExtract: string[] = [];
+    for (const ref of data.sources) {
+      if (known.has(ref.url)) {
+        duplicates += 1;
+        continue;
+      }
+      known.add(ref.url);
+      added += 1;
+      drafts.push({
+        url: ref.url,
+        title: ref.title ?? '',
+        authors: ref.authors ?? '',
+        format: formatOptions.some((o) => o.value === ref.format)
+          ? (ref.format as SourceFormat)
+          : 'texte',
+        category: categoryOptions.some((o) => o.value === ref.category)
+          ? (ref.category as SourceCategory)
+          : 'page-web',
+        author_kind: authorKindOptions.includes(ref.author_kind as AuthorKind)
+          ? (ref.author_kind as AuthorKind)
+          : 'individu',
+        published_at: ref.published_at,
+        status: ref.title ? 'ready' : 'extracting',
+        error: null,
+      });
+      if (!ref.title) needExtract.push(ref.url);
+    }
+    const parts = [`${added} référence${added > 1 ? 's' : ''} importée${added > 1 ? 's' : ''}`];
+    if (duplicates > 0) parts.push(`${duplicates} déjà présente${duplicates > 1 ? 's' : ''}`);
+    if (data.skipped > 0)
+      parts.push(`${data.skipped} sans lien (ignorée${data.skipped > 1 ? 's' : ''})`);
+    importSummary = `${parts.join(', ')} — format détecté : ${data.format_detected}.`;
+    // Les refs sans titre (URL/DOI nus) passent par l'extracteur existant.
+    for (const u of needExtract) {
+      const draft = drafts.find((d) => d.url === u && d.status === 'extracting');
+      if (!draft) continue;
+      try {
+        const res = await fetch(`${EXTRACT_API}?url=${encodeURIComponent(u)}`);
+        if (res.ok) {
+          const meta = await res.json();
+          if (meta.title) draft.title = meta.title;
+          if (meta.authors) draft.authors = meta.authors;
+          if (meta.format && formatOptions.some((o) => o.value === meta.format)) {
+            draft.format = meta.format;
+          }
+          if (meta.category && categoryOptions.some((o) => o.value === meta.category)) {
+            draft.category = meta.category;
+          }
+          if (meta.author_kind && authorKindOptions.includes(meta.author_kind)) {
+            draft.author_kind = meta.author_kind;
+          }
+        }
+      } catch {
+        // extraction silencieuse : l'utilisateur complète à la main
+      }
+      draft.status = 'ready';
+    }
+  }
+
   async function importFile(e: Event) {
     const input = e.target as HTMLInputElement;
     const file = input.files?.[0];
@@ -428,72 +493,41 @@
           body?.detail?.message ?? body?.error?.message ?? `Erreur d'import (${response.status})`;
         return;
       }
-      const data: { sources: ImportedDraft[]; skipped: number; format_detected: string } =
-        await response.json();
-      const known = new Set([...sources.map((s) => s.url), ...drafts.map((d) => d.url)]);
-      let added = 0;
-      let duplicates = 0;
-      const needExtract: string[] = [];
-      for (const ref of data.sources) {
-        if (known.has(ref.url)) {
-          duplicates += 1;
-          continue;
-        }
-        known.add(ref.url);
-        added += 1;
-        drafts.push({
-          url: ref.url,
-          title: ref.title ?? '',
-          authors: ref.authors ?? '',
-          format: formatOptions.some((o) => o.value === ref.format)
-            ? (ref.format as SourceFormat)
-            : 'texte',
-          category: categoryOptions.some((o) => o.value === ref.category)
-            ? (ref.category as SourceCategory)
-            : 'page-web',
-          author_kind: authorKindOptions.includes(ref.author_kind as AuthorKind)
-            ? (ref.author_kind as AuthorKind)
-            : 'individu',
-          published_at: ref.published_at,
-          status: ref.title ? 'ready' : 'extracting',
-          error: null,
-        });
-        if (!ref.title) needExtract.push(ref.url);
-      }
-      const parts = [`${added} référence${added > 1 ? 's' : ''} importée${added > 1 ? 's' : ''}`];
-      if (duplicates > 0) parts.push(`${duplicates} déjà présente${duplicates > 1 ? 's' : ''}`);
-      if (data.skipped > 0)
-        parts.push(`${data.skipped} sans lien (ignorée${data.skipped > 1 ? 's' : ''})`);
-      importSummary = `${parts.join(', ')} — format détecté : ${data.format_detected}.`;
-      // Les refs sans titre (URL/DOI nus) passent par l'extracteur existant.
-      for (const u of needExtract) {
-        const draft = drafts.find((d) => d.url === u && d.status === 'extracting');
-        if (!draft) continue;
-        try {
-          const res = await fetch(`${EXTRACT_API}?url=${encodeURIComponent(u)}`);
-          if (res.ok) {
-            const meta = await res.json();
-            if (meta.title) draft.title = meta.title;
-            if (meta.authors) draft.authors = meta.authors;
-            if (meta.format && formatOptions.some((o) => o.value === meta.format)) {
-              draft.format = meta.format;
-            }
-            if (meta.category && categoryOptions.some((o) => o.value === meta.category)) {
-              draft.category = meta.category;
-            }
-            if (meta.author_kind && authorKindOptions.includes(meta.author_kind)) {
-              draft.author_kind = meta.author_kind;
-            }
-          }
-        } catch {
-          // extraction silencieuse : l'utilisateur complète à la main
-        }
-        draft.status = 'ready';
-      }
+      await ingestImported(await response.json());
     } catch (err) {
       importError = err instanceof Error ? err.message : "Erreur lors de l'import";
     } finally {
       importing = false;
+    }
+  }
+
+  // ── Bibliographie collée en texte libre (déterministe + IA) ──────────────
+  let analyzingText = $state(false);
+
+  async function analyzeText() {
+    const text = multiText.trim();
+    if (!text) return;
+    importError = null;
+    importSummary = null;
+    analyzingText = true;
+    try {
+      const response = await fetch('/api/v1/import/paste', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        importError =
+          body?.detail?.message ?? body?.error?.message ?? `Erreur d'analyse (${response.status})`;
+        return;
+      }
+      await ingestImported(await response.json());
+      multiText = '';
+    } catch (err) {
+      importError = err instanceof Error ? err.message : "Erreur lors de l'analyse";
+    } finally {
+      analyzingText = false;
     }
   }
 </script>
@@ -572,9 +606,9 @@
       <div class="space-y-4">
         <div class="space-y-1.5">
           <label for="multi-urls" class="block text-sm font-medium text-ink-secondary">
-            Liens
+            Liens ou bibliographie
             <span class="text-xs text-ink-tertiary font-normal"
-              >— un par ligne ou séparés par des espaces</span
+              >— des liens (un par ligne) ou une bibliographie collée telle quelle</span
             >
           </label>
           <textarea
@@ -607,15 +641,26 @@
               BibTeX, CSL-JSON (Zotero), Markdown (Obsidian) ou PDF — 5 Mo max
             </p>
           </div>
-          <Button
-            type="button"
-            variant="secondary"
-            loading={multiExtracting}
-            disabled={multiExtracting || !multiText.trim()}
-            onclick={extractAll}
-          >
-            {multiExtracting ? 'Analyse…' : 'Analyser les liens'}
-          </Button>
+          <div class="flex gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              loading={analyzingText}
+              disabled={analyzingText || multiExtracting || !multiText.trim()}
+              onclick={analyzeText}
+            >
+              {analyzingText ? 'Analyse…' : 'Analyser le texte (IA)'}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              loading={multiExtracting}
+              disabled={multiExtracting || analyzingText || !multiText.trim()}
+              onclick={extractAll}
+            >
+              {multiExtracting ? 'Analyse…' : 'Analyser les liens'}
+            </Button>
+          </div>
         </div>
 
         {#if importError}

@@ -8,12 +8,20 @@ existant (l'utilisateur valide chaque brouillon avant creation).
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.api.v1.endpoints.cards import get_current_user
 from app.core.rate_limit import limiter
 from app.models.user import User
-from app.services.import_parsers import ImportedRef, detect_format, parse_file
+from app.services.import_parsers import (
+    ImportedRef,
+    ParseResult,
+    _doi_to_url,
+    detect_format,
+    parse_file,
+    parse_markdown,
+)
+from app.services.llm import LlmBiblioRef, parse_bibliography
 
 router = APIRouter(tags=["imports"])
 
@@ -90,4 +98,62 @@ async def parse_import_file(
         sources=[_to_draft(ref) for ref in result.refs],
         skipped=result.skipped,
         format_detected=detected,
+    )
+
+
+class ImportPasteRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=100_000)
+
+
+def _merge_llm_refs(base: ParseResult, llm_refs: list[LlmBiblioRef]) -> ParseResult:
+    """Fusionne les refs LLM avec le parsing déterministe (clé = URL).
+
+    Le déterministe fait foi pour les URLs ; le LLM enrichit (titre, auteurs,
+    année, catégorie) et ajoute les refs dont l'URL/DOI n'a pas été capté.
+    Les refs LLM sans lien sont comptées dans skipped (Source exige une URL).
+    """
+    by_url = {ref.url.rstrip("/").lower(): ref for ref in base.refs}
+    skipped = base.skipped
+    for ref in llm_refs:
+        url = ref.url or (_doi_to_url(ref.doi) if ref.doi else None)
+        if not url or not url.startswith(("http://", "https://")):
+            skipped += 1
+            continue
+        key = url.rstrip("/").lower()
+        existing = by_url.get(key)
+        if existing is None:
+            by_url[key] = ImportedRef(
+                url=url,
+                title=ref.title,
+                authors=ref.authors,
+                year=ref.year,
+                category=ref.category.value if ref.category else "page-web",
+            )
+            continue
+        if not existing.title:
+            existing.title = ref.title
+        if not existing.authors:
+            existing.authors = ref.authors
+        if not existing.year:
+            existing.year = ref.year
+        if existing.category == "page-web" and ref.category:
+            existing.category = ref.category.value
+    return ParseResult(refs=list(by_url.values()), skipped=skipped)
+
+
+@router.post("/import/paste", response_model=ImportParseResponse)
+@limiter.limit("30/hour")
+async def parse_pasted_bibliography(
+    request: Request,
+    payload: ImportPasteRequest,
+    current_user: User = Depends(get_current_user),
+):
+    result = parse_markdown(payload.text)
+    llm_refs = await parse_bibliography(payload.text)
+    if llm_refs:
+        result = _merge_llm_refs(result, llm_refs)
+    return ImportParseResponse(
+        sources=[_to_draft(ref) for ref in result.refs],
+        skipped=result.skipped,
+        format_detected="texte-libre",
     )
