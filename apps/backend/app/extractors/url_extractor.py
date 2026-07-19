@@ -33,6 +33,14 @@ class ExtractedMetadata:
     description: str | None = None
     citations_count: int | None = None
     impact_factor: float | None = None
+    # Suggestions de taxonomie ADR-020 (LLM uniquement — les heuristiques
+    # Crossref/HTML ne classifient pas). Valeurs des enums schemas.source.
+    format: str | None = None
+    category: str | None = None
+    author_kind: str | None = None
+    # Texte brut de la page, conservé pour éviter un second fetch au stage LLM.
+    # Jamais sérialisé vers l'API.
+    page_text: str | None = None
 
 
 # ── JSON-LD extraction ──────────────────────────────────────────────────
@@ -318,6 +326,7 @@ async def _html_scrape(url: str) -> ExtractedMetadata | None:
             authors=authors_raw or None,
             published_at=published_at,
             description=description or None,
+            page_text=soup.get_text(separator=" ", strip=True) or None,
         )
     except Exception as e:
         logger.debug("HTML scrape failed for url=%s: %s", url, e)
@@ -325,7 +334,16 @@ async def _html_scrape(url: str) -> ExtractedMetadata | None:
 
 
 async def extract(url: str) -> ExtractedMetadata:
-    """Return best-effort metadata for any URL. Never raises."""
+    """Return best-effort metadata for any URL. Never raises.
+
+    Stages: 1. Crossref (DOI) → 2. HTML/JSON-LD scrape → 3. LLM (si le proxy
+    LiteLLM est configuré) qui complète les champs manquants et suggère la
+    taxonomie format/category/author_kind. Les stages 1-2 restent la source
+    de vérité : le LLM ne remplace jamais une valeur déjà trouvée.
+    """
+    # Import local : évite un cycle app.services ↔ app.extractors.
+    from app.services import llm
+
     result = ExtractedMetadata()
 
     doi = _extract_doi(url)
@@ -333,13 +351,30 @@ async def extract(url: str) -> ExtractedMetadata:
         crossref_meta = await _crossref(doi)
         if crossref_meta:
             result = crossref_meta
+            result.format = "texte"
+            result.category = "article-scientifique"
+            result.author_kind = "chercheur"
 
-    if result.title is None:
+    page_text: str | None = None
+    if result.title is None or result.authors is None:
         html_meta = await _html_scrape(url)
         if html_meta:
             result.title = result.title or html_meta.title
             result.authors = result.authors or html_meta.authors
             result.published_at = result.published_at or html_meta.published_at
             result.description = result.description or html_meta.description
+            page_text = html_meta.page_text
 
+    if page_text:
+        llm_meta = await llm.extract_metadata(page_text, url)
+        if llm_meta:
+            result.title = result.title or llm_meta.title
+            result.authors = result.authors or llm_meta.authors
+            result.published_at = result.published_at or llm_meta.published_at
+            result.description = result.description or llm_meta.description
+            result.format = llm_meta.format.value if llm_meta.format else None
+            result.category = llm_meta.category.value if llm_meta.category else None
+            result.author_kind = llm_meta.author_kind.value if llm_meta.author_kind else None
+
+    result.page_text = None
     return result

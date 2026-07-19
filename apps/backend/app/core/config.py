@@ -42,6 +42,10 @@ class Settings(BaseSettings):
 
     wayback_api_key: str = ""
 
+    # Proxy LiteLLM (cf. .docs/17-llm-strategy.md). Vide = couche LLM désactivée.
+    litellm_base_url: str = ""
+    litellm_master_key: str = ""
+
     duckdb_path: str = "/data/filum_analytics.duckdb"
 
     @field_validator("database_url", mode="before")
