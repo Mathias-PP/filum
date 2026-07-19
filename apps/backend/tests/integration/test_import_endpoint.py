@@ -145,3 +145,97 @@ async def test_import_paste_llm_enriches_and_adds(client, monkeypatch):
 async def test_import_paste_requires_auth(anon_client):
     resp = await anon_client.post("/api/v1/import/paste", json={"text": "x"})
     assert resp.status_code == 401
+
+
+# --- from-content-url ------------------------------------------------------
+
+FAKE_ARTICLE_HTML = """<!DOCTYPE html>
+<html>
+<head>
+  <meta property="og:title" content="A Neural Network Framework for Cognitive Bias">
+  <meta property="og:description" content="Cognitive biases arise from...">
+</head>
+<body>
+  <article>Main content of the article.</article>
+  <section id="references">
+    <h2>References</h2>
+    <ol>
+      <li>Kahneman D. (2011). Thinking, Fast and Slow. https://doi.org/10.1234/foo.1</li>
+      <li>Tversky A., Kahneman D. (1974). Judgment under uncertainty.
+          https://www.example.org/tversky1974</li>
+    </ol>
+  </section>
+</body>
+</html>"""
+
+
+@pytest.mark.asyncio
+async def test_import_from_content_url_requires_auth(anon_client):
+    resp = await anon_client.post(
+        "/api/v1/import/from-content-url",
+        json={"url": "https://example.org/article"},
+    )
+    assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_import_from_content_url_rejects_unsafe(client):
+    resp = await client.post(
+        "/api/v1/import/from-content-url",
+        json={"url": "http://127.0.0.1:8000/health"},
+    )
+    assert resp.status_code == 422
+    assert resp.json()["error"]["code"] == "unsafe_url"
+
+
+@pytest.mark.asyncio
+async def test_import_from_content_url_extracts_references(client, monkeypatch):
+    """Sur une page HTML avec section References, retourne titre + refs."""
+    from app.extractors.url_extractor import ExtractedMetadata
+
+    async def fake_meta(url):
+        return ExtractedMetadata(
+            title="A Neural Network Framework for Cognitive Bias",
+            description="Cognitive biases arise from...",
+            authors="Korteling J., Brouwer A., Toet A.",
+        )
+
+    class FakeResponse:
+        status_code = 200
+        headers = {"content-type": "text/html; charset=utf-8"}
+        text = FAKE_ARTICLE_HTML
+
+    class FakeAsyncClient:
+        def __init__(self, *a, **kw):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return None
+
+        async def get(self, url):
+            return FakeResponse()
+
+    async def no_llm(text):
+        return None  # regex-only path suffit pour ce test
+
+    monkeypatch.setattr("app.api.v1.endpoints.imports.extract_url_metadata", fake_meta)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.httpx.AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.parse_bibliography", no_llm)
+    # SSRF bypass sur le domaine de test.
+    monkeypatch.setattr("app.api.v1.endpoints.imports.assert_url_is_safe", lambda u: None)
+
+    resp = await client.post(
+        "/api/v1/import/from-content-url",
+        json={"url": "https://www.frontiersin.org/articles/10.3389/fpsyg.2018.01561/full"},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["card"]["title"] == "A Neural Network Framework for Cognitive Bias"
+    assert body["card"]["content_url"].endswith("/full")
+    assert body["references_section_found"] is True
+    urls = {s["url"] for s in body["sources"]}
+    assert "https://doi.org/10.1234/foo.1" in urls
+    assert "https://www.example.org/tversky1974" in urls

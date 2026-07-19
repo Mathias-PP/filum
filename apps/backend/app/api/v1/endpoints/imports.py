@@ -7,11 +7,17 @@ existant (l'utilisateur valide chaque brouillon avant creation).
 
 from __future__ import annotations
 
+import logging
+
+import httpx
+from bs4 import BeautifulSoup
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field
 
 from app.api.v1.endpoints.cards import get_current_user
 from app.core.rate_limit import limiter
+from app.core.url_safety import UnsafeUrlError, assert_url_is_safe
+from app.extractors.url_extractor import extract as extract_url_metadata
 from app.models.user import User
 from app.services.import_parsers import (
     ImportedRef,
@@ -23,6 +29,8 @@ from app.services.import_parsers import (
     parse_markdown,
 )
 from app.services.llm import LlmBiblioRef, parse_bibliography
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["imports"])
 
@@ -157,4 +165,153 @@ async def parse_pasted_bibliography(
         sources=[_to_draft(ref) for ref in result.refs],
         skipped=result.skipped,
         format_detected="texte-libre",
+    )
+
+
+# --- Import depuis l'URL d'un contenu (article, PDF, page HTML) ------------
+#
+# Un cran au-dessus du paste : au lieu de coller le texte d'une biblio,
+# l'utilisateur donne l'URL d'un contenu (un article, un billet, une video
+# avec des liens sortants) et Philum :
+#   1. extrait les metadonnees du contenu (titre, description, auteurs) via
+#      le meme pipeline que `/sources/extract`
+#   2. isole la section References de la page si presente (heuristique de
+#      selecteurs CSS courants chez les editeurs)
+#   3. passe le texte a `parse_bibliography` (LLM) + `parse_markdown` (regex)
+#      pour extraire la liste des sources citees
+#   4. retourne un draft de fiche complet a valider par l'utilisateur
+
+_REFERENCES_SELECTORS = (
+    # Frontiers, PubMed Central, JATS-like
+    "section[id*='references' i]",
+    "div[id*='references' i]",
+    "ol[class*='references' i]",
+    "ul[class*='references' i]",
+    "section[id*='bibliograph' i]",
+    "div[id*='bibliograph' i]",
+    # Nature, generic scholarly
+    "section[data-title='References']",
+    "section[aria-labelledby*='references' i]",
+    "div.ref-list",
+    "ol.ref-list",
+    "ol.references",
+    "ul.references",
+    # arXiv abstract page has none, PDF only; the endpoint stays best-effort.
+)
+
+# Cap pour eviter d'envoyer 500 kB de HTML au LLM (couteux + rate-limit).
+_REFS_TEXT_MAX = 60_000
+# Fetch cap sur le HTML brut : 3 MB, evite les mega-pages
+_HTML_MAX = 3 * 1024 * 1024
+_FETCH_TIMEOUT = 10.0
+
+_HEADERS = {
+    "User-Agent": "Philum/0.1 (https://github.com/Mathias-PP/filum; mailto:contact@philum.app)"
+}
+
+
+class ImportFromUrlRequest(BaseModel):
+    url: str = Field(min_length=8, max_length=2000)
+
+
+class ImportedCardDraft(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    content_url: str
+
+
+class ImportFromUrlResponse(BaseModel):
+    card: ImportedCardDraft
+    sources: list[ImportedSourceDraft]
+    skipped: int
+    references_section_found: bool
+
+
+def _extract_references_text(html: str) -> tuple[str, bool]:
+    """Return (text, found_dedicated_section).
+
+    Cherche une section References dans le HTML via une short-list de
+    selecteurs. Si aucune, retourne le texte de la page entiere (le LLM
+    fera au mieux). Le texte est cape a `_REFS_TEXT_MAX` chars.
+    """
+    soup = BeautifulSoup(html, "lxml")
+    for selector in _REFERENCES_SELECTORS:
+        node = soup.select_one(selector)
+        if node:
+            text = node.get_text(separator="\n", strip=True)
+            if len(text) >= 80:  # eviter les sections quasi-vides
+                return text[:_REFS_TEXT_MAX], True
+    # Fallback: tout le body, souvent trop bruite mais le LLM sait faire.
+    body = soup.find("body")
+    text = body.get_text(separator="\n", strip=True) if body else soup.get_text(strip=True)
+    return text[:_REFS_TEXT_MAX], False
+
+
+@router.post("/import/from-content-url", response_model=ImportFromUrlResponse)
+@limiter.limit("5/hour")
+async def parse_content_url(
+    request: Request,
+    payload: ImportFromUrlRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """URL d'un contenu -> draft de fiche complet (titre + sources citees).
+
+    Rate-limit 5/heure (extraction LLM + fetch reseau). Auth requise.
+    SSRF-safe via assert_url_is_safe.
+    """
+    url = payload.url.strip()
+    try:
+        assert_url_is_safe(url)
+    except UnsafeUrlError as e:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "unsafe_url", "message": str(e)},
+        )
+
+    # 1. Metadata du contenu (titre, description, auteurs) - reuse url_extractor
+    try:
+        meta = await extract_url_metadata(url)
+    except Exception as e:
+        logger.warning("extract_url_metadata failed for %s: %s", url, e)
+        meta = None
+
+    # 2. Fetch le HTML pour la section references
+    html: str | None = None
+    try:
+        async with httpx.AsyncClient(
+            headers=_HEADERS, timeout=_FETCH_TIMEOUT, follow_redirects=True
+        ) as client:
+            r = await client.get(url)
+        if r.status_code == 200 and "text/html" in r.headers.get("content-type", ""):
+            html = r.text[:_HTML_MAX]
+    except Exception as e:
+        logger.warning("fetch failed for %s: %s", url, e)
+
+    refs_text = ""
+    refs_section_found = False
+    if html:
+        refs_text, refs_section_found = _extract_references_text(html)
+
+    # 3. Extraction hybride regex + LLM sur le texte des references
+    result = parse_markdown(refs_text) if refs_text else ParseResult()
+    if refs_text:
+        llm_refs = await parse_bibliography(refs_text)
+        if llm_refs:
+            result = _merge_llm_refs(result, llm_refs)
+
+    # Retire la ref pointant vers le contenu lui-meme (le contenu ne cite
+    # pas lui-meme, et la fiche a deja content_url = url).
+    self_key = _dedupe_key(url)
+    result.refs = [ref for ref in result.refs if _dedupe_key(ref.url) != self_key]
+
+    card = ImportedCardDraft(
+        title=meta.title if meta else None,
+        description=meta.description if meta else None,
+        content_url=url,
+    )
+    return ImportFromUrlResponse(
+        card=card,
+        sources=[_to_draft(ref) for ref in result.refs],
+        skipped=result.skipped,
+        references_section_found=refs_section_found,
     )
