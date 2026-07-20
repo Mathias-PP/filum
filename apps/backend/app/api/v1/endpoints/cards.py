@@ -141,6 +141,8 @@ async def update_card(
         card.platform = card_data.platform.value
     if card_data.is_seed is not None:
         card.is_seed = card_data.is_seed
+    if card_data.visibility is not None:
+        card.visibility = card_data.visibility.value
 
     # The card is already attached to the request session (via CardService);
     # opening a second session here raised InvalidRequestError. Commit in place.
@@ -241,7 +243,9 @@ async def delete_card(
 async def get_public_card(
     creator_slug: str,
     card_slug: str,
+    request: Request,
     card_service: CardService = Depends(get_card_service),
+    auth_service: AuthService = Depends(get_auth_service),
 ):
     card = await card_service.get_card_by_slug(creator_slug, card_slug)
     if not card:
@@ -249,6 +253,16 @@ async def get_public_card(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"code": "not_found", "message": "Card not found"},
         )
+
+    # Fiche privee : visible uniquement par l'owner connecte.
+    # 404 (pas 403) pour ne pas leaker l'existence a un visiteur non autorise.
+    if card.visibility == "private":
+        viewer = await auth_service.get_current_user(request)
+        if viewer is None or viewer.id != card.user_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"code": "not_found", "message": "Card not found"},
+            )
 
     stats = card_service.compute_stats(card)
     sources_response = [SourceResponse.model_validate(s) for s in card.sources]
@@ -263,6 +277,7 @@ async def get_public_card(
         content_type=card.content_type,
         status=card.status,
         is_seed=card.is_seed,
+        visibility=card.visibility,
         published_at=card.published_at,
         created_at=card.created_at,
         updated_at=card.updated_at,

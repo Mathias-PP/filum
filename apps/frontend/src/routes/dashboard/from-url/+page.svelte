@@ -4,7 +4,13 @@
   import { api, ApiError } from '$lib/api';
   import { Button, ProgressSteps, toast } from '$lib/components';
   import { currentUser } from '$lib/stores/auth';
-  import type { ContentType, ImportFromUrlResponse, ImportedSourceDraft, Platform } from '$lib/api';
+  import type {
+    ContentType,
+    ImportFromUrlResponse,
+    ImportedSourceDraft,
+    Platform,
+    Visibility,
+  } from '$lib/api';
 
   // Étape 1 : URL saisie → appel /import/from-content-url → preview.
   // Étape 2 : preview éditable (titre, description, sources cochées) → création
@@ -27,6 +33,7 @@
   let contentUrl = $state('');
   let platform = $state<Platform>('other');
   let contentType = $state<ContentType>('other');
+  let visibility = $state<Visibility>('public');
   let slug = $state('');
   let slugManual = $state(false);
   // Par défaut coché sur /from-url : l'utilisateur crée souvent des fiches
@@ -162,6 +169,7 @@
         platform,
         content_type: contentType,
         is_seed: isSeed,
+        visibility,
       });
       // Ajout des sources sélectionnées, séquentiel (évite d'inonder Wayback).
       const toCreate = sources.filter((_, i) => selected[i]);
@@ -427,6 +435,20 @@
             </span>
           </span>
         </label>
+
+        <div class="space-y-1.5">
+          <span class="block text-sm font-medium text-ink-secondary">Visibilité</span>
+          <div class="flex gap-2 text-sm">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" bind:group={visibility} value="public" />
+              <span>Publique</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input type="radio" bind:group={visibility} value="private" />
+              <span>Privée (vous seul·e)</span>
+            </label>
+          </div>
+        </div>
       </fieldset>
 
       <!-- Sources extraites -->

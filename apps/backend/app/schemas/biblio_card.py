@@ -33,6 +33,11 @@ class CardStatus(str, Enum):
     ARCHIVED = "archived"
 
 
+class Visibility(str, Enum):
+    PUBLIC = "public"
+    PRIVATE = "private"
+
+
 SlugPattern = re.compile(r"^[a-z0-9][a-z0-9-]{2,80}$")
 
 
@@ -43,6 +48,7 @@ class CardBase(BaseModel):
     content_url: str | None = None
     platform: Platform = Platform.OTHER
     content_type: ContentType = ContentType.VIDEO
+    visibility: Visibility = Visibility.PUBLIC
 
 
 class CardCreate(CardBase):
@@ -61,6 +67,7 @@ class CardUpdate(BaseModel):
     content_url: str | None = None
     platform: Platform | None = None
     is_seed: bool | None = None
+    visibility: Visibility | None = None
 
 
 class CardStats(BaseModel):
@@ -93,6 +100,7 @@ class CardResponse(BaseModel):
     content_type: ContentType
     status: CardStatus
     is_seed: bool = False
+    visibility: Visibility = Visibility.PUBLIC
     published_at: datetime | None
     created_at: datetime
     updated_at: datetime | None

@@ -230,6 +230,11 @@
                       >Non revendiquée</span
                     >
                   {/if}
+                  {#if card.visibility === 'private'}
+                    <span class="badge-soft" title="Fiche privée (vous seul·e la voyez)"
+                      >Privée</span
+                    >
+                  {/if}
                   <span class="badge-soft">Brouillon</span>
                   <button
                     type="button"
@@ -280,6 +285,11 @@
                       class="badge-soft"
                       title="Fiche créée pour un contenu dont vous n'êtes pas l'auteur·ice"
                       >Non revendiquée</span
+                    >
+                  {/if}
+                  {#if card.visibility === 'private'}
+                    <span class="badge-soft" title="Fiche privée (vous seul·e la voyez)"
+                      >Privée</span
                     >
                   {/if}
                   <span class="badge-published">Publiée</span>
