@@ -5,9 +5,10 @@
 > ⚠️ **Refonte taxonomie ADR-020 (2026-05-14)** : les payloads `Source` n'utilisent plus `source_type` ni `authority_level`. Les exemples JSON dans ce document sont **obsolètes** : remplacer par `format` (texte/video/image/audio/data), `category` (12 valeurs) et `author_kind` (9 valeurs, colore le graphe). `POST /cards/{id}/sources` accepte désormais `parent_source_id` (corrigé — auparavant silencieusement ignoré). Les endpoints sources autorisent ajout/édition/suppression sur fiches `published` (cohérent avec ADR-019). Voir `DECISIONS.md` ADR-020.
 
 > ℹ️ **Imports (2026-07)** : trois endpoints d'import ajoutés, tous auth-only, SSRF-safe pour ceux qui font du fetch réseau. Ils ne créent rien en base — renvoient des drafts que le frontend valide avant création.
-> - `POST /api/v1/import/parse` — upload fichier (BibTeX / CSL-JSON / Markdown / PDF, cap 5 MB), rate 30/hour.
-> - `POST /api/v1/import/paste` — coller un texte brut de bibliographie (regex + LLM), rate 30/hour, cap 100 kB.
-> - `POST /api/v1/import/from-content-url` — URL d'un contenu → draft de fiche complète (titre/description extraits + section References passée au LLM). Body `{url}`, réponse `{card, sources, skipped, references_section_found, fetch_status: "ok"|"unreachable"|"not_html"}`. Rate 5/hour, cap HTML 3 MB, cap texte LLM 60 kB.
+> - `POST /api/v1/import/parse` — upload fichier (BibTeX / CSL-JSON / Markdown / PDF, cap 5 MB).
+> - `POST /api/v1/import/paste` — coller un texte brut de bibliographie (regex + LLM), cap 100 kB.
+> - `POST /api/v1/import/from-content-url` — URL d'un contenu → draft de fiche complète (titre/description extraits + section References passée au LLM). Body `{url}`, réponse `{card, sources, skipped, references_section_found, fetch_status: "ok"|"unreachable"|"not_html"}`. Cap HTML 3 MB, cap texte LLM 60 kB.
+> Les rate-limits sur ces 3 endpoints ont été retirés (phase test/pré-produit). À réintroduire quand une métrique de coût LLM/Crossref le justifiera.
 > Dédup DOI-aware via `_dedupe_key(url)` (extrait le DOI de tout URL éditeur et l'utilise comme clé canonique — `doi.org/10.xxx` et `frontiersin.org/…/10.xxx/full` collapsent).
 
 > ℹ️ **Rate-limit `/mcp/` (2026-07)** : le mount ASGI `/mcp` bypassait slowapi (les décorateurs `@limiter.limit` n'attrapent que les routes FastAPI). Middleware HTTP dédié dans `app/main.py` applique un moving-window **60/minute par IP** via la lib `limits`. Dépassé → 429 + `Retry-After: 60`.

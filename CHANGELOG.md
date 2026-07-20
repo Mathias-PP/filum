@@ -6,6 +6,21 @@
 
 ---
 
+## [Unreleased] — Retrait des rate-limits sur les endpoints d'import (2026-07-20)
+
+### Changed
+- **`/api/v1/import/parse`, `/import/paste`, `/import/from-content-url`** : retrait des rate-limits (respectivement 30/hour, 30/hour, 5/hour). Phase test/pré-produit : ces endpoints sont auth-only, on veut pouvoir itérer librement. À réintroduire quand une métrique de coût LLM/Crossref le justifiera. Le message UI "Limité à 5 analyses par heure" retiré de `/dashboard/from-url`.
+
+---
+
+## [Unreleased] — Backfill Crossref pour refs avec DOI sans metadata (2026-07-20)
+
+### Added
+- **Backfill Crossref parallèle** dans les 3 endpoints d'import (PR #165) : après le regex + LLM, pour chaque `ImportedRef` avec DOI extractible mais sans `title / authors / year` complet, `crossref_lookup(doi)` est appelé (Semaphore(10), ~15s pour 150 refs). Fill title/authors/year en place, `category → article-scientifique` si était `page-web`. Résout le bug vécu où le pipeline retournait 145 URLs DOI nues sans métadonnées sur une biblio Frontiers (LLM inefficace sur les formats concaténés type `AdlemanN. E.MenonV.BlaseyC. M...`). Déterministe, gratuit, robuste.
+- `url_extractor.crossref_lookup(doi)` — exposition publique de `_crossref` (alias conservé pour compat interne).
+
+---
+
 ## [Unreleased] — Import URL → fiche brouillon + rate-limit MCP + hero fix + Dependabot (2026-07-20)
 
 ### Added
