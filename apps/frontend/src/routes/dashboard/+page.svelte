@@ -9,6 +9,8 @@
   let loading = $state(true);
   let loadFailed = $state(false);
   let userCards = $state<CardType[]>([]);
+  let deletedCards = $state<CardType[]>([]);
+  let showTrash = $state(false);
   let confirmOpen = $state(false);
   let confirmTarget = $state<CardType | null>(null);
 
@@ -72,11 +74,37 @@
     try {
       await api.cards.delete(target.id);
       userCards = userCards.filter((c) => c.id !== target.id);
-      toast.success(`Fiche « ${target.title} » supprimée.`);
+      // La fiche rejoint la corbeille : recharger la liste si elle est ouverte.
+      if (showTrash) await loadTrash();
+      toast.success(`Fiche « ${target.title} » supprimée. Restaurable depuis la corbeille.`);
     } catch (err) {
       toast.danger(err instanceof Error ? err.message : 'Erreur lors de la suppression');
     } finally {
       confirmTarget = null;
+    }
+  }
+
+  async function loadTrash() {
+    try {
+      deletedCards = await api.cards.listDeleted();
+    } catch (err) {
+      toast.danger(err instanceof Error ? err.message : 'Erreur de chargement de la corbeille');
+    }
+  }
+
+  async function toggleTrash() {
+    showTrash = !showTrash;
+    if (showTrash && deletedCards.length === 0) await loadTrash();
+  }
+
+  async function restoreCard(card: CardType) {
+    try {
+      const restored = await api.cards.restore(card.id);
+      deletedCards = deletedCards.filter((c) => c.id !== card.id);
+      userCards = [restored, ...userCards];
+      toast.success(`Fiche « ${card.title} » restaurée.`);
+    } catch (err) {
+      toast.danger(err instanceof Error ? err.message : 'Erreur lors de la restauration');
     }
   }
 
@@ -320,6 +348,58 @@
       {/if}
     </div>
   {/if}
+
+  <section class="mt-10">
+    <button
+      type="button"
+      onclick={toggleTrash}
+      class="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-ink-tertiary hover:text-ink-primary transition-colors mb-3"
+    >
+      <svg
+        viewBox="0 0 20 20"
+        class="w-3.5 h-3.5 transition-transform"
+        style:transform={showTrash ? 'rotate(90deg)' : 'rotate(0)'}
+        fill="currentColor"
+        aria-hidden="true"
+      >
+        <path
+          fill-rule="evenodd"
+          d="M7.293 4.707a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L10.586 10 7.293 6.707a1 1 0 010-1.414z"
+          clip-rule="evenodd"
+        />
+      </svg>
+      Corbeille{deletedCards.length > 0 ? ` (${deletedCards.length})` : ''}
+    </button>
+
+    {#if showTrash}
+      {#if deletedCards.length === 0}
+        <p class="text-sm text-ink-tertiary italic">
+          Aucune fiche supprimée. Les fiches supprimées atterrissent ici et sont restaurables tant
+          qu'elles n'ont pas été purgées.
+        </p>
+      {:else}
+        <ul class="space-y-2">
+          {#each deletedCards as card (card.id)}
+            <li class="card-row group opacity-70">
+              <div class="flex-1 min-w-0">
+                <p class="font-medium text-ink-primary truncate">{card.title}</p>
+                <p class="text-xs text-ink-tertiary mt-0.5">
+                  Supprimée · statut d'origine : {card.status === 'published'
+                    ? 'publiée'
+                    : 'brouillon'}
+                </p>
+              </div>
+              <div class="card-row-actions">
+                <Button variant="secondary" size="sm" onclick={() => restoreCard(card)}>
+                  Restaurer
+                </Button>
+              </div>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+    {/if}
+  </section>
 
   <section class="mt-12">
     <h2 class="text-xs font-medium uppercase tracking-wider text-ink-tertiary mb-1">

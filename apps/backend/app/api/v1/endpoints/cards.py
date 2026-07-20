@@ -50,6 +50,22 @@ async def get_current_user(
     return user
 
 
+@router.get("/cards/deleted", response_model=list[CardResponse])
+async def list_my_deleted_cards(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    current_user: User = Depends(get_current_user),
+    card_service: CardService = Depends(get_card_service),
+):
+    """Liste les fiches soft-deletees de l'utilisateur (corbeille).
+
+    Chaque fiche est restaurable via POST /cards/{id}/restore. IMPORTANT :
+    cette route DOIT etre declaree AVANT /cards/{card_id} pour que FastAPI
+    ne matche pas 'deleted' comme un UUID (retournerait 422 sinon).
+    """
+    return await card_service.get_user_deleted_cards(current_user.id, limit, offset)
+
+
 @router.get("/cards", response_model=list[CardResponse])
 async def list_my_cards(
     status_filter: str | None = Query(None, alias="status"),

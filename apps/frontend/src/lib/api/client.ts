@@ -140,6 +140,14 @@ export const api = {
       await request(`/cards/${cardId}`, { method: 'DELETE' });
     },
 
+    listDeleted: async (): Promise<Card[]> => {
+      return request<Card[]>('/cards/deleted');
+    },
+
+    restore: async (cardId: string): Promise<Card> => {
+      return request<Card>(`/cards/${cardId}/restore`, { method: 'POST' });
+    },
+
     getPublic: async (creatorSlug: string, cardSlug: string): Promise<CardDetail> => {
       const raw = await request<CardDetail>(`/@${creatorSlug}/${cardSlug}`);
       return normalizeCardDetail(raw);
