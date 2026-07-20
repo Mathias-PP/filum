@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { onDestroy } from 'svelte';
   import { api, ApiError } from '$lib/api';
   import { Button, ProgressSteps, toast } from '$lib/components';
   import { currentUser } from '$lib/stores/auth';
@@ -198,6 +199,21 @@
       creating = false;
       createProgress = null;
     }
+  }
+
+  // Avertissement navigateur si l'utilisateur essaie de fermer/rafraichir
+  // pendant la création séquentielle des sources (F5 = fiche créée mais
+  // moitié des sources manquantes).
+  function beforeUnloadHandler(e: BeforeUnloadEvent) {
+    if (creating && createProgress && createProgress.done < createProgress.total) {
+      e.preventDefault();
+      // Chrome ignore la string mais respecte le preventDefault + returnValue.
+      e.returnValue = '';
+    }
+  }
+  if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', beforeUnloadHandler);
+    onDestroy(() => window.removeEventListener('beforeunload', beforeUnloadHandler));
   }
 
   function reset() {
