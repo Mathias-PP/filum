@@ -29,13 +29,13 @@ importers:
         version: 9.39.4
       '@sveltejs/adapter-auto':
         specifier: ^4.0.0
-        version: 4.0.0(@sveltejs/kit@2.60.1(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.55.9(@typescript-eslint/types@8.59.3))(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)))(svelte@5.55.9(@typescript-eslint/types@8.59.3))(typescript@5.9.3)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)))
+        version: 4.0.0(@sveltejs/kit@2.70.1(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.55.9(@typescript-eslint/types@8.59.3))(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)))(svelte@5.55.9(@typescript-eslint/types@8.59.3))(typescript@5.9.3)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)))
       '@sveltejs/adapter-static':
         specifier: ^3.0.0
-        version: 3.0.10(@sveltejs/kit@2.60.1(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.55.9(@typescript-eslint/types@8.59.3))(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)))(svelte@5.55.9(@typescript-eslint/types@8.59.3))(typescript@5.9.3)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)))
+        version: 3.0.10(@sveltejs/kit@2.70.1(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.55.9(@typescript-eslint/types@8.59.3))(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)))(svelte@5.55.9(@typescript-eslint/types@8.59.3))(typescript@5.9.3)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)))
       '@sveltejs/kit':
-        specifier: ^2.60.1
-        version: 2.60.1(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.55.9(@typescript-eslint/types@8.59.3))(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)))(svelte@5.55.9(@typescript-eslint/types@8.59.3))(typescript@5.9.3)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7))
+        specifier: ^2.70.1
+        version: 2.70.1(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.55.9(@typescript-eslint/types@8.59.3))(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)))(svelte@5.55.9(@typescript-eslint/types@8.59.3))(typescript@5.9.3)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7))
       '@sveltejs/vite-plugin-svelte':
         specifier: ^6.0.0
         version: 6.2.4(svelte@5.55.9(@typescript-eslint/types@8.59.3))(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7))
@@ -559,8 +559,8 @@ packages:
     peerDependencies:
       acorn: ^8.9.0
 
-  '@sveltejs/acorn-typescript@1.0.9':
-    resolution: {integrity: sha512-lVJX6qEgs/4DOcRTpo56tmKzVPtoWAaVbL4hfO7t7NVwl9AAXzQR6cihesW1BmNMPl+bK6dreu2sOKBP2Q9CIA==}
+  '@sveltejs/acorn-typescript@1.0.11':
+    resolution: {integrity: sha512-LFuZUkjJ9iF7JZye/aG5XM0SFcQ5VyL0oVX4WJ9dc0Va3R3s0OauX1BESVCb+YN/ol8TAfqGDDAQsTG627Y5kw==}
     peerDependencies:
       acorn: ^8.9.0
 
@@ -574,8 +574,8 @@ packages:
     peerDependencies:
       '@sveltejs/kit': ^2.0.0
 
-  '@sveltejs/kit@2.60.1':
-    resolution: {integrity: sha512-mQjlkNo+rJvpln7V2IGY2j99BqhcFbS4UN0AQNKNYfhBAFZTuCDAdW3a1sgf330mvtNvsBXn3HpAhcmvdJTcIQ==}
+  '@sveltejs/kit@2.70.1':
+    resolution: {integrity: sha512-nY9SPHGOZro3doud9vZXDBwl9tCZIouuJztjgSHs6PAIrv9M/z5O7eOhPV5xU7CgVHA976Jwu3BA1hIFvXztkA==}
     engines: {node: '>=18.13'}
     hasBin: true
     peerDependencies:
@@ -1214,6 +1214,9 @@ packages:
 
   devalue@5.8.1:
     resolution: {integrity: sha512-4CXDYRBGqN+57wVJkuXBYmpAVUSg3L6JAQa/DFqm238G73E1wuyc/JhGQJzN7vUf/CMphYau2zXbfWzDR5aTEw==}
+
+  devalue@5.8.2:
+    resolution: {integrity: sha512-DObPPAfdtFbXjxLqK8s2Xk9ZuWz5+ZoFEhC7J76es4GU/rEiXwHTmbImoCdyoCOcBH1UF3+Cz6Z2sYD4hyl5TA==}
 
   didyoumean@1.2.2:
     resolution: {integrity: sha512-gxtyfqMg7GKyhQmb056K7M3xszy/myH8w+B4RT+QXBQsvAOdc3XymqDDPHx1BgPgsdAA5SIifona89YtRATDzw==}
@@ -1946,8 +1949,8 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
-  set-cookie-parser@3.1.0:
-    resolution: {integrity: sha512-kjnC1DXBHcxaOaOXBHBeRtltsDG2nUiUni+jP92M9gYdW12rsmx92UsfpH7o5tDRs7I1ZZPSQJQGv3UaRfCiuw==}
+  set-cookie-parser@3.1.2:
+    resolution: {integrity: sha512-5/r/lTwbJ3zQ+qwdUFZYeRNqda7P5HD8zQKqlSjdGt1/S0cjLAphHusj4Y58ahDtWn/g32xrIS58/ikOvwl0Lw==}
 
   shebang-command@2.0.0:
     resolution: {integrity: sha512-kHxr2zZpYtdmrN1qDjrrX/Z1rR1kG8Dx+gkpK1G4eXmvXswmcE1hTWBWYUzlraYw1/yZp6YuDY77YtvbN0dmDA==}
@@ -2595,33 +2598,33 @@ snapshots:
     dependencies:
       acorn: 8.16.0
 
-  '@sveltejs/acorn-typescript@1.0.9(acorn@8.16.0)':
+  '@sveltejs/acorn-typescript@1.0.11(acorn@8.17.0)':
     dependencies:
-      acorn: 8.16.0
+      acorn: 8.17.0
 
-  '@sveltejs/adapter-auto@4.0.0(@sveltejs/kit@2.60.1(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.55.9(@typescript-eslint/types@8.59.3))(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)))(svelte@5.55.9(@typescript-eslint/types@8.59.3))(typescript@5.9.3)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)))':
+  '@sveltejs/adapter-auto@4.0.0(@sveltejs/kit@2.70.1(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.55.9(@typescript-eslint/types@8.59.3))(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)))(svelte@5.55.9(@typescript-eslint/types@8.59.3))(typescript@5.9.3)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)))':
     dependencies:
-      '@sveltejs/kit': 2.60.1(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.55.9(@typescript-eslint/types@8.59.3))(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)))(svelte@5.55.9(@typescript-eslint/types@8.59.3))(typescript@5.9.3)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7))
+      '@sveltejs/kit': 2.70.1(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.55.9(@typescript-eslint/types@8.59.3))(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)))(svelte@5.55.9(@typescript-eslint/types@8.59.3))(typescript@5.9.3)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7))
       import-meta-resolve: 4.2.0
 
-  '@sveltejs/adapter-static@3.0.10(@sveltejs/kit@2.60.1(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.55.9(@typescript-eslint/types@8.59.3))(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)))(svelte@5.55.9(@typescript-eslint/types@8.59.3))(typescript@5.9.3)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)))':
+  '@sveltejs/adapter-static@3.0.10(@sveltejs/kit@2.70.1(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.55.9(@typescript-eslint/types@8.59.3))(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)))(svelte@5.55.9(@typescript-eslint/types@8.59.3))(typescript@5.9.3)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)))':
     dependencies:
-      '@sveltejs/kit': 2.60.1(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.55.9(@typescript-eslint/types@8.59.3))(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)))(svelte@5.55.9(@typescript-eslint/types@8.59.3))(typescript@5.9.3)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7))
+      '@sveltejs/kit': 2.70.1(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.55.9(@typescript-eslint/types@8.59.3))(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)))(svelte@5.55.9(@typescript-eslint/types@8.59.3))(typescript@5.9.3)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7))
 
-  '@sveltejs/kit@2.60.1(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.55.9(@typescript-eslint/types@8.59.3))(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)))(svelte@5.55.9(@typescript-eslint/types@8.59.3))(typescript@5.9.3)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7))':
+  '@sveltejs/kit@2.70.1(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.55.9(@typescript-eslint/types@8.59.3))(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)))(svelte@5.55.9(@typescript-eslint/types@8.59.3))(typescript@5.9.3)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7))':
     dependencies:
       '@standard-schema/spec': 1.1.0
-      '@sveltejs/acorn-typescript': 1.0.9(acorn@8.16.0)
+      '@sveltejs/acorn-typescript': 1.0.11(acorn@8.17.0)
       '@sveltejs/vite-plugin-svelte': 6.2.4(svelte@5.55.9(@typescript-eslint/types@8.59.3))(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7))
       '@types/cookie': 0.6.0
-      acorn: 8.16.0
+      acorn: 8.17.0
       cookie: 0.7.2
-      devalue: 5.8.1
+      devalue: 5.8.2
       esm-env: 1.2.2
       kleur: 4.1.5
       magic-string: 0.30.21
       mrmime: 2.0.1
-      set-cookie-parser: 3.1.0
+      set-cookie-parser: 3.1.2
       sirv: 3.0.2
       svelte: 5.55.9(@typescript-eslint/types@8.59.3)
       vite: 6.4.3(@types/node@26.1.1)(jiti@1.21.7)
@@ -3307,6 +3310,8 @@ snapshots:
   dequal@2.0.3: {}
 
   devalue@5.8.1: {}
+
+  devalue@5.8.2: {}
 
   didyoumean@1.2.2: {}
 
@@ -4023,7 +4028,7 @@ snapshots:
 
   semver@7.8.5: {}
 
-  set-cookie-parser@3.1.0: {}
+  set-cookie-parser@3.1.2: {}
 
   shebang-command@2.0.0:
     dependencies:
