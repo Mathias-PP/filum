@@ -2,7 +2,7 @@
 
 > Snapshot vivant, 1 page max. **Pour l'historique détaillé** : voir [`CHANGELOG.md`](./CHANGELOG.md). **Pour les items long terme** : voir [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md).
 
-**Dernière mise à jour : 2026-07-19**
+**Dernière mise à jour : 2026-07-20**
 
 ---
 
@@ -23,9 +23,11 @@ Infra : VM GCP e2-micro us-central1 always-free (Ubuntu 24.04, swap 2 GB, Docker
 
 **Phase 3 — Features d'adoption (juillet 2026) : imports/exports, IA, extension, API.**
 
-Livré (mergé ou en PR, cf. tableau) : exports multi-formats (JSON/CSV/BibTeX/Markdown/xlsx/**docx**), imports (BibTeX/CSL-JSON/Markdown/PDF + biblio collée via LLM + multi-liens), citations IA vérifiées verbatim, extraction métadonnées durcie (DOI éditeurs + **PII ScienceDirect via Crossref**), fix session 7 jours (P0 « fiches disparues » = illusion causée par expiration 24h + 401 silencieux du dashboard — **aucune donnée perdue**, vérifié en prod), durcissement sécurité MCP, extension navigateur MV3 (`apps/extension/`), page `/developers` (docs API + MCP).
+Livré (mergé) : exports multi-formats (JSON/CSV/BibTeX/Markdown/xlsx/**docx**), imports (BibTeX/CSL-JSON/Markdown/PDF + biblio collée via LLM + multi-liens + **URL de contenu → draft de fiche + sources citées, PR #154**), citations IA vérifiées verbatim, extraction métadonnées durcie (DOI éditeurs + **PII ScienceDirect via Crossref**), fix session 7 jours, durcissement sécurité MCP + **rate-limit 60/min par IP sur `/mcp/` (PR #147)**, extension navigateur MV3 (`apps/extension/`), page `/developers` (docs API + MCP).
 
 ✅ **VM GCP redéployée le 2026-07-19** sur `main` (la VM était restée sur la branche `infra/oracle-micro` — piège : toujours vérifier `git branch` avant un pull). Vérifié en prod : exports json/docx/xlsx/bibtex → 200, MCP handshake OK sur `/mcp/`, health OK.
+
+⚠️ **VM à redéployer à nouveau** post-PR #154 (nouvel endpoint `POST /api/v1/import/from-content-url` + fix ruff B904). Commandes dans le CHANGELOG.
 
 Avant : Phase 2 (identité visuelle Pulsar-graph + audit) et Phase 1 (MVP complet, flow login → création → signature → attestation → publication).
 
@@ -33,7 +35,13 @@ Avant : Phase 2 (identité visuelle Pulsar-graph + audit) et Phase 1 (MVP comple
 
 ## PRs ouvertes
 
-_Aucune._ Toutes les PRs #135-#144 ont été mergées le 2026-07-19 (imports, citations IA, session 7j, export docx, métadonnées PII, deps sécurité, durcissement MCP, extension MV3, page /developers, docs). Suite des merges vérifiée sur main : backend 182/182 tests, frontend check/build OK. Les 11 vieilles PRs Dependabot < #100 ont été fermées le même jour (remplacées par le patch groupé #140 + overrides pnpm).
+_Aucune._ Session 2026-07-19/20 :
+- PRs #135-#144 mergées (imports, citations IA, session 7j, export docx, métadonnées PII, deps sécurité, durcissement MCP, extension MV3, page /developers, docs) — 2026-07-19
+- **PRs #147-#154 mergées** (rate-limit MCP 60/min, fix hero moon-line-depth v1/v2/v3, fix dédup DOI/URL, endpoint `POST /import/from-content-url`, UI `/dashboard/from-url` avec preview + progression + fetch_status) — 2026-07-20
+- **9 PRs Dependabot #153-#163 mergées** (vitest 4, svelte-check 4.7, svelte 5.56, sveltekit 2.70, eslint-plugin-svelte 3, svelte-eslint-parser 1.8, prettier 3.9, @types/node 26, autoprefixer 10.5) — 2026-07-20
+- **PR #156 fermée** (tailwind v4 breaking, migration dédiée nécessaire)
+
+Backend 197/197 tests, frontend check/build/lint OK.
 
 > Mergées avant : #121-#134 (exports, imports, citations IA, graph colors, etc.), #116-#120 (infra GCP + LLM extract), #112-#115 (waitlist, seed & claim, MCP, adoption).
 
@@ -109,10 +117,18 @@ Vercel : `BACKEND_URL=https://philum-api.duckdns.org` (env var serverless, jamai
 
 > **Roadmap consolidée et priorisée** : [`.docs/19-roadmap-2026-07.md`](./.docs/19-roadmap-2026-07.md). Plan d'audit détaillé : [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md). Comptes plateformes liés : [`.docs/18-linked-accounts.md`](./.docs/18-linked-accounts.md).
 
-**Immédiat** (post-merges du 2026-07-19)
-- ~~P0 — Redéployer la VM GCP~~ ✅ fait le 2026-07-19 (VM basculée de `infra/oracle-micro` sur `main`, exports + MCP vérifiés en prod).
+**Immédiat** (post-merges du 2026-07-20)
+- **P0 — Redéployer la VM GCP** : nouvel endpoint `POST /api/v1/import/from-content-url` + rate-limit `/mcp/` (PR #147) pas encore effectifs en prod. Commandes :
+  ```bash
+  ssh mathias_pinault@philum-api.duckdns.org
+  cd ~/filum && git pull origin main
+  cd infra/oracle && docker compose -f docker-compose.micro.yml up -d --build
+  # Test : curl -X POST https://philum-api.duckdns.org/api/v1/import/from-content-url \
+  #   -H "Content-Type: application/json" -d '{"url":"https://x"}' → 401 attendu
+  ```
 - **Alerte budget 1 € sur GCP** (Billing → Budgets & alerts) si pas déjà en place — filet de sécurité, pas de plafond natif.
 - **Décommissionner Railway** : supprimer le service + retirer l'ancienne redirect URI Railway du client OAuth Google.
+- **Migrer Tailwind v3 → v4** (PR dédiée) : PR Dependabot #156 fermée car breaking (nouveau format config, PostCSS séparé `@tailwindcss/postcss`, syntaxes `@theme`/`@source`).
 
 **Court terme** (semaines)
 - **F1** — `openapi-typescript` (gen auto des types TS depuis OpenAPI, prévient drift back/front) — effort 3-4h.
