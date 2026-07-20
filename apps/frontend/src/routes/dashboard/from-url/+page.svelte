@@ -29,6 +29,9 @@
   let contentType = $state<ContentType>('other');
   let slug = $state('');
   let slugManual = $state(false);
+  // Par défaut coché sur /from-url : l'utilisateur crée souvent des fiches
+  // depuis une URL trouvée sur le web sans être l'auteur du contenu.
+  let isSeed = $state(true);
   // Un booléen par index — les sources sont cochées par défaut.
   let selected = $state<boolean[]>([]);
   let sources = $state<ImportedSourceDraft[]>([]);
@@ -158,6 +161,7 @@
         content_url: contentUrl.trim() || undefined,
         platform,
         content_type: contentType,
+        is_seed: isSeed,
       });
       // Ajout des sources sélectionnées, séquentiel (évite d'inonder Wayback).
       const toCreate = sources.filter((_, i) => selected[i]);
@@ -404,6 +408,25 @@
             </select>
           </div>
         </div>
+
+        <label class="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            bind:checked={isSeed}
+            class="mt-0.5 shrink-0"
+            aria-describedby="seed-hint-from-url"
+          />
+          <span class="text-sm">
+            <span class="font-medium text-ink-primary">
+              Je ne suis pas l'auteur·ice de ce contenu
+            </span>
+            <span id="seed-hint-from-url" class="block text-xs text-ink-tertiary mt-0.5">
+              Coché par défaut ici : quand on colle l'URL d'un article/vidéo trouvé sur le web,
+              c'est en général pour référencer le travail de quelqu'un d'autre. L'auteur·ice pourra
+              revendiquer la fiche depuis sa page publique.
+            </span>
+          </span>
+        </label>
       </fieldset>
 
       <!-- Sources extraites -->

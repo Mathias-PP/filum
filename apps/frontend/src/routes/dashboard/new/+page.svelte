@@ -16,6 +16,7 @@
   let contentUrl = $state('');
   let platform = $state<Platform>('other');
   let contentType = $state<ContentType>('other');
+  let isSeed = $state(false);
   let error = $state<string | null>(null);
   let loading = $state(false);
 
@@ -53,6 +54,7 @@
         content_url: contentUrl || undefined,
         platform,
         content_type: contentType,
+        is_seed: isSeed,
       });
       goto(`/dashboard/new/${card.id}/sources`);
     } catch (err) {
@@ -204,6 +206,27 @@
           {/each}
         </select>
       </div>
+    </div>
+
+    <div class="rounded-lg border border-border bg-surface-secondary/40 p-4">
+      <label class="flex items-start gap-3 cursor-pointer">
+        <input
+          type="checkbox"
+          bind:checked={isSeed}
+          class="mt-0.5 shrink-0"
+          aria-describedby="seed-hint"
+        />
+        <span class="text-sm">
+          <span class="font-medium text-ink-primary">
+            Je ne suis pas l'auteur·ice de ce contenu
+          </span>
+          <span id="seed-hint" class="block text-xs text-ink-tertiary mt-0.5">
+            La fiche sera marquée comme <em>non revendiquée</em> — l'auteur·ice du contenu pourra la revendiquer
+            depuis la page publique et en devenir propriétaire. Vous ne pourrez pas attester cryptographiquement
+            d'un contenu que vous n'avez pas créé.
+          </span>
+        </span>
+      </label>
     </div>
 
     <div class="flex justify-end pt-4">

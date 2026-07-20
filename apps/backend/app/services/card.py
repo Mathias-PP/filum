@@ -29,6 +29,7 @@ class CardService:
             content_url=card_data.content_url,
             platform=card_data.platform.value,
             content_type=card_data.content_type.value,
+            is_seed=card_data.is_seed,
         )
         self._db.add(card)
         await self._db.commit()

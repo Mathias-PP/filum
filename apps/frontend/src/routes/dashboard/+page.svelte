@@ -223,6 +223,13 @@
                   </p>
                 </a>
                 <div class="card-row-actions">
+                  {#if card.is_seed}
+                    <span
+                      class="badge-soft"
+                      title="Fiche créée pour un contenu dont vous n'êtes pas l'auteur·ice"
+                      >Non revendiquée</span
+                    >
+                  {/if}
                   <span class="badge-soft">Brouillon</span>
                   <button
                     type="button"
@@ -268,6 +275,13 @@
                   </p>
                 </div>
                 <div class="card-row-actions">
+                  {#if card.is_seed}
+                    <span
+                      class="badge-soft"
+                      title="Fiche créée pour un contenu dont vous n'êtes pas l'auteur·ice"
+                      >Non revendiquée</span
+                    >
+                  {/if}
                   <span class="badge-published">Publiée</span>
                   <Button
                     href="/@{$currentUser?.username}/{card.slug}"

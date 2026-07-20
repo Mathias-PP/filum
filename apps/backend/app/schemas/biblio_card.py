@@ -46,7 +46,13 @@ class CardBase(BaseModel):
 
 
 class CardCreate(CardBase):
-    pass
+    # Seed card = fiche cree par un utilisateur pour un contenu dont il n'est
+    # PAS l'auteur (ex. mathias@... cree une fiche pour une video d'un autre
+    # vulgarisateur). L'auteur reel peut la revendiquer via
+    # POST /cards/{id}/claim-requests. Une seed card ne devrait pas etre
+    # cryptographiquement attestee par son creator (cette regle vit dans
+    # AttestationService, hors scope de ce schema).
+    is_seed: bool = False
 
 
 class CardUpdate(BaseModel):
@@ -54,6 +60,7 @@ class CardUpdate(BaseModel):
     description: str | None = None
     content_url: str | None = None
     platform: Platform | None = None
+    is_seed: bool | None = None
 
 
 class CardStats(BaseModel):
