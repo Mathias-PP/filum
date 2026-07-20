@@ -6,6 +6,27 @@
 
 ---
 
+## [Unreleased] — Import URL → fiche brouillon + rate-limit MCP + hero fix + Dependabot (2026-07-20)
+
+### Added
+- **`POST /api/v1/import/from-content-url`** (PR #152/#154) : un cran au-dessus de `/import/paste`. L'utilisateur donne l'URL d'un contenu (article, billet), Philum extrait titre/description via `url_extractor`, fetch le HTML, isole la section « References » via une short-list de sélecteurs CSS (Frontiers, PMC, Nature, `#references`, `.ref-list`…), passe le texte au LLM + regex avec dédup DOI-aware, retourne un draft `{card, sources, skipped, references_section_found, fetch_status}`. Auth requise, rate-limit 5/hour, SSRF-safe, cap HTML 3 MB, cap texte LLM 60 kB. Nettoyage systématique des `script/style/svg` avant analyse (bruit + coût LLM ×3). Statut fetch explicite : `ok` / `unreachable` / `not_html`.
+- **UI `/dashboard/from-url`** (PR #154) : 2 étapes URL → preview. Bouton « Depuis une URL » sur `/dashboard` + cross-link sur `/dashboard/new`. Preview éditable (titre/slug/desc/plateforme, slug auto-dérivé du titre, guess platform depuis hostname), sources cochables individuellement, boutons « Tout cocher/décocher », compteur de progression `5/12` pendant la création séquentielle des sources, `beforeunload` warning si l'utilisateur ferme la page pendant la création, bandeau différencié selon `fetch_status` (rouge unreachable / bleu not_html / vert refs found / warn fallback).
+- **Rate-limit `/mcp/` 60/min par IP** (PR #147) : le mount ASGI `/mcp` bypassait slowapi. Middleware HTTP dédié dans `main.py` réutilise la lib `limits` (déjà embarquée par slowapi). 429 + `Retry-After: 60`. Ferme le seul point ouvert de la revue MCP.
+
+### Changed
+- **PRs Dependabot mergées le 2026-07-20** : `vitest 4.1.10`, `svelte-check 4.7.3`, `svelte 5.56.6`, `@sveltejs/kit 2.70.1`, `eslint-plugin-svelte 3.22.0`, `svelte-eslint-parser 1.8.0`, `prettier 3.9.5` (reformat de `legacy-adapter.ts`), `@types/node 26.1.1`, `autoprefixer 10.5.4`. PR **#156 tailwind v4 fermée** (breaking change, migration dédiée nécessaire).
+- **Dédup `_dedupe_key` DOI-aware** (PR #151) : nouvelle fonction qui extrait le DOI de l'URL (Frontiers, Wiley, Springer, PLOS, doi.org) et retourne `doi:{doi.lower()}` comme clé canonique. Résout le bug vécu où `frontiersin.org/…/10.3389/fpsyg.2018.01561/full` et `doi.org/10.3389/fpsyg.2018.01561` produisaient deux entrées identiques dans multi-liens/paste.
+
+### Fixed
+- **`ruff B904`** dans l'endpoint `from-content-url` (PR #154, dette de #152 qui avait cassé la CI de `main`). Toutes les PRs héritières redevenues vertes après merge.
+- **Hero pulsar — ligne moon passe devant le nœud parent** quand la moon passe devant (PR #148/#149/#150, 3 itérations). v1 échouait car copie du test 3D pulsar sans adapter au ratio z/radius bien plus petit (moon.z max 0.098 vs radius parent 0.09). v2 (critère global `n.z > ancZ`) donnait un fade non progressif. **v3 = deux corrections combinées** : amplitude z de l'orbite locale de la moon passée de `0.35` à `0.9` (ratio z/radius 3× comme les nœuds/pulsar) + test pixel-par-pixel `smoothstep(0, ancR*0.35, lineZ - anchorFrontZ)` pour l'émergence progressive depuis le bord.
+
+### Notes
+- Backend : **197/197 tests verts** (191 → 197 avec 6 nouveaux tests import unitaires + 2 tests rate-limit MCP + 3 tests endpoint `from-content-url`).
+- ⚠️ **VM prod pas encore redéployée** : `POST /api/v1/import/from-content-url` et le rate-limit `/mcp/` seront effectifs après `git pull` + `docker compose up -d --build` sur la VM.
+
+---
+
 ## [Unreleased] — Migration hébergement GCP + Supabase (2026-07-19)
 
 ### Changed

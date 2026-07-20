@@ -1,10 +1,12 @@
-# Filum
+# Philum
 
 > Infrastructure ouverte de provenance et de filiation pour le contenu numérique.
+>
+> _Note : le projet a été renommé « Filum » → « Philum » (2026). Le dépôt Git et quelques docs historiques mentionnent encore l'ancien nom, la migration progressive est décrite dans [`.docs/14-philum-rename-migration.md`](.docs/14-philum-rename-migration.md)._
 
-**Filum** est un outil qui permet à tout créateur de contenu (vidéo, article, podcast, post long) de transformer sa bibliographie en une fiche publique interactive : sources organisées par type et autorité, archivées de manière horodatée (Wayback Machine), reliées entre elles dans un **graphe interactif D3.js**, et chaque contenu original revendiqué par son créateur·ice est attesté cryptographiquement (Ed25519, ADR-019) — le tout sur une page publique stable.
+**Philum** est un outil qui permet à tout créateur de contenu (vidéo, article, podcast, post long) de transformer sa bibliographie en une fiche publique interactive : sources organisées par type et autorité, archivées de manière horodatée (Wayback Machine), reliées entre elles dans un **graphe interactif D3.js**, et chaque contenu original revendiqué par son créateur·ice est attesté cryptographiquement (Ed25519, ADR-019) — le tout sur une page publique stable.
 
-À l'ère de l'IA générative qui brouille les pistes de l'authenticité, Filum n'est pas un outil de détection de faux. C'est un **label qualité** pour les créateurs qui prennent le temps de bien sourcer leur travail.
+À l'ère de l'IA générative qui brouille les pistes de l'authenticité, Philum n'est pas un outil de détection de faux. C'est un **label qualité** pour les créateurs qui prennent le temps de bien sourcer leur travail.
 
 ---
 
@@ -21,16 +23,18 @@
 
 Voir [`.docs/01-product-spec.md`](.docs/01-product-spec.md) pour le détail des features.
 
-En résumé, le MVP permet à un créateur :
+En résumé, la plateforme permet à un créateur :
 
 1. De s'authentifier avec son compte Google
-2. De créer une fiche de bibliographie pour un de ses contenus en y ajoutant ses sources
-3. De recevoir une page publique stable (`filum.app/[créateur]/[contenu]`) qui présente sa bibliographie sous forme de graphe interactif et de liste éditoriale
-4. De partager cette page (via OpenGraph riche, embed dans d'autres sites, export PDF)
+2. De créer une fiche de bibliographie pour un de ses contenus en y ajoutant ses sources — soit manuellement, soit **en collant l'URL d'un article** (Philum extrait titre + sources citées automatiquement via LLM + regex), soit en **important un fichier** BibTeX / CSL-JSON (Zotero) / Markdown (Obsidian) / PDF, soit en **collant une bibliographie textuelle** brute
+3. De recevoir une page publique stable (`filum-eight.vercel.app/@[créateur]/[contenu]`) qui présente sa bibliographie sous forme de graphe interactif et de liste éditoriale
+4. De partager cette page (OpenGraph riche, exports JSON/CSV/BibTeX/Markdown/xlsx/docx)
+5. De signer cryptographiquement l'attestation d'auteur du contenu (Ed25519 sur le triplet `(creator_id, content_url, attested_at)`, cf. ADR-019)
 
 Et permet à n'importe qui :
 
-5. De consulter une fiche publique, naviguer dans le graphe de sources, lire les annotations, accéder aux snapshots archivés
+6. De consulter une fiche publique, naviguer dans le graphe de sources, lire les annotations, accéder aux snapshots archivés (Wayback Machine)
+7. D'interroger l'API REST publique ou le **serveur MCP** (Model Context Protocol) pour explorer les fiches depuis un agent IA — 4 tools read-only, rate-limité 60/min par IP
 
 ---
 
@@ -57,18 +61,25 @@ Voir [`STATE.md`](STATE.md) pour l'état courant et [`.docs/02-tech-architecture
 
 ### Backend déployé
 
-- Production : https://filum-production-07bb.up.railway.app
-- API docs : https://filum-production-07bb.up.railway.app/api/v1/docs
-- Health : https://filum-production-07bb.up.railway.app/health
+Hébergement post-2026-07-19 : VM GCP e2-micro always-free (Docker Compose backend + Caddy TLS), Postgres Supabase, cf. ADR-028.
+
+- Production : https://philum-api.duckdns.org
+- API docs : https://philum-api.duckdns.org/api/v1/docs
+- Health : https://philum-api.duckdns.org/health
+- MCP endpoint : https://philum-api.duckdns.org/mcp/ (4 tools read-only, cf. `/developers`)
 
 ### Frontend déployé
 
 - Production : https://filum-eight.vercel.app
 - Fiche démo : https://filum-eight.vercel.app/@example/memoire-et-cerveau (graphe D3 interactif, 18 sources neurosciences)
+- Docs développeurs : https://filum-eight.vercel.app/developers
 
-### CI — 9/9 jobs verts
+### CI (16 jobs)
 
-- Security Scan (Trivy + TruffleHog), Lint Backend (ruff), Type Check (mypy), Test Backend (pytest), Lint Frontend (ESLint + Prettier), Test Frontend (vitest), Build Frontend (vite), Analytics (dbt compile)
+- Sécurité : Security Scan (Trivy), Static Analysis (Bandit), Secrets Detection (TruffleHog), Vulnerability Check (Safety), Dependency Review
+- Backend : Lint (ruff), Type Check (mypy), Test (pytest — **197 tests**)
+- Frontend : Lint (ESLint + Prettier), Test (vitest), Build (vite)
+- Analytics : dbt compile
 
 ---
 
@@ -122,8 +133,8 @@ Les deux fichiers racines (CLAUDE.md, AGENTS.md) contiennent les règles essenti
 - **Crypto** : `cryptography` (Python) pour hash SHA-256 et signatures Ed25519
 - **Archivage de sources** : API Wayback Machine d'Internet Archive
 - **Identité** : OAuth Google en MVP (puis YouTube, X, ORCID en phase 2)
-- **Déploiement** : Railway (backend + Postgres) + Vercel ou Netlify (frontend)
-- **Migration souveraine prévue** : Scaleway en phase 3
+- **Déploiement** : GCP e2-micro (Docker Compose + Caddy TLS) + Supabase Postgres + Vercel (frontend). Cf. ADR-028.
+- **Extension navigateur MV3** : `apps/extension/` (ajout de source en 1 clic depuis le browser)
 
 ---
 
@@ -137,4 +148,4 @@ Voir le [manifeste fondateur](.docs/MANIFESTE.md) pour la vision complète à lo
 
 ---
 
-*Document maintenu par l'auteur du projet. Version 0.1 — MVP complet déployé (backend + frontend).*
+*Document maintenu par l'auteur du projet. MVP complet + Phase 3 (imports/exports/IA/MCP/extension) déployé.*
