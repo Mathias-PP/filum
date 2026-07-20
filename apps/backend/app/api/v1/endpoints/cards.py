@@ -139,6 +139,8 @@ async def update_card(
         card.content_url = card_data.content_url
     if card_data.platform is not None:
         card.platform = card_data.platform.value
+    if card_data.is_seed is not None:
+        card.is_seed = card_data.is_seed
 
     # The card is already attached to the request session (via CardService);
     # opening a second session here raised InvalidRequestError. Commit in place.

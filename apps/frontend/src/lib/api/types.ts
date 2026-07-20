@@ -54,6 +54,11 @@ export interface CardCreate {
   content_url?: string;
   platform: Platform;
   content_type: ContentType;
+  /**
+   * Fiche « seed » = créée pour un contenu dont je ne suis pas l'auteur.
+   * L'auteur réel pourra la revendiquer via /cards/{id}/claim-requests.
+   */
+  is_seed?: boolean;
 }
 
 export interface SourceExcerpt {
