@@ -266,7 +266,7 @@ async def parse_content_url(
         raise HTTPException(
             status_code=422,
             detail={"code": "unsafe_url", "message": str(e)},
-        )
+        ) from e
 
     # 1. Metadata du contenu (titre, description, auteurs) - reuse url_extractor
     try:
