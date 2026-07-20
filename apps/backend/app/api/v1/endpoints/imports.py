@@ -7,6 +7,7 @@ existant (l'utilisateur valide chaque brouillon avant creation).
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 import httpx
@@ -17,12 +18,14 @@ from pydantic import BaseModel, Field
 from app.api.v1.endpoints.cards import get_current_user
 from app.core.rate_limit import limiter
 from app.core.url_safety import UnsafeUrlError, assert_url_is_safe
+from app.extractors.url_extractor import crossref_lookup
 from app.extractors.url_extractor import extract as extract_url_metadata
 from app.models.user import User
 from app.services.import_parsers import (
     ImportedRef,
     ParseResult,
     _dedupe_key,
+    _doi_from_url,
     _doi_to_url,
     detect_format,
     parse_file,
@@ -103,6 +106,10 @@ async def parse_import_file(
         )
     detected = format or detect_format(file.filename, data)
     result = parse_file(file.filename, data, forced_format=detected)
+    # PDF/Markdown ne contiennent souvent que des DOIs nus sans metadata.
+    # BibTeX/CSL-JSON ont deja tout : le backfill est un no-op sur les refs
+    # deja completes (garde `title AND authors AND year`).
+    await _backfill_crossref_metadata(result.refs)
     return ImportParseResponse(
         sources=[_to_draft(ref) for ref in result.refs],
         skipped=result.skipped,
@@ -112,6 +119,54 @@ async def parse_import_file(
 
 class ImportPasteRequest(BaseModel):
     text: str = Field(min_length=1, max_length=100_000)
+
+
+# --- Crossref backfill : enrichit les refs avec DOI mais sans metadata ----
+#
+# Le pipeline regex + LLM peut retourner des refs `{url: "https://doi.org/…"}`
+# sans title/authors/year : soit parce que le LLM a echoue (texte trop bruite,
+# format Frontiers avec noms colles, timeout), soit parce que le regex a
+# capture des DOIs nus dans le fallback body. Crossref indexe TOUT DOI de
+# journal avec metadata canonique (title, authors, year, citations_count).
+# Un backfill parallel est deterministe, rapide (< 20s pour 150 refs avec
+# Semaphore(10)), gratuit et sans hallucination.
+
+_CROSSREF_CONCURRENCY = 10
+
+
+async def _backfill_one_crossref(
+    ref: ImportedRef, sem: asyncio.Semaphore
+) -> None:
+    """Enrichit `ref` in-place via Crossref si un DOI est extractible."""
+    if ref.title and ref.authors and ref.year:
+        return  # deja complet, skip
+    doi = _doi_from_url(ref.url)
+    if not doi:
+        return
+    async with sem:
+        meta = await crossref_lookup(doi)
+    if meta is None:
+        return
+    if not ref.title and meta.title:
+        ref.title = meta.title
+    if not ref.authors and meta.authors:
+        ref.authors = meta.authors
+    if not ref.year and meta.published_at:
+        # published_at format YYYY-MM-DD.
+        year_str = meta.published_at[:4]
+        if year_str.isdigit():
+            ref.year = int(year_str)
+    # Crossref = journal DOI dans 99% des cas -> article scientifique.
+    if ref.category == "page-web":
+        ref.category = "article-scientifique"
+
+
+async def _backfill_crossref_metadata(refs: list[ImportedRef]) -> None:
+    """Enrichit en parallele les refs avec DOI mais sans metadata complete."""
+    if not refs:
+        return
+    sem = asyncio.Semaphore(_CROSSREF_CONCURRENCY)
+    await asyncio.gather(*(_backfill_one_crossref(ref, sem) for ref in refs))
 
 
 def _merge_llm_refs(base: ParseResult, llm_refs: list[LlmBiblioRef]) -> ParseResult:
@@ -161,6 +216,9 @@ async def parse_pasted_bibliography(
     llm_refs = await parse_bibliography(payload.text)
     if llm_refs:
         result = _merge_llm_refs(result, llm_refs)
+    # Backfill Crossref pour les refs avec DOI mais sans metadata complete
+    # (typique : LLM off/echoue -> URL DOI nue capturee par le regex).
+    await _backfill_crossref_metadata(result.refs)
     return ImportParseResponse(
         sources=[_to_draft(ref) for ref in result.refs],
         skipped=result.skipped,
@@ -322,6 +380,13 @@ async def parse_content_url(
     # pas lui-meme, et la fiche a deja content_url = url).
     self_key = _dedupe_key(url)
     result.refs = [ref for ref in result.refs if _dedupe_key(ref.url) != self_key]
+
+    # Backfill Crossref pour toute ref avec DOI mais sans metadata complete.
+    # Etape critique : Frontiers/PMC/Nature ont des sections References ou
+    # les noms d'auteurs sont concatenes sans espaces (« AdlemanN. E.MenonV.
+    # BlaseyC. M... ») -> le LLM parse mal et le regex ne capture qu'un DOI
+    # nu. Crossref donne title/authors/year/citations_count deterministes.
+    await _backfill_crossref_metadata(result.refs)
 
     card = ImportedCardDraft(
         title=meta.title if meta else None,

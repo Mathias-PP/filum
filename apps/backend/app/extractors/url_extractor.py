@@ -358,7 +358,12 @@ def _parse_crossref_work(data: dict) -> ExtractedMetadata:
     )
 
 
-async def _crossref(doi: str) -> ExtractedMetadata | None:
+async def crossref_lookup(doi: str) -> ExtractedMetadata | None:
+    """Lookup metadata for a bare DOI via Crossref. Never raises.
+
+    Public — reusable from other modules (imports pipeline uses it to
+    backfill metadata for refs harvested from a page's References section).
+    """
     url = f"https://api.crossref.org/works/{doi}"
     try:
         async with httpx.AsyncClient(headers=_HEADERS, timeout=_TIMEOUT) as client:
@@ -369,6 +374,10 @@ async def _crossref(doi: str) -> ExtractedMetadata | None:
     except Exception as e:
         logger.debug("Crossref lookup failed for doi=%s: %s", doi, e)
         return None
+
+
+# Compat interne : ancienne API privée conservée pour éviter de toucher extract().
+_crossref = crossref_lookup
 
 
 async def _crossref_by_pii(pii: str) -> ExtractedMetadata | None:
