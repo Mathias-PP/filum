@@ -231,17 +231,28 @@ def _extract_references_text(html: str) -> tuple[str, bool]:
     """Return (text, found_dedicated_section).
 
     Cherche une section References dans le HTML via une short-list de
-    selecteurs. Si aucune, retourne le texte de la page entiere (le LLM
-    fera au mieux). Le texte est cape a `_REFS_TEXT_MAX` chars.
+    selecteurs. Si aucune, retourne le texte de la page nettoye (le LLM
+    fera au mieux). Retire systematiquement script/style/noscript/svg
+    (bruit + coute cher au LLM) et, pour le fallback body, aussi
+    nav/header/footer/aside (chrome UI sans valeur bibliographique).
+    Le texte est cape a `_REFS_TEXT_MAX` chars.
     """
     soup = BeautifulSoup(html, "lxml")
+    # Removal universel : JS/CSS et vecteurs graphiques rendent le
+    # get_text() ILLISIBLE et coutent 3x plus cher au LLM. A supprimer
+    # meme dans une section References dediee au cas ou elle en contient.
+    for tag in soup.find_all(["script", "style", "noscript", "svg"]):
+        tag.decompose()
     for selector in _REFERENCES_SELECTORS:
         node = soup.select_one(selector)
         if node:
             text = node.get_text(separator="\n", strip=True)
             if len(text) >= 80:  # eviter les sections quasi-vides
                 return text[:_REFS_TEXT_MAX], True
-    # Fallback: tout le body, souvent trop bruite mais le LLM sait faire.
+    # Fallback: page entiere, mais on retire aussi le chrome UI qui n'a
+    # aucune valeur bibliographique (menus, header/footer, sidebars).
+    for tag in soup.find_all(["nav", "header", "footer", "aside"]):
+        tag.decompose()
     body = soup.find("body")
     text = body.get_text(separator="\n", strip=True) if body else soup.get_text(strip=True)
     return text[:_REFS_TEXT_MAX], False
