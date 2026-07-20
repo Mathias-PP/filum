@@ -1220,7 +1220,7 @@
         Sources ajoutées ({sources.length})
       </h2>
       <div class="space-y-2">
-        {#each sources as source (source.id)}
+        {#each sources as source, sourceIndex (source.id)}
           {@const color = AUTHOR_COLORS[source.author_kind]}
           {@const isThisEditing = editingSourceId === source.id}
           <div
@@ -1229,6 +1229,13 @@
               : 'border-border'}"
           >
             <div class="flex items-start gap-3 min-w-0">
+              <span
+                class="mt-0.5 shrink-0 inline-flex items-center justify-center min-w-[1.75rem] px-1.5 py-0.5 text-xs font-mono font-medium text-ink-tertiary bg-surface-tertiary border border-border rounded"
+                aria-label="Numéro de source"
+                title="Position dans la fiche"
+              >
+                {sourceIndex + 1}
+              </span>
               <span
                 class="mt-0.5 shrink-0 inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full"
                 style:background-color={color.fill}
