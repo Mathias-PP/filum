@@ -134,9 +134,7 @@ class ImportPasteRequest(BaseModel):
 _CROSSREF_CONCURRENCY = 10
 
 
-async def _backfill_one_crossref(
-    ref: ImportedRef, sem: asyncio.Semaphore
-) -> None:
+async def _backfill_one_crossref(ref: ImportedRef, sem: asyncio.Semaphore) -> None:
     """Enrichit `ref` in-place via Crossref si un DOI est extractible."""
     if ref.title and ref.authors and ref.year:
         return  # deja complet, skip
