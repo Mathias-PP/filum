@@ -103,20 +103,22 @@ class TestDeleteCardIsSoft:
         # Second delete returns False (already filtered out by the same query).
         assert await card_service.delete_card(draft_card.id, test_user.id) is False
 
-    async def test_published_card_not_deletable(
+    async def test_published_card_is_soft_deletable(
         self, card_service, draft_card, test_user, db_session
     ):
+        """La fiche publiee est soft-deletable par son owner (2026-07-20).
+        L'attestation Ed25519 dans content_attestations reste intacte."""
         draft_card.status = CardStatus.PUBLISHED.value
         draft_card.published_at = datetime.now(UTC).replace(tzinfo=None)
         await db_session.commit()
 
         ok = await card_service.delete_card(draft_card.id, test_user.id)
-        assert ok is False
+        assert ok is True
 
-        # And the row is unchanged.
+        # Row is still there but deleted_at is set.
         result = await db_session.execute(select(BiblioCard).where(BiblioCard.id == draft_card.id))
         row = result.scalar_one()
-        assert row.deleted_at is None
+        assert row.deleted_at is not None
 
 
 class TestSoftDeleteHidesSources:

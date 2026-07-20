@@ -127,14 +127,10 @@ async def update_card(
             detail={"code": "forbidden", "message": "Access denied"},
         )
 
-    from app.models.biblio_card import CardStatus
-
-    if card.status == CardStatus.PUBLISHED.value:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "validation_error", "message": "Cannot modify a published card"},
-        )
-
+    # Note (2026-07-21) : les fiches publiees sont editables par leur owner.
+    # La *fiche* (vue produit) est mutable ; l'engagement public est porte
+    # par l'*attestation Ed25519* dans content_attestations, qui reste
+    # immuable et verifiable via son id (ADR-019 revisitee).
     if card_data.title is not None:
         card.title = card_data.title
     if card_data.description is not None:
@@ -235,7 +231,7 @@ async def delete_card(
     if not deleted:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "not_found", "message": "Card not found or already published"},
+            detail={"code": "not_found", "message": "Card not found or already deleted"},
         )
 
 

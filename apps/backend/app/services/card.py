@@ -152,7 +152,7 @@ class CardService:
         )
 
     async def delete_card(self, card_id: UUID, user_id: UUID) -> bool:
-        """Soft-delete a draft card.
+        """Soft-delete a card (draft OR published) owned by ``user_id``.
 
         Sets ``deleted_at`` to now instead of removing the row. The card's
         sources stay in the DB (they're referenced by content_attestations
@@ -160,9 +160,12 @@ class CardService:
         invisible because every public query filters
         ``BiblioCard.deleted_at IS NULL``.
 
-        Published cards are never deletable from this endpoint (ADR-019:
-        published attestations are public commitments). They can only be
-        soft-archived (status=archived) via a future flow.
+        Note (ADR-019 revisitee, 2026-07-20) : les fiches publiees sont
+        aussi soft-deletable par leur owner. La *fiche* (page publique
+        agregee) est la vue produit ; l'engagement public est porte par
+        l'*attestation Ed25519* (content_attestations), qui reste en base
+        et verifiable via son id. Soft-delete de la fiche != revocation
+        de l'attestation. Annulable via ``restore_card``.
         """
         result = await self._db.execute(
             select(BiblioCard).where(
@@ -173,8 +176,6 @@ class CardService:
         )
         card = result.scalar_one_or_none()
         if not card:
-            return False
-        if card.status == CardStatus.PUBLISHED:
             return False
         card.deleted_at = datetime.now(UTC).replace(tzinfo=None)
         await self._db.commit()

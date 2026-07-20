@@ -121,7 +121,12 @@ async def test_publish_success(client, session_token, test_user, draft_card_with
 
 
 @pytest.mark.asyncio
-async def test_published_card_not_modifiable(client, session_token, draft_card_with_source):
+async def test_published_card_is_modifiable_and_deletable(
+    client, session_token, draft_card_with_source
+):
+    """Fiches publiees editables et soft-deletables par leur owner
+    (2026-07-21) : la fiche est la vue produit, l'attestation Ed25519
+    reste immuable dans content_attestations."""
     client.cookies.set("filum_session", session_token)
     resp = await client.post(f"/api/v1/cards/{draft_card_with_source.id}/publish")
     assert resp.status_code == 200
@@ -129,7 +134,8 @@ async def test_published_card_not_modifiable(client, session_token, draft_card_w
     resp = await client.patch(
         f"/api/v1/cards/{draft_card_with_source.id}", json={"title": "Nouveau titre"}
     )
-    assert resp.status_code == 400
+    assert resp.status_code == 200
+    assert resp.json()["title"] == "Nouveau titre"
 
     resp = await client.delete(f"/api/v1/cards/{draft_card_with_source.id}")
-    assert resp.status_code == 404
+    assert resp.status_code == 204
