@@ -24,12 +24,7 @@ import type {
 } from './types';
 
 type LegacySourceType =
-  | 'peer-reviewed'
-  | 'institutional'
-  | 'press'
-  | 'video'
-  | 'image'
-  | 'original';
+  'peer-reviewed' | 'institutional' | 'press' | 'video' | 'image' | 'original';
 
 interface LegacySourceFields {
   source_type?: LegacySourceType;
