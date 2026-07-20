@@ -222,3 +222,30 @@ export type AuthorKind =
   | 'individu';
 
 export type ArchiveStatus = 'pending' | 'archived' | 'failed';
+
+// --- Imports (biblio parsing → draft de fiche) -----------------------------
+
+export interface ImportedSourceDraft {
+  url: string;
+  title: string | null;
+  authors: string | null;
+  published_at: string | null;
+  format: SourceFormat;
+  category: SourceCategory;
+  author_kind: AuthorKind;
+}
+
+export interface ImportedCardDraft {
+  title: string | null;
+  description: string | null;
+  content_url: string;
+}
+
+export interface ImportFromUrlResponse {
+  card: ImportedCardDraft;
+  sources: ImportedSourceDraft[];
+  skipped: number;
+  references_section_found: boolean;
+  /** ok = HTML récupéré, unreachable = timeout/DNS/4xx/5xx, not_html = PDF/image/JSON. */
+  fetch_status: 'ok' | 'unreachable' | 'not_html';
+}

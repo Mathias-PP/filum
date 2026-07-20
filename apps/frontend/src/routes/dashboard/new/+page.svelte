@@ -92,7 +92,13 @@
   </div>
 
   <h1 class="font-serif text-3xl text-ink-primary mb-2">Nouvelle fiche</h1>
-  <p class="text-sm text-ink-secondary mb-6">Informations sur votre contenu</p>
+  <p class="text-sm text-ink-secondary mb-4">Informations sur votre contenu</p>
+
+  <p class="text-xs text-ink-tertiary mb-6">
+    Astuce : si vous avez déjà l'URL d'un article ou d'un billet avec sa bibliographie, essayez
+    <a href="/dashboard/from-url" class="text-info hover:underline">Créer depuis une URL</a>
+    pour extraire titre et sources automatiquement.
+  </p>
 
   <ProgressSteps {steps} current={0} class="mb-8" />
 

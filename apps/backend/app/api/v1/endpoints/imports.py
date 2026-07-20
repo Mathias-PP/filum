@@ -225,23 +225,35 @@ class ImportFromUrlResponse(BaseModel):
     sources: list[ImportedSourceDraft]
     skipped: int
     references_section_found: bool
+    fetch_status: str  # "ok" | "unreachable" | "not_html"
 
 
 def _extract_references_text(html: str) -> tuple[str, bool]:
     """Return (text, found_dedicated_section).
 
     Cherche une section References dans le HTML via une short-list de
-    selecteurs. Si aucune, retourne le texte de la page entiere (le LLM
-    fera au mieux). Le texte est cape a `_REFS_TEXT_MAX` chars.
+    selecteurs. Si aucune, retourne le texte de la page nettoye (le LLM
+    fera au mieux). Retire systematiquement script/style/noscript/svg
+    (bruit + coute cher au LLM) et, pour le fallback body, aussi
+    nav/header/footer/aside (chrome UI sans valeur bibliographique).
+    Le texte est cape a `_REFS_TEXT_MAX` chars.
     """
     soup = BeautifulSoup(html, "lxml")
+    # Removal universel : JS/CSS et vecteurs graphiques rendent le
+    # get_text() ILLISIBLE et coutent 3x plus cher au LLM. A supprimer
+    # meme dans une section References dediee au cas ou elle en contient.
+    for tag in soup.find_all(["script", "style", "noscript", "svg"]):
+        tag.decompose()
     for selector in _REFERENCES_SELECTORS:
         node = soup.select_one(selector)
         if node:
             text = node.get_text(separator="\n", strip=True)
             if len(text) >= 80:  # eviter les sections quasi-vides
                 return text[:_REFS_TEXT_MAX], True
-    # Fallback: tout le body, souvent trop bruite mais le LLM sait faire.
+    # Fallback: page entiere, mais on retire aussi le chrome UI qui n'a
+    # aucune valeur bibliographique (menus, header/footer, sidebars).
+    for tag in soup.find_all(["nav", "header", "footer", "aside"]):
+        tag.decompose()
     body = soup.find("body")
     text = body.get_text(separator="\n", strip=True) if body else soup.get_text(strip=True)
     return text[:_REFS_TEXT_MAX], False
@@ -266,7 +278,7 @@ async def parse_content_url(
         raise HTTPException(
             status_code=422,
             detail={"code": "unsafe_url", "message": str(e)},
-        )
+        ) from e
 
     # 1. Metadata du contenu (titre, description, auteurs) - reuse url_extractor
     try:
@@ -275,15 +287,22 @@ async def parse_content_url(
         logger.warning("extract_url_metadata failed for %s: %s", url, e)
         meta = None
 
-    # 2. Fetch le HTML pour la section references
+    # 2. Fetch le HTML pour la section references. On distingue trois etats
+    # pour donner un feedback UX explicite : ok / unreachable (timeout, DNS,
+    # 4xx/5xx) / not_html (PDF, image, redirection JSON API).
     html: str | None = None
+    fetch_status = "unreachable"
     try:
         async with httpx.AsyncClient(
             headers=_HEADERS, timeout=_FETCH_TIMEOUT, follow_redirects=True
         ) as client:
             r = await client.get(url)
-        if r.status_code == 200 and "text/html" in r.headers.get("content-type", ""):
-            html = r.text[:_HTML_MAX]
+        if r.status_code == 200:
+            if "text/html" in r.headers.get("content-type", ""):
+                html = r.text[:_HTML_MAX]
+                fetch_status = "ok"
+            else:
+                fetch_status = "not_html"
     except Exception as e:
         logger.warning("fetch failed for %s: %s", url, e)
 
@@ -314,4 +333,5 @@ async def parse_content_url(
         sources=[_to_draft(ref) for ref in result.refs],
         skipped=result.skipped,
         references_section_found=refs_section_found,
+        fetch_status=fetch_status,
     )
