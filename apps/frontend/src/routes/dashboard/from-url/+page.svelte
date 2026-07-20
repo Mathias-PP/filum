@@ -111,7 +111,9 @@
       title = res.card.title ?? '';
       description = res.card.description ?? '';
       contentUrl = res.card.content_url;
-      slug = deriveSlug(title || contentUrl);
+      // Slug uniquement si on a un titre — deriveSlug(URL) produit un slug
+      // moche du genre `https-www-frontiersin-org-…`, mieux vaut vide.
+      slug = title ? deriveSlug(title) : '';
       slugManual = false;
       const guess = guessPlatform(res.card.content_url);
       platform = guess.platform;
