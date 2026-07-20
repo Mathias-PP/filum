@@ -15,7 +15,6 @@ from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field
 
 from app.api.v1.endpoints.cards import get_current_user
-from app.core.rate_limit import limiter
 from app.core.url_safety import UnsafeUrlError, assert_url_is_safe
 from app.extractors.url_extractor import extract as extract_url_metadata
 from app.models.user import User
@@ -80,7 +79,8 @@ def _to_draft(ref: ImportedRef) -> ImportedSourceDraft:
 
 
 @router.post("/import/parse", response_model=ImportParseResponse)
-@limiter.limit("30/hour")
+# Rate-limit retire (phase test/pre-produit) : les endpoints d'import sont
+# auth-only, on veut pouvoir iterer librement. A reintroduire si abus.
 async def parse_import_file(
     request: Request,
     file: UploadFile,
@@ -151,7 +151,7 @@ def _merge_llm_refs(base: ParseResult, llm_refs: list[LlmBiblioRef]) -> ParseRes
 
 
 @router.post("/import/paste", response_model=ImportParseResponse)
-@limiter.limit("30/hour")
+# Rate-limit retire (phase test/pre-produit) : auth-only, iteration libre.
 async def parse_pasted_bibliography(
     request: Request,
     payload: ImportPasteRequest,
@@ -260,7 +260,8 @@ def _extract_references_text(html: str) -> tuple[str, bool]:
 
 
 @router.post("/import/from-content-url", response_model=ImportFromUrlResponse)
-@limiter.limit("5/hour")
+# Rate-limit retire (phase test/pre-produit) : auth-only, iteration libre.
+# A reintroduire quand on aura une metrique de cout LLM/Crossref preoccupante.
 async def parse_content_url(
     request: Request,
     payload: ImportFromUrlRequest,

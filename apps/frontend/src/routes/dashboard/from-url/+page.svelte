@@ -126,7 +126,7 @@
         if (err.status === 401) analyzeError = 'Veuillez vous connecter.';
         else if (err.status === 422) analyzeError = err.message || 'URL non acceptée.';
         else if (err.status === 429)
-          analyzeError = 'Limite atteinte (5/heure). Réessayez plus tard.';
+          analyzeError = 'Trop de requêtes en peu de temps. Réessayez dans une minute.';
         else analyzeError = err.message || "Impossible d'analyser cette URL.";
       } else {
         analyzeError = err instanceof Error ? err.message : "Erreur lors de l'analyse";
@@ -271,7 +271,7 @@
         />
         <p class="text-xs text-ink-tertiary">
           Fonctionne mieux sur les pages avec une section « References » (articles scientifiques,
-          billets de blog avec bibliographie). Limité à 5 analyses par heure.
+          billets de blog avec bibliographie).
         </p>
       </div>
 
