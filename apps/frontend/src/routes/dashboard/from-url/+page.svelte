@@ -3,12 +3,7 @@
   import { api, ApiError } from '$lib/api';
   import { Button, ProgressSteps, toast } from '$lib/components';
   import { currentUser } from '$lib/stores/auth';
-  import type {
-    ContentType,
-    ImportFromUrlResponse,
-    ImportedSourceDraft,
-    Platform,
-  } from '$lib/api';
+  import type { ContentType, ImportFromUrlResponse, ImportedSourceDraft, Platform } from '$lib/api';
 
   // Étape 1 : URL saisie → appel /import/from-content-url → preview.
   // Étape 2 : preview éditable (titre, description, sources cochées) → création
@@ -39,6 +34,8 @@
 
   let creating = $state(false);
   let createError = $state<string | null>(null);
+  // Progression pendant la création séquentielle des sources.
+  let createProgress = $state<{ done: number; total: number } | null>(null);
 
   const platforms: { value: Platform; label: string }[] = [
     { value: 'youtube', label: 'YouTube' },
@@ -160,11 +157,11 @@
         content_type: contentType,
       });
       // Ajout des sources sélectionnées, séquentiel (évite d'inonder Wayback).
+      const toCreate = sources.filter((_, i) => selected[i]);
+      createProgress = { done: 0, total: toCreate.length };
       let ok = 0;
       let failed = 0;
-      for (let i = 0; i < sources.length; i++) {
-        if (!selected[i]) continue;
-        const s = sources[i];
+      for (const s of toCreate) {
         try {
           await api.sources.create(card.id, {
             url: s.url,
@@ -179,6 +176,7 @@
         } catch {
           failed++;
         }
+        createProgress = { done: ok + failed, total: toCreate.length };
       }
       if (failed > 0) {
         toast.danger(
@@ -196,6 +194,7 @@
       }
     } finally {
       creating = false;
+      createProgress = null;
     }
   }
 
@@ -286,9 +285,8 @@
         {/if}
         {sources.length} source{sources.length > 1 ? 's' : ''} extraite{sources.length > 1
           ? 's'
-          : ''}{#if result.skipped > 0}, {result.skipped} ignorée{result.skipped > 1
-            ? 's'
-            : ''} (sans URL/DOI){/if}.
+          : ''}{#if result.skipped > 0}, {result.skipped} ignorée{result.skipped > 1 ? 's' : ''} (sans
+          URL/DOI){/if}.
       </div>
 
       <!-- Preview éditable de la fiche -->
@@ -367,8 +365,7 @@
             <select
               id="preview-ct"
               value={contentType}
-              onchange={(e) =>
-                (contentType = (e.target as HTMLSelectElement).value as ContentType)}
+              onchange={(e) => (contentType = (e.target as HTMLSelectElement).value as ContentType)}
               class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
             >
               {#each contentTypes as ct (ct.value)}
@@ -409,10 +406,16 @@
         </div>
 
         {#if sources.length === 0}
-          <p class="text-sm text-ink-tertiary italic">
-            Aucune source détectée sur cette page. Vous pourrez en ajouter manuellement à l'étape
-            suivante.
-          </p>
+          <div
+            class="rounded-lg bg-surface-secondary border border-border px-4 py-3 text-sm text-ink-secondary space-y-1"
+          >
+            <p class="font-medium text-ink-primary">Aucune source détectée sur cette page.</p>
+            <p class="text-xs">
+              Cas typiques : vidéo/podcast/post social sans description structurée, article sans
+              bibliographie citée, page bloquée par un anti-bot. Vous pouvez quand même créer la
+              fiche et ajouter les sources à la main à l'étape suivante.
+            </p>
+          </div>
         {:else}
           <ul class="space-y-2">
             {#each sources as src, i (src.url)}
@@ -449,8 +452,10 @@
           ← Autre URL
         </Button>
         <Button type="submit" loading={creating} disabled={creating || !title.trim() || !slug}>
-          {#if creating}
-            Création…
+          {#if creating && createProgress}
+            Ajout des sources : {createProgress.done} / {createProgress.total}…
+          {:else if creating}
+            Création de la fiche…
           {:else if selectedCount > 0}
             Créer la fiche ({selectedCount} source{selectedCount > 1 ? 's' : ''})
           {:else}
@@ -458,6 +463,12 @@
           {/if}
         </Button>
       </div>
+      {#if creating && createProgress && createProgress.total > 3}
+        <p class="text-xs text-ink-tertiary text-right">
+          Ne fermez pas la page — l'archivage Wayback est déclenché en arrière-plan pour chaque
+          source.
+        </p>
+      {/if}
     </form>
   {/if}
 </div>
