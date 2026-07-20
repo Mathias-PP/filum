@@ -225,6 +225,7 @@ class ImportFromUrlResponse(BaseModel):
     sources: list[ImportedSourceDraft]
     skipped: int
     references_section_found: bool
+    fetch_status: str  # "ok" | "unreachable" | "not_html"
 
 
 def _extract_references_text(html: str) -> tuple[str, bool]:
@@ -286,15 +287,22 @@ async def parse_content_url(
         logger.warning("extract_url_metadata failed for %s: %s", url, e)
         meta = None
 
-    # 2. Fetch le HTML pour la section references
+    # 2. Fetch le HTML pour la section references. On distingue trois etats
+    # pour donner un feedback UX explicite : ok / unreachable (timeout, DNS,
+    # 4xx/5xx) / not_html (PDF, image, redirection JSON API).
     html: str | None = None
+    fetch_status = "unreachable"
     try:
         async with httpx.AsyncClient(
             headers=_HEADERS, timeout=_FETCH_TIMEOUT, follow_redirects=True
         ) as client:
             r = await client.get(url)
-        if r.status_code == 200 and "text/html" in r.headers.get("content-type", ""):
-            html = r.text[:_HTML_MAX]
+        if r.status_code == 200:
+            if "text/html" in r.headers.get("content-type", ""):
+                html = r.text[:_HTML_MAX]
+                fetch_status = "ok"
+            else:
+                fetch_status = "not_html"
     except Exception as e:
         logger.warning("fetch failed for %s: %s", url, e)
 
@@ -325,4 +333,5 @@ async def parse_content_url(
         sources=[_to_draft(ref) for ref in result.refs],
         skipped=result.skipped,
         references_section_found=refs_section_found,
+        fetch_status=fetch_status,
     )

@@ -273,23 +273,35 @@
         </div>
       {/if}
 
-      <!-- Bandeau info sur l'extraction -->
-      <div
-        class="rounded-lg px-4 py-3 text-sm border {result.references_section_found
-          ? 'bg-success-bg border-success/30 text-success'
-          : 'bg-info/10 border-info/30 text-info'}"
-      >
-        {#if result.references_section_found}
-          ✓ Section « References » détectée sur la page.
-        {:else}
-          ⚠ Aucune section de références isolée — l'IA a analysé la page entière. Vérifiez les
-          sources extraites.
-        {/if}
-        {sources.length} source{sources.length > 1 ? 's' : ''} extraite{sources.length > 1
-          ? 's'
-          : ''}{#if result.skipped > 0}, {result.skipped} ignorée{result.skipped > 1 ? 's' : ''} (sans
-          URL/DOI){/if}.
-      </div>
+      <!-- Bandeau info sur l'extraction (statut fetch + statut sources) -->
+      {#if result.fetch_status === 'unreachable'}
+        <div class="rounded-lg bg-danger-bg border border-danger/30 px-4 py-3 text-sm text-danger">
+          ⚠ Page injoignable (timeout, erreur HTTP, ou blocage anti-bot). Vous pouvez quand même
+          créer la fiche vide et ajouter les sources à la main.
+        </div>
+      {:else if result.fetch_status === 'not_html'}
+        <div class="rounded-lg bg-info/10 border border-info/30 px-4 py-3 text-sm text-info">
+          ⓘ Ce n'est pas une page HTML (PDF, image, API JSON…). Aucune bibliographie extraite ; la
+          fiche sera créée avec cette URL comme contenu, à vous d'ajouter les sources.
+        </div>
+      {:else}
+        <div
+          class="rounded-lg px-4 py-3 text-sm border {result.references_section_found
+            ? 'bg-success-bg border-success/30 text-success'
+            : 'bg-info/10 border-info/30 text-info'}"
+        >
+          {#if result.references_section_found}
+            ✓ Section « References » détectée sur la page.
+          {:else}
+            ⚠ Aucune section de références isolée — l'IA a analysé la page entière. Vérifiez les
+            sources extraites.
+          {/if}
+          {sources.length} source{sources.length > 1 ? 's' : ''} extraite{sources.length > 1
+            ? 's'
+            : ''}{#if result.skipped > 0}, {result.skipped} ignorée{result.skipped > 1 ? 's' : ''} (sans
+            URL/DOI){/if}.
+        </div>
+      {/if}
 
       <!-- Preview éditable de la fiche -->
       <fieldset class="space-y-4">

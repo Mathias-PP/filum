@@ -236,6 +236,91 @@ async def test_import_from_content_url_extracts_references(client, monkeypatch):
     assert body["card"]["title"] == "A Neural Network Framework for Cognitive Bias"
     assert body["card"]["content_url"].endswith("/full")
     assert body["references_section_found"] is True
+    assert body["fetch_status"] == "ok"
     urls = {s["url"] for s in body["sources"]}
     assert "https://doi.org/10.1234/foo.1" in urls
     assert "https://www.example.org/tversky1974" in urls
+
+
+@pytest.mark.asyncio
+async def test_import_from_content_url_fetch_status_not_html(client, monkeypatch):
+    """PDF/image/JSON → fetch_status='not_html', pas de sources."""
+    from app.extractors.url_extractor import ExtractedMetadata
+
+    async def fake_meta(url):
+        return ExtractedMetadata(title="PDF Article")
+
+    class FakePdfResponse:
+        status_code = 200
+        headers = {"content-type": "application/pdf"}
+        text = ""
+
+    class FakeAsyncClient:
+        def __init__(self, *a, **kw):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return None
+
+        async def get(self, url):
+            return FakePdfResponse()
+
+    async def no_llm(text):
+        return None
+
+    monkeypatch.setattr("app.api.v1.endpoints.imports.extract_url_metadata", fake_meta)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.httpx.AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.parse_bibliography", no_llm)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.assert_url_is_safe", lambda u: None)
+
+    resp = await client.post(
+        "/api/v1/import/from-content-url",
+        json={"url": "https://example.org/paper.pdf"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["fetch_status"] == "not_html"
+    assert body["sources"] == []
+    assert body["references_section_found"] is False
+
+
+@pytest.mark.asyncio
+async def test_import_from_content_url_fetch_status_unreachable(client, monkeypatch):
+    """httpx exception (timeout, DNS) → fetch_status='unreachable'."""
+    from app.extractors.url_extractor import ExtractedMetadata
+
+    async def fake_meta(url):
+        return ExtractedMetadata()  # extract_url_metadata peut aussi failer, ok
+
+    class BrokenAsyncClient:
+        def __init__(self, *a, **kw):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return None
+
+        async def get(self, url):
+            raise RuntimeError("connection refused")
+
+    async def no_llm(text):
+        return None
+
+    monkeypatch.setattr("app.api.v1.endpoints.imports.extract_url_metadata", fake_meta)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.httpx.AsyncClient", BrokenAsyncClient)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.parse_bibliography", no_llm)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.assert_url_is_safe", lambda u: None)
+
+    resp = await client.post(
+        "/api/v1/import/from-content-url",
+        json={"url": "https://down.example.org/article"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["fetch_status"] == "unreachable"
+    assert body["sources"] == []

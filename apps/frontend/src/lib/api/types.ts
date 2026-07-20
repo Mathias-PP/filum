@@ -246,4 +246,6 @@ export interface ImportFromUrlResponse {
   sources: ImportedSourceDraft[];
   skipped: number;
   references_section_found: boolean;
+  /** ok = HTML récupéré, unreachable = timeout/DNS/4xx/5xx, not_html = PDF/image/JSON. */
+  fetch_status: 'ok' | 'unreachable' | 'not_html';
 }
