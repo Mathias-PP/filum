@@ -191,10 +191,14 @@ async def parse_reference_block(block_text: str) -> LlmBiblioRef | None:
             # Categorie invalide → retire et retente
             try:
                 data = json.loads(content)
-                if isinstance(data, dict):
-                    data.pop("category", None)
-                    return LlmBiblioRef.model_validate(data)
-            except (json.JSONDecodeError, ValidationError):
+            except json.JSONDecodeError:
+                return None
+            if not isinstance(data, dict):
+                return None
+            data.pop("category", None)
+            try:
+                return LlmBiblioRef.model_validate(data)
+            except ValidationError:
                 return None
     except Exception as e:
         logger.warning("LLM ref-block failed: %s", e)
