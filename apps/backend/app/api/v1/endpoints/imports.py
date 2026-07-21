@@ -176,6 +176,13 @@ async def _backfill_crossref_metadata(refs: list[ImportedRef]) -> None:
         return
     sem = asyncio.Semaphore(_CROSSREF_CONCURRENCY)
     await asyncio.gather(*(_backfill_one_crossref(ref, sem) for ref in refs))
+    # 2e passe a concurrence reduite : sur 145 refs, ~10 lookups echouent de
+    # maniere transitoire (timeout sous concurrence 10) et les trous changent
+    # a chaque run — un retry sequentiel-ish les recupere quasi tous.
+    remaining = [r for r in refs if not (r.title and r.authors) and _doi_from_url(r.url)]
+    if remaining:
+        retry_sem = asyncio.Semaphore(2)
+        await asyncio.gather(*(_backfill_one_crossref(ref, retry_sem) for ref in remaining))
 
 
 # --- Semantic Scholar : etage 0 quand le contenu a un DOI extractible ------
