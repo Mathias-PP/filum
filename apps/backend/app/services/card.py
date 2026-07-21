@@ -111,6 +111,27 @@ class CardService:
         await self._db.refresh(card)
         return card
 
+    async def get_user_deleted_cards(
+        self, user_id: UUID, limit: int = 50, offset: int = 0
+    ) -> list[BiblioCard]:
+        """Renvoie les fiches soft-deletees de l'utilisateur (corbeille).
+
+        Utile pour la vue Corbeille dans le dashboard : l'user peut restaurer
+        une fiche supprimee tant qu'elle n'a pas ete purgee. Ordre = plus
+        recemment supprimee en premier.
+        """
+        result = await self._db.execute(
+            select(BiblioCard)
+            .where(
+                BiblioCard.user_id == user_id,
+                BiblioCard.deleted_at.is_not(None),
+            )
+            .order_by(BiblioCard.deleted_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        return list(result.scalars().all())
+
     async def publish_card(self, card: BiblioCard) -> dict:
         # Capture scalar values from relations BEFORE commit.
         # Post-commit, SQLAlchemy expires loaded relations; accessing card.user
