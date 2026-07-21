@@ -297,7 +297,7 @@ async def get_public_card(
             .where(Source.biblio_card_id.in_(linked_ids), Source.deleted_at.is_(None))
             .group_by(Source.biblio_card_id)
         )
-        counts = dict(counts_result.all())
+        counts: dict[UUID, int] = {row[0]: row[1] for row in counts_result.all()}
         for src in sources_response:
             if src.linked_card_id:
                 src.linked_card_sources_count = counts.get(src.linked_card_id, 0)
