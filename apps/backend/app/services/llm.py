@@ -131,6 +131,76 @@ def parse_biblio_content(content: str) -> list[LlmBiblioRef] | None:
             return None
 
 
+_REF_BLOCK_SYSTEM_PROMPT = (
+    "Tu extrais les métadonnées d'UNE SEULE référence bibliographique. Le texte "
+    "peut être bruité (noms d'auteurs concaténés sans espaces comme "
+    "'AdlemanN. E.MenonV.', volumes/pages collés au titre du journal, etc.). "
+    "Réponds UNIQUEMENT avec le JSON demandé. Règles strictes : n'invente jamais "
+    "une information absente (mets null) ; title = le titre de l'article seul "
+    "sans le nom du journal ; authors = liste séparée par des virgules avec "
+    "espaces corrects entre nom et initiale (ex. 'Adleman N., Menon V., "
+    "Blasey C.') ; year = l'année entre parenthèses (2018) ; url et doi recopiés "
+    "verbatim s'ils apparaissent."
+)
+
+
+async def parse_reference_block(block_text: str) -> LlmBiblioRef | None:
+    """Extrait les métadonnées d'un bloc de texte représentant UNE ref.
+
+    Utilisé en fallback quand :
+      - le regex a capturé un DOI/URL sur ce bloc,
+      - Crossref a échoué (DOI non indexé, timeout),
+      - la ref a donc URL mais pas de title/authors.
+
+    Le bloc doit être court (<500 chars). Retourne ``None`` si LLM désactivé
+    ou en cas d'erreur — l'appelant garde la ref sans metadata.
+    """
+    settings = get_settings()
+    if not settings.litellm_base_url:
+        return None
+    block = block_text.strip()[:2000]  # cap dur : une ref fait rarement > 500 chars
+    if not block:
+        return None
+
+    payload = {
+        "model": "biblio-parse",
+        "messages": [
+            {"role": "system", "content": _REF_BLOCK_SYSTEM_PROMPT},
+            {"role": "user", "content": block},
+        ],
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {"name": "biblio_ref", "schema": LlmBiblioRef.model_json_schema()},
+        },
+        "temperature": 0,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+            r = await client.post(
+                f"{settings.litellm_base_url.rstrip('/')}/v1/chat/completions",
+                json=payload,
+                headers={"Authorization": f"Bearer {settings.litellm_master_key}"},
+            )
+        if r.status_code != 200:
+            logger.warning("LLM ref-block HTTP %s: %s", r.status_code, r.text[:200])
+            return None
+        content = r.json()["choices"][0]["message"]["content"]
+        try:
+            return LlmBiblioRef.model_validate_json(content)
+        except ValidationError:
+            # Categorie invalide → retire et retente
+            try:
+                data = json.loads(content)
+                if isinstance(data, dict):
+                    data.pop("category", None)
+                    return LlmBiblioRef.model_validate(data)
+            except (json.JSONDecodeError, ValidationError):
+                return None
+    except Exception as e:
+        logger.warning("LLM ref-block failed: %s", e)
+        return None
+
+
 async def parse_bibliography(text: str) -> list[LlmBiblioRef] | None:
     """Extrait les références via l'alias `biblio-parse`. Never raises.
 

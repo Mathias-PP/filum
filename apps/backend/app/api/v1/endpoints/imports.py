@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 
 import httpx
 from bs4 import BeautifulSoup
@@ -30,7 +31,7 @@ from app.services.import_parsers import (
     parse_file,
     parse_markdown,
 )
-from app.services.llm import LlmBiblioRef, parse_bibliography
+from app.services.llm import LlmBiblioRef, parse_bibliography, parse_reference_block
 
 logger = logging.getLogger(__name__)
 
@@ -165,6 +166,90 @@ async def _backfill_crossref_metadata(refs: list[ImportedRef]) -> None:
         return
     sem = asyncio.Semaphore(_CROSSREF_CONCURRENCY)
     await asyncio.gather(*(_backfill_one_crossref(ref, sem) for ref in refs))
+
+
+# --- Fallback LLM par bloc de reference ------------------------------------
+#
+# Quand Crossref echoue (DOI non indexe, timeout, ancien DOI '10.1207/...') OU
+# quand le regex a capture une URL sans DOI et sans metadata, on peut souvent
+# recuperer title/authors/year en interpretant le TEXTE de la reference. Le
+# LLM global parse_bibliography analyse 60kB d'un coup et se plante sur les
+# noms concatenes type Frontiers ; ici on lui passe UN SEUL bloc par appel,
+# beaucoup plus fiable.
+
+_LLM_BLOCK_CONCURRENCY = 5
+
+
+async def _backfill_one_llm_block(ref: ImportedRef, sem: asyncio.Semaphore) -> None:
+    """Enrichit ``ref`` in-place via un mini-appel LLM sur son ``raw_text``."""
+    if ref.title and ref.authors and ref.year:
+        return  # deja complet
+    if not ref.raw_text or len(ref.raw_text.strip()) < 30:
+        return  # rien a analyser
+    async with sem:
+        meta = await parse_reference_block(ref.raw_text)
+    if meta is None:
+        return
+    if not ref.title and meta.title:
+        ref.title = meta.title
+    if not ref.authors and meta.authors:
+        ref.authors = meta.authors
+    if not ref.year and meta.year:
+        ref.year = meta.year
+    if ref.category == "page-web" and meta.category:
+        ref.category = meta.category.value
+
+
+async def _backfill_llm_per_block(refs: list[ImportedRef]) -> None:
+    """LLM par bloc, en parallele borne. No-op si LLM desactive."""
+    if not refs:
+        return
+    sem = asyncio.Semaphore(_LLM_BLOCK_CONCURRENCY)
+    await asyncio.gather(*(_backfill_one_llm_block(ref, sem) for ref in refs))
+
+
+# Split heuristique du texte References en blocs de refs individuelles.
+# Frontiers/PMC/Nature : chaque ref commence par un numero sur une ligne
+# ("1\nAdlemanN. E.MenonV...(2002)...\n2\nAllanN. P...").
+# APA / Chicago : refs separees par lignes vides.
+# Fallback : blocs de <=800 chars separes par lignes vides.
+
+_REF_NUMBER_SPLIT = re.compile(r"\n\s*\d+\s*\n")
+_BLANK_LINE_SPLIT = re.compile(r"\n\s*\n")
+
+
+def _split_references_into_blocks(refs_text: str) -> list[str]:
+    """Renvoie la liste des blocs de refs individuelles.
+
+    Preference : split par numeros de ligne (Frontiers/PMC). Fallback :
+    split par lignes vides. Blocs vides ou < 20 chars filtres.
+    """
+    if not refs_text:
+        return []
+    # Prefixe un "\n" pour matcher un numero de ligne en tete
+    numbered = _REF_NUMBER_SPLIT.split("\n" + refs_text)
+    numbered = [b.strip() for b in numbered if b.strip()]
+    if len(numbered) >= 3:
+        return numbered
+    # Fallback : lignes vides
+    blocks = _BLANK_LINE_SPLIT.split(refs_text)
+    return [b.strip() for b in blocks if len(b.strip()) >= 20]
+
+
+def _assign_raw_text_to_refs(refs: list[ImportedRef], blocks: list[str]) -> None:
+    """Associe a chaque ref le bloc de texte qui contient son URL/DOI.
+
+    Pour chaque ref sans raw_text, cherche le premier bloc qui contient son
+    URL exacte ou le DOI derive. Mutation in-place.
+    """
+    for ref in refs:
+        if ref.raw_text or not ref.url:
+            continue
+        doi = _doi_from_url(ref.url)
+        for block in blocks:
+            if ref.url in block or (doi and doi in block):
+                ref.raw_text = block
+                break
 
 
 def _merge_llm_refs(base: ParseResult, llm_refs: list[LlmBiblioRef]) -> ParseResult:
@@ -380,12 +465,23 @@ async def parse_content_url(
     self_key = _dedupe_key(url)
     result.refs = [ref for ref in result.refs if _dedupe_key(ref.url) != self_key]
 
-    # Backfill Crossref pour toute ref avec DOI mais sans metadata complete.
-    # Etape critique : Frontiers/PMC/Nature ont des sections References ou
-    # les noms d'auteurs sont concatenes sans espaces (« AdlemanN. E.MenonV.
-    # BlaseyC. M... ») -> le LLM parse mal et le regex ne capture qu'un DOI
-    # nu. Crossref donne title/authors/year/citations_count deterministes.
+    # 4. Split le texte References en blocs et associe chaque bloc a la ref
+    # correspondante (via URL/DOI present dans le bloc). Utilise ensuite pour
+    # le fallback LLM par-bloc si Crossref echoue.
+    ref_blocks = _split_references_into_blocks(refs_text)
+    _assign_raw_text_to_refs(result.refs, ref_blocks)
+
+    # 5. Backfill Crossref pour toute ref avec DOI mais sans metadata complete.
+    # Frontiers/PMC/Nature ont des sections References ou les noms d'auteurs
+    # sont concatenes sans espaces (« AdlemanN. E.MenonV.BlaseyC. M... »)
+    # -> Crossref donne title/authors/year/citations_count deterministes.
     await _backfill_crossref_metadata(result.refs)
+
+    # 6. Fallback LLM par-bloc pour les refs qui ont un raw_text mais
+    # toujours pas de metadata complete (Crossref echec, DOI ancien
+    # non indexe, ou pas de DOI mais URL). Un mini-appel LLM par bloc,
+    # bien plus fiable que l'appel global sur les 60kB concatenes.
+    await _backfill_llm_per_block(result.refs)
 
     card = ImportedCardDraft(
         title=meta.title if meta else None,

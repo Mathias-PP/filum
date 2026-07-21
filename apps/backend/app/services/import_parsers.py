@@ -24,6 +24,11 @@ class ImportedRef:
     authors: str | None = None
     year: int | None = None
     category: str = "page-web"
+    # Texte brut du bloc de reference d'ou cette ref vient (Frontiers/PMC :
+    # "AdlemanN. E.MenonV.BlaseyC. M. (2002). A developmental fMRI study..."
+    # + DOI). Utilise en fallback LLM par-bloc quand Crossref echoue.
+    # Non serialise vers l'API (usage interne pipeline uniquement).
+    raw_text: str | None = None
 
 
 @dataclass
