@@ -168,18 +168,40 @@ async def _backfill_crossref_metadata(refs: list[ImportedRef]) -> None:
 
 
 def _merge_llm_refs(base: ParseResult, llm_refs: list[LlmBiblioRef]) -> ParseResult:
-    """Fusionne les refs LLM avec le parsing déterministe (clé = URL).
+    """Fusionne les refs LLM avec le parsing déterministe (clé = URL ou identité).
 
     Le déterministe fait foi pour les URLs ; le LLM enrichit (titre, auteurs,
     année, catégorie) et ajoute les refs dont l'URL/DOI n'a pas été capté.
-    Les refs LLM sans lien sont comptées dans skipped (Source exige une URL).
+
+    Les refs LLM sans URL ni DOI (typique : livres, DSM-IV, chapitres) sont
+    conservées avec ``url=""`` afin que l'utilisateur puisse compléter l'URL
+    à la main dans la preview du frontend (ex. ISBN, WorldCat, éditeur). La
+    clé de dédup pour ces refs est ``nourl:{title|authors|year}`` pour éviter
+    de collapser en une seule ref les livres différents sans URL.
     """
     by_key = {_dedupe_key(ref.url): ref for ref in base.refs}
     skipped = base.skipped
     for ref in llm_refs:
         url = ref.url or (_doi_to_url(ref.doi) if ref.doi else None)
-        if not url or not url.startswith(("http://", "https://")):
+        if url and not url.startswith(("http://", "https://")):
+            # URL malformee (ni http ni https) -> skip vraiment
             skipped += 1
+            continue
+        if url is None:
+            # Ref LLM sans URL ni DOI : conserve avec url="" pour edition
+            # manuelle. Skip seulement si aucune metadata utile.
+            if not ref.title and not ref.authors:
+                skipped += 1
+                continue
+            key = f"nourl:{ref.title or ''}|{ref.authors or ''}|{ref.year or ''}".lower()
+            if key not in by_key:
+                by_key[key] = ImportedRef(
+                    url="",
+                    title=ref.title,
+                    authors=ref.authors,
+                    year=ref.year,
+                    category=ref.category.value if ref.category else "page-web",
+                )
             continue
         key = _dedupe_key(url)
         existing = by_key.get(key)

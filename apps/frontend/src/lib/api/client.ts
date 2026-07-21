@@ -169,6 +169,26 @@ export const api = {
       return normalizeSource(raw);
     },
 
+    createBatch: async (
+      cardId: string,
+      sources: SourceCreate[]
+    ): Promise<{
+      created: Source[];
+      failed: Array<{ index: number; url: string; error: string }>;
+    }> => {
+      const raw = await request<{
+        created: Source[];
+        failed: Array<{ index: number; url: string; error: string }>;
+      }>(`/sources/batch?card_id=${cardId}`, {
+        method: 'POST',
+        body: JSON.stringify({ sources }),
+      });
+      return {
+        created: raw.created.map((s) => normalizeSource(s)),
+        failed: raw.failed,
+      };
+    },
+
     update: async (sourceId: string, data: Partial<SourceCreate>): Promise<Source> => {
       const raw = await request<Source>(`/sources/${sourceId}`, {
         method: 'PATCH',

@@ -137,8 +137,10 @@ async def test_import_paste_llm_enriches_and_adds(client, monkeypatch):
             ),
             # Ajoute une ref DOI absente du texte brut
             LlmBiblioRef(doi="10.9999/nouveau.1", title="Nouveau papier"),
-            # Sans lien → skipped
-            LlmBiblioRef(title="Ref sans lien"),
+            # Sans lien mais avec title/authors → conservee avec url="" (editable UI)
+            LlmBiblioRef(title="Ref sans lien", authors="Doe J."),
+            # Sans lien ET sans metadata utile → vraiment skipped
+            LlmBiblioRef(),
         ]
 
     monkeypatch.setattr("app.api.v1.endpoints.imports.parse_bibliography", fake_llm)
@@ -148,12 +150,16 @@ async def test_import_paste_llm_enriches_and_adds(client, monkeypatch):
     assert resp.status_code == 200
     body = resp.json()
     assert body["skipped"] == 1
-    by_url = {s["url"]: s for s in body["sources"]}
+    by_url = {s["url"]: s for s in body["sources"] if s["url"]}
     enriched = by_url["https://example.org/article"]
     assert enriched["title"] == "Titre LLM"
     assert enriched["authors"] == "Dupont, Marie"
     assert enriched["category"] == "article-presse"
     assert by_url["https://doi.org/10.9999/nouveau.1"]["title"] == "Nouveau papier"
+    # La ref sans URL mais avec titre est conservee comme draft editable
+    nourl = [s for s in body["sources"] if not s["url"]]
+    assert len(nourl) == 1
+    assert nourl[0]["title"] == "Ref sans lien"
 
 
 @pytest.mark.asyncio
