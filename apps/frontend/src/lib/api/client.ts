@@ -9,6 +9,7 @@ import type {
   CardCreate,
   ExcerptSuggestResponse,
   ImportFromUrlResponse,
+  UrlMetadataResponse,
   LinkedAccount,
   LinkedAccountIn,
   Source,
@@ -282,6 +283,12 @@ export const api = {
   imports: {
     fromContentUrl: async (url: string): Promise<ImportFromUrlResponse> => {
       return request<ImportFromUrlResponse>('/import/from-content-url', {
+        method: 'POST',
+        body: JSON.stringify({ url }),
+      });
+    },
+    urlMetadata: async (url: string): Promise<UrlMetadataResponse> => {
+      return request<UrlMetadataResponse>('/import/url-metadata', {
         method: 'POST',
         body: JSON.stringify({ url }),
       });

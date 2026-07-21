@@ -259,6 +259,11 @@ export interface ImportedCardDraft {
   content_url: string;
 }
 
+export interface UrlMetadataResponse {
+  title: string | null;
+  description: string | null;
+}
+
 export interface ImportFromUrlResponse {
   card: ImportedCardDraft;
   sources: ImportedSourceDraft[];

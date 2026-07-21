@@ -725,3 +725,43 @@ async def parse_content_url(
         fetch_status=fetch_status,
         wayback_url=wayback_url,
     )
+
+
+class UrlMetadataRequest(BaseModel):
+    url: str = Field(min_length=1, max_length=2000)
+
+
+class UrlMetadataResponse(BaseModel):
+    title: str | None = None
+    description: str | None = None
+
+
+@router.post("/import/url-metadata", response_model=UrlMetadataResponse)
+async def url_metadata(
+    request: Request,
+    payload: UrlMetadataRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """Metadata legere (titre, description) d'une URL de contenu.
+
+    Version rapide de /import/from-content-url : un seul fetch de page,
+    pas d'extraction de references ni de LLM. Sert a pre-remplir le
+    formulaire « Nouvelle fiche » pendant la saisie.
+    """
+    url = payload.url.strip()
+    try:
+        assert_url_is_safe(url)
+    except UnsafeUrlError as e:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "unsafe_url", "message": str(e)},
+        ) from e
+    try:
+        meta = await extract_url_metadata(url)
+    except Exception as e:
+        logger.warning("extract_url_metadata failed for %s: %s", url, e)
+        meta = None
+    return UrlMetadataResponse(
+        title=meta.title if meta else None,
+        description=meta.description if meta else None,
+    )
