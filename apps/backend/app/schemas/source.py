@@ -1,10 +1,18 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+def _naive_utc(value: datetime | None) -> datetime | None:
+    """Colonne `sources.published_at` = TIMESTAMP WITHOUT TIME ZONE : asyncpg
+    rejette toute datetime tz-aware (DataError). Convention projet : naive UTC."""
+    if value is not None and value.tzinfo is not None:
+        return value.astimezone(UTC).replace(tzinfo=None)
+    return value
 
 
 class SourceFormat(str, Enum):
@@ -64,6 +72,8 @@ class SourceBase(BaseModel):
     # is skipped. Empty/null → auto-archive via Wayback "Save Page Now" runs.
     archive_url: str | None = Field(default=None, max_length=2000)
 
+    _normalize_published_at = field_validator("published_at")(_naive_utc)
+
 
 class SourceCreate(SourceBase):
     # No fields are added here. The previous `url: str` override silently
@@ -84,6 +94,8 @@ class SourceUpdate(BaseModel):
     is_pivot: bool | None = None
     parent_source_id: UUID | None = None
     archive_url: str | None = Field(default=None, max_length=2000)
+
+    _normalize_published_at = field_validator("published_at")(_naive_utc)
 
 
 class SourceExcerptResponse(BaseModel):
