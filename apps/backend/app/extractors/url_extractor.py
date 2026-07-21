@@ -40,6 +40,12 @@ class ExtractedMetadata:
     format: str | None = None
     category: str | None = None
     author_kind: str | None = None
+    # Metadonnees bibliographiques (Crossref uniquement, null sinon).
+    journal: str | None = None
+    volume: str | None = None
+    pages: str | None = None
+    publisher: str | None = None
+    doi: str | None = None
     # Texte brut de la page, conservé pour éviter un second fetch au stage LLM.
     # Jamais sérialisé vers l'API.
     page_text: str | None = None
@@ -351,12 +357,18 @@ def _parse_crossref_work(data: dict) -> ExtractedMetadata:
     abstract = data.get("abstract")
     if abstract:
         abstract = re.sub(r"<[^>]+>", "", abstract).strip()
+    container_titles = data.get("container-title") or []
     return ExtractedMetadata(
         title=title,
         authors=authors,
         published_at=published_at,
         description=abstract,
         citations_count=citations_count,
+        journal=(str(container_titles[0])[:300] if container_titles else None),
+        volume=(str(data["volume"])[:50] if data.get("volume") else None),
+        pages=(str(data["page"])[:50] if data.get("page") else None),
+        publisher=(str(data["publisher"])[:300] if data.get("publisher") else None),
+        doi=((data.get("DOI") or "").lower() or None),
     )
 
 

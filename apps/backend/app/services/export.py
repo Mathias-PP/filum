@@ -30,6 +30,11 @@ CSV_COLUMNS = [
     "author_kind",
     "is_pivot",
     "annotation",
+    "journal",
+    "volume",
+    "pages",
+    "publisher",
+    "doi",
     "archive_url",
     "archive_timestamp",
 ]
@@ -47,6 +52,11 @@ def _source_row(source: Source) -> list[str]:
         source.author_kind,
         "oui" if source.is_pivot else "non",
         source.annotation or "",
+        source.journal or "",
+        source.volume or "",
+        source.pages or "",
+        source.publisher or "",
+        source.doi or "",
         source.archive_url or "",
         source.archive_timestamp.isoformat() if source.archive_timestamp else "",
     ]
@@ -79,6 +89,11 @@ def export_json(card: BiblioCard, public_url: str) -> str:
                 "author_kind": s.author_kind,
                 "annotation": s.annotation,
                 "is_pivot": s.is_pivot,
+                "journal": s.journal,
+                "volume": s.volume,
+                "pages": s.pages,
+                "publisher": s.publisher,
+                "doi": s.doi,
                 "archive_url": s.archive_url,
                 "archive_timestamp": (
                     s.archive_timestamp.isoformat() if s.archive_timestamp else None
@@ -132,12 +147,106 @@ def export_bibtex(card: BiblioCard) -> str:
             fields["author"] = source.authors
         if source.published_at:
             fields["year"] = str(source.published_at.year)
+        if source.journal:
+            fields["journal"] = source.journal
+        if source.volume:
+            fields["volume"] = source.volume
+        if source.pages:
+            fields["pages"] = source.pages
+        if source.publisher:
+            fields["publisher"] = source.publisher
+        if source.doi:
+            fields["doi"] = source.doi
         if source.annotation:
             fields["note"] = source.annotation
         body = ",\n".join(f"  {k} = {{{_bibtex_escape(v)}}}" for k, v in fields.items())
         entries.append(f"@{entry_type}{{{_bibtex_key(source, i)},\n{body}\n}}")
     header = f"% Bibliographie Philum — {card.title}\n% {len(card.sources)} sources\n\n"
     return header + "\n\n".join(entries) + "\n"
+
+
+# --- CSL-JSON (Zotero et al.) -----------------------------------------------
+
+# Mapping category ADR-020 → type CSL 1.0.2. Les categories sans equivalent
+# net tombent sur "webpage" (le plus honnete pour une URL).
+_CSL_TYPE_BY_CATEGORY = {
+    "article-scientifique": "article-journal",
+    "preprint": "article-journal",
+    "article-presse": "article-newspaper",
+    "communique": "report",
+    "documentaire": "motion_picture",
+    "interview": "interview",
+    "podcast": "broadcast",
+    "livre": "book",
+    "notes": "manuscript",
+}
+
+
+def _csl_item(source: Source, index: int) -> dict:
+    item: dict = {
+        "id": _bibtex_key(source, index),
+        "type": _CSL_TYPE_BY_CATEGORY.get(source.category, "webpage"),
+        "title": source.title or source.url,
+        "URL": source.url,
+    }
+    if source.authors:
+        # La chaine authors est libre ("Dupont J., Martin A.") : on la passe
+        # en "literal" par entree pour ne pas inventer un decoupage family/given.
+        item["author"] = [{"literal": a.strip()} for a in source.authors.split(",") if a.strip()]
+    if source.published_at:
+        d = source.published_at
+        item["issued"] = {"date-parts": [[d.year, d.month, d.day]]}
+    if source.journal:
+        item["container-title"] = source.journal
+    if source.volume:
+        item["volume"] = source.volume
+    if source.pages:
+        item["page"] = source.pages
+    if source.publisher:
+        item["publisher"] = source.publisher
+    if source.doi:
+        item["DOI"] = source.doi
+    if source.annotation:
+        item["note"] = source.annotation
+    return item
+
+
+def export_csl_json(card: BiblioCard) -> str:
+    items = [_csl_item(s, i) for i, s in enumerate(card.sources, start=1)]
+    return json.dumps(items, ensure_ascii=False, indent=2)
+
+
+# --- Bibliographie APA (texte) ----------------------------------------------
+
+
+def _apa_line(source: Source) -> str:
+    parts: list[str] = []
+    who = source.authors or source.title or source.url
+    year = f"({source.published_at.year})." if source.published_at else "(s. d.)."
+    parts.append(f"{who} {year}")
+    if source.authors and source.title:
+        parts.append(f"{source.title}.")
+    if source.journal:
+        ref = f"{source.journal}"
+        if source.volume:
+            ref += f", {source.volume}"
+        if source.pages:
+            ref += f", {source.pages}"
+        parts.append(ref + ".")
+    elif source.publisher:
+        parts.append(f"{source.publisher}.")
+    parts.append(f"https://doi.org/{source.doi}" if source.doi else source.url)
+    return " ".join(parts)
+
+
+def export_apa(card: BiblioCard, public_url: str) -> str:
+    lines = [
+        f"Bibliographie — {card.title}",
+        f"Fiche Philum : {public_url}",
+        "",
+    ]
+    lines += [_apa_line(s) for s in card.sources]
+    return "\n".join(lines) + "\n"
 
 
 # --- Markdown (Obsidian) ----------------------------------------------------

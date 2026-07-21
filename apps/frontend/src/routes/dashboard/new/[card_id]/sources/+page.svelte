@@ -47,6 +47,15 @@
   // Optional manual archive URL (e.g. a Wayback snapshot the user already has).
   // When empty, the backend auto-archives via Wayback Save Page Now.
   let archiveUrl = $state('');
+  // Date de publication de la source (par ses auteurs originaux). Format YYYY-MM-DD.
+  let publishedAt = $state('');
+  // Metadonnees bibliographiques etendues (repliees par defaut).
+  let journal = $state('');
+  let volume = $state('');
+  let pages = $state('');
+  let publisher = $state('');
+  let doiField = $state('');
+  let extraMetaOpen = $state(false);
   let addError = $state<string | null>(null);
   let addLoading = $state(false);
   let editingSourceId = $state<string | null>(null);
@@ -71,6 +80,15 @@
         const data = await response.json();
         if (data.title) sourceTitle = data.title;
         if (data.authors) authors = data.authors;
+        if (data.published_at) publishedAt = String(data.published_at).slice(0, 10);
+        if (data.journal) journal = data.journal;
+        if (data.volume) volume = data.volume;
+        if (data.pages) pages = data.pages;
+        if (data.publisher) publisher = data.publisher;
+        if (data.doi) doiField = data.doi;
+        if (data.journal || data.volume || data.pages || data.publisher || data.doi) {
+          extraMetaOpen = true;
+        }
         // Taxonomie suggérée (validée contre les enums connus côté client)
         let suggested = false;
         if (data.format && formatOptions.some((o) => o.value === data.format)) {
@@ -135,6 +153,13 @@
     isPivot = false;
     parentSourceId = '';
     archiveUrl = '';
+    publishedAt = '';
+    journal = '';
+    volume = '';
+    pages = '';
+    publisher = '';
+    doiField = '';
+    extraMetaOpen = false;
     lastExtractedUrl = '';
     taxonomySuggested = false;
     editingSourceId = null;
@@ -154,6 +179,13 @@
     isPivot = source.is_pivot;
     parentSourceId = source.parent_source_id ?? '';
     archiveUrl = source.archive_url ?? '';
+    publishedAt = source.published_at ? String(source.published_at).slice(0, 10) : '';
+    journal = source.journal ?? '';
+    volume = source.volume ?? '';
+    pages = source.pages ?? '';
+    publisher = source.publisher ?? '';
+    doiField = source.doi ?? '';
+    extraMetaOpen = Boolean(journal || volume || pages || publisher || doiField);
     lastExtractedUrl = source.url;
     taxonomySuggested = false;
     addError = null;
@@ -188,6 +220,12 @@
           annotation: annotation || undefined,
           is_pivot: isPivot,
           parent_source_id: parentSourceId || null,
+          published_at: publishedAt ? new Date(publishedAt).toISOString() : null,
+          journal: journal || null,
+          volume: volume || null,
+          pages: pages || null,
+          publisher: publisher || null,
+          doi: doiField || null,
           archive_url: archiveUrl.trim() || null,
         });
         sources = sources.map((s) => (s.id === updated.id ? updated : s));
@@ -203,6 +241,12 @@
           annotation: annotation || undefined,
           is_pivot: isPivot,
           parent_source_id: parentSourceId || undefined,
+          published_at: publishedAt ? new Date(publishedAt).toISOString() : undefined,
+          journal: journal || undefined,
+          volume: volume || undefined,
+          pages: pages || undefined,
+          publisher: publisher || undefined,
+          doi: doiField || undefined,
           archive_url: archiveUrl.trim() || null,
         });
         sources = [...sources, s];
@@ -1145,12 +1189,9 @@
           </select>
         </div>
 
-        <div class="sm:col-span-2 space-y-1.5">
+        <div class="space-y-1.5">
           <label for="source-author-kind" class="block text-sm font-medium text-ink-secondary">
             Type d'auteur <span class="text-danger">*</span>
-            <span class="text-xs text-ink-tertiary font-normal"
-              >— colore le nœud dans le graphe</span
-            >
             {#if taxonomySuggested}
               <span class="text-xs text-info font-normal">— suggéré</span>
             {/if}
@@ -1166,6 +1207,19 @@
               <option value={opt}>{authorLabel(opt)}</option>
             {/each}
           </select>
+        </div>
+
+        <div class="space-y-1.5">
+          <label for="source-published-at" class="block text-sm font-medium text-ink-secondary">
+            Date de publication
+            <span class="text-xs text-ink-tertiary font-normal">— par les auteurs originaux</span>
+          </label>
+          <input
+            id="source-published-at"
+            type="date"
+            bind:value={publishedAt}
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
+          />
         </div>
 
         <div class="space-y-1.5">
@@ -1223,6 +1277,93 @@
             placeholder="https://web.archive.org/web/2026.../https://..."
             class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary font-mono text-sm"
           />
+        </div>
+
+        <div class="sm:col-span-2">
+          <button
+            type="button"
+            onclick={() => (extraMetaOpen = !extraMetaOpen)}
+            class="flex items-center gap-1.5 text-sm font-medium text-ink-secondary hover:text-ink-primary transition-colors"
+            aria-expanded={extraMetaOpen}
+            aria-controls="source-extra-meta"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              class="w-4 h-4 transition-transform {extraMetaOpen ? 'rotate-180' : ''}"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+            Métadonnées bibliographiques (journal, DOI, éditeur…)
+          </button>
+          {#if extraMetaOpen}
+            <div id="source-extra-meta" class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div class="space-y-1.5 sm:col-span-2">
+                <label for="source-journal" class="block text-sm font-medium text-ink-secondary">
+                  Journal / revue
+                </label>
+                <input
+                  id="source-journal"
+                  type="text"
+                  bind:value={journal}
+                  placeholder="Nature Neuroscience"
+                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
+                />
+              </div>
+              <div class="space-y-1.5">
+                <label for="source-volume" class="block text-sm font-medium text-ink-secondary">
+                  Volume
+                </label>
+                <input
+                  id="source-volume"
+                  type="text"
+                  bind:value={volume}
+                  placeholder="42"
+                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
+                />
+              </div>
+              <div class="space-y-1.5">
+                <label for="source-pages" class="block text-sm font-medium text-ink-secondary">
+                  Pages
+                </label>
+                <input
+                  id="source-pages"
+                  type="text"
+                  bind:value={pages}
+                  placeholder="123-145"
+                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
+                />
+              </div>
+              <div class="space-y-1.5">
+                <label for="source-publisher" class="block text-sm font-medium text-ink-secondary">
+                  Éditeur
+                </label>
+                <input
+                  id="source-publisher"
+                  type="text"
+                  bind:value={publisher}
+                  placeholder="Elsevier"
+                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
+                />
+              </div>
+              <div class="space-y-1.5">
+                <label for="source-doi" class="block text-sm font-medium text-ink-secondary">
+                  DOI
+                </label>
+                <input
+                  id="source-doi"
+                  type="text"
+                  bind:value={doiField}
+                  placeholder="10.1038/s41593-023-01234-5"
+                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary font-mono text-sm"
+                />
+              </div>
+            </div>
+          {/if}
         </div>
 
         <div class="sm:col-span-2">

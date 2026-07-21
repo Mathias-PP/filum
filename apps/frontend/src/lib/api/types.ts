@@ -108,6 +108,11 @@ export interface Source {
   linked_card_id?: string | null;
   /** Nombre de sources de la fiche liée (enrichi sur l'endpoint public). */
   linked_card_sources_count?: number | null;
+  journal?: string | null;
+  volume?: string | null;
+  pages?: string | null;
+  publisher?: string | null;
+  doi?: string | null;
   conflict_of_interest: string | null;
   citations_count: number | null;
   subscribers_count: number | null;
@@ -122,13 +127,19 @@ export interface SourceCreate {
   url: string;
   title?: string;
   authors?: string;
-  published_at?: string;
+  published_at?: string | null;
   format: SourceFormat;
   category: SourceCategory;
   author_kind: AuthorKind;
   annotation?: string;
   is_pivot?: boolean;
   parent_source_id?: string | null;
+  /** Métadonnées bibliographiques optionnelles (exports BibTeX/CSL/APA). */
+  journal?: string | null;
+  volume?: string | null;
+  pages?: string | null;
+  publisher?: string | null;
+  doi?: string | null;
   /**
    * Optional manual archive URL (e.g. an existing Wayback snapshot the user
    * already has). When set, the backend skips its background Wayback Save

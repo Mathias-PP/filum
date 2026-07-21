@@ -47,6 +47,12 @@ class ExtractResponse(BaseModel):
     format: str | None = None
     category: str | None = None
     author_kind: str | None = None
+    # Metadonnees bibliographiques (Crossref, null sinon).
+    journal: str | None = None
+    volume: str | None = None
+    pages: str | None = None
+    publisher: str | None = None
+    doi: str | None = None
 
 
 async def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
@@ -84,6 +90,11 @@ async def extract_url_metadata(
         format=meta.format,
         category=meta.category,
         author_kind=meta.author_kind,
+        journal=meta.journal,
+        volume=meta.volume,
+        pages=meta.pages,
+        publisher=meta.publisher,
+        doi=meta.doi,
     )
 
 
@@ -182,6 +193,11 @@ async def create_source(
         is_pivot=source_data.is_pivot,
         parent_source_id=source_data.parent_source_id,
         linked_card_id=linked_card_id,
+        journal=source_data.journal,
+        volume=source_data.volume,
+        pages=source_data.pages,
+        publisher=source_data.publisher,
+        doi=source_data.doi,
         archive_url=manual_archive,
         archive_status="archived" if manual_archive else "pending",
         archive_timestamp=datetime.now().replace(tzinfo=None) if manual_archive else None,
@@ -298,6 +314,11 @@ async def create_sources_batch(
                 is_pivot=sd.is_pivot,
                 parent_source_id=sd.parent_source_id,
                 linked_card_id=linked_card_id,
+                journal=sd.journal,
+                volume=sd.volume,
+                pages=sd.pages,
+                publisher=sd.publisher,
+                doi=sd.doi,
                 archive_url=manual_archive,
                 archive_status="archived" if manual_archive else "pending",
                 archive_timestamp=datetime.now().replace(tzinfo=None) if manual_archive else None,
