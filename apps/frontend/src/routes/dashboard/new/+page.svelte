@@ -3,7 +3,7 @@
   import { api } from '$lib/api';
   import { Button, ProgressSteps } from '$lib/components';
   import { currentUser } from '$lib/stores/auth';
-  import type { Platform, ContentType } from '$lib/api';
+  import type { Platform, ContentType, Visibility } from '$lib/api';
 
   const steps = [
     { label: 'Informations', description: 'Titre, plateforme' },
@@ -17,6 +17,7 @@
   let platform = $state<Platform>('other');
   let contentType = $state<ContentType>('other');
   let isSeed = $state(false);
+  let visibility = $state<Visibility>('public');
   let error = $state<string | null>(null);
   let loading = $state(false);
 
@@ -55,6 +56,7 @@
         platform,
         content_type: contentType,
         is_seed: isSeed,
+        visibility,
       });
       goto(`/dashboard/new/${card.id}/sources`);
     } catch (err) {
@@ -228,6 +230,40 @@
         </span>
       </label>
     </div>
+
+    <fieldset class="space-y-2">
+      <legend class="block text-sm font-medium text-ink-secondary">Visibilité</legend>
+      <div class="grid sm:grid-cols-2 gap-2">
+        <label
+          class="flex items-start gap-3 border border-border rounded-lg p-3 cursor-pointer transition-colors {visibility ===
+          'public'
+            ? 'bg-info/10 border-info'
+            : 'hover:bg-surface-secondary'}"
+        >
+          <input type="radio" bind:group={visibility} value="public" class="mt-0.5" />
+          <span class="text-sm">
+            <span class="font-medium text-ink-primary block">Publique</span>
+            <span class="text-xs text-ink-tertiary">
+              Visible par tout le monde une fois publiée.
+            </span>
+          </span>
+        </label>
+        <label
+          class="flex items-start gap-3 border border-border rounded-lg p-3 cursor-pointer transition-colors {visibility ===
+          'private'
+            ? 'bg-info/10 border-info'
+            : 'hover:bg-surface-secondary'}"
+        >
+          <input type="radio" bind:group={visibility} value="private" class="mt-0.5" />
+          <span class="text-sm">
+            <span class="font-medium text-ink-primary block">Privée</span>
+            <span class="text-xs text-ink-tertiary">
+              Visible uniquement par vous (connecté). Changeable plus tard.
+            </span>
+          </span>
+        </label>
+      </div>
+    </fieldset>
 
     <div class="flex justify-end pt-4">
       <Button type="submit" {loading} disabled={!title || !slug || loading}>

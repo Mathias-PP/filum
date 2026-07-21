@@ -43,6 +43,17 @@ class ContentType(str, Enum):
     OTHER = "other"
 
 
+class Visibility(str, Enum):
+    """Qui peut voir une fiche une fois publiee.
+
+    - PUBLIC  : visible par tout le monde (comportement historique, default DB).
+    - PRIVATE : visible uniquement par son owner connecte.
+    """
+
+    PUBLIC = "public"
+    PRIVATE = "private"
+
+
 class BiblioCard(Base):
     __tablename__ = "biblio_cards"
     __table_args__ = (Index("ix_biblio_cards_user_status", "user_id", "status"),)
@@ -70,6 +81,12 @@ class BiblioCard(Base):
         index=True,
     )
     is_seed: Mapped[bool] = mapped_column(default=False, nullable=False)
+    visibility: Mapped[str] = mapped_column(
+        String(20),
+        default="public",
+        server_default="public",
+        nullable=False,
+    )
     published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow_naive)
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

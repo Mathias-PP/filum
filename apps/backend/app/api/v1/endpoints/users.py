@@ -105,6 +105,8 @@ async def get_user_profile(
             BiblioCard.user_id == user.id,
             BiblioCard.deleted_at.is_(None),
             BiblioCard.status == CardStatus.PUBLISHED,
+            # Les fiches privees n'apparaissent jamais sur le profil public.
+            BiblioCard.visibility == "public",
         )
         .group_by(BiblioCard.id)
         .order_by(BiblioCard.published_at.desc())

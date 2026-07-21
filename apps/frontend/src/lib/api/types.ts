@@ -8,6 +8,8 @@ export interface User {
   is_verified: boolean;
 }
 
+export type Visibility = 'public' | 'private';
+
 export interface Card {
   id: string;
   slug: string;
@@ -18,6 +20,7 @@ export interface Card {
   content_type: ContentType;
   status: CardStatus;
   is_seed: boolean;
+  visibility: Visibility;
   published_at: string | null;
   created_at: string;
   updated_at: string | null;
@@ -59,6 +62,11 @@ export interface CardCreate {
    * L'auteur réel pourra la revendiquer via /cards/{id}/claim-requests.
    */
   is_seed?: boolean;
+  /**
+   * `public` (default) : visible par tout le monde une fois publiée.
+   * `private` : visible uniquement par l'owner connecté (404 pour les autres).
+   */
+  visibility?: Visibility;
 }
 
 export interface SourceExcerpt {
