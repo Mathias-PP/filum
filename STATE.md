@@ -6,10 +6,12 @@
 
 ---
 
-## ✅ État production vérifié (2026-07-19)
+## ✅ État production vérifié (2026-07-21)
 
-**Prod migrée Railway → GCP + Supabase** (cf. ADR-028). Vérifié par curl + parcours navigateur :
+**Prod migrée Railway → GCP + Supabase** (cf. ADR-028). **VM redéployée le 2026-07-21** (commit 464ba95, PRs #179-#181 incluses). Vérifié par curl depuis la VM :
 - `https://philum-api.duckdns.org/health` → `{"status":"ok","version":"0.1.0"}` (HTTPS Let's Encrypt via Caddy)
+- `POST /api/v1/import/from-content-url` et `POST /api/v1/import/parse` → 401 (auth requise = endpoints déployés)
+- `grobid_base_url` dans le conteneur → `https://zfhxi-grobid.hf.space` (défaut code, rien dans le `.env`)
 - Fiche démo `https://filum-eight.vercel.app/@example/memoire-et-cerveau` → 200, sources + graphe OK
 - Login Google → dashboard OK (redirect URI DuckDNS ajoutée au client OAuth ; l'URI Railway existe encore, à retirer)
 
@@ -25,9 +27,7 @@ Infra : VM GCP e2-micro us-central1 always-free (Ubuntu 24.04, swap 2 GB, Docker
 
 Livré (mergé) : exports multi-formats (JSON/CSV/BibTeX/Markdown/xlsx/**docx**), imports (BibTeX/CSL-JSON/Markdown/PDF + biblio collée via LLM + multi-liens + **URL de contenu → draft de fiche + sources citées, PR #154**), citations IA vérifiées verbatim, extraction métadonnées durcie (DOI éditeurs + **PII ScienceDirect via Crossref**), fix session 7 jours, durcissement sécurité MCP + **rate-limit 60/min par IP sur `/mcp/` (PR #147)**, extension navigateur MV3 (`apps/extension/`), page `/developers` (docs API + MCP).
 
-✅ **VM GCP redéployée le 2026-07-19** sur `main` (la VM était restée sur la branche `infra/oracle-micro` — piège : toujours vérifier `git branch` avant un pull). Vérifié en prod : exports json/docx/xlsx/bibtex → 200, MCP handshake OK sur `/mcp/`, health OK.
-
-⚠️ **VM à redéployer à nouveau** post-PR #154 (nouvel endpoint `POST /api/v1/import/from-content-url` + fix ruff B904). Commandes dans le CHANGELOG.
+✅ **VM GCP redéployée le 2026-07-21** sur `main` (464ba95) : endpoints d'import (#154, #179-#181), rate-limit `/mcp/` (#147) et extraction DOCX/HTML/PDF-GROBID effectifs en prod. Piège connu : toujours vérifier `git branch` avant un pull sur la VM. Note : les 502 juste après `docker compose up` sont normaux (alembic + seed avant uvicorn, e2-micro lente) ; et `docker compose exec backend` doit passer par `uv run python`.
 
 Avant : Phase 2 (identité visuelle Pulsar-graph + audit) et Phase 1 (MVP complet, flow login → création → signature → attestation → publication).
 
@@ -120,15 +120,9 @@ Vercel : `BACKEND_URL=https://philum-api.duckdns.org` (env var serverless, jamai
 
 > **Roadmap consolidée et priorisée** : [`.docs/19-roadmap-2026-07.md`](./.docs/19-roadmap-2026-07.md). Plan d'audit détaillé : [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md). Comptes plateformes liés : [`.docs/18-linked-accounts.md`](./.docs/18-linked-accounts.md).
 
-**Immédiat** (post-merges du 2026-07-20)
-- **P0 — Redéployer la VM GCP** : endpoint `POST /api/v1/import/from-content-url` + rate-limit `/mcp/` (PR #147) + **PRs #179-#181** (retry Crossref/S2, parcours nouvelle fiche unifié, extraction DOCX/HTML/PDF-GROBID) pas encore effectifs en prod. Commandes :
-  ```bash
-  ssh mathias_pinault@philum-api.duckdns.org
-  cd ~/filum && git pull origin main
-  cd infra/oracle && docker compose -f docker-compose.micro.yml up -d --build
-  # Test : curl -X POST https://philum-api.duckdns.org/api/v1/import/from-content-url \
-  #   -H "Content-Type: application/json" -d '{"url":"https://x"}' → 401 attendu
-  ```
+**Immédiat**
+- ~~Redéployer la VM GCP~~ ✅ fait le 2026-07-21 (464ba95, vérifié par curl).
+- **3 alertes Dependabot high sur main** : https://github.com/Mathias-PP/filum/security/dependabot — à trier.
 - **Alerte budget 1 € sur GCP** (Billing → Budgets & alerts) si pas déjà en place — filet de sécurité, pas de plafond natif.
 - **Décommissionner Railway** : supprimer le service + retirer l'ancienne redirect URI Railway du client OAuth Google.
 - **Migrer Tailwind v3 → v4** (PR dédiée) : PR Dependabot #156 fermée car breaking (nouveau format config, PostCSS séparé `@tailwindcss/postcss`, syntaxes `@theme`/`@source`).
