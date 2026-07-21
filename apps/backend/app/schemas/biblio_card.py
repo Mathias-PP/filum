@@ -66,6 +66,7 @@ class CardUpdate(BaseModel):
     description: str | None = None
     content_url: str | None = None
     platform: Platform | None = None
+    content_type: ContentType | None = None
     is_seed: bool | None = None
     visibility: Visibility | None = None
 

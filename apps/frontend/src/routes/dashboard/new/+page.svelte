@@ -1,15 +1,20 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
   import { api } from '$lib/api';
   import { Button, ProgressSteps } from '$lib/components';
   import { currentUser } from '$lib/stores/auth';
   import { pendingImportFile } from '$lib/stores/import-file';
   import type { Platform, ContentType, Visibility } from '$lib/api';
 
-  const steps = [
+  // Mode édition : /dashboard/new?card_id=<id> pré-remplit le formulaire
+  // depuis la fiche existante et le submit fait un PATCH au lieu d'un POST.
+  const editCardId = $derived($page.url.searchParams.get('card_id'));
+
+  const steps = $derived([
     { label: 'Informations', description: 'Titre, plateforme' },
-    { label: 'Sources', description: 'Ajouter et publier' },
-  ];
+    { label: 'Sources', description: 'Ajouter et publier', clickable: Boolean(editCardId) },
+  ]);
 
   let title = $state('');
   let slug = $state('');
@@ -21,6 +26,33 @@
   let visibility = $state<Visibility>('public');
   let error = $state<string | null>(null);
   let loading = $state(false);
+  let loadingCard = $state(false);
+
+  $effect(() => {
+    if (editCardId) loadCard(editCardId);
+  });
+
+  async function loadCard(cardId: string) {
+    loadingCard = true;
+    error = null;
+    try {
+      const card = await api.cards.get(cardId);
+      title = card.title;
+      slug = card.slug;
+      slugManual = true;
+      description = card.description ?? '';
+      contentUrl = card.content_url ?? '';
+      lastSuggestedUrl = contentUrl;
+      platform = card.platform;
+      contentType = card.content_type;
+      isAuthor = !card.is_seed;
+      visibility = card.visibility;
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'Impossible de charger la fiche';
+    } finally {
+      loadingCard = false;
+    }
+  }
 
   // Suggestion automatique des métadonnées depuis l'URL du contenu.
   let suggesting = $state(false);
@@ -119,28 +151,59 @@
     slug = (e.target as HTMLInputElement).value;
   }
 
-  async function handleSubmit(e: Event) {
-    e.preventDefault();
+  async function saveAndContinue() {
     error = null;
     loading = true;
     try {
-      const card = await api.cards.create({
-        title,
-        slug,
-        description: description || undefined,
-        content_url: contentUrl || undefined,
-        platform,
-        content_type: contentType,
-        is_seed: !isAuthor,
-        visibility,
-      });
+      let cardId: string;
+      if (editCardId) {
+        // Le slug n'est pas modifiable : il porte l'URL publique de la fiche.
+        await api.cards.update(editCardId, {
+          title,
+          description: description || undefined,
+          content_url: contentUrl || undefined,
+          platform,
+          content_type: contentType,
+          is_seed: !isAuthor,
+          visibility,
+        });
+        cardId = editCardId;
+      } else {
+        const card = await api.cards.create({
+          title,
+          slug,
+          description: description || undefined,
+          content_url: contentUrl || undefined,
+          platform,
+          content_type: contentType,
+          is_seed: !isAuthor,
+          visibility,
+        });
+        cardId = card.id;
+      }
       pendingImportFile.set(droppedFile);
-      goto(`/dashboard/new/${card.id}/sources`);
+      goto(`/dashboard/new/${cardId}/sources`);
     } catch (err) {
-      error = err instanceof Error ? err.message : 'Erreur lors de la création';
+      error =
+        err instanceof Error
+          ? err.message
+          : editCardId
+            ? 'Erreur lors de la mise à jour'
+            : 'Erreur lors de la création';
     } finally {
       loading = false;
     }
+  }
+
+  async function handleSubmit(e: Event) {
+    e.preventDefault();
+    await saveAndContinue();
+  }
+
+  function onStepClick(i: number) {
+    // Seule l'étape « Sources » est cliquable ici, et uniquement en mode
+    // édition : on enregistre les modifications avant de naviguer.
+    if (i === 1 && editCardId && title && !loading) saveAndContinue();
   }
 
   const platforms: { value: Platform; label: string }[] = [
@@ -162,7 +225,7 @@
 </script>
 
 <svelte:head>
-  <title>Nouvelle fiche - Philum</title>
+  <title>{editCardId ? 'Modifier la fiche' : 'Nouvelle fiche'} - Philum</title>
 </svelte:head>
 
 <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -172,13 +235,20 @@
     >
   </div>
 
-  <h1 class="font-serif text-3xl text-ink-primary mb-2">Nouvelle fiche</h1>
+  <h1 class="font-serif text-3xl text-ink-primary mb-2">
+    {editCardId ? 'Modifier la fiche' : 'Nouvelle fiche'}
+  </h1>
   <p class="text-sm text-ink-secondary mb-6">
-    Collez l'URL du contenu — Philum suggère automatiquement les informations. Vous pourrez extraire
-    les sources citées à l'étape suivante.
+    {#if editCardId}
+      Modifiez les informations de la fiche, puis cliquez sur « Sources » ou sur le bouton pour
+      enregistrer et revenir aux sources.
+    {:else}
+      Collez l'URL du contenu — Philum suggère automatiquement les informations. Vous pourrez
+      extraire les sources citées à l'étape suivante.
+    {/if}
   </p>
 
-  <ProgressSteps {steps} current={0} class="mb-8" />
+  <ProgressSteps {steps} current={0} {onStepClick} class="mb-8" />
 
   <form onsubmit={handleSubmit} class="space-y-6">
     {#if error}
@@ -311,12 +381,17 @@
           value={slug}
           oninput={onSlugInput}
           required
+          disabled={Boolean(editCardId)}
           pattern="[a-z0-9-]+"
           placeholder="memoire-et-cerveau"
-          class="flex-1 px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
+          class="flex-1 px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary disabled:opacity-60 disabled:cursor-not-allowed"
         />
       </div>
-      <p class="text-xs text-ink-tertiary">Lettres minuscules, chiffres et tirets uniquement.</p>
+      <p class="text-xs text-ink-tertiary">
+        {editCardId
+          ? "L'identifiant URL n'est pas modifiable : il porte l'adresse publique de la fiche."
+          : 'Lettres minuscules, chiffres et tirets uniquement.'}
+      </p>
     </div>
 
     <div class="space-y-1.5">
@@ -423,8 +498,12 @@
     </fieldset>
 
     <div class="flex justify-end pt-4">
-      <Button type="submit" {loading} disabled={!title || !slug || loading}>
-        {loading ? 'Création…' : 'Suivant : ajouter les sources →'}
+      <Button type="submit" {loading} disabled={!title || !slug || loading || loadingCard}>
+        {#if editCardId}
+          {loading ? 'Enregistrement…' : 'Enregistrer et revenir aux sources →'}
+        {:else}
+          {loading ? 'Création…' : 'Suivant : ajouter les sources →'}
+        {/if}
       </Button>
     </div>
   </form>
