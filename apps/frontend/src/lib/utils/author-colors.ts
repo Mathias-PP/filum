@@ -15,7 +15,7 @@ export interface AuthorColor {
  */
 export const AUTHOR_COLORS: Record<AuthorKind, AuthorColor> = {
   chercheur: {
-    label: 'Chercheur·euse',
+    label: 'Chercheur·euse(s)',
     fill: '#C0DD97',
     stroke: '#639922',
     text: '#173404',
@@ -71,7 +71,7 @@ export const AUTHOR_COLORS: Record<AuthorKind, AuthorColor> = {
     bgClass: 'bg-yellow-100 text-yellow-800',
   },
   individu: {
-    label: 'Individu',
+    label: 'Individu(s)',
     fill: '#CECBF6',
     stroke: '#7F77DD',
     text: '#26215C',

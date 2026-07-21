@@ -875,11 +875,27 @@
             />
             <Button
               type="button"
-              variant="ghost"
+              variant="secondary"
               loading={importing}
               disabled={importing}
               onclick={() => fileInput?.click()}
             >
+              {#if !importing}
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="w-4 h-4"
+                  aria-hidden="true"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+              {/if}
               {importing ? 'Import…' : 'Importer un fichier'}
             </Button>
             <p class="text-xs text-ink-tertiary mt-1">
@@ -893,6 +909,7 @@
               loading={analyzingText}
               disabled={analyzingText || multiExtracting || !multiText.trim()}
               onclick={analyzeText}
+              title="L'IA découpe une bibliographie collée en références structurées — fonctionne même sans liens ni DOIs"
             >
               {analyzingText ? 'Analyse…' : 'Analyser le texte (IA)'}
             </Button>
@@ -902,8 +919,9 @@
               loading={multiExtracting}
               disabled={multiExtracting || analyzingText || !multiText.trim()}
               onclick={extractAll}
+              title="Récupère uniquement les URLs et DOIs présents dans le texte (instantané, sans IA)"
             >
-              {multiExtracting ? 'Analyse…' : 'Analyser les liens'}
+              {multiExtracting ? 'Extraction…' : 'Extraire les URLs/DOIs'}
             </Button>
           </div>
         </div>
