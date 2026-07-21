@@ -260,5 +260,8 @@ export interface ImportFromUrlResponse {
   skipped: number;
   references_section_found: boolean;
   /** ok = HTML récupéré, unreachable = timeout/DNS/4xx/5xx, not_html = PDF/image/JSON. */
-  fetch_status: 'ok' | 'unreachable' | 'not_html';
+  /** ok = page live scrapée. ok_via_wayback = snapshot Wayback utilisée (fetch direct bloqué). */
+  fetch_status: 'ok' | 'ok_via_wayback' | 'unreachable' | 'not_html';
+  /** URL de la snapshot Wayback utilisée si fetch_status === 'ok_via_wayback'. */
+  wayback_url?: string | null;
 }

@@ -440,6 +440,49 @@ _REFERENCES_SELECTORS = (
 
 # Cap pour eviter d'envoyer 500 kB de HTML au LLM (couteux + rate-limit).
 _REFS_TEXT_MAX = 60_000
+
+# Wayback Machine : fallback quand le fetch principal echoue (Cloudflare
+# challenge, 403, timeout, page morte). L'API "available" repond en <1s
+# avec l'URL de la snapshot la plus proche.
+_WAYBACK_AVAILABLE_API = "http://archive.org/wayback/available"
+_WAYBACK_TIMEOUT = 10.0
+
+
+async def _try_wayback_snapshot(url: str) -> tuple[str | None, str | None]:
+    """Renvoie (html, wayback_url) si Wayback a une snapshot exploitable.
+
+    L'API archive.org/wayback/available retourne la snapshot la plus proche.
+    Si oui, on fetch le HTML archive et on retourne (html, snapshot_url).
+    Sinon (pas de snapshot, timeout, non-HTML) -> (None, None).
+    """
+    try:
+        async with httpx.AsyncClient(
+            headers=_HEADERS, timeout=_WAYBACK_TIMEOUT, follow_redirects=True
+        ) as client:
+            r = await client.get(_WAYBACK_AVAILABLE_API, params={"url": url})
+        if r.status_code != 200:
+            return None, None
+        data = r.json()
+        snap = data.get("archived_snapshots", {}).get("closest", {})
+        if not snap.get("available"):
+            return None, None
+        snapshot_url = snap.get("url")
+        if not snapshot_url:
+            return None, None
+        # Fetch le HTML archive. Wayback renvoie le HTML original du site
+        # ciblé (avec un banner Wayback injecte mais ça ne casse pas le scrape).
+        async with httpx.AsyncClient(
+            headers=_HEADERS, timeout=_FETCH_TIMEOUT, follow_redirects=True
+        ) as client:
+            r2 = await client.get(snapshot_url)
+        if r2.status_code == 200 and "text/html" in r2.headers.get("content-type", ""):
+            return r2.text[:_HTML_MAX], snapshot_url
+        return None, snapshot_url
+    except Exception as e:
+        logger.warning("wayback fallback failed for %s: %s", url, e)
+        return None, None
+
+
 # Fetch cap sur le HTML brut : 3 MB, evite les mega-pages
 _HTML_MAX = 3 * 1024 * 1024
 _FETCH_TIMEOUT = 10.0
@@ -464,7 +507,10 @@ class ImportFromUrlResponse(BaseModel):
     sources: list[ImportedSourceDraft]
     skipped: int
     references_section_found: bool
-    fetch_status: str  # "ok" | "unreachable" | "not_html"
+    fetch_status: str  # "ok" | "ok_via_wayback" | "unreachable" | "not_html"
+    # URL de la snapshot Wayback si le fetch principal a echoue et que Wayback
+    # a permis de recuperer une version archivee. None sinon.
+    wayback_url: str | None = None
 
 
 def _extract_references_text(html: str) -> tuple[str, bool]:
@@ -527,11 +573,15 @@ async def parse_content_url(
         logger.warning("extract_url_metadata failed for %s: %s", url, e)
         meta = None
 
-    # 2. Fetch le HTML pour la section references. On distingue trois etats
-    # pour donner un feedback UX explicite : ok / unreachable (timeout, DNS,
-    # 4xx/5xx) / not_html (PDF, image, redirection JSON API).
+    # 2. Fetch le HTML pour la section references. On distingue plusieurs
+    # etats pour donner un feedback UX explicite :
+    #   - ok            : fetch direct reussi
+    #   - ok_via_wayback: fetch direct a echoue, mais Wayback a une snapshot
+    #   - unreachable   : ni le fetch direct ni Wayback ne repondent
+    #   - not_html      : la reponse est un PDF / image / JSON, pas exploitable
     html: str | None = None
     fetch_status = "unreachable"
+    wayback_url: str | None = None
     try:
         async with httpx.AsyncClient(
             headers=_HEADERS, timeout=_FETCH_TIMEOUT, follow_redirects=True
@@ -545,6 +595,15 @@ async def parse_content_url(
                 fetch_status = "not_html"
     except Exception as e:
         logger.warning("fetch failed for %s: %s", url, e)
+
+    # 2.5. Fallback Wayback si le fetch direct a echoue (unreachable OU
+    # not_html). L'idee : ScienceDirect / Cloudflare / 403 sur la page live
+    # ont souvent une snapshot exploitable via web.archive.org.
+    if html is None:
+        wayback_html, wayback_url = await _try_wayback_snapshot(url)
+        if wayback_html:
+            html = wayback_html
+            fetch_status = "ok_via_wayback"
 
     refs_text = ""
     refs_section_found = False
@@ -607,4 +666,5 @@ async def parse_content_url(
         skipped=result.skipped,
         references_section_found=refs_section_found,
         fetch_status=fetch_status,
+        wayback_url=wayback_url,
     )

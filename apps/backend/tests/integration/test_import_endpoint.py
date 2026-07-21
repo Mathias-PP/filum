@@ -728,7 +728,7 @@ async def test_from_url_falls_back_to_html_when_s2_returns_nothing(client, monke
         async def __aexit__(self, *exc):
             return None
 
-        async def get(self, url):
+        async def get(self, url, params=None):
             return FakeResponse()
 
     async def no_llm(text):
@@ -753,3 +753,146 @@ async def test_from_url_falls_back_to_html_when_s2_returns_nothing(client, monke
     assert "https://doi.org/10.1/fallback.a" in urls
     assert "https://doi.org/10.1/fallback.b" in urls
     assert "https://doi.org/10.1/fallback.c" in urls
+
+
+# --- Wayback fallback (page cible bloque / down) ----------------------------
+
+
+@pytest.mark.asyncio
+async def test_from_url_fallbacks_to_wayback_when_direct_fetch_fails(client, monkeypatch):
+    """Fetch direct 403 (anti-bot Cloudflare) -> Wayback snapshot utilisee."""
+    from app.extractors.url_extractor import ExtractedMetadata
+
+    async def fake_meta(url):
+        return ExtractedMetadata(title="Blocked page")
+
+    html_from_wayback = """<!DOCTYPE html>
+    <html><body>
+    <section id="references">
+    <ol>
+    <li>Ref W1 https://doi.org/10.1/wayback.a</li>
+    <li>Ref W2 https://doi.org/10.1/wayback.b</li>
+    </ol>
+    </section>
+    </body></html>"""
+
+    fetch_call_count = {"n": 0}
+
+    class Blocked403:
+        status_code = 403
+        headers = {"content-type": "text/html"}
+        text = "Forbidden"
+
+    class WaybackAvailableOk:
+        status_code = 200
+        headers = {"content-type": "application/json"}
+
+        def json(self):
+            return {
+                "archived_snapshots": {
+                    "closest": {
+                        "available": True,
+                        "url": "https://web.archive.org/web/20200101000000/https://blocked.example.org/paper",
+                        "timestamp": "20200101000000",
+                    }
+                }
+            }
+
+    class WaybackHtmlOk:
+        status_code = 200
+        headers = {"content-type": "text/html; charset=utf-8"}
+        text = html_from_wayback
+
+    class FakeAsyncClient:
+        def __init__(self, *a, **kw):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return None
+
+        async def get(self, url, params=None):
+            fetch_call_count["n"] += 1
+            if "archive.org/wayback/available" in url:
+                return WaybackAvailableOk()
+            if "web.archive.org/web/" in url:
+                return WaybackHtmlOk()
+            return Blocked403()
+
+    async def no_llm(text):
+        return None
+
+    async def s2_returns_none(doi, limit=500):
+        return None
+
+    monkeypatch.setattr("app.api.v1.endpoints.imports.extract_url_metadata", fake_meta)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.httpx.AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.parse_bibliography", no_llm)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.get_paper_references", s2_returns_none)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.assert_url_is_safe", lambda u: None)
+
+    resp = await client.post(
+        "/api/v1/import/from-content-url",
+        json={"url": "https://blocked.example.org/paper"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["fetch_status"] == "ok_via_wayback"
+    assert body["wayback_url"] and "web.archive.org" in body["wayback_url"]
+    urls = {s["url"] for s in body["sources"]}
+    assert "https://doi.org/10.1/wayback.a" in urls
+    assert "https://doi.org/10.1/wayback.b" in urls
+
+
+@pytest.mark.asyncio
+async def test_from_url_reports_unreachable_when_wayback_also_fails(client, monkeypatch):
+    """Ni direct ni Wayback ne repondent -> fetch_status='unreachable'."""
+    from app.extractors.url_extractor import ExtractedMetadata
+
+    async def fake_meta(url):
+        return ExtractedMetadata()
+
+    class WaybackAvailableNoSnap:
+        status_code = 200
+        headers = {"content-type": "application/json"}
+
+        def json(self):
+            return {"archived_snapshots": {}}
+
+    class FakeAsyncClient:
+        def __init__(self, *a, **kw):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return None
+
+        async def get(self, url, params=None):
+            if "archive.org/wayback/available" in url:
+                return WaybackAvailableNoSnap()
+            raise RuntimeError("connection refused")
+
+    async def no_llm(text):
+        return None
+
+    async def s2_returns_none(doi, limit=500):
+        return None
+
+    monkeypatch.setattr("app.api.v1.endpoints.imports.extract_url_metadata", fake_meta)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.httpx.AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.parse_bibliography", no_llm)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.get_paper_references", s2_returns_none)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.assert_url_is_safe", lambda u: None)
+
+    resp = await client.post(
+        "/api/v1/import/from-content-url",
+        json={"url": "https://truly-down.example.org/x"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["fetch_status"] == "unreachable"
+    assert body["wayback_url"] is None
