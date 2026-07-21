@@ -2,7 +2,7 @@
 
 > Snapshot vivant, 1 page max. **Pour l'historique détaillé** : voir [`CHANGELOG.md`](./CHANGELOG.md). **Pour les items long terme** : voir [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md).
 
-**Dernière mise à jour : 2026-07-20**
+**Dernière mise à jour : 2026-07-21**
 
 ---
 
@@ -35,7 +35,10 @@ Avant : Phase 2 (identité visuelle Pulsar-graph + audit) et Phase 1 (MVP comple
 
 ## PRs ouvertes
 
-_Aucune._ Session 2026-07-19/20 :
+_Aucune._ Session 2026-07-21 :
+- **PRs #179-#181 mergées** : retry Crossref 2ᵉ passe + backoff S2 429 (100 % métadonnées récupérées, 100 % gratuit) ; parcours « Nouvelle fiche » unifié (suppression `/dashboard/from-url`, extraction depuis la page sources, drop de fichier via store) ; **extraction fichiers DOCX/HTML + refs structurées PDF via GROBID** (Space HF `zfhxi/grobid`, fallback regex gracieux, ADR-023, support arXiv/CoRR).
+
+Sessions précédentes (2026-07-19/20) :
 - PRs #135-#144 mergées (imports, citations IA, session 7j, export docx, métadonnées PII, deps sécurité, durcissement MCP, extension MV3, page /developers, docs) — 2026-07-19
 - **PRs #147-#154 mergées** (rate-limit MCP 60/min, fix hero moon-line-depth v1/v2/v3, fix dédup DOI/URL, endpoint `POST /import/from-content-url`, UI `/dashboard/from-url` avec preview + progression + fetch_status) — 2026-07-20
 - **9 PRs Dependabot #153-#163 mergées** (vitest 4, svelte-check 4.7, svelte 5.56, sveltekit 2.70, eslint-plugin-svelte 3, svelte-eslint-parser 1.8, prettier 3.9, @types/node 26, autoprefixer 10.5) — 2026-07-20
@@ -118,7 +121,7 @@ Vercel : `BACKEND_URL=https://philum-api.duckdns.org` (env var serverless, jamai
 > **Roadmap consolidée et priorisée** : [`.docs/19-roadmap-2026-07.md`](./.docs/19-roadmap-2026-07.md). Plan d'audit détaillé : [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md). Comptes plateformes liés : [`.docs/18-linked-accounts.md`](./.docs/18-linked-accounts.md).
 
 **Immédiat** (post-merges du 2026-07-20)
-- **P0 — Redéployer la VM GCP** : nouvel endpoint `POST /api/v1/import/from-content-url` + rate-limit `/mcp/` (PR #147) pas encore effectifs en prod. Commandes :
+- **P0 — Redéployer la VM GCP** : endpoint `POST /api/v1/import/from-content-url` + rate-limit `/mcp/` (PR #147) + **PRs #179-#181** (retry Crossref/S2, parcours nouvelle fiche unifié, extraction DOCX/HTML/PDF-GROBID) pas encore effectifs en prod. Commandes :
   ```bash
   ssh mathias_pinault@philum-api.duckdns.org
   cd ~/filum && git pull origin main
