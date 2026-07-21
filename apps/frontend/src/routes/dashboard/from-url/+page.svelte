@@ -144,6 +144,13 @@
   }
 
   const selectedCount = $derived(selected.filter(Boolean).length);
+  // Nombre de sources qui seront REELLEMENT envoyees (selectionnees + URL non vide)
+  const selectedWithUrl = $derived(
+    sources.filter((s, i) => selected[i] && s.url && s.url.trim().length > 0).length
+  );
+  const selectedWithoutUrl = $derived(selectedCount - selectedWithUrl);
+  // Refs extraites sans URL (draft éditable, indépendamment de la sélection).
+  const sourcesWithoutUrl = $derived(sources.filter((s) => !s.url || !s.url.trim()).length);
 
   async function createCard(e: Event) {
     e.preventDefault();
@@ -163,34 +170,53 @@
         content_type: contentType,
         is_seed: isSeed,
       });
-      // Ajout des sources sélectionnées, séquentiel (évite d'inonder Wayback).
-      const toCreate = sources.filter((_, i) => selected[i]);
-      createProgress = { done: 0, total: toCreate.length };
-      let ok = 0;
-      let failed = 0;
-      for (const s of toCreate) {
+      // Sources sélectionnées avec URL renseignée (les refs sans URL restantes
+      // sont ignorées silencieusement — l'utilisateur a été prévenu dans la UI).
+      const toCreate = sources
+        .filter((_, i) => selected[i])
+        .filter((s) => s.url && s.url.trim().length > 0);
+      const skippedNoUrl = sources.filter((_, i) => selected[i]).length - toCreate.length;
+
+      if (toCreate.length > 0) {
+        createProgress = { done: 0, total: toCreate.length };
+        // Batch endpoint : 1 requête pour N sources, atomique, envoie
+        // title/authors/published_at/category sans risque de perte partielle.
         try {
-          await api.sources.create(card.id, {
-            url: s.url,
-            title: s.title ?? undefined,
-            authors: s.authors ?? undefined,
-            published_at: s.published_at ?? undefined,
-            format: s.format,
-            category: s.category,
-            author_kind: s.author_kind,
-          });
-          ok++;
-        } catch {
-          failed++;
+          const batch = await api.sources.createBatch(
+            card.id,
+            toCreate.map((s) => ({
+              url: s.url,
+              title: s.title ?? undefined,
+              authors: s.authors ?? undefined,
+              published_at: s.published_at ?? undefined,
+              format: s.format,
+              category: s.category,
+              author_kind: s.author_kind,
+            }))
+          );
+          createProgress = { done: toCreate.length, total: toCreate.length };
+          const ok = batch.created.length;
+          const failed = batch.failed.length;
+          const parts = [`${ok} source${ok > 1 ? 's' : ''} ajoutée${ok > 1 ? 's' : ''}`];
+          if (failed > 0) parts.push(`${failed} en erreur`);
+          if (skippedNoUrl > 0)
+            parts.push(`${skippedNoUrl} sans URL ignorée${skippedNoUrl > 1 ? 's' : ''}`);
+          if (failed > 0 || skippedNoUrl > 0) {
+            toast.danger(parts.join(', ') + '.');
+          } else {
+            toast.success(parts.join(', ') + '.');
+          }
+        } catch (err) {
+          toast.danger(
+            err instanceof Error
+              ? `Batch échoué : ${err.message}. Fiche créée sans sources.`
+              : 'Batch échoué. Fiche créée sans sources.'
+          );
         }
-        createProgress = { done: ok + failed, total: toCreate.length };
-      }
-      if (failed > 0) {
+      } else if (skippedNoUrl > 0) {
         toast.danger(
-          `${ok} source${ok > 1 ? 's' : ''} ajoutée${ok > 1 ? 's' : ''}, ${failed} en erreur. Vous pouvez retenter dans l'éditeur.`
+          `${skippedNoUrl} source${skippedNoUrl > 1 ? 's' : ''} sans URL ignorée${skippedNoUrl > 1 ? 's' : ''}. Renseignez les URLs pour les inclure.`
         );
-      } else if (ok > 0) {
-        toast.success(`${ok} source${ok > 1 ? 's' : ''} ajoutée${ok > 1 ? 's' : ''}.`);
       }
       goto(`/dashboard/new/${card.id}/sources`);
     } catch (err) {
@@ -318,8 +344,11 @@
           {/if}
           {sources.length} source{sources.length > 1 ? 's' : ''} extraite{sources.length > 1
             ? 's'
-            : ''}{#if result.skipped > 0}, {result.skipped} ignorée{result.skipped > 1 ? 's' : ''} (sans
-            URL/DOI){/if}.
+            : ''}{#if sourcesWithoutUrl > 0}, dont {sourcesWithoutUrl} sans URL à compléter à la main{/if}{#if result.skipped > 0}.
+            {result.skipped} référence{result.skipped > 1 ? 's' : ''} sans metadata utile ignorée{result.skipped >
+            1
+              ? 's'
+              : ''}{/if}.
         </div>
       {/if}
 
@@ -471,9 +500,12 @@
           </div>
         {:else}
           <ul class="space-y-2">
-            {#each sources as src, i (src.url)}
+            {#each sources as src, i (i)}
+              {@const hasUrl = src.url && src.url.trim().length > 0}
               <li
-                class="rounded-lg border border-border bg-surface-secondary/40 p-3 flex items-start gap-3"
+                class="rounded-lg border {hasUrl
+                  ? 'border-border bg-surface-secondary/40'
+                  : 'border-warning/40 bg-warning-bg/40'} p-3 flex items-start gap-3"
               >
                 <input
                   type="checkbox"
@@ -482,10 +514,33 @@
                   class="mt-1 shrink-0"
                   aria-label="Inclure cette source"
                 />
-                <label for="src-{i}" class="flex-1 min-w-0 cursor-pointer">
-                  <p class="text-xs text-ink-tertiary font-mono truncate">{src.url}</p>
+                <div class="flex-1 min-w-0">
+                  <span
+                    class="inline-flex items-center text-[0.65rem] font-mono text-ink-tertiary mr-2"
+                  >
+                    #{i + 1}
+                  </span>
+                  {#if hasUrl}
+                    <label for="src-{i}" class="cursor-pointer">
+                      <p class="inline text-xs text-ink-tertiary font-mono truncate">
+                        {src.url}
+                      </p>
+                    </label>
+                  {:else}
+                    <input
+                      type="url"
+                      bind:value={sources[i].url}
+                      placeholder="URL de cette référence (ISBN, WorldCat, éditeur…)"
+                      class="mt-1 w-full text-xs font-mono px-2 py-1 rounded border border-warning/60 bg-surface-primary text-ink-primary focus:outline-none focus:ring-1 focus:ring-warning"
+                      aria-label="Renseigner l'URL manquante"
+                    />
+                    <p class="text-[0.65rem] text-warning mt-0.5">
+                      Cette référence n'a pas d'URL/DOI extractible. Renseignez-en une pour
+                      l'inclure, ou décochez.
+                    </p>
+                  {/if}
                   {#if src.title}
-                    <p class="text-sm font-medium text-ink-primary mt-0.5">{src.title}</p>
+                    <p class="text-sm font-medium text-ink-primary mt-1">{src.title}</p>
                   {/if}
                   {#if src.authors}
                     <p class="text-xs text-ink-secondary mt-0.5">{src.authors}</p>
@@ -493,7 +548,7 @@
                   <p class="text-[0.65rem] text-ink-tertiary uppercase tracking-wider mt-1">
                     {src.category} · {src.author_kind}
                   </p>
-                </label>
+                </div>
               </li>
             {/each}
           </ul>
@@ -509,17 +564,25 @@
             Ajout des sources : {createProgress.done} / {createProgress.total}…
           {:else if creating}
             Création de la fiche…
-          {:else if selectedCount > 0}
-            Créer la fiche ({selectedCount} source{selectedCount > 1 ? 's' : ''})
+          {:else if selectedWithUrl > 0}
+            Créer la fiche ({selectedWithUrl} source{selectedWithUrl > 1 ? 's' : ''})
           {:else}
             Créer la fiche sans source
           {/if}
         </Button>
       </div>
+      {#if selectedWithoutUrl > 0 && !creating}
+        <p class="text-xs text-warning text-right">
+          ⚠ {selectedWithoutUrl} source{selectedWithoutUrl > 1 ? 's' : ''} sélectionnée{selectedWithoutUrl >
+          1
+            ? 's'
+            : ''} sans URL — ignorée{selectedWithoutUrl > 1 ? 's' : ''} à la création. Renseignez l'URL
+          manquante ou décochez.
+        </p>
+      {/if}
       {#if creating && createProgress && createProgress.total > 3}
         <p class="text-xs text-ink-tertiary text-right">
-          Ne fermez pas la page — l'archivage Wayback est déclenché en arrière-plan pour chaque
-          source.
+          Ne fermez pas la page — l'archivage Wayback est déclenché en arrière-plan.
         </p>
       {/if}
     </form>
