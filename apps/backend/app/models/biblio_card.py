@@ -100,6 +100,7 @@ class BiblioCard(Base):
     sources: Mapped[list[Source]] = relationship(
         "Source",
         back_populates="biblio_card",
+        foreign_keys="Source.biblio_card_id",
         cascade="all, delete-orphan",
         order_by="Source.position",
     )

@@ -124,6 +124,10 @@ class SourceResponse(BaseModel):
     archive_url: str | None
     archive_timestamp: datetime | None
     parent_source_id: UUID | None
+    # Fiche Philum publique referencee par cette source (resolue a la creation).
+    linked_card_id: UUID | None = None
+    # Enrichi uniquement sur l'endpoint public (nombre de sources de la fiche liee).
+    linked_card_sources_count: int | None = None
     conflict_of_interest: str | None = None
     citations_count: int | None = None
     subscribers_count: int | None = None

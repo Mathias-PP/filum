@@ -22,6 +22,7 @@ from app.models.source import Source
 from app.models.user import User
 from app.schemas.source import SourceCreate, SourceResponse, SourceUpdate
 from app.services.auth import AuthService
+from app.services.card_link import resolve_linked_card_id
 from app.services.wayback import WaybackService
 
 logger = logging.getLogger(__name__)
@@ -165,6 +166,8 @@ async def create_source(
     # Otherwise we start with PENDING and the background Wayback save runs.
     manual_archive = (source_data.archive_url or "").strip() or None
 
+    linked_card_id = await resolve_linked_card_id(db, source_data.url, exclude_card_id=card_id)
+
     source = Source(
         biblio_card_id=card_id,
         position=max_pos + 1,
@@ -178,6 +181,7 @@ async def create_source(
         annotation=source_data.annotation,
         is_pivot=source_data.is_pivot,
         parent_source_id=source_data.parent_source_id,
+        linked_card_id=linked_card_id,
         archive_url=manual_archive,
         archive_status="archived" if manual_archive else "pending",
         archive_timestamp=datetime.now().replace(tzinfo=None) if manual_archive else None,
@@ -279,6 +283,7 @@ async def create_sources_batch(
     for i, sd in enumerate(body.sources):
         try:
             manual_archive = (sd.archive_url or "").strip() or None
+            linked_card_id = await resolve_linked_card_id(db, sd.url, exclude_card_id=card_id)
             source = Source(
                 biblio_card_id=card_id,
                 position=next_pos,
@@ -292,6 +297,7 @@ async def create_sources_batch(
                 annotation=sd.annotation,
                 is_pivot=sd.is_pivot,
                 parent_source_id=sd.parent_source_id,
+                linked_card_id=linked_card_id,
                 archive_url=manual_archive,
                 archive_status="archived" if manual_archive else "pending",
                 archive_timestamp=datetime.now().replace(tzinfo=None) if manual_archive else None,

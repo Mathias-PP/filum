@@ -104,6 +104,10 @@ export interface Source {
   archive_url: string | null;
   archive_timestamp: string | null;
   parent_source_id: string | null;
+  /** Fiche Philum publique référencée par cette source (résolue côté serveur). */
+  linked_card_id?: string | null;
+  /** Nombre de sources de la fiche liée (enrichi sur l'endpoint public). */
+  linked_card_sources_count?: number | null;
   conflict_of_interest: string | null;
   citations_count: number | null;
   subscribers_count: number | null;

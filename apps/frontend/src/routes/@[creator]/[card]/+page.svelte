@@ -376,6 +376,15 @@
                           ★ Source clé
                         </span>
                       {/if}
+                      {#if source.linked_card_id}
+                        <span
+                          class="px-2 py-0.5 text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full"
+                          title="Cette source est elle-même une fiche Philum avec ses propres sources"
+                        >
+                          Fiche Philum{#if source.linked_card_sources_count != null}&nbsp;· {source.linked_card_sources_count}
+                            source{source.linked_card_sources_count > 1 ? 's' : ''}{/if}
+                        </span>
+                      {/if}
                       {#if source.conflict_of_interest}
                         <span
                           class="px-2 py-0.5 text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full"
@@ -446,9 +455,15 @@
                         Version archivée Wayback
                       </Button>
                     {/if}
-                    <Button href={source.url} target="_blank" variant="secondary" size="sm">
-                      Version live ↗
-                    </Button>
+                    {#if source.linked_card_id}
+                      <Button href={source.url} variant="primary" size="sm">
+                        Explorer la fiche Philum →
+                      </Button>
+                    {:else}
+                      <Button href={source.url} target="_blank" variant="secondary" size="sm">
+                        Version live ↗
+                      </Button>
+                    {/if}
                   </div>
                 </div>
               {/if}

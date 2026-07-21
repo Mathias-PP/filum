@@ -94,6 +94,14 @@ class Source(Base):
         nullable=True,
         index=True,
     )
+    # Fiche Philum publique referencee par cette source (resolue a la creation
+    # quand l'URL matche /@{username}/{slug} sur notre propre frontend).
+    linked_card_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("biblio_cards.id"),
+        nullable=True,
+        index=True,
+    )
     conflict_of_interest: Mapped[str | None] = mapped_column(Text, nullable=True)
     citations_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     subscribers_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -109,6 +117,11 @@ class Source(Base):
     biblio_card: Mapped[BiblioCard] = relationship(
         "BiblioCard",
         back_populates="sources",
+        foreign_keys=[biblio_card_id],
+    )
+    linked_card: Mapped[BiblioCard | None] = relationship(
+        "BiblioCard",
+        foreign_keys=[linked_card_id],
     )
     parent: Mapped[Source | None] = relationship(
         "Source",
