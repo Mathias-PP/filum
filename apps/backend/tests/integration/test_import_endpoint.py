@@ -97,8 +97,8 @@ async def test_import_parse_bibtex(client):
 @pytest.mark.asyncio
 async def test_import_parse_unknown_format_422(client):
     resp = await client.post(
-        "/api/v1/import/parse?format=docx",
-        files={"file": ("refs.docx", b"x", "text/plain")},
+        "/api/v1/import/parse?format=odt",
+        files={"file": ("refs.odt", b"x", "text/plain")},
     )
     assert resp.status_code == 422
 
