@@ -986,6 +986,32 @@ philum.fr (Infomaniak Domain) ──DNS──► Cloudflare DNS (gratuit)
 
 ---
 
+## ADR-023 — GROBID via Space Hugging Face pour les références des PDF importés
+
+**Date** : 2026-07
+
+**Contexte**
+
+L'import d'un PDF (`/import/parse`) reposait sur un scan regex des URLs/DOIs présents dans les octets du fichier : les références sans lien hypertexte ni DOI en clair étaient perdues, et aucune metadata structurée (titre, auteurs, année) n'était extraite du texte. GROBID est l'outil de référence pour segmenter une bibliographie PDF en refs structurées, mais l'auto-héberger (image Docker ~2 Go, JVM) est hors budget infra du pré-MVP (contrainte : 100 % gratuit).
+
+**Options envisagées**
+
+1. Auto-héberger GROBID — écarté (coût infra, maintenance).
+2. Bibliothèque Python d'extraction PDF (pypdf + heuristiques) — nouvelle dépendance lourde pour un résultat très inférieur à GROBID.
+3. **Space Hugging Face public exposant l'API GROBID** (`/api/processReferences`) — gratuit, sans clé, appelé en HTTP. Retenu.
+
+**Justifications**
+
+- URL configurable via `grobid_base_url` (vide = désactivé) : si le Space par défaut disparaît, on pointe ailleurs (ou on duplique le Space `kermitt2/grobid`, gratuit) sans toucher au code.
+- **Dégradation gracieuse obligatoire** : les Spaces HF gratuits dorment (cold start ~2 min) ou peuvent être mis en pause par leur auteur (le Space officiel `kermitt2/grobid` est `PAUSED` en 2026-07). Tout échec réseau, HTTP ≠ 200 ou réponse non-TEI ⇒ on retombe silencieusement sur le scan regex local, jamais d'erreur utilisateur.
+- Fusion plutôt que remplacement : les refs GROBID (titrées) passent en premier, la dédup par DOI absorbe les doublons du scan regex — on n'obtient jamais moins que l'existant.
+- `consolidateCitations=0` : la consolidation Crossref est déjà faite par notre propre backfill (retry inclus, cf. PR #179), inutile de la payer côté GROBID.
+
+**Conséquences**
+
+- La qualité d'extraction PDF dépend d'un service tiers non garanti ; le comportement de base (regex + Crossref backfill) reste le plancher garanti.
+- Si un Space fiable et chaud devient nécessaire (usage réel), dupliquer `kermitt2/grobid` sous le compte du projet est l'étape suivante (gratuit, 1 clic).
+
 <!--
 ## ADR-NNN — Titre court
 
