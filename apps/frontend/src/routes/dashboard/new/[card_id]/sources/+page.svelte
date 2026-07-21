@@ -868,7 +868,7 @@
           <div>
             <input
               type="file"
-              accept=".bib,.bibtex,.json,.md,.markdown,.pdf"
+              accept=".bib,.bibtex,.json,.md,.markdown,.pdf,.docx,.html,.htm"
               class="hidden"
               bind:this={fileInput}
               onchange={importFile}
@@ -883,7 +883,7 @@
               {importing ? 'Import…' : 'Importer un fichier'}
             </Button>
             <p class="text-xs text-ink-tertiary mt-1">
-              BibTeX, CSL-JSON (Zotero), Markdown (Obsidian) ou PDF — 5 Mo max
+              BibTeX, CSL-JSON (Zotero), Markdown (Obsidian), PDF, Word ou page HTML — 5 Mo max
             </p>
           </div>
           <div class="flex gap-2">

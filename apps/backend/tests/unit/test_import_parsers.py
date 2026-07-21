@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+import io
 import json
+import zipfile
 import zlib
 
 from app.services.import_parsers import (
     detect_format,
     parse_bibtex,
     parse_csl_json,
+    parse_docx,
     parse_file,
+    parse_html,
     parse_markdown,
     parse_pdf,
 )
@@ -151,3 +155,99 @@ def test_dedupe_key_extraction_from_various_publishers():
     assert _dedupe_key(wiley).startswith("doi:10.1002/hbm.12345")
     # URL sans DOI reste identifiée par sa forme normalisée.
     assert _dedupe_key("https://example.org/article/") == "https://example.org/article"
+
+
+# --- DOCX --------------------------------------------------------------------
+
+
+def _make_docx(document_xml: str, rels_xml: str | None = None) -> bytes:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("[Content_Types].xml", "<Types/>")
+        zf.writestr("word/document.xml", document_xml)
+        if rels_xml is not None:
+            zf.writestr("word/_rels/document.xml.rels", rels_xml)
+    return buf.getvalue()
+
+
+DOCX_DOCUMENT = """<?xml version="1.0"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:r><w:t>Bibliographie</w:t></w:r></w:p>
+    <w:p><w:r><w:t>Dupont (2024). Memoire. doi: 10.1234/docx.567</w:t></w:r></w:p>
+    <w:p><w:r><w:t>Voir https://example.org/docx-source pour le detail.</w:t></w:r></w:p>
+  </w:body>
+</w:document>
+"""
+
+DOCX_RELS = """<?xml version="1.0"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="https://example.org/lien-docx" TargetMode="External"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>
+"""
+
+
+def test_parse_docx():
+    data = _make_docx(DOCX_DOCUMENT, DOCX_RELS)
+    result = parse_docx(data)
+    urls = [r.url for r in result.refs]
+    assert "https://doi.org/10.1234/docx.567" in urls
+    assert "https://example.org/docx-source" in urls
+    # Les hyperliens Word vivent dans les relationships, pas dans le texte.
+    assert "https://example.org/lien-docx" in urls
+
+
+def test_parse_docx_invalid_zip():
+    result = parse_docx(b"pas un zip du tout")
+    assert result.refs == []
+
+
+def test_detect_format_docx_and_html():
+    docx = _make_docx(DOCX_DOCUMENT)
+    assert detect_format("biblio.docx", b"") == "docx"
+    assert detect_format(None, docx) == "docx"
+    assert detect_format("page.html", b"") == "html"
+    assert detect_format("page.htm", b"") == "html"
+    assert detect_format(None, b"<!DOCTYPE html><html><body>x</body></html>") == "html"
+    # Un zip quelconque sans word/document.xml n'est pas un docx.
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("autre.txt", "x")
+    assert detect_format(None, buf.getvalue()) == "markdown"
+
+
+# --- HTML (page sauvegardee) -------------------------------------------------
+
+HTML_SAMPLE = """<!DOCTYPE html>
+<html><head><title>Ma page</title><style>a { color: red; }</style></head>
+<body>
+  <nav><a href="https://example.org/">Accueil</a></nav>
+  <h2>References</h2>
+  <ul>
+    <li><a href="https://doi.org/10.5555/html.1">Un article fondateur</a></li>
+    <li><a href="https://example.org/rapport">Rapport 2024</a></li>
+    <li>Martin (2023). Sans lien mais avec DOI 10.5555/html.2 dans le texte.</li>
+  </ul>
+  <script>var x = "https://tracker.example.com/js";</script>
+</body></html>
+"""
+
+
+def test_parse_html():
+    result = parse_html(HTML_SAMPLE.encode())
+    by_url = {r.url: r for r in result.refs}
+    assert "https://doi.org/10.5555/html.1" in by_url
+    assert by_url["https://doi.org/10.5555/html.1"].title == "Un article fondateur"
+    assert "https://example.org/rapport" in by_url
+    assert "https://doi.org/10.5555/html.2" in by_url
+    # Les URLs dans les <script>/<style> ne sont pas des sources.
+    assert "https://tracker.example.com/js" not in by_url
+
+
+def test_parse_file_dispatch_docx_and_html():
+    docx = _make_docx(DOCX_DOCUMENT)
+    result = parse_file("refs.docx", docx)
+    assert any(r.url == "https://doi.org/10.1234/docx.567" for r in result.refs)
+    result = parse_file("page.html", HTML_SAMPLE.encode())
+    assert any(r.url == "https://example.org/rapport" for r in result.refs)

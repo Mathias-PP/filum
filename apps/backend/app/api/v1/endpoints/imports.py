@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 
 from app.api.v1.endpoints.cards import get_current_user
 from app.core.url_safety import UnsafeUrlError, assert_url_is_safe
+from app.extractors.grobid import extract_pdf_references
 from app.extractors.semantic_scholar import SemanticScholarRef, get_paper_references
 from app.extractors.url_extractor import crossref_lookup
 from app.extractors.url_extractor import extract as extract_url_metadata
@@ -25,6 +26,7 @@ from app.models.user import User
 from app.services.import_parsers import (
     ImportedRef,
     ParseResult,
+    _dedupe,
     _dedupe_key,
     _doi_from_url,
     _doi_to_url,
@@ -45,7 +47,7 @@ router = APIRouter(tags=["imports"])
 
 MAX_FILE_SIZE = 5 * 1024 * 1024
 
-_FORMATS = {"bibtex", "csl-json", "markdown", "pdf"}
+_FORMATS = {"bibtex", "csl-json", "markdown", "pdf", "docx", "html"}
 
 _AUTHOR_KIND_BY_CATEGORY = {
     "article-scientifique": "chercheur",
@@ -117,6 +119,15 @@ async def parse_import_file(
         )
     detected = format or detect_format(file.filename, data)
     result = parse_file(file.filename, data, forced_format=detected)
+    if detected == "pdf":
+        # GROBID segmente la biblio du PDF en refs structurees (titre, auteurs,
+        # annee, DOI) — bien mieux que le scan regex, qui rate les refs sans
+        # URL/DOI dans le texte. Fusion : les refs GROBID (titrees) passent
+        # d'abord, la dedup par DOI absorbe les doublons du scan regex.
+        # Indisponible (Space endormi, timeout) → refs regex seules.
+        grobid_refs = await extract_pdf_references(data)
+        if grobid_refs:
+            result.refs = _dedupe([*grobid_refs, *result.refs])
     # PDF/Markdown ne contiennent souvent que des DOIs nus sans metadata.
     # BibTeX/CSL-JSON ont deja tout : le backfill est un no-op sur les refs
     # deja completes (garde `title AND authors AND year`).

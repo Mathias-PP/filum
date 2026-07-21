@@ -1,8 +1,9 @@
 """Parseurs de fichiers bibliographiques → brouillons de sources.
 
 Formats supportes : BibTeX (.bib), CSL-JSON (export Zotero), Markdown
-(notes Obsidian), PDF (extraction des URLs/DOI du texte). Fonctions pures,
-stdlib uniquement — le PDF est fouille via zlib (streams FlateDecode),
+(notes Obsidian), PDF (extraction des URLs/DOI du texte), DOCX (zipfile +
+XML stdlib) et HTML sauvegarde (BeautifulSoup, deja en dependance).
+Fonctions pures — le PDF est fouille via zlib (streams FlateDecode),
 sans dependance d'extraction lourde.
 
 Chaque parseur retourne des ImportedRef ; les entrees sans URL ni DOI sont
@@ -11,10 +12,14 @@ comptees dans `skipped` (le modele Source exige une URL).
 
 from __future__ import annotations
 
+import io
 import json
 import re
+import zipfile
 import zlib
 from dataclasses import dataclass, field
+
+from bs4 import BeautifulSoup
 
 
 @dataclass
@@ -340,6 +345,73 @@ def parse_pdf(data: bytes) -> ParseResult:
     return result
 
 
+# --- DOCX -------------------------------------------------------------------
+
+_DOCX_TEXT_RE = re.compile(r"<w:t(?:\s[^>]*)?>([^<]*)</w:t>")
+_DOCX_PARA_END_RE = re.compile(r"</w:p>")
+_DOCX_HYPERLINK_RE = re.compile(
+    r'Type="[^"]*/hyperlink"[^>]*Target="(https?://[^"]+)"|'
+    r'Target="(https?://[^"]+)"[^>]*Type="[^"]*/hyperlink"'
+)
+
+
+def _docx_read(data: bytes, member: str) -> str | None:
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as zf:
+            return zf.read(member).decode("utf-8", errors="replace")
+    except (zipfile.BadZipFile, KeyError, ValueError):
+        return None
+
+
+def parse_docx(data: bytes) -> ParseResult:
+    """Word .docx = un zip : texte dans word/document.xml (runs ``<w:t>``),
+    hyperliens dans word/_rels/document.xml.rels (jamais dans le texte)."""
+    document = _docx_read(data, "word/document.xml")
+    if document is None:
+        return ParseResult()
+    # Reconstitue le texte : runs concatenes, paragraphes separes par \n.
+    text = _DOCX_TEXT_RE.sub(lambda m: m.group(1), _DOCX_PARA_END_RE.sub("\n", document))
+    text = re.sub(r"<[^>]+>", "", text)
+    result = parse_markdown(text)
+    rels = _docx_read(data, "word/_rels/document.xml.rels")
+    if rels:
+        for m in _DOCX_HYPERLINK_RE.finditer(rels):
+            url = m.group(1) or m.group(2)
+            result.refs.append(ImportedRef(url=url))
+    result.refs = _dedupe(result.refs)
+    return result
+
+
+# --- HTML (page sauvegardee) -------------------------------------------------
+
+
+def parse_html(data: bytes) -> ParseResult:
+    """Page web sauvegardee : liens ``<a href>`` (texte d'ancre = titre) +
+    scan des DOIs/URLs nus du texte visible (scripts et styles exclus)."""
+    result = ParseResult()
+    soup = BeautifulSoup(data.decode("utf-8", errors="replace"), "html.parser")
+    for tag in soup(["script", "style", "noscript", "template"]):
+        tag.decompose()
+    linked: set[str] = set()
+    for a in soup.find_all("a", href=True):
+        href = str(a["href"]).strip()
+        if not href.startswith(("http://", "https://")):
+            continue
+        linked.add(href)
+        anchor = a.get_text(" ", strip=True)
+        title = anchor if anchor and anchor != href else None
+        result.refs.append(ImportedRef(url=href, title=title))
+    text = soup.get_text("\n")
+    for m in _URL_RE.finditer(text):
+        url = m.group(0).rstrip(".,;:)")
+        if url not in linked:
+            result.refs.append(ImportedRef(url=url))
+    for m in _DOI_RE.finditer(text):
+        result.refs.append(ImportedRef(_doi_to_url(m.group(1)), category="article-scientifique"))
+    result.refs = _dedupe(result.refs)
+    return result
+
+
 # --- Detection --------------------------------------------------------------
 
 
@@ -351,13 +423,21 @@ def detect_format(filename: str | None, data: bytes) -> str:
         return "csl-json"
     if name.endswith(".md") or name.endswith(".markdown"):
         return "markdown"
+    if name.endswith(".docx"):
+        return "docx"
+    if name.endswith((".html", ".htm")):
+        return "html"
     if name.endswith(".pdf") or data[:5] == b"%PDF-":
         return "pdf"
+    if data[:4] == b"PK\x03\x04" and _docx_read(data, "word/document.xml") is not None:
+        return "docx"
     head = data[:2000].decode("utf-8", errors="ignore").lstrip()
     if head.startswith(("[", "{")):
         return "csl-json"
     if re.search(r"@\w+\s*\{", head):
         return "bibtex"
+    if re.search(r"<!doctype html|<html", head, re.IGNORECASE):
+        return "html"
     return "markdown"
 
 
@@ -365,6 +445,10 @@ def parse_file(filename: str | None, data: bytes, forced_format: str | None = No
     fmt = forced_format or detect_format(filename, data)
     if fmt == "pdf":
         return parse_pdf(data)
+    if fmt == "docx":
+        return parse_docx(data)
+    if fmt == "html":
+        return parse_html(data)
     text = data.decode("utf-8", errors="replace")
     if fmt == "bibtex":
         return parse_bibtex(text)
