@@ -5,6 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse, Response
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_401_UNAUTHORIZED
 
@@ -12,6 +13,7 @@ from app.core.rate_limit import limiter
 from app.db.database import get_db
 from app.models.biblio_card import BiblioCard
 from app.models.claim_request import ClaimRequest
+from app.models.source import Source
 from app.models.user import User
 from app.schemas.biblio_card import (
     CardCreate,
@@ -264,6 +266,7 @@ async def get_public_card(
     request: Request,
     card_service: CardService = Depends(get_card_service),
     auth_service: AuthService = Depends(get_auth_service),
+    db: AsyncSession = Depends(get_db),
 ):
     card = await card_service.get_card_by_slug(creator_slug, card_slug)
     if not card:
@@ -284,6 +287,20 @@ async def get_public_card(
 
     stats = card_service.compute_stats(card)
     sources_response = [SourceResponse.model_validate(s) for s in card.sources]
+
+    # Badge "Fiche Philum" : enrichit chaque source liee a une autre fiche
+    # avec le nombre de sources de cette fiche.
+    linked_ids = {s.linked_card_id for s in card.sources if s.linked_card_id}
+    if linked_ids:
+        counts_result = await db.execute(
+            select(Source.biblio_card_id, func.count(Source.id))
+            .where(Source.biblio_card_id.in_(linked_ids), Source.deleted_at.is_(None))
+            .group_by(Source.biblio_card_id)
+        )
+        counts: dict[UUID, int] = {row[0]: row[1] for row in counts_result.all()}
+        for src in sources_response:
+            if src.linked_card_id:
+                src.linked_card_sources_count = counts.get(src.linked_card_id, 0)
 
     return CardDetail(
         id=card.id,

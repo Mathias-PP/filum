@@ -142,7 +142,7 @@
     resetExcerptState();
   }
 
-  function startEdit(source: Source) {
+  function startEdit(source: Source, focusId: string = 'source-title') {
     editingSourceId = source.id;
     url = source.url;
     sourceFormat = source.format;
@@ -159,10 +159,14 @@
     addError = null;
     resetExcerptState();
     if (typeof document !== 'undefined') {
-      document
-        .getElementById('source-title')
-        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      document.getElementById(focusId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
+  }
+
+  function parentTitle(parentId: string): string | null {
+    const parent = sources.find((s) => s.id === parentId);
+    if (!parent) return null;
+    return parent.title ?? parent.url;
   }
 
   function cancelEdit() {
@@ -1432,9 +1436,42 @@
                   <p class="text-xs text-ink-tertiary">{source.authors}</p>
                 {/if}
                 <p class="text-xs text-ink-tertiary truncate">{source.url}</p>
+                {#if source.parent_source_id}
+                  {@const parentLabel = parentTitle(source.parent_source_id)}
+                  {#if parentLabel}
+                    <p class="text-xs text-info truncate" title="Cette source cite : {parentLabel}">
+                      ↳ cite : {parentLabel}
+                    </p>
+                  {/if}
+                {/if}
               </div>
             </div>
             <div class="flex items-center gap-1 shrink-0">
+              {#if sources.length > 1}
+                <button
+                  type="button"
+                  onclick={() => startEdit(source, 'source-parent')}
+                  disabled={isThisEditing}
+                  class="p-1.5 text-ink-tertiary hover:text-info disabled:text-info disabled:cursor-default transition-colors"
+                  aria-label="Lier à une source parente"
+                  title={source.parent_source_id
+                    ? 'Modifier la source citée'
+                    : 'Indiquer quelle source celle-ci cite'}
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    class="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                  </svg>
+                </button>
+              {/if}
               <button
                 type="button"
                 onclick={() => startEdit(source)}
