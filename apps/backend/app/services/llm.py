@@ -310,6 +310,90 @@ async def suggest_excerpts(page_text: str, context: str | None = None) -> list[s
         return None
 
 
+# --- Classifieur : type d'URL (source | promo | social | other) -----------
+#
+# Utilise pour distinguer les vraies references bibliographiques des liens
+# promotionnels (Amazon, Patreon), des URLs de reseau social (X, TikTok),
+# et des autres pages sans valeur bibliographique. L'utilisateur voit un
+# badge colore par type dans la preview et coche/decoche a sa guise --
+# le LLM propose, l'user tranche.
+
+
+class LlmUrlClassification(BaseModel):
+    """Classification d'une URL par le LLM."""
+
+    type: str
+
+
+_URL_CLASSIFY_SYSTEM_PROMPT = (
+    "Tu classifies une URL trouvee dans le texte / la description d'un contenu. "
+    "Reponds UNIQUEMENT avec le JSON demande, un seul champ `type`. Valeurs "
+    "autorisees : 'source' (reference bibliographique : article scientifique, "
+    "papier, livre cite, journal, DOI, page institutionnelle) ; 'promo' (lien "
+    "promotionnel : Amazon, boutique, Patreon, cours payant, chaine premium, "
+    "affiliation) ; 'social' (reseau social : X, Twitter, TikTok, Instagram, "
+    "YouTube (chaine ou short), Bluesky, Threads, LinkedIn) ; 'other' (rien "
+    "de tout ca ou incertain). Le contexte adjacent (emojis, texte avant l'URL) "
+    "aide beaucoup : \U0001f4da / 'References' / 'Sources' / 'Cites' -> probablement "
+    "source ; \U0001f6d2 / 'Mon livre' / 'Achetez' / 'Sponsor' -> promo ; 'Suivez-moi' / "
+    "'Rejoignez ma chaine' -> social."
+)
+
+
+async def classify_url_type(url: str, context: str = "") -> str | None:
+    """Classifie une URL en source / promo / social / other via LLM.
+
+    ``context`` : texte adjacent (une ou deux phrases). Aide fortement la
+    classification. Vide accepte mais reduit la fiabilite.
+
+    Retourne None si LLM off ou en cas d'erreur.
+    """
+    settings = get_settings()
+    if not settings.litellm_base_url:
+        return None
+    user_content = f"URL : {url}"
+    if context:
+        user_content += f"\n\nContexte adjacent :\n{context[:1500]}"
+
+    payload = {
+        "model": "biblio-parse",
+        "messages": [
+            {"role": "system", "content": _URL_CLASSIFY_SYSTEM_PROMPT},
+            {"role": "user", "content": user_content},
+        ],
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "url_classification",
+                "schema": LlmUrlClassification.model_json_schema(),
+            },
+        },
+        "temperature": 0,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+            r = await client.post(
+                f"{settings.litellm_base_url.rstrip('/')}/v1/chat/completions",
+                json=payload,
+                headers={"Authorization": f"Bearer {settings.litellm_master_key}"},
+            )
+        if r.status_code != 200:
+            logger.warning("LLM classify-url HTTP %s: %s", r.status_code, r.text[:200])
+            return None
+        content = r.json()["choices"][0]["message"]["content"]
+        try:
+            parsed = LlmUrlClassification.model_validate_json(content)
+        except ValidationError:
+            return None
+        t = parsed.type.lower().strip()
+        if t in ("source", "promo", "social", "other"):
+            return t
+        return None
+    except Exception as e:
+        logger.warning("LLM classify-url failed: %s", e)
+        return None
+
+
 async def extract_metadata(page_text: str, url: str) -> LlmSourceMetadata | None:
     """Extrait les métadonnées via l'alias `metadata-extract`. Never raises.
 

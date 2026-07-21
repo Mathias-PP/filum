@@ -23,9 +23,13 @@ def disable_external_apis_by_default(monkeypatch):
     async def _no_s2(doi, limit=500):
         return None
 
+    async def _no_classify(url, context=""):
+        return None
+
     monkeypatch.setattr("app.api.v1.endpoints.imports.crossref_lookup", _no_crossref)
     monkeypatch.setattr("app.api.v1.endpoints.imports.parse_reference_block", _no_llm_block)
     monkeypatch.setattr("app.api.v1.endpoints.imports.get_paper_references", _no_s2)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.classify_url_type", _no_classify)
 
 
 @pytest_asyncio.fixture
@@ -896,3 +900,120 @@ async def test_from_url_reports_unreachable_when_wayback_also_fails(client, monk
     body = resp.json()
     assert body["fetch_status"] == "unreachable"
     assert body["wayback_url"] is None
+
+
+# --- LLM classifier : source vs promo vs social vs other -------------------
+
+FAKE_MIXED_HTML = """<!DOCTYPE html>
+<html><body>
+<section id="references">
+<h2>Voir mes autres liens</h2>
+<ol>
+<li>Aron A. et al. (2014). Inhibition. https://doi.org/10.1/paper.a</li>
+<li>🛒 Mon livre sur Amazon https://amazon.com/dp/B01234567</li>
+<li>Suis-moi sur TikTok https://tiktok.com/@moi</li>
+<li>Kahneman D. (2011). Thinking fast. https://doi.org/10.1/paper.b</li>
+</ol>
+</section>
+</body></html>"""
+
+
+@pytest.mark.asyncio
+async def test_from_url_classifies_each_ref_when_llm_available(client, monkeypatch):
+    """Chaque URL extraite est classifiee par le LLM (source | promo | social | other)."""
+    from app.extractors.url_extractor import ExtractedMetadata
+
+    async def fake_meta(url):
+        return ExtractedMetadata(title="Mixed content page")
+
+    class FakeResponse:
+        status_code = 200
+        headers = {"content-type": "text/html; charset=utf-8"}
+        text = FAKE_MIXED_HTML
+
+    class FakeAsyncClient:
+        def __init__(self, *a, **kw):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return None
+
+        async def get(self, url, params=None):
+            return FakeResponse()
+
+    async def no_llm(text):
+        return None
+
+    async def fake_classifier(url, context=""):
+        if "amazon.com" in url:
+            return "promo"
+        if "tiktok.com" in url:
+            return "social"
+        if "doi.org" in url:
+            return "source"
+        return "other"
+
+    monkeypatch.setattr("app.api.v1.endpoints.imports.extract_url_metadata", fake_meta)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.httpx.AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.parse_bibliography", no_llm)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.classify_url_type", fake_classifier)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.assert_url_is_safe", lambda u: None)
+
+    resp = await client.post(
+        "/api/v1/import/from-content-url",
+        json={"url": "https://example.org/mixed"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    by_url = {s["url"]: s["classification"] for s in body["sources"]}
+    assert by_url["https://doi.org/10.1/paper.a"] == "source"
+    assert by_url["https://doi.org/10.1/paper.b"] == "source"
+    assert by_url["https://amazon.com/dp/B01234567"] == "promo"
+    assert by_url["https://tiktok.com/@moi"] == "social"
+
+
+@pytest.mark.asyncio
+async def test_from_url_leaves_classification_null_when_llm_off(client, monkeypatch):
+    """Si le LLM est off, classification=None sur chaque ref (default fixture)."""
+    from app.extractors.url_extractor import ExtractedMetadata
+
+    async def fake_meta(url):
+        return ExtractedMetadata(title="No LLM test")
+
+    class FakeResponse:
+        status_code = 200
+        headers = {"content-type": "text/html; charset=utf-8"}
+        text = FAKE_MIXED_HTML
+
+    class FakeAsyncClient:
+        def __init__(self, *a, **kw):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return None
+
+        async def get(self, url, params=None):
+            return FakeResponse()
+
+    async def no_llm(text):
+        return None
+
+    monkeypatch.setattr("app.api.v1.endpoints.imports.extract_url_metadata", fake_meta)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.httpx.AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.parse_bibliography", no_llm)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.assert_url_is_safe", lambda u: None)
+
+    resp = await client.post(
+        "/api/v1/import/from-content-url",
+        json={"url": "https://example.org/no-llm"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    for s in body["sources"]:
+        assert s["classification"] is None

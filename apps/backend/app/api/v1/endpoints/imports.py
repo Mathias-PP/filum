@@ -32,7 +32,12 @@ from app.services.import_parsers import (
     parse_file,
     parse_markdown,
 )
-from app.services.llm import LlmBiblioRef, parse_bibliography, parse_reference_block
+from app.services.llm import (
+    LlmBiblioRef,
+    classify_url_type,
+    parse_bibliography,
+    parse_reference_block,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +68,9 @@ class ImportedSourceDraft(BaseModel):
     format: str = "texte"
     category: str = "page-web"
     author_kind: str = "individu"
+    # Classification LLM du type d'URL : 'source' | 'promo' | 'social' | 'other'.
+    # None si LLM off / non appele. Le frontend affiche un badge et l'user coche.
+    classification: str | None = None
 
 
 class ImportParseResponse(BaseModel):
@@ -80,6 +88,7 @@ def _to_draft(ref: ImportedRef) -> ImportedSourceDraft:
         format=_FORMAT_BY_CATEGORY.get(ref.category, "texte"),
         category=ref.category,
         author_kind=_AUTHOR_KIND_BY_CATEGORY.get(ref.category, "individu"),
+        classification=ref.classification,
     )
 
 
@@ -282,6 +291,43 @@ async def _backfill_llm_per_block(refs: list[ImportedRef]) -> None:
         return
     sem = asyncio.Semaphore(_LLM_BLOCK_CONCURRENCY)
     await asyncio.gather(*(_backfill_one_llm_block(ref, sem) for ref in refs))
+
+
+# --- LLM classifier : source vs promo vs social vs other ------------------
+#
+# Utilise dans /import/from-content-url : quand on colle une URL YouTube ou
+# blog qui contient un melange de refs bibliographiques et de liens promo
+# (livre a acheter, Patreon, TikTok), le LLM propose une classification par
+# URL et l'user coche/decoche selon ses envies. Rien n'est jamais filtre
+# auto -- le badge est indicatif.
+
+_CLASSIFY_CONCURRENCY = 5
+
+
+async def _classify_one_ref(ref: ImportedRef, sem: asyncio.Semaphore) -> None:
+    """Renseigne ``ref.classification`` in-place via LLM (best-effort)."""
+    if ref.classification is not None:
+        return
+    if not ref.url:
+        return
+    parts: list[str] = []
+    if ref.title:
+        parts.append(f"Titre : {ref.title}")
+    if ref.authors:
+        parts.append(f"Auteurs : {ref.authors}")
+    context = "\n".join(parts)
+    async with sem:
+        result = await classify_url_type(ref.url, context)
+    if result:
+        ref.classification = result
+
+
+async def _classify_refs(refs: list[ImportedRef]) -> None:
+    """Classifie chaque ref en parallele borne. No-op si LLM off."""
+    if not refs:
+        return
+    sem = asyncio.Semaphore(_CLASSIFY_CONCURRENCY)
+    await asyncio.gather(*(_classify_one_ref(ref, sem) for ref in refs))
 
 
 # Split heuristique du texte References en blocs de refs individuelles.
@@ -654,6 +700,10 @@ async def parse_content_url(
     # non indexe, ou pas de DOI mais URL). Un mini-appel LLM par bloc,
     # bien plus fiable que l'appel global sur les 60kB concatenes.
     await _backfill_llm_per_block(result.refs)
+
+    # 7. Classifie chaque URL (source / promo / social / other) pour la UI.
+    # Rien n'est filtre auto : c'est indicatif, l'user coche a sa guise.
+    await _classify_refs(result.refs)
 
     card = ImportedCardDraft(
         title=meta.title if meta else None,

@@ -29,6 +29,10 @@ class ImportedRef:
     # + DOI). Utilise en fallback LLM par-bloc quand Crossref echoue.
     # Non serialise vers l'API (usage interne pipeline uniquement).
     raw_text: str | None = None
+    # Classification LLM du type d'URL : 'source' | 'promo' | 'social' | 'other'.
+    # None = pas encore classifie / LLM off. L'utilisateur voit un badge dans la
+    # preview et coche/decoche a sa guise -- rien n'est jamais filtre auto.
+    classification: str | None = None
 
 
 @dataclass
