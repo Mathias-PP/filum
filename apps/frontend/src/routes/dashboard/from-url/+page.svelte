@@ -330,8 +330,22 @@
       <!-- Bandeau info sur l'extraction (statut fetch + statut sources) -->
       {#if result.fetch_status === 'unreachable'}
         <div class="rounded-lg bg-danger-bg border border-danger/30 px-4 py-3 text-sm text-danger">
-          ⚠ Page injoignable (timeout, erreur HTTP, ou blocage anti-bot). Vous pouvez quand même
-          créer la fiche vide et ajouter les sources à la main.
+          ⚠ Page injoignable (timeout, erreur HTTP, ou blocage anti-bot). Aucune snapshot Wayback
+          disponible non plus. Vous pouvez quand même créer la fiche vide et ajouter les sources à
+          la main.
+        </div>
+      {:else if result.fetch_status === 'ok_via_wayback'}
+        <div class="rounded-lg bg-info/10 border border-info/30 px-4 py-3 text-sm text-info">
+          ⓘ Page live inaccessible (anti-bot, 403, page down). Snapshot Wayback utilisée pour
+          extraire les références.
+          {#if result.wayback_url}
+            <a
+              href={result.wayback_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="underline hover:no-underline">Voir la snapshot →</a
+            >
+          {/if}
         </div>
       {:else if result.fetch_status === 'not_html'}
         <div class="rounded-lg bg-info/10 border border-info/30 px-4 py-3 text-sm text-info">
