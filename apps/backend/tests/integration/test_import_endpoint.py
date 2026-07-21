@@ -9,17 +9,21 @@ BIB = b"@article{a1, title={Test}, doi={10.1234/x.1}, year={2023}, author={Doe, 
 
 @pytest.fixture(autouse=True)
 def disable_crossref_backfill_by_default(monkeypatch):
-    """Neutralise Crossref pour tous les tests par defaut.
-
-    Sans ca, chaque endpoint d'import (parse/paste/from-content-url) appelle
-    Crossref sur chaque ref -> timeouts + variabilite reseau en CI. Les tests
-    qui veulent exercer le backfill overrident explicitement.
-    """
+    """Neutralise Crossref ET le fallback LLM par-bloc pour tous les tests
+    par defaut. Sans ca, chaque endpoint d'import (parse/paste/from-content-
+    url) declenche des appels reseau -> timeouts + variabilite en CI. Les
+    tests qui veulent exercer ces backfills overrident explicitement."""
 
     async def _no_crossref(doi):
         return None
 
+    async def _no_llm_block(block):
+        return None
+
     monkeypatch.setattr("app.api.v1.endpoints.imports.crossref_lookup", _no_crossref)
+    monkeypatch.setattr(
+        "app.api.v1.endpoints.imports.parse_reference_block", _no_llm_block
+    )
 
 
 @pytest_asyncio.fixture
@@ -495,3 +499,111 @@ async def test_backfill_skips_refs_already_complete(client, monkeypatch):
     assert resp.status_code == 200
     # BibTeX de test a title=Test, author=Doe Jane, year=2023 -> complet -> skip
     assert call_count["n"] == 0
+
+
+# --- Fallback LLM par-bloc (Crossref echoue, texte de la ref disponible) ---
+
+FRONTIERS_LIKE_HTML_FOR_LLM_BLOCK = """<!DOCTYPE html>
+<html><body>
+<section id="references">
+<h2>References</h2>
+<ol>
+<li>1
+AdlemanN. E.MenonV.BlaseyC. M. (2002). A developmental fMRI study of the
+Stroop color-word task.Neuroimage1661-75. 10.1006/nimg.2001.1046
+</li>
+<li>2
+BariA.RobbinsT. W. (2013). Inhibition and impulsivity: behavioral and neural
+basis of response control.Prog. Neurobiol.10844-79. 10.1016/j.pneurobio.2013.06.005
+</li>
+<li>3
+DiamondA. (2013). Executive functions.Annu. Rev. Psychol.64135-168.
+</li>
+</ol>
+</section>
+</body></html>"""
+
+
+@pytest.mark.asyncio
+async def test_from_url_llm_block_fills_metadata_when_crossref_off(
+    client, monkeypatch
+):
+    """Cas Frontiers : Crossref off (DOI ancien non indexe simule) ->
+    le fallback LLM par-bloc lit le texte de chaque ref et remplit
+    title/authors/year."""
+    from app.extractors.url_extractor import ExtractedMetadata
+    from app.services.llm import LlmBiblioRef
+
+    async def fake_meta(url):
+        return ExtractedMetadata(title="Test article")
+
+    class FakeResponse:
+        status_code = 200
+        headers = {"content-type": "text/html; charset=utf-8"}
+        text = FRONTIERS_LIKE_HTML_FOR_LLM_BLOCK
+
+    class FakeAsyncClient:
+        def __init__(self, *a, **kw):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return None
+
+        async def get(self, url):
+            return FakeResponse()
+
+    async def no_global_llm(text):
+        return None  # le LLM global echoue (bloc trop bruite / desactive)
+
+    # Le fallback LLM par-bloc simule : lit le raw_text, extrait metadata
+    async def fake_llm_block(block):
+        block = block.lower()
+        if "adleman" in block:
+            return LlmBiblioRef(
+                title="A developmental fMRI study of the Stroop color-word task",
+                authors="Adleman N., Menon V., Blasey C.",
+                year=2002,
+            )
+        if "bari" in block:
+            return LlmBiblioRef(
+                title="Inhibition and impulsivity: behavioral and neural basis",
+                authors="Bari A., Robbins T.",
+                year=2013,
+            )
+        if "diamond" in block:
+            return LlmBiblioRef(
+                title="Executive functions",
+                authors="Diamond A.",
+                year=2013,
+            )
+        return None
+
+    monkeypatch.setattr("app.api.v1.endpoints.imports.extract_url_metadata", fake_meta)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.httpx.AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.parse_bibliography", no_global_llm)
+    # Crossref OFF -> plus de fallback ; laissera la place au LLM par-bloc
+    monkeypatch.setattr("app.api.v1.endpoints.imports.parse_reference_block", fake_llm_block)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.assert_url_is_safe", lambda u: None)
+
+    resp = await client.post(
+        "/api/v1/import/from-content-url",
+        json={"url": "https://www.frontiersin.org/articles/10.3389/fpsyg.2022.651547/full"},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    # Les 3 refs (celles avec DOI reperees par le regex) doivent avoir
+    # title + authors + published_at grace au fallback LLM par-bloc.
+    by_url = {s["url"]: s for s in body["sources"] if s["url"]}
+    adleman = by_url.get("https://doi.org/10.1006/nimg.2001.1046")
+    assert adleman is not None
+    assert "Stroop" in adleman["title"]
+    assert "Adleman" in adleman["authors"]
+    assert adleman["published_at"].startswith("2002-")
+
+    bari = by_url.get("https://doi.org/10.1016/j.pneurobio.2013.06.005")
+    assert bari is not None
+    assert "Inhibition" in bari["title"]
+    assert "Bari" in bari["authors"]
