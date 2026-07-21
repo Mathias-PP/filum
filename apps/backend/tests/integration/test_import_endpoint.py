@@ -1017,3 +1017,56 @@ async def test_from_url_leaves_classification_null_when_llm_off(client, monkeypa
     body = resp.json()
     for s in body["sources"]:
         assert s["classification"] is None
+
+
+# --- /import/url-metadata : metadata legere pour le formulaire Nouvelle fiche
+
+
+@pytest.mark.asyncio
+async def test_url_metadata_returns_title_and_description(client, monkeypatch):
+    from app.extractors.url_extractor import ExtractedMetadata
+
+    async def fake_meta(url):
+        return ExtractedMetadata(
+            title="Un titre extrait",
+            description="Une description extraite.",
+        )
+
+    monkeypatch.setattr("app.api.v1.endpoints.imports.extract_url_metadata", fake_meta)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.assert_url_is_safe", lambda u: None)
+
+    resp = await client.post(
+        "/api/v1/import/url-metadata",
+        json={"url": "https://example.org/article"},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["title"] == "Un titre extrait"
+    assert body["description"] == "Une description extraite."
+
+
+@pytest.mark.asyncio
+async def test_url_metadata_rejects_unsafe_url(client):
+    resp = await client.post(
+        "/api/v1/import/url-metadata",
+        json={"url": "http://127.0.0.1/admin"},
+    )
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_url_metadata_returns_nulls_when_extraction_fails(client, monkeypatch):
+    async def broken_meta(url):
+        raise RuntimeError("network down")
+
+    monkeypatch.setattr("app.api.v1.endpoints.imports.extract_url_metadata", broken_meta)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.assert_url_is_safe", lambda u: None)
+
+    resp = await client.post(
+        "/api/v1/import/url-metadata",
+        json={"url": "https://example.org/down"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["title"] is None
+    assert body["description"] is None

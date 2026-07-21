@@ -3,6 +3,7 @@
   import { api } from '$lib/api';
   import { Button, ProgressSteps } from '$lib/components';
   import { currentUser } from '$lib/stores/auth';
+  import { pendingImportFile } from '$lib/stores/import-file';
   import type { Platform, ContentType, Visibility } from '$lib/api';
 
   const steps = [
@@ -16,10 +17,22 @@
   let contentUrl = $state('');
   let platform = $state<Platform>('other');
   let contentType = $state<ContentType>('other');
-  let isSeed = $state(false);
+  let isAuthor = $state(false);
   let visibility = $state<Visibility>('public');
   let error = $state<string | null>(null);
   let loading = $state(false);
+
+  // Suggestion automatique des métadonnées depuis l'URL du contenu.
+  let suggesting = $state(false);
+  let lastSuggestedUrl = $state('');
+  // On : la suggestion écrase les champs déjà remplis. Off : ne remplit
+  // que les champs vides (les saisies manuelles sont préservées).
+  let overwriteOnSuggest = $state(false);
+
+  // Fichier bibliographique déposé — transmis à la page Sources via le store.
+  let droppedFile = $state<File | null>(null);
+  let dragOver = $state(false);
+  let fileInput = $state<HTMLInputElement | null>(null);
 
   function deriveSlug(value: string) {
     return value
@@ -29,6 +42,69 @@
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '')
       .slice(0, 60);
+  }
+
+  function guessPlatform(u: string): { platform: Platform; contentType: ContentType } {
+    let host = '';
+    try {
+      host = new URL(u).hostname.replace(/^www\./, '').toLowerCase();
+    } catch {
+      return { platform: 'other', contentType: 'article' };
+    }
+    if (host.includes('youtube.com') || host === 'youtu.be')
+      return { platform: 'youtube', contentType: 'video' };
+    if (host.includes('twitter.com') || host === 'x.com')
+      return { platform: 'x', contentType: 'post' };
+    if (host.includes('bsky.app')) return { platform: 'bluesky', contentType: 'post' };
+    if (host.includes('substack.com') || host.includes('medium.com'))
+      return { platform: 'blog', contentType: 'article' };
+    return { platform: 'other', contentType: 'article' };
+  }
+
+  async function suggestFromUrl(force = false) {
+    const trimmed = contentUrl.trim();
+    if (!trimmed) return;
+    if (!force && trimmed === lastSuggestedUrl) return;
+    try {
+      new URL(trimmed);
+    } catch {
+      return; // URL incomplète : on attend, pas d'erreur intrusive
+    }
+    suggesting = true;
+    lastSuggestedUrl = trimmed;
+    try {
+      const meta = await api.imports.urlMetadata(trimmed);
+      if (meta.title && (overwriteOnSuggest || !title.trim())) {
+        title = meta.title;
+        if (!slugManual) slug = deriveSlug(meta.title);
+      }
+      if (meta.description && (overwriteOnSuggest || !description.trim())) {
+        description = meta.description;
+      }
+      const guess = guessPlatform(trimmed);
+      if (overwriteOnSuggest || platform === 'other') platform = guess.platform;
+      if (overwriteOnSuggest || contentType === 'other') contentType = guess.contentType;
+    } catch {
+      // silencieux : l'utilisateur remplit à la main
+    } finally {
+      suggesting = false;
+    }
+  }
+
+  function acceptFile(file: File | null | undefined) {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      error = 'Fichier trop volumineux (limite : 5 Mo).';
+      return;
+    }
+    droppedFile = file;
+    error = null;
+  }
+
+  function onDrop(e: DragEvent) {
+    e.preventDefault();
+    dragOver = false;
+    acceptFile(e.dataTransfer?.files?.[0]);
   }
 
   function onTitleInput(e: Event) {
@@ -55,9 +131,10 @@
         content_url: contentUrl || undefined,
         platform,
         content_type: contentType,
-        is_seed: isSeed,
+        is_seed: !isAuthor,
         visibility,
       });
+      pendingImportFile.set(droppedFile);
       goto(`/dashboard/new/${card.id}/sources`);
     } catch (err) {
       error = err instanceof Error ? err.message : 'Erreur lors de la création';
@@ -96,12 +173,9 @@
   </div>
 
   <h1 class="font-serif text-3xl text-ink-primary mb-2">Nouvelle fiche</h1>
-  <p class="text-sm text-ink-secondary mb-4">Informations sur votre contenu</p>
-
-  <p class="text-xs text-ink-tertiary mb-6">
-    Astuce : si vous avez déjà l'URL d'un article ou d'un billet avec sa bibliographie, essayez
-    <a href="/dashboard/from-url" class="text-info hover:underline">Créer depuis une URL</a>
-    pour extraire titre et sources automatiquement.
+  <p class="text-sm text-ink-secondary mb-6">
+    Collez l'URL du contenu — Philum suggère automatiquement les informations. Vous pourrez extraire
+    les sources citées à l'étape suivante.
   </p>
 
   <ProgressSteps {steps} current={0} class="mb-8" />
@@ -112,6 +186,100 @@
         {error}
       </div>
     {/if}
+
+    <div class="space-y-1.5">
+      <label for="content-url" class="block text-sm font-medium text-ink-secondary">
+        URL du contenu
+      </label>
+      <div class="flex items-center gap-2">
+        <div class="relative flex-1">
+          <input
+            id="content-url"
+            type="url"
+            value={contentUrl}
+            oninput={(e) => (contentUrl = (e.target as HTMLInputElement).value)}
+            onblur={() => suggestFromUrl()}
+            placeholder="https://youtube.com/watch?v=… ou https://…/article"
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
+          />
+          {#if suggesting}
+            <div
+              class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-info border-t-transparent rounded-full animate-spin"
+            ></div>
+          {/if}
+        </div>
+        <button
+          type="button"
+          onclick={() => suggestFromUrl(true)}
+          disabled={suggesting || !contentUrl.trim()}
+          class="p-2 rounded-lg border border-border-strong text-ink-secondary hover:text-info hover:border-info transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          aria-label="Relancer la suggestion de métadonnées"
+          title="Relancer la suggestion de métadonnées"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M21 12a9 9 0 1 1-3-6.7" />
+            <polyline points="21 3 21 9 15 9" />
+          </svg>
+        </button>
+      </div>
+      <label class="flex items-center gap-2 cursor-pointer text-xs text-ink-tertiary">
+        <input type="checkbox" bind:checked={overwriteOnSuggest} class="rounded" />
+        Écraser les champs déjà remplis lors de la suggestion
+      </label>
+    </div>
+
+    <div
+      role="button"
+      tabindex="0"
+      ondragover={(e) => {
+        e.preventDefault();
+        dragOver = true;
+      }}
+      ondragleave={() => (dragOver = false)}
+      ondrop={onDrop}
+      onclick={() => fileInput?.click()}
+      onkeydown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') fileInput?.click();
+      }}
+      class="rounded-lg border-2 border-dashed px-4 py-4 text-center text-sm cursor-pointer transition-colors {dragOver
+        ? 'border-info bg-info/5 text-info'
+        : 'border-border text-ink-tertiary hover:border-info/50'}"
+    >
+      <input
+        type="file"
+        accept=".bib,.bibtex,.json,.md,.markdown,.pdf"
+        class="hidden"
+        bind:this={fileInput}
+        onchange={(e) => acceptFile((e.target as HTMLInputElement).files?.[0])}
+      />
+      {#if droppedFile}
+        <p class="text-ink-primary font-medium">{droppedFile.name}</p>
+        <p class="text-xs mt-0.5">
+          Sera analysé à l'étape Sources.
+          <button
+            type="button"
+            class="text-danger hover:underline"
+            onclick={(e) => {
+              e.stopPropagation();
+              droppedFile = null;
+            }}
+          >
+            Retirer
+          </button>
+        </p>
+      {:else}
+        <p>ou déposez ici un fichier bibliographique</p>
+        <p class="text-xs mt-0.5">BibTeX, CSL-JSON (Zotero), Markdown (Obsidian), PDF — 5 Mo max</p>
+      {/if}
+    </div>
 
     <div class="space-y-1.5">
       <label for="title" class="block text-sm font-medium text-ink-secondary">
@@ -163,20 +331,6 @@
       ></textarea>
     </div>
 
-    <div class="space-y-1.5">
-      <label for="content-url" class="block text-sm font-medium text-ink-secondary">
-        URL du contenu
-      </label>
-      <input
-        id="content-url"
-        type="url"
-        value={contentUrl}
-        oninput={(e) => (contentUrl = (e.target as HTMLInputElement).value)}
-        placeholder="https://youtube.com/watch?v=..."
-        class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
-      />
-    </div>
-
     <div class="grid grid-cols-2 gap-4">
       <div class="space-y-1.5">
         <label for="platform" class="block text-sm font-medium text-ink-secondary">Plateforme</label
@@ -187,7 +341,7 @@
           onchange={(e) => (platform = (e.target as HTMLSelectElement).value as Platform)}
           class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
         >
-          {#each platforms as p}
+          {#each platforms as p (p.value)}
             <option value={p.value}>{p.label}</option>
           {/each}
         </select>
@@ -203,7 +357,7 @@
           onchange={(e) => (contentType = (e.target as HTMLSelectElement).value as ContentType)}
           class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
         >
-          {#each contentTypes as ct}
+          {#each contentTypes as ct (ct.value)}
             <option value={ct.value}>{ct.label}</option>
           {/each}
         </select>
@@ -214,18 +368,19 @@
       <label class="flex items-start gap-3 cursor-pointer">
         <input
           type="checkbox"
-          bind:checked={isSeed}
+          bind:checked={isAuthor}
           class="mt-0.5 shrink-0"
-          aria-describedby="seed-hint"
+          aria-describedby="author-hint"
         />
         <span class="text-sm">
           <span class="font-medium text-ink-primary">
-            Je ne suis pas l'auteur·ice de ce contenu
+            Je suis l'auteur·ice de ce contenu et je souhaite le revendiquer
           </span>
-          <span id="seed-hint" class="block text-xs text-ink-tertiary mt-0.5">
-            La fiche sera marquée comme <em>non revendiquée</em> — l'auteur·ice du contenu pourra la revendiquer
-            depuis la page publique et en devenir propriétaire. Vous ne pourrez pas attester cryptographiquement
-            d'un contenu que vous n'avez pas créé.
+          <span id="author-hint" class="block text-xs text-ink-tertiary mt-0.5">
+            Cochez uniquement si vous pouvez prouver que vous êtes l'auteur·ice : la fiche sera
+            attestée cryptographiquement en votre nom. Sinon, la fiche est créée comme
+            <em>non revendiquée</em> et le ou la véritable auteur·ice pourra la revendiquer depuis la
+            page publique.
           </span>
         </span>
       </label>

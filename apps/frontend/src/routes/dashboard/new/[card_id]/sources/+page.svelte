@@ -2,7 +2,9 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { onMount } from 'svelte';
+  import { get } from 'svelte/store';
   import { api } from '$lib/api';
+  import { pendingImportFile } from '$lib/stores/import-file';
   import { Button, ConfirmDialog, ProgressSteps } from '$lib/components';
   import { AUTHOR_COLORS, authorLabel } from '$lib/utils/author-colors';
   import type {
@@ -105,8 +107,16 @@
       ]);
       card = loadedCard;
       sources = loadedSources;
+      if (loadedCard.content_url) refsUrl = loadedCard.content_url;
     } catch (err) {
       loadError = err instanceof Error ? err.message : 'Erreur de chargement';
+    }
+    // Fichier déposé à l'étape « Informations » : transmis en mémoire via le
+    // store (un File survit aux navigations client-side de SvelteKit).
+    const dropped = get(pendingImportFile);
+    if (dropped) {
+      pendingFile = dropped;
+      pendingImportFile.set(null);
     }
   });
 
@@ -494,7 +504,7 @@
     author_kind: string;
   };
 
-  type ImportResponse = { sources: ImportedDraft[]; skipped: number; format_detected: string };
+  type ImportResponse = { sources: ImportedDraft[]; skipped: number; format_detected?: string };
 
   async function ingestImported(data: ImportResponse) {
     const known = new Set([...sources.map((s) => s.url), ...drafts.map((d) => d.url)]);
@@ -531,7 +541,9 @@
     if (duplicates > 0) parts.push(`${duplicates} déjà présente${duplicates > 1 ? 's' : ''}`);
     if (data.skipped > 0)
       parts.push(`${data.skipped} sans lien (ignorée${data.skipped > 1 ? 's' : ''})`);
-    importSummary = `${parts.join(', ')} — format détecté : ${data.format_detected}.`;
+    importSummary = `${parts.join(', ')}${
+      data.format_detected ? ` — format détecté : ${data.format_detected}` : ''
+    }.`;
     // Les refs sans titre (URL/DOI nus) passent par l'extracteur existant.
     for (const u of needExtract) {
       const draft = drafts.find((d) => d.url === u && d.status === 'extracting');
@@ -564,6 +576,10 @@
     const file = input.files?.[0];
     input.value = '';
     if (!file) return;
+    await processFile(file);
+  }
+
+  async function processFile(file: File) {
     importError = null;
     importSummary = null;
     if (file.size > 5 * 1024 * 1024) {
@@ -618,6 +634,56 @@
       analyzingText = false;
     }
   }
+
+  // ── Extraction depuis la page de contenu (URL de la fiche) ────────────────
+  let refsUrl = $state('');
+  let refsExtracting = $state(false);
+  let refsError = $state<string | null>(null);
+  let refsInfo = $state<string | null>(null);
+  let overwriteDrafts = $state(false);
+  let hasExtractedRefs = $state(false);
+  let pendingFile = $state<File | null>(null);
+
+  async function extractReferences() {
+    const target = refsUrl.trim();
+    if (!target || refsExtracting) return;
+    refsError = null;
+    refsInfo = null;
+    importError = null;
+    importSummary = null;
+    refsExtracting = true;
+    try {
+      const res = await api.imports.fromContentUrl(target);
+      if (res.fetch_status === 'unreachable') {
+        refsError = 'La page n’a pas pu être récupérée (site inaccessible ou bloqué).';
+      } else if (res.fetch_status === 'not_html') {
+        refsError =
+          'Ce lien ne pointe pas vers une page web (PDF, image…) — l’extraction ne fonctionne que sur du HTML.';
+      } else if (res.fetch_status === 'ok_via_wayback') {
+        refsInfo =
+          'Le site bloque l’accès direct : extraction faite depuis une capture Internet Archive.';
+      }
+      if (res.sources.length > 0) {
+        if (overwriteDrafts) drafts = [];
+        await ingestImported({ sources: res.sources, skipped: res.skipped });
+        hasExtractedRefs = true;
+      } else if (!refsError) {
+        refsInfo = res.references_section_found
+          ? 'Aucune référence exploitable trouvée sur cette page.'
+          : 'Aucune section « Références » détectée sur cette page.';
+      }
+    } catch (err) {
+      refsError = err instanceof Error ? err.message : 'Erreur lors de l’extraction';
+    } finally {
+      refsExtracting = false;
+    }
+  }
+
+  async function analyzePendingFile() {
+    if (!pendingFile || importing) return;
+    await processFile(pendingFile);
+    if (!importError) pendingFile = null;
+  }
 </script>
 
 <svelte:head>
@@ -641,6 +707,122 @@
   {#if loadError}
     <div class="rounded-lg bg-danger-bg border border-danger/30 px-4 py-3 text-sm text-danger mb-6">
       {loadError}
+    </div>
+  {/if}
+
+  {#if !isEditing}
+    <!-- Extraction depuis la page de contenu -->
+    <div class="bg-surface-primary border border-border rounded-xl p-6 mb-6">
+      <h2 class="text-lg font-semibold text-ink-primary mb-1">
+        Extraire les sources de votre contenu
+      </h2>
+      <p class="text-sm text-ink-tertiary mb-4">
+        Philum lit la page de votre contenu (description, section références) et en extrait les
+        sources citées, à valider ci-dessous avant ajout.
+      </p>
+
+      <div class="flex items-center gap-2">
+        <input
+          type="url"
+          bind:value={refsUrl}
+          placeholder="https://youtube.com/watch?v=... ou https://votre-blog.fr/article"
+          class="flex-1 min-w-0 px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
+        />
+        {#if hasExtractedRefs}
+          <button
+            type="button"
+            onclick={extractReferences}
+            disabled={refsExtracting || !refsUrl.trim()}
+            class="p-2 rounded-lg border border-border-strong text-ink-secondary hover:text-ink-primary hover:bg-surface-secondary transition-colors disabled:opacity-50 shrink-0"
+            title="Relancer l’extraction"
+            aria-label="Relancer l’extraction"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              class="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M21 12a9 9 0 1 1-3-6.7" />
+              <polyline points="21 3 21 9 15 9" />
+            </svg>
+          </button>
+        {/if}
+        <Button
+          type="button"
+          variant="secondary"
+          loading={refsExtracting}
+          disabled={refsExtracting || !refsUrl.trim()}
+          onclick={extractReferences}
+        >
+          {refsExtracting ? 'Extraction…' : 'Extraire les sources'}
+        </Button>
+      </div>
+
+      <label class="flex items-center gap-2 mt-3 text-sm text-ink-secondary cursor-pointer">
+        <input
+          type="checkbox"
+          bind:checked={overwriteDrafts}
+          class="rounded border-border-strong text-info focus:ring-info"
+        />
+        Écraser les brouillons non ajoutés lors d’une nouvelle extraction
+      </label>
+
+      {#if refsError}
+        <div
+          class="mt-3 rounded-lg bg-danger-bg border border-danger/30 px-4 py-3 text-sm text-danger"
+        >
+          {refsError}
+        </div>
+      {/if}
+      {#if refsInfo}
+        <div class="mt-3 rounded-lg bg-info/10 border border-info/30 px-4 py-3 text-sm text-info">
+          {refsInfo}
+        </div>
+      {/if}
+
+      {#if pendingFile}
+        <div
+          class="mt-4 flex items-center justify-between gap-3 rounded-lg border border-border bg-surface-secondary/50 px-4 py-3"
+        >
+          <div class="min-w-0">
+            <p class="text-sm text-ink-primary truncate">{pendingFile.name}</p>
+            <p class="text-xs text-ink-tertiary">Fichier déposé à l’étape précédente</p>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <Button
+              type="button"
+              variant="secondary"
+              loading={importing}
+              disabled={importing}
+              onclick={analyzePendingFile}
+            >
+              {importing ? 'Analyse…' : 'Analyser le fichier'}
+            </Button>
+            <button
+              type="button"
+              onclick={() => (pendingFile = null)}
+              class="p-1 text-ink-tertiary hover:text-danger transition-colors"
+              aria-label="Retirer le fichier"
+              title="Retirer"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <line x1="6" y1="6" x2="18" y2="18" />
+                <line x1="6" y1="18" x2="18" y2="6" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      {/if}
     </div>
   {/if}
 
