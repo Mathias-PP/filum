@@ -155,6 +155,8 @@ async def update_card(
         card.content_url = card_data.content_url
     if card_data.platform is not None:
         card.platform = card_data.platform.value
+    if card_data.content_type is not None:
+        card.content_type = card_data.content_type.value
     if card_data.is_seed is not None:
         card.is_seed = card_data.is_seed
     if card_data.visibility is not None:

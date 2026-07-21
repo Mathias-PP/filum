@@ -18,11 +18,15 @@
   } from '$lib/api';
 
   const wizardSteps = [
-    { label: 'Informations', description: 'Titre, plateforme' },
+    { label: 'Informations', description: 'Titre, plateforme', clickable: true },
     { label: 'Sources', description: 'Ajouter et publier' },
   ];
 
   const cardId = $derived($page.params.card_id ?? '');
+
+  function onWizardStepClick(i: number) {
+    if (i === 0) goto(`/dashboard/new?card_id=${cardId}`);
+  }
 
   let card = $state<Card | null>(null);
   let sources = $state<Source[]>([]);
@@ -702,7 +706,7 @@
   </h1>
   <p class="text-sm text-ink-secondary mb-6">Ajoutez vos sources, puis publiez la fiche.</p>
 
-  <ProgressSteps steps={wizardSteps} current={1} class="mb-8" />
+  <ProgressSteps steps={wizardSteps} current={1} onStepClick={onWizardStepClick} class="mb-8" />
 
   {#if loadError}
     <div class="rounded-lg bg-danger-bg border border-danger/30 px-4 py-3 text-sm text-danger mb-6">
