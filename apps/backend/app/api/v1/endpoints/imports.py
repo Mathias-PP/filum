@@ -20,7 +20,11 @@ from app.api.v1.endpoints.cards import get_current_user
 from app.core.url_safety import UnsafeUrlError, assert_url_is_safe
 from app.extractors.grobid import extract_pdf_references
 from app.extractors.semantic_scholar import SemanticScholarRef, get_paper_references
-from app.extractors.url_extractor import crossref_lookup
+from app.extractors.url_extractor import (
+    crossref_lookup,
+    get_crossref_references,
+    resolve_doi_from_pii,
+)
 from app.extractors.url_extractor import extract as extract_url_metadata
 from app.models.user import User
 from app.services.import_parsers import (
@@ -214,9 +218,10 @@ async def _backfill_crossref_metadata(refs: list[ImportedRef]) -> None:
 def _s2_ref_to_imported_ref(s2_ref: SemanticScholarRef) -> ImportedRef | None:
     """Convertit une SemanticScholarRef → ImportedRef. None si pas d'URL."""
     if not s2_ref.url:
-        # Livre / chapitre sans DOI : garde-la pour edition manuelle (url="")
-        # SEULEMENT si on a titre + auteurs (sinon vraiment inutile).
-        if s2_ref.title and s2_ref.authors:
+        # Livre / chapitre sans DOI : garde-la pour edition manuelle (url="").
+        # Le titre seul suffit — exiger aussi les auteurs faisait perdre des
+        # refs reelles (objectif : exhaustivite, l'user complete a la main).
+        if s2_ref.title:
             return ImportedRef(
                 url="",
                 title=s2_ref.title,
@@ -685,8 +690,16 @@ async def parse_content_url(
     # source la plus fiable pour les refs scholarly (couvre ScienceDirect /
     # Elsevier, chose ni Crossref ni scraping ne peuvent atteindre).
     content_doi = _doi_from_url(url)
+    if not content_doi:
+        # ScienceDirect/Elsevier : pas de DOI dans l'URL mais un PII resolvable
+        # en DOI via Crossref (alternative-id) -> debloque l'etage S2.
+        content_doi = await resolve_doi_from_pii(url)
     if content_doi:
         s2_refs = await get_paper_references(content_doi)
+        if not s2_refs:
+            # Fallback Crossref : certains editeurs (Elsevier) font elider
+            # leurs references chez S2 mais les deposent chez Crossref.
+            s2_refs = await get_crossref_references(content_doi)
         if s2_refs:
             logger.info(
                 "s2_hit doi=%s refs=%d (before merge: %d)",

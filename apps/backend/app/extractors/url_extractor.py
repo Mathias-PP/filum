@@ -18,6 +18,8 @@ from urllib.parse import urlparse
 import httpx
 from bs4 import BeautifulSoup
 
+from app.extractors.semantic_scholar import SemanticScholarRef
+
 logger = logging.getLogger(__name__)
 
 _HEADERS = {
@@ -378,6 +380,82 @@ async def crossref_lookup(doi: str) -> ExtractedMetadata | None:
 
 # Compat interne : ancienne API privée conservée pour éviter de toucher extract().
 _crossref = crossref_lookup
+
+
+async def get_crossref_references(doi: str) -> list[SemanticScholarRef] | None:
+    """Refs citees par ``doi`` via le depot Crossref de l'editeur. Never raises.
+
+    Fallback de l'etage Semantic Scholar : Elsevier fait elider ses references
+    chez S2 (`data: null`, "elided by the publisher") mais les depose chez
+    Crossref (`works/{doi}` -> tableau `reference`). Retourne None si le DOI
+    est inconnu ou si l'editeur n'a pas depose ses references.
+    """
+    if not doi:
+        return None
+    url = f"https://api.crossref.org/works/{doi}"
+    try:
+        async with httpx.AsyncClient(headers=_HEADERS, timeout=_TIMEOUT) as client:
+            r = await client.get(url)
+        if r.status_code != 200:
+            return None
+        raw_refs = r.json().get("message", {}).get("reference") or []
+        if not raw_refs:
+            return None
+        return [_crossref_reference_item_to_ref(item) for item in raw_refs]
+    except Exception as e:
+        logger.debug("Crossref references lookup failed for doi=%s: %s", doi, e)
+        return None
+
+
+def _crossref_reference_item_to_ref(item: dict) -> SemanticScholarRef:
+    ref_doi = (item.get("DOI") or "").lower() or None
+    title = (
+        item.get("article-title")
+        or item.get("volume-title")
+        # Livres : Elsevier depose le titre dans series-title
+        or item.get("series-title")
+        or item.get("unstructured")
+        or item.get("journal-title")
+    )
+    if title:
+        title = str(title).strip()[:300]
+    year_raw = item.get("year")
+    try:
+        year = int(str(year_raw)[:4]) if year_raw else None
+    except ValueError:
+        year = None
+    return SemanticScholarRef(
+        title=title,
+        authors=item.get("author"),
+        year=year,
+        doi=ref_doi,
+        url=f"https://doi.org/{ref_doi}" if ref_doi else None,
+    )
+
+
+async def resolve_doi_from_pii(url: str) -> str | None:
+    """URL ScienceDirect/Elsevier → DOI via le PII et Crossref. Never raises.
+
+    Permet a l'etage Semantic Scholar du pipeline d'import de fonctionner sur
+    les URLs ScienceDirect (aucun DOI dans l'URL, scraping bloque anti-bot).
+    """
+    pii = _extract_pii(url)
+    if not pii:
+        return None
+    api_url = f"https://api.crossref.org/works?filter=alternative-id:{pii}&rows=1"
+    try:
+        async with httpx.AsyncClient(headers=_HEADERS, timeout=_TIMEOUT) as client:
+            r = await client.get(api_url)
+        if r.status_code != 200:
+            return None
+        items = r.json().get("message", {}).get("items") or []
+        if not items:
+            return None
+        doi = items[0].get("DOI")
+        return doi.lower() if doi else None
+    except Exception as e:
+        logger.debug("Crossref DOI-from-PII failed for url=%s: %s", url, e)
+        return None
 
 
 async def _crossref_by_pii(pii: str) -> ExtractedMetadata | None:

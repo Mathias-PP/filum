@@ -116,3 +116,63 @@ def test_caps_output_at_max_length():
     text, found = _extract_references_text(html)
     assert found is True
     assert len(text) <= 60_000
+
+
+# --- Conversion S2 -> ImportedRef : exhaustivite des refs sans DOI ----------
+
+
+def test_s2_ref_without_url_kept_with_title_only():
+    from app.api.v1.endpoints.imports import _s2_ref_to_imported_ref
+    from app.extractors.semantic_scholar import SemanticScholarRef
+
+    ref = _s2_ref_to_imported_ref(SemanticScholarRef(title="Un livre sans DOI ni auteurs S2"))
+    assert ref is not None
+    assert ref.url == ""
+    assert ref.title == "Un livre sans DOI ni auteurs S2"
+
+
+def test_s2_ref_without_url_nor_title_dropped():
+    from app.api.v1.endpoints.imports import _s2_ref_to_imported_ref
+    from app.extractors.semantic_scholar import SemanticScholarRef
+
+    assert _s2_ref_to_imported_ref(SemanticScholarRef(authors="X Y.", year=1999)) is None
+
+
+def test_merge_s2_refs_adds_no_url_refs():
+    from app.api.v1.endpoints.imports import _merge_s2_refs
+    from app.extractors.semantic_scholar import SemanticScholarRef
+    from app.services.import_parsers import ParseResult
+
+    s2_refs = [
+        SemanticScholarRef(title="Paper A", doi="10.1/a", url="https://doi.org/10.1/a"),
+        SemanticScholarRef(title="Livre B", authors="Auteur B."),
+        SemanticScholarRef(title="Livre C"),
+    ]
+    result = _merge_s2_refs(ParseResult(), s2_refs)
+    assert len(result.refs) == 3
+    assert result.skipped == 0
+
+
+def test_crossref_reference_item_parsing():
+    from app.extractors.url_extractor import _crossref_reference_item_to_ref
+
+    # Article avec DOI
+    ref = _crossref_reference_item_to_ref(
+        {"DOI": "10.1080/13854049608406663", "article-title": "Tower of London", "year": "1996"}
+    )
+    assert ref.doi == "10.1080/13854049608406663"
+    assert ref.url == "https://doi.org/10.1080/13854049608406663"
+    assert ref.year == 1996
+
+    # Livre Elsevier : titre dans series-title, pas de DOI
+    book = _crossref_reference_item_to_ref(
+        {"series-title": "Working memory", "author": "Baddeley", "year": "1986"}
+    )
+    assert book.title == "Working memory"
+    assert book.url is None
+    assert book.authors == "Baddeley"
+
+    # Annee illisible -> None, pas d'exception
+    weird = _crossref_reference_item_to_ref({"unstructured": "Some ref", "year": "n.d."})
+    assert weird.year is None
+    assert weird.title == "Some ref"
