@@ -8,11 +8,11 @@ BIB = b"@article{a1, title={Test}, doi={10.1234/x.1}, year={2023}, author={Doe, 
 
 
 @pytest.fixture(autouse=True)
-def disable_crossref_backfill_by_default(monkeypatch):
-    """Neutralise Crossref ET le fallback LLM par-bloc pour tous les tests
-    par defaut. Sans ca, chaque endpoint d'import (parse/paste/from-content-
-    url) declenche des appels reseau -> timeouts + variabilite en CI. Les
-    tests qui veulent exercer ces backfills overrident explicitement."""
+def disable_external_apis_by_default(monkeypatch):
+    """Neutralise Crossref, Semantic Scholar et le fallback LLM par-bloc pour
+    tous les tests par defaut. Sans ca, chaque endpoint d'import declenche des
+    appels reseau -> timeouts + variabilite en CI. Les tests qui veulent
+    exercer ces backfills overrident explicitement."""
 
     async def _no_crossref(doi):
         return None
@@ -20,10 +20,12 @@ def disable_crossref_backfill_by_default(monkeypatch):
     async def _no_llm_block(block):
         return None
 
+    async def _no_s2(doi, limit=500):
+        return None
+
     monkeypatch.setattr("app.api.v1.endpoints.imports.crossref_lookup", _no_crossref)
-    monkeypatch.setattr(
-        "app.api.v1.endpoints.imports.parse_reference_block", _no_llm_block
-    )
+    monkeypatch.setattr("app.api.v1.endpoints.imports.parse_reference_block", _no_llm_block)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.get_paper_references", _no_s2)
 
 
 @pytest_asyncio.fixture
@@ -100,9 +102,7 @@ async def test_import_parse_unknown_format_422(client):
 @pytest.mark.asyncio
 async def test_import_parse_file_too_large_413(client):
     big = b"a" * (5 * 1024 * 1024 + 1)
-    resp = await client.post(
-        "/api/v1/import/parse", files={"file": ("big.md", big, "text/plain")}
-    )
+    resp = await client.post("/api/v1/import/parse", files={"file": ("big.md", big, "text/plain")})
     assert resp.status_code == 413
 
 
@@ -400,7 +400,7 @@ async def test_import_from_content_url_backfills_crossref(client, monkeypatch):
         return None  # simule LLM disabled / echec sur texte Frontiers bruite
 
     # Simule Crossref : renvoie metadata pour chaque DOI connu
-    _CROSSREF_DB = {
+    _CROSSREF_DB = {  # noqa: N806
         "10.1006/nimg.2001.1046": ExtractedMetadata(
             title="A developmental fMRI study of the Stroop color-word task",
             authors="Adleman N., Menon V., Blasey C., White C.",
@@ -525,9 +525,7 @@ DiamondA. (2013). Executive functions.Annu. Rev. Psychol.64135-168.
 
 
 @pytest.mark.asyncio
-async def test_from_url_llm_block_fills_metadata_when_crossref_off(
-    client, monkeypatch
-):
+async def test_from_url_llm_block_fills_metadata_when_crossref_off(client, monkeypatch):
     """Cas Frontiers : Crossref off (DOI ancien non indexe simule) ->
     le fallback LLM par-bloc lit le texte de chaque ref et remplit
     title/authors/year."""
@@ -607,3 +605,151 @@ async def test_from_url_llm_block_fills_metadata_when_crossref_off(
     assert bari is not None
     assert "Inhibition" in bari["title"]
     assert "Bari" in bari["authors"]
+
+
+# --- Semantic Scholar : refs S2 sur URL avec DOI (ScienceDirect etc.) -------
+
+FAKE_HTML_WITH_NO_REFS_SECTION = """<!DOCTYPE html>
+<html><head><title>ScienceDirect article</title></head>
+<body><p>Article content, mais pas de section References visible.</p></body>
+</html>"""
+
+
+@pytest.mark.asyncio
+async def test_from_url_uses_semantic_scholar_when_content_has_doi(client, monkeypatch):
+    """URL avec DOI extractible + section refs absente/scrapee vide :
+    Semantic Scholar fournit les refs directement."""
+    from app.extractors.semantic_scholar import SemanticScholarRef
+    from app.extractors.url_extractor import ExtractedMetadata
+
+    async def fake_meta(url):
+        return ExtractedMetadata(title="Scholarly article")
+
+    class FakeResponse:
+        status_code = 200
+        headers = {"content-type": "text/html; charset=utf-8"}
+        text = FAKE_HTML_WITH_NO_REFS_SECTION
+
+    class FakeAsyncClient:
+        def __init__(self, *a, **kw):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return None
+
+        async def get(self, url):
+            return FakeResponse()
+
+    async def no_llm(text):
+        return None
+
+    async def fake_s2(doi, limit=500):
+        return [
+            SemanticScholarRef(
+                title="Prospect theory",
+                authors="Kahneman D., Tversky A.",
+                year=1979,
+                doi="10.2307/1914185",
+                url="https://doi.org/10.2307/1914185",
+            ),
+            SemanticScholarRef(
+                title="Judgment under uncertainty",
+                authors="Tversky A., Kahneman D.",
+                year=1974,
+                doi="10.1126/science.185.4157.1124",
+                url="https://doi.org/10.1126/science.185.4157.1124",
+            ),
+            SemanticScholarRef(
+                title="Thinking, Fast and Slow",
+                authors="Kahneman D.",
+                year=2011,
+                doi=None,
+                url=None,
+            ),
+        ]
+
+    monkeypatch.setattr("app.api.v1.endpoints.imports.extract_url_metadata", fake_meta)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.httpx.AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.parse_bibliography", no_llm)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.get_paper_references", fake_s2)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.assert_url_is_safe", lambda u: None)
+
+    resp = await client.post(
+        "/api/v1/import/from-content-url",
+        json={"url": "https://www.sciencedirect.com/science/article/pii/10.1016/j.jmp.2012.04.001"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    by_url = {s["url"]: s for s in body["sources"] if s["url"]}
+    assert "https://doi.org/10.2307/1914185" in by_url
+    prospect = by_url["https://doi.org/10.2307/1914185"]
+    assert prospect["title"] == "Prospect theory"
+    assert "Kahneman" in prospect["authors"]
+    assert prospect["published_at"].startswith("1979-")
+    nourl = [s for s in body["sources"] if not s["url"]]
+    assert any(s["title"] == "Thinking, Fast and Slow" for s in nourl)
+
+
+@pytest.mark.asyncio
+async def test_from_url_falls_back_to_html_when_s2_returns_nothing(client, monkeypatch):
+    """S2 rate (paper inconnu, timeout) -> le pipeline HTML classique
+    prend le relais."""
+    from app.extractors.url_extractor import ExtractedMetadata
+
+    async def fake_meta(url):
+        return ExtractedMetadata(title="Fallback test")
+
+    html_with_refs = """<!DOCTYPE html>
+    <html><body>
+    <section id="references">
+    <ol>
+    <li>Ref A https://doi.org/10.1/fallback.a</li>
+    <li>Ref B https://doi.org/10.1/fallback.b</li>
+    <li>Ref C https://doi.org/10.1/fallback.c</li>
+    </ol>
+    </section>
+    </body></html>"""
+
+    class FakeResponse:
+        status_code = 200
+        headers = {"content-type": "text/html; charset=utf-8"}
+        text = html_with_refs
+
+    class FakeAsyncClient:
+        def __init__(self, *a, **kw):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return None
+
+        async def get(self, url):
+            return FakeResponse()
+
+    async def no_llm(text):
+        return None
+
+    async def s2_returns_none(doi, limit=500):
+        return None
+
+    monkeypatch.setattr("app.api.v1.endpoints.imports.extract_url_metadata", fake_meta)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.httpx.AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.parse_bibliography", no_llm)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.get_paper_references", s2_returns_none)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.assert_url_is_safe", lambda u: None)
+
+    resp = await client.post(
+        "/api/v1/import/from-content-url",
+        json={"url": "https://example.org/paper/10.1234/unknown"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    urls = {s["url"] for s in body["sources"]}
+    assert "https://doi.org/10.1/fallback.a" in urls
+    assert "https://doi.org/10.1/fallback.b" in urls
+    assert "https://doi.org/10.1/fallback.c" in urls

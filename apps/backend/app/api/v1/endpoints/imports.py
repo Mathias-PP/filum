@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 
 from app.api.v1.endpoints.cards import get_current_user
 from app.core.url_safety import UnsafeUrlError, assert_url_is_safe
+from app.extractors.semantic_scholar import SemanticScholarRef, get_paper_references
 from app.extractors.url_extractor import crossref_lookup
 from app.extractors.url_extractor import extract as extract_url_metadata
 from app.models.user import User
@@ -166,6 +167,81 @@ async def _backfill_crossref_metadata(refs: list[ImportedRef]) -> None:
         return
     sem = asyncio.Semaphore(_CROSSREF_CONCURRENCY)
     await asyncio.gather(*(_backfill_one_crossref(ref, sem) for ref in refs))
+
+
+# --- Semantic Scholar : etage 0 quand le contenu a un DOI extractible ------
+#
+# Quand l'URL du contenu contient un DOI (Frontiers, Nature, Elsevier /
+# ScienceDirect, Wiley, T&F, arXiv, etc.), Semantic Scholar peut donner
+# directement la liste des refs citees avec metadata complet, en 1 requete
+# API gratuite, sans scraping HTML ni LLM. C'est la voie royale.
+#
+# Couverture Elsevier / ScienceDirect via un accord d'ingestion S2, ce que
+# ni Crossref ni un scraping direct ne peuvent atteindre (anti-bot).
+#
+# Le pipeline HTML classique tourne quand meme apres (regex + LLM sur la
+# page) pour completer : parfois S2 rate qq refs ou est incomplet, ou la
+# page a des refs sans DOI (livres) que S2 n'expose pas.
+
+
+def _s2_ref_to_imported_ref(s2_ref: SemanticScholarRef) -> ImportedRef | None:
+    """Convertit une SemanticScholarRef → ImportedRef. None si pas d'URL."""
+    if not s2_ref.url:
+        # Livre / chapitre sans DOI : garde-la pour edition manuelle (url="")
+        # SEULEMENT si on a titre + auteurs (sinon vraiment inutile).
+        if s2_ref.title and s2_ref.authors:
+            return ImportedRef(
+                url="",
+                title=s2_ref.title,
+                authors=s2_ref.authors,
+                year=s2_ref.year,
+                category="article-scientifique",
+            )
+        return None
+    return ImportedRef(
+        url=s2_ref.url,
+        title=s2_ref.title,
+        authors=s2_ref.authors,
+        year=s2_ref.year,
+        category="article-scientifique",
+    )
+
+
+def _merge_s2_refs(base: ParseResult, s2_refs: list[SemanticScholarRef]) -> ParseResult:
+    """Injecte les refs S2 dans le ParseResult (deja bootstrappe par regex+LLM).
+
+    Cle de dedup : DOI (via _dedupe_key). Si une ref S2 apparait avec le meme
+    DOI qu'une ref existante, on ecrase avec les valeurs S2 (S2 est plus
+    fiable que le scraping HTML). Sinon on ajoute.
+    """
+    by_key = {_dedupe_key(ref.url): ref for ref in base.refs if ref.url}
+    skipped = base.skipped
+    for s2 in s2_refs:
+        imported = _s2_ref_to_imported_ref(s2)
+        if imported is None:
+            skipped += 1
+            continue
+        if not imported.url:
+            # Ref sans URL mais avec titre+auteurs : on l'ajoute avec key unique
+            key = f"nourl:s2:{imported.title or ''}|{imported.authors or ''}|{imported.year or ''}"
+            if key not in by_key:
+                by_key[key] = imported
+            continue
+        key = _dedupe_key(imported.url)
+        existing = by_key.get(key)
+        if existing is None:
+            by_key[key] = imported
+        else:
+            # S2 est autoritaire : on enrichit les champs manquants
+            if not existing.title:
+                existing.title = imported.title
+            if not existing.authors:
+                existing.authors = imported.authors
+            if not existing.year:
+                existing.year = imported.year
+            if existing.category == "page-web":
+                existing.category = "article-scientifique"
+    return ParseResult(refs=list(by_key.values()), skipped=skipped)
 
 
 # --- Fallback LLM par bloc de reference ------------------------------------
@@ -481,6 +557,21 @@ async def parse_content_url(
         llm_refs = await parse_bibliography(refs_text)
         if llm_refs:
             result = _merge_llm_refs(result, llm_refs)
+
+    # 3.5. Semantic Scholar si le contenu a un DOI extractible : c'est la
+    # source la plus fiable pour les refs scholarly (couvre ScienceDirect /
+    # Elsevier, chose ni Crossref ni scraping ne peuvent atteindre).
+    content_doi = _doi_from_url(url)
+    if content_doi:
+        s2_refs = await get_paper_references(content_doi)
+        if s2_refs:
+            logger.info(
+                "s2_hit doi=%s refs=%d (before merge: %d)",
+                content_doi,
+                len(s2_refs),
+                len(result.refs),
+            )
+            result = _merge_s2_refs(result, s2_refs)
 
     # Retire la ref pointant vers le contenu lui-meme (le contenu ne cite
     # pas lui-meme, et la fiche a deja content_url = url).

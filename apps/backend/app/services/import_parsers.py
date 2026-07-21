@@ -53,17 +53,23 @@ def _doi_to_url(doi: str) -> str:
 def _doi_from_url(url: str) -> str | None:
     """Extract a bare DOI from any URL that embeds one.
 
-    Handles doi.org / dx.doi.org and DOIs in publisher URL paths
+    Handles doi.org / dx.doi.org, DOIs in publisher URL paths
     (Frontiers /articles/10.3389/…, Wiley /doi/10.1002/…, Springer
-    /article/10.1007/…). Returns lowercased DOI without trailing
-    publisher suffixes like ``/full`` or ``/pdf``.
+    /article/10.1007/…), and DOIs passed as query params
+    (?doi=10.xxx/yyy, URL-encoded or not — common on ScienceDirect).
+    Returns lowercased DOI without trailing publisher suffixes like
+    ``/full`` or ``/pdf``.
     """
+    from urllib.parse import unquote
+
+    decoded = unquote(url)
     patterns = [
         r"(?:https?://)?(?:dx\.)?doi\.org/([^\s?#]+)",
+        r"[?&]doi=(10\.\d{4,9}/[^\s&#]+)",
         r"/(10\.\d{4,9}/[^\s?#]+)",
     ]
     for p in patterns:
-        m = re.search(p, url, re.IGNORECASE)
+        m = re.search(p, decoded, re.IGNORECASE)
         if m:
             doi = m.group(1).strip().rstrip(".,;)/")
             doi = _DOI_PATH_SUFFIXES.sub("", doi)
