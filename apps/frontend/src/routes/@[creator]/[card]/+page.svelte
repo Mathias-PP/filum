@@ -87,6 +87,8 @@
     { format: 'xlsx', label: 'Excel (.xlsx)' },
     { format: 'docx', label: 'Word (.docx)' },
     { format: 'bibtex', label: 'BibTeX (.bib)' },
+    { format: 'csl', label: 'CSL-JSON (Zotero)' },
+    { format: 'apa', label: 'APA (texte)' },
     { format: 'markdown', label: 'Markdown / Obsidian' },
   ];
 

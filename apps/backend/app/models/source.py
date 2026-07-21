@@ -103,6 +103,12 @@ class Source(Base):
         index=True,
     )
     conflict_of_interest: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Metadonnees bibliographiques optionnelles (exports BibTeX/CSL/APA).
+    journal: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    volume: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    pages: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    publisher: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    doi: Mapped[str | None] = mapped_column(String(200), nullable=True)
     citations_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     subscribers_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     views_count: Mapped[int | None] = mapped_column(Integer, nullable=True)

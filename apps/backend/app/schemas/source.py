@@ -67,6 +67,12 @@ class SourceBase(BaseModel):
     annotation: str | None = Field(default=None, max_length=500)
     is_pivot: bool = False
     parent_source_id: UUID | None = None
+    # Metadonnees bibliographiques optionnelles (exports BibTeX/CSL/APA).
+    journal: str | None = Field(default=None, max_length=300)
+    volume: str | None = Field(default=None, max_length=50)
+    pages: str | None = Field(default=None, max_length=50)
+    publisher: str | None = Field(default=None, max_length=300)
+    doi: str | None = Field(default=None, max_length=200)
     # Optional manual archive URL (e.g., Wayback snapshot the user already has).
     # When provided, it is persisted as-is and the auto-archive background task
     # is skipped. Empty/null → auto-archive via Wayback "Save Page Now" runs.
@@ -93,6 +99,11 @@ class SourceUpdate(BaseModel):
     annotation: str | None = None
     is_pivot: bool | None = None
     parent_source_id: UUID | None = None
+    journal: str | None = Field(default=None, max_length=300)
+    volume: str | None = Field(default=None, max_length=50)
+    pages: str | None = Field(default=None, max_length=50)
+    publisher: str | None = Field(default=None, max_length=300)
+    doi: str | None = Field(default=None, max_length=200)
     archive_url: str | None = Field(default=None, max_length=2000)
 
     _normalize_published_at = field_validator("published_at")(_naive_utc)
@@ -129,6 +140,11 @@ class SourceResponse(BaseModel):
     # Enrichi uniquement sur l'endpoint public (nombre de sources de la fiche liee).
     linked_card_sources_count: int | None = None
     conflict_of_interest: str | None = None
+    journal: str | None = None
+    volume: str | None = None
+    pages: str | None = None
+    publisher: str | None = None
+    doi: str | None = None
     citations_count: int | None = None
     subscribers_count: int | None = None
     views_count: int | None = None

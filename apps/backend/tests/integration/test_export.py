@@ -164,6 +164,31 @@ async def test_export_docx_is_valid_zip(client, published_card, test_user):
 
 
 @pytest.mark.asyncio
+async def test_export_csl_json(client, published_card, test_user):
+    resp = await client.get(
+        f"/api/v1/@{test_user.username}/{published_card.slug}/export",
+        params={"format": "csl"},
+    )
+    assert resp.status_code == 200
+    items = resp.json()
+    assert isinstance(items, list) and len(items) == 2
+    assert items[0]["type"] in {"article-journal", "webpage", "motion_picture"}
+    assert items[0]["URL"].startswith("http")
+
+
+@pytest.mark.asyncio
+async def test_export_apa_text(client, published_card, test_user):
+    resp = await client.get(
+        f"/api/v1/@{test_user.username}/{published_card.slug}/export",
+        params={"format": "apa"},
+    )
+    assert resp.status_code == 200
+    body = resp.text
+    assert body.startswith("Bibliographie —")
+    assert "https://" in body
+
+
+@pytest.mark.asyncio
 async def test_export_unknown_format_422(client, published_card, test_user):
     resp = await client.get(
         f"/api/v1/@{test_user.username}/{published_card.slug}/export",
