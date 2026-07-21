@@ -11,6 +11,7 @@ comme « GROBID indisponible » et le caller retombe sur le parseur local.
 from __future__ import annotations
 
 import logging
+import re
 import xml.etree.ElementTree as ET
 
 import httpx
@@ -21,6 +22,8 @@ from app.services.import_parsers import ImportedRef, _doi_to_url
 logger = logging.getLogger(__name__)
 
 _TEI = "{http://www.tei-c.org/ns/1.0}"
+# Identifiant arXiv dans un idno : "arXiv:1705.04304v2" ou "CoRR, abs/1703.03906".
+_ARXIV_ID_RE = re.compile(r"(?:arXiv:|abs/)(\d{4}\.\d{4,5})(?:v\d+)?", re.IGNORECASE)
 # Le traitement GROBID prend 3-6 s par PDF une fois le Space chaud ; le
 # timeout couvre aussi un éventuel réveil partiel sans bloquer l'endpoint.
 _TIMEOUT = 45.0
@@ -45,10 +48,21 @@ def _parse_tei(xml_text: str) -> list[ImportedRef] | None:
         doi = _text(bibl.find(f".//{_TEI}idno[@type='DOI']"))
         ptr = bibl.find(f".//{_TEI}ptr[@target]")
         target = ptr.get("target", "") if ptr is not None else ""
+        arxiv_id = None
+        for idno in bibl.iter(f"{_TEI}idno"):
+            m = _ARXIV_ID_RE.search("".join(idno.itertext()))
+            if m:
+                arxiv_id = m.group(1)
+                break
         if doi:
             url = _doi_to_url(doi)
+            category = "article-scientifique"
         elif target.startswith(("http://", "https://")):
             url = target
+            category = "page-web"
+        elif arxiv_id:
+            url = f"https://arxiv.org/abs/{arxiv_id}"
+            category = "preprint"
         else:
             continue
         title = _text(bibl.find(f".//{_TEI}title[@level='a']")) or _text(
@@ -71,7 +85,7 @@ def _parse_tei(xml_text: str) -> list[ImportedRef] | None:
                 title=title,
                 authors=", ".join(names) or None,
                 year=year,
-                category="article-scientifique" if doi else "page-web",
+                category=category,
             )
         )
     return refs

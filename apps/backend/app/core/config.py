@@ -46,10 +46,11 @@ class Settings(BaseSettings):
     litellm_base_url: str = ""
     litellm_master_key: str = ""
 
-    # GROBID (parsing structuré des références d'un PDF). Le Space HF public
-    # dort après inactivité (cold start ~2 min) : tout échec ou timeout
-    # retombe sur le parseur regex local. Vide = GROBID désactivé.
-    grobid_base_url: str = "https://kermitt2-grobid.hf.space"
+    # GROBID (parsing structuré des références d'un PDF). Le Space officiel
+    # kermitt2/grobid est PAUSED (2026-07) ; zfhxi/grobid est un duplicate
+    # public réveillable. Les Spaces HF gratuits dorment (cold start ~2 min) :
+    # tout échec ou timeout retombe sur le parseur regex local. Vide = off.
+    grobid_base_url: str = "https://zfhxi-grobid.hf.space"
 
     duckdb_path: str = "/data/filum_analytics.duckdb"
 

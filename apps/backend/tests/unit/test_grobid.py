@@ -36,6 +36,20 @@ TEI_SAMPLE = """<?xml version="1.0" encoding="UTF-8"?>
           <imprint />
         </monogr>
       </biblStruct>
+      <biblStruct>
+        <analytic>
+          <title level="a">Attention avec identifiant arXiv</title>
+          <idno type="arXiv">arXiv:1705.04304</idno>
+        </analytic>
+        <monogr><imprint /></monogr>
+      </biblStruct>
+      <biblStruct>
+        <monogr>
+          <title level="m">Papier CoRR sans type d'idno</title>
+          <idno>CoRR, abs/1703.03906</idno>
+          <imprint />
+        </monogr>
+      </biblStruct>
     </listBibl>
   </text>
 </TEI>
@@ -45,8 +59,8 @@ TEI_SAMPLE = """<?xml version="1.0" encoding="UTF-8"?>
 def test_parse_tei_extracts_structured_refs():
     refs = _parse_tei(TEI_SAMPLE)
     assert refs is not None
-    # La ref sans DOI ni URL est ignorée (le modèle Source exige une URL).
-    assert len(refs) == 2
+    # La ref sans DOI ni URL ni arXiv est ignorée (le modèle Source exige une URL).
+    assert len(refs) == 4
     article = refs[0]
     assert article.url == "https://doi.org/10.1038/nrn.2017.55"
     assert article.title == "Sleep and memory consolidation"
@@ -56,6 +70,13 @@ def test_parse_tei_extracts_structured_refs():
     rapport = refs[1]
     assert rapport.url == "https://example.org/rapport-grobid"
     assert rapport.title == "Rapport en ligne"
+    arxiv = refs[2]
+    assert arxiv.url == "https://arxiv.org/abs/1705.04304"
+    assert arxiv.title == "Attention avec identifiant arXiv"
+    assert arxiv.category == "preprint"
+    corr = refs[3]
+    assert corr.url == "https://arxiv.org/abs/1703.03906"
+    assert corr.category == "preprint"
 
 
 def test_parse_tei_invalid_xml():
@@ -97,7 +118,7 @@ async def test_extract_pdf_references_ok(monkeypatch):
     )
     refs = await extract_pdf_references(b"%PDF-1.4 fake")
     assert refs is not None
-    assert len(refs) == 2
+    assert len(refs) == 4
     assert calls and calls[0].endswith("/api/processReferences")
 
 
