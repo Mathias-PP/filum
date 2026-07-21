@@ -246,6 +246,11 @@ export interface ImportedSourceDraft {
   format: SourceFormat;
   category: SourceCategory;
   author_kind: AuthorKind;
+  /**
+   * Classification IA du type d'URL. Le badge est indicatif — l'user coche
+   * ou décoche à sa guise, rien n'est jamais filtré automatiquement.
+   */
+  classification?: 'source' | 'promo' | 'social' | 'other' | null;
 }
 
 export interface ImportedCardDraft {

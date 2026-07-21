@@ -584,6 +584,22 @@
                   <p class="text-[0.65rem] text-ink-tertiary uppercase tracking-wider mt-1">
                     {src.category} · {src.author_kind}
                   </p>
+                  {#if src.classification}
+                    {@const badgeClasses =
+                      src.classification === 'source'
+                        ? 'bg-success-bg text-success border-success/30'
+                        : src.classification === 'promo'
+                          ? 'bg-warning-bg text-warning border-warning/30'
+                          : src.classification === 'social'
+                            ? 'bg-info-bg text-info border-info/30'
+                            : 'bg-surface-secondary text-ink-tertiary border-border'}
+                    <span
+                      class="inline-flex items-center mt-1 px-1.5 py-0.5 rounded text-[0.65rem] uppercase tracking-wider border {badgeClasses}"
+                      title="Classification IA — vous pouvez ignorer"
+                    >
+                      {src.classification}
+                    </span>
+                  {/if}
                 </div>
               </li>
             {/each}
