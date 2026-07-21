@@ -18,6 +18,7 @@ Docs : https://api.semanticscholar.org/api-docs/graph
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass
 
@@ -123,12 +124,20 @@ async def get_paper_references(doi: str, limit: int = 500) -> list[SemanticSchol
     url = f"{_BASE_URL}/paper/DOI:{encoded}/references?fields={_REF_FIELDS}&limit={limit}"
     try:
         async with httpx.AsyncClient(headers=_HEADERS, timeout=_TIMEOUT) as client:
-            r = await client.get(url)
+            # Pool anonyme partage (100 req / 5 min) : le 429 est frequent et
+            # souvent transitoire — sans retry, l'etage S2 sautait quasi
+            # systematiquement. Backoff court : 2s puis 4s.
+            for attempt in range(3):
+                r = await client.get(url)
+                if r.status_code != 429:
+                    break
+                if attempt < 2:
+                    await asyncio.sleep(2.0 * (attempt + 1))
         if r.status_code == 404:
             logger.debug("S2 paper not found: %s", doi)
             return None
         if r.status_code == 429:
-            logger.warning("S2 rate-limited on doi=%s", doi)
+            logger.warning("S2 still rate-limited after retries on doi=%s", doi)
             return None
         if r.status_code != 200:
             logger.warning("S2 HTTP %s on doi=%s: %s", r.status_code, doi, r.text[:200])
