@@ -255,7 +255,7 @@
     >
       <input
         type="file"
-        accept=".bib,.bibtex,.json,.md,.markdown,.pdf"
+        accept=".bib,.bibtex,.json,.md,.markdown,.pdf,.docx,.html,.htm"
         class="hidden"
         bind:this={fileInput}
         onchange={(e) => acceptFile((e.target as HTMLInputElement).files?.[0])}
@@ -277,7 +277,9 @@
         </p>
       {:else}
         <p>ou déposez ici un fichier bibliographique</p>
-        <p class="text-xs mt-0.5">BibTeX, CSL-JSON (Zotero), Markdown (Obsidian), PDF — 5 Mo max</p>
+        <p class="text-xs mt-0.5">
+          BibTeX, CSL-JSON (Zotero), Markdown (Obsidian), PDF, Word ou page HTML — 5 Mo max
+        </p>
       {/if}
     </div>
 
