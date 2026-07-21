@@ -159,7 +159,7 @@
         oninput={(e) => (description = (e.target as HTMLTextAreaElement).value)}
         rows={3}
         placeholder="Résumé de votre contenu..."
-        class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary resize-none"
+        class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary resize-y min-h-[3rem]"
       ></textarea>
     </div>
 
