@@ -136,3 +136,28 @@ class TestSourceSchemas:
         assert update.title == "New title"
         assert update.is_pivot is True
         assert update.annotation is None
+
+    def test_published_at_tz_aware_normalized_to_naive_utc(self):
+        # Colonne Postgres TIMESTAMP WITHOUT TIME ZONE : une datetime tz-aware
+        # ("2002-01-01T00:00:00Z" côté client) fait planter asyncpg (DataError).
+        source = SourceCreate(**_minimal_source_kwargs(published_at="2002-01-01T00:00:00Z"))
+        assert source.published_at is not None
+        assert source.published_at.tzinfo is None
+        assert source.published_at.isoformat() == "2002-01-01T00:00:00"
+
+    def test_published_at_offset_converted_to_utc(self):
+        source = SourceCreate(**_minimal_source_kwargs(published_at="2014-06-01T02:00:00+02:00"))
+        assert source.published_at is not None
+        assert source.published_at.tzinfo is None
+        assert source.published_at.isoformat() == "2014-06-01T00:00:00"
+
+    def test_published_at_naive_passthrough(self):
+        source = SourceCreate(**_minimal_source_kwargs(published_at="2014-06-01T12:00:00"))
+        assert source.published_at is not None
+        assert source.published_at.tzinfo is None
+
+    def test_source_update_published_at_tz_aware_normalized(self):
+        update = SourceUpdate(published_at="1999-12-31T23:00:00+01:00")
+        assert update.published_at is not None
+        assert update.published_at.tzinfo is None
+        assert update.published_at.isoformat() == "1999-12-31T22:00:00"
