@@ -371,7 +371,6 @@
     error: string | null;
   };
 
-  let multiMode = $state(false);
   let multiText = $state('');
   let drafts = $state<DraftSource[]>([]);
   let multiExtracting = $state(false);
@@ -653,11 +652,7 @@
   >
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-lg font-semibold text-ink-primary">
-        {isEditing
-          ? 'Modifier la source'
-          : multiMode
-            ? 'Ajouter plusieurs sources'
-            : 'Ajouter une source'}
+        {isEditing ? 'Modifier la source' : 'Ajouter des sources'}
       </h2>
       {#if isEditing}
         <button
@@ -667,31 +662,10 @@
         >
           Annuler
         </button>
-      {:else}
-        <div class="flex rounded-lg border border-border-strong overflow-hidden text-sm">
-          <button
-            type="button"
-            onclick={() => (multiMode = false)}
-            class="px-3 py-1.5 transition-colors {multiMode
-              ? 'bg-surface-primary text-ink-tertiary hover:text-ink-primary'
-              : 'bg-info/10 text-info font-medium'}"
-          >
-            Une source
-          </button>
-          <button
-            type="button"
-            onclick={() => (multiMode = true)}
-            class="px-3 py-1.5 border-l border-border-strong transition-colors {multiMode
-              ? 'bg-info/10 text-info font-medium'
-              : 'bg-surface-primary text-ink-tertiary hover:text-ink-primary'}"
-          >
-            Multi-liens
-          </button>
-        </div>
       {/if}
     </div>
 
-    {#if multiMode && !isEditing}
+    {#if !isEditing}
       <div class="space-y-4">
         <div class="space-y-1.5">
           <label for="multi-urls" class="block text-sm font-medium text-ink-secondary">
@@ -705,7 +679,7 @@
             bind:value={multiText}
             rows={4}
             placeholder={'https://doi.org/10.1038/...\nhttps://www.lemonde.fr/...\nhttps://youtube.com/watch?v=...'}
-            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary font-mono text-sm resize-none"
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary font-mono text-sm resize-y min-h-[5rem]"
           ></textarea>
         </div>
         <div class="flex items-center justify-between gap-3 flex-wrap">
@@ -877,340 +851,343 @@
           </div>
         {/if}
       </div>
-    {:else}
-      <form onsubmit={submitSource} class="space-y-4">
-        {#if addError}
-          <div
-            class="rounded-lg bg-danger-bg border border-danger/30 px-4 py-3 text-sm text-danger"
-          >
-            {addError}
-          </div>
-        {/if}
 
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div class="sm:col-span-2 space-y-1.5">
-            <label for="source-url" class="block text-sm font-medium text-ink-secondary">
-              URL <span class="text-danger">*</span>
-            </label>
-            <div class="relative">
-              <input
-                id="source-url"
-                type="url"
-                value={url}
-                oninput={(e) => onUrlChange((e.target as HTMLInputElement).value)}
-                onblur={extractUrl}
-                required
-                readonly={isEditing}
-                placeholder="https://doi.org/..."
-                class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary read-only:bg-surface-tertiary read-only:text-ink-tertiary read-only:cursor-not-allowed"
-              />
-              {#if extracting}
-                <div
-                  class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-info border-t-transparent rounded-full animate-spin"
-                ></div>
-              {/if}
-            </div>
-            {#if isEditing}
-              <p class="text-xs text-ink-tertiary">
-                L'URL d'une source ne peut pas être modifiée (préserve l'archivage Wayback).
-              </p>
-            {/if}
-          </div>
-
-          <div class="space-y-1.5">
-            <label for="source-format" class="block text-sm font-medium text-ink-secondary">
-              Format <span class="text-danger">*</span>
-              {#if taxonomySuggested}
-                <span class="text-xs text-info font-normal">— suggéré</span>
-              {/if}
-            </label>
-            <select
-              id="source-format"
-              value={sourceFormat}
-              onchange={(e) =>
-                (sourceFormat = (e.target as HTMLSelectElement).value as SourceFormat)}
-              class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
-            >
-              {#each formatOptions as opt}
-                <option value={opt.value}>{opt.label}</option>
-              {/each}
-            </select>
-          </div>
-
-          <div class="space-y-1.5">
-            <label for="source-category" class="block text-sm font-medium text-ink-secondary">
-              Catégorie <span class="text-danger">*</span>
-              {#if taxonomySuggested}
-                <span class="text-xs text-info font-normal">— suggéré</span>
-              {/if}
-            </label>
-            <select
-              id="source-category"
-              value={sourceCategory}
-              onchange={(e) =>
-                (sourceCategory = (e.target as HTMLSelectElement).value as SourceCategory)}
-              class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
-            >
-              {#each categoryOptions as opt}
-                <option value={opt.value}>{opt.label}</option>
-              {/each}
-            </select>
-          </div>
-
-          <div class="sm:col-span-2 space-y-1.5">
-            <label for="source-author-kind" class="block text-sm font-medium text-ink-secondary">
-              Type d'auteur <span class="text-danger">*</span>
-              <span class="text-xs text-ink-tertiary font-normal"
-                >— colore le nœud dans le graphe</span
-              >
-              {#if taxonomySuggested}
-                <span class="text-xs text-info font-normal">— suggéré</span>
-              {/if}
-            </label>
-            <select
-              id="source-author-kind"
-              value={authorKind}
-              onchange={(e) => (authorKind = (e.target as HTMLSelectElement).value as AuthorKind)}
-              class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
-              style:border-left="4px solid {AUTHOR_COLORS[authorKind].stroke}"
-            >
-              {#each authorKindOptions as opt}
-                <option value={opt}>{authorLabel(opt)}</option>
-              {/each}
-            </select>
-          </div>
-
-          <div class="space-y-1.5">
-            <label for="source-title" class="block text-sm font-medium text-ink-secondary">
-              Titre
-            </label>
-            <input
-              id="source-title"
-              type="text"
-              bind:value={sourceTitle}
-              placeholder="Titre de la source"
-              class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
-            />
-          </div>
-
-          <div class="space-y-1.5">
-            <label for="source-authors" class="block text-sm font-medium text-ink-secondary">
-              Auteurs
-            </label>
-            <input
-              id="source-authors"
-              type="text"
-              bind:value={authors}
-              placeholder="Dupont J., Martin A."
-              class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
-            />
-          </div>
-
-          <div class="sm:col-span-2 space-y-1.5">
-            <label for="source-annotation" class="block text-sm font-medium text-ink-secondary">
-              Annotation
-            </label>
-            <textarea
-              id="source-annotation"
-              bind:value={annotation}
-              rows={2}
-              placeholder="Pourquoi cette source est-elle importante ?"
-              class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary resize-none"
-            ></textarea>
-          </div>
-
-          <div class="sm:col-span-2 space-y-1.5">
-            <label for="source-archive-url" class="block text-sm font-medium text-ink-secondary">
-              Lien archivé <span class="text-ink-tertiary font-normal">(optionnel)</span>
-              <span class="text-xs text-ink-tertiary font-normal block mt-0.5">
-                Laisser vide pour que Philum tente un archivage automatique via Wayback Machine.
-                Sinon, coller ici un snapshot existant (ex. <code
-                  >https://web.archive.org/web/…</code
-                >) ou tout autre miroir d'archive.
-              </span>
-            </label>
-            <input
-              id="source-archive-url"
-              type="url"
-              bind:value={archiveUrl}
-              placeholder="https://web.archive.org/web/2026.../https://..."
-              class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary font-mono text-sm"
-            />
-          </div>
-
-          <div class="sm:col-span-2">
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" bind:checked={isPivot} class="rounded border-border-strong" />
-              <span class="text-sm text-ink-secondary"
-                >Source clé (★ structurante du raisonnement)</span
-              >
-            </label>
-          </div>
-
-          {#if sources.length > 0}
-            <div class="sm:col-span-2 space-y-1.5">
-              <label for="source-parent" class="block text-sm font-medium text-ink-secondary">
-                Cette source en cite une autre déjà ajoutée ?
-                <span class="text-xs text-ink-tertiary font-normal"
-                  >— affichée en pointillés dans le graphe</span
-                >
-              </label>
-              <select
-                id="source-parent"
-                bind:value={parentSourceId}
-                class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
-              >
-                <option value="">— Aucun lien parent —</option>
-                {#each sources.filter((s) => s.id !== editingSourceId) as s}
-                  <option value={s.id}>{s.title ?? s.url}</option>
-                {/each}
-              </select>
-            </div>
-          {/if}
-        </div>
-
-        {#if isEditing && editingSource}
-          <div class="border-t border-border pt-4 space-y-3">
-            <div class="flex items-center justify-between gap-2 flex-wrap">
-              <h3 class="text-sm font-semibold text-ink-primary">
-                Citations
-                <span class="text-xs text-ink-tertiary font-normal"
-                  >— extraits marquants de cette source (max 10)</span
-                >
-              </h3>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                loading={suggesting}
-                disabled={suggesting || excerptAdding}
-                onclick={suggestExcerpts}
-              >
-                {suggesting ? 'Analyse…' : 'Suggérer des citations (IA)'}
-              </Button>
-            </div>
-
-            {#if excerptError}
-              <div
-                class="rounded-lg bg-danger-bg border border-danger/30 px-3 py-2 text-xs text-danger"
-              >
-                {excerptError}
-              </div>
-            {/if}
-            {#if suggestInfo}
-              <div class="rounded-lg bg-info/10 border border-info/30 px-3 py-2 text-xs text-info">
-                {suggestInfo}
-              </div>
-            {/if}
-
-            {#if editingSource.excerpts.length > 0}
-              <ul class="space-y-2">
-                {#each editingSource.excerpts as excerpt (excerpt.id)}
-                  <li
-                    class="flex items-start justify-between gap-2 rounded-lg border border-border bg-surface-secondary/50 px-3 py-2"
-                  >
-                    <p class="text-sm text-ink-secondary italic min-w-0">
-                      «&nbsp;{excerpt.text}&nbsp;»
-                      {#if excerpt.suggested_by_ai}
-                        <span class="text-xs text-ink-tertiary not-italic">(IA)</span>
-                      {/if}
-                    </p>
-                    <button
-                      type="button"
-                      onclick={() => removeExcerpt(excerpt.id)}
-                      class="p-1 shrink-0 text-ink-tertiary hover:text-danger transition-colors"
-                      aria-label="Supprimer cette citation"
-                      title="Supprimer"
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        class="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                      >
-                        <line x1="6" y1="6" x2="18" y2="18" />
-                        <line x1="6" y1="18" x2="18" y2="6" />
-                      </svg>
-                    </button>
-                  </li>
-                {/each}
-              </ul>
-            {/if}
-
-            {#if suggestions.length > 0}
-              <div class="space-y-2">
-                <p class="text-xs font-medium text-ink-secondary">
-                  Suggestions repérées dans le texte (vérifiées mot pour mot) :
-                </p>
-                {#each suggestions as sug (sug.char_offset)}
-                  <div class="rounded-lg border border-info/30 bg-info/5 px-3 py-2 space-y-1.5">
-                    <p class="text-xs text-ink-tertiary">
-                      …{sug.context_before}<span class="text-ink-primary font-medium"
-                        >{sug.text}</span
-                      >{sug.context_after}…
-                    </p>
-                    <div class="flex justify-end">
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        disabled={excerptAdding || editingSource.excerpts.length >= 10}
-                        onclick={() => addExcerpt(sug.text, true)}
-                      >
-                        Ajouter
-                      </Button>
-                    </div>
-                  </div>
-                {/each}
-              </div>
-            {/if}
-
-            <div class="flex gap-2">
-              <input
-                type="text"
-                bind:value={excerptText}
-                maxlength={1000}
-                placeholder="Ajouter une citation manuellement…"
-                class="flex-1 px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-tertiary"
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                loading={excerptAdding}
-                disabled={excerptAdding || !excerptText.trim()}
-                onclick={() => addExcerpt(excerptText)}
-              >
-                Ajouter
-              </Button>
-            </div>
-          </div>
-        {/if}
-
-        <div class="flex justify-end gap-2">
-          {#if isEditing}
-            <Button type="button" variant="ghost" onclick={cancelEdit} disabled={addLoading}>
-              Annuler
-            </Button>
-          {/if}
-          <Button
-            type="submit"
-            variant={isEditing ? 'primary' : 'secondary'}
-            loading={addLoading}
-            disabled={!url || addLoading}
-          >
-            {#if addLoading}
-              {isEditing ? 'Enregistrement…' : 'Ajout…'}
-            {:else if isEditing}
-              Enregistrer les modifications
-            {:else}
-              Ajouter
-            {/if}
-          </Button>
-        </div>
-      </form>
+      <div class="flex items-center gap-3 my-6" aria-hidden="true">
+        <div class="flex-1 h-px bg-border"></div>
+        <span class="text-xs uppercase tracking-wider text-ink-tertiary"
+          >Ou ajouter une source à la fois</span
+        >
+        <div class="flex-1 h-px bg-border"></div>
+      </div>
     {/if}
+
+    <form onsubmit={submitSource} class="space-y-4">
+      {#if addError}
+        <div class="rounded-lg bg-danger-bg border border-danger/30 px-4 py-3 text-sm text-danger">
+          {addError}
+        </div>
+      {/if}
+
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div class="sm:col-span-2 space-y-1.5">
+          <label for="source-url" class="block text-sm font-medium text-ink-secondary">
+            URL <span class="text-danger">*</span>
+          </label>
+          <div class="relative">
+            <input
+              id="source-url"
+              type="url"
+              value={url}
+              oninput={(e) => onUrlChange((e.target as HTMLInputElement).value)}
+              onblur={extractUrl}
+              required
+              readonly={isEditing}
+              placeholder="https://doi.org/..."
+              class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary read-only:bg-surface-tertiary read-only:text-ink-tertiary read-only:cursor-not-allowed"
+            />
+            {#if extracting}
+              <div
+                class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-info border-t-transparent rounded-full animate-spin"
+              ></div>
+            {/if}
+          </div>
+          {#if isEditing}
+            <p class="text-xs text-ink-tertiary">
+              L'URL d'une source ne peut pas être modifiée (préserve l'archivage Wayback).
+            </p>
+          {/if}
+        </div>
+
+        <div class="space-y-1.5">
+          <label for="source-format" class="block text-sm font-medium text-ink-secondary">
+            Format <span class="text-danger">*</span>
+            {#if taxonomySuggested}
+              <span class="text-xs text-info font-normal">— suggéré</span>
+            {/if}
+          </label>
+          <select
+            id="source-format"
+            value={sourceFormat}
+            onchange={(e) => (sourceFormat = (e.target as HTMLSelectElement).value as SourceFormat)}
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
+          >
+            {#each formatOptions as opt}
+              <option value={opt.value}>{opt.label}</option>
+            {/each}
+          </select>
+        </div>
+
+        <div class="space-y-1.5">
+          <label for="source-category" class="block text-sm font-medium text-ink-secondary">
+            Catégorie <span class="text-danger">*</span>
+            {#if taxonomySuggested}
+              <span class="text-xs text-info font-normal">— suggéré</span>
+            {/if}
+          </label>
+          <select
+            id="source-category"
+            value={sourceCategory}
+            onchange={(e) =>
+              (sourceCategory = (e.target as HTMLSelectElement).value as SourceCategory)}
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
+          >
+            {#each categoryOptions as opt}
+              <option value={opt.value}>{opt.label}</option>
+            {/each}
+          </select>
+        </div>
+
+        <div class="sm:col-span-2 space-y-1.5">
+          <label for="source-author-kind" class="block text-sm font-medium text-ink-secondary">
+            Type d'auteur <span class="text-danger">*</span>
+            <span class="text-xs text-ink-tertiary font-normal"
+              >— colore le nœud dans le graphe</span
+            >
+            {#if taxonomySuggested}
+              <span class="text-xs text-info font-normal">— suggéré</span>
+            {/if}
+          </label>
+          <select
+            id="source-author-kind"
+            value={authorKind}
+            onchange={(e) => (authorKind = (e.target as HTMLSelectElement).value as AuthorKind)}
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
+            style:border-left="4px solid {AUTHOR_COLORS[authorKind].stroke}"
+          >
+            {#each authorKindOptions as opt}
+              <option value={opt}>{authorLabel(opt)}</option>
+            {/each}
+          </select>
+        </div>
+
+        <div class="space-y-1.5">
+          <label for="source-title" class="block text-sm font-medium text-ink-secondary">
+            Titre
+          </label>
+          <input
+            id="source-title"
+            type="text"
+            bind:value={sourceTitle}
+            placeholder="Titre de la source"
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
+          />
+        </div>
+
+        <div class="space-y-1.5">
+          <label for="source-authors" class="block text-sm font-medium text-ink-secondary">
+            Auteurs
+          </label>
+          <input
+            id="source-authors"
+            type="text"
+            bind:value={authors}
+            placeholder="Dupont J., Martin A."
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
+          />
+        </div>
+
+        <div class="sm:col-span-2 space-y-1.5">
+          <label for="source-annotation" class="block text-sm font-medium text-ink-secondary">
+            Annotation
+          </label>
+          <textarea
+            id="source-annotation"
+            bind:value={annotation}
+            rows={2}
+            placeholder="Pourquoi cette source est-elle importante ?"
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary resize-y min-h-[3rem]"
+          ></textarea>
+        </div>
+
+        <div class="sm:col-span-2 space-y-1.5">
+          <label for="source-archive-url" class="block text-sm font-medium text-ink-secondary">
+            Lien archivé <span class="text-ink-tertiary font-normal">(optionnel)</span>
+            <span class="text-xs text-ink-tertiary font-normal block mt-0.5">
+              Laisser vide pour que Philum tente un archivage automatique via Wayback Machine.
+              Sinon, coller ici un snapshot existant (ex. <code>https://web.archive.org/web/…</code
+              >) ou tout autre miroir d'archive.
+            </span>
+          </label>
+          <input
+            id="source-archive-url"
+            type="url"
+            bind:value={archiveUrl}
+            placeholder="https://web.archive.org/web/2026.../https://..."
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary font-mono text-sm"
+          />
+        </div>
+
+        <div class="sm:col-span-2">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" bind:checked={isPivot} class="rounded border-border-strong" />
+            <span class="text-sm text-ink-secondary"
+              >Source clé (★ structurante du raisonnement)</span
+            >
+          </label>
+        </div>
+
+        {#if sources.length > 0}
+          <div class="sm:col-span-2 space-y-1.5">
+            <label for="source-parent" class="block text-sm font-medium text-ink-secondary">
+              Cette source en cite une autre déjà ajoutée ?
+              <span class="text-xs text-ink-tertiary font-normal"
+                >— affichée en pointillés dans le graphe</span
+              >
+            </label>
+            <select
+              id="source-parent"
+              bind:value={parentSourceId}
+              class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
+            >
+              <option value="">— Aucun lien parent —</option>
+              {#each sources.filter((s) => s.id !== editingSourceId) as s}
+                <option value={s.id}>{s.title ?? s.url}</option>
+              {/each}
+            </select>
+          </div>
+        {/if}
+      </div>
+
+      {#if isEditing && editingSource}
+        <div class="border-t border-border pt-4 space-y-3">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <h3 class="text-sm font-semibold text-ink-primary">
+              Citations
+              <span class="text-xs text-ink-tertiary font-normal"
+                >— extraits marquants de cette source (max 10)</span
+              >
+            </h3>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              loading={suggesting}
+              disabled={suggesting || excerptAdding}
+              onclick={suggestExcerpts}
+            >
+              {suggesting ? 'Analyse…' : 'Suggérer des citations (IA)'}
+            </Button>
+          </div>
+
+          {#if excerptError}
+            <div
+              class="rounded-lg bg-danger-bg border border-danger/30 px-3 py-2 text-xs text-danger"
+            >
+              {excerptError}
+            </div>
+          {/if}
+          {#if suggestInfo}
+            <div class="rounded-lg bg-info/10 border border-info/30 px-3 py-2 text-xs text-info">
+              {suggestInfo}
+            </div>
+          {/if}
+
+          {#if editingSource.excerpts.length > 0}
+            <ul class="space-y-2">
+              {#each editingSource.excerpts as excerpt (excerpt.id)}
+                <li
+                  class="flex items-start justify-between gap-2 rounded-lg border border-border bg-surface-secondary/50 px-3 py-2"
+                >
+                  <p class="text-sm text-ink-secondary italic min-w-0">
+                    «&nbsp;{excerpt.text}&nbsp;»
+                    {#if excerpt.suggested_by_ai}
+                      <span class="text-xs text-ink-tertiary not-italic">(IA)</span>
+                    {/if}
+                  </p>
+                  <button
+                    type="button"
+                    onclick={() => removeExcerpt(excerpt.id)}
+                    class="p-1 shrink-0 text-ink-tertiary hover:text-danger transition-colors"
+                    aria-label="Supprimer cette citation"
+                    title="Supprimer"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                      <line x1="6" y1="18" x2="18" y2="6" />
+                    </svg>
+                  </button>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+
+          {#if suggestions.length > 0}
+            <div class="space-y-2">
+              <p class="text-xs font-medium text-ink-secondary">
+                Suggestions repérées dans le texte (vérifiées mot pour mot) :
+              </p>
+              {#each suggestions as sug (sug.char_offset)}
+                <div class="rounded-lg border border-info/30 bg-info/5 px-3 py-2 space-y-1.5">
+                  <p class="text-xs text-ink-tertiary">
+                    …{sug.context_before}<span class="text-ink-primary font-medium">{sug.text}</span
+                    >{sug.context_after}…
+                  </p>
+                  <div class="flex justify-end">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      disabled={excerptAdding || editingSource.excerpts.length >= 10}
+                      onclick={() => addExcerpt(sug.text, true)}
+                    >
+                      Ajouter
+                    </Button>
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {/if}
+
+          <div class="flex gap-2">
+            <input
+              type="text"
+              bind:value={excerptText}
+              maxlength={1000}
+              placeholder="Ajouter une citation manuellement…"
+              class="flex-1 px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-tertiary"
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              loading={excerptAdding}
+              disabled={excerptAdding || !excerptText.trim()}
+              onclick={() => addExcerpt(excerptText)}
+            >
+              Ajouter
+            </Button>
+          </div>
+        </div>
+      {/if}
+
+      <div class="flex justify-end gap-2">
+        {#if isEditing}
+          <Button type="button" variant="ghost" onclick={cancelEdit} disabled={addLoading}>
+            Annuler
+          </Button>
+        {/if}
+        <Button
+          type="submit"
+          variant={isEditing ? 'primary' : 'secondary'}
+          loading={addLoading}
+          disabled={!url || addLoading}
+        >
+          {#if addLoading}
+            {isEditing ? 'Enregistrement…' : 'Ajout…'}
+          {:else if isEditing}
+            Enregistrer les modifications
+          {:else}
+            Ajouter
+          {/if}
+        </Button>
+      </div>
+    </form>
   </div>
 
   <!-- Sources list -->
