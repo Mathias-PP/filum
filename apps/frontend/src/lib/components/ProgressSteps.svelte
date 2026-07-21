@@ -24,7 +24,7 @@
             {isDone
             ? 'bg-success text-white'
             : isActive
-              ? 'bg-ink-primary text-white'
+              ? 'bg-ink-primary text-surface-primary'
               : 'bg-surface-tertiary text-ink-tertiary border border-border'}"
           aria-current={isActive ? 'step' : undefined}
         >

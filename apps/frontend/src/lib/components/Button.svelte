@@ -11,6 +11,7 @@
     target?: '_blank' | '_self' | '_parent' | '_top';
     rel?: string;
     class?: string;
+    title?: string;
     onclick?: (e: MouseEvent) => void;
     children: Snippet;
   }
@@ -25,6 +26,7 @@
     target,
     rel,
     class: className = '',
+    title,
     onclick,
     children,
   }: Props = $props();
@@ -55,11 +57,11 @@
 </script>
 
 {#if href && !disabled}
-  <a {href} {target} rel={computedRel} class={classes}>
+  <a {href} {target} rel={computedRel} {title} class={classes}>
     {@render children()}
   </a>
 {:else}
-  <button {type} class={classes} disabled={disabled || loading} {onclick}>
+  <button {type} {title} class={classes} disabled={disabled || loading} {onclick}>
     {#if loading}
       <svg
         class="animate-spin -ml-0.5 h-4 w-4"
