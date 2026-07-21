@@ -319,9 +319,7 @@ async def create_sources_batch(
     created_ids = [s.id for s in created]
     if created_ids:
         refresh = await db.execute(
-            select(Source)
-            .options(selectinload(Source.excerpts))
-            .where(Source.id.in_(created_ids))
+            select(Source).options(selectinload(Source.excerpts)).where(Source.id.in_(created_ids))
         )
         created_full = list(refresh.scalars().all())
     else:
