@@ -10,6 +10,12 @@
     ClaimBanner,
     Skeleton,
   } from '$lib/components';
+  import {
+    AUTHOR_COLORS,
+    CATEGORY_COLORS,
+    authorLabel,
+    categoryLabel,
+  } from '$lib/utils/author-colors';
   import { slide } from 'svelte/transition';
   import { page } from '$app/stores';
   import { currentUser } from '$lib/stores/auth';
@@ -24,6 +30,26 @@
   const card = $derived(data.card);
   const creatorSlug = $derived(data.creatorSlug);
   const cardSlug = $derived(data.cardSlug);
+
+  // Valeur majoritaire (et son %) parmi les sources — affichée dans les
+  // indicateurs à la place des anciens compteurs fixes Chercheurs/Institutions.
+  function majority<K extends string>(keys: K[]): { key: K; pct: number } | null {
+    if (keys.length === 0) return null;
+    const counts = new Map<K, number>();
+    for (const k of keys) counts.set(k, (counts.get(k) ?? 0) + 1);
+    let bestKey = keys[0];
+    let bestCount = 0;
+    for (const [k, n] of counts) {
+      if (n > bestCount) {
+        bestKey = k;
+        bestCount = n;
+      }
+    }
+    return { key: bestKey, pct: Math.round((bestCount / keys.length) * 100) };
+  }
+
+  const majorityAuthor = $derived(majority(card.sources.map((s) => s.author_kind)));
+  const majorityCategory = $derived(majority(card.sources.map((s) => s.category)));
 
   // Relative — routed through the SvelteKit /api proxy for first-party cookies.
   const API_BASE = '';
@@ -278,16 +304,36 @@
             <p class="text-xs sm:text-sm text-ink-tertiary">Sources</p>
           </div>
           <div class="text-center p-3 sm:p-4 bg-surface-secondary rounded-lg">
-            <p class="text-xl sm:text-2xl font-bold text-emerald-600">
-              {card.stats.chercheur}
-            </p>
-            <p class="text-xs sm:text-sm text-ink-tertiary">Chercheur·euse·s</p>
+            {#if majorityAuthor}
+              <p
+                class="text-xl sm:text-2xl font-bold"
+                style="color: {AUTHOR_COLORS[majorityAuthor.key].stroke}"
+              >
+                {majorityAuthor.pct}&nbsp;%
+              </p>
+              <p class="text-xs sm:text-sm text-ink-tertiary">
+                {authorLabel(majorityAuthor.key)}
+              </p>
+            {:else}
+              <p class="text-xl sm:text-2xl font-bold text-ink-tertiary">—</p>
+              <p class="text-xs sm:text-sm text-ink-tertiary">Type d'auteur</p>
+            {/if}
           </div>
           <div class="text-center p-3 sm:p-4 bg-surface-secondary rounded-lg">
-            <p class="text-xl sm:text-2xl font-bold text-info">
-              {card.stats.institution_publique}
-            </p>
-            <p class="text-xs sm:text-sm text-ink-tertiary">Institutions</p>
+            {#if majorityCategory}
+              <p
+                class="text-xl sm:text-2xl font-bold"
+                style="color: {CATEGORY_COLORS[majorityCategory.key].stroke}"
+              >
+                {majorityCategory.pct}&nbsp;%
+              </p>
+              <p class="text-xs sm:text-sm text-ink-tertiary">
+                {categoryLabel(majorityCategory.key)}
+              </p>
+            {:else}
+              <p class="text-xl sm:text-2xl font-bold text-ink-tertiary">—</p>
+              <p class="text-xs sm:text-sm text-ink-tertiary">Catégorie</p>
+            {/if}
           </div>
           <div class="text-center p-3 sm:p-4 bg-surface-secondary rounded-lg">
             <p class="text-xl sm:text-2xl font-bold text-ink-secondary">
