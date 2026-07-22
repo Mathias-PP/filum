@@ -422,6 +422,10 @@
   // ── Mode multi-liens ──────────────────────────────────────────────────
   type DraftStatus = 'extracting' | 'ready' | 'adding' | 'error';
   type DraftSource = {
+    // Cle stable pour {#each} : les refs sans URL (livres S2 sans DOI)
+    // partagent url="" et collisionnaient sur draft.url -> Svelte 5 ne
+    // rendait plus la liste des lors qu'il y en avait plusieurs.
+    key: string;
     url: string;
     title: string;
     authors: string;
@@ -432,6 +436,12 @@
     status: DraftStatus;
     error: string | null;
   };
+
+  let draftKeySeq = 0;
+  function nextDraftKey(): string {
+    draftKeySeq += 1;
+    return `d${draftKeySeq}`;
+  }
 
   let multiText = $state('');
   let drafts = $state<DraftSource[]>([]);
@@ -470,6 +480,7 @@
     multiExtracting = true;
     for (const u of urls) {
       drafts.push({
+        key: nextDraftKey(),
         url: u,
         title: '',
         authors: '',
@@ -534,8 +545,8 @@
     addingAll = true;
     // Itération par URL : les index bougent quand un draft ajouté est retiré.
     const pending = drafts.filter((d) => d.status === 'ready' || d.status === 'error');
-    for (const { url: u } of pending) {
-      const idx = drafts.findIndex((d) => d.url === u);
+    for (const { key: k } of pending) {
+      const idx = drafts.findIndex((d) => d.key === k);
       if (idx !== -1) await addDraft(idx);
     }
     addingAll = false;
@@ -576,6 +587,7 @@
       if (ref.url) known.add(ref.url);
       added += 1;
       drafts.push({
+        key: nextDraftKey(),
         url: ref.url,
         title: ref.title ?? '',
         authors: ref.authors ?? '',
@@ -1008,7 +1020,7 @@
 
         {#if drafts.length > 0}
           <div class="space-y-3 border-t border-border pt-4">
-            {#each drafts as draft, i (draft.url)}
+            {#each drafts as draft, i (draft.key)}
               <div class="border border-border rounded-lg p-4 space-y-3 bg-surface-secondary/50">
                 <div class="flex items-start justify-between gap-2">
                   <p class="text-xs text-ink-tertiary font-mono truncate min-w-0">{draft.url}</p>
