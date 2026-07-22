@@ -559,16 +559,21 @@
   type ImportResponse = { sources: ImportedDraft[]; skipped: number; format_detected?: string };
 
   async function ingestImported(data: ImportResponse) {
-    const known = new Set([...sources.map((s) => s.url), ...drafts.map((d) => d.url)]);
+    // Dedup par URL uniquement pour les refs qui EN ONT une : les no-URL
+    // refs (livres S2 sans DOI, sections de bibliographie) sont
+    // deja dedupees titre-par-titre cote backend, on les laisse passer.
+    const known = new Set(
+      [...sources.map((s) => s.url), ...drafts.map((d) => d.url)].filter(Boolean)
+    );
     let added = 0;
     let duplicates = 0;
     const needExtract: string[] = [];
     for (const ref of data.sources) {
-      if (known.has(ref.url)) {
+      if (ref.url && known.has(ref.url)) {
         duplicates += 1;
         continue;
       }
-      known.add(ref.url);
+      if (ref.url) known.add(ref.url);
       added += 1;
       drafts.push({
         url: ref.url,
@@ -912,17 +917,18 @@
       <div class="space-y-4">
         <div class="space-y-1.5">
           <label for="multi-urls" class="block text-sm font-medium text-ink-secondary">
-            Liens ou bibliographie
-            <span class="text-xs text-ink-tertiary font-normal"
-              >— des liens (un par ligne) ou une bibliographie collée telle quelle</span
-            >
+            Liens, DOIs ou bibliographie collée
+            <span class="text-xs text-ink-tertiary font-normal block mt-0.5">
+              Trois usages : (1) coller une liste d'URLs (une par ligne), (2) coller un bloc de
+              bibliographie brute (l'IA découpe et structure chaque référence), (3) mixer les deux.
+            </span>
           </label>
           <textarea
             id="multi-urls"
             bind:value={multiText}
-            rows={4}
-            placeholder={'https://doi.org/10.1038/...\nhttps://www.lemonde.fr/...\nhttps://youtube.com/watch?v=...'}
-            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary font-mono text-sm resize-y min-h-[5rem]"
+            rows={8}
+            placeholder={'— Une liste de liens :\nhttps://doi.org/10.1038/s41586-020-2649-2\nhttps://www.lemonde.fr/...\n\n— OU une bibliographie complète collée depuis un article, Zotero, un PDF… :\nWolfe, C. D., & Bell, M. A. (2007). The integration of cognition and emotion during infancy and early childhood: regulatory processes associated with the development of working memory. Brain and Cognition, 65(1), 3–13. https://doi.org/10.1016/j.bandc.2006.01.009\nDupont, J., & Martin, A. (2020). Titre. Journal, 12(3), 45-67.'}
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary font-mono text-sm resize-y min-h-[8rem]"
           ></textarea>
         </div>
         <div class="flex items-center justify-between gap-3 flex-wrap">
