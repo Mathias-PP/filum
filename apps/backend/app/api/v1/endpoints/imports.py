@@ -273,7 +273,27 @@ def _merge_s2_refs(base: ParseResult, s2_refs: list[SemanticScholarRef]) -> Pars
                 existing.year = imported.year
             if existing.category == "page-web":
                 existing.category = "article-scientifique"
-    return ParseResult(refs=list(by_key.values()), skipped=skipped)
+    # 2e passe : dedup par titre normalise. Frontiers etc. peuvent citer un
+    # papier avec 2 URLs differentes (canonical journal + arXiv preprint),
+    # non fusionnees par _dedupe_key (DOI different) mais qui pointent
+    # clairement vers le meme objet -> le titre les rapproche.
+    seen_titles: set[str] = set()
+    kept: list[ImportedRef] = []
+    for ref in by_key.values():
+        norm = _normalize_title_for_dedup(ref.title)
+        if norm and norm in seen_titles:
+            continue
+        if norm:
+            seen_titles.add(norm)
+        kept.append(ref)
+    return ParseResult(refs=kept, skipped=skipped)
+
+
+def _normalize_title_for_dedup(title: str | None) -> str:
+    """Titre → suite alphanumerique lowercase (60 chars) pour dedup."""
+    if not title:
+        return ""
+    return "".join(c for c in title.lower() if c.isalnum())[:60]
 
 
 # --- Fallback LLM par bloc de reference ------------------------------------

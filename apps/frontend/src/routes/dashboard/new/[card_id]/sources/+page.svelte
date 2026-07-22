@@ -706,20 +706,29 @@
     refsExtracting = true;
     try {
       const res = await api.imports.fromContentUrl(target);
-      if (res.fetch_status === 'unreachable') {
+      const hasRefs = res.sources.length > 0;
+      // Le fetch_status decrit UNIQUEMENT le fetch HTML direct : Semantic
+      // Scholar / Crossref restent interrogeables meme quand la page est
+      // bloquee (ScienceDirect/Elsevier). Ne surtout pas afficher une erreur
+      // "site inaccessible" si on a quand meme recupere N refs par ailleurs.
+      if (hasRefs) {
+        if (res.fetch_status === 'unreachable' || res.fetch_status === 'not_html') {
+          refsInfo = `Le site bloque l'accès direct — ${res.sources.length} référence${
+            res.sources.length > 1 ? 's' : ''
+          } récupérée${res.sources.length > 1 ? 's' : ''} via Semantic Scholar / Crossref.`;
+        } else if (res.fetch_status === 'ok_via_wayback') {
+          refsInfo =
+            'Le site bloque l’accès direct : extraction faite depuis une capture Internet Archive.';
+        }
+        if (overwriteDrafts) drafts = [];
+        await ingestImported({ sources: res.sources, skipped: res.skipped });
+        hasExtractedRefs = true;
+      } else if (res.fetch_status === 'unreachable') {
         refsError = 'La page n’a pas pu être récupérée (site inaccessible ou bloqué).';
       } else if (res.fetch_status === 'not_html') {
         refsError =
           'Ce lien ne pointe pas vers une page web (PDF, image…) — l’extraction ne fonctionne que sur du HTML.';
-      } else if (res.fetch_status === 'ok_via_wayback') {
-        refsInfo =
-          'Le site bloque l’accès direct : extraction faite depuis une capture Internet Archive.';
-      }
-      if (res.sources.length > 0) {
-        if (overwriteDrafts) drafts = [];
-        await ingestImported({ sources: res.sources, skipped: res.skipped });
-        hasExtractedRefs = true;
-      } else if (!refsError) {
+      } else {
         refsInfo = res.references_section_found
           ? 'Aucune référence exploitable trouvée sur cette page.'
           : 'Aucune section « Références » détectée sur cette page.';

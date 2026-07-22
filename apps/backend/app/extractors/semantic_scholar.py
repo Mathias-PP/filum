@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from dataclasses import dataclass
 
 import httpx
@@ -82,24 +83,41 @@ def _extract_url_from_ext_ids(ext_ids: dict | None) -> tuple[str | None, str | N
     return None, None
 
 
+def _sanitize_text(s: str | None) -> str | None:
+    """Nettoie les titres/auteurs S2 : demi-surrogates orphelins (rendent le
+    JSON invalide en aval) + tirets Unicode divers normalises en ASCII."""
+    if not s:
+        return s
+    # \ud800-\udfff : surrogate halves orphelins qui apparaissent dans certains
+    # titres S2 (papiers Wiley/PMC) et cassent la serialisation JSON aval.
+    # Les tirets Unicode (hyphen U+2010, non-breaking U+2011, figure U+2012,
+    # etc.) sont normalises en '-' pour la lisibilite et la deduplication.
+    s = re.sub(r"[\ud800-\udfff]", "-", s)
+    s = re.sub(r"[‐‑‒–—]", "-", s)
+    s = s.replace("­", "")  # soft hyphen (invisible mais casse la dedup)
+    return s.strip() or None
+
+
 def _parse_referenced_paper(item: dict) -> SemanticScholarRef | None:
     """Extrait une SemanticScholarRef depuis un item S2 references."""
     paper = item.get("citedPaper") if isinstance(item, dict) else None
     if not isinstance(paper, dict):
         return None
     doi, url = _extract_url_from_ext_ids(paper.get("externalIds"))
+    title = _sanitize_text(paper.get("title"))
+    authors = _sanitize_text(_format_authors(paper.get("authors")))
     if not url:
         # Pas d'URL exploitable -> on skip cote pipeline (sera compte skipped)
         return SemanticScholarRef(
-            title=paper.get("title"),
-            authors=_format_authors(paper.get("authors")),
+            title=title,
+            authors=authors,
             year=paper.get("year"),
             doi=doi,
             url=None,
         )
     return SemanticScholarRef(
-        title=paper.get("title"),
-        authors=_format_authors(paper.get("authors")),
+        title=title,
+        authors=authors,
         year=paper.get("year"),
         doi=doi,
         url=url,
