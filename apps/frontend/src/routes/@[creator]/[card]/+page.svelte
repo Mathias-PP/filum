@@ -396,8 +396,21 @@
                         </span>
                       {/if}
                     </div>
-                    {#if source.authors}
-                      <p class="text-sm text-ink-tertiary mt-1">{source.authors}</p>
+                    {#if source.authors || source.published_at}
+                      <p class="text-sm text-ink-tertiary mt-1">
+                        {#if source.authors}{source.authors}{/if}{#if source.authors && source.published_at}
+                          &nbsp;·
+                        {/if}{#if source.published_at}
+                          <time datetime={source.published_at}>
+                            {new Date(source.published_at).getFullYear()}
+                          </time>
+                        {/if}
+                      </p>
+                    {/if}
+                    {#if source.journal}
+                      <p class="text-sm text-ink-tertiary italic mt-0.5">
+                        {source.journal}{#if source.volume}, {source.volume}{/if}{#if source.pages}, {source.pages}{/if}
+                      </p>
                     {/if}
                     <p class="text-sm text-info mt-1 truncate">{source.url}</p>
                   </div>
