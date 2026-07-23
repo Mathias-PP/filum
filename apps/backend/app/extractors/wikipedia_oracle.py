@@ -106,9 +106,7 @@ def _parse_reference_li(li: Tag) -> ImportedRef | None:
     if cite and isinstance(cite, Tag):
         # Wikipedia met souvent le titre dans un <a> a l'interieur du <cite>
         title_a = cite.find("a")
-        title = (
-            title_a.get_text(" ", strip=True) if title_a else cite.get_text(" ", strip=True)
-        )
+        title = title_a.get_text(" ", strip=True) if title_a else cite.get_text(" ", strip=True)
     if not title:
         for a in li.select("a.external"):
             text_a = a.get_text(" ", strip=True)

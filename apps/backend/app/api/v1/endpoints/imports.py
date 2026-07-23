@@ -719,11 +719,15 @@ async def parse_content_url(
 
     # ETAGE 2 : Crossref si DOI extractible (autoritatif, biblio deposee
     # par l'editeur). Set A = refs officielles, gardees sans validation.
+    # Si Crossref echoue mais qu'un DOI existe, S2 fait office d'autoritatif
+    # de secours (les refs S2 pour un DOI donne = biblio du meme article,
+    # pas des candidats a valider contre une section externe).
     content_doi = _doi_from_url(url)
     if not content_doi:
         content_doi = await resolve_doi_from_pii(url)
 
     crossref_refs: list[ImportedRef] = []
+    s2_used_as_authoritative = False
     if content_doi:
         cross = await get_crossref_references(content_doi)
         if cross:
@@ -733,6 +737,17 @@ async def parse_content_url(
                 for imported in (_s2_ref_to_imported_ref(r) for r in cross if r)
                 if imported is not None
             ]
+        else:
+            # Crossref muet -> S2 devient l'autoritatif pour ce DOI.
+            s2_raw = await get_paper_references(content_doi)
+            if s2_raw:
+                logger.info("s2_authoritative_hit doi=%s refs=%d", content_doi, len(s2_raw))
+                crossref_refs = [
+                    imported
+                    for imported in (_s2_ref_to_imported_ref(r) for r in s2_raw if r)
+                    if imported is not None
+                ]
+                s2_used_as_authoritative = True
 
     # ETAGE 3 : enrichissement (S2 + HTML + LLM). Set B = candidats a valider.
     # Fetch HTML pour section-detection et scraping.
@@ -773,9 +788,10 @@ async def parse_content_url(
             # extraire du texte "biblio-like" quand meme.
             refs_text, _legacy_found = _extract_references_text(html)
 
-    # 3a. S2 (couvre Elsevier la ou Crossref est partiel)
+    # 3a. S2 comme enrichissement de Crossref (couvre Elsevier la ou Crossref
+    # est partiel). Skip si S2 est deja utilise comme autoritatif (a l'etage 2).
     s2_refs: list[ImportedRef] = []
-    if content_doi:
+    if content_doi and not s2_used_as_authoritative:
         s2_raw = await get_paper_references(content_doi)
         if s2_raw:
             logger.info("s2_hit doi=%s refs=%d", content_doi, len(s2_raw))
@@ -838,9 +854,7 @@ async def parse_content_url(
     await _classify_refs(result.refs)
 
     # Compteurs de provenance : combien viennent de Crossref vs enrichissement
-    crossref_count = sum(
-        1 for r in result.refs if any(same_ref(r, cr) for cr in crossref_refs)
-    )
+    crossref_count = sum(1 for r in result.refs if any(same_ref(r, cr) for cr in crossref_refs))
     enrichment_count = len(result.refs) - crossref_count
 
     card = ImportedCardDraft(
