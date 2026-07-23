@@ -79,10 +79,16 @@ class SectionBoundary:
 
 
 def _text_of(node: Tag) -> str:
-    """Extrait le texte visible d'un noeud BS4 en nettoyant scripts/styles."""
+    """Extrait le texte visible d'un noeud BS4 en nettoyant scripts/styles.
+
+    IMPORTANT : separator='\\n' preserve les sauts de ligne entre <li>, <p>,
+    etc. Ces sauts sont indispensables pour que _split_references_into_blocks
+    puisse decouper le texte en blocs individuels via la regex `\\n\\s*\\d+\\s*\\n`
+    sur les templates numerotes (Frontiers/PMC/Nature).
+    """
     for tag in node(["script", "style", "noscript", "svg"]):
         tag.decompose()
-    return node.get_text(" ", strip=True)
+    return node.get_text("\n", strip=True)
 
 
 def _find_end_boundary(start: Tag) -> Tag | None:
@@ -118,8 +124,8 @@ def _bound_text_between(start: Tag, end: Tag | None) -> str:
         # Eviter de double-compter les descendants (find_all_next descend aussi)
         # -> on ne prend que les elements de plus haut niveau: si sibling est
         # descendant du precedent, skip.
-        parts.append(sibling.get_text(" ", strip=True))
-    return " ".join(p for p in parts if p)
+        parts.append(sibling.get_text("\n", strip=True))
+    return "\n".join(p for p in parts if p)
 
 
 def detect_references_section(html: str) -> SectionBoundary | None:
