@@ -261,6 +261,12 @@ export interface ImportedSourceDraft {
   format: SourceFormat;
   category: SourceCategory;
   author_kind: AuthorKind;
+  /** Métadonnées bibliographiques étendues (autofill Crossref). */
+  journal?: string | null;
+  volume?: string | null;
+  pages?: string | null;
+  publisher?: string | null;
+  doi?: string | null;
   /**
    * Classification IA du type d'URL. Le badge est indicatif — l'user coche
    * ou décoche à sa guise, rien n'est jamais filtré automatiquement.

@@ -433,6 +433,13 @@
     category: SourceCategory;
     author_kind: AuthorKind;
     published_at: string | null;
+    // Metadonnees bibliographiques etendues (repliees par defaut).
+    journal: string;
+    volume: string;
+    pages: string;
+    publisher: string;
+    doi: string;
+    extraMetaOpen: boolean;
     status: DraftStatus;
     error: string | null;
   };
@@ -488,6 +495,12 @@
         category: 'page-web',
         author_kind: 'individu',
         published_at: null,
+        journal: '',
+        volume: '',
+        pages: '',
+        publisher: '',
+        doi: '',
+        extraMetaOpen: false,
         status: 'extracting',
         error: null,
       });
@@ -499,6 +512,12 @@
           const data = await response.json();
           if (data.title) draft.title = data.title;
           if (data.authors) draft.authors = data.authors;
+          if (data.published_at) draft.published_at = data.published_at;
+          if (data.journal) draft.journal = data.journal;
+          if (data.volume) draft.volume = data.volume;
+          if (data.pages) draft.pages = data.pages;
+          if (data.publisher) draft.publisher = data.publisher;
+          if (data.doi) draft.doi = data.doi;
           if (data.format && formatOptions.some((o) => o.value === data.format)) {
             draft.format = data.format;
           }
@@ -532,6 +551,11 @@
         title: draft.title || undefined,
         authors: draft.authors || undefined,
         published_at: draft.published_at || undefined,
+        journal: draft.journal || undefined,
+        volume: draft.volume || undefined,
+        pages: draft.pages || undefined,
+        publisher: draft.publisher || undefined,
+        doi: draft.doi || undefined,
       });
       sources = [...sources, s];
       drafts.splice(index, 1);
@@ -565,6 +589,11 @@
     format: string;
     category: string;
     author_kind: string;
+    journal?: string | null;
+    volume?: string | null;
+    pages?: string | null;
+    publisher?: string | null;
+    doi?: string | null;
   };
 
   type ImportResponse = { sources: ImportedDraft[]; skipped: number; format_detected?: string };
@@ -601,6 +630,12 @@
           ? (ref.author_kind as AuthorKind)
           : 'individu',
         published_at: ref.published_at,
+        journal: ref.journal ?? '',
+        volume: ref.volume ?? '',
+        pages: ref.pages ?? '',
+        publisher: ref.publisher ?? '',
+        doi: ref.doi ?? '',
+        extraMetaOpen: Boolean(ref.journal || ref.volume || ref.pages || ref.publisher || ref.doi),
         status: ref.title ? 'ready' : 'extracting',
         error: null,
       });
@@ -1043,7 +1078,9 @@
             {#each drafts as draft, i (draft.key)}
               <div class="border border-border rounded-lg p-4 space-y-3 bg-surface-secondary/50">
                 <div class="flex items-start justify-between gap-2">
-                  <p class="text-xs text-ink-tertiary font-mono truncate min-w-0">{draft.url}</p>
+                  <p class="text-xs text-ink-tertiary font-mono truncate min-w-0">
+                    {draft.url || '(sans URL — livre / chapitre / ref sans DOI)'}
+                  </p>
                   <div class="flex items-center gap-2 shrink-0">
                     {#if draft.status === 'extracting'}
                       <div
@@ -1122,17 +1159,84 @@
                       <option value={opt}>{authorLabel(opt)}</option>
                     {/each}
                   </select>
-                  <div class="flex justify-end items-end">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      loading={draft.status === 'adding'}
-                      disabled={draft.status === 'adding' || draft.status === 'extracting'}
-                      onclick={() => addDraft(i)}
+                  <input
+                    type="date"
+                    bind:value={draft.published_at}
+                    placeholder="Date de publication"
+                    disabled={draft.status === 'extracting'}
+                    class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info disabled:opacity-60"
+                    title="Date de publication (par les auteurs originaux)"
+                  />
+                </div>
+
+                <div class="sm:col-span-2">
+                  <button
+                    type="button"
+                    onclick={() => (draft.extraMetaOpen = !draft.extraMetaOpen)}
+                    class="flex items-center gap-1.5 text-xs font-medium text-ink-secondary hover:text-ink-primary transition-colors"
+                    aria-expanded={draft.extraMetaOpen}
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      class="w-3.5 h-3.5 transition-transform {draft.extraMetaOpen
+                        ? 'rotate-180'
+                        : ''}"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
                     >
-                      {draft.status === 'adding' ? 'Ajout…' : 'Ajouter'}
-                    </Button>
-                  </div>
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                    Métadonnées étendues (journal, volume, pages, DOI, éditeur)
+                  </button>
+                  {#if draft.extraMetaOpen}
+                    <div class="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <input
+                        type="text"
+                        bind:value={draft.journal}
+                        placeholder="Journal / revue"
+                        class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-tertiary sm:col-span-2"
+                      />
+                      <input
+                        type="text"
+                        bind:value={draft.volume}
+                        placeholder="Volume"
+                        class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-tertiary"
+                      />
+                      <input
+                        type="text"
+                        bind:value={draft.pages}
+                        placeholder="Pages (ex. 123-145)"
+                        class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-tertiary"
+                      />
+                      <input
+                        type="text"
+                        bind:value={draft.publisher}
+                        placeholder="Éditeur"
+                        class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-tertiary"
+                      />
+                      <input
+                        type="text"
+                        bind:value={draft.doi}
+                        placeholder="DOI"
+                        class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-tertiary font-mono"
+                      />
+                    </div>
+                  {/if}
+                </div>
+
+                <div class="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    loading={draft.status === 'adding'}
+                    disabled={draft.status === 'adding' || draft.status === 'extracting'}
+                    onclick={() => addDraft(i)}
+                  >
+                    {draft.status === 'adding' ? 'Ajout…' : 'Ajouter'}
+                  </Button>
                 </div>
               </div>
             {/each}

@@ -29,6 +29,12 @@ class ImportedRef:
     authors: str | None = None
     year: int | None = None
     category: str = "page-web"
+    # Metadonnees bibliographiques etendues (remplies par crossref_lookup).
+    journal: str | None = None
+    volume: str | None = None
+    pages: str | None = None
+    publisher: str | None = None
+    doi: str | None = None
     # Texte brut du bloc de reference d'ou cette ref vient (Frontiers/PMC :
     # "AdlemanN. E.MenonV.BlaseyC. M. (2002). A developmental fMRI study..."
     # + DOI). Utilise en fallback LLM par-bloc quand Crossref echoue.
@@ -82,6 +88,10 @@ def _doi_from_url(url: str) -> str | None:
         if m:
             doi = m.group(1).strip().rstrip(".,;)/")
             doi = _DOI_PATH_SUFFIXES.sub("", doi)
+            # Vieux DOIs APA/legacy avec '//' (ex 10.1037//0012-1649.35.1.205)
+            # non conformes ISO 26324 mais courants. Normaliser en '/' unique
+            # pour matcher la version standard.
+            doi = re.sub(r"/+", "/", doi)
             return doi.lower()
     return None
 

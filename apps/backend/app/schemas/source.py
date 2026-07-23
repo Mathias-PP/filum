@@ -57,7 +57,11 @@ class ArchiveStatus(str, Enum):
 
 
 class SourceBase(BaseModel):
-    url: str = Field(min_length=1, max_length=2000)
+    # url peut etre vide pour les livres/chapitres/refs sans DOI ni URL
+    # (DSM-IV, Enns 1998 book, Leckman 2006 chapter). L'utilisateur peut
+    # completer plus tard via l'edition. La colonne DB reste NOT NULL,
+    # une chaine vide satisfait la contrainte.
+    url: str = Field(default="", max_length=2000)
     title: str | None = Field(default=None, max_length=500)
     authors: str | None = Field(default=None, max_length=500)
     published_at: datetime | None = None
