@@ -54,6 +54,10 @@ jobs:
           path: ./
           base: ${{ github.event.pull_request.base.sha }}
           head: ${{ github.event.pull_request.head.sha }}
+          # Fixtures HTML captures depuis des sites tiers (Frontiers) contiennent
+          # des cles publiques (Google Analytics, Maps) embedded dans leur JS.
+          # Ce ne sont pas nos secrets. Exclu du scan.
+          extra_args: --exclude-paths=.trufflehogignore
 
   lint-backend:
     name: Lint Backend

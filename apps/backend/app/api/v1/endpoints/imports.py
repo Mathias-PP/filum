@@ -19,6 +19,14 @@ from pydantic import BaseModel, Field
 from app.api.v1.endpoints.cards import get_current_user
 from app.core.url_safety import UnsafeUrlError, assert_url_is_safe
 from app.extractors.grobid import extract_pdf_references
+from app.extractors.ref_dedup import dedupe_refs, same_ref
+from app.extractors.ref_scorer import should_drop
+from app.extractors.section_detector import (
+    SectionBoundary,
+    detect_references_section,
+    is_ref_in_body,
+    is_ref_in_section,
+)
 from app.extractors.semantic_scholar import SemanticScholarRef, get_paper_references
 from app.extractors.url_extractor import (
     crossref_lookup,
@@ -26,6 +34,7 @@ from app.extractors.url_extractor import (
     resolve_doi_from_pii,
 )
 from app.extractors.url_extractor import extract as extract_url_metadata
+from app.extractors.wikipedia_oracle import fetch_wikipedia_references, is_wikipedia_url
 from app.models.user import User
 from app.services.import_parsers import (
     ImportedRef,
@@ -600,6 +609,15 @@ class ImportFromUrlResponse(BaseModel):
     # URL de la snapshot Wayback si le fetch principal a echoue et que Wayback
     # a permis de recuperer une version archivee. None sinon.
     wayback_url: str | None = None
+    # Nouveau pipeline v2 : indicateurs de confiance et de provenance.
+    # - high  : section References bornee dans le HTML -> filtrage strict
+    # - medium: aucune section identifiable -> fallback body-search
+    # - low   : ni oracle ni HTML disponibles (rare)
+    extraction_confidence: str = "medium"
+    refs_from_oracle: int = 0  # Wikipedia API ou Crossref (autoritatifs)
+    refs_from_enrichment: int = 0  # S2/HTML/LLM apres validation
+    refs_dropped_validation: int = 0  # candidats elimines par section-detection
+    refs_dropped_scoring: int = 0  # artefacts elimines par scoring syntaxique
 
 
 def _extract_references_text(html: str) -> tuple[str, bool]:
@@ -662,12 +680,77 @@ async def parse_content_url(
         logger.warning("extract_url_metadata failed for %s: %s", url, e)
         meta = None
 
-    # 2. Fetch le HTML pour la section references. On distingue plusieurs
-    # etats pour donner un feedback UX explicite :
-    #   - ok            : fetch direct reussi
-    #   - ok_via_wayback: fetch direct a echoue, mais Wayback a une snapshot
-    #   - unreachable   : ni le fetch direct ni Wayback ne repondent
-    #   - not_html      : la reponse est un PDF / image / JSON, pas exploitable
+    # ETAGE 1 : oracle specialise par domaine. Wikipedia expose sa biblio
+    # via l'API MediaWiki avec un DOM stable (<ol class="references">). Quand
+    # ca repond, on court-circuit les etages 2-4 : par nature, ces refs sont
+    # celles citees par l'article (Wikipedia n'a pas de "Cited By"/"Related").
+    oracle_refs: list[ImportedRef] = []
+    if is_wikipedia_url(url):
+        wiki_refs = await fetch_wikipedia_references(url)
+        if wiki_refs:
+            logger.info("wikipedia_oracle_hit url=%s refs=%d", url, len(wiki_refs))
+            oracle_refs = wiki_refs
+
+    if oracle_refs:
+        # Court-circuit : oracle a repondu. On ne fetch pas le HTML,
+        # on ne lance pas S2/Crossref/LLM. Dedup + scoring seulement.
+        deduped = dedupe_refs(oracle_refs)
+        dropped_scoring = sum(1 for r in deduped if should_drop(r))
+        final = [r for r in deduped if not should_drop(r)]
+        await _classify_refs(final)
+        card = ImportedCardDraft(
+            title=meta.title if meta else None,
+            description=meta.description if meta else None,
+            content_url=url,
+        )
+        return ImportFromUrlResponse(
+            card=card,
+            sources=[_to_draft(ref) for ref in final],
+            skipped=0,
+            references_section_found=True,
+            fetch_status="ok",
+            wayback_url=None,
+            extraction_confidence="high",
+            refs_from_oracle=len(final),
+            refs_from_enrichment=0,
+            refs_dropped_validation=0,
+            refs_dropped_scoring=dropped_scoring,
+        )
+
+    # ETAGE 2 : Crossref si DOI extractible (autoritatif, biblio deposee
+    # par l'editeur). Set A = refs officielles, gardees sans validation.
+    # Si Crossref echoue mais qu'un DOI existe, S2 fait office d'autoritatif
+    # de secours (les refs S2 pour un DOI donne = biblio du meme article,
+    # pas des candidats a valider contre une section externe).
+    content_doi = _doi_from_url(url)
+    if not content_doi:
+        content_doi = await resolve_doi_from_pii(url)
+
+    crossref_refs: list[ImportedRef] = []
+    s2_used_as_authoritative = False
+    if content_doi:
+        cross = await get_crossref_references(content_doi)
+        if cross:
+            logger.info("crossref_hit doi=%s refs=%d", content_doi, len(cross))
+            crossref_refs = [
+                imported
+                for imported in (_s2_ref_to_imported_ref(r) for r in cross if r)
+                if imported is not None
+            ]
+        else:
+            # Crossref muet -> S2 devient l'autoritatif pour ce DOI.
+            s2_raw = await get_paper_references(content_doi)
+            if s2_raw:
+                logger.info("s2_authoritative_hit doi=%s refs=%d", content_doi, len(s2_raw))
+                crossref_refs = [
+                    imported
+                    for imported in (_s2_ref_to_imported_ref(r) for r in s2_raw if r)
+                    if imported is not None
+                ]
+                s2_used_as_authoritative = True
+
+    # ETAGE 3 : enrichissement (S2 + HTML + LLM). Set B = candidats a valider.
+    # Fetch HTML pour section-detection et scraping.
     html: str | None = None
     fetch_status = "unreachable"
     wayback_url: str | None = None
@@ -685,76 +768,94 @@ async def parse_content_url(
     except Exception as e:
         logger.warning("fetch failed for %s: %s", url, e)
 
-    # 2.5. Fallback Wayback si le fetch direct a echoue (unreachable OU
-    # not_html). L'idee : ScienceDirect / Cloudflare / 403 sur la page live
-    # ont souvent une snapshot exploitable via web.archive.org.
     if html is None:
         wayback_html, wayback_url = await _try_wayback_snapshot(url)
         if wayback_html:
             html = wayback_html
             fetch_status = "ok_via_wayback"
 
+    # Section-detection stricte via BS4 sur le HTML fetche.
+    section: SectionBoundary | None = None
     refs_text = ""
     refs_section_found = False
     if html:
-        refs_text, refs_section_found = _extract_references_text(html)
+        section = detect_references_section(html)
+        if section:
+            refs_text = section.text[:_REFS_TEXT_MAX]
+            refs_section_found = True
+        else:
+            # Legacy fallback pour parse_markdown/parse_bibliography :
+            # extraire du texte "biblio-like" quand meme.
+            refs_text, _legacy_found = _extract_references_text(html)
 
-    # 3. Extraction hybride regex + LLM sur le texte des references
-    result = parse_markdown(refs_text) if refs_text else ParseResult()
+    # 3a. S2 comme enrichissement de Crossref (couvre Elsevier la ou Crossref
+    # est partiel). Skip si S2 est deja utilise comme autoritatif (a l'etage 2).
+    s2_refs: list[ImportedRef] = []
+    if content_doi and not s2_used_as_authoritative:
+        s2_raw = await get_paper_references(content_doi)
+        if s2_raw:
+            logger.info("s2_hit doi=%s refs=%d", content_doi, len(s2_raw))
+            s2_refs = [
+                imported
+                for imported in (_s2_ref_to_imported_ref(r) for r in s2_raw if r)
+                if imported is not None
+            ]
+
+    # 3b. HTML scraping (regex sur refs_text)
+    html_result = parse_markdown(refs_text) if refs_text else ParseResult()
+
+    # 3c. LLM global sur le texte des refs (pour blogs/pages sans DOI)
     if refs_text:
         llm_refs = await parse_bibliography(refs_text)
         if llm_refs:
-            result = _merge_llm_refs(result, llm_refs)
+            html_result = _merge_llm_refs(html_result, llm_refs)
 
-    # 3.5. Semantic Scholar si le contenu a un DOI extractible : c'est la
-    # source la plus fiable pour les refs scholarly (couvre ScienceDirect /
-    # Elsevier, chose ni Crossref ni scraping ne peuvent atteindre).
-    content_doi = _doi_from_url(url)
-    if not content_doi:
-        # ScienceDirect/Elsevier : pas de DOI dans l'URL mais un PII resolvable
-        # en DOI via Crossref (alternative-id) -> debloque l'etage S2.
-        content_doi = await resolve_doi_from_pii(url)
-    if content_doi:
-        s2_refs = await get_paper_references(content_doi)
-        if not s2_refs:
-            # Fallback Crossref : certains editeurs (Elsevier) font elider
-            # leurs references chez S2 mais les deposent chez Crossref.
-            s2_refs = await get_crossref_references(content_doi)
-        if s2_refs:
-            logger.info(
-                "s2_hit doi=%s refs=%d (before merge: %d)",
-                content_doi,
-                len(s2_refs),
-                len(result.refs),
-            )
-            result = _merge_s2_refs(result, s2_refs)
+    # ETAGE 4 : validation anti-bruit.
+    # Refs Crossref = autoritatives, gardees tel quel.
+    # Refs S2/HTML/LLM = candidates : doivent apparaitre dans la section
+    # bornee (si detectee) ou dans le body (fallback confidence=medium).
+    candidates = s2_refs + html_result.refs
+    if section is not None:
+        validated = [r for r in candidates if is_ref_in_section(r, section)]
+        dropped_validation = len(candidates) - len(validated)
+        confidence = "high" if crossref_refs or oracle_refs else "high"
+    elif html is not None:
+        validated = [r for r in candidates if is_ref_in_body(r, html)]
+        dropped_validation = len(candidates) - len(validated)
+        confidence = "medium"
+    else:
+        # Ni section ni HTML : on accepte tel quel (rare, fallback ultime)
+        validated = candidates
+        dropped_validation = 0
+        confidence = "low"
 
-    # Retire la ref pointant vers le contenu lui-meme (le contenu ne cite
-    # pas lui-meme, et la fiche a deja content_url = url).
+    all_refs = list(crossref_refs) + validated
+
+    # ETAGE 5 : dedup multi-cle sur l'union
+    all_refs = dedupe_refs(all_refs)
+
+    # Retire la ref pointant vers le contenu lui-meme
     self_key = _dedupe_key(url)
-    result.refs = [ref for ref in result.refs if _dedupe_key(ref.url) != self_key]
+    all_refs = [ref for ref in all_refs if _dedupe_key(ref.url) != self_key]
 
-    # 4. Split le texte References en blocs et associe chaque bloc a la ref
-    # correspondante (via URL/DOI present dans le bloc). Utilise ensuite pour
-    # le fallback LLM par-bloc si Crossref echoue.
+    # Backfill metadata pour les refs incompletes (DOIs seuls, refs HTML nues)
+    result = ParseResult(refs=all_refs, skipped=html_result.skipped)
     ref_blocks = _split_references_into_blocks(refs_text)
     _assign_raw_text_to_refs(result.refs, ref_blocks)
-
-    # 5. Backfill Crossref pour toute ref avec DOI mais sans metadata complete.
-    # Frontiers/PMC/Nature ont des sections References ou les noms d'auteurs
-    # sont concatenes sans espaces (« AdlemanN. E.MenonV.BlaseyC. M... »)
-    # -> Crossref donne title/authors/year/citations_count deterministes.
     await _backfill_crossref_metadata(result.refs)
-
-    # 6. Fallback LLM par-bloc pour les refs qui ont un raw_text mais
-    # toujours pas de metadata complete (Crossref echec, DOI ancien
-    # non indexe, ou pas de DOI mais URL). Un mini-appel LLM par bloc,
-    # bien plus fiable que l'appel global sur les 60kB concatenes.
     await _backfill_llm_per_block(result.refs)
 
-    # 7. Classifie chaque URL (source / promo / social / other) pour la UI.
-    # Rien n'est filtre auto : c'est indicatif, l'user coche a sa guise.
+    # ETAGE 6 : scoring syntaxique (dernier filet universel)
+    before_score = len(result.refs)
+    result.refs = [r for r in result.refs if not should_drop(r)]
+    dropped_scoring = before_score - len(result.refs)
+
+    # ETAGE 7 : classification (existant, indicatif, non filtrant)
     await _classify_refs(result.refs)
+
+    # Compteurs de provenance : combien viennent de Crossref vs enrichissement
+    crossref_count = sum(1 for r in result.refs if any(same_ref(r, cr) for cr in crossref_refs))
+    enrichment_count = len(result.refs) - crossref_count
 
     card = ImportedCardDraft(
         title=meta.title if meta else None,
@@ -768,6 +869,11 @@ async def parse_content_url(
         references_section_found=refs_section_found,
         fetch_status=fetch_status,
         wayback_url=wayback_url,
+        extraction_confidence=confidence,
+        refs_from_oracle=crossref_count,
+        refs_from_enrichment=enrichment_count,
+        refs_dropped_validation=dropped_validation,
+        refs_dropped_scoring=dropped_scoring,
     )
 
 

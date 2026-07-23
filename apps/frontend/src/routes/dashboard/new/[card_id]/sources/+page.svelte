@@ -729,13 +729,33 @@
       // bloquee (ScienceDirect/Elsevier). Ne surtout pas afficher une erreur
       // "site inaccessible" si on a quand meme recupere N refs par ailleurs.
       if (hasRefs) {
-        if (res.fetch_status === 'unreachable' || res.fetch_status === 'not_html') {
-          refsInfo = `Le site bloque l'accès direct — ${res.sources.length} référence${
-            res.sources.length > 1 ? 's' : ''
-          } récupérée${res.sources.length > 1 ? 's' : ''} via Semantic Scholar / Crossref.`;
-        } else if (res.fetch_status === 'ok_via_wayback') {
-          refsInfo =
-            'Le site bloque l’accès direct : extraction faite depuis une capture Internet Archive.';
+        // Priorite au badge de confiance issu du pipeline v2 :
+        // 'high'  = section References bornee -> filtrage strict
+        // 'medium'= fallback body-search -> l'user est prevenu
+        // 'low'   = ni oracle ni HTML -> tres rare
+        const conf = res.extraction_confidence;
+        const oracle = res.refs_from_oracle ?? 0;
+        const enrich = res.refs_from_enrichment ?? 0;
+        const dropped = res.refs_dropped_validation ?? 0;
+        const detail =
+          oracle && enrich
+            ? ` (${oracle} sources autoritatives + ${enrich} enrichies)`
+            : oracle
+              ? ` (source autoritative)`
+              : '';
+        const noise =
+          dropped > 0
+            ? ` — ${dropped} suggestion${dropped > 1 ? 's' : ''} bruit${dropped > 1 ? 'ées' : 'ée'} filtré${dropped > 1 ? 'es' : 'e'}`
+            : '';
+        if (conf === 'high') {
+          refsInfo = `${res.sources.length} référence${res.sources.length > 1 ? 's' : ''} extraite${res.sources.length > 1 ? 's' : ''}${detail}. Confiance élevée${noise}.`;
+        } else if (conf === 'medium') {
+          refsInfo = `${res.sources.length} référence${res.sources.length > 1 ? 's' : ''} extraite${res.sources.length > 1 ? 's' : ''}${detail}. Confiance moyenne — aucune section « Références » nette n'a été détectée, la validation s'est faite sur le corps de la page. Vérifiez que ce sont bien des sources citées${noise}.`;
+        } else {
+          refsInfo = `${res.sources.length} référence${res.sources.length > 1 ? 's' : ''} extraite${res.sources.length > 1 ? 's' : ''}. Confiance basse — aucune validation possible, à vérifier manuellement${noise}.`;
+        }
+        if (res.fetch_status === 'ok_via_wayback') {
+          refsInfo += ' — Source récupérée depuis Internet Archive.';
         }
         if (overwriteDrafts) drafts = [];
         await ingestImported({ sources: res.sources, skipped: res.skipped });

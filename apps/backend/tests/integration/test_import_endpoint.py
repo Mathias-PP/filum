@@ -583,9 +583,17 @@ async def test_from_url_llm_block_fills_metadata_when_crossref_off(client, monke
             )
         return None
 
+    async def no_crossref_refs(doi):
+        return None  # Crossref OFF -> pas d'autoritatif, S2 dispo mais non teste ici
+
+    async def no_s2(doi, limit=500):
+        return None  # pas de fallback S2 autoritatif non plus
+
     monkeypatch.setattr("app.api.v1.endpoints.imports.extract_url_metadata", fake_meta)
     monkeypatch.setattr("app.api.v1.endpoints.imports.httpx.AsyncClient", FakeAsyncClient)
     monkeypatch.setattr("app.api.v1.endpoints.imports.parse_bibliography", no_global_llm)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.get_crossref_references", no_crossref_refs)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.get_paper_references", no_s2)
     # Crossref OFF -> plus de fallback ; laissera la place au LLM par-bloc
     monkeypatch.setattr("app.api.v1.endpoints.imports.parse_reference_block", fake_llm_block)
     monkeypatch.setattr("app.api.v1.endpoints.imports.assert_url_is_safe", lambda u: None)
@@ -675,9 +683,13 @@ async def test_from_url_uses_semantic_scholar_when_content_has_doi(client, monke
             ),
         ]
 
+    async def no_crossref_refs(doi):
+        return None  # Crossref muet -> S2 prend le relais en autoritatif
+
     monkeypatch.setattr("app.api.v1.endpoints.imports.extract_url_metadata", fake_meta)
     monkeypatch.setattr("app.api.v1.endpoints.imports.httpx.AsyncClient", FakeAsyncClient)
     monkeypatch.setattr("app.api.v1.endpoints.imports.parse_bibliography", no_llm)
+    monkeypatch.setattr("app.api.v1.endpoints.imports.get_crossref_references", no_crossref_refs)
     monkeypatch.setattr("app.api.v1.endpoints.imports.get_paper_references", fake_s2)
     monkeypatch.setattr("app.api.v1.endpoints.imports.assert_url_is_safe", lambda u: None)
 
