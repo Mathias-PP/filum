@@ -6,6 +6,54 @@
 
 ---
 
+## ADR-030 — Pipeline d'extraction v2 agnostique (oracle → autoritatif → enrichissement → validation)
+
+**Date :** 2026-07-23
+
+**Contexte :** Sur la fiche prod Frontiers 10.3389/fpsyg.2022.651547, l'extraction rendait 156 refs vs 152 sur le site d'origine. Cause : le pipeline appelait Semantic Scholar en premier et Crossref uniquement en fallback, sans validation croisée. S2 renvoie 160 refs pour ce DOI dont 8 hallucinations ML (papier hors sujet sur les abeilles, titres tronqués « Response Inhibition », « Neural correlates »). La dédup 2-passes précédente (URL/DOI puis titre normalisé) ne pouvait pas éliminer les hallucinations dont le titre diffère de Crossref.
+
+Le besoin est agnostique : le pipeline doit fonctionner sur article scientifique, page Wikipedia, vidéo YouTube avec biblio en description, blog, rapport gouvernemental PDF, livre. Chaque type a un « oracle » optimal, mais tous doivent finir avec zéro bruit et rappel maximal.
+
+**Décision :** Réorganisation en 7 étages cascadants avec **validation stricte par bornage de section**.
+
+1. **Oracle spécialisé** par domaine (Wikipedia API MediaWiki, GROBID PDF ; arXiv/YouTube prévus en PR suivante). Court-circuit total si l'oracle répond.
+2. **Autoritatif Crossref** si DOI extractible — set A = biblio officielle déposée par l'éditeur, gardée sans validation.
+3. **Enrichissement** : Semantic Scholar + scraping HTML + LLM → set B de candidats à valider.
+4. **Validation anti-bruit** via `section_detector` (BeautifulSoup DOM navigation) : borne strictement la section References du DOM et exclut Cited By/Related/Author Contributions. Chaque candidat non-autoritatif doit apparaître dans la section bornée sinon drop. Fallback body-search + badge `extraction_confidence=medium` quand aucune section n'est identifiable.
+5. **Dédup multi-clé** : `same_ref(a,b) := (a.doi == b.doi) OR (a.url == b.url) OR (title+first_author match, année distinctive uniquement si présente des deux côtés)`. L'année devient facteur de distinction (années différentes = refs distinctes), pas de matching. Absente = pas de blocage.
+6. **Scoring syntaxique universel** en dernier filet — un signal unique agnostique aux types de sources : titre = fragment de citation (`^\[?\d+\]?...`), ponctuation ouvrante non fermée, ou séquences de mots dupliquées → drop. Aucune pénalité pour année/DOI/journal absents (livres, tweets, reportages).
+7. **Classification** existante (source/promo/social/other), inchangée.
+
+Réponse endpoint enrichie : `extraction_confidence`, `refs_from_oracle`, `refs_from_enrichment`, `refs_dropped_validation`, `refs_dropped_scoring`. Frontend affiche un badge conditionnel transparent à l'user.
+
+**Alternatives écartées :**
+- **Crossref-only sur éditeurs whitelistés** : trop rigide sur les petits éditeurs et vieux DOIs.
+- **Scoring à 6 signaux** (year manquante, titre court, no external ID, no journal) : biaisé scholarly, pénalise les reportages sans date et les livres courts.
+- **Playwright** : différé (cf. ADR-031).
+
+**Conséquences :** sur Frontiers 651547, le pipeline rend 152-162 refs (Crossref 152 + éventuellement 5-10 candidats S2 validés par la section-detection, jamais de bee paper ni de fragment). Compte exactement 152 impossible à garantir sans arbitrage humain — l'objectif chiffré évolue vers « précision maximale, rappel préservé, transparence via badge ».
+
+---
+
+## ADR-031 — Playwright différé (biblio JS-only)
+
+**Date :** 2026-07-23
+
+**Contexte :** Certaines pages cachent une partie de la biblio derrière un bouton JS « Show more » qui n'apparaît qu'après render côté client. Un fetch `httpx` statique ne les voit pas.
+
+**Décision :** Playwright/Chromium **non intégré au MVP**. Motifs :
+- Sur VM GCP e2-micro (1 GB RAM partagé backend/Postgres/Caddy), Chromium peut consommer 500-800 MB en pointe → risque OOM.
+- Image Docker +200 MB, +5-15 s par extraction, complexité opérationnelle (timeouts, session cleanup).
+- L'ADR-030 court-circuite la plupart des cas scholarly via Crossref/S2, réduisant la surface où Playwright serait vraiment utile.
+
+Hook prévu dans `parse_content_url` : paramètre `use_playwright: bool = False` prêt à recevoir un dispatch vers un worker externe (Cloud Run ou service séparé) sans refactor du chemin nominal.
+
+**Alternatives écartées :** Selenium (API plus lourde), embarquer Playwright direct sur la VM (OOM), refuser toute extraction JS-only (perte de rappel).
+
+**Conséquences :** cas prod concret JS-only à documenter s'il émerge. Intégration future via worker Cloud Run dédié : le backend appelle le worker via HTTP, worker rend la page et renvoie le HTML post-render, le pipeline étage 4 re-fait section-detection sur le rendu.
+
+---
+
 ## ADR-029 — Types TS générés depuis l'OpenAPI (openapi-typescript)
 
 **Date :** 2026-07-19

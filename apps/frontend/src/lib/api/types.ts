@@ -289,4 +289,19 @@ export interface ImportFromUrlResponse {
   fetch_status: 'ok' | 'ok_via_wayback' | 'unreachable' | 'not_html';
   /** URL de la snapshot Wayback utilisée si fetch_status === 'ok_via_wayback'. */
   wayback_url?: string | null;
+  /**
+   * Pipeline d'extraction v2 : niveau de confiance de la validation anti-bruit.
+   * - 'high'  : section References bornée dans le HTML → filtrage strict.
+   * - 'medium': aucune section identifiable → fallback body-search.
+   * - 'low'   : ni oracle ni HTML → aucune validation possible.
+   */
+  extraction_confidence?: 'high' | 'medium' | 'low';
+  /** Nb de refs venues d'un oracle (Wikipedia API, Crossref) — autoritatives. */
+  refs_from_oracle?: number;
+  /** Nb de refs venues de S2/HTML/LLM, validées par section-detection. */
+  refs_from_enrichment?: number;
+  /** Nb de candidats éliminés par section-detection (transparence anti-bruit). */
+  refs_dropped_validation?: number;
+  /** Nb de candidats éliminés par le scoring syntaxique (fragments, artefacts). */
+  refs_dropped_scoring?: number;
 }
