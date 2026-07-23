@@ -121,9 +121,12 @@ class TestSourceSchemas:
         with pytest.raises(ValidationError):
             SourceCreate(**_minimal_source_kwargs(url=too_long))
 
-    def test_url_min_length_enforced(self):
-        with pytest.raises(ValidationError):
-            SourceCreate(**_minimal_source_kwargs(url=""))
+    def test_url_empty_string_accepted(self):
+        # Depuis fix/extraction-metadata-and-hallucinations : url='' autorise
+        # pour les refs sans DOI ni URL (livres, chapitres, DSM-IV, etc.).
+        # L'user peut completer plus tard via l'edition inline.
+        source = SourceCreate(**_minimal_source_kwargs(url=""))
+        assert source.url == ""
 
     def test_parent_source_id_accepts_uuid(self):
         parent_id = uuid4()
