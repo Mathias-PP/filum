@@ -83,6 +83,12 @@ class ImportedSourceDraft(BaseModel):
     format: str = "texte"
     category: str = "page-web"
     author_kind: str = "individu"
+    # Metadonnees bibliographiques etendues (autofill Crossref quand DOI dispo).
+    journal: str | None = None
+    volume: str | None = None
+    pages: str | None = None
+    publisher: str | None = None
+    doi: str | None = None
     # Classification LLM du type d'URL : 'source' | 'promo' | 'social' | 'other'.
     # None si LLM off / non appele. Le frontend affiche un badge et l'user coche.
     classification: str | None = None
@@ -103,6 +109,11 @@ def _to_draft(ref: ImportedRef) -> ImportedSourceDraft:
         format=_FORMAT_BY_CATEGORY.get(ref.category, "texte"),
         category=ref.category,
         author_kind=_AUTHOR_KIND_BY_CATEGORY.get(ref.category, "individu"),
+        journal=ref.journal,
+        volume=ref.volume,
+        pages=ref.pages,
+        publisher=ref.publisher,
+        doi=ref.doi,
         classification=ref.classification,
     )
 
@@ -169,10 +180,36 @@ class ImportPasteRequest(BaseModel):
 _CROSSREF_CONCURRENCY = 10
 
 
+def _is_incomplete_author_list(authors: str | None) -> bool:
+    """True si la chaine d'auteurs ressemble a un nom-seul (Crossref biblio
+    deposit stocke uniquement le nom de famille du 1er auteur : 'Adleman',
+    'Williams'). On la remplace par la vraie liste via crossref_lookup(doi).
+
+    Complete = contient une virgule (multi-auteurs) OU une initiale (« C. »)
+    OU plus de 2 mots (« van der Meere J. »).
+    """
+    if not authors:
+        return True
+    s = authors.strip()
+    if "," in s:
+        return False
+    tokens = s.split()
+    if len(tokens) >= 3:
+        return False
+    # Presence d'une initiale (« Wolfe C. » → complete)
+    return not any(re.match(r"^[A-Z]\.[A-Z]?\.?$", t) for t in tokens)
+
+
 async def _backfill_one_crossref(ref: ImportedRef, sem: asyncio.Semaphore) -> None:
-    """Enrichit `ref` in-place via Crossref si un DOI est extractible."""
-    if ref.title and ref.authors and ref.year:
-        return  # deja complet, skip
+    """Enrichit `ref` in-place via Crossref si un DOI est extractible.
+
+    Force le fetch complet meme si `authors` est deja rempli quand celui-ci
+    ressemble a un nom-seul (Crossref deposit format: 'Adleman' au lieu de
+    'Adleman N. E., Menon V., Blasey C. M., et al').
+    """
+    needs_authors = not ref.authors or _is_incomplete_author_list(ref.authors)
+    if ref.title and ref.year and not needs_authors:
+        return  # metadata deja complete
     doi = _doi_from_url(ref.url)
     if not doi:
         return
@@ -182,13 +219,25 @@ async def _backfill_one_crossref(ref: ImportedRef, sem: asyncio.Semaphore) -> No
         return
     if not ref.title and meta.title:
         ref.title = meta.title
-    if not ref.authors and meta.authors:
+    # Ecraser 'Adleman' seul par 'Adleman N. E., Menon V., Blasey C. M., ...'
+    if meta.authors and (not ref.authors or _is_incomplete_author_list(ref.authors)):
         ref.authors = meta.authors
     if not ref.year and meta.published_at:
         # published_at format YYYY-MM-DD.
         year_str = meta.published_at[:4]
         if year_str.isdigit():
             ref.year = int(year_str)
+    # Metadonnees bibliographiques etendues (autofill pour Zone repliable UI).
+    if not ref.journal and meta.journal:
+        ref.journal = meta.journal
+    if not ref.volume and meta.volume:
+        ref.volume = meta.volume
+    if not ref.pages and meta.pages:
+        ref.pages = meta.pages
+    if not ref.publisher and meta.publisher:
+        ref.publisher = meta.publisher
+    if not ref.doi and meta.doi:
+        ref.doi = meta.doi
     # Crossref = journal DOI dans 99% des cas -> article scientifique.
     if ref.category == "page-web":
         ref.category = "article-scientifique"
@@ -203,7 +252,11 @@ async def _backfill_crossref_metadata(refs: list[ImportedRef]) -> None:
     # 2e passe a concurrence reduite : sur 145 refs, ~10 lookups echouent de
     # maniere transitoire (timeout sous concurrence 10) et les trous changent
     # a chaque run — un retry sequentiel-ish les recupere quasi tous.
-    remaining = [r for r in refs if not (r.title and r.authors) and _doi_from_url(r.url)]
+    remaining = [
+        r
+        for r in refs
+        if _doi_from_url(r.url) and (not r.title or _is_incomplete_author_list(r.authors))
+    ]
     if remaining:
         retry_sem = asyncio.Semaphore(2)
         await asyncio.gather(*(_backfill_one_crossref(ref, retry_sem) for ref in remaining))
@@ -618,6 +671,7 @@ class ImportFromUrlResponse(BaseModel):
     refs_from_enrichment: int = 0  # S2/HTML/LLM apres validation
     refs_dropped_validation: int = 0  # candidats elimines par section-detection
     refs_dropped_scoring: int = 0  # artefacts elimines par scoring syntaxique
+    refs_dropped_s2_hallucination: int = 0  # hallucinations S2 detectees via Crossref xcheck
 
 
 def _extract_references_text(html: str) -> tuple[str, bool]:
@@ -649,6 +703,68 @@ def _extract_references_text(html: str) -> tuple[str, bool]:
     body = soup.find("body")
     text = body.get_text(separator="\n", strip=True) if body else soup.get_text(strip=True)
     return text[:_REFS_TEXT_MAX], False
+
+
+# --- Anti-hallucination S2 via cross-check Crossref ------------------------
+#
+# Semantic Scholar produit occasionnellement des mappings titre→DOI errones,
+# probablement issus de son propre ML d'attribution. Exemple concret vu sur
+# Frontiers 651547 : S2 renvoie le titre "Studies of Interference in Serial
+# Verbal Reactions" (Stroop 1935) associe au DOI 10.1037/0096-3445.121.1.15,
+# qui est en realite le DOI de MacLeod 1991. La section-detection accepte a
+# raison le candidat (le titre EST dans la biblio), mais l'objet designe
+# n'existe pas. Un cross-check Crossref sur le DOI revele l'incompatibilite.
+#
+# Cout : 1 requete Crossref par ref S2 hors-Crossref. Sur une extraction
+# scholarly typique, <=15 candidats -> ~2s. Acceptable pour zero bruit.
+
+_S2_XCHECK_CONCURRENCY = 8
+
+
+def _title_word_overlap(a: str | None, b: str | None) -> float:
+    """Ratio de mots (>=4 chars) en commun entre 2 titres. 0.0 si l'un vide."""
+    if not a or not b:
+        return 0.0
+    words_a = {w.lower() for w in re.findall(r"\w+", a) if len(w) >= 4}
+    words_b = {w.lower() for w in re.findall(r"\w+", b) if len(w) >= 4}
+    if not words_a or not words_b:
+        return 0.0
+    return len(words_a & words_b) / max(len(words_a), len(words_b))
+
+
+async def _s2_ref_passes_xcheck(ref: ImportedRef, sem: asyncio.Semaphore) -> bool:
+    """True si la ref S2 est confirmee OU si Crossref n'a pas d'avis (DOI inconnu).
+    False si Crossref renvoie un titre incompatible (hallucination S2).
+    """
+    doi = _doi_from_url(ref.url) if ref.url else None
+    if not doi:
+        return True  # pas de DOI -> pas de cross-check possible, on garde
+    async with sem:
+        meta = await crossref_lookup(doi)
+    if meta is None:
+        return True  # Crossref ne connait pas ce DOI -> ref potentiellement legit
+    if not meta.title:
+        return True  # Crossref n'a pas de titre pour comparer -> on garde
+    overlap = _title_word_overlap(ref.title, meta.title)
+    # Seuil 0.3 : sur "Studies of Interference in Serial Verbal Reactions" vs
+    # "Half a century of research on the Stroop effect" -> ~0.0 → drop.
+    # Sur des titres proches (variantes de casse, ponctuation) -> ratio > 0.6.
+    return overlap >= 0.3
+
+
+async def _drop_s2_hallucinations(
+    s2_refs: list[ImportedRef], crossref_urls: set[str]
+) -> list[ImportedRef]:
+    """Filtre les hallucinations S2 par cross-check Crossref titre-vs-titre."""
+    # Ne cross-check que les S2 hors-Crossref (celles dans Crossref sont deja
+    # autoritatives).
+    candidates_to_check = [r for r in s2_refs if r.url and r.url not in crossref_urls]
+    if not candidates_to_check:
+        return s2_refs
+    sem = asyncio.Semaphore(_S2_XCHECK_CONCURRENCY)
+    verdicts = await asyncio.gather(*(_s2_ref_passes_xcheck(r, sem) for r in candidates_to_check))
+    drop_urls = {r.url for r, keep in zip(candidates_to_check, verdicts, strict=False) if not keep}
+    return [r for r in s2_refs if r.url not in drop_urls]
 
 
 @router.post("/import/from-content-url", response_model=ImportFromUrlResponse)
@@ -791,6 +907,7 @@ async def parse_content_url(
     # 3a. S2 comme enrichissement de Crossref (couvre Elsevier la ou Crossref
     # est partiel). Skip si S2 est deja utilise comme autoritatif (a l'etage 2).
     s2_refs: list[ImportedRef] = []
+    s2_dropped_hallucinations = 0
     if content_doi and not s2_used_as_authoritative:
         s2_raw = await get_paper_references(content_doi)
         if s2_raw:
@@ -800,6 +917,16 @@ async def parse_content_url(
                 for imported in (_s2_ref_to_imported_ref(r) for r in s2_raw if r)
                 if imported is not None
             ]
+            # ANTI-HALLUCINATION S2 : cross-check les candidats hors-Crossref.
+            crossref_urls = {r.url for r in crossref_refs if r.url}
+            before = len(s2_refs)
+            s2_refs = await _drop_s2_hallucinations(s2_refs, crossref_urls)
+            s2_dropped_hallucinations = before - len(s2_refs)
+            if s2_dropped_hallucinations:
+                logger.info(
+                    "s2_hallucinations_dropped=%d (crossref cross-check)",
+                    s2_dropped_hallucinations,
+                )
 
     # 3b. HTML scraping (regex sur refs_text)
     html_result = parse_markdown(refs_text) if refs_text else ParseResult()
@@ -874,6 +1001,7 @@ async def parse_content_url(
         refs_from_enrichment=enrichment_count,
         refs_dropped_validation=dropped_validation,
         refs_dropped_scoring=dropped_scoring,
+        refs_dropped_s2_hallucination=s2_dropped_hallucinations,
     )
 
 

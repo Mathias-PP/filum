@@ -33,6 +33,52 @@ def test_norm_first_author_variants():
     assert norm_first_author("") == ""
 
 
+def test_norm_first_author_given_family():
+    # Format S2 : 'Given Family' ou 'Given Middle Family'
+    assert norm_first_author("Benjamin Williams") == "williams"
+    assert norm_first_author("Benjamin R. Williams") == "williams"
+    assert norm_first_author("A. Diamond") == "diamond"
+    assert norm_first_author("A.B. Aron") == "aron"
+
+
+def test_norm_first_author_multi_authors_s2():
+    # Format S2 : 'Given Family, Given Family, ...'
+    assert (
+        norm_first_author("Benjamin R. Williams, J. Ponesse, R. Schachar") == "williams"
+    )
+
+
+def test_norm_first_author_particules():
+    assert norm_first_author("van der Meere J.") == "vandermeere"
+    assert norm_first_author("de la Torre A.") == "delatorre"
+    assert norm_first_author("von Neumann J.") == "vonneumann"
+    assert norm_first_author("Van de Laar M. C.") == "vandelaar"
+
+
+def test_norm_first_author_compound_hyphenated():
+    assert norm_first_author("Kim-Spoon J.") == "kimspoon"
+    assert norm_first_author("Deater-Deckard K.") == "deaterdeckard"
+
+
+def test_norm_first_author_unicode():
+    assert norm_first_author("García A.") == "garcía" or norm_first_author("García A.") == "garcia" or "garc" in norm_first_author("García A.")
+    # Gligorović (letter ć = c hachek) doit rester normalise vers c ou etre garde
+    result = norm_first_author("Gligorović M.")
+    assert "gligorovi" in result
+
+
+def test_norm_first_author_corporate():
+    # Corporate authors : garder l'entite comme chaine
+    result = norm_first_author("American Psychiatric Association")
+    assert "americanpsychiatric" in result or "association" in result
+
+
+def test_norm_first_author_family_comma_given():
+    # BibTeX classique
+    assert norm_first_author("Wolfe, Christy D.") == "wolfe"
+    assert norm_first_author("García, A.") == "garcía" or "garc" in norm_first_author("García, A.")
+
+
 def test_same_ref_doi_match_ignores_year():
     a = _ref(url="https://doi.org/10.1/abc", title="X", year=2001)
     b = _ref(url="https://doi.org/10.1/abc", title="X", year=2002)
