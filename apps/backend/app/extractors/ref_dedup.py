@@ -223,16 +223,28 @@ def norm_url(u: str | None) -> str:
 
 
 def same_ref(a: ImportedRef, b: ImportedRef) -> bool:
-    """True si a et b designent la meme reference bibliographique."""
+    """True si a et b designent la meme reference bibliographique.
+
+    Logique OU-inclusif :
+    - meme DOI  → identique (short-circuit)
+    - meme URL  → identique
+    - meme (titre normalise + premier auteur normalise + annees compatibles)
+      → identique MEME si les DOIs different (cas d'une reimpression du meme
+      papier avec un DOI different, ex: Stroop 1935 vs sa reedition APA 1992
+      avec titre et auteur identiques).
+    """
     doi_a = _doi_from_url(a.url) if a.url else None
     doi_b = _doi_from_url(b.url) if b.url else None
-    if doi_a and doi_b:
-        return doi_a == doi_b
+    if doi_a and doi_b and doi_a == doi_b:
+        return True  # meme DOI = meme papier, gagne toujours
 
     url_a = norm_url(a.url) if a.url else ""
     url_b = norm_url(b.url) if b.url else ""
     if url_a and url_b and url_a == url_b:
         return True
+
+    # Si DOIs presents et differents, on continue vers le check titre+auteur
+    # (permet de merger reimpression/version alternative du meme papier).
 
     title_a = norm_title(a.title)
     title_b = norm_title(b.title)
@@ -248,14 +260,17 @@ def same_ref(a: ImportedRef, b: ImportedRef) -> bool:
     author_a = norm_first_author(a.authors)
     author_b = norm_first_author(b.authors)
     if author_a and author_b:
-        if author_a != author_b:
-            return False
+        # Titre exact + meme premier auteur = meme oeuvre. On merge meme si
+        # les annees different (cas des reimpressions : Stroop 1935 vs
+        # reedition APA 1992 = meme papier avec un autre DOI). Une biblio
+        # ne citerait pas deux fois le meme papier.
+        return author_a == author_b
     elif len(title_a) < 40:
         # Titre court + auteur manquant : trop risque (homonymes du type
         # "Introduction", "Neural correlates"...). Rejet du match.
         return False
 
-    # Titre + auteur (ou titre long) matchent. Verifier annees non-contradictoires.
+    # Titre long sans auteur : merger si annees non-contradictoires.
     return not (a.year and b.year and a.year != b.year)
 
 

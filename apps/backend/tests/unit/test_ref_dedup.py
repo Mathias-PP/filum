@@ -97,10 +97,13 @@ def test_same_ref_title_author_no_year_conflict():
     assert same_ref(a, b) is True  # year absente sur a, pas de conflit
 
 
-def test_same_ref_title_author_year_conflict():
-    a = _ref(title="Introduction", authors="Foucault M.", year=1975)
-    b = _ref(title="Introduction", authors="Foucault M.", year=1990)
-    assert same_ref(a, b) is False  # years differentes = republication distincte
+def test_same_ref_title_author_same_year_diff_editions_merged():
+    # Titre exact + meme auteur = meme oeuvre, merger meme si les annees
+    # different (reimpression avec DOI different, Stroop 1935 vs sa
+    # reedition APA 1992). Une biblio ne citerait pas 2 fois le meme papier.
+    a = _ref(title="Studies of interference", authors="Stroop", year=1935)
+    b = _ref(title="Studies of interference", authors="Stroop J. R.", year=1992)
+    assert same_ref(a, b) is True
 
 
 def test_same_ref_title_match_but_different_authors():

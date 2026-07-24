@@ -200,6 +200,27 @@ def _is_incomplete_author_list(authors: str | None) -> bool:
     return not any(re.match(r"^[A-Z]\.[A-Z]?\.?$", t) for t in tokens)
 
 
+def _is_ambiguous_single_person(authors: str | None) -> bool:
+    """True si la chaine ressemble a un seul auteur au format ambigu comme
+    'J. Ridley' (S2 stocke parfois seulement le given name avec le middle,
+    en laissant tomber le family name). Distingue mal de 'J. Wolfe' qui
+    serait un vrai auteur. Dans le doute -> force crossref_lookup.
+
+    Heuristique : exactement 2 tokens, le premier est une initiale (« J. »),
+    et il n'y a pas de virgule (single author). Ces refs SEMBLENT completes
+    mais peuvent etre mangees.
+    """
+    if not authors:
+        return False
+    s = authors.strip()
+    if "," in s:
+        return False
+    tokens = s.split()
+    if len(tokens) != 2:
+        return False
+    return bool(re.match(r"^[A-Z]\.[A-Z]?\.?$", tokens[0]))
+
+
 def _titles_are_consistent(existing: str | None, fetched: str | None) -> bool:
     """True si le titre 'existing' (venu de la biblio deposit Frontiers) est
     coherent avec 'fetched' (venu de crossref_lookup sur le DOI). Ratio de
@@ -223,20 +244,31 @@ def _titles_are_consistent(existing: str | None, fetched: str | None) -> bool:
 async def _backfill_one_crossref(ref: ImportedRef, sem: asyncio.Semaphore) -> None:
     """Enrichit `ref` in-place via Crossref si un DOI est extractible.
 
-    Force le fetch complet meme si `authors` est deja rempli quand celui-ci
-    ressemble a un nom-seul (Crossref deposit format: 'Adleman' au lieu de
-    'Adleman N. E., Menon V., Blasey C. M., et al').
+    On force TOUJOURS le fetch Crossref quand un DOI existe : Crossref est
+    la source de verite canonique (nom+prenoms des auteurs, journal, volume,
+    pages, etc.). Les formats S2 mangles ('J. Ridley' au lieu de 'Stroop
+    J. R.') ou Crossref deposit ('Adleman' au lieu de la liste complete)
+    sont TOUS remplaces par la version canonique.
 
     GARDE-FOU : si le titre Crossref-work differe radicalement du titre
     local, le DOI est probablement errone (faute de frappe dans le depot
     editeur). On n'ecrase alors NI le titre NI les auteurs pour ne pas
     contaminer une bonne ref avec les metadonnees d'un papier different.
     """
-    needs_authors = not ref.authors or _is_incomplete_author_list(ref.authors)
-    if ref.title and ref.year and not needs_authors:
-        return  # metadata deja complete
     doi = _doi_from_url(ref.url)
     if not doi:
+        return
+    # Skip uniquement si la ref est deja PLEINEMENT canonique (title + year +
+    # authors avec au moins une virgule OU une initiale = format multi-auteurs
+    # deja Crossref-quality).
+    already_canonical = (
+        ref.title
+        and ref.year
+        and ref.authors
+        and ("," in ref.authors or re.search(r"[A-Z]\.", ref.authors))
+        and not _is_ambiguous_single_person(ref.authors)
+    )
+    if already_canonical:
         return
     async with sem:
         meta = await crossref_lookup(doi)
