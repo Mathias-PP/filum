@@ -200,12 +200,37 @@ def _is_incomplete_author_list(authors: str | None) -> bool:
     return not any(re.match(r"^[A-Z]\.[A-Z]?\.?$", t) for t in tokens)
 
 
+def _titles_are_consistent(existing: str | None, fetched: str | None) -> bool:
+    """True si le titre 'existing' (venu de la biblio deposit Frontiers) est
+    coherent avec 'fetched' (venu de crossref_lookup sur le DOI). Ratio de
+    mots signifiants (>=4 chars) en commun >= 30 %.
+
+    Cas d'incoherence typique : Frontiers a fait une faute de frappe dans le
+    DOI depose pour Aron 2003, DOI qui pointe en realite vers un papier sur
+    les abeilles chez Oikos. Le titre depose (Aron) est correct, le titre
+    fetche (abeilles) est incompatible -> on garde le titre local mais on
+    n'ecrase PAS les auteurs par ceux du mauvais papier.
+    """
+    if not existing or not fetched:
+        return True  # rien a comparer, on laisse passer
+    words_e = {w.lower() for w in re.findall(r"\w+", existing) if len(w) >= 4}
+    words_f = {w.lower() for w in re.findall(r"\w+", fetched) if len(w) >= 4}
+    if not words_e or not words_f:
+        return True
+    return len(words_e & words_f) / max(len(words_e), len(words_f)) >= 0.3
+
+
 async def _backfill_one_crossref(ref: ImportedRef, sem: asyncio.Semaphore) -> None:
     """Enrichit `ref` in-place via Crossref si un DOI est extractible.
 
     Force le fetch complet meme si `authors` est deja rempli quand celui-ci
     ressemble a un nom-seul (Crossref deposit format: 'Adleman' au lieu de
     'Adleman N. E., Menon V., Blasey C. M., et al').
+
+    GARDE-FOU : si le titre Crossref-work differe radicalement du titre
+    local, le DOI est probablement errone (faute de frappe dans le depot
+    editeur). On n'ecrase alors NI le titre NI les auteurs pour ne pas
+    contaminer une bonne ref avec les metadonnees d'un papier different.
     """
     needs_authors = not ref.authors or _is_incomplete_author_list(ref.authors)
     if ref.title and ref.year and not needs_authors:
@@ -217,27 +242,33 @@ async def _backfill_one_crossref(ref: ImportedRef, sem: asyncio.Semaphore) -> No
         meta = await crossref_lookup(doi)
     if meta is None:
         return
+    # Si les titres sont incompatibles, le DOI pointe vers un autre papier :
+    # on n'ecrase pas les authors (garde ceux de la biblio deposit) et on
+    # complete uniquement les meta qui n'existent pas encore (year, DOI).
+    titles_ok = _titles_are_consistent(ref.title, meta.title)
     if not ref.title and meta.title:
         ref.title = meta.title
-    # Ecraser 'Adleman' seul par 'Adleman N. E., Menon V., Blasey C. M., ...'
-    if meta.authors and (not ref.authors or _is_incomplete_author_list(ref.authors)):
+    if titles_ok and meta.authors and (not ref.authors or _is_incomplete_author_list(ref.authors)):
         ref.authors = meta.authors
     if not ref.year and meta.published_at:
         # published_at format YYYY-MM-DD.
         year_str = meta.published_at[:4]
         if year_str.isdigit():
             ref.year = int(year_str)
-    # Metadonnees bibliographiques etendues (autofill pour Zone repliable UI).
-    if not ref.journal and meta.journal:
-        ref.journal = meta.journal
-    if not ref.volume and meta.volume:
-        ref.volume = meta.volume
-    if not ref.pages and meta.pages:
-        ref.pages = meta.pages
-    if not ref.publisher and meta.publisher:
-        ref.publisher = meta.publisher
-    if not ref.doi and meta.doi:
-        ref.doi = meta.doi
+    # Metadonnees bibliographiques etendues (autofill Zone repliable UI).
+    # Skip si titres incoherents : le DOI pointe vers un autre papier, ces
+    # meta correspondraient au mauvais papier (ex: Aron→journal='Oikos').
+    if titles_ok:
+        if not ref.journal and meta.journal:
+            ref.journal = meta.journal
+        if not ref.volume and meta.volume:
+            ref.volume = meta.volume
+        if not ref.pages and meta.pages:
+            ref.pages = meta.pages
+        if not ref.publisher and meta.publisher:
+            ref.publisher = meta.publisher
+        if not ref.doi and meta.doi:
+            ref.doi = meta.doi
     # Crossref = journal DOI dans 99% des cas -> article scientifique.
     if ref.category == "page-web":
         ref.category = "article-scientifique"
@@ -721,17 +752,6 @@ def _extract_references_text(html: str) -> tuple[str, bool]:
 _S2_XCHECK_CONCURRENCY = 8
 
 
-def _title_word_overlap(a: str | None, b: str | None) -> float:
-    """Ratio de mots (>=4 chars) en commun entre 2 titres. 0.0 si l'un vide."""
-    if not a or not b:
-        return 0.0
-    words_a = {w.lower() for w in re.findall(r"\w+", a) if len(w) >= 4}
-    words_b = {w.lower() for w in re.findall(r"\w+", b) if len(w) >= 4}
-    if not words_a or not words_b:
-        return 0.0
-    return len(words_a & words_b) / max(len(words_a), len(words_b))
-
-
 async def _s2_ref_passes_xcheck(ref: ImportedRef, sem: asyncio.Semaphore) -> bool:
     """True si la ref S2 est confirmee OU si Crossref n'a pas d'avis (DOI inconnu).
     False si Crossref renvoie un titre incompatible (hallucination S2).
@@ -744,12 +764,9 @@ async def _s2_ref_passes_xcheck(ref: ImportedRef, sem: asyncio.Semaphore) -> boo
     if meta is None:
         return True  # Crossref ne connait pas ce DOI -> ref potentiellement legit
     if not meta.title:
-        return True  # Crossref n'a pas de titre pour comparer -> on garde
-    overlap = _title_word_overlap(ref.title, meta.title)
-    # Seuil 0.3 : sur "Studies of Interference in Serial Verbal Reactions" vs
-    # "Half a century of research on the Stroop effect" -> ~0.0 → drop.
-    # Sur des titres proches (variantes de casse, ponctuation) -> ratio > 0.6.
-    return overlap >= 0.3
+        return True
+    # Meme seuil 30% que _titles_are_consistent (fonction unique de reference).
+    return _titles_are_consistent(ref.title, meta.title)
 
 
 async def _drop_s2_hallucinations(
