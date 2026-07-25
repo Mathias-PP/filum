@@ -181,9 +181,9 @@ def test_dedup_crossref_plus_s2_yields_152(crossref_payload, s2_payload, frontie
     # titre long matche dans la section (ex: Stroop 1935, Williams 1999)
     # potentiellement non-canoniques chez Crossref mais reellement citees.
     # L'important : rejet strict des bruits (bee paper), pas le compte exact.
-    assert (
-        152 <= len(deduped) <= 162
-    ), f"Attendu 152-162 refs, obtenu {len(deduped)} (crossref={len(cr_refs)}, s2_validated={len(s2_validated)})"
+    assert 152 <= len(deduped) <= 162, (
+        f"Attendu 152-162 refs, obtenu {len(deduped)} (crossref={len(cr_refs)}, s2_validated={len(s2_validated)})"
+    )
 
     # Aucun titre bruite S2 (bee paper, fragments) ne doit survivre
     titles_lower = " ".join((r.title or "").lower() for r in deduped)

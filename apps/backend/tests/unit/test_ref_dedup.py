@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from app.extractors.ref_dedup import (
     dedupe_refs,
+    matches_authoritative_work,
+    norm_authors_list,
     norm_first_author,
     norm_title,
     same_ref,
@@ -18,9 +20,11 @@ def _ref(**kw) -> ImportedRef:
 
 def test_norm_title_alphanum_only():
     assert norm_title("The Origin of Species!") == "theoriginofspecies"
-    assert norm_title("À la recherche") == "àlarecherche" or norm_title(
-        "À la recherche"
-    ).startswith("larecherche") or norm_title("À la recherche")  # normalisation NFKC
+    assert (
+        norm_title("À la recherche") == "àlarecherche"
+        or norm_title("À la recherche").startswith("larecherche")
+        or norm_title("À la recherche")
+    )  # normalisation NFKC
     assert norm_title(None) == ""
 
 
@@ -43,9 +47,7 @@ def test_norm_first_author_given_family():
 
 def test_norm_first_author_multi_authors_s2():
     # Format S2 : 'Given Family, Given Family, ...'
-    assert (
-        norm_first_author("Benjamin R. Williams, J. Ponesse, R. Schachar") == "williams"
-    )
+    assert norm_first_author("Benjamin R. Williams, J. Ponesse, R. Schachar") == "williams"
 
 
 def test_norm_first_author_particules():
@@ -61,7 +63,11 @@ def test_norm_first_author_compound_hyphenated():
 
 
 def test_norm_first_author_unicode():
-    assert norm_first_author("García A.") == "garcía" or norm_first_author("García A.") == "garcia" or "garc" in norm_first_author("García A.")
+    assert (
+        norm_first_author("García A.") == "garcía"
+        or norm_first_author("García A.") == "garcia"
+        or "garc" in norm_first_author("García A.")
+    )
     # Gligorović (letter ć = c hachek) doit rester normalise vers c ou etre garde
     result = norm_first_author("Gligorović M.")
     assert "gligorovi" in result
@@ -97,13 +103,13 @@ def test_same_ref_title_author_no_year_conflict():
     assert same_ref(a, b) is True  # year absente sur a, pas de conflit
 
 
-def test_same_ref_title_author_same_year_diff_editions_merged():
-    # Titre exact + meme auteur = meme oeuvre, merger meme si les annees
-    # different (reimpression avec DOI different, Stroop 1935 vs sa
-    # reedition APA 1992). Une biblio ne citerait pas 2 fois le meme papier.
-    a = _ref(title="Studies of interference", authors="Stroop", year=1935)
-    b = _ref(title="Studies of interference", authors="Stroop J. R.", year=1992)
-    assert same_ref(a, b) is True
+def test_same_ref_title_author_year_conflict_distinct():
+    # Deux editions/republications avec meme titre+auteur mais annees
+    # differentes = refs DISTINCTES (les bibliographies citent une edition
+    # specifique, ex: livre 1ere edition 2001 vs 2e edition 2015).
+    a = _ref(title="Introduction", authors="Foucault M.", year=1975)
+    b = _ref(title="Introduction", authors="Foucault M.", year=1990)
+    assert same_ref(a, b) is False
 
 
 def test_same_ref_title_match_but_different_authors():
@@ -127,3 +133,51 @@ def test_dedupe_refs_preserves_distinct_homonyms():
     b = _ref(title="Introduction", authors="Deleuze G.", year=1968)
     out = dedupe_refs([a, b])
     assert len(out) == 2
+
+
+def test_norm_authors_list_multi():
+    assert norm_authors_list("Wolfe C. D., Bell M. A.") == ["wolfe", "bell"]
+    assert norm_authors_list("Wolfe, C. D., and Bell, M. A.") == ["wolfe", "bell"]
+    assert norm_authors_list("Wolfe C. D.") == ["wolfe"]
+    assert norm_authors_list(None) == []
+    assert norm_authors_list("") == []
+
+
+def test_same_ref_distinct_when_second_author_differs():
+    # Meme 1er auteur + meme titre + meme annee mais 2eme auteur different :
+    # papiers distincts (co-auteurs differents).
+    a = _ref(
+        title="Neural correlates of inhibition",
+        authors="Wolfe C., Bell M.",
+        year=2010,
+    )
+    b = _ref(
+        title="Neural correlates of inhibition",
+        authors="Wolfe C., Diamond A.",
+        year=2010,
+    )
+    assert same_ref(a, b) is False
+
+
+def test_same_ref_matches_when_second_author_absent_on_one_side():
+    # Une des refs est tronquee ('Wolfe et al.' style, 1 auteur) :
+    # tolere le match sur le seul 1er auteur pour ne pas perdre le merge.
+    a = _ref(title="Neural correlates of inhibition", authors="Wolfe C.", year=2010)
+    b = _ref(
+        title="Neural correlates of inhibition",
+        authors="Wolfe C., Bell M., Diamond A.",
+        year=2010,
+    )
+    assert same_ref(a, b) is True
+
+
+def test_matches_authoritative_work_second_author_gate():
+    # Meme titre + 1er auteur mais 2eme auteur different chez S2 :
+    # NE PAS considerer comme meme papier autoritative (pas de drop).
+    cr = _ref(title="Some paper title long enough here", authors="Smith A., Jones B.", year=2015)
+    s2_ok = _ref(title="Some paper title long enough here", authors="Smith A., Jones B.", year=2015)
+    s2_diff = _ref(
+        title="Some paper title long enough here", authors="Smith A., Miller C.", year=2015
+    )
+    assert matches_authoritative_work(s2_ok, cr) is True
+    assert matches_authoritative_work(s2_diff, cr) is False

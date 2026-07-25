@@ -35,9 +35,7 @@ async def client(db_session):
 
 
 @pytest.mark.asyncio
-async def test_source_metadata_survives_create_read_round_trip(
-    client, session_token
-):
+async def test_source_metadata_survives_create_read_round_trip(client, session_token):
     """Simule le flow exact : POST /sources avec title/authors/date/category,
     puis GET /sources doit renvoyer les MEMES valeurs."""
     client.cookies.set("filum_session", session_token)
@@ -172,9 +170,7 @@ async def test_batch_create_persists_all_metadata(client, session_token):
     assert len(body["created"]) == 10
     assert body["failed"] == []
     # Chaque source retournee a bien sa metadata
-    for src, expected in zip(
-        sorted(body["created"], key=lambda s: s["url"]), sources_payload
-    ):
+    for src, expected in zip(sorted(body["created"], key=lambda s: s["url"]), sources_payload):
         assert src["title"] == expected["title"]
         assert src["authors"] == expected["authors"]
 
@@ -189,9 +185,7 @@ async def test_batch_create_persists_all_metadata(client, session_token):
 
 
 @pytest.mark.asyncio
-async def test_batch_create_reports_failures_without_dropping_others(
-    client, session_token
-):
+async def test_batch_create_reports_failures_without_dropping_others(client, session_token):
     """Une source invalide (URL absente) ne casse pas les autres du batch."""
     client.cookies.set("filum_session", session_token)
 

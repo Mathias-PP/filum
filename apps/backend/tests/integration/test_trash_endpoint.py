@@ -70,9 +70,7 @@ async def test_list_deleted_cards_requires_auth(client):
 
 
 @pytest.mark.asyncio
-async def test_list_deleted_cards_returns_only_soft_deleted(
-    client, session_token, deleted_cards
-):
+async def test_list_deleted_cards_returns_only_soft_deleted(client, session_token, deleted_cards):
     client.cookies.set("filum_session", session_token)
     resp = await client.get("/api/v1/cards/deleted")
     assert resp.status_code == 200

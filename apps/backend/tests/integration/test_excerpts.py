@@ -148,7 +148,11 @@ async def test_suggest_llm_disabled(client, source, monkeypatch):
 
     resp = await client.post(f"/api/v1/sources/{source.id}/excerpts/suggest")
     assert resp.status_code == 200
-    assert resp.json() == {"suggestions": [], "page_text_length": len(PAGE_TEXT), "llm_enabled": False}
+    assert resp.json() == {
+        "suggestions": [],
+        "page_text_length": len(PAGE_TEXT),
+        "llm_enabled": False,
+    }
 
 
 @pytest.mark.asyncio

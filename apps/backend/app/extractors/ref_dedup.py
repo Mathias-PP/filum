@@ -167,36 +167,84 @@ def _pick_family_from_segment(segment: str) -> str:
     return core[-1]
 
 
-def norm_first_author(authors: str | None) -> str:
-    """Extrait et normalise le nom de famille du premier auteur.
+def _split_author_segments(authors: str) -> list[str]:
+    """Decoupe une chaine multi-auteurs en segments {1er auteur, 2eme, ...}.
 
-    Gere : 'Family, Given', 'Family G.', 'G. Family', 'Given Family',
-    'Given Middle Family', 'van der Meere J.', 'de la Torre', 'Kim-Spoon J.',
-    'García A.', 'American Psychiatric Association' (corporate).
+    Deux formats principaux :
+    - 'Family1 G., Family2 H., Family3 K.'  (S2, Crossref) -> split par ','
+    - 'Family1, Given1, Family2, Given2'    (BibTeX rare)  -> paires
+    - 'Family1, Given1 and Family2, Given2' (BibTeX Zotero) -> split par ' and '
+
+    On priorise ' and ' > ';' > ',' pour separer.
     """
-    if not authors:
-        return ""
-    stripped = authors.strip()
-    if not stripped:
-        return ""
+    s = authors.strip()
+    if not s:
+        return []
+    # ' and ' est le separateur non ambigu (BibTeX)
+    if " and " in s:
+        return [x.strip() for x in s.split(" and ") if x.strip()]
+    if ";" in s:
+        return [x.strip() for x in s.split(";") if x.strip()]
+    # Format 'Family, Given, Family, Given' (BibTeX rare) : la 2eme virgule
+    # n'est pas un separateur d'auteurs mais un slot given. On detecte par
+    # nombre pair de segments qui ressemblent a des (Family, Given).
+    # Cas commun 'Family G., Family2 H., ...' -> split par ',' donne les auteurs.
+    segments = [x.strip() for x in s.split(",") if x.strip()]
+    if not segments:
+        return []
+    # Si le format est 'Family, Given' (comma-family-first), on a des paires
+    # (Family_i, Given_i) alternees. Detecter : segments impairs sont des
+    # given (courts, initiales ou prenom).
+    if len(segments) >= 2 and _has_comma_family_first(f"{segments[0]}, {segments[1]}"):
+        # Recombine paires
+        combined = []
+        for i in range(0, len(segments) - 1, 2):
+            combined.append(f"{segments[i]}, {segments[i + 1]}")
+        # Si nb impair, dernier segment reste tel quel
+        if len(segments) % 2 == 1:
+            combined.append(segments[-1])
+        return combined
+    return segments
 
-    # Cas corporate : renvoyer l'entiere (pas de decoupage)
-    if _is_corporate(stripped):
-        candidate = stripped
+
+def _extract_family_from_author_segment(segment: str) -> str:
+    """Extrait et normalise le nom de famille d'UN segment d'auteur.
+
+    Segment = un seul auteur sous n'importe quel format ('Wolfe C. D.',
+    'C. Wolfe', 'Wolfe, C. D.', 'van der Meere J.', 'Kim-Spoon J.',
+    'American Psychiatric Association' corporate).
+    """
+    if not segment:
+        return ""
+    if _is_corporate(segment):
+        candidate = segment
+    elif _has_comma_family_first(segment):
+        candidate = _pick_family_from_segment(segment)
     else:
-        # Split par 1ere virgule uniquement si ce n'est PAS le format
-        # 'Family, Given' (dans quel cas on veut garder tout le segment)
-        if _has_comma_family_first(stripped):
-            first_segment = stripped
-        else:
-            first_segment = stripped.split(",", 1)[0].strip()
-
-        candidate = _pick_family_from_segment(first_segment)
-
-    # Normalise NFKC + lowercase + alnum uniquement (garde les tirets internes
-    # une seconde: sinon 'Kim-Spoon' devient 'kimspoon' ce qui est OK pour dedup).
+        candidate = _pick_family_from_segment(segment.split(",", 1)[0].strip())
     candidate = unicodedata.normalize("NFKC", candidate).lower()
     return re.sub(r"[^a-z0-9]", "", candidate)
+
+
+def norm_authors_list(authors: str | None, max_authors: int = 5) -> list[str]:
+    """Retourne la liste des noms de famille normalises des N premiers
+    auteurs. Chaine vide → liste vide. Utilise pour la dedup plus robuste
+    que le seul premier auteur.
+    """
+    if not authors:
+        return []
+    stripped = authors.strip()
+    if not stripped:
+        return []
+    segments = _split_author_segments(stripped)[:max_authors]
+    families = [_extract_family_from_author_segment(seg) for seg in segments]
+    return [f for f in families if f]
+
+
+def norm_first_author(authors: str | None) -> str:
+    """Retour-compat : premier auteur normalise, ou '' si absent."""
+    families = norm_authors_list(authors, max_authors=1)
+    return families[0] if families else ""
 
 
 def norm_url(u: str | None) -> str:
@@ -257,21 +305,58 @@ def same_ref(a: ImportedRef, b: ImportedRef) -> bool:
     # (a) meme premier auteur normalise (fort si les deux sont presents), ou
     # (b) titre long (>=40 chars normalises soit >~5 mots) et annees non-contradictoires
     #     — un titre long unique est un identifiant fiable meme sans auteur.
-    author_a = norm_first_author(a.authors)
-    author_b = norm_first_author(b.authors)
-    if author_a and author_b:
-        # Titre exact + meme premier auteur = meme oeuvre. On merge meme si
-        # les annees different (cas des reimpressions : Stroop 1935 vs
-        # reedition APA 1992 = meme papier avec un autre DOI). Une biblio
-        # ne citerait pas deux fois le meme papier.
-        return author_a == author_b
+    authors_a = norm_authors_list(a.authors, max_authors=2)
+    authors_b = norm_authors_list(b.authors, max_authors=2)
+    if authors_a and authors_b:
+        # 1er auteur doit matcher (identifiant scholarly principal).
+        if authors_a[0] != authors_b[0]:
+            return False
+        # 2eme auteur : si present des DEUX cotes, doit matcher aussi
+        # (evite de merger 2 papiers 'Wolfe C.' avec co-auteurs differents).
+        # Si absent d'un cote (liste tronquee type 'Wolfe et al.'), on
+        # tolere le match sur le seul 1er auteur.
+        if len(authors_a) >= 2 and len(authors_b) >= 2 and authors_a[1] != authors_b[1]:
+            return False
     elif len(title_a) < 40:
-        # Titre court + auteur manquant : trop risque (homonymes du type
-        # "Introduction", "Neural correlates"...). Rejet du match.
+        # Titre court + auteur manquant des deux cotes : trop risque
+        # (homonymes du type "Introduction", "Neural correlates"...).
         return False
 
-    # Titre long sans auteur : merger si annees non-contradictoires.
+    # Titre + auteurs (ou titre long) matchent. L'annee reste un facteur de
+    # DISTINCTION : deux editions/reimpressions/republications avec meme
+    # titre+auteur mais annees differentes sont des refs distinctes en
+    # citation (les bibliographies citent une edition specifique).
     return not (a.year and b.year and a.year != b.year)
+
+
+def matches_authoritative_work(candidate: ImportedRef, authoritative: ImportedRef) -> bool:
+    """True si ``candidate`` designe le meme travail qu'une ref autoritative,
+    en ignorant l'annee et le DOI.
+
+    Usage EXCLUSIF : pre-filtrage des candidats S2 contre le set autoritatif
+    Crossref. S2 propose parfois une ref deja presente chez Crossref sous un
+    DOI different (ex: DOI de la reedition au lieu du DOI original). Cette
+    fonction detecte ces doublons pour dropper le candidat S2, l'entree
+    Crossref (canonique editeur) etant conservee.
+
+    NE PAS utiliser pour dedupliquer un set (utiliser ``same_ref`` a la place :
+    deux editions/republications distinctes doivent rester distinctes).
+    """
+    title_c = norm_title(candidate.title)
+    title_a = norm_title(authoritative.title)
+    if not title_c or title_c != title_a:
+        return False
+    authors_c = norm_authors_list(candidate.authors, max_authors=2)
+    authors_a = norm_authors_list(authoritative.authors, max_authors=2)
+    # Si l'un des auteurs est manquant, on exige un titre long (>=40 chars
+    # normalises) pour rester prudent : les titres courts ("Introduction")
+    # ne suffisent pas seuls.
+    if not authors_c or not authors_a:
+        return len(title_c) >= 40
+    if authors_c[0] != authors_a[0]:
+        return False
+    # 2eme auteur : contrainte uniquement si present des deux cotes.
+    return not (len(authors_c) >= 2 and len(authors_a) >= 2 and authors_c[1] != authors_a[1])
 
 
 def _merge_metadata(keep: ImportedRef, drop: ImportedRef) -> ImportedRef:

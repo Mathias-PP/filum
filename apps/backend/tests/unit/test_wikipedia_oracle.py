@@ -30,9 +30,10 @@ def test_extract_lang_and_title():
         "en",
         "Working memory",
     )
-    assert _extract_lang_and_title(
-        "https://fr.wikipedia.org/wiki/M%C3%A9moire_de_travail"
-    ) == ("fr", "Mémoire de travail")
+    assert _extract_lang_and_title("https://fr.wikipedia.org/wiki/M%C3%A9moire_de_travail") == (
+        "fr",
+        "Mémoire de travail",
+    )
 
 
 def test_parse_reference_li_with_doi_and_cite():

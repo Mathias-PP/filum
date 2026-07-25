@@ -170,8 +170,6 @@ async def test_update_card_can_toggle_visibility(client, session_token):
     assert resp.status_code == 201
     card_id = resp.json()["id"]
 
-    resp = await client.patch(
-        f"/api/v1/cards/{card_id}", json={"visibility": "private"}
-    )
+    resp = await client.patch(f"/api/v1/cards/{card_id}", json={"visibility": "private"})
     assert resp.status_code == 200
     assert resp.json()["visibility"] == "private"

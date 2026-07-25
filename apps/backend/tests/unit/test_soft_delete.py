@@ -85,9 +85,7 @@ class TestDeleteCardIsSoft:
         await card_service.delete_card(draft_card.id, test_user.id)
         assert (await card_service.get_card_by_id(draft_card.id)) is None
 
-    async def test_get_user_cards_hides_deleted(
-        self, card_service, draft_card, test_user
-    ):
+    async def test_get_user_cards_hides_deleted(self, card_service, draft_card, test_user):
         before = await card_service.get_user_cards(test_user.id)
         assert any(c.id == draft_card.id for c in before)
 
