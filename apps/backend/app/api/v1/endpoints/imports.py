@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 from app.api.v1.endpoints.cards import get_current_user
 from app.core.url_safety import UnsafeUrlError, assert_url_is_safe
 from app.extractors.grobid import extract_pdf_references
-from app.extractors.ref_dedup import dedupe_refs, same_ref
+from app.extractors.ref_dedup import dedupe_refs, matches_authoritative_work, same_ref
 from app.extractors.ref_scorer import should_drop
 from app.extractors.section_detector import (
     SectionBoundary,
@@ -976,6 +976,18 @@ async def parse_content_url(
                     "s2_hallucinations_dropped=%d (crossref cross-check)",
                     s2_dropped_hallucinations,
                 )
+            # PRE-FILTRE S2-vs-CROSSREF par titre+auteur : S2 peut proposer
+            # un DOI different (reedition, arXiv preprint) pour un papier
+            # deja present chez Crossref. On drop le S2 (Crossref est la
+            # source canonique editeur) sans toucher a la dedup generale.
+            if crossref_refs:
+                before = len(s2_refs)
+                s2_refs = [
+                    r
+                    for r in s2_refs
+                    if not any(matches_authoritative_work(r, cr) for cr in crossref_refs)
+                ]
+                s2_dropped_hallucinations += before - len(s2_refs)
 
     # 3b. HTML scraping (regex sur refs_text)
     html_result = parse_markdown(refs_text) if refs_text else ParseResult()

@@ -73,9 +73,9 @@ def _minimal_source_kwargs(**overrides):
 
 class TestSourceSchemas:
     def test_valid_source_create(self):
-        data = SourceCreate(**_minimal_source_kwargs(
-            url="https://www.nature.com/articles/s41586-023-06501-x"
-        ))
+        data = SourceCreate(
+            **_minimal_source_kwargs(url="https://www.nature.com/articles/s41586-023-06501-x")
+        )
         assert data.url == "https://www.nature.com/articles/s41586-023-06501-x"
         assert data.format == SourceFormat.TEXTE
         assert data.category == SourceCategory.ARTICLE_SCIENTIFIQUE
@@ -84,15 +84,17 @@ class TestSourceSchemas:
         assert data.parent_source_id is None
 
     def test_source_with_all_fields(self):
-        data = SourceCreate(**_minimal_source_kwargs(
-            title="Example Article",
-            authors="John Doe, Jane Smith",
-            format=SourceFormat.VIDEO,
-            category=SourceCategory.DOCUMENTAIRE,
-            author_kind=AuthorKind.MEDIA,
-            annotation="Important source for the argument",
-            is_pivot=True,
-        ))
+        data = SourceCreate(
+            **_minimal_source_kwargs(
+                title="Example Article",
+                authors="John Doe, Jane Smith",
+                format=SourceFormat.VIDEO,
+                category=SourceCategory.DOCUMENTAIRE,
+                author_kind=AuthorKind.MEDIA,
+                annotation="Important source for the argument",
+                is_pivot=True,
+            )
+        )
         assert data.is_pivot is True
         assert data.annotation == "Important source for the argument"
         assert data.format.value == "video"
