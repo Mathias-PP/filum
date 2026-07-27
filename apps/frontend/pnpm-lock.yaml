@@ -28,8 +28,8 @@ importers:
         version: 1.0.11
     devDependencies:
       '@eslint/js':
-        specifier: ^9.0.0
-        version: 9.39.4
+        specifier: ^9.39.5
+        version: 9.39.5
       '@sveltejs/adapter-auto':
         specifier: ^4.0.0
         version: 4.0.0(@sveltejs/kit@2.70.1(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.56.6(@typescript-eslint/types@8.59.3))(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)))(svelte@5.56.6(@typescript-eslint/types@8.59.3))(typescript@5.9.3)(vite@6.4.3(@types/node@26.1.1)(jiti@1.21.7)))
@@ -345,6 +345,10 @@ packages:
 
   '@eslint/js@9.39.4':
     resolution: {integrity: sha512-nE7DEIchvtiFTwBw4Lfbu59PG+kCofhjsKaCWzxTpt4lfRjRMqG6uMBzKXuEcyXhOHoUp9riAm7/aWYGhXZ9cw==}
+    engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@eslint/js@9.39.5':
+    resolution: {integrity: sha512-QywQuszQh77pIXCsq998c8hbhSTI/azTty1Z6N53dmAudKHhy573j3yvRLsX2BSp8YpLtoCEG8E9DJe+8zUh4A==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
   '@eslint/object-schema@2.1.7':
@@ -2427,6 +2431,8 @@ snapshots:
       - supports-color
 
   '@eslint/js@9.39.4': {}
+
+  '@eslint/js@9.39.5': {}
 
   '@eslint/object-schema@2.1.7': {}
 
