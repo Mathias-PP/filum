@@ -186,6 +186,78 @@ async def test_mutual_citation_cycle_terminates(client, db_session, test_user):
     assert len(data["nodes"]) == len({n["id"] for n in data["nodes"]})
 
 
+@pytest_asyncio.fixture
+async def cited_pair(db_session, test_user):
+    """Une fiche publique en cite une autre : seul le lien entrant existe."""
+    cited = _card(test_user.id, "fiche-citee", "Fiche citee")
+    citing = _card(test_user.id, "fiche-citante", "Fiche citante")
+    hidden = _card(test_user.id, "fiche-cachee", "Fiche cachee", visibility="private")
+    db_session.add_all([cited, citing, hidden])
+    await db_session.commit()
+    db_session.add_all(
+        [
+            _source(citing.id, "http://test/@testuser/fiche-citee", "Citee", linked_card_id=cited.id),
+            _source(hidden.id, "http://test/@testuser/fiche-citee", "Citee", linked_card_id=cited.id),
+        ]
+    )
+    await db_session.commit()
+    return {"cited": cited, "citing": citing, "hidden": hidden}
+
+
+@pytest.mark.asyncio
+async def test_constellation_surfaces_incoming_citations(client, cited_pair):
+    """« Ou se situe cette fiche » se repond mal en ignorant qui la cite."""
+    r = await client.get("/api/v1/@testuser/fiche-citee/graph?depth=1&include_sources=false")
+    data = r.json()
+    assert _ids(data, "card") == {
+        f"card:{cited_pair['cited'].id}",
+        f"card:{cited_pair['citing'].id}",
+    }
+    assert {(e["source"], e["target"]) for e in data["edges"]} == {
+        (f"card:{cited_pair['citing'].id}", f"card:{cited_pair['cited'].id}")
+    }
+
+
+@pytest.mark.asyncio
+async def test_constellation_never_reveals_a_private_citing_card(client, cited_pair):
+    r = await client.get("/api/v1/@testuser/fiche-citee/graph?depth=3&include_sources=false")
+    data = r.json()
+    assert f"card:{cited_pair['hidden'].id}" not in _ids(data, "card")
+    assert all(f"card:{cited_pair['hidden'].id}" not in (e["source"], e["target"]) for e in data["edges"])
+
+
+@pytest.mark.asyncio
+async def test_source_graph_stays_outgoing_only(client, cited_pair):
+    """Le graphe des sources repond « sur quoi s'appuie-t-elle » : pas d'entrant."""
+    r = await client.get("/api/v1/@testuser/fiche-citee/graph?depth=2")
+    assert _ids(r.json(), "card") == {f"card:{cited_pair['cited'].id}"}
+
+
+@pytest.mark.asyncio
+async def test_constellation_emits_a_mutual_citation_once_in_each_direction(
+    client, db_session, test_user
+):
+    x = _card(test_user.id, "etoile-x", "Etoile X")
+    y = _card(test_user.id, "etoile-y", "Etoile Y")
+    db_session.add_all([x, y])
+    await db_session.commit()
+    db_session.add_all(
+        [
+            _source(x.id, "http://test/@testuser/etoile-y", "Y", linked_card_id=y.id),
+            _source(y.id, "http://test/@testuser/etoile-x", "X", linked_card_id=x.id),
+        ]
+    )
+    await db_session.commit()
+
+    r = await client.get("/api/v1/@testuser/etoile-x/graph?depth=2&include_sources=false")
+    edges = [(e["source"], e["target"]) for e in r.json()["edges"]]
+    assert len(edges) == len(set(edges))
+    assert set(edges) == {
+        (f"card:{x.id}", f"card:{y.id}"),
+        (f"card:{y.id}", f"card:{x.id}"),
+    }
+
+
 @pytest.mark.asyncio
 async def test_unknown_card_returns_404(client):
     r = await client.get("/api/v1/@testuser/inexistante/graph")

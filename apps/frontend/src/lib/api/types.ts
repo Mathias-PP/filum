@@ -360,6 +360,9 @@ export interface GraphNode {
   url?: string | null;
   authors?: string | null;
   category?: string | null;
+  format?: string | null;
+  author_kind?: string | null;
+  is_pivot?: boolean;
   /** Nœuds `card` uniquement — nécessaires pour étiqueter et naviguer. */
   slug?: string | null;
   creator_slug?: string | null;
