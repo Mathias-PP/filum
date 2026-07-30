@@ -127,7 +127,7 @@ def pick_subtitle_track(info: dict) -> tuple[str, str] | None:
 
 def _probe_video(url: str) -> dict | None:
     """Metadonnees yt-dlp, sans telechargement. Appel bloquant."""
-    from yt_dlp import YoutubeDL  # type: ignore[import-untyped]
+    from yt_dlp import YoutubeDL
 
     options = {
         "skip_download": True,
