@@ -96,6 +96,26 @@ def _doi_from_url(url: str) -> str | None:
     return None
 
 
+_TRUNCATION_SUFFIX_RE = re.compile(r"(?:\.{2,}|…)$")
+
+
+def clean_scanned_url(raw: str) -> str | None:
+    """Nettoie une URL capturee dans du texte libre. None = inutilisable.
+
+    Deux cas distincts :
+    - ponctuation de phrase collee a la fin (``…voir ici.``) -> on la retire ;
+    - URL visuellement tronquee par l'affichage (``/assure/sante/the...``,
+      courant dans les descriptions YouTube ou les apercus de commentaires)
+      -> la cible est perdue, la garder produirait un lien mort et un
+      quasi-doublon de l'URL complete. On la rejette.
+    """
+    url = raw.strip().rstrip("'\"")
+    if _TRUNCATION_SUFFIX_RE.search(url):
+        return None
+    url = url.rstrip(".,;:)]}")
+    return url if len(url) > 12 else None
+
+
 def _dedupe_key(url: str) -> str:
     """Canonical dedup key: DOI when embedded, else the normalized URL.
 
@@ -308,8 +328,8 @@ def parse_markdown(text: str) -> ParseResult:
         linked_urls.add(m.group(1))
     # URLs nues (hors liens deja captures)
     for m in _URL_RE.finditer(text):
-        url = m.group(0).rstrip(".,;:")
-        if url not in linked_urls:
+        url = clean_scanned_url(m.group(0))
+        if url and url not in linked_urls:
             result.refs.append(ImportedRef(url=url))
     # DOIs nus sans URL
     for m in _DOI_RE.finditer(text):
@@ -342,11 +362,10 @@ def parse_pdf(data: bytes) -> ParseResult:
     result = ParseResult()
     for chunk in _pdf_text_chunks(data):
         for m in _URL_RE.finditer(chunk):
-            url = m.group(0).rstrip(".,;:)")
             # Les operateurs PDF collent parfois du bruit apres l'URL ; on
             # coupe au premier caractere improbable dans une URL.
-            url = re.split(r"[\\(]", url)[0]
-            if len(url) > 12:
+            url = clean_scanned_url(re.split(r"[\\(]", m.group(0))[0])
+            if url:
                 result.refs.append(ImportedRef(url=url))
         for m in _DOI_RE.finditer(chunk):
             doi = re.split(r"[\\(]", m.group(1))[0]
@@ -413,8 +432,8 @@ def parse_html(data: bytes) -> ParseResult:
         result.refs.append(ImportedRef(url=href, title=title))
     text = soup.get_text("\n")
     for m in _URL_RE.finditer(text):
-        url = m.group(0).rstrip(".,;:)")
-        if url not in linked:
+        url = clean_scanned_url(m.group(0))
+        if url and url not in linked:
             result.refs.append(ImportedRef(url=url))
     for m in _DOI_RE.finditer(text):
         result.refs.append(ImportedRef(_doi_to_url(m.group(1)), category="article-scientifique"))
