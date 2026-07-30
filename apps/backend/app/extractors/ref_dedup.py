@@ -329,6 +329,12 @@ def same_ref(a: ImportedRef, b: ImportedRef) -> bool:
     return not (a.year and b.year and a.year != b.year)
 
 
+# Longueur (en caracteres alphanumeriques normalises) au-dela de laquelle un
+# titre est considere comme un identifiant unique fiable, sans confirmation
+# par les auteurs. ~40 chars = 5-6 mots.
+_AUTHORITATIVE_TITLE_MIN_LEN = 40
+
+
 def matches_authoritative_work(candidate: ImportedRef, authoritative: ImportedRef) -> bool:
     """True si ``candidate`` designe le meme travail qu'une ref autoritative,
     en ignorant l'annee et le DOI.
@@ -341,18 +347,28 @@ def matches_authoritative_work(candidate: ImportedRef, authoritative: ImportedRe
 
     NE PAS utiliser pour dedupliquer un set (utiliser ``same_ref`` a la place :
     deux editions/republications distinctes doivent rester distinctes).
+
+    Couche d'enrichissement = dedup PLUS STRICTE que ``same_ref`` : un titre
+    long identique suffit, meme si les chaines auteurs divergent. Les sources
+    d'enrichissement degradent les auteurs de facons incompatibles (prenom vs
+    nom de famille, initiales, ordre inverse) ; exiger l'egalite des auteurs
+    laisse passer des doublons. Le set autoritatif etant deja complet, le cout
+    d'un faux positif (perte d'une ref) est bien moindre que celui d'un faux
+    negatif (doublon visible pour l'utilisateur).
     """
     title_c = norm_title(candidate.title)
     title_a = norm_title(authoritative.title)
     if not title_c or title_c != title_a:
         return False
+    # Titre long identique = identifiant suffisant, sans regarder les auteurs.
+    if len(title_c) >= _AUTHORITATIVE_TITLE_MIN_LEN:
+        return True
+    # Titre court ("Introduction", "Neural correlates") : trop d'homonymes,
+    # on exige la confirmation par les auteurs.
     authors_c = norm_authors_list(candidate.authors, max_authors=2)
     authors_a = norm_authors_list(authoritative.authors, max_authors=2)
-    # Si l'un des auteurs est manquant, on exige un titre long (>=40 chars
-    # normalises) pour rester prudent : les titres courts ("Introduction")
-    # ne suffisent pas seuls.
     if not authors_c or not authors_a:
-        return len(title_c) >= 40
+        return False
     if authors_c[0] != authors_a[0]:
         return False
     # 2eme auteur : contrainte uniquement si present des deux cotes.

@@ -35,6 +35,7 @@ from app.extractors.url_extractor import (
 )
 from app.extractors.url_extractor import extract as extract_url_metadata
 from app.extractors.wikipedia_oracle import fetch_wikipedia_references, is_wikipedia_url
+from app.extractors.youtube_oracle import fetch_youtube_description, is_youtube_url
 from app.models.user import User
 from app.services.import_parsers import (
     ImportedRef,
@@ -784,9 +785,15 @@ def _extract_references_text(html: str) -> tuple[str, bool]:
 _S2_XCHECK_CONCURRENCY = 8
 
 
-async def _s2_ref_passes_xcheck(ref: ImportedRef, sem: asyncio.Semaphore) -> bool:
-    """True si la ref S2 est confirmee OU si Crossref n'a pas d'avis (DOI inconnu).
-    False si Crossref renvoie un titre incompatible (hallucination S2).
+async def _s2_ref_xcheck_and_canonicalize(ref: ImportedRef, sem: asyncio.Semaphore) -> bool:
+    """Cross-check + canonicalisation : appelle crossref_lookup(doi) et,
+    si le titre matche, ENRICHIT la ref S2 avec les auteurs canoniques
+    Crossref (in-place). Retourne True si la ref doit etre conservee,
+    False si c'est une hallucination S2 (titre incompatible).
+
+    L'enrichissement authors est crucial : S2 stocke parfois un author
+    corrompu ('J. Ridley' au lieu de 'Stroop J. R.') qui empeche la dedup
+    ulterieure par (titre+auteur) contre les refs Crossref.
     """
     doi = _doi_from_url(ref.url) if ref.url else None
     if not doi:
@@ -797,21 +804,35 @@ async def _s2_ref_passes_xcheck(ref: ImportedRef, sem: asyncio.Semaphore) -> boo
         return True  # Crossref ne connait pas ce DOI -> ref potentiellement legit
     if not meta.title:
         return True
-    # Meme seuil 30% que _titles_are_consistent (fonction unique de reference).
-    return _titles_are_consistent(ref.title, meta.title)
+    if not _titles_are_consistent(ref.title, meta.title):
+        return False  # hallucination S2 (mapping titre→DOI errone)
+    # Titre confirme : ENRICHIR la ref S2 avec les authors canoniques
+    # pour que la dedup ulterieure par matches_authoritative_work puisse
+    # comparer des strings normalisees identiques.
+    if meta.authors:
+        ref.authors = meta.authors
+    if not ref.year and meta.published_at:
+        year_str = meta.published_at[:4]
+        if year_str.isdigit():
+            ref.year = int(year_str)
+    return True
 
 
 async def _drop_s2_hallucinations(
     s2_refs: list[ImportedRef], crossref_urls: set[str]
 ) -> list[ImportedRef]:
-    """Filtre les hallucinations S2 par cross-check Crossref titre-vs-titre."""
+    """Filtre les hallucinations S2 par cross-check Crossref titre-vs-titre
+    ET enrichit les refs conservees avec les auteurs canoniques Crossref
+    (evite les dedup ratees sur ex 'J. Ridley' vs 'Stroop')."""
     # Ne cross-check que les S2 hors-Crossref (celles dans Crossref sont deja
     # autoritatives).
     candidates_to_check = [r for r in s2_refs if r.url and r.url not in crossref_urls]
     if not candidates_to_check:
         return s2_refs
     sem = asyncio.Semaphore(_S2_XCHECK_CONCURRENCY)
-    verdicts = await asyncio.gather(*(_s2_ref_passes_xcheck(r, sem) for r in candidates_to_check))
+    verdicts = await asyncio.gather(
+        *(_s2_ref_xcheck_and_canonicalize(r, sem) for r in candidates_to_check)
+    )
     drop_urls = {r.url for r, keep in zip(candidates_to_check, verdicts, strict=False) if not keep}
     return [r for r in s2_refs if r.url not in drop_urls]
 
@@ -943,7 +964,22 @@ async def parse_content_url(
     section: SectionBoundary | None = None
     refs_text = ""
     refs_section_found = False
-    if html:
+    # ORACLE YOUTUBE : sur une video, la biblio est la description, pas le DOM
+    # (le HTML rendu ne contient que la version tronquee "...plus"). La
+    # description integrale est un perimetre sur, equivalent a une section
+    # References bornee : tout ce qu'elle contient a ete liste par l'auteur.
+    if is_youtube_url(url):
+        description = await fetch_youtube_description(url)
+        if description:
+            logger.info("youtube_oracle_hit url=%s chars=%d", url, len(description))
+            refs_text = description[:_REFS_TEXT_MAX]
+            refs_section_found = True
+            # La description fait office de section bornee pour l'etage 4 :
+            # les candidats doivent y apparaitre (le body HTML de YouTube ne
+            # contient que la description tronquee, il ne peut pas servir).
+            section = SectionBoundary(text=refs_text, node_html="", method="oracle")
+
+    if not refs_text and html:
         section = detect_references_section(html)
         if section:
             refs_text = section.text[:_REFS_TEXT_MAX]

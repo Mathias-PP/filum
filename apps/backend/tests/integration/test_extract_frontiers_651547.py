@@ -108,7 +108,7 @@ def test_dedup_crossref_plus_s2_yields_152(crossref_payload, s2_payload, frontie
     """Pipeline complet en offline : Crossref + S2 + section-detection
     doit rendre exactement 152 refs (les 8 hallucinations S2 sont filtrees
     par la section-detection)."""
-    from app.extractors.ref_dedup import dedupe_refs
+    from app.extractors.ref_dedup import dedupe_refs, matches_authoritative_work
     from app.extractors.section_detector import (
         detect_references_section,
         is_ref_in_section,
@@ -171,19 +171,28 @@ def test_dedup_crossref_plus_s2_yields_152(crossref_payload, s2_payload, frontie
     s2_only = [r for r in s2_refs if r.url not in cr_dois]
     s2_validated = [r for r in s2_only if is_ref_in_section(r, section)]
 
-    all_refs = list(cr_refs) + s2_validated
+    # Pre-filtre S2-vs-Crossref : dedup STRICTE propre a la couche
+    # d'enrichissement (titre long identique = doublon, sans regarder les
+    # auteurs). Sans elle, S2 reintroduit des refs deja presentes chez
+    # Crossref sous un autre DOI et avec une chaine auteur degradee
+    # differemment (ex: Stroop 1935 -> auteur S2 'J. Ridley').
+    s2_enrichment = [r for r in s2_validated if not any(matches_authoritative_work(r, cr) for cr in cr_refs)]
+
+    all_refs = list(cr_refs) + s2_enrichment
     deduped = dedupe_refs(all_refs)
 
-    # Assert la cible : proche de 152 refs (cible reelle du site Frontiers).
-    # Crossref=152 (verite editeur), S2 apporte 0-10 refs supplementaires que
-    # la section-detection considere legitimes (elles apparaissent dans le
-    # texte borne References). L'ecart avec 152 vient de refs S2 dont le
-    # titre long matche dans la section (ex: Stroop 1935, Williams 1999)
-    # potentiellement non-canoniques chez Crossref mais reellement citees.
-    # L'important : rejet strict des bruits (bee paper), pas le compte exact.
-    assert 152 <= len(deduped) <= 162, (
-        f"Attendu 152-162 refs, obtenu {len(deduped)} (crossref={len(cr_refs)}, s2_validated={len(s2_validated)})"
+    # Verite terrain : le site Frontiers affiche 152 references.
+    assert len(deduped) == 152, (
+        f"Attendu 152 refs, obtenu {len(deduped)} "
+        f"(crossref={len(cr_refs)}, s2_validated={len(s2_validated)}, "
+        f"s2_enrichment={len(s2_enrichment)})"
     )
+
+    # Aucun doublon de titre ne doit subsister dans le resultat final.
+    from app.extractors.ref_dedup import norm_title
+
+    titles = [norm_title(r.title) for r in deduped if norm_title(r.title)]
+    assert len(titles) == len(set(titles)), "doublons de titre dans le resultat final"
 
     # Aucun titre bruite S2 (bee paper, fragments) ne doit survivre
     titles_lower = " ".join((r.title or "").lower() for r in deduped)

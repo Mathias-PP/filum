@@ -171,6 +171,42 @@ def test_same_ref_matches_when_second_author_absent_on_one_side():
     assert same_ref(a, b) is True
 
 
+def test_matches_authoritative_work_long_title_ignores_authors():
+    # Couche d'enrichissement : un titre long identique suffit, meme si les
+    # chaines auteurs ont ete degradees differemment par les deux sources
+    # ('J. Ridley' cote S2 vs 'Stroop' cote Crossref pour Stroop J. R.).
+    title = "Studies of interference in serial verbal reactions"
+    cr = _ref(title=title, authors="Stroop", year=1935)
+    s2 = _ref(title=title, authors="J. Ridley", year=1992)
+    assert matches_authoritative_work(s2, cr) is True
+    # La dedup generale reste stricte : ce sont deux editions distinctes.
+    assert same_ref(cr, s2) is False
+
+
+def test_matches_authoritative_work_long_title_missing_authors():
+    title = "The integration of cognition and emotion during infancy"
+    cr = _ref(title=title, authors="Wolfe", year=2007)
+    s2 = _ref(title=title, authors=None, year=None)
+    assert matches_authoritative_work(s2, cr) is True
+
+
+def test_matches_authoritative_work_short_title_still_needs_authors():
+    # Titre court : trop d'homonymes, on exige la confirmation par auteur.
+    cr = _ref(title="Introduction", authors="Foucault M.", year=1975)
+    s2_same = _ref(title="Introduction", authors="Foucault M.", year=1990)
+    s2_other = _ref(title="Introduction", authors="Deleuze G.", year=1968)
+    s2_noauthor = _ref(title="Introduction", authors=None)
+    assert matches_authoritative_work(s2_same, cr) is True
+    assert matches_authoritative_work(s2_other, cr) is False
+    assert matches_authoritative_work(s2_noauthor, cr) is False
+
+
+def test_matches_authoritative_work_different_titles_never_match():
+    cr = _ref(title="Studies of interference in serial verbal reactions", authors="Stroop")
+    s2 = _ref(title="Executive functions and self-regulation in childhood", authors="Stroop")
+    assert matches_authoritative_work(s2, cr) is False
+
+
 def test_matches_authoritative_work_second_author_gate():
     # Meme titre + 1er auteur mais 2eme auteur different chez S2 :
     # NE PAS considerer comme meme papier autoritative (pas de drop).
