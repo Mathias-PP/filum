@@ -23,12 +23,40 @@ from urllib.parse import urlparse
 from app.services.import_parsers import ImportedRef, _doi_from_url
 
 
-def norm_title(s: str | None) -> str:
-    """Normalise un titre : NFKC + lowercase + alphanumeric only + [:80]."""
+def norm_title_full(s: str | None) -> str:
+    """Normalise un titre sans troncature : NFKC + lowercase + alphanumeric."""
     if not s:
         return ""
     s = unicodedata.normalize("NFKC", s).lower()
-    return re.sub(r"[^a-z0-9]", "", s)[:80]
+    return re.sub(r"[^a-z0-9]", "", s)
+
+
+def norm_title(s: str | None) -> str:
+    """Normalise un titre : NFKC + lowercase + alphanumeric only + [:80]."""
+    return norm_title_full(s)[:80]
+
+
+# Un extracteur qui echoue a isoler le titre recopie la citation entiere dans
+# le champ `title` ("Brett, M., Anton J.L. (2002). Region of interest analysis
+# using an SPM toolbox. In: 8th International Conference..."). La meme oeuvre
+# extraite proprement par une autre source ne matche alors plus par egalite de
+# titre, d'ou un doublon visible. On detecte ces blocs pour autoriser un match
+# par INCLUSION, strictement reserve a ce cas.
+_YEAR_IN_PARENS = re.compile(r"\(\d{4}[a-z]?\)")
+_INITIALS_BEFORE_PUNCT = re.compile(r"\b[A-Z]\.\s?[A-Z]?\.?[,;)&]")
+_CITATION_BLOB_MIN_LEN = 60
+
+
+def looks_like_citation_blob(title: str | None) -> bool:
+    """True si ``title`` est une citation brute recopiee, pas un titre.
+
+    Deux signaux conjoints, tous deux absents d'un vrai titre :
+    - une annee entre parentheses, marqueur de style APA ;
+    - une suite d'initiales suivie d'une ponctuation de liste ("M.,", "J.B.)").
+    """
+    if not title or len(title) < _CITATION_BLOB_MIN_LEN:
+        return False
+    return bool(_YEAR_IN_PARENS.search(title)) and bool(_INITIALS_BEFORE_PUNCT.search(title))
 
 
 _INITIAL_RE = re.compile(r"^[A-Z]\.[A-Z]?\.?$")
@@ -270,6 +298,30 @@ def norm_url(u: str | None) -> str:
     return f"{host}{path}".lower()
 
 
+def _blob_contains_work(blob: ImportedRef, clean: ImportedRef) -> bool:
+    """True si ``blob`` est une citation brute qui contient l'oeuvre ``clean``.
+
+    Trois garde-fous cumulatifs, car l'inclusion seule fusionnerait a tort
+    "Neural correlates of memory" dans "Neural correlates of memory and
+    attention" :
+    - ``blob.title`` doit etre detecte comme citation brute (pas un titre) ;
+    - le titre propre doit etre assez long pour identifier une oeuvre ;
+    - le nom de famille du 1er auteur du cote propre doit figurer dans le blob.
+    """
+    if not looks_like_citation_blob(blob.title):
+        return False
+    clean_title = norm_title_full(clean.title)
+    if len(clean_title) < _AUTHORITATIVE_TITLE_MIN_LEN:
+        return False
+    blob_title = norm_title_full(blob.title)
+    if clean_title not in blob_title:
+        return False
+    families = norm_authors_list(clean.authors, max_authors=1)
+    if not families or families[0] not in blob_title:
+        return False
+    return not (blob.year and clean.year and blob.year != clean.year)
+
+
 def same_ref(a: ImportedRef, b: ImportedRef) -> bool:
     """True si a et b designent la meme reference bibliographique.
 
@@ -299,7 +351,9 @@ def same_ref(a: ImportedRef, b: ImportedRef) -> bool:
     if not title_a or not title_b:
         return False
     if title_a != title_b:
-        return False
+        # Un cote peut etre une citation brute non parsee qui englobe le titre
+        # propre de l'autre : meme oeuvre, extraite deux fois differemment.
+        return _blob_contains_work(a, b) or _blob_contains_work(b, a)
 
     # Titre normalise identique. Deux voies pour valider le match :
     # (a) meme premier auteur normalise (fort si les deux sont presents), ou
@@ -377,6 +431,14 @@ def matches_authoritative_work(candidate: ImportedRef, authoritative: ImportedRe
 
 def _merge_metadata(keep: ImportedRef, drop: ImportedRef) -> ImportedRef:
     """Enrichit keep avec les champs manquants de drop."""
+    # keep est la 1ere ref rencontree, mais si son titre est une citation brute
+    # non parsee et celui de drop un vrai titre, c'est drop qui est presentable.
+    if looks_like_citation_blob(keep.title) and not looks_like_citation_blob(drop.title):
+        if not keep.raw_text:
+            keep.raw_text = keep.title
+        keep.title = drop.title
+        if drop.authors:
+            keep.authors = drop.authors
     if not keep.title and drop.title:
         keep.title = drop.title
     if not keep.authors and drop.authors:
