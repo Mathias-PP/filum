@@ -333,7 +333,9 @@
       {#if droppedFile}
         <p class="text-ink-primary font-medium">{droppedFile.name}</p>
         <p class="text-xs mt-0.5">
-          Sera analysé à l'étape Sources.
+          Prêt à être analysé — cliquez sur « {editCardId
+            ? 'Enregistrer et revenir aux sources'
+            : 'Suivant : ajouter les sources'} » en bas de page pour lancer l'extraction.
           <button
             type="button"
             class="text-danger hover:underline"
@@ -501,6 +503,8 @@
       <Button type="submit" {loading} disabled={!title || !slug || loading || loadingCard}>
         {#if editCardId}
           {loading ? 'Enregistrement…' : 'Enregistrer et revenir aux sources →'}
+        {:else if droppedFile}
+          {loading ? 'Création…' : 'Suivant : analyser le fichier →'}
         {:else}
           {loading ? 'Création…' : 'Suivant : ajouter les sources →'}
         {/if}
