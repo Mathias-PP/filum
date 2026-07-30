@@ -24,6 +24,10 @@ dependencies = [
     "lxml>=5.0.0",
     "pillow>=12.3.0",
     "fastmcp>=3.4.4",
+    # Sous-titres YouTube. YouTube fait tourner la signature des URLs de
+    # pistes de sous-titres ; yt-dlp suit ces rotations, une implementation
+    # maison casserait a chaque changement.
+    "yt-dlp>=2026.7.4",
 ]
 
 [project.optional-dependencies]

@@ -9,6 +9,7 @@ fonctionne à l'identique sans proxy (dev local, CI, Railway historique).
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 
@@ -241,6 +242,95 @@ async def parse_bibliography(text: str) -> list[LlmBiblioRef] | None:
         return parse_biblio_content(content)
     except Exception as e:
         logger.warning("LLM biblio-parse failed: %s", e)
+        return None
+
+
+_TRANSCRIPT_SYSTEM_PROMPT = (
+    "Tu analyses la TRANSCRIPTION PARLÉE d'une vidéo et tu relèves les travaux "
+    "explicitement mentionnés à l'oral : études, articles, livres, rapports. "
+    "Réponds UNIQUEMENT avec le JSON demandé. Le texte vient d'une "
+    "reconnaissance vocale : les noms propres sont souvent mal transcrits. "
+    "Règles strictes : ne relève QUE ce qui est réellement nommé dans le texte ; "
+    "n'invente jamais un titre, un auteur, une année, une url ou un doi qui "
+    "n'y figure pas, mets null ; ne complète JAMAIS de mémoire une référence "
+    "que tu crois reconnaître ; url et doi sont presque toujours null car on "
+    "ne dicte pas une URL à l'oral ; ignore les mentions vagues sans titre ni "
+    "auteur ('une étude a montré que…') ; si rien n'est nommé, renvoie une "
+    "liste vide."
+)
+
+
+# Une heure de parole fait ~50 000 caracteres, soit plus que _MAX_INPUT_CHARS :
+# sans decoupage, les mentions de la seconde moitie d'une video seraient
+# perdues silencieusement. Le plafond de morceaux borne le cout LLM.
+_TRANSCRIPT_CHUNK_CHARS = 30_000
+_TRANSCRIPT_MAX_CHUNKS = 8
+
+
+def split_transcript(text: str, size: int = _TRANSCRIPT_CHUNK_CHARS) -> list[str]:
+    """Découpe en morceaux <= `size`, en coupant sur une frontière de mot."""
+    chunks: list[str] = []
+    rest = text.strip()
+    while rest and len(chunks) < _TRANSCRIPT_MAX_CHUNKS:
+        if len(rest) <= size:
+            chunks.append(rest)
+            break
+        cut = rest.rfind(" ", 0, size)
+        if cut <= 0:
+            cut = size
+        chunks.append(rest[:cut].strip())
+        rest = rest[cut:].strip()
+    return [c for c in chunks if c]
+
+
+async def extract_mentioned_works(transcript: str) -> list[LlmBiblioRef] | None:
+    """Travaux nommés à l'oral dans une transcription. Never raises.
+
+    Distinct de `parse_bibliography` : le texte n'est pas une bibliographie
+    rédigée mais de la parole transcrite automatiquement, donc bruitée. Le
+    resultat est une suggestion a valider par l'utilisateur, jamais une
+    reference autoritative.
+    """
+    settings = get_settings()
+    if not settings.litellm_base_url:
+        return None
+    chunks = split_transcript(transcript)
+    if not chunks:
+        return None
+    results = await asyncio.gather(*(_extract_works_from_chunk(c) for c in chunks))
+    merged: list[LlmBiblioRef] = []
+    for refs in results:
+        merged.extend(refs or [])
+    return merged
+
+
+async def _extract_works_from_chunk(text: str) -> list[LlmBiblioRef] | None:
+    settings = get_settings()
+    payload = {
+        "model": "biblio-parse",
+        "messages": [
+            {"role": "system", "content": _TRANSCRIPT_SYSTEM_PROMPT},
+            {"role": "user", "content": text[:_MAX_INPUT_CHARS]},
+        ],
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {"name": "biblio_refs", "schema": LlmBiblioRefs.model_json_schema()},
+        },
+        "temperature": 0,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+            r = await client.post(
+                f"{settings.litellm_base_url.rstrip('/')}/v1/chat/completions",
+                json=payload,
+                headers={"Authorization": f"Bearer {settings.litellm_master_key}"},
+            )
+        if r.status_code != 200:
+            logger.warning("LLM transcript HTTP %s: %s", r.status_code, r.text[:200])
+            return None
+        return parse_biblio_content(r.json()["choices"][0]["message"]["content"])
+    except Exception as e:
+        logger.warning("LLM transcript failed: %s", e)
         return None
 
 

@@ -10,6 +10,7 @@ import type {
   ExcerptSuggestResponse,
   ImportFromUrlResponse,
   UrlMetadataResponse,
+  YoutubeTranscriptResponse,
   LinkedAccount,
   LinkedAccountIn,
   Source,
@@ -283,6 +284,12 @@ export const api = {
   imports: {
     fromContentUrl: async (url: string): Promise<ImportFromUrlResponse> => {
       return request<ImportFromUrlResponse>('/import/from-content-url', {
+        method: 'POST',
+        body: JSON.stringify({ url }),
+      });
+    },
+    youtubeTranscript: async (url: string): Promise<YoutubeTranscriptResponse> => {
+      return request<YoutubeTranscriptResponse>('/import/youtube-transcript', {
         method: 'POST',
         body: JSON.stringify({ url }),
       });

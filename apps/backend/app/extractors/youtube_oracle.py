@@ -13,6 +13,7 @@ garantie que le perimetre est bien "ce que le createur a lui-meme liste".
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -75,6 +76,107 @@ def extract_description_from_html(html: str) -> str | None:
         return None
     description = description.strip()
     return description or None
+
+
+def parse_json3_transcript(payload: str) -> str | None:
+    """Aplatit une piste de sous-titres au format json3 en texte continu.
+
+    json3 plutot que vtt : les pistes automatiques en vtt repetent chaque
+    ligne dans la fenetre glissante suivante, ce qui triple le texte.
+    """
+    try:
+        data = json.loads(payload)
+    except ValueError:
+        return None
+    if not isinstance(data, dict):
+        return None
+    parts: list[str] = []
+    for event in data.get("events") or []:
+        if not isinstance(event, dict):
+            continue
+        for seg in event.get("segs") or []:
+            if isinstance(seg, dict) and isinstance(seg.get("utf8"), str):
+                parts.append(seg["utf8"])
+    text = re.sub(r"\s+", " ", "".join(parts)).strip()
+    return text or None
+
+
+def pick_subtitle_track(info: dict) -> tuple[str, str] | None:
+    """(langue, url json3) de la meilleure piste. None si aucune.
+
+    Priorite : sous-titres rediges par le createur avant sous-titres
+    automatiques (l'ASR se trompe sur les noms propres, precisement ce qui
+    nous interesse). Dans chaque categorie, la langue de la video d'abord,
+    puis fr/en, puis n'importe laquelle : le pipeline doit rester agnostique
+    a la langue du contenu.
+    """
+    video_lang = info.get("language")
+    preferred = [lang for lang in (video_lang, "fr", "en") if isinstance(lang, str)]
+    for key in ("subtitles", "automatic_captions"):
+        tracks = info.get(key)
+        if not isinstance(tracks, dict) or not tracks:
+            continue
+        ordered = [lang for lang in preferred if lang in tracks]
+        ordered += [lang for lang in sorted(tracks) if lang not in ordered]
+        for lang in ordered:
+            for fmt in tracks[lang] or []:
+                if isinstance(fmt, dict) and fmt.get("ext") == "json3" and fmt.get("url"):
+                    return lang, fmt["url"]
+    return None
+
+
+def _probe_video(url: str) -> dict | None:
+    """Metadonnees yt-dlp, sans telechargement. Appel bloquant."""
+    from yt_dlp import YoutubeDL
+
+    options = {
+        "skip_download": True,
+        "writesubtitles": True,
+        "writeautomaticsub": True,
+        "quiet": True,
+        "no_warnings": True,
+        "noprogress": True,
+        "socket_timeout": 20,
+    }
+    with YoutubeDL(options) as ydl:
+        info = ydl.extract_info(url, download=False)
+    return info if isinstance(info, dict) else None
+
+
+async def fetch_youtube_transcript(url: str) -> str | None:
+    """Transcription de la video. None si aucune piste exploitable.
+
+    Canal separe de la description : l'ASR est trop bruite (noms propres
+    massacres) pour alimenter la liste de references, il ne sert qu'a
+    proposer des suggestions que l'utilisateur valide explicitement.
+    """
+    try:
+        info = await asyncio.to_thread(_probe_video, url)
+    except Exception as e:
+        logger.warning("youtube_transcript probe failed url=%s err=%s", url, e)
+        return None
+    if not info:
+        return None
+    track = pick_subtitle_track(info)
+    if not track:
+        logger.info("youtube_transcript no_track url=%s", url)
+        return None
+    lang, track_url = track
+    try:
+        async with httpx.AsyncClient(
+            headers=_HEADERS, timeout=_TIMEOUT, follow_redirects=True
+        ) as client:
+            response = await client.get(track_url)
+    except httpx.HTTPError as e:
+        logger.warning("youtube_transcript fetch failed url=%s err=%s", url, e)
+        return None
+    if response.status_code != 200:
+        logger.warning("youtube_transcript http=%d url=%s", response.status_code, url)
+        return None
+    text = parse_json3_transcript(response.text)
+    if text:
+        logger.info("youtube_transcript hit url=%s lang=%s chars=%d", url, lang, len(text))
+    return text
 
 
 async def fetch_youtube_description(url: str) -> str | None:
