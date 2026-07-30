@@ -67,6 +67,13 @@
   let resizeObserver: ResizeObserver | undefined;
   let hoveredId: string | null = $state(null);
   let zoomLevel = $state(1);
+  // Échelle du recadrage automatique. Les seuils d'affichage des étiquettes sont
+  // exprimés relativement à elle, sinon un graphe recadré à 0.3 masquerait tout.
+  let fitScale = $state(1);
+  let layoutNodes: GraphNode[] = [];
+  let hasAutoFitted = false;
+  let hasUserAdjustedView = false;
+  let autoFitFallback: number | undefined;
   let isFullscreen = $state(false);
   let selectedSource = $state<Source | null>(null);
   let panelAnchor = $state<{ x: number; y: number } | null>(null);
@@ -90,6 +97,21 @@
   });
 
   const cardId = $derived(`card:${card.id}`);
+
+  // Densité. Sur une fiche de 152 sources, des cercles de taille fixe se
+  // touchent et les noms d'auteurs se chevauchent au point d'être illisibles.
+  // On rétrécit donc les nœuds et on écarte le maillage à mesure que la fiche
+  // grossit : le graphe occupe plus de place, mais un zoom avant devient
+  // lisible au lieu d'être saturé. Agnostique au nombre de sources.
+  const densityScale = $derived(
+    Math.max(0.62, Math.min(1, Math.sqrt(24 / Math.max(card.sources.length, 1))))
+  );
+  // 1 sur une petite fiche, ~1.5 sur une grosse : facteur appliqué aux distances
+  // de lien et au rayon de collision, pour dégager la place des étiquettes.
+  const spacingBoost = $derived(1 + (1 - densityScale) * 0.8);
+  // Les étiquettes se rétrécissent aussi : à taille fixe, deux noms d'auteurs
+  // voisins se chevauchent dès que le maillage se resserre.
+  const labelScale = $derived(Math.max(0.72, densityScale));
 
   function truncate(text: string, max: number): string {
     return text.length > max ? text.slice(0, max) + '…' : text;
@@ -125,7 +147,8 @@
       const isSecondary = s.parent_source_id !== null;
       let radius = 14;
       if (s.is_pivot) radius += 4;
-      if (isSecondary) radius = Math.round(radius * 0.75);
+      if (isSecondary) radius *= 0.75;
+      radius = Math.max(8, Math.round(radius * densityScale));
 
       nodes.push({
         id: s.id,
@@ -378,7 +401,7 @@
       .attr('class', 'author-label')
       .attr('text-anchor', 'middle')
       .attr('dy', (d) => -(d.radius + 6))
-      .attr('font-size', 11)
+      .attr('font-size', 11 * labelScale)
       .attr('font-weight', 500)
       .attr('fill', '#0f172a')
       .style('pointer-events', 'none')
@@ -391,14 +414,21 @@
       .attr('class', 'title-label')
       .attr('text-anchor', 'middle')
       .attr('dy', (d) => -(d.radius + 18))
-      .attr('font-size', 10)
+      .attr('font-size', 10 * labelScale)
       .attr('fill', '#475569')
+      // Halo blanc au survol : le titre passe alors au-dessus des liens et des
+      // nœuds voisins sans avoir à réordonner le DOM (ce que `ticked` interdit,
+      // sa liaison de données se fait par index).
+      .style('paint-order', 'stroke')
       .style('pointer-events', 'none')
       .text((d) => (d.source ? truncate(d.source.title ?? '', 40) : ''));
 
+    // Tooltip natif sur la fiche seule : sur une source, le titre s'affiche
+    // desormais dans le graphe au survol, un second tooltip ferait doublon.
     nodeG
+      .filter((d) => d.kind === 'card')
       .append('title')
-      .text((d) => (d.kind === 'card' ? card.title : (d.source?.title ?? d.source?.url ?? '')));
+      .text(card.title);
 
     nodeG
       .transition()
@@ -415,9 +445,9 @@
             const src = typeof l.source === 'string' ? l.source : l.source.id;
             const tgt = typeof l.target === 'string' ? l.target : l.target.id;
             if (src.startsWith('junction:') || tgt.startsWith('junction:')) return 5;
-            if (l.kind === 'parent') return 75;
-            if (l.kind === 'sibling') return 55;
-            return 160;
+            if (l.kind === 'parent') return 75 * spacingBoost;
+            if (l.kind === 'sibling') return 55 * spacingBoost;
+            return 130 * spacingBoost;
           })
           .strength((l) => {
             const src = typeof l.source === 'string' ? l.source : l.source.id;
@@ -427,29 +457,73 @@
             return 0.55;
           })
       )
-      .force('charge', forceManyBody().strength(-280))
+      .force('charge', forceManyBody().strength(-200 * spacingBoost))
       .force('center', forceCenter(width / 2, height / 2).strength(0.05))
       .force(
         'collide',
-        forceCollide<GraphNode>().radius((d) => d.radius + 6)
+        // Le nom d'auteur est dessiné au-dessus du nœud : la marge de collision
+        // doit lui laisser la place, sinon deux étiquettes se superposent.
+        forceCollide<GraphNode>().radius((d) => d.radius + 8 * spacingBoost)
       )
       .on('tick', () => {
         if (svgEl) ticked(svgEl, nodes, links);
+        // Le maillage s'étale d'autant plus qu'il y a de sources : sans
+        // recadrage, une fiche de 152 références déborde du cadre et oblige
+        // l'utilisateur à dézoomer avant de voir quoi que ce soit. On recadre
+        // dès que la disposition est stable, sans attendre l'évènement `end`
+        // que la simulation peut ne jamais émettre si l'utilisateur interagit.
+        if (!hasUserAdjustedView && (simulation?.alpha() ?? 1) < 0.06) {
+          hasAutoFitted = true;
+          fitToNodes(nodes);
+        }
       });
 
+    layoutNodes = nodes;
+
     zoomBehavior = zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.5, 3])
+      .scaleExtent([0.1, 4])
       .on('zoom', (event) => {
         root.attr('transform', event.transform.toString());
         zoomLevel = event.transform.k;
+        // `sourceEvent` n'est présent que si le zoom vient d'un geste : dès que
+        // l'utilisateur cadre lui-même, le recadrage automatique se retire.
+        if (event.sourceEvent) hasUserAdjustedView = true;
       });
     svg.call(zoomBehavior);
   }
 
+  /** Recadre la vue pour que tous les nœuds tiennent dans le cadre. */
+  function fitToNodes(nodes: GraphNode[], duration = 0) {
+    if (!svgEl || !zoomBehavior || nodes.length === 0) return;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    for (const n of nodes) {
+      // La marge couvre le rayon du nœud et l'étiquette dessinée au-dessus.
+      const pad = n.radius + 26;
+      minX = Math.min(minX, (n.x ?? 0) - pad);
+      maxX = Math.max(maxX, (n.x ?? 0) + pad);
+      minY = Math.min(minY, (n.y ?? 0) - pad);
+      maxY = Math.max(maxY, (n.y ?? 0) + pad);
+    }
+    const spanX = Math.max(maxX - minX, 1);
+    const spanY = Math.max(maxY - minY, 1);
+    const k = Math.min(4, Math.max(0.1, Math.min(width / spanX, height / spanY)));
+    fitScale = k;
+    const tx = width / 2 - k * ((minX + maxX) / 2);
+    const ty = height / 2 - k * ((minY + maxY) / 2);
+    const target = zoomIdentity.translate(tx, ty).scale(k);
+    const sel = select(svgEl);
+    if (duration > 0) sel.transition().duration(duration).call(zoomBehavior.transform, target);
+    else sel.call(zoomBehavior.transform, target);
+  }
+
   function resetView() {
     if (!svgEl || !zoomBehavior) return;
-    select(svgEl).transition().duration(400).call(zoomBehavior.transform, zoomIdentity);
-    simulation?.alpha(0.4).restart();
+    hasUserAdjustedView = false;
+    if (layoutNodes.length > 0) fitToNodes(layoutNodes, 400);
+    else select(svgEl).transition().duration(400).call(zoomBehavior.transform, zoomIdentity);
   }
 
   function zoomBy(factor: number) {
@@ -486,6 +560,14 @@
     width = Math.max(rect.width, 320);
     height = Math.max(rect.height, 360);
     mountGraph();
+    // Filet : si la simulation est encore agitée passé ce délai, on recadre
+    // quand même pour ne jamais laisser l'utilisateur devant un graphe tronqué.
+    autoFitFallback = window.setTimeout(() => {
+      if (!hasAutoFitted && layoutNodes.length > 0) {
+        hasAutoFitted = true;
+        fitToNodes(layoutNodes);
+      }
+    }, 2500);
 
     resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
@@ -495,6 +577,7 @@
         width = nextW;
         height = nextH;
         if (simulation) {
+          hasAutoFitted = false;
           simulation
             .force('center', forceCenter(width / 2, height / 2).strength(0.05))
             .alpha(0.3)
@@ -508,6 +591,7 @@
   });
 
   onDestroy(() => {
+    if (autoFitFallback !== undefined) clearTimeout(autoFitFallback);
     simulation?.stop();
     resizeObserver?.disconnect();
     if (typeof document !== 'undefined') {
@@ -552,17 +636,34 @@
       });
   });
 
-  // Zoom thresholds for labels
+  // Seuils de zoom pour les étiquettes, et titre au survol.
+  //
+  // Le titre d'une source apparaît dès que la souris entre dans son nœud et
+  // disparaît quand elle en sort, quel que soit le zoom. Quand le zoom affiche
+  // déjà les titres, le survol le passe en version complète et en surbrillance.
   $effect(() => {
     if (!svgEl) return;
     const svg = select(svgEl);
-    const showAuthor = zoomLevel >= 0.7;
-    const showTitle = zoomLevel >= 1.5;
+    const showAuthor = zoomLevel >= 0.7 * fitScale;
+    const showTitle = zoomLevel >= 1.5 * fitScale;
+    const hovered = hoveredId;
     svg
       .selectAll<SVGTextElement, GraphNode>('text.author-label, text.card-creator')
       .style('display', showAuthor ? '' : 'none');
     svg
-      .selectAll<SVGTextElement, GraphNode>('text.title-label, text.card-title-label')
+      .selectAll<SVGTextElement, GraphNode>('text.title-label')
+      .style('display', (d) => (showTitle || d.id === hovered ? '' : 'none'))
+      .attr('font-weight', (d) => (d.id === hovered ? 600 : null))
+      .attr('fill', (d) => (d.id === hovered ? '#0f172a' : '#475569'))
+      .attr('stroke', (d) => (d.id === hovered ? '#ffffff' : null))
+      .attr('stroke-width', (d) => (d.id === hovered ? 3 : null))
+      .text((d) => {
+        if (!d.source) return '';
+        if (d.id === hovered) return truncate(d.source.title ?? d.source.url, 90);
+        return truncate(d.source.title ?? '', 40);
+      });
+    svg
+      .selectAll<SVGTextElement, GraphNode>('text.card-title-label')
       .style('display', showTitle ? '' : 'none');
   });
 </script>
