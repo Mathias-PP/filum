@@ -18,15 +18,19 @@ from app.models.user import User
 from app.schemas.biblio_card import (
     CardCreate,
     CardDetail,
+    CardGraphResponse,
     CardResponse,
     CardSearchResult,
     CardUpdate,
     CreatorInfo,
+    GraphEdgeResponse,
+    GraphNodeResponse,
 )
 from app.schemas.claim import ClaimRequestCreate, ClaimRequestResponse
 from app.schemas.source import SourceResponse
 from app.services.auth import AuthService
 from app.services.card import CardService
+from app.services.card_graph import MAX_DEPTH, build_card_graph
 
 logger = logging.getLogger(__name__)
 
@@ -370,6 +374,45 @@ async def get_public_card(
         ),
         sources=sources_response,
         stats=stats,
+    )
+
+
+@router.get("/@{creator_slug}/{card_slug}/graph", response_model=CardGraphResponse)
+async def get_public_card_graph(
+    creator_slug: str,
+    card_slug: str,
+    request: Request,
+    depth: int = Query(1, ge=0, le=MAX_DEPTH),
+    include_sources: bool = Query(True),
+    card_service: CardService = Depends(get_card_service),
+    auth_service: AuthService = Depends(get_auth_service),
+    db: AsyncSession = Depends(get_db),
+):
+    """Meta-graphe autour d'une fiche : ses sources et les fiches qu'elles citent.
+
+    ``include_sources=false`` renvoie le graphe fiches-seules (constellation).
+    Le parcours ne traverse que des fiches publiees et publiques.
+    """
+    card = await card_service.get_card_by_slug(creator_slug, card_slug)
+    if not card:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": "Card not found"},
+        )
+    if card.visibility == "private":
+        viewer = await auth_service.get_current_user(request)
+        if viewer is None or viewer.id != card.user_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"code": "not_found", "message": "Card not found"},
+            )
+
+    graph = await build_card_graph(db, card, depth=depth, include_sources=include_sources)
+    return CardGraphResponse(
+        root_id=graph.root_id,
+        nodes=[GraphNodeResponse(**vars(n)) for n in graph.nodes],
+        edges=[GraphEdgeResponse(**vars(e)) for e in graph.edges],
+        truncated=graph.truncated,
     )
 
 

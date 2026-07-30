@@ -145,3 +145,35 @@ class CardListItem(BaseModel):
     status: CardStatus
     published_at: datetime | None
     total_sources: int = 0
+
+
+class GraphNodeResponse(BaseModel):
+    """Noeud du meta-graphe : soit une fiche, soit une de ses sources."""
+
+    id: str
+    kind: str
+    depth: int
+    title: str | None = None
+    url: str | None = None
+    authors: str | None = None
+    category: str | None = None
+    slug: str | None = None
+    creator_slug: str | None = None
+    creator_name: str | None = None
+    sources_count: int | None = None
+    linked_card_id: UUID | None = None
+
+
+class GraphEdgeResponse(BaseModel):
+    source: str
+    target: str
+    kind: str
+
+
+class CardGraphResponse(BaseModel):
+    root_id: str
+    nodes: list[GraphNodeResponse]
+    edges: list[GraphEdgeResponse]
+    # True si le plafond de noeuds a ete atteint : le frontend previent
+    # l'utilisateur que le voisinage affiche est partiel.
+    truncated: bool = False
