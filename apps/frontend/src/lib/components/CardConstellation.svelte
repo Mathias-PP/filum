@@ -64,6 +64,10 @@
   let simulation: Simulation<StarNode, StarLink> | undefined;
   let zoomBehavior: ZoomBehavior<SVGSVGElement, unknown> | undefined;
   let resizeObserver: ResizeObserver | undefined;
+  let autoFitFallback: number | undefined;
+  /** Dès que l'utilisateur cadre lui-même, le recadrage automatique se retire. */
+  let hasUserAdjustedView = false;
+  let hasAutoFitted = false;
   let loading = $state(true);
   let errored = $state(false);
   let truncated = $state(false);
@@ -289,15 +293,24 @@
         'collide',
         forceCollide<StarNode>().radius((d) => d.radius + 44)
       )
-      .on('tick', ticked)
-      .on('end', () => fitToNodes(500));
+      .on('tick', () => {
+        ticked();
+        // Recadrer sur l'évènement `end` seul ne suffit pas : la simulation
+        // peut ne jamais l'émettre, et un recadrage différé se calcule sur des
+        // positions déjà périmées — les étoiles finissaient hors cadre.
+        if (!hasUserAdjustedView && (simulation?.alpha() ?? 1) < 0.06) {
+          hasAutoFitted = true;
+          fitToNodes();
+        }
+      });
 
     zoomBehavior = zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.15, 2.5])
-      .on('zoom', (event) => root.attr('transform', event.transform.toString()));
+      .on('zoom', (event) => {
+        root.attr('transform', event.transform.toString());
+        if (event.sourceEvent) hasUserAdjustedView = true;
+      });
     svg.call(zoomBehavior);
-
-    window.setTimeout(() => fitToNodes(600), 900);
   }
 
   onMount(() => {
@@ -307,6 +320,12 @@
     height = Math.max(rect.height, 360);
 
     void load().then(mountGraph);
+
+    // Filet : si la simulation s'agite encore passé ce délai, on recadre quand
+    // meme plutot que de laisser l'utilisateur devant un cadre vide.
+    autoFitFallback = window.setTimeout(() => {
+      if (!hasAutoFitted && !hasUserAdjustedView) fitToNodes(400);
+    }, 2500);
 
     resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
@@ -320,6 +339,8 @@
           ?.force('center', forceCenter(width / 2, height / 2).strength(0.08))
           .alpha(0.3)
           .restart();
+        // Le cadre a change de taille : le recadrage precedent ne vaut plus.
+        hasAutoFitted = false;
       }
     });
     resizeObserver.observe(container);
@@ -328,6 +349,7 @@
   onDestroy(() => {
     simulation?.stop();
     resizeObserver?.disconnect();
+    if (autoFitFallback) window.clearTimeout(autoFitFallback);
   });
 
   // Mise en avant du voisinage direct au survol : sans cela, sur un réseau
