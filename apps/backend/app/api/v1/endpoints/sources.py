@@ -22,7 +22,7 @@ from app.models.source import Source
 from app.models.user import User
 from app.schemas.source import SourceCreate, SourceResponse, SourceUpdate
 from app.services.auth import AuthService
-from app.services.card_link import assert_parent_card_allowed, resolve_linked_card_id
+from app.services.card_link import effective_linked_card_id
 from app.services.wayback import WaybackService
 
 logger = logging.getLogger(__name__)
@@ -177,21 +177,19 @@ async def create_source(
     # Otherwise we start with PENDING and the background Wayback save runs.
     manual_archive = (source_data.archive_url or "").strip() or None
 
-    linked_card_id = await resolve_linked_card_id(db, source_data.url, exclude_card_id=card_id)
-
-    if source_data.parent_card_id:
-        try:
-            await assert_parent_card_allowed(
-                db,
-                source_data.parent_card_id,
-                user_id=current_user.id,
-                current_card_id=card_id,
-            )
-        except ValueError as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"code": "invalid_parent_card", "message": str(e)},
-            ) from e
+    try:
+        linked_card_id = await effective_linked_card_id(
+            db,
+            chosen=source_data.linked_card_id,
+            url=source_data.url,
+            user_id=current_user.id,
+            current_card_id=card_id,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "invalid_linked_card", "message": str(e)},
+        ) from e
 
     source = Source(
         biblio_card_id=card_id,
@@ -206,7 +204,6 @@ async def create_source(
         annotation=source_data.annotation,
         is_pivot=source_data.is_pivot,
         parent_source_id=source_data.parent_source_id,
-        parent_card_id=source_data.parent_card_id,
         linked_card_id=linked_card_id,
         journal=source_data.journal,
         volume=source_data.volume,
@@ -314,14 +311,13 @@ async def create_sources_batch(
     for i, sd in enumerate(body.sources):
         try:
             manual_archive = (sd.archive_url or "").strip() or None
-            linked_card_id = await resolve_linked_card_id(db, sd.url, exclude_card_id=card_id)
-            if sd.parent_card_id:
-                await assert_parent_card_allowed(
-                    db,
-                    sd.parent_card_id,
-                    user_id=current_user.id,
-                    current_card_id=card_id,
-                )
+            linked_card_id = await effective_linked_card_id(
+                db,
+                chosen=sd.linked_card_id,
+                url=sd.url,
+                user_id=current_user.id,
+                current_card_id=card_id,
+            )
             source = Source(
                 biblio_card_id=card_id,
                 position=next_pos,
@@ -335,7 +331,6 @@ async def create_sources_batch(
                 annotation=sd.annotation,
                 is_pivot=sd.is_pivot,
                 parent_source_id=sd.parent_source_id,
-                parent_card_id=sd.parent_card_id,
                 linked_card_id=linked_card_id,
                 journal=sd.journal,
                 volume=sd.volume,
@@ -438,18 +433,21 @@ async def update_source(
     # ADR-019 + ADR-020: published cards are mutable.
 
     update_data = source_data.model_dump(exclude_unset=True)
-    if update_data.get("parent_card_id"):
+    # L'URL d'une source est immuable : seul un choix explicite au picker peut
+    # faire varier le lien fiche a l'edition.
+    if "linked_card_id" in update_data:
         try:
-            await assert_parent_card_allowed(
+            update_data["linked_card_id"] = await effective_linked_card_id(
                 db,
-                update_data["parent_card_id"],
+                chosen=update_data["linked_card_id"],
+                url=source.url,
                 user_id=current_user.id,
                 current_card_id=card.id,
             )
         except ValueError as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail={"code": "invalid_parent_card", "message": str(e)},
+                detail={"code": "invalid_linked_card", "message": str(e)},
             ) from e
     # Special-case archive_url: when the user provides one explicitly we mark
     # the source ARCHIVED with the current timestamp. When they explicitly

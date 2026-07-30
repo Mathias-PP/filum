@@ -94,18 +94,10 @@ class Source(Base):
         nullable=True,
         index=True,
     )
-    # Fiche Philum publique referencee par cette source (resolue a la creation
-    # quand l'URL matche /@{username}/{slug} sur notre propre frontend).
+    # Fiche Philum que cette source designe. Choisie explicitement au picker,
+    # ou deduite quand l'URL matche /@{username}/{slug} sur notre frontend.
+    # C'est l'unique lien fiche -> fiche : il porte le meta-graphe.
     linked_card_id: Mapped[UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True),
-        ForeignKey("biblio_cards.id"),
-        nullable=True,
-        index=True,
-    )
-    # Fiche parente choisie explicitement par l'auteur (meta-fiches). Distinct
-    # de `linked_card_id` ("cette source EST cette fiche", resolu depuis l'URL) :
-    # ici c'est un lien de hierarchie, pendant de `parent_source_id`.
-    parent_card_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("biblio_cards.id"),
         nullable=True,
@@ -137,10 +129,6 @@ class Source(Base):
     linked_card: Mapped[BiblioCard | None] = relationship(
         "BiblioCard",
         foreign_keys=[linked_card_id],
-    )
-    parent_card: Mapped[BiblioCard | None] = relationship(
-        "BiblioCard",
-        foreign_keys=[parent_card_id],
     )
     parent: Mapped[Source | None] = relationship(
         "Source",

@@ -51,25 +51,25 @@ def parse_public_card_path(url: str) -> tuple[str, str] | None:
     return match.group(1), match.group(2)
 
 
-async def assert_parent_card_allowed(
+async def assert_linked_card_allowed(
     db: AsyncSession,
-    parent_card_id: UUID,
+    linked_card_id: UUID,
     *,
     user_id: UUID,
     current_card_id: UUID,
 ) -> None:
-    """Verifie qu'une fiche peut servir de parent. Leve ValueError sinon.
+    """Verifie qu'une fiche peut etre designee par une source. Leve ValueError sinon.
 
-    Une fiche est un parent legitime si elle appartient a l'utilisateur (y
+    Une fiche est une cible legitime si elle appartient a l'utilisateur (y
     compris en brouillon) ou si elle est publiee et publique — c'est-a-dire
     exactement ce que le picker propose. Sans cette verification, un id
     devine permettrait de rattacher une source a une fiche privee d'autrui
     et d'en confirmer l'existence.
     """
-    if parent_card_id == current_card_id:
-        raise ValueError("Une fiche ne peut pas etre sa propre fiche parente")
+    if linked_card_id == current_card_id:
+        raise ValueError("Une fiche ne peut pas se referencer elle-meme")
     stmt = select(BiblioCard.id).where(
-        BiblioCard.id == parent_card_id,
+        BiblioCard.id == linked_card_id,
         BiblioCard.deleted_at.is_(None),
     )
     card = (
@@ -78,13 +78,13 @@ async def assert_parent_card_allowed(
         )
     ).first()
     if card is None:
-        raise ValueError("Fiche parente introuvable")
+        raise ValueError("Fiche liee introuvable")
     _, owner_id, card_status, visibility = card
     if owner_id == user_id:
         return
     if card_status == "published" and visibility == "public":
         return
-    raise ValueError("Fiche parente inaccessible")
+    raise ValueError("Fiche liee inaccessible")
 
 
 async def resolve_linked_card_id(
@@ -117,3 +117,24 @@ async def resolve_linked_card_id(
     if card_id is None or card_id == exclude_card_id:
         return None
     return card_id
+
+
+async def effective_linked_card_id(
+    db: AsyncSession,
+    *,
+    chosen: UUID | None,
+    url: str,
+    user_id: UUID,
+    current_card_id: UUID,
+) -> UUID | None:
+    """Le lien fiche d'une source : choix explicite au picker, sinon l'URL.
+
+    Un seul chemin pour la creation, le batch et l'edition : c'est ce qui
+    manquait, l'edition perdait le lien faute de le recalculer.
+    """
+    if chosen is not None:
+        await assert_linked_card_allowed(
+            db, chosen, user_id=user_id, current_card_id=current_card_id
+        )
+        return chosen
+    return await resolve_linked_card_id(db, url, exclude_card_id=current_card_id)

@@ -116,12 +116,10 @@ export interface Source {
   archive_timestamp: string | null;
   parent_source_id: string | null;
   /**
-   * Fiche parente choisie par l'auteur (méta-fiches). À ne pas confondre avec
-   * `linked_card_id` : ici c'est un lien de hiérarchie explicite, pendant de
-   * `parent_source_id`.
+   * Fiche Philum désignée par cette source : choisie au picker, ou déduite
+   * quand l'URL de la source pointe vers une fiche Philum. C'est ce lien qui
+   * construit le méta-graphe et la constellation.
    */
-  parent_card_id?: string | null;
-  /** Fiche Philum publique référencée par cette source (résolue côté serveur). */
   linked_card_id?: string | null;
   /** Nombre de sources de la fiche liée (enrichi sur l'endpoint public). */
   linked_card_sources_count?: number | null;
@@ -151,7 +149,7 @@ export interface SourceCreate {
   annotation?: string;
   is_pivot?: boolean;
   parent_source_id?: string | null;
-  parent_card_id?: string | null;
+  linked_card_id?: string | null;
   /** Métadonnées bibliographiques optionnelles (exports BibTeX/CSL/APA). */
   journal?: string | null;
   volume?: string | null;
