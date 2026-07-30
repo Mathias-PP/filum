@@ -7,6 +7,7 @@ import type {
   Card,
   CardDetail,
   CardCreate,
+  CardSearchResult,
   ExcerptSuggestResponse,
   ImportFromUrlResponse,
   UrlMetadataResponse,
@@ -107,6 +108,13 @@ export const api = {
 
       const query = searchParams.toString();
       return request<Card[]>(`/cards${query ? `?${query}` : ''}`);
+    },
+
+    /** Fiches sélectionnables comme parent : celles de l'user + les publiques. */
+    search: async (q: string, limit = 20): Promise<CardSearchResult[]> => {
+      const params = new URLSearchParams({ limit: String(limit) });
+      if (q) params.set('q', q);
+      return request<CardSearchResult[]>(`/cards/search?${params.toString()}`);
     },
 
     create: async (data: CardCreate): Promise<Card> => {

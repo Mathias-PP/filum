@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse, Response
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.status import HTTP_401_UNAUTHORIZED
 
@@ -19,6 +19,7 @@ from app.schemas.biblio_card import (
     CardCreate,
     CardDetail,
     CardResponse,
+    CardSearchResult,
     CardUpdate,
     CreatorInfo,
 )
@@ -66,6 +67,50 @@ async def list_my_deleted_cards(
     ne matche pas 'deleted' comme un UUID (retournerait 422 sinon).
     """
     return await card_service.get_user_deleted_cards(current_user.id, limit, offset)
+
+
+@router.get("/cards/search", response_model=list[CardSearchResult])
+async def search_cards(
+    q: str = Query("", max_length=200),
+    limit: int = Query(20, ge=1, le=50),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Fiches selectionnables comme parent : celles de l'user + les publiques.
+
+    Sert le picker de meta-fiches. Comme /cards/deleted, DOIT etre declaree
+    avant /cards/{card_id} sinon FastAPI matche 'search' comme un UUID.
+    """
+    term = q.strip()
+    visible = or_(
+        BiblioCard.user_id == current_user.id,
+        and_(BiblioCard.status == "published", BiblioCard.visibility == "public"),
+    )
+    stmt = (
+        select(BiblioCard, User.username)
+        .join(User, User.id == BiblioCard.user_id)
+        .where(BiblioCard.deleted_at.is_(None), visible)
+    )
+    if term:
+        stmt = stmt.where(BiblioCard.title.ilike(f"%{term}%"))
+    # Les fiches de l'utilisateur d'abord : c'est le cas d'usage dominant.
+    stmt = stmt.order_by(
+        (BiblioCard.user_id == current_user.id).desc(),
+        BiblioCard.updated_at.desc().nullslast(),
+        BiblioCard.created_at.desc(),
+    ).limit(limit)
+    rows = (await db.execute(stmt)).all()
+    return [
+        CardSearchResult(
+            id=card.id,
+            title=card.title,
+            slug=card.slug,
+            creator_slug=username,
+            status=card.status,
+            is_own=card.user_id == current_user.id,
+        )
+        for card, username in rows
+    ]
 
 
 @router.get("/cards", response_model=list[CardResponse])

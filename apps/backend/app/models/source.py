@@ -102,6 +102,15 @@ class Source(Base):
         nullable=True,
         index=True,
     )
+    # Fiche parente choisie explicitement par l'auteur (meta-fiches). Distinct
+    # de `linked_card_id` ("cette source EST cette fiche", resolu depuis l'URL) :
+    # ici c'est un lien de hierarchie, pendant de `parent_source_id`.
+    parent_card_id: Mapped[UUID | None] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("biblio_cards.id"),
+        nullable=True,
+        index=True,
+    )
     conflict_of_interest: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Metadonnees bibliographiques optionnelles (exports BibTeX/CSL/APA).
     journal: Mapped[str | None] = mapped_column(String(300), nullable=True)
@@ -128,6 +137,10 @@ class Source(Base):
     linked_card: Mapped[BiblioCard | None] = relationship(
         "BiblioCard",
         foreign_keys=[linked_card_id],
+    )
+    parent_card: Mapped[BiblioCard | None] = relationship(
+        "BiblioCard",
+        foreign_keys=[parent_card_id],
     )
     parent: Mapped[Source | None] = relationship(
         "Source",
