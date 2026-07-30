@@ -64,10 +64,8 @@
   let simulation: Simulation<StarNode, StarLink> | undefined;
   let zoomBehavior: ZoomBehavior<SVGSVGElement, unknown> | undefined;
   let resizeObserver: ResizeObserver | undefined;
-  let autoFitFallback: number | undefined;
   /** Dès que l'utilisateur cadre lui-même, le recadrage automatique se retire. */
   let hasUserAdjustedView = false;
-  let hasAutoFitted = false;
   let loading = $state(true);
   let errored = $state(false);
   let truncated = $state(false);
@@ -138,13 +136,19 @@
       .attr('transform', (d) => `translate(${d.x ?? 0}, ${d.y ?? 0})`);
   }
 
-  function fitToNodes(duration = 0) {
-    if (!svgEl || !zoomBehavior || nodes.length === 0) return;
+  function fitToNodes(sim: Simulation<StarNode, StarLink> | undefined, duration = 0) {
+    if (!svgEl || !zoomBehavior) return;
+    // Seule la simulation qui pilote le DOM affiche peut le recadrer : un
+    // recadrage venu d'un montage precedent se calculait sur d'autres noeuds
+    // et laissait les etoiles hors cadre.
+    if (!sim || sim !== simulation) return;
+    const placed = sim.nodes();
+    if (placed.length === 0) return;
     let minX = Infinity;
     let minY = Infinity;
     let maxX = -Infinity;
     let maxY = -Infinity;
-    for (const n of nodes) {
+    for (const n of placed) {
       const pad = n.radius + 40;
       minX = Math.min(minX, (n.x ?? 0) - pad);
       maxX = Math.max(maxX, (n.x ?? 0) + pad);
@@ -163,9 +167,29 @@
     else sel.call(zoomBehavior.transform, target);
   }
 
+  function resetView() {
+    if (!simulation) return;
+    hasUserAdjustedView = false;
+    // Les etoiles epinglees par un glisser doivent redevenir libres, sinon le
+    // recadrage se fait sur une disposition que la simulation ne corrige plus.
+    for (const n of simulation.nodes()) {
+      n.fx = null;
+      n.fy = null;
+    }
+    simulation.alpha(0.6).restart();
+    fitToNodes(simulation, 400);
+  }
+
   function mountGraph() {
     if (!svgEl || nodes.length === 0) return;
+    // Une simulation laissee en vie continuerait de piloter les memes elements
+    // du DOM que la nouvelle, avec ses propres noeuds.
+    simulation?.stop();
+    simulation = undefined;
     const svg = select(svgEl);
+    // Une transition de zoom encore en vol ecraserait le cadrage du nouveau
+    // graphe avec la cible calculee pour l'ancien.
+    svg.interrupt();
     svg.selectAll('*').remove();
     svg.attr('viewBox', `0 0 ${width} ${height}`);
 
@@ -222,6 +246,10 @@
       drag<SVGGElement, StarNode>()
         .on('start', (event: D3DragEvent<SVGGElement, StarNode, StarNode>, d) => {
           if (!event.active) simulation?.alphaTarget(0.2).restart();
+          // Deplacer une etoile, c'est composer soi-meme la vue : sans cela le
+          // recadrage automatique suivrait l'etoile et la ferait fuir sous le
+          // curseur a chaque tick.
+          hasUserAdjustedView = true;
           d.fx = d.x;
           d.fy = d.y;
         })
@@ -279,7 +307,7 @@
           `${d.title} — ${d.creatorName} · ${d.sourcesCount} source${d.sourcesCount > 1 ? 's' : ''}${d.isRoot ? ' (fiche affichée)' : ''}`
       );
 
-    simulation = forceSimulation<StarNode>(nodes)
+    const sim = forceSimulation<StarNode>(nodes)
       .force(
         'link',
         forceLink<StarNode, StarLink>(links)
@@ -295,14 +323,18 @@
       )
       .on('tick', () => {
         ticked();
-        // Recadrer sur l'évènement `end` seul ne suffit pas : la simulation
-        // peut ne jamais l'émettre, et un recadrage différé se calcule sur des
-        // positions déjà périmées — les étoiles finissaient hors cadre.
-        if (!hasUserAdjustedView && (simulation?.alpha() ?? 1) < 0.06) {
-          hasAutoFitted = true;
-          fitToNodes();
-        }
+        // Recadrer a chaque tick tant que l'utilisateur n'a pas pris la main :
+        // n'attendre qu'un seuil d'alpha, un `end` ou un delai fixe revenait a
+        // cadrer sur des positions que la simulation deplacait encore, et les
+        // etoiles quittaient le cadre. Le cout est un recalcul de boite
+        // englobante par tick, negligeable a cette echelle.
+        if (!hasUserAdjustedView) fitToNodes(sim);
       });
+    simulation = sim;
+    // Le montage precedent a pu arreter le minuteur d3 partage : sans ce
+    // redemarrage explicite, la nouvelle simulation reste figee sur les
+    // positions initiales et aucun tick n'arrive jamais.
+    sim.alpha(1).restart();
 
     zoomBehavior = zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.15, 2.5])
@@ -321,12 +353,6 @@
 
     void load().then(mountGraph);
 
-    // Filet : si la simulation s'agite encore passé ce délai, on recadre quand
-    // meme plutot que de laisser l'utilisateur devant un cadre vide.
-    autoFitFallback = window.setTimeout(() => {
-      if (!hasAutoFitted && !hasUserAdjustedView) fitToNodes(400);
-    }, 2500);
-
     resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const nextW = Math.max(entry.contentRect.width, 320);
@@ -339,8 +365,6 @@
           ?.force('center', forceCenter(width / 2, height / 2).strength(0.08))
           .alpha(0.3)
           .restart();
-        // Le cadre a change de taille : le recadrage precedent ne vaut plus.
-        hasAutoFitted = false;
       }
     });
     resizeObserver.observe(container);
@@ -349,7 +373,6 @@
   onDestroy(() => {
     simulation?.stop();
     resizeObserver?.disconnect();
-    if (autoFitFallback) window.clearTimeout(autoFitFallback);
   });
 
   // Mise en avant du voisinage direct au survol : sans cela, sur un réseau
@@ -418,5 +441,20 @@
         >
       {/if}
     </div>
+    <!-- Sans ce bouton, une etoile trainee hors du cadre est irrecuperable :
+         le recadrage automatique s'est retire des que l'utilisateur a agi. -->
+    <button
+      onclick={resetView}
+      class="absolute top-3 right-3 h-8 w-8 rounded-md border border-slate-700 bg-slate-900/80 text-slate-300 backdrop-blur-sm hover:bg-slate-800 flex items-center justify-center"
+      aria-label="Recentrer"
+      title="Recentrer"
+    >
+      <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="3 9 3 3 9 3" />
+        <polyline points="21 15 21 21 15 21" />
+        <line x1="3" y1="3" x2="10" y2="10" />
+        <line x1="14" y1="14" x2="21" y2="21" />
+      </svg>
+    </button>
   {/if}
 </div>
