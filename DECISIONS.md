@@ -1060,6 +1060,31 @@ L'import d'un PDF (`/import/parse`) reposait sur un scan regex des URLs/DOIs pr�
 - La qualité d'extraction PDF dépend d'un service tiers non garanti ; le comportement de base (regex + Crossref backfill) reste le plancher garanti.
 - Si un Space fiable et chaud devient nécessaire (usage réel), dupliquer `kermitt2/grobid` sous le compte du projet est l'étape suivante (gratuit, 1 clic).
 
+## ADR-024 — Pages-obstacle anti-bot : détection générique + oracles d'identifiants
+
+**Date** : 2026-07-30
+
+**Contexte**
+
+Créer une fiche depuis `https://pubmed.ncbi.nlm.nih.gov/36300046/` pré-remplissait le titre avec « Checking your browser - reCAPTCHA ». PubMed sert un `200 text/html` parfaitement valide contenant un interstitiel reCAPTCHA aux IP datacenter — et notre backend tourne sur une VM GCP. Le scraper prenait donc le `<title>` de la page-obstacle pour le titre du contenu. Le problème n'a rien de spécifique à PubMed : Cloudflare, DataDome, Akamai et Imperva produisent exactement le même symptôme sur n'importe quel domaine.
+
+**Décisions**
+
+1. **Garde anti-interstitiel dans `_html_scrape`**, en deux niveaux pour éviter les faux positifs. Les formulations qu'aucune page de contenu n'emploie (« just a moment », « checking your browser », « attention required »…) suffisent seules. Les termes qu'un article légitime peut employer en parlant du sujet (« recaptcha », « captcha », « are you a robot ») ne comptent que sur un corps < 2000 caractères, signature d'un interstitiel. Un article intitulé « How reCAPTCHA works » n'est donc pas rejeté — c'est un test.
+2. **Quand un obstacle est détecté, `_html_scrape` retourne `None`** plutôt que des métadonnées partielles. Un champ vide que l'utilisateur remplit vaut mieux qu'un champ faux qu'il doit repérer puis corriger.
+3. **Oracle d'identifiants PubMed/PMC** : le PMID ou PMCID présent dans l'URL est converti en DOI via le convertisseur NCBI, ce qui rebranche tout le pipeline Crossref existant (métadonnées *et* références). C'est la même forme que `resolve_doi_from_pii` pour ScienceDirect : quand le scraping est bloqué, on passe par un registre qui, lui, expose une API.
+
+**Justifications**
+
+- Les deux couches sont indépendantes et se complètent : le garde protège *tous* les domaines contre un symptôme qui peut apparaître n'importe quand ; l'oracle restaure les données réelles pour le corpus biomédical entier (PubMed/PMC), pas pour une URL.
+- Vérifié de bout en bout : `pubmed.ncbi.nlm.nih.gov/36300046/` → DOI `10.3389/fpsyg.2022.651547` → titre, journal, date corrects et **152 références**, soit exactement le résultat du lien Frontiers du même article.
+
+**Conséquences**
+
+- Un lien PubMed et un lien éditeur pointant le même article produisent désormais la même fiche.
+- La liste de signatures est de la maintenance perpétuelle par nature. Elle ne doit contenir que des formulations d'interstitiel, jamais un nom de domaine : le jour où un site cesse de bloquer, aucun code n'est à retirer.
+- Un site protégé sans identifiant exploitable dans son URL rend toujours des champs vides. C'est le comportement voulu, et c'est ce que résoudrait un rendu navigateur déporté (cf. « Playwright différé »).
+
 <!--
 ## ADR-NNN — Titre court
 
