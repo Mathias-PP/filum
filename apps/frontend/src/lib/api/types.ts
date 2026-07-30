@@ -32,6 +32,17 @@ export interface CardDetail extends Card {
   stats: CardStats;
 }
 
+/** Fiche sélectionnable comme parent dans le picker de méta-fiches. */
+export interface CardSearchResult {
+  id: string;
+  title: string;
+  slug: string;
+  creator_slug: string;
+  status: CardStatus;
+  /** Fiche de l'utilisateur courant : elle peut être un brouillon. */
+  is_own: boolean;
+}
+
 export interface CreatorInfo {
   slug: string;
   display_name: string | null;
@@ -104,6 +115,12 @@ export interface Source {
   archive_url: string | null;
   archive_timestamp: string | null;
   parent_source_id: string | null;
+  /**
+   * Fiche parente choisie par l'auteur (méta-fiches). À ne pas confondre avec
+   * `linked_card_id` : ici c'est un lien de hiérarchie explicite, pendant de
+   * `parent_source_id`.
+   */
+  parent_card_id?: string | null;
   /** Fiche Philum publique référencée par cette source (résolue côté serveur). */
   linked_card_id?: string | null;
   /** Nombre de sources de la fiche liée (enrichi sur l'endpoint public). */
@@ -134,6 +151,7 @@ export interface SourceCreate {
   annotation?: string;
   is_pivot?: boolean;
   parent_source_id?: string | null;
+  parent_card_id?: string | null;
   /** Métadonnées bibliographiques optionnelles (exports BibTeX/CSL/APA). */
   journal?: string | null;
   volume?: string | null;

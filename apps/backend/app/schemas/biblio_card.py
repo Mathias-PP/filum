@@ -89,6 +89,23 @@ class CreatorInfo(BaseModel):
     public_key: str
 
 
+class CardSearchResult(BaseModel):
+    """Fiche selectionnable comme parent (meta-fiches).
+
+    Volontairement minimal : le picker n'a besoin que de quoi identifier une
+    fiche et construire son URL publique.
+    """
+
+    id: UUID
+    title: str
+    slug: str
+    creator_slug: str
+    status: str
+    # True si la fiche appartient a l'utilisateur courant : elle peut alors
+    # etre un brouillon, invisible pour les autres.
+    is_own: bool
+
+
 class CardResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

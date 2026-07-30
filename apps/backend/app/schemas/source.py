@@ -71,6 +71,9 @@ class SourceBase(BaseModel):
     annotation: str | None = Field(default=None, max_length=500)
     is_pivot: bool = False
     parent_source_id: UUID | None = None
+    # Fiche parente (meta-fiches). Doit appartenir a l'utilisateur ou etre
+    # publiee — verifie cote endpoint.
+    parent_card_id: UUID | None = None
     # Metadonnees bibliographiques optionnelles (exports BibTeX/CSL/APA).
     journal: str | None = Field(default=None, max_length=300)
     volume: str | None = Field(default=None, max_length=50)
@@ -103,6 +106,7 @@ class SourceUpdate(BaseModel):
     annotation: str | None = None
     is_pivot: bool | None = None
     parent_source_id: UUID | None = None
+    parent_card_id: UUID | None = None
     journal: str | None = Field(default=None, max_length=300)
     volume: str | None = Field(default=None, max_length=50)
     pages: str | None = Field(default=None, max_length=50)
@@ -139,6 +143,7 @@ class SourceResponse(BaseModel):
     archive_url: str | None
     archive_timestamp: datetime | None
     parent_source_id: UUID | None
+    parent_card_id: UUID | None = None
     # Fiche Philum publique referencee par cette source (resolue a la creation).
     linked_card_id: UUID | None = None
     # Enrichi uniquement sur l'endpoint public (nombre de sources de la fiche liee).
