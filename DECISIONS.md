@@ -1085,6 +1085,35 @@ Créer une fiche depuis `https://pubmed.ncbi.nlm.nih.gov/36300046/` pré-remplis
 - La liste de signatures est de la maintenance perpétuelle par nature. Elle ne doit contenir que des formulations d'interstitiel, jamais un nom de domaine : le jour où un site cesse de bloquer, aucun code n'est à retirer.
 - Un site protégé sans identifiant exploitable dans son URL rend toujours des champs vides. C'est le comportement voulu, et c'est ce que résoudrait un rendu navigateur déporté (cf. « Playwright différé »).
 
+## ADR-025 — Un seul lien fiche→fiche : fusion de `parent_card_id` dans `linked_card_id`
+
+**Date** : 2026-07-30
+
+**Contexte**
+
+Le méta-graphe et la constellation ne montraient jamais rien. Diagnostic en base de production : sur 1320 sources, **0** portaient `linked_card_id` — le champ que les deux vues lisent — tandis que 2 portaient `parent_card_id`, écrit par le picker « Cette source est-elle rattachée à une fiche entière ? ».
+
+Le modèle avait deux champs pour une seule intention utilisateur. `linked_card_id` (ADR de la migration 013) signifiait « cette source EST cette fiche », et n'était rempli que par résolution automatique d'une URL `/@user/slug` collée en guise d'URL de source — ce que personne ne fait, puisqu'on colle un DOI. `parent_card_id` (migration 015) signifiait « lien de hiérarchie explicite », était le seul des deux réellement atteignable depuis l'interface, et n'était lu par aucun consommateur.
+
+Deux bugs aggravants : `SourceUpdate` ne déclarait pas `linked_card_id`, donc toute édition d'une source effaçait le lien silencieusement ; et l'endpoint PATCH ne recalculait jamais la résolution d'URL.
+
+**Décisions**
+
+1. **Un seul concept**, porté par `linked_card_id` : « cette source désigne cette fiche Philum ». `parent_card_id` est supprimé, ses lignes migrées (migration `016_merge_parent_card`).
+2. **Deux chemins d'alimentation, une seule sortie** : le picker écrit le champ explicitement, la résolution d'URL le remplit à défaut. Les deux passent par `card_link.effective_linked_card_id`, appelé identiquement à la création, au batch et à l'édition.
+3. **Le choix explicite gagne sur l'URL.** Une source dont l'URL est un DOI peut désigner une fiche Philum : c'est le cas normal, pas l'exception.
+
+**Justifications**
+
+- La distinction « est cette fiche » / « lien de hiérarchie » n'avait ni consommateur en lecture, ni traduction visible pour l'utilisateur. Deux champs pour une intention produisent mécaniquement l'incohérence observée : l'action de l'utilisateur écrivait là où la vue ne lisait pas.
+- Un seul point de résolution rend structurellement impossible la classe de bug « le lien se perd à l'édition », plutôt que de la corriger à trois endroits.
+
+**Conséquences**
+
+- La garde d'accès (`assert_linked_card_allowed`) s'applique désormais aussi aux liens déduits d'une URL, et non plus seulement au picker.
+- Les libellés du formulaire distinguent explicitement le lien interne (`parent_source_id`, entre sources d'une même fiche) du lien fiche→fiche.
+- `resolve_linked_card_id` reste un raccourci utile mais n'est plus le seul chemin : coller une URL Philum et choisir au picker produisent le même résultat.
+
 <!--
 ## ADR-NNN — Titre court
 

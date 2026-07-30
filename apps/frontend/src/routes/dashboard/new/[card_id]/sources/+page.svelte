@@ -41,7 +41,7 @@
   let sourceCategory = $state<SourceCategory>('article-scientifique');
   let authorKind = $state<AuthorKind>('chercheur');
   let parentSourceId = $state<string>('');
-  let parentCardId = $state<string>('');
+  let linkedCardId = $state<string>('');
   let sourceTitle = $state('');
   let authors = $state('');
   let annotation = $state('');
@@ -155,10 +155,10 @@
     isPivot = false;
     parentSourceId = '';
     parentSourceQuery = '';
-    parentCardId = '';
-    parentCardQuery = '';
-    parentCardResults = [];
-    parentCardSelected = null;
+    linkedCardId = '';
+    linkedCardQuery = '';
+    linkedCardResults = [];
+    linkedCardSelected = null;
     archiveUrl = '';
     publishedAt = '';
     journal = '';
@@ -186,11 +186,11 @@
     isPivot = source.is_pivot;
     parentSourceId = source.parent_source_id ?? '';
     parentSourceQuery = '';
-    parentCardId = source.parent_card_id ?? '';
-    parentCardQuery = '';
-    parentCardResults = [];
-    parentCardSelected = null;
-    if (parentCardId) void loadSelectedParentCard(parentCardId);
+    linkedCardId = source.linked_card_id ?? '';
+    linkedCardQuery = '';
+    linkedCardResults = [];
+    linkedCardSelected = null;
+    if (linkedCardId) void loadSelectedLinkedCard(linkedCardId);
     archiveUrl = source.archive_url ?? '';
     publishedAt = source.published_at ? String(source.published_at).slice(0, 10) : '';
     journal = source.journal ?? '';
@@ -213,12 +213,12 @@
   // dans la fiche (numérotées, car une fiche peut en compter des centaines),
   // l'autre interroge le serveur pour les fiches (méta-fiches).
   let parentSourceQuery = $state('');
-  let parentCardQuery = $state('');
-  let parentCardResults = $state<CardSearchResult[]>([]);
-  let parentCardLoading = $state(false);
+  let linkedCardQuery = $state('');
+  let linkedCardResults = $state<CardSearchResult[]>([]);
+  let linkedCardLoading = $state(false);
   // Mémorise la fiche choisie : elle peut sortir des résultats quand la
   // recherche change, et on doit continuer à afficher ce qui est sélectionné.
-  let parentCardSelected = $state<CardSearchResult | null>(null);
+  let linkedCardSelected = $state<CardSearchResult | null>(null);
 
   /** Sources de la fiche, numérotées dans l'ordre d'affichage puis filtrées. */
   const numberedSources = $derived(
@@ -232,10 +232,10 @@
       })
   );
 
-  async function loadSelectedParentCard(id: string) {
+  async function loadSelectedLinkedCard(id: string) {
     try {
       const card = await api.cards.get(id);
-      parentCardSelected = {
+      linkedCardSelected = {
         id: card.id,
         title: card.title,
         slug: card.slug,
@@ -245,37 +245,37 @@
       };
     } catch {
       // Fiche devenue inaccessible : on garde l'id, l'utilisateur peut le vider.
-      parentCardSelected = null;
+      linkedCardSelected = null;
     }
   }
 
-  let parentCardTimer: ReturnType<typeof setTimeout> | undefined;
-  function onParentCardQueryInput() {
-    clearTimeout(parentCardTimer);
-    parentCardTimer = setTimeout(() => void searchParentCards(), 250);
+  let linkedCardTimer: ReturnType<typeof setTimeout> | undefined;
+  function onLinkedCardQueryInput() {
+    clearTimeout(linkedCardTimer);
+    linkedCardTimer = setTimeout(() => void searchLinkedCards(), 250);
   }
 
-  async function searchParentCards() {
-    parentCardLoading = true;
+  async function searchLinkedCards() {
+    linkedCardLoading = true;
     try {
-      parentCardResults = await api.cards.search(parentCardQuery.trim(), 30);
+      linkedCardResults = await api.cards.search(linkedCardQuery.trim(), 30);
     } catch {
-      parentCardResults = [];
+      linkedCardResults = [];
     } finally {
-      parentCardLoading = false;
+      linkedCardLoading = false;
     }
   }
 
-  function pickParentCard(card: CardSearchResult) {
-    parentCardId = card.id;
-    parentCardSelected = card;
-    parentCardQuery = '';
-    parentCardResults = [];
+  function pickLinkedCard(card: CardSearchResult) {
+    linkedCardId = card.id;
+    linkedCardSelected = card;
+    linkedCardQuery = '';
+    linkedCardResults = [];
   }
 
-  function clearParentCard() {
-    parentCardId = '';
-    parentCardSelected = null;
+  function clearLinkedCard() {
+    linkedCardId = '';
+    linkedCardSelected = null;
   }
 
   function parentTitle(parentId: string): string | null {
@@ -303,7 +303,7 @@
           annotation: annotation || undefined,
           is_pivot: isPivot,
           parent_source_id: parentSourceId || null,
-          parent_card_id: parentCardId || null,
+          linked_card_id: linkedCardId || null,
           published_at: publishedAt ? new Date(publishedAt).toISOString() : null,
           journal: journal || null,
           volume: volume || null,
@@ -325,7 +325,7 @@
           annotation: annotation || undefined,
           is_pivot: isPivot,
           parent_source_id: parentSourceId || undefined,
-          parent_card_id: parentCardId || undefined,
+          linked_card_id: linkedCardId || undefined,
           published_at: publishedAt ? new Date(publishedAt).toISOString() : undefined,
           journal: journal || undefined,
           volume: volume || undefined,
@@ -1729,9 +1729,9 @@
         {#if sources.length > 0}
           <div class="sm:col-span-2 space-y-1.5">
             <label for="source-parent" class="block text-sm font-medium text-ink-secondary">
-              Cette source en cite une autre déjà ajoutée ?
+              Cette source en cite une autre de cette même fiche ?
               <span class="text-xs text-ink-tertiary font-normal"
-                >— affichée en pointillés dans le graphe</span
+                >— lien interne, affiché en pointillés dans le graphe</span
               >
             </label>
             <input
@@ -1764,27 +1764,28 @@
             donc trop large pour être chargé d'avance : la recherche est requise.
           -->
         <div class="sm:col-span-2 space-y-1.5">
-          <label for="parent-card-search" class="block text-sm font-medium text-ink-secondary">
-            Cette source est-elle rattachée à une fiche entière ?
+          <label for="linked-card-search" class="block text-sm font-medium text-ink-secondary">
+            Ce contenu source a-t-il déjà sa fiche Philum ?
             <span class="text-xs text-ink-tertiary font-normal"
-              >— vos fiches (même en brouillon) et toutes les fiches publiques</span
+              >— la source devient un nœud dépliable du graphe, et les deux fiches se relient dans
+              la constellation</span
             >
           </label>
 
-          {#if parentCardId}
+          {#if linkedCardId}
             <div
               class="flex items-center justify-between gap-2 px-4 py-2 rounded-lg border border-info/40 bg-info/5"
             >
               <span class="text-sm text-ink-primary truncate">
-                {parentCardSelected?.title ?? 'Fiche sélectionnée'}
-                {#if parentCardSelected && !parentCardSelected.is_own}
-                  <span class="text-xs text-ink-tertiary">— @{parentCardSelected.creator_slug}</span
+                {linkedCardSelected?.title ?? 'Fiche sélectionnée'}
+                {#if linkedCardSelected && !linkedCardSelected.is_own}
+                  <span class="text-xs text-ink-tertiary">— @{linkedCardSelected.creator_slug}</span
                   >
                 {/if}
               </span>
               <button
                 type="button"
-                onclick={clearParentCard}
+                onclick={clearLinkedCard}
                 class="text-xs text-ink-tertiary hover:text-danger shrink-0"
               >
                 Retirer
@@ -1792,27 +1793,27 @@
             </div>
           {:else}
             <input
-              id="parent-card-search"
+              id="linked-card-search"
               type="search"
-              bind:value={parentCardQuery}
-              oninput={onParentCardQueryInput}
+              bind:value={linkedCardQuery}
+              oninput={onLinkedCardQueryInput}
               onfocus={() => {
-                if (parentCardResults.length === 0) void searchParentCards();
+                if (linkedCardResults.length === 0) void searchLinkedCards();
               }}
               placeholder="Rechercher une fiche par titre…"
               class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info"
             />
-            {#if parentCardLoading}
+            {#if linkedCardLoading}
               <p class="text-xs text-ink-tertiary">Recherche…</p>
-            {:else if parentCardResults.length > 0}
+            {:else if linkedCardResults.length > 0}
               <ul
                 class="max-h-56 overflow-y-auto rounded-lg border border-border divide-y divide-border"
               >
-                {#each parentCardResults as result (result.id)}
+                {#each linkedCardResults as result (result.id)}
                   <li>
                     <button
                       type="button"
-                      onclick={() => pickParentCard(result)}
+                      onclick={() => pickLinkedCard(result)}
                       class="w-full text-left px-3 py-2 text-sm text-ink-primary hover:bg-surface-secondary"
                     >
                       <span class="block truncate">{result.title}</span>
@@ -1824,7 +1825,7 @@
                   </li>
                 {/each}
               </ul>
-            {:else if parentCardQuery.trim()}
+            {:else if linkedCardQuery.trim()}
               <p class="text-xs text-ink-tertiary">Aucune fiche ne correspond.</p>
             {/if}
           {/if}
@@ -2019,8 +2020,8 @@
                     </p>
                   {/if}
                 {/if}
-                {#if source.parent_card_id}
-                  <p class="text-xs text-info truncate">↳ rattachée à une fiche</p>
+                {#if source.linked_card_id}
+                  <p class="text-xs text-info truncate">★ reliée à une fiche Philum</p>
                 {/if}
               </div>
             </div>
