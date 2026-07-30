@@ -139,12 +139,17 @@
   }
 
   function fitToNodes(duration = 0) {
-    if (!svgEl || !zoomBehavior || nodes.length === 0) return;
+    if (!svgEl || !zoomBehavior) return;
+    // La simulation est seule autorite sur les positions : recadrer d'apres la
+    // variable `nodes` recadrait sur un tableau qu'aucun tick n'avait bouge des
+    // que le composant se remontait, et les etoiles finissaient hors cadre.
+    const placed = simulation?.nodes() ?? [];
+    if (placed.length === 0) return;
     let minX = Infinity;
     let minY = Infinity;
     let maxX = -Infinity;
     let maxY = -Infinity;
-    for (const n of nodes) {
+    for (const n of placed) {
       const pad = n.radius + 40;
       minX = Math.min(minX, (n.x ?? 0) - pad);
       maxX = Math.max(maxX, (n.x ?? 0) + pad);
@@ -165,6 +170,9 @@
 
   function mountGraph() {
     if (!svgEl || nodes.length === 0) return;
+    // Une simulation laissee en vie continuerait de piloter les memes elements
+    // du DOM que la nouvelle, avec ses propres noeuds.
+    simulation?.stop();
     const svg = select(svgEl);
     svg.selectAll('*').remove();
     svg.attr('viewBox', `0 0 ${width} ${height}`);
