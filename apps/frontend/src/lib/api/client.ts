@@ -7,6 +7,7 @@ import type {
   Card,
   CardDetail,
   CardCreate,
+  CardGraph,
   CardSearchResult,
   ExcerptSuggestResponse,
   ImportFromUrlResponse,
@@ -161,6 +162,19 @@ export const api = {
     getPublic: async (creatorSlug: string, cardSlug: string): Promise<CardDetail> => {
       const raw = await request<CardDetail>(`/@${creatorSlug}/${cardSlug}`);
       return normalizeCardDetail(raw);
+    },
+
+    getGraph: async (
+      creatorSlug: string,
+      cardSlug: string,
+      opts: { depth?: number; includeSources?: boolean } = {}
+    ): Promise<CardGraph> => {
+      const params = new URLSearchParams();
+      if (opts.depth !== undefined) params.set('depth', String(opts.depth));
+      if (opts.includeSources !== undefined)
+        params.set('include_sources', String(opts.includeSources));
+      const qs = params.toString();
+      return request<CardGraph>(`/@${creatorSlug}/${cardSlug}/graph${qs ? `?${qs}` : ''}`);
     },
     // `verify` removed (ADR-019). Use `api.attestations.verify(id)` instead.
   },

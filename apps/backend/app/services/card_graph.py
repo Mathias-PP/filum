@@ -52,6 +52,9 @@ class GraphNode:
     url: str | None = None
     authors: str | None = None
     category: str | None = None
+    format: str | None = None
+    author_kind: str | None = None
+    is_pivot: bool = False
     slug: str | None = None
     creator_slug: str | None = None
     creator_name: str | None = None
@@ -109,6 +112,25 @@ async def _load_sources(db: AsyncSession, card_ids: set[UUID]) -> dict[UUID, lis
     return grouped
 
 
+async def _load_citing_cards(db: AsyncSession, card_ids: set[UUID]) -> dict[UUID, set[UUID]]:
+    """Fiches qui citent celles demandees : ``cited_id -> {citing_ids}``.
+
+    Le sens inverse n'a de sens que pour la constellation : "ou se situe cette
+    fiche dans le reseau" se repond mal si on ignore qui la cite.
+    """
+    if not card_ids:
+        return {}
+    result = await db.execute(
+        select(Source.linked_card_id, Source.biblio_card_id).where(
+            Source.linked_card_id.in_(card_ids), Source.deleted_at.is_(None)
+        )
+    )
+    citing: dict[UUID, set[UUID]] = {}
+    for cited_id, citing_id in result.all():
+        citing.setdefault(cited_id, set()).add(citing_id)
+    return citing
+
+
 async def build_card_graph(
     db: AsyncSession,
     root_card: BiblioCard,
@@ -121,6 +143,8 @@ async def build_card_graph(
     ``include_sources=False`` produit le graphe fiches-seules de la vue
     constellation : les sources sont traversees pour trouver les liens mais
     ne deviennent pas des noeuds, seul leur nombre est reporte sur la fiche.
+    Ce mode remonte aussi les citations entrantes, alors que le graphe avec
+    sources reste orience "cette fiche s'appuie sur".
     """
     depth = max(0, min(depth, MAX_DEPTH))
     graph = CardGraph(root_id=card_node_id(root_card.id))
@@ -133,6 +157,10 @@ async def build_card_graph(
     card_meta: dict[UUID, CardMeta] = {root_card.id: root_meta}
     card_depth: dict[UUID, int] = {root_card.id: 0}
 
+    # Aretes fiche -> fiche de la constellation : le meme lien peut etre
+    # rencontre a l'aller et au retour, on ne le compte qu'une fois.
+    card_edges: set[tuple[UUID, UUID]] = set()
+
     for level in range(depth + 1):
         sources_by_card = await _load_sources(db, frontier)
         counts = {cid: len(srcs) for cid, srcs in sources_by_card.items()}
@@ -144,7 +172,19 @@ async def build_card_graph(
                 if src.linked_card_id and src.linked_card_id not in seen_cards:
                     next_ids.add(src.linked_card_id)
 
+        citing_by_card = {} if include_sources else await _load_citing_cards(db, frontier)
+        for citers in citing_by_card.values():
+            next_ids |= {cid for cid in citers if cid not in seen_cards}
+
         next_meta = await _load_cards(db, next_ids) if level < depth else {}
+        # Une fiche deja visitee reste une cible valide : sans cela, deux fiches
+        # qui se citent mutuellement n'auraient qu'une seule des deux aretes.
+        reachable = set(next_meta) | set(card_meta)
+
+        for cited_id, citers in citing_by_card.items():
+            for citing_id in citers:
+                if citing_id in reachable:
+                    card_edges.add((citing_id, cited_id))
 
         for card_id in frontier:
             meta = card_meta.get(card_id)
@@ -168,7 +208,7 @@ async def build_card_graph(
                 # Une source dont la fiche cible est atteignable devient une
                 # arete vers cette fiche. Sinon (fiche privee, depassement de
                 # profondeur) elle reste une source ordinaire.
-                target_card = src.linked_card_id if src.linked_card_id in next_meta else None
+                target_card = src.linked_card_id if src.linked_card_id in reachable else None
                 if include_sources:
                     if len(graph.nodes) >= MAX_NODES:
                         graph.truncated = True
@@ -182,6 +222,9 @@ async def build_card_graph(
                             url=src.url,
                             authors=src.authors,
                             category=src.category,
+                            format=src.format,
+                            author_kind=src.author_kind,
+                            is_pivot=bool(src.is_pivot),
                             linked_card_id=src.linked_card_id,
                         )
                     )
@@ -202,13 +245,7 @@ async def build_card_graph(
                         )
                 elif target_card:
                     # Constellation : arete directe fiche -> fiche.
-                    graph.edges.append(
-                        GraphEdge(
-                            source=card_node_id(card_id),
-                            target=card_node_id(target_card),
-                            kind="is_card",
-                        )
-                    )
+                    card_edges.add((card_id, target_card))
 
         if level >= depth or graph.truncated:
             break
@@ -221,5 +258,18 @@ async def build_card_graph(
             frontier.add(card_id)
         if not frontier:
             break
+
+    # Une arete peut avoir ete decouverte avant que sa fiche source ou cible ne
+    # soit rendue : on ne garde que celles dont les deux extremites existent.
+    rendered = {n.id for n in graph.nodes if n.kind == "card"}
+    for src_id, dst_id in sorted(card_edges, key=lambda e: (str(e[0]), str(e[1]))):
+        if card_node_id(src_id) in rendered and card_node_id(dst_id) in rendered:
+            graph.edges.append(
+                GraphEdge(
+                    source=card_node_id(src_id),
+                    target=card_node_id(dst_id),
+                    kind="is_card",
+                )
+            )
 
     return graph

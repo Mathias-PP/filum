@@ -341,3 +341,48 @@ export interface YoutubeTranscriptResponse {
   transcript_chars: number;
   suggestions: ImportedSourceDraft[];
 }
+
+/**
+ * Méta-graphe : fiches reliées entre elles par leurs sources.
+ *
+ * Une source dont l'URL pointe vers une fiche Philum publique porte
+ * `linked_card_id`. Le backend suit ces liens en BFS borné et renvoie un
+ * graphe normalisé qui alimente deux vues : le dépliage d'un nœud dans le
+ * graphe d'une fiche, et la constellation (fiches seules).
+ */
+export interface GraphNode {
+  /** `card:<uuid>` ou `source:<uuid>` — unique tous types confondus. */
+  id: string;
+  kind: 'card' | 'source';
+  /** Nombre de sauts depuis la fiche racine. */
+  depth: number;
+  title?: string | null;
+  url?: string | null;
+  authors?: string | null;
+  category?: string | null;
+  format?: string | null;
+  author_kind?: string | null;
+  is_pivot?: boolean;
+  /** Nœuds `card` uniquement — nécessaires pour étiqueter et naviguer. */
+  slug?: string | null;
+  creator_slug?: string | null;
+  creator_name?: string | null;
+  sources_count?: number | null;
+  /** Nœuds `source` : fiche Philum visée, si elle existe. */
+  linked_card_id?: string | null;
+}
+
+export interface GraphEdge {
+  source: string;
+  target: string;
+  /** `cites` : fiche → source. `is_card` : source → fiche (rend le dépliage possible). */
+  kind: 'cites' | 'is_card';
+}
+
+export interface CardGraph {
+  root_id: string;
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  /** true = plafond de nœuds atteint, le voisinage affiché est partiel. */
+  truncated: boolean;
+}

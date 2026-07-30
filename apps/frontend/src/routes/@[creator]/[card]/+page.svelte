@@ -60,11 +60,35 @@
   let expandedSource = $state<string | null>(null);
   let descriptionExpanded = $state(false);
   let GraphComponent = $state<any>(null);
+  let ConstellationComponent = $state<any>(null);
+
+  // Deux lectures du même méta-graphe : « sur quoi cette fiche s'appuie-t-elle »
+  // (graphe des sources) et « où se situe-t-elle » (constellation).
+  type GraphView = 'sources' | 'constellation';
+  let graphView = $state<GraphView>('sources');
+  const graphViews: { value: GraphView; label: string; hint: string }[] = [
+    { value: 'sources', label: 'Sources', hint: 'La fiche et ses références' },
+    {
+      value: 'constellation',
+      label: 'Constellation',
+      hint: 'Les fiches Philum reliées à celle-ci',
+    },
+  ];
 
   $effect(() => {
     if (browser && !GraphComponent) {
       import('$lib/components/SourceGraph.svelte').then((m) => {
         GraphComponent = m.default;
+      });
+    }
+  });
+
+  // La constellation n'est chargée qu'au premier passage sur l'onglet : c'est
+  // un second bundle d3 que la plupart des visiteurs n'ouvriront pas.
+  $effect(() => {
+    if (browser && graphView === 'constellation' && !ConstellationComponent) {
+      import('$lib/components/CardConstellation.svelte').then((m) => {
+        ConstellationComponent = m.default;
       });
     }
   });
@@ -273,9 +297,44 @@
     <section class="bg-surface-secondary">
       <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div
+          class="flex items-center justify-center mb-3 print:hidden"
+          role="group"
+          aria-label="Vue du graphe"
+        >
+          <div
+            class="inline-flex rounded-lg border border-border bg-surface-primary overflow-hidden text-sm"
+          >
+            {#each graphViews as v, i (v.value)}
+              <button
+                type="button"
+                onclick={() => (graphView = v.value)}
+                class="px-3.5 py-1.5 transition-colors {i > 0
+                  ? 'border-l border-border'
+                  : ''} {graphView === v.value
+                  ? 'bg-ink-primary text-surface-primary font-medium'
+                  : 'text-ink-secondary hover:bg-surface-secondary'}"
+                aria-pressed={graphView === v.value}
+                title={v.hint}
+              >
+                {v.label}
+              </button>
+            {/each}
+          </div>
+        </div>
+        <div
           class="h-[75vh] min-h-[500px] rounded-xl bg-surface-primary border border-border overflow-hidden relative"
         >
-          {#if GraphComponent}
+          {#if graphView === 'constellation'}
+            {#if ConstellationComponent}
+              {#key card.id}
+                <ConstellationComponent {creatorSlug} {cardSlug} rootCardId={card.id} />
+              {/key}
+            {:else}
+              <div class="absolute inset-0 flex items-center justify-center">
+                <p class="text-sm text-ink-tertiary">Chargement de la constellation…</p>
+              </div>
+            {/if}
+          {:else if GraphComponent}
             <!-- Re-mount the d3 simulation when navigating between cards:
                  the graph builds its nodes once on mount and doesn't react
                  to a card prop swap. -->
@@ -290,8 +349,13 @@
           {/if}
         </div>
         <p class="text-center text-xs sm:text-sm text-ink-tertiary mt-3">
-          Cliquez sur un nœud pour explorer la source · glissez pour réorganiser · molette pour
-          zoomer
+          {#if graphView === 'constellation'}
+            Chaque étoile est une fiche Philum · cliquez pour l'ouvrir · glissez pour réorganiser ·
+            molette pour zoomer
+          {:else}
+            Cliquez sur un nœud pour explorer la source · les nœuds cerclés cachent une fiche Philum
+            à déplier · molette pour zoomer
+          {/if}
         </p>
       </div>
     </section>

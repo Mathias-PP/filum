@@ -157,6 +157,9 @@ class GraphNodeResponse(BaseModel):
     url: str | None = None
     authors: str | None = None
     category: str | None = None
+    format: str | None = None
+    author_kind: str | None = None
+    is_pivot: bool = False
     slug: str | None = None
     creator_slug: str | None = None
     creator_name: str | None = None

@@ -15,8 +15,16 @@
   } from 'd3';
   import { onDestroy, onMount } from 'svelte';
 
-  import type { CardDetail, Source } from '$lib/api';
-  import { sourceColor, type ColorMode, type NodeColor } from '$lib/utils/author-colors';
+  import { api } from '$lib/api';
+  import type { AuthorKind, CardDetail, Source, SourceCategory, SourceFormat } from '$lib/api';
+  import {
+    AUTHOR_COLORS,
+    CATEGORY_COLORS,
+    FORMAT_COLORS,
+    sourceColor,
+    type ColorMode,
+    type NodeColor,
+  } from '$lib/utils/author-colors';
   import SourceDetailPanel from './SourceDetailPanel.svelte';
 
   interface Props {
@@ -28,11 +36,48 @@
 
   type NodeKind = 'card' | 'source' | 'junction';
 
+  /**
+   * Méta-graphe. Une source dont l'URL vise une autre fiche Philum porte
+   * `linked_card_id` : elle est alors dépliable, et révèle in situ la fiche
+   * visée avec ses propres sources. Le voisinage entier est chargé en une
+   * requête au montage, si bien que le dépliage est instantané.
+   */
+  interface NeighborCard {
+    id: string;
+    title: string;
+    slug: string;
+    creatorSlug: string;
+    creatorName: string | null;
+    sourcesCount: number;
+  }
+
+  /** Source normalisée : une source de la fiche racine ou d'une fiche voisine. */
+  interface GraphSourceData {
+    id: string;
+    url: string;
+    title: string | null;
+    authors: string | null;
+    format: SourceFormat;
+    category: SourceCategory;
+    author_kind: AuthorKind;
+    is_pivot: boolean;
+    parent_source_id: string | null;
+    linked_card_id: string | null;
+    /** Présente uniquement pour les sources de la fiche racine. */
+    full?: Source;
+  }
+
   interface GraphNode {
     id: string;
     kind: NodeKind;
     label: string;
-    source?: Source;
+    source?: GraphSourceData;
+    /** Fiche portée par ce nœud (`kind === 'card'`). */
+    cardMeta?: NeighborCard;
+    /** Fiche à laquelle appartient ce nœud, pour le repli en cascade. */
+    ownerCardId: string;
+    /** Source dépliable : fiche visée non encore dépliée. */
+    expandable?: string;
     radius: number;
     fill: string;
     stroke: string;
@@ -48,7 +93,7 @@
   interface GraphLink {
     source: string | GraphNode;
     target: string | GraphNode;
-    kind: 'card' | 'parent' | 'sibling';
+    kind: 'card' | 'parent' | 'sibling' | 'meta';
     forkHide?: true;
   }
 
@@ -78,6 +123,19 @@
   let selectedSource = $state<Source | null>(null);
   let panelAnchor = $state<{ x: number; y: number } | null>(null);
 
+  // Voisinage méta-graphe, chargé une seule fois puis exploré côté client.
+  let neighborCards = $state(new Map<string, NeighborCard>());
+  let neighborSources = new Map<string, GraphSourceData[]>();
+  let expandedCardIds = $state<string[]>([]);
+  let neighborhoodTruncated = $state(false);
+  // Dernières positions connues : le dépliage remonte le graphe, sans ce
+  // souvenir la disposition se réorganiserait entièrement à chaque clic.
+  const posMemory = new Map<string, { x: number; y: number }>();
+  // Nœud source d'où chaque fiche a été dépliée : les nouvelles sources
+  // apparaissent près de lui plutôt qu'au centre, ce qui donne l'impression
+  // d'un déploiement plutôt que d'un remaniement.
+  const expandOrigin = new Map<string, string>();
+
   // Axe de couleur des nœuds (ADR-020) : type d'auteur par défaut.
   let colorMode = $state<ColorMode>('author_kind');
   const colorModeOptions: { value: ColorMode; label: string }[] = [
@@ -86,17 +144,41 @@
     { value: 'category', label: 'Catégorie' },
   ];
 
-  // Légende : uniquement les valeurs présentes sur la fiche.
+  const cardId = $derived(`card:${card.id}`);
+
+  /** Sources de la fiche racine, normalisées comme celles des fiches voisines. */
+  const rootSources = $derived(
+    card.sources.map((s): GraphSourceData => ({
+      id: s.id,
+      url: s.url,
+      title: s.title,
+      authors: s.authors,
+      format: s.format,
+      category: s.category,
+      author_kind: s.author_kind,
+      is_pivot: s.is_pivot,
+      parent_source_id: s.parent_source_id,
+      linked_card_id: s.linked_card_id ?? null,
+      full: s,
+    }))
+  );
+
+  /** Tout ce qui est actuellement à l'écran : racine + fiches dépliées. */
+  const visibleSources = $derived.by(() => {
+    const all = [...rootSources];
+    for (const id of expandedCardIds) all.push(...(neighborSources.get(id) ?? []));
+    return all;
+  });
+
+  // Légende : uniquement les valeurs présentes à l'écran.
   const legendEntries = $derived.by(() => {
     const seen = new Map<string, NodeColor>();
-    for (const s of card.sources) {
+    for (const s of visibleSources) {
       const c = sourceColor(s, colorMode);
       if (!seen.has(c.label)) seen.set(c.label, c);
     }
     return [...seen.values()];
   });
-
-  const cardId = $derived(`card:${card.id}`);
 
   // Densité. Sur une fiche de 152 sources, des cercles de taille fixe se
   // touchent et les noms d'auteurs se chevauchent au point d'être illisibles.
@@ -104,7 +186,7 @@
   // grossit : le graphe occupe plus de place, mais un zoom avant devient
   // lisible au lieu d'être saturé. Agnostique au nombre de sources.
   const densityScale = $derived(
-    Math.max(0.62, Math.min(1, Math.sqrt(24 / Math.max(card.sources.length, 1))))
+    Math.max(0.62, Math.min(1, Math.sqrt(24 / Math.max(visibleSources.length, 1))))
   );
   // 1 sur une petite fiche, ~1.5 sur une grosse : facteur appliqué aux distances
   // de lien et au rayon de collision, pour dégager la place des étiquettes.
@@ -117,7 +199,7 @@
     return text.length > max ? text.slice(0, max) + '…' : text;
   }
 
-  function authorLabel(s: Source): string {
+  function authorLabel(s: GraphSourceData): string {
     if (s.authors && s.authors.trim().length > 0) return truncate(s.authors, 22);
     return truncate(s.title ?? s.url, 22);
   }
@@ -125,12 +207,126 @@
   let junctionCounter = 0;
   let forks: ForkMeta[] = [];
 
+  /**
+   * Charge le voisinage méta-graphe en une requête.
+   *
+   * Le backend borne le parcours en profondeur et en nombre de nœuds, donc la
+   * réponse reste petite même sur une fiche très citée. On ne l'appelle que si
+   * la fiche racine a au moins une source reliée : sur l'immense majorité des
+   * fiches, aucune requête supplémentaire n'est émise.
+   */
+  async function loadNeighborhood() {
+    if (!card.sources.some((s) => s.linked_card_id)) return;
+    let graph;
+    try {
+      graph = await api.cards.getGraph(card.creator.slug, card.slug, { depth: 3 });
+    } catch {
+      // Le méta-graphe est un bonus : son échec ne doit pas casser la vue.
+      return;
+    }
+    const cards = new Map<string, NeighborCard>();
+    const sources = new Map<string, GraphSourceData>();
+    for (const n of graph.nodes) {
+      if (n.kind === 'card') {
+        const id = n.id.slice('card:'.length);
+        cards.set(id, {
+          id,
+          title: n.title ?? 'Fiche',
+          slug: n.slug ?? '',
+          creatorSlug: n.creator_slug ?? '',
+          creatorName: n.creator_name ?? null,
+          sourcesCount: n.sources_count ?? 0,
+        });
+      } else {
+        const id = n.id.slice('source:'.length);
+        sources.set(id, {
+          id,
+          url: n.url ?? '',
+          title: n.title ?? null,
+          authors: n.authors ?? null,
+          format: (n.format ?? '') in FORMAT_COLORS ? (n.format as SourceFormat) : 'texte',
+          category:
+            (n.category ?? '') in CATEGORY_COLORS ? (n.category as SourceCategory) : 'page-web',
+          author_kind:
+            (n.author_kind ?? '') in AUTHOR_COLORS ? (n.author_kind as AuthorKind) : 'individu',
+          is_pivot: n.is_pivot ?? false,
+          parent_source_id: null,
+          linked_card_id: n.linked_card_id ?? null,
+        });
+      }
+    }
+    // Les arêtes `cites` donnent l'appartenance source → fiche, dans l'ordre de
+    // position renvoyé par le backend.
+    const byCard = new Map<string, GraphSourceData[]>();
+    for (const e of graph.edges) {
+      if (e.kind !== 'cites') continue;
+      const owner = e.source.slice('card:'.length);
+      const src = sources.get(e.target.slice('source:'.length));
+      if (!src) continue;
+      if (!byCard.has(owner)) byCard.set(owner, []);
+      byCard.get(owner)!.push(src);
+    }
+    // La fiche racine garde ses sources complètes, celles de l'API sont
+    // appauvries (pas d'extraits, pas d'archive).
+    byCard.delete(card.id);
+    cards.delete(card.id);
+    neighborSources = byCard;
+    neighborCards = cards;
+    neighborhoodTruncated = graph.truncated;
+  }
+
+  /** Déplie la fiche visée par une source : ses propres sources apparaissent. */
+  function expandCard(targetCardId: string, fromSourceId: string) {
+    if (!neighborCards.has(targetCardId) || expandedCardIds.includes(targetCardId)) return;
+    expandOrigin.set(targetCardId, fromSourceId);
+    expandedCardIds = [...expandedCardIds, targetCardId];
+    remount();
+  }
+
+  /** Replie une fiche et, en cascade, tout ce qui n'était accessible que par elle. */
+  function collapseCard(targetCardId: string) {
+    const keep = new Set<string>();
+    let frontier = new Set<string>([card.id]);
+    while (frontier.size > 0) {
+      const next = new Set<string>();
+      for (const cid of frontier) {
+        const srcs = cid === card.id ? rootSources : (neighborSources.get(cid) ?? []);
+        for (const s of srcs) {
+          const link = s.linked_card_id;
+          if (!link || link === targetCardId) continue;
+          if (!expandedCardIds.includes(link) || keep.has(link)) continue;
+          keep.add(link);
+          next.add(link);
+        }
+      }
+      frontier = next;
+    }
+    expandedCardIds = expandedCardIds.filter((id) => keep.has(id));
+    remount();
+  }
+
+  function collapseAll() {
+    if (expandedCardIds.length === 0) return;
+    expandedCardIds = [];
+    remount();
+  }
+
+  function remount() {
+    selectSource(null);
+    hoveredId = null;
+    simulation?.stop();
+    hasUserAdjustedView = false;
+    hasAutoFitted = false;
+    mountGraph();
+  }
+
   function buildGraph(): { nodes: GraphNode[]; links: GraphLink[] } {
     const nodes: GraphNode[] = [
       {
         id: cardId,
         kind: 'card',
         label: card.title,
+        ownerCardId: card.id,
         radius: 28,
         fill: '#1e293b',
         stroke: '#0f172a',
@@ -140,38 +336,74 @@
     const links: GraphLink[] = [];
     forks = [];
 
-    const byAuthorAndParent = new Map<string, typeof card.sources>();
-
-    for (const s of card.sources) {
-      const colors = sourceColor(s, colorMode);
-      const isSecondary = s.parent_source_id !== null;
-      let radius = 14;
-      if (s.is_pivot) radius += 4;
-      if (isSecondary) radius *= 0.75;
-      radius = Math.max(8, Math.round(radius * densityScale));
-
+    const byAuthorAndParent = new Map<string, GraphSourceData[]>();
+    // Une fiche dépliée est un peu plus petite que la racine : la hiérarchie
+    // visuelle dit d'où part la lecture.
+    const cardNodeIds = new Map<string, string>([[card.id, cardId]]);
+    for (const cid of expandedCardIds) {
+      const meta = neighborCards.get(cid);
+      if (!meta) continue;
+      const nodeId = `card:${cid}`;
+      cardNodeIds.set(cid, nodeId);
       nodes.push({
-        id: s.id,
-        kind: 'source',
-        label: s.title ?? s.url,
-        source: s,
-        radius,
-        fill: colors.fill,
-        stroke: colors.stroke,
-        tier: isSecondary ? 'second' : 'first',
+        id: nodeId,
+        kind: 'card',
+        label: meta.title,
+        cardMeta: meta,
+        ownerCardId: cid,
+        radius: 22,
+        fill: '#1e293b',
+        stroke: '#6366f1',
+        tier: 'card',
       });
+    }
 
-      if (isSecondary && s.parent_source_id) {
-        links.push({ source: s.id, target: s.parent_source_id, kind: 'parent' });
-      } else {
-        links.push({ source: cardId, target: s.id, kind: 'card' });
-      }
+    for (const [ownerId, ownerNodeId] of cardNodeIds) {
+      const ownerSources = ownerId === card.id ? rootSources : (neighborSources.get(ownerId) ?? []);
+      for (const s of ownerSources) {
+        const colors = sourceColor(s, colorMode);
+        const isSecondary = s.parent_source_id !== null;
+        const linkedNodeId = s.linked_card_id ? cardNodeIds.get(s.linked_card_id) : undefined;
+        const expandable =
+          s.linked_card_id && !linkedNodeId && neighborCards.has(s.linked_card_id)
+            ? s.linked_card_id
+            : undefined;
+        let radius = 14;
+        if (s.is_pivot) radius += 4;
+        if (isSecondary) radius *= 0.75;
+        radius = Math.max(8, Math.round(radius * densityScale));
 
-      if (s.authors && s.authors.trim().length > 0) {
-        const pid = isSecondary && s.parent_source_id ? s.parent_source_id : cardId;
-        const key = `${s.authors.trim()}||${pid}`;
-        if (!byAuthorAndParent.has(key)) byAuthorAndParent.set(key, []);
-        byAuthorAndParent.get(key)!.push(s);
+        nodes.push({
+          id: s.id,
+          kind: 'source',
+          label: s.title ?? s.url,
+          source: s,
+          ownerCardId: ownerId,
+          expandable,
+          radius,
+          fill: colors.fill,
+          stroke: colors.stroke,
+          tier: isSecondary ? 'second' : 'first',
+        });
+
+        if (isSecondary && s.parent_source_id) {
+          links.push({ source: s.id, target: s.parent_source_id, kind: 'parent' });
+        } else {
+          links.push({ source: ownerNodeId, target: s.id, kind: 'card' });
+        }
+
+        // La source EST la fiche dépliée : c'est cette arête qui matérialise
+        // le méta-graphe à l'écran.
+        if (linkedNodeId) {
+          links.push({ source: s.id, target: linkedNodeId, kind: 'meta' });
+        }
+
+        if (s.authors && s.authors.trim().length > 0) {
+          const pid = isSecondary && s.parent_source_id ? s.parent_source_id : ownerNodeId;
+          const key = `${s.authors.trim()}||${pid}`;
+          if (!byAuthorAndParent.has(key)) byAuthorAndParent.set(key, []);
+          byAuthorAndParent.get(key)!.push(s);
+        }
       }
     }
 
@@ -184,12 +416,13 @@
         id: jxId,
         kind: 'junction',
         label: '',
+        ownerCardId: card.id,
         radius: 0,
         fill: 'transparent',
         stroke: 'transparent',
         tier: 'junction',
       });
-      const linkKind = pidStr === cardId ? 'card' : 'parent';
+      const linkKind = pidStr.startsWith('card:') ? 'card' : 'parent';
       links.push({ source: pidStr, target: jxId, kind: linkKind });
       for (const s of group) {
         const idx = links.findIndex(
@@ -246,6 +479,10 @@
       .selectAll<SVGGElement, GraphNode>('.node')
       .data(nodes)
       .attr('transform', (d) => `translate(${d.x ?? 0}, ${d.y ?? 0})`);
+
+    for (const n of nodes) {
+      if (n.kind !== 'junction') posMemory.set(n.id, { x: n.x ?? 0, y: n.y ?? 0 });
+    }
   }
 
   function setAnchorFromNode(d: GraphNode) {
@@ -279,6 +516,23 @@
     cardNode.fx = width / 2;
     cardNode.fy = height / 2;
 
+    // Réinjection des positions connues : après un dépliage, le graphe déjà à
+    // l'écran doit rester en place et seul le nouveau rameau doit pousser.
+    for (const n of nodes) {
+      const known = posMemory.get(n.id);
+      if (known) {
+        n.x = known.x;
+        n.y = known.y;
+        continue;
+      }
+      // Nœud neuf : il naît au point d'où le dépliage a été demandé.
+      const origin = posMemory.get(expandOrigin.get(n.ownerCardId) ?? '');
+      if (origin) {
+        n.x = origin.x + (Math.random() - 0.5) * 40;
+        n.y = origin.y + (Math.random() - 0.5) * 40;
+      }
+    }
+
     const svg = select(svgEl);
     svg.selectAll('*').remove();
     svg.attr('viewBox', `0 0 ${width} ${height}`);
@@ -292,15 +546,17 @@
       .data(links)
       .join('line')
       .attr('class', 'link')
-      .attr('stroke', '#94a3b8')
+      .attr('stroke', (d) => (d.kind === 'meta' ? '#6366f1' : '#94a3b8'))
       .attr('stroke-opacity', (d) => {
         if ((d as any).forkHide) return 0;
         if (d.kind === 'sibling') return 0;
+        if (d.kind === 'meta') return 0.85;
         return d.kind === 'parent' ? 0.5 : 0.7;
       })
       .attr('stroke-width', (d) => {
         if ((d as any).forkHide) return 0;
         if (d.kind === 'sibling') return 0;
+        if (d.kind === 'meta') return 2.5;
         return d.kind === 'parent' ? 1 : 1.5;
       })
       .attr('stroke-dasharray', (d) => (d.kind === 'parent' ? '4 3' : null))
@@ -320,9 +576,19 @@
       .style('cursor', 'pointer')
       .style('opacity', 0)
       .on('click', (_event, d) => {
-        if (d.kind === 'source' && d.source) selectSource(d.source, d);
-        else if (d.kind === 'card') selectSource(null);
-        // junction: no-op
+        if (d.expandable) {
+          expandCard(d.expandable, d.id);
+        } else if (d.kind === 'source' && d.source?.full) {
+          selectSource(d.source.full, d);
+        } else if (d.kind === 'source' && d.source?.url) {
+          // Source d'une fiche voisine : on n'en a que les métadonnées, le
+          // panneau de détail n'aurait rien à montrer de plus que le lien.
+          window.open(d.source.url, '_blank', 'noopener');
+        } else if (d.kind === 'card' && d.cardMeta) {
+          collapseCard(d.cardMeta.id);
+        } else if (d.kind === 'card') {
+          selectSource(null);
+        }
       })
       .on('mouseenter', (_event, d) => {
         hoveredId = d.id;
@@ -343,7 +609,7 @@
       })
       .on('end', (event: D3DragEvent<SVGGElement, GraphNode, GraphNode>, d) => {
         if (!event.active) simulation?.alphaTarget(0);
-        if (d.kind !== 'card') {
+        if (d.id !== cardId) {
           d.fx = null;
           d.fy = null;
         }
@@ -358,6 +624,51 @@
       .attr('stroke', (d) => d.stroke)
       .attr('stroke-width', (d) => (d.kind === 'card' ? 3 : 2));
 
+    // Halo des fiches dépliées : elles ne sont pas des sources parmi d'autres,
+    // ce sont des fiches Philum entières entrées dans le graphe.
+    nodeG
+      .filter((d) => d.kind === 'card' && !!d.cardMeta)
+      .insert('circle', ':first-child')
+      .attr('r', (d) => d.radius + 7)
+      .attr('fill', 'none')
+      .attr('stroke', '#6366f1')
+      .attr('stroke-width', 1.5)
+      .attr('stroke-opacity', 0.35);
+
+    // Source dépliable : anneau extérieur + pastille « +N ». Le nombre est
+    // celui des sources de la fiche visée : il annonce ce que le clic révèle.
+    const expandableG = nodeG.filter((d) => !!d.expandable);
+    expandableG
+      .insert('circle', ':first-child')
+      .attr('class', 'expand-ring')
+      .attr('r', (d) => d.radius + 5)
+      .attr('fill', 'none')
+      .attr('stroke', '#6366f1')
+      .attr('stroke-width', 1.5)
+      .attr('stroke-opacity', 0.6)
+      .attr('stroke-dasharray', '3 3');
+    expandableG
+      .append('circle')
+      .attr('class', 'expand-badge')
+      .attr('r', 8)
+      .attr('cx', (d) => d.radius + 2)
+      .attr('cy', (d) => d.radius + 2)
+      .attr('fill', '#6366f1')
+      .attr('stroke', '#ffffff')
+      .attr('stroke-width', 1.5);
+    expandableG
+      .append('text')
+      .attr('class', 'expand-badge-text')
+      .attr('x', (d) => d.radius + 2)
+      .attr('y', (d) => d.radius + 2)
+      .attr('text-anchor', 'middle')
+      .attr('dominant-baseline', 'central')
+      .attr('font-size', 8)
+      .attr('font-weight', 700)
+      .attr('fill', '#ffffff')
+      .style('pointer-events', 'none')
+      .text((d) => `+${neighborCards.get(d.expandable!)?.sourcesCount ?? 0}`);
+
     // Creator name above card node (always visible at zoom >= 0.7)
     nodeG
       .filter((d) => d.kind === 'card')
@@ -369,7 +680,11 @@
       .attr('font-weight', 600)
       .attr('fill', '#0f172a')
       .style('pointer-events', 'none')
-      .text(card.creator.display_name ?? card.creator.slug);
+      .text((d) =>
+        d.cardMeta
+          ? (d.cardMeta.creatorName ?? d.cardMeta.creatorSlug)
+          : (card.creator.display_name ?? card.creator.slug)
+      );
 
     // Card title above creator (shown only at higher zoom levels)
     nodeG
@@ -381,7 +696,7 @@
       .attr('font-size', 10)
       .attr('fill', '#475569')
       .style('pointer-events', 'none')
-      .text(truncate(card.title, 35));
+      .text((d) => truncate(d.cardMeta ? d.cardMeta.title : card.title, 35));
 
     // Pivot star marker (now means "Source clé")
     nodeG
@@ -428,7 +743,14 @@
     nodeG
       .filter((d) => d.kind === 'card')
       .append('title')
-      .text(card.title);
+      .text((d) => (d.cardMeta ? `${d.cardMeta.title} — cliquer pour replier` : card.title));
+
+    expandableG
+      .append('title')
+      .text(
+        (d) =>
+          `Cette source est une fiche Philum : ${neighborCards.get(d.expandable!)?.title ?? ''} — cliquer pour la déplier`
+      );
 
     nodeG
       .transition()
@@ -445,6 +767,9 @@
             const src = typeof l.source === 'string' ? l.source : l.source.id;
             const tgt = typeof l.target === 'string' ? l.target : l.target.id;
             if (src.startsWith('junction:') || tgt.startsWith('junction:')) return 5;
+            // La fiche dépliée se colle à la source qui l'a révélée : la
+            // lecture « cette source EST cette fiche » doit être immédiate.
+            if (l.kind === 'meta') return 60 * spacingBoost;
             if (l.kind === 'parent') return 75 * spacingBoost;
             if (l.kind === 'sibling') return 55 * spacingBoost;
             return 130 * spacingBoost;
@@ -453,6 +778,7 @@
             const src = typeof l.source === 'string' ? l.source : l.source.id;
             const tgt = typeof l.target === 'string' ? l.target : l.target.id;
             if (src.startsWith('junction:') || tgt.startsWith('junction:')) return 0.05;
+            if (l.kind === 'meta') return 1.2;
             if (l.kind === 'sibling') return 2.0;
             return 0.55;
           })
@@ -588,6 +914,12 @@
     });
     resizeObserver.observe(container);
     document.addEventListener('fullscreenchange', onFullscreenChange);
+
+    // Le voisinage arrive après coup : on ne remonte le graphe que s'il révèle
+    // effectivement des fiches à déplier, pour ne pas réanimer pour rien.
+    void loadNeighborhood().then(() => {
+      if (neighborCards.size > 0) mountGraph();
+    });
   });
 
   onDestroy(() => {
@@ -771,6 +1103,50 @@
       </span>
     {/each}
   </div>
+
+  {#if neighborCards.size > 0}
+    <div
+      class="absolute bottom-3 right-3 max-w-[min(22rem,60%)] flex flex-col items-end gap-1.5 text-xs"
+    >
+      {#if expandedCardIds.length > 0}
+        <div class="flex flex-wrap justify-end gap-1">
+          {#each expandedCardIds as id (id)}
+            {@const meta = neighborCards.get(id)}
+            {#if meta}
+              <button
+                type="button"
+                onclick={() => collapseCard(id)}
+                class="inline-flex items-center gap-1 rounded-full border border-indigo-300 bg-indigo-50 px-2 py-0.5 text-indigo-800 hover:bg-indigo-100"
+                title="Replier « {meta.title} »"
+              >
+                <span class="truncate max-w-[10rem]">{meta.title}</span>
+                <span aria-hidden="true">×</span>
+              </button>
+            {/if}
+          {/each}
+          <button
+            type="button"
+            onclick={collapseAll}
+            class="rounded-full border border-slate-300 bg-white px-2 py-0.5 text-slate-600 hover:bg-slate-50"
+          >
+            Tout replier
+          </button>
+        </div>
+      {:else}
+        <p
+          class="rounded-md border border-indigo-200 bg-indigo-50/95 px-2.5 py-1.5 text-indigo-900 backdrop-blur-sm"
+        >
+          {neighborCards.size} fiche{neighborCards.size > 1 ? 's' : ''} Philum citée{neighborCards.size >
+          1
+            ? 's'
+            : ''} — cliquez sur un nœud cerclé pour la déplier.
+        </p>
+      {/if}
+      {#if neighborhoodTruncated}
+        <p class="text-slate-500">Voisinage partiel : trop de fiches reliées pour tout afficher.</p>
+      {/if}
+    </div>
+  {/if}
 
   <SourceDetailPanel
     source={selectedSource}
