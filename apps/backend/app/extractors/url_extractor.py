@@ -314,6 +314,88 @@ def _extract_doi(url: str) -> str | None:
     return None
 
 
+# Signatures des pages-obstacle servies par les protections anti-bot
+# (Cloudflare, reCAPTCHA, DataDome, Akamai, Imperva…). Elles renvoient un 200
+# text/html tout à fait valide : sans ce garde, leur <title> finit dans le
+# formulaire à la place du vrai titre du contenu.
+# Formulations qu'aucune page de contenu n'emploie : elles suffisent seules.
+_CHALLENGE_STRONG = (
+    "just a moment",
+    "checking your browser",
+    "checking if the site connection is secure",
+    "attention required",
+    "verify you are human",
+    "verifying you are human",
+    "enable javascript and cookies to continue",
+    "ddos protection by",
+    "access denied",
+    "request blocked",
+    "unusual traffic from your computer",
+    "vérification de votre navigateur",
+)
+
+# Termes qu'un article légitime peut employer en parlant du sujet. On ne les
+# retient que sur une page anormalement courte, signature d'un interstitiel.
+_CHALLENGE_WEAK = ("recaptcha", "captcha", "are you a human", "are you a robot", "bot detection")
+
+# Un interstitiel tient en quelques centaines de caractères ; un article non.
+_CHALLENGE_MAX_BODY = 2000
+
+
+def _looks_like_challenge_page(title: str | None, page_text: str | None) -> bool:
+    """True si la page récupérée est un obstacle anti-bot, pas le contenu."""
+    haystack = f"{title or ''} {page_text or ''}".lower()
+    if any(sig in haystack for sig in _CHALLENGE_STRONG):
+        return True
+    if len(page_text or "") >= _CHALLENGE_MAX_BODY:
+        return False
+    return any(sig in haystack for sig in _CHALLENGE_WEAK)
+
+
+# PubMed/PMC n'exposent pas le DOI dans l'URL et bloquent les IP datacenter
+# derrière un reCAPTCHA. Le PMID/PMCID de l'URL suffit pour retrouver le DOI.
+_PUBMED_HOSTS = ("pubmed.ncbi.nlm.nih.gov", "ncbi.nlm.nih.gov", "pmc.ncbi.nlm.nih.gov")
+_NCBI_IDCONV = "https://pmc.ncbi.nlm.nih.gov/tools/idconv/api/v1/articles/"
+
+
+def _extract_pubmed_id(url: str) -> str | None:
+    """Return the PMID or PMCID from a PubMed/PMC URL, else None."""
+    host = (urlparse(url).hostname or "").lower()
+    if not any(host == h or host.endswith("." + h) for h in _PUBMED_HOSTS):
+        return None
+    m = re.search(r"/(PMC\d+)", url, re.IGNORECASE)
+    if m:
+        return m.group(1).upper()
+    m = re.search(r"/(\d{6,9})(?:[/?#]|$)", url)
+    return m.group(1) if m else None
+
+
+async def resolve_doi_from_pubmed(url: str) -> str | None:
+    """URL PubMed/PMC → DOI via le convertisseur d'identifiants NCBI.
+
+    Rebranche tout le pipeline Crossref (métadonnées *et* références) sur les
+    liens PubMed, que le scraping ne peut pas exploiter depuis un datacenter.
+    Never raises.
+    """
+    pubmed_id = _extract_pubmed_id(url)
+    if not pubmed_id:
+        return None
+    api_url = f"{_NCBI_IDCONV}?ids={pubmed_id}&format=json"
+    try:
+        async with httpx.AsyncClient(headers=_HEADERS, timeout=_TIMEOUT) as client:
+            r = await client.get(api_url)
+        if r.status_code != 200:
+            return None
+        records = r.json().get("records") or []
+        if not records:
+            return None
+        doi = records[0].get("doi")
+        return doi.lower() if doi else None
+    except Exception as e:
+        logger.debug("NCBI id-conversion failed for url=%s: %s", url, e)
+        return None
+
+
 def _extract_pii(url: str) -> str | None:
     """Return the Elsevier PII from a ScienceDirect/Elsevier URL.
 
@@ -525,6 +607,11 @@ async def _html_scrape(url: str) -> ExtractedMetadata | None:
             if authors_raw is None and jsonld_meta.authors:
                 authors_raw = jsonld_meta.authors
 
+        page_text = soup.get_text(separator=" ", strip=True) or None
+        if _looks_like_challenge_page(str(title) if title else None, page_text):
+            logger.info("challenge_page_detected url=%s title=%r", url, title)
+            return None
+
         if title:
             title = clean_title(title, _meta("og:site_name"), url)
 
@@ -533,7 +620,7 @@ async def _html_scrape(url: str) -> ExtractedMetadata | None:
             authors=authors_raw or None,
             published_at=published_at,
             description=description or None,
-            page_text=soup.get_text(separator=" ", strip=True) or None,
+            page_text=page_text,
         )
     except Exception as e:
         logger.debug("HTML scrape failed for url=%s: %s", url, e)
@@ -563,6 +650,11 @@ async def extract(url: str) -> ExtractedMetadata:
         pii = _extract_pii(url)
         if pii:
             crossref_meta = await _crossref_by_pii(pii)
+    if crossref_meta is None:
+        # PubMed/PMC : le DOI n'est pas dans l'URL et la page est protegee.
+        pubmed_doi = await resolve_doi_from_pubmed(url)
+        if pubmed_doi:
+            crossref_meta = await _crossref(pubmed_doi)
     if crossref_meta:
         result = crossref_meta
         result.format = "texte"

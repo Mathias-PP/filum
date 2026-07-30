@@ -21,9 +21,12 @@ from app.extractors.url_extractor import (
     ExtractedMetadata,
     _extract_doi,
     _extract_pii,
+    _extract_pubmed_id,
+    _looks_like_challenge_page,
     _parse_jsonld_metadata,
     clean_title,
     extract,
+    resolve_doi_from_pubmed,
 )
 
 
@@ -487,3 +490,115 @@ async def test_extract_swallows_non_200(monkeypatch):
 
     # Crossref 503 → no DOI metadata. HTML scrape will also 503 → empty.
     assert result.title is None
+
+
+# ---------------------------------------------------------------------------
+# Pages-obstacle anti-bot (Cloudflare, reCAPTCHA, DataDome…)
+# ---------------------------------------------------------------------------
+
+
+class TestChallengePageDetection:
+    def test_recaptcha_title_is_a_challenge(self):
+        assert _looks_like_challenge_page("Checking your browser - reCAPTCHA", "") is True
+
+    def test_cloudflare_interstitial_is_a_challenge(self):
+        assert _looks_like_challenge_page("Just a moment...", "") is True
+
+    def test_short_body_signature_is_a_challenge(self):
+        assert _looks_like_challenge_page("", "Please verify you are human to continue.") is True
+
+    def test_legitimate_article_about_captchas_is_not_a_challenge(self):
+        """Un vrai article qui *parle* de CAPTCHA ne doit pas être rejeté."""
+        body = "How reCAPTCHA works under the hood. " * 100
+        assert _looks_like_challenge_page("How reCAPTCHA works under the hood", body) is False
+
+    def test_ordinary_page_is_not_a_challenge(self):
+        assert _looks_like_challenge_page("A study about memory", "Some article body.") is False
+
+
+@pytest.mark.asyncio
+async def test_extract_discards_challenge_page_metadata(monkeypatch):
+    """Le titre d'une page-obstacle ne doit jamais remonter dans le formulaire."""
+    challenge_html = (
+        "<html><head><title>Checking your browser - reCAPTCHA</title></head>"
+        "<body>Please enable JavaScript and cookies to continue.</body></html>"
+    )
+    fake = _FakeAsyncClient(
+        response=_FakeResponse(
+            200, text=challenge_html, headers={"content-type": "text/html; charset=utf-8"}
+        )
+    )
+    _patch_async_client(monkeypatch, fake)
+
+    result = await extract("https://example.com/blocked")
+
+    assert result.title is None
+    assert result.description is None
+
+
+# ---------------------------------------------------------------------------
+# Oracle PubMed/PMC : PMID → DOI → Crossref
+# ---------------------------------------------------------------------------
+
+
+class TestExtractPubmedId:
+    def test_pmid_from_pubmed_url(self):
+        assert _extract_pubmed_id("https://pubmed.ncbi.nlm.nih.gov/36300046/") == "36300046"
+
+    def test_pmid_without_trailing_slash(self):
+        assert _extract_pubmed_id("https://pubmed.ncbi.nlm.nih.gov/36300046") == "36300046"
+
+    def test_pmcid_from_pmc_url(self):
+        assert (
+            _extract_pubmed_id("https://pmc.ncbi.nlm.nih.gov/articles/PMC9588931/") == "PMC9588931"
+        )
+
+    def test_non_pubmed_url_returns_none(self):
+        assert _extract_pubmed_id("https://example.com/36300046/") is None
+
+
+class _SequencedAsyncClient(_FakeAsyncClient):
+    """Renvoie une réponse différente par appel, dans l'ordre fourni."""
+
+    def __init__(self, responses: list[_FakeResponse], **_kwargs):
+        super().__init__()
+        self._responses = responses
+        self.urls: list[str] = []
+
+    async def get(self, url: str) -> _FakeResponse:
+        self.urls.append(url)
+        return self._responses[min(len(self.urls) - 1, len(self._responses) - 1)]
+
+
+IDCONV_OK_PAYLOAD = {
+    "status": "ok",
+    "records": [
+        {"doi": "10.3389/fpsyg.2022.651547", "pmcid": "PMC9588931", "pmid": 36300046},
+    ],
+}
+
+
+@pytest.mark.asyncio
+async def test_extract_pubmed_url_resolves_doi_then_crossref(monkeypatch):
+    fake = _SequencedAsyncClient(
+        [
+            _FakeResponse(200, json_body=IDCONV_OK_PAYLOAD),
+            _FakeResponse(200, json_body=CROSSREF_OK_PAYLOAD),
+        ]
+    )
+    _patch_async_client(monkeypatch, fake)
+
+    result = await extract("https://pubmed.ncbi.nlm.nih.gov/36300046/")
+
+    assert "ids=36300046" in fake.urls[0]
+    assert "10.3389/fpsyg.2022.651547" in fake.urls[1]
+    assert result.title == "A study about memory"
+    assert result.category == "article-scientifique"
+
+
+@pytest.mark.asyncio
+async def test_resolve_doi_from_pubmed_returns_none_on_error(monkeypatch):
+    fake = _FakeAsyncClient(raise_exc=httpx.ConnectError("nope"))
+    _patch_async_client(monkeypatch, fake)
+
+    assert await resolve_doi_from_pubmed("https://pubmed.ncbi.nlm.nih.gov/36300046/") is None
