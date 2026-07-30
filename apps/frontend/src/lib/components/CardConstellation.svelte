@@ -310,6 +310,11 @@
           hasAutoFitted = true;
           fitToNodes();
         }
+      })
+      // `end` suit le dernier tick : sans lui, le cadrage garde le decalage
+      // accumule pendant que les noeuds finissaient de se placer.
+      .on('end', () => {
+        if (!hasUserAdjustedView) fitToNodes(300);
       });
 
     zoomBehavior = zoom<SVGSVGElement, unknown>()
