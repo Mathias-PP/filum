@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from app.extractors.ref_dedup import (
     dedupe_refs,
+    looks_like_citation_blob,
     matches_authoritative_work,
     norm_authors_list,
     norm_first_author,
@@ -217,3 +218,76 @@ def test_matches_authoritative_work_second_author_gate():
     )
     assert matches_authoritative_work(s2_ok, cr) is True
     assert matches_authoritative_work(s2_diff, cr) is False
+
+
+# --- Citation brute recopiee dans le champ titre (PubMed 38759528) -----------
+# Un extracteur qui echoue a isoler le titre recopie la citation entiere. La
+# meme oeuvre extraite proprement ailleurs doit fusionner, pas doubler.
+
+_BRETT_BLOB = (
+    "Brett, M., Anton J.L., Valabregue R., & Poline, J.B. (2002). Region of "
+    "interest analysis using an SPM toolbox. In: 8th International Conference "
+    "on Functional Mapping of the Human Brain. Sendai, Japan."
+)
+
+
+def test_looks_like_citation_blob_detects_apa_style_blob():
+    assert looks_like_citation_blob(_BRETT_BLOB) is True
+
+
+def test_looks_like_citation_blob_rejects_real_titles():
+    assert looks_like_citation_blob("Region of interest analysis using an SPM toolbox") is False
+    assert looks_like_citation_blob("A theory of memory retrieval") is False
+    assert looks_like_citation_blob(None) is False
+    # Titre long sans annee-entre-parentheses ni initiales : pas un blob.
+    assert (
+        looks_like_citation_blob(
+            "Reproducible brain-wide association studies require thousands of individuals"
+        )
+        is False
+    )
+
+
+def test_blob_and_clean_ref_are_deduped_keeping_clean_title():
+    blob = _ref(title=_BRETT_BLOB)
+    clean = _ref(
+        title="Region of interest analysis using an SPM toolbox",
+        authors="M. Brett, J. Anton, R. Valabregue, J B Poline",
+    )
+    assert same_ref(blob, clean) is True
+    out = dedupe_refs([blob, clean])
+    assert len(out) == 1
+    # Le titre presentable gagne, meme si le blob a ete rencontre en premier.
+    assert out[0].title == "Region of interest analysis using an SPM toolbox"
+    assert out[0].authors == "M. Brett, J. Anton, R. Valabregue, J B Poline"
+    # La citation brute n'est pas perdue.
+    assert out[0].raw_text == _BRETT_BLOB
+
+
+def test_blob_match_requires_first_author_present_in_blob():
+    # Titre inclus mais auteur absent du blob : oeuvre homonyme, pas un doublon.
+    blob = _ref(title=_BRETT_BLOB)
+    other = _ref(
+        title="Region of interest analysis using an SPM toolbox",
+        authors="Yarkoni T.",
+    )
+    assert same_ref(blob, other) is False
+
+
+def test_title_containment_alone_never_merges_distinct_papers():
+    # Sans les marqueurs de citation brute, l'inclusion ne doit rien fusionner.
+    short = _ref(title="Neural correlates of memory", authors="Smith J.")
+    longer = _ref(
+        title="Neural correlates of memory and attention in adolescents", authors="Smith J."
+    )
+    assert same_ref(short, longer) is False
+
+
+def test_blob_match_blocked_by_conflicting_years():
+    blob = _ref(title=_BRETT_BLOB, year=2002)
+    clean = _ref(
+        title="Region of interest analysis using an SPM toolbox",
+        authors="M. Brett",
+        year=2011,
+    )
+    assert same_ref(blob, clean) is False
