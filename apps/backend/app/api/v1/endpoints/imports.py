@@ -307,6 +307,60 @@ async def _backfill_one_crossref(ref: ImportedRef, sem: asyncio.Semaphore) -> No
         ref.category = "article-scientifique"
 
 
+_URL_BACKFILL_CONCURRENCY = 8
+_URL_BACKFILL_MAX = 60
+
+
+async def _backfill_one_url(ref: ImportedRef, sem: asyncio.Semaphore) -> None:
+    """Enrichit `ref` in-place en visitant son URL (titre <title>/OG, auteur,
+    date). Filet pour les refs qui ne sont ni des DOIs ni des entrees
+    bibliographiques redigees : liens nus d'une description YouTube, d'un
+    billet de blog, d'un fil de discussion. Sans ca, l'utilisateur recoit une
+    liste d'URLs sans titre, inexploitable.
+    """
+    if not ref.url or ref.title:
+        return
+    if _doi_from_url(ref.url):
+        return  # Crossref est autoritatif sur les DOIs, il est passe avant.
+    try:
+        assert_url_is_safe(ref.url)
+    except UnsafeUrlError:
+        return
+    async with sem:
+        try:
+            meta = await extract_url_metadata(ref.url)
+        except Exception as e:  # extract() ne leve pas, mais on reste defensif
+            logger.warning("url_backfill failed url=%s err=%s", ref.url, e)
+            return
+    if meta.title:
+        ref.title = meta.title
+    if not ref.authors and meta.authors:
+        ref.authors = meta.authors
+    if not ref.year and meta.published_at:
+        year_str = meta.published_at[:4]
+        if year_str.isdigit():
+            ref.year = int(year_str)
+    if ref.category == "page-web" and meta.category:
+        ref.category = meta.category
+
+
+async def _backfill_url_metadata(refs: list[ImportedRef]) -> None:
+    """Visite en parallele les URLs des refs restees sans titre.
+
+    Borne a _URL_BACKFILL_MAX fetches : au-dela, la latence de l'endpoint
+    devient inacceptable et une biblio de cette taille vient forcement d'une
+    source structuree (Crossref/oracle) deja traitee en amont.
+    """
+    targets = [r for r in refs if r.url and not r.title and not _doi_from_url(r.url)]
+    if not targets:
+        return
+    if len(targets) > _URL_BACKFILL_MAX:
+        logger.info("url_backfill capped: %d candidates -> %d", len(targets), _URL_BACKFILL_MAX)
+        targets = targets[:_URL_BACKFILL_MAX]
+    sem = asyncio.Semaphore(_URL_BACKFILL_CONCURRENCY)
+    await asyncio.gather(*(_backfill_one_url(ref, sem) for ref in targets))
+
+
 async def _backfill_crossref_metadata(refs: list[ImportedRef]) -> None:
     """Enrichit en parallele les refs avec DOI mais sans metadata complete."""
     if not refs:
@@ -612,9 +666,15 @@ async def parse_pasted_bibliography(
     llm_refs = await parse_bibliography(payload.text)
     if llm_refs:
         result = _merge_llm_refs(result, llm_refs)
-    # Backfill Crossref pour les refs avec DOI mais sans metadata complete
-    # (typique : LLM off/echoue -> URL DOI nue capturee par le regex).
+    # Meme chaine de backfill que l'import par URL : le texte colle n'est pas
+    # forcement une biblio academique (description YouTube, notes de blog),
+    # auquel cas parse_bibliography ne reconnait rien et le regex ne laisse
+    # que des URLs nues.
+    _assign_raw_text_to_refs(result.refs, _split_references_into_blocks(payload.text))
     await _backfill_crossref_metadata(result.refs)
+    await _backfill_llm_per_block(result.refs)
+    # Dernier filet : visiter les URLs restees sans titre.
+    await _backfill_url_metadata(result.refs)
     return ImportParseResponse(
         sources=[_to_draft(ref) for ref in result.refs],
         skipped=result.skipped,
@@ -1068,6 +1128,7 @@ async def parse_content_url(
     _assign_raw_text_to_refs(result.refs, ref_blocks)
     await _backfill_crossref_metadata(result.refs)
     await _backfill_llm_per_block(result.refs)
+    await _backfill_url_metadata(result.refs)
 
     # ETAGE 6 : scoring syntaxique (dernier filet universel)
     before_score = len(result.refs)
