@@ -311,3 +311,15 @@ export interface ImportFromUrlResponse {
   /** Nb de candidats éliminés par le scoring syntaxique (fragments, artefacts). */
   refs_dropped_scoring?: number;
 }
+
+/**
+ * Canal transcript YouTube. Volontairement séparé des références : le texte
+ * vient d'une reconnaissance vocale, donc bruité. Chaque suggestion doit être
+ * cochée explicitement, rien n'est ajouté d'office.
+ */
+export interface YoutubeTranscriptResponse {
+  /** false = aucune piste de sous-titres exploitable sur cette vidéo. */
+  available: boolean;
+  transcript_chars: number;
+  suggestions: ImportedSourceDraft[];
+}

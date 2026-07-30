@@ -35,7 +35,11 @@ from app.extractors.url_extractor import (
 )
 from app.extractors.url_extractor import extract as extract_url_metadata
 from app.extractors.wikipedia_oracle import fetch_wikipedia_references, is_wikipedia_url
-from app.extractors.youtube_oracle import fetch_youtube_description, is_youtube_url
+from app.extractors.youtube_oracle import (
+    fetch_youtube_description,
+    fetch_youtube_transcript,
+    is_youtube_url,
+)
 from app.models.user import User
 from app.services.import_parsers import (
     ImportedRef,
@@ -51,6 +55,7 @@ from app.services.import_parsers import (
 from app.services.llm import (
     LlmBiblioRef,
     classify_url_type,
+    extract_mentioned_works,
     parse_bibliography,
     parse_reference_block,
 )
@@ -679,6 +684,64 @@ async def parse_pasted_bibliography(
         sources=[_to_draft(ref) for ref in result.refs],
         skipped=result.skipped,
         format_detected="texte-libre",
+    )
+
+
+# --- Canal transcript YouTube (suggestions, jamais autoritatif) -----------
+#
+# Volontairement decouple de `/import/from-content-url` : la transcription
+# est produite par reconnaissance vocale, donc bruitee (noms propres
+# massacres, titres approximatifs). La fusionner dans la liste de references
+# polluerait un set par ailleurs verifie. C'est un canal d'appoint, appele a
+# la demande, dont chaque suggestion doit etre cochee explicitement.
+
+
+class YoutubeTranscriptRequest(BaseModel):
+    url: str = Field(min_length=1, max_length=2000)
+
+
+class YoutubeTranscriptResponse(BaseModel):
+    # False = aucune piste de sous-titres exploitable sur cette video.
+    available: bool
+    transcript_chars: int = 0
+    suggestions: list[ImportedSourceDraft] = []
+
+
+@router.post("/import/youtube-transcript", response_model=YoutubeTranscriptResponse)
+async def suggest_from_youtube_transcript(
+    request: Request,
+    payload: YoutubeTranscriptRequest,
+    current_user: User = Depends(get_current_user),
+):
+    url = payload.url.strip()
+    if not is_youtube_url(url):
+        raise HTTPException(status_code=400, detail="URL YouTube attendue")
+    try:
+        assert_url_is_safe(url)
+    except UnsafeUrlError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    transcript = await fetch_youtube_transcript(url)
+    if not transcript:
+        return YoutubeTranscriptResponse(available=False)
+
+    llm_refs = await extract_mentioned_works(transcript)
+    refs = [
+        ImportedRef(
+            url=ref.url or "",
+            title=ref.title,
+            authors=ref.authors,
+            year=ref.year,
+            category=ref.category.value if ref.category else "page-web",
+        )
+        for ref in llm_refs or []
+        # Une suggestion sans titre n'est pas actionnable par l'utilisateur.
+        if ref.title
+    ]
+    return YoutubeTranscriptResponse(
+        available=True,
+        transcript_chars=len(transcript),
+        suggestions=[_to_draft(ref) for ref in dedupe_refs(refs)],
     )
 
 

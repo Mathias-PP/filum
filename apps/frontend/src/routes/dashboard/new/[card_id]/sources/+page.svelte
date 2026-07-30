@@ -812,6 +812,54 @@
     }
   }
 
+  // ── Canal transcript YouTube ──────────────────────────────────────────────
+  // Séparé des références : le texte vient d'une reconnaissance vocale, donc
+  // bruité (noms propres massacrés). Chaque suggestion doit être cochée.
+  const YOUTUBE_HOST_RE =
+    /^(?:https?:\/\/)?(?:[\w-]+\.)*(?:youtube\.com|youtube-nocookie\.com|youtu\.be)(?:\/|$)/i;
+  let transcriptLoading = $state(false);
+  let transcriptError = $state<string | null>(null);
+  let transcriptInfo = $state<string | null>(null);
+  let transcriptSuggestions = $state<ImportedDraft[]>([]);
+  let transcriptChecked = $state<boolean[]>([]);
+
+  const isYoutubeTarget = $derived(YOUTUBE_HOST_RE.test(refsUrl.trim()));
+  const transcriptCheckedCount = $derived(transcriptChecked.filter(Boolean).length);
+
+  async function suggestFromTranscript() {
+    const target = refsUrl.trim();
+    if (!target || transcriptLoading) return;
+    transcriptError = null;
+    transcriptInfo = null;
+    transcriptSuggestions = [];
+    transcriptChecked = [];
+    transcriptLoading = true;
+    try {
+      const res = await api.imports.youtubeTranscript(target);
+      if (!res.available) {
+        transcriptInfo = 'Aucun sous-titre exploitable sur cette vidéo.';
+      } else if (res.suggestions.length === 0) {
+        transcriptInfo = 'Aucun travail nommé à l’oral n’a été repéré dans la transcription.';
+      } else {
+        transcriptSuggestions = res.suggestions;
+        transcriptChecked = res.suggestions.map(() => false);
+      }
+    } catch (err) {
+      transcriptError = err instanceof Error ? err.message : 'Erreur lors de la transcription';
+    } finally {
+      transcriptLoading = false;
+    }
+  }
+
+  async function addCheckedSuggestions() {
+    const picked = transcriptSuggestions.filter((_, i) => transcriptChecked[i]);
+    if (picked.length === 0) return;
+    await ingestImported({ sources: picked, skipped: 0 });
+    transcriptSuggestions = [];
+    transcriptChecked = [];
+    transcriptInfo = `${picked.length} suggestion${picked.length > 1 ? 's' : ''} ajoutée${picked.length > 1 ? 's' : ''} aux brouillons.`;
+  }
+
   async function analyzePendingFile() {
     if (!pendingFile || importing) return;
     await processFile(pendingFile);
@@ -914,6 +962,73 @@
       {#if refsInfo}
         <div class="mt-3 rounded-lg bg-info/10 border border-info/30 px-4 py-3 text-sm text-info">
           {refsInfo}
+        </div>
+      {/if}
+
+      {#if isYoutubeTarget}
+        <div class="mt-4 rounded-lg border border-border bg-surface-secondary/50 px-4 py-3">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-sm text-ink-primary">Travaux cités à l’oral</p>
+              <p class="text-xs text-ink-tertiary mt-0.5">
+                Lit les sous-titres de la vidéo pour repérer les études et livres nommés à l’oral.
+                La transcription est automatique et donc imprécise : ces suggestions sont à vérifier
+                une par une, elles ne sont jamais ajoutées d’office.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              loading={transcriptLoading}
+              disabled={transcriptLoading}
+              onclick={suggestFromTranscript}
+            >
+              {transcriptLoading ? 'Lecture…' : 'Analyser la transcription'}
+            </Button>
+          </div>
+
+          {#if transcriptError}
+            <p class="mt-3 text-sm text-danger">{transcriptError}</p>
+          {/if}
+          {#if transcriptInfo}
+            <p class="mt-3 text-sm text-ink-secondary">{transcriptInfo}</p>
+          {/if}
+
+          {#if transcriptSuggestions.length > 0}
+            <ul class="mt-3 space-y-2">
+              {#each transcriptSuggestions as suggestion, i (suggestion.url + suggestion.title + i)}
+                <li>
+                  <label class="flex items-start gap-2 text-sm cursor-pointer">
+                    <input
+                      type="checkbox"
+                      bind:checked={transcriptChecked[i]}
+                      class="mt-0.5 rounded border-border-strong text-info focus:ring-info"
+                    />
+                    <span class="min-w-0">
+                      <span class="text-ink-primary">{suggestion.title}</span>
+                      {#if suggestion.authors || suggestion.published_at}
+                        <span class="text-ink-tertiary">
+                          — {suggestion.authors ?? ''}{suggestion.authors && suggestion.published_at
+                            ? ', '
+                            : ''}{suggestion.published_at?.slice(0, 4) ?? ''}
+                        </span>
+                      {/if}
+                    </span>
+                  </label>
+                </li>
+              {/each}
+            </ul>
+            <div class="mt-3">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={transcriptCheckedCount === 0}
+                onclick={addCheckedSuggestions}
+              >
+                Ajouter {transcriptCheckedCount} suggestion{transcriptCheckedCount > 1 ? 's' : ''}
+              </Button>
+            </div>
+          {/if}
         </div>
       {/if}
 
