@@ -359,9 +359,12 @@
 </script>
 
 <div bind:this={container} class="relative w-full h-full bg-slate-950">
+  <!-- Une fiche seule n'est pas une constellation : l'etoile isolee parasiterait
+       le message d'invite au lieu de l'illustrer. -->
   <svg
     bind:this={svgEl}
     class="w-full h-full block"
+    class:invisible={loading || errored || cardCount <= 1}
     role="img"
     aria-label="Constellation des fiches reliées"
   ></svg>
