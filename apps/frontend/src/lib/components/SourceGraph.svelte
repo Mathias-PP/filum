@@ -69,10 +69,49 @@
     category: SourceCategory;
     author_kind: AuthorKind;
     is_pivot: boolean;
+    published_at: string | null;
     parent_source_id: string | null;
     linked_card_id: string | null;
     /** Présente uniquement pour les sources de la fiche racine. */
     full?: Source;
+  }
+
+  /**
+   * Complète une source de fiche voisine pour le panneau de détail.
+   *
+   * Le méta-graphe n'en renvoie que les métadonnées d'affichage : ni extraits,
+   * ni archive, ni annotation. Le panneau les traite déjà comme facultatifs et
+   * se réduit tout seul. Sans cette conversion, cliquer sur un tel nœud
+   * ouvrait brutalement un onglet, ce qui rompt la lecture du graphe.
+   */
+  function toSource(s: GraphSourceData): Source {
+    return (
+      s.full ?? {
+        id: s.id,
+        url: s.url,
+        title: s.title,
+        authors: s.authors,
+        published_at: s.published_at,
+        format: s.format,
+        category: s.category,
+        author_kind: s.author_kind,
+        annotation: null,
+        is_pivot: s.is_pivot,
+        archive_status: 'pending',
+        archive_url: null,
+        archive_timestamp: null,
+        parent_source_id: null,
+        linked_card_id: s.linked_card_id,
+        conflict_of_interest: null,
+        citations_count: null,
+        subscribers_count: null,
+        views_count: null,
+        impact_factor: null,
+        excerpts: [],
+        created_at: '',
+        updated_at: null,
+      }
+    );
   }
 
   interface GraphNode {
@@ -136,6 +175,8 @@
   // Auteurs réels de la fiche racine : elle ne les porte pas non plus, ils
   // viennent du méta-graphe quand une autre fiche la cite.
   let rootAuthors = $state<string | null>(null);
+  // Arêtes fiche → fiche du voisinage, dans les deux sens.
+  let cardLinks = $state<[string, string][]>([]);
   let neighborSources = new Map<string, GraphSourceData[]>();
   let expandedCardIds = $state<string[]>([]);
   let neighborhoodTruncated = $state(false);
@@ -168,6 +209,7 @@
       category: s.category,
       author_kind: s.author_kind,
       is_pivot: s.is_pivot,
+      published_at: s.published_at,
       parent_source_id: s.parent_source_id,
       linked_card_id: s.linked_card_id ?? null,
       full: s,
@@ -239,12 +281,11 @@
    * Charge le voisinage méta-graphe en une requête.
    *
    * Le backend borne le parcours en profondeur et en nombre de nœuds, donc la
-   * réponse reste petite même sur une fiche très citée. On ne l'appelle que si
-   * la fiche racine a au moins une source reliée : sur l'immense majorité des
-   * fiches, aucune requête supplémentaire n'est émise.
+   * réponse reste petite même sur une fiche très citée. L'appel est
+   * inconditionnel : une fiche qui ne cite aucune autre fiche peut très bien
+   * être citée par une autre, et rien dans son propre payload ne le dit.
    */
   async function loadNeighborhood() {
-    if (!card.sources.some((s) => s.linked_card_id)) return;
     let graph;
     try {
       graph = await api.cards.getGraph(card.creator.slug, card.slug, { depth: 3 });
@@ -280,11 +321,21 @@
           author_kind:
             (n.author_kind ?? '') in AUTHOR_COLORS ? (n.author_kind as AuthorKind) : 'individu',
           is_pivot: n.is_pivot ?? false,
+          published_at: n.published_at ?? null,
           parent_source_id: null,
           linked_card_id: n.linked_card_id ?? null,
         });
       }
     }
+    // Arêtes fiche → fiche telles que le backend les a parcourues, dans les
+    // deux sens. Les déduire des seules sources visibles ne montrerait que ce
+    // que la racine cite, jamais qui la cite ni les maillons plus lointains.
+    cardLinks = graph.edges
+      .filter((e) => e.kind === 'is_card')
+      .map((e): [string, string] => [
+        e.source.slice('card:'.length),
+        e.target.slice('card:'.length),
+      ]);
     // Les arêtes `cites` donnent l'appartenance source → fiche, dans l'ordre de
     // position renvoyé par le backend.
     const byCard = new Map<string, GraphSourceData[]>();
@@ -314,25 +365,14 @@
     remount();
   }
 
-  /** Replie une fiche et, en cascade, tout ce qui n'était accessible que par elle. */
+  /** Replie une fiche : ses sources disparaissent, elle reste dans le graphe.
+   *
+   * Aucun repli en cascade : toutes les fiches du voisinage sont affichées en
+   * permanence, replier l'une n'en rend aucune autre inatteignable.
+   */
   function collapseCard(targetCardId: string) {
-    const keep = new Set<string>();
-    let frontier = new Set<string>([card.id]);
-    while (frontier.size > 0) {
-      const next = new Set<string>();
-      for (const cid of frontier) {
-        const srcs = cid === card.id ? rootSources : (neighborSources.get(cid) ?? []);
-        for (const s of srcs) {
-          const link = s.linked_card_id;
-          if (!link || link === targetCardId) continue;
-          if (!expandedCardIds.includes(link) || keep.has(link)) continue;
-          keep.add(link);
-          next.add(link);
-        }
-      }
-      frontier = next;
-    }
-    expandedCardIds = expandedCardIds.filter((id) => keep.has(id));
+    if (!expandedCardIds.includes(targetCardId)) return;
+    expandedCardIds = expandedCardIds.filter((id) => id !== targetCardId);
     remount();
   }
 
@@ -375,44 +415,50 @@
     const sourcesOf = (id: string) =>
       id === card.id ? rootSources : (neighborSources.get(id) ?? []);
 
-    // Une fiche visée par une source visible devient un nœud fiche à part
-    // entière, dépliée ou non : c'est elle la référence, pas un nœud source
-    // intermédiaire qui la dupliquerait.
+    // Toute fiche du voisinage est un nœud, qu'elle soit citée par la racine,
+    // qu'elle la cite, ou qu'elle soit à deux sauts. Ne montrer que les fiches
+    // atteignables depuis les sources affichées masquait les chaînes
+    // A -> B -> C tant que B n'était pas dépliée, et tout le sens entrant.
     const cardNodeIds = new Map<string, string>([[card.id, cardId]]);
-    for (const ownerId of ownerIds) {
-      for (const s of sourcesOf(ownerId)) {
-        const cid = s.linked_card_id;
-        if (!cid || cardNodeIds.has(cid) || !neighborCards.has(cid)) continue;
-        const meta = neighborCards.get(cid)!;
-        const nodeId = `card:${cid}`;
-        cardNodeIds.set(cid, nodeId);
-        nodes.push({
-          id: nodeId,
-          kind: 'card',
-          label: meta.title,
-          cardMeta: meta,
-          ownerCardId: cid,
-          // Une fiche dépliée est un peu plus petite que la racine : la
-          // hiérarchie visuelle dit d'où part la lecture.
-          expandable: expandedCardIds.includes(cid) ? undefined : cid,
-          radius: 22,
-          fill: '#1e293b',
-          stroke: '#6366f1',
-          tier: 'card',
-        });
-      }
+    for (const [cid, meta] of neighborCards) {
+      const nodeId = `card:${cid}`;
+      cardNodeIds.set(cid, nodeId);
+      nodes.push({
+        id: nodeId,
+        kind: 'card',
+        label: meta.title,
+        cardMeta: meta,
+        ownerCardId: cid,
+        // Une fiche dépliée est un peu plus petite que la racine : la
+        // hiérarchie visuelle dit d'où part la lecture.
+        expandable: expandedCardIds.includes(cid) || meta.sourcesCount === 0 ? undefined : cid,
+        radius: 22,
+        fill: '#1e293b',
+        stroke: '#6366f1',
+        tier: 'card',
+      });
+    }
+
+    // Arêtes fiche → fiche : celles du backend font autorité, elles portent les
+    // deux sens et les sauts que les sources visibles ne révèlent pas.
+    const seenCardLinks = new Set<string>();
+    for (const [from, to] of cardLinks) {
+      const a = cardNodeIds.get(from);
+      const b = cardNodeIds.get(to);
+      if (!a || !b || a === b) continue;
+      const key = `${a}|${b}`;
+      if (seenCardLinks.has(key)) continue;
+      seenCardLinks.add(key);
+      links.push({ source: a, target: b, kind: 'meta' });
     }
 
     for (const ownerId of ownerIds) {
       const ownerNodeId = cardNodeIds.get(ownerId);
       if (!ownerNodeId) continue;
       for (const s of sourcesOf(ownerId)) {
-        const linkedNodeId = s.linked_card_id ? cardNodeIds.get(s.linked_card_id) : undefined;
-        if (linkedNodeId) {
-          // La source EST cette fiche : arête directe, aucun nœud source.
-          links.push({ source: ownerNodeId, target: linkedNodeId, kind: 'meta' });
-          continue;
-        }
+        // La source EST cette fiche : elle est déjà rendue comme nœud fiche,
+        // relié par l'arête ci-dessus. Un nœud source ferait doublon.
+        if (s.linked_card_id && cardNodeIds.has(s.linked_card_id)) continue;
         const colors = sourceColor(s, colorMode);
         const isSecondary = s.parent_source_id !== null;
         let radius = 14;
@@ -618,12 +664,11 @@
       .on('click', (_event, d) => {
         if (d.expandable) {
           expandCard(d.expandable, d.id);
-        } else if (d.kind === 'source' && d.source?.full) {
-          selectSource(d.source.full, d);
-        } else if (d.kind === 'source' && d.source?.url) {
-          // Source d'une fiche voisine : on n'en a que les métadonnées, le
-          // panneau de détail n'aurait rien à montrer de plus que le lien.
-          window.open(d.source.url, '_blank', 'noopener');
+        } else if (d.kind === 'source' && d.source) {
+          // Une source d'une fiche voisine ouvre le même encadré que celles de
+          // la racine, complété par `toSource`. Ouvrir directement un onglet
+          // sortait l'utilisateur du graphe sans qu'il l'ait demandé.
+          selectSource(toSource(d.source), d);
         } else if (d.kind === 'card' && d.cardMeta) {
           collapseCard(d.cardMeta.id);
         } else if (d.kind === 'card') {
@@ -782,9 +827,13 @@
       .append('title')
       .text((d) => {
         if (!d.cardMeta) return card.title;
-        return d.expandable
-          ? `Fiche Philum : ${d.cardMeta.title} — cliquer pour déplier ses sources`
-          : `${d.cardMeta.title} — cliquer pour replier`;
+        if (d.expandable) {
+          return `Fiche Philum : ${d.cardMeta.title} — cliquer pour déplier ses sources`;
+        }
+        if (d.cardMeta.sourcesCount === 0) {
+          return `Fiche Philum : ${d.cardMeta.title} — aucune source`;
+        }
+        return `${d.cardMeta.title} — cliquer pour replier`;
       });
 
     nodeG
@@ -1171,7 +1220,7 @@
         <p
           class="rounded-md border border-indigo-200 bg-indigo-50/95 px-2.5 py-1.5 text-indigo-900 backdrop-blur-sm"
         >
-          {neighborCards.size} fiche{neighborCards.size > 1 ? 's' : ''} Philum citée{neighborCards.size >
+          {neighborCards.size} fiche{neighborCards.size > 1 ? 's' : ''} Philum reliée{neighborCards.size >
           1
             ? 's'
             : ''} — cliquez sur un nœud cerclé pour la déplier.

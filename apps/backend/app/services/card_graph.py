@@ -18,6 +18,7 @@ apparaitre pour les visiteurs).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import select
@@ -55,6 +56,9 @@ class GraphNode:
     format: str | None = None
     author_kind: str | None = None
     is_pivot: bool = False
+    # Le panneau de detail affiche la date de publication : sans elle, une
+    # source d'une fiche voisine s'ouvrirait dans un encadre amputé.
+    published_at: datetime | None = None
     slug: str | None = None
     creator_slug: str | None = None
     creator_name: str | None = None
@@ -118,8 +122,9 @@ async def _load_sources(db: AsyncSession, card_ids: set[UUID]) -> dict[UUID, lis
 async def _load_citing_cards(db: AsyncSession, card_ids: set[UUID]) -> dict[UUID, set[UUID]]:
     """Fiches qui citent celles demandees : ``cited_id -> {citing_ids}``.
 
-    Le sens inverse n'a de sens que pour la constellation : "ou se situe cette
-    fiche dans le reseau" se repond mal si on ignore qui la cite.
+    Le lien entre deux fiches n'a pas d'orientation privilegiee du point de vue
+    du lecteur : "qui s'appuie sur cette fiche" est aussi informatif que "sur
+    quoi elle s'appuie". Les deux vues remontent donc les citations entrantes.
     """
     if not card_ids:
         return {}
@@ -171,11 +176,13 @@ async def build_card_graph(
 ) -> CardGraph:
     """BFS borne depuis ``root_card`` en suivant ``Source.linked_card_id``.
 
+    Le parcours suit les liens dans les deux sens : les fiches que la racine
+    cite, et celles qui la citent. Une chaine A -> B -> C est donc restituee
+    entiere, quel que soit le bout par lequel on entre.
+
     ``include_sources=False`` produit le graphe fiches-seules de la vue
     constellation : les sources sont traversees pour trouver les liens mais
     ne deviennent pas des noeuds, seul leur nombre est reporte sur la fiche.
-    Ce mode remonte aussi les citations entrantes, alors que le graphe avec
-    sources reste orience "cette fiche s'appuie sur".
     """
     depth = max(0, min(depth, MAX_DEPTH))
     graph = CardGraph(root_id=card_node_id(root_card.id))
@@ -203,7 +210,7 @@ async def build_card_graph(
                 if src.linked_card_id and src.linked_card_id not in seen_cards:
                     next_ids.add(src.linked_card_id)
 
-        citing_by_card = {} if include_sources else await _load_citing_cards(db, frontier)
+        citing_by_card = await _load_citing_cards(db, frontier)
         for citers in citing_by_card.values():
             next_ids |= {cid for cid in citers if cid not in seen_cards}
 
@@ -265,6 +272,7 @@ async def build_card_graph(
                         format=src.format,
                         author_kind=src.author_kind,
                         is_pivot=bool(src.is_pivot),
+                        published_at=src.published_at,
                         linked_card_id=src.linked_card_id,
                     )
                 )

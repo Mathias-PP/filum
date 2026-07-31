@@ -10,6 +10,7 @@ Contrat produit :
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -47,7 +48,9 @@ def _card(user_id, slug, title, *, status="published", visibility="public"):
     )
 
 
-def _source(card_id, url, title, *, position=0, linked_card_id=None, authors=None):
+def _source(
+    card_id, url, title, *, position=0, linked_card_id=None, authors=None, published_at=None
+):
     from app.models.source import Source
 
     return Source(
@@ -61,6 +64,7 @@ def _source(card_id, url, title, *, position=0, linked_card_id=None, authors=Non
         author_kind="researcher",
         linked_card_id=linked_card_id,
         authors=authors,
+        published_at=published_at,
     )
 
 
@@ -80,7 +84,13 @@ async def chain(db_session, test_user):
 
     db_session.add_all(
         [
-            _source(a.id, "https://example.org/x", "Source ordinaire de A", position=0),
+            _source(
+                a.id,
+                "https://example.org/x",
+                "Source ordinaire de A",
+                position=0,
+                published_at=datetime(2023, 1, 1, tzinfo=UTC),
+            ),
             _source(
                 a.id,
                 "http://test/@testuser/fiche-b",
@@ -292,10 +302,31 @@ async def test_constellation_never_reveals_a_private_citing_card(client, cited_p
 
 
 @pytest.mark.asyncio
-async def test_source_graph_stays_outgoing_only(client, cited_pair):
-    """Le graphe des sources repond « sur quoi s'appuie-t-elle » : pas d'entrant."""
+async def test_source_graph_surfaces_incoming_citations_too(client, cited_pair):
+    """Le lien entre deux fiches se lit dans les deux sens.
+
+    « Qui s'appuie sur cette fiche » est aussi informatif que « sur quoi elle
+    s'appuie » : une fiche citee mais ne citant personne apparaissait seule.
+    """
     r = await client.get("/api/v1/@testuser/fiche-citee/graph?depth=2")
-    assert _ids(r.json(), "card") == {f"card:{cited_pair['cited'].id}"}
+    data = r.json()
+    assert _ids(data, "card") == {
+        f"card:{cited_pair['cited'].id}",
+        f"card:{cited_pair['citing'].id}",
+    }
+    assert (f"card:{cited_pair['citing'].id}", f"card:{cited_pair['cited'].id}") in {
+        (e["source"], e["target"]) for e in data["edges"] if e["kind"] == "is_card"
+    }
+    # La fiche privee qui cite aussi la racine ne doit jamais transparaitre.
+    assert f"card:{cited_pair['hidden'].id}" not in _ids(data, "card")
+
+
+@pytest.mark.asyncio
+async def test_source_node_carries_the_publication_date(client, chain):
+    """Sans elle, l'encadre d'une source de fiche voisine perd « Publie le … »."""
+    r = await client.get("/api/v1/@testuser/fiche-a/graph?depth=1")
+    node = next(n for n in r.json()["nodes"] if n["title"] == "Source ordinaire de A")
+    assert node["published_at"] is not None
 
 
 @pytest.mark.asyncio
