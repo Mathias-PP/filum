@@ -17,6 +17,7 @@
 
   import { goto } from '$app/navigation';
   import { api } from '$lib/api';
+  import { cardNodeLabel } from '$lib/utils/card-label';
 
   interface Props {
     creatorSlug: string;
@@ -41,7 +42,8 @@
     title: string;
     slug: string;
     creatorSlug: string;
-    creatorName: string;
+    /** Étiquette principale : auteurs réels si la fiche n'est pas revendiquée. */
+    label: string;
     sourcesCount: number;
     depth: number;
     radius: number;
@@ -102,7 +104,12 @@
             title: n.title ?? 'Fiche',
             slug: n.slug ?? '',
             creatorSlug: n.creator_slug ?? '',
-            creatorName: n.creator_name ?? n.creator_slug ?? '',
+            label: cardNodeLabel({
+              authors: n.authors,
+              creatorName: n.creator_name,
+              creatorSlug: n.creator_slug,
+              isSeed: n.is_seed,
+            }),
             sourcesCount: n.sources_count ?? 0,
             depth: n.depth,
             radius: radiusFor(n.sources_count ?? 0, isRoot),
@@ -288,7 +295,7 @@
       .attr('font-weight', 600)
       .attr('fill', '#e2e8f0')
       .style('pointer-events', 'none')
-      .text((d) => truncateText(d.creatorName, 24));
+      .text((d) => truncateText(d.label, 24));
 
     starG
       .append('text')
@@ -304,7 +311,7 @@
       .append('title')
       .text(
         (d) =>
-          `${d.title} — ${d.creatorName} · ${d.sourcesCount} source${d.sourcesCount > 1 ? 's' : ''}${d.isRoot ? ' (fiche affichée)' : ''}`
+          `${d.title} — ${d.label} · ${d.sourcesCount} source${d.sourcesCount > 1 ? 's' : ''}${d.isRoot ? ' (fiche affichée)' : ''}`
       );
 
     const sim = forceSimulation<StarNode>(nodes)

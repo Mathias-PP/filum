@@ -165,6 +165,7 @@ class GraphNodeResponse(BaseModel):
     creator_name: str | None = None
     sources_count: int | None = None
     linked_card_id: UUID | None = None
+    is_seed: bool = False
 
 
 class GraphEdgeResponse(BaseModel):

@@ -60,6 +60,9 @@ class GraphNode:
     creator_name: str | None = None
     sources_count: int | None = None
     linked_card_id: UUID | None = None
+    # Fiche non revendiquee : son auteur Philum declare ne pas etre l'auteur du
+    # contenu decrit. L'etiqueter a son nom induirait en erreur.
+    is_seed: bool = False
 
 
 @dataclass
@@ -129,6 +132,34 @@ async def _load_citing_cards(db: AsyncSession, card_ids: set[UUID]) -> dict[UUID
     for cited_id, citing_id in result.all():
         citing.setdefault(cited_id, set()).add(citing_id)
     return citing
+
+
+async def _load_card_authors(db: AsyncSession, card_ids: set[UUID]) -> dict[UUID, str]:
+    """Auteurs reels du contenu decrit par chaque fiche : ``card_id -> authors``.
+
+    Une fiche ne porte pas le nom des auteurs du contenu qu'elle documente ;
+    seule sa fiche parente le connait, via la source qui la designe
+    (``Source.linked_card_id``). On remonte donc l'information depuis la
+    bibliographie de qui la cite. La plus ancienne source non vide gagne, pour
+    que le graphe soit stable d'un appel a l'autre.
+    """
+    if not card_ids:
+        return {}
+    result = await db.execute(
+        select(Source.linked_card_id, Source.authors)
+        .where(
+            Source.linked_card_id.in_(card_ids),
+            Source.authors.is_not(None),
+            Source.deleted_at.is_(None),
+        )
+        .order_by(Source.created_at)
+    )
+    authors: dict[UUID, str] = {}
+    for card_id, value in result.all():
+        if card_id is None or not value or not value.strip():
+            continue
+        authors.setdefault(card_id, value.strip())
+    return authors
 
 
 async def build_card_graph(
@@ -201,6 +232,7 @@ async def build_card_graph(
                     creator_slug=username,
                     creator_name=display_name,
                     sources_count=counts.get(card_id, 0),
+                    is_seed=bool(card.is_seed),
                 )
             )
 
@@ -209,43 +241,40 @@ async def build_card_graph(
                 # arete vers cette fiche. Sinon (fiche privee, depassement de
                 # profondeur) elle reste une source ordinaire.
                 target_card = src.linked_card_id if src.linked_card_id in reachable else None
-                if include_sources:
-                    if len(graph.nodes) >= MAX_NODES:
-                        graph.truncated = True
-                        break
-                    graph.nodes.append(
-                        GraphNode(
-                            id=source_node_id(src.id),
-                            kind="source",
-                            depth=card_depth[card_id],
-                            title=src.title,
-                            url=src.url,
-                            authors=src.authors,
-                            category=src.category,
-                            format=src.format,
-                            author_kind=src.author_kind,
-                            is_pivot=bool(src.is_pivot),
-                            linked_card_id=src.linked_card_id,
-                        )
-                    )
-                    graph.edges.append(
-                        GraphEdge(
-                            source=card_node_id(card_id),
-                            target=source_node_id(src.id),
-                            kind="cites",
-                        )
-                    )
-                    if target_card:
-                        graph.edges.append(
-                            GraphEdge(
-                                source=source_node_id(src.id),
-                                target=card_node_id(target_card),
-                                kind="is_card",
-                            )
-                        )
-                elif target_card:
-                    # Constellation : arete directe fiche -> fiche.
+                if target_card:
+                    # La source qui designe une fiche EST cette fiche : la
+                    # rendre en plus comme noeud source intercale afficherait
+                    # deux fois le meme contenu, relie en chaine, sans rien
+                    # ajouter. Le lien va donc directement de fiche a fiche.
                     card_edges.add((card_id, target_card))
+                    continue
+                if not include_sources:
+                    continue
+                if len(graph.nodes) >= MAX_NODES:
+                    graph.truncated = True
+                    break
+                graph.nodes.append(
+                    GraphNode(
+                        id=source_node_id(src.id),
+                        kind="source",
+                        depth=card_depth[card_id],
+                        title=src.title,
+                        url=src.url,
+                        authors=src.authors,
+                        category=src.category,
+                        format=src.format,
+                        author_kind=src.author_kind,
+                        is_pivot=bool(src.is_pivot),
+                        linked_card_id=src.linked_card_id,
+                    )
+                )
+                graph.edges.append(
+                    GraphEdge(
+                        source=card_node_id(card_id),
+                        target=source_node_id(src.id),
+                        kind="cites",
+                    )
+                )
 
         if level >= depth or graph.truncated:
             break
@@ -271,5 +300,12 @@ async def build_card_graph(
                     kind="is_card",
                 )
             )
+
+    card_nodes = [n for n in graph.nodes if n.kind == "card"]
+    real_authors = await _load_card_authors(
+        db, {UUID(n.id.removeprefix("card:")) for n in card_nodes}
+    )
+    for node in card_nodes:
+        node.authors = real_authors.get(UUID(node.id.removeprefix("card:")))
 
     return graph

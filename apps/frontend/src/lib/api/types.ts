@@ -356,6 +356,11 @@ export interface GraphNode {
   depth: number;
   title?: string | null;
   url?: string | null;
+  /**
+   * Auteurs réels du contenu. Sur un nœud `card`, ils sont remontés depuis la
+   * source qui désigne cette fiche dans la bibliographie de qui la cite : une
+   * fiche ne connaît pas elle-même les auteurs du contenu qu'elle documente.
+   */
   authors?: string | null;
   category?: string | null;
   format?: string | null;
@@ -366,6 +371,8 @@ export interface GraphNode {
   creator_slug?: string | null;
   creator_name?: string | null;
   sources_count?: number | null;
+  /** Fiche non revendiquée : son créateur Philum n'est pas l'auteur du contenu. */
+  is_seed?: boolean;
   /** Nœuds `source` : fiche Philum visée, si elle existe. */
   linked_card_id?: string | null;
 }
