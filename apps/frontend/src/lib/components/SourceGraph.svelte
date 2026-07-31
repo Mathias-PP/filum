@@ -25,6 +25,7 @@
     type ColorMode,
     type NodeColor,
   } from '$lib/utils/author-colors';
+  import { cardNodeLabel } from '$lib/utils/card-label';
   import SourceDetailPanel from './SourceDetailPanel.svelte';
 
   interface Props {
@@ -38,9 +39,13 @@
 
   /**
    * Méta-graphe. Une source dont l'URL vise une autre fiche Philum porte
-   * `linked_card_id` : elle est alors dépliable, et révèle in situ la fiche
-   * visée avec ses propres sources. Le voisinage entier est chargé en une
-   * requête au montage, si bien que le dépliage est instantané.
+   * `linked_card_id` : cette source n'est pas rendue comme une source
+   * ordinaire, elle EST la fiche visée, affichée directement comme nœud fiche
+   * relié à celle qui la cite. La faire précéder d'un nœud source intercalé
+   * montrerait deux fois le même contenu et faisait croire à deux références
+   * distinctes. Le nœud fiche est dépliable : il révèle ses propres sources.
+   * Le voisinage entier est chargé en une requête au montage, si bien que le
+   * dépliage est instantané.
    */
   interface NeighborCard {
     id: string;
@@ -48,6 +53,9 @@
     slug: string;
     creatorSlug: string;
     creatorName: string | null;
+    /** Auteurs réels du contenu documenté, remontés par le backend. */
+    authors: string | null;
+    isSeed: boolean;
     sourcesCount: number;
   }
 
@@ -125,6 +133,9 @@
 
   // Voisinage méta-graphe, chargé une seule fois puis exploré côté client.
   let neighborCards = $state(new Map<string, NeighborCard>());
+  // Auteurs réels de la fiche racine : elle ne les porte pas non plus, ils
+  // viennent du méta-graphe quand une autre fiche la cite.
+  let rootAuthors = $state<string | null>(null);
   let neighborSources = new Map<string, GraphSourceData[]>();
   let expandedCardIds = $state<string[]>([]);
   let neighborhoodTruncated = $state(false);
@@ -199,6 +210,23 @@
     return text.length > max ? text.slice(0, max) + '…' : text;
   }
 
+  /** Étiquette d'un nœud fiche : auteurs réels si la fiche n'est pas revendiquée. */
+  function cardLabelOf(d: GraphNode): string {
+    return d.cardMeta
+      ? cardNodeLabel({
+          authors: d.cardMeta.authors,
+          creatorName: d.cardMeta.creatorName,
+          creatorSlug: d.cardMeta.creatorSlug,
+          isSeed: d.cardMeta.isSeed,
+        })
+      : cardNodeLabel({
+          authors: rootAuthors,
+          creatorName: card.creator.display_name,
+          creatorSlug: card.creator.slug,
+          isSeed: card.is_seed,
+        });
+  }
+
   function authorLabel(s: GraphSourceData): string {
     if (s.authors && s.authors.trim().length > 0) return truncate(s.authors, 22);
     return truncate(s.title ?? s.url, 22);
@@ -235,6 +263,8 @@
           slug: n.slug ?? '',
           creatorSlug: n.creator_slug ?? '',
           creatorName: n.creator_name ?? null,
+          authors: n.authors ?? null,
+          isSeed: n.is_seed ?? false,
           sourcesCount: n.sources_count ?? 0,
         });
       } else {
@@ -269,6 +299,7 @@
     // La fiche racine garde ses sources complètes, celles de l'API sont
     // appauvries (pas d'extraits, pas d'archive).
     byCard.delete(card.id);
+    rootAuthors = cards.get(card.id)?.authors ?? null;
     cards.delete(card.id);
     neighborSources = byCard;
     neighborCards = cards;
@@ -337,37 +368,53 @@
     forks = [];
 
     const byAuthorAndParent = new Map<string, GraphSourceData[]>();
-    // Une fiche dépliée est un peu plus petite que la racine : la hiérarchie
-    // visuelle dit d'où part la lecture.
+    // Fiches dont les sources sont à l'écran : la racine, plus celles qu'on a
+    // dépliées. Ce sont elles qui déterminent quelles autres fiches entrent
+    // dans le graphe.
+    const ownerIds = [card.id, ...expandedCardIds];
+    const sourcesOf = (id: string) =>
+      id === card.id ? rootSources : (neighborSources.get(id) ?? []);
+
+    // Une fiche visée par une source visible devient un nœud fiche à part
+    // entière, dépliée ou non : c'est elle la référence, pas un nœud source
+    // intermédiaire qui la dupliquerait.
     const cardNodeIds = new Map<string, string>([[card.id, cardId]]);
-    for (const cid of expandedCardIds) {
-      const meta = neighborCards.get(cid);
-      if (!meta) continue;
-      const nodeId = `card:${cid}`;
-      cardNodeIds.set(cid, nodeId);
-      nodes.push({
-        id: nodeId,
-        kind: 'card',
-        label: meta.title,
-        cardMeta: meta,
-        ownerCardId: cid,
-        radius: 22,
-        fill: '#1e293b',
-        stroke: '#6366f1',
-        tier: 'card',
-      });
+    for (const ownerId of ownerIds) {
+      for (const s of sourcesOf(ownerId)) {
+        const cid = s.linked_card_id;
+        if (!cid || cardNodeIds.has(cid) || !neighborCards.has(cid)) continue;
+        const meta = neighborCards.get(cid)!;
+        const nodeId = `card:${cid}`;
+        cardNodeIds.set(cid, nodeId);
+        nodes.push({
+          id: nodeId,
+          kind: 'card',
+          label: meta.title,
+          cardMeta: meta,
+          ownerCardId: cid,
+          // Une fiche dépliée est un peu plus petite que la racine : la
+          // hiérarchie visuelle dit d'où part la lecture.
+          expandable: expandedCardIds.includes(cid) ? undefined : cid,
+          radius: 22,
+          fill: '#1e293b',
+          stroke: '#6366f1',
+          tier: 'card',
+        });
+      }
     }
 
-    for (const [ownerId, ownerNodeId] of cardNodeIds) {
-      const ownerSources = ownerId === card.id ? rootSources : (neighborSources.get(ownerId) ?? []);
-      for (const s of ownerSources) {
+    for (const ownerId of ownerIds) {
+      const ownerNodeId = cardNodeIds.get(ownerId);
+      if (!ownerNodeId) continue;
+      for (const s of sourcesOf(ownerId)) {
+        const linkedNodeId = s.linked_card_id ? cardNodeIds.get(s.linked_card_id) : undefined;
+        if (linkedNodeId) {
+          // La source EST cette fiche : arête directe, aucun nœud source.
+          links.push({ source: ownerNodeId, target: linkedNodeId, kind: 'meta' });
+          continue;
+        }
         const colors = sourceColor(s, colorMode);
         const isSecondary = s.parent_source_id !== null;
-        const linkedNodeId = s.linked_card_id ? cardNodeIds.get(s.linked_card_id) : undefined;
-        const expandable =
-          s.linked_card_id && !linkedNodeId && neighborCards.has(s.linked_card_id)
-            ? s.linked_card_id
-            : undefined;
         let radius = 14;
         if (s.is_pivot) radius += 4;
         if (isSecondary) radius *= 0.75;
@@ -379,7 +426,6 @@
           label: s.title ?? s.url,
           source: s,
           ownerCardId: ownerId,
-          expandable,
           radius,
           fill: colors.fill,
           stroke: colors.stroke,
@@ -390,12 +436,6 @@
           links.push({ source: s.id, target: s.parent_source_id, kind: 'parent' });
         } else {
           links.push({ source: ownerNodeId, target: s.id, kind: 'card' });
-        }
-
-        // La source EST la fiche dépliée : c'est cette arête qui matérialise
-        // le méta-graphe à l'écran.
-        if (linkedNodeId) {
-          links.push({ source: s.id, target: linkedNodeId, kind: 'meta' });
         }
 
         if (s.authors && s.authors.trim().length > 0) {
@@ -625,9 +665,10 @@
       .attr('stroke-width', (d) => (d.kind === 'card' ? 3 : 2));
 
     // Halo des fiches dépliées : elles ne sont pas des sources parmi d'autres,
-    // ce sont des fiches Philum entières entrées dans le graphe.
+    // ce sont des fiches Philum entières entrées dans le graphe. Les fiches
+    // encore repliées portent l'anneau pointillé ci-dessous à la place.
     nodeG
-      .filter((d) => d.kind === 'card' && !!d.cardMeta)
+      .filter((d) => d.kind === 'card' && !!d.cardMeta && !d.expandable)
       .insert('circle', ':first-child')
       .attr('r', (d) => d.radius + 7)
       .attr('fill', 'none')
@@ -635,8 +676,8 @@
       .attr('stroke-width', 1.5)
       .attr('stroke-opacity', 0.35);
 
-    // Source dépliable : anneau extérieur + pastille « +N ». Le nombre est
-    // celui des sources de la fiche visée : il annonce ce que le clic révèle.
+    // Fiche dépliable : anneau extérieur + pastille « +N ». Le nombre est
+    // celui de ses sources : il annonce ce que le clic révèle.
     const expandableG = nodeG.filter((d) => !!d.expandable);
     expandableG
       .insert('circle', ':first-child')
@@ -669,7 +710,7 @@
       .style('pointer-events', 'none')
       .text((d) => `+${neighborCards.get(d.expandable!)?.sourcesCount ?? 0}`);
 
-    // Creator name above card node (always visible at zoom >= 0.7)
+    // Auteurs du contenu au-dessus du nœud fiche (visible dès zoom >= 0.7).
     nodeG
       .filter((d) => d.kind === 'card')
       .append('text')
@@ -680,11 +721,7 @@
       .attr('font-weight', 600)
       .attr('fill', '#0f172a')
       .style('pointer-events', 'none')
-      .text((d) =>
-        d.cardMeta
-          ? (d.cardMeta.creatorName ?? d.cardMeta.creatorSlug)
-          : (card.creator.display_name ?? card.creator.slug)
-      );
+      .text((d) => truncate(cardLabelOf(d), 30));
 
     // Card title above creator (shown only at higher zoom levels)
     nodeG
@@ -743,14 +780,12 @@
     nodeG
       .filter((d) => d.kind === 'card')
       .append('title')
-      .text((d) => (d.cardMeta ? `${d.cardMeta.title} — cliquer pour replier` : card.title));
-
-    expandableG
-      .append('title')
-      .text(
-        (d) =>
-          `Cette source est une fiche Philum : ${neighborCards.get(d.expandable!)?.title ?? ''} — cliquer pour la déplier`
-      );
+      .text((d) => {
+        if (!d.cardMeta) return card.title;
+        return d.expandable
+          ? `Fiche Philum : ${d.cardMeta.title} — cliquer pour déplier ses sources`
+          : `${d.cardMeta.title} — cliquer pour replier`;
+      });
 
     nodeG
       .transition()
@@ -767,9 +802,9 @@
             const src = typeof l.source === 'string' ? l.source : l.source.id;
             const tgt = typeof l.target === 'string' ? l.target : l.target.id;
             if (src.startsWith('junction:') || tgt.startsWith('junction:')) return 5;
-            // La fiche dépliée se colle à la source qui l'a révélée : la
-            // lecture « cette source EST cette fiche » doit être immédiate.
-            if (l.kind === 'meta') return 60 * spacingBoost;
+            // Deux fiches reliées : l'arête porte maintenant deux gros nœuds à
+            // ses extrémités, il lui faut plus de place qu'à une source.
+            if (l.kind === 'meta') return 150 * spacingBoost;
             if (l.kind === 'parent') return 75 * spacingBoost;
             if (l.kind === 'sibling') return 55 * spacingBoost;
             return 130 * spacingBoost;
@@ -778,7 +813,7 @@
             const src = typeof l.source === 'string' ? l.source : l.source.id;
             const tgt = typeof l.target === 'string' ? l.target : l.target.id;
             if (src.startsWith('junction:') || tgt.startsWith('junction:')) return 0.05;
-            if (l.kind === 'meta') return 1.2;
+            if (l.kind === 'meta') return 0.9;
             if (l.kind === 'sibling') return 2.0;
             return 0.55;
           })

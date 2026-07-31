@@ -47,7 +47,7 @@ def _card(user_id, slug, title, *, status="published", visibility="public"):
     )
 
 
-def _source(card_id, url, title, *, position=0, linked_card_id=None):
+def _source(card_id, url, title, *, position=0, linked_card_id=None, authors=None):
     from app.models.source import Source
 
     return Source(
@@ -60,6 +60,7 @@ def _source(card_id, url, title, *, position=0, linked_card_id=None):
         category="scientific-article",
         author_kind="researcher",
         linked_card_id=linked_card_id,
+        authors=authors,
     )
 
 
@@ -80,8 +81,17 @@ async def chain(db_session, test_user):
     db_session.add_all(
         [
             _source(a.id, "https://example.org/x", "Source ordinaire de A", position=0),
-            _source(a.id, "http://test/@testuser/fiche-b", "Fiche B", position=1, linked_card_id=b.id),
-            _source(b.id, "http://test/@testuser/fiche-c", "Fiche C", position=0, linked_card_id=c.id),
+            _source(
+                a.id,
+                "http://test/@testuser/fiche-b",
+                "Fiche B",
+                position=1,
+                linked_card_id=b.id,
+                authors="Doe, J.; Roe, R.",
+            ),
+            _source(
+                b.id, "http://test/@testuser/fiche-c", "Fiche C", position=0, linked_card_id=c.id
+            ),
             _source(
                 b.id,
                 "http://test/@testuser/fiche-secrete",
@@ -117,8 +127,53 @@ async def test_depth_one_reveals_the_linked_card(client, chain):
     r = await client.get("/api/v1/@testuser/fiche-a/graph?depth=1")
     data = r.json()
     assert _ids(data, "card") == {f"card:{chain['a'].id}", f"card:{chain['b'].id}"}
-    # L'arete source -> fiche est ce qui rend le depliage possible cote client.
-    assert any(e["kind"] == "is_card" and e["target"] == f"card:{chain['b'].id}" for e in data["edges"])
+    # L'arete relie les deux fiches directement : c'est ce qui rend le depliage
+    # possible cote client.
+    assert any(
+        e["kind"] == "is_card"
+        and e["source"] == f"card:{chain['a'].id}"
+        and e["target"] == f"card:{chain['b'].id}"
+        for e in data["edges"]
+    )
+
+
+@pytest.mark.asyncio
+async def test_a_source_that_designates_a_card_is_not_also_a_source_node(client, chain):
+    """Sinon le meme contenu apparait deux fois, en chaine : source puis fiche.
+
+    Cette redondance est la premiere cause de confusion signalee sur le
+    meta-graphe : on croit voir deux references distinctes.
+    """
+    r = await client.get("/api/v1/@testuser/fiche-a/graph?depth=1")
+    data = r.json()
+    assert _ids(data, "source") == {
+        n["id"] for n in data["nodes"] if n["title"] == "Source ordinaire de A"
+    }
+    assert not any(n["title"] == "Fiche B" and n["kind"] == "source" for n in data["nodes"])
+    # Aucune arete ne part d'un noeud source vers une fiche.
+    sources = _ids(data, "source")
+    assert not any(e["source"] in sources for e in data["edges"])
+
+
+@pytest.mark.asyncio
+async def test_card_node_carries_the_real_authors_of_the_described_content(client, chain):
+    """La fiche ne connait pas ses auteurs : c'est la source qui la designe
+    dans la bibliographie de qui la cite qui les porte. Sans cette remontee,
+    le graphe n'a que le nom du createur Philum a afficher, ce qui trompe le
+    lecteur quand la fiche n'est pas revendiquee."""
+    r = await client.get("/api/v1/@testuser/fiche-a/graph?depth=1")
+    node = next(n for n in r.json()["nodes"] if n["id"] == f"card:{chain['b'].id}")
+    assert node["authors"] == "Doe, J.; Roe, R."
+
+
+@pytest.mark.asyncio
+async def test_card_node_exposes_is_seed(client, chain, db_session):
+    chain["b"].is_seed = True
+    await db_session.commit()
+    r = await client.get("/api/v1/@testuser/fiche-a/graph?depth=1")
+    nodes = {n["id"]: n for n in r.json()["nodes"]}
+    assert nodes[f"card:{chain['b'].id}"]["is_seed"] is True
+    assert nodes[f"card:{chain['a'].id}"]["is_seed"] is False
 
 
 @pytest.mark.asyncio
@@ -196,8 +251,12 @@ async def cited_pair(db_session, test_user):
     await db_session.commit()
     db_session.add_all(
         [
-            _source(citing.id, "http://test/@testuser/fiche-citee", "Citee", linked_card_id=cited.id),
-            _source(hidden.id, "http://test/@testuser/fiche-citee", "Citee", linked_card_id=cited.id),
+            _source(
+                citing.id, "http://test/@testuser/fiche-citee", "Citee", linked_card_id=cited.id
+            ),
+            _source(
+                hidden.id, "http://test/@testuser/fiche-citee", "Citee", linked_card_id=cited.id
+            ),
         ]
     )
     await db_session.commit()
@@ -223,7 +282,9 @@ async def test_constellation_never_reveals_a_private_citing_card(client, cited_p
     r = await client.get("/api/v1/@testuser/fiche-citee/graph?depth=3&include_sources=false")
     data = r.json()
     assert f"card:{cited_pair['hidden'].id}" not in _ids(data, "card")
-    assert all(f"card:{cited_pair['hidden'].id}" not in (e["source"], e["target"]) for e in data["edges"])
+    assert all(
+        f"card:{cited_pair['hidden'].id}" not in (e["source"], e["target"]) for e in data["edges"]
+    )
 
 
 @pytest.mark.asyncio
