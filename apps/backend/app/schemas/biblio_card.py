@@ -160,6 +160,7 @@ class GraphNodeResponse(BaseModel):
     format: str | None = None
     author_kind: str | None = None
     is_pivot: bool = False
+    published_at: datetime | None = None
     slug: str | None = None
     creator_slug: str | None = None
     creator_name: str | None = None

@@ -366,6 +366,7 @@ export interface GraphNode {
   format?: string | null;
   author_kind?: string | null;
   is_pivot?: boolean;
+  published_at?: string | null;
   /** Nœuds `card` uniquement — nécessaires pour étiqueter et naviguer. */
   slug?: string | null;
   creator_slug?: string | null;
@@ -380,7 +381,7 @@ export interface GraphNode {
 export interface GraphEdge {
   source: string;
   target: string;
-  /** `cites` : fiche → source. `is_card` : source → fiche (rend le dépliage possible). */
+  /** `cites` : fiche → source. `is_card` : fiche → fiche (arête du méta-graphe). */
   kind: 'cites' | 'is_card';
 }
 
