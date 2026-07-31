@@ -59,6 +59,12 @@ class GraphNode:
     # Le panneau de detail affiche la date de publication : sans elle, une
     # source d'une fiche voisine s'ouvrirait dans un encadre amputé.
     published_at: datetime | None = None
+    # Metadonnees bibliographiques : la recherche du graphe porte dessus, donc
+    # une source de fiche voisine doit etre trouvable sur les memes criteres
+    # qu'une source de la racine, sans quoi le filtre serait borgne.
+    journal: str | None = None
+    publisher: str | None = None
+    doi: str | None = None
     slug: str | None = None
     creator_slug: str | None = None
     creator_name: str | None = None
@@ -273,6 +279,9 @@ async def build_card_graph(
                         author_kind=src.author_kind,
                         is_pivot=bool(src.is_pivot),
                         published_at=src.published_at,
+                        journal=src.journal,
+                        publisher=src.publisher,
+                        doi=src.doi,
                         linked_card_id=src.linked_card_id,
                     )
                 )

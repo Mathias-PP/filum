@@ -21,11 +21,15 @@
     AUTHOR_COLORS,
     CATEGORY_COLORS,
     FORMAT_COLORS,
+    authorLabel as authorKindLabel,
+    categoryLabel,
+    formatLabel,
     sourceColor,
     type ColorMode,
     type NodeColor,
   } from '$lib/utils/author-colors';
   import { cardNodeLabel } from '$lib/utils/card-label';
+  import { buildHaystack, matchesAllTerms, searchTerms } from '$lib/utils/graph-search';
   import SourceDetailPanel from './SourceDetailPanel.svelte';
 
   interface Props {
@@ -70,6 +74,9 @@
     author_kind: AuthorKind;
     is_pivot: boolean;
     published_at: string | null;
+    journal: string | null;
+    publisher: string | null;
+    doi: string | null;
     parent_source_id: string | null;
     linked_card_id: string | null;
     /** Présente uniquement pour les sources de la fiche racine. */
@@ -102,6 +109,9 @@
         archive_timestamp: null,
         parent_source_id: null,
         linked_card_id: s.linked_card_id,
+        journal: s.journal,
+        publisher: s.publisher,
+        doi: s.doi,
         conflict_of_interest: null,
         citations_count: null,
         subscribers_count: null,
@@ -210,6 +220,9 @@
       author_kind: s.author_kind,
       is_pivot: s.is_pivot,
       published_at: s.published_at,
+      journal: s.journal ?? null,
+      publisher: s.publisher ?? null,
+      doi: s.doi ?? null,
       parent_source_id: s.parent_source_id,
       linked_card_id: s.linked_card_id ?? null,
       full: s,
@@ -251,6 +264,59 @@
   function truncate(text: string, max: number): string {
     return text.length > max ? text.slice(0, max) + '…' : text;
   }
+
+  // --- Recherche dans le graphe ---------------------------------------------
+  //
+  // La recherche porte sur tout ce qui identifie une référence — titre, auteurs,
+  // revue, éditeur, DOI, URL, année, et les libellés lisibles du type d'auteur /
+  // format / catégorie — parce qu'on cherche avec le mot qu'on a en tête, pas
+  // avec le champ où il est rangé.
+  let query = $state('');
+  /** `id de nœud -> texte cherchable`, reconstruit à chaque montage du graphe. */
+  let searchIndex = $state.raw(new Map<string, string>());
+
+  function haystackOf(d: GraphNode): string {
+    if (d.kind === 'source' && d.source) {
+      const s = d.source;
+      return buildHaystack([
+        s.title,
+        s.authors,
+        s.journal,
+        s.publisher,
+        s.doi,
+        s.url,
+        s.published_at?.slice(0, 4),
+        authorKindLabel(s.author_kind),
+        formatLabel(s.format),
+        categoryLabel(s.category),
+      ]);
+    }
+    if (d.kind === 'card') {
+      // Le nœud racine n'a pas de `cardMeta` : ses métadonnées viennent des
+      // props, et ses auteurs réels du méta-graphe quand une fiche la cite.
+      const m = d.cardMeta;
+      return buildHaystack([
+        m?.title ?? card.title,
+        m ? m.authors : rootAuthors,
+        m?.creatorName ?? card.creator.display_name,
+        m?.creatorSlug ?? card.creator.slug,
+        m?.slug ?? card.slug,
+      ]);
+    }
+    return '';
+  }
+
+  const queryTerms = $derived(searchTerms(query));
+
+  /** Nœuds correspondant à la recherche. `null` = aucune recherche en cours. */
+  const matchedIds = $derived.by(() => {
+    if (queryTerms.length === 0) return null;
+    const ids = new Set<string>();
+    for (const [id, hay] of searchIndex) {
+      if (matchesAllTerms(hay, queryTerms)) ids.add(id);
+    }
+    return ids;
+  });
 
   /** Étiquette d'un nœud fiche : auteurs réels si la fiche n'est pas revendiquée. */
   function cardLabelOf(d: GraphNode): string {
@@ -322,6 +388,9 @@
             (n.author_kind ?? '') in AUTHOR_COLORS ? (n.author_kind as AuthorKind) : 'individu',
           is_pivot: n.is_pivot ?? false,
           published_at: n.published_at ?? null,
+          journal: n.journal ?? null,
+          publisher: n.publisher ?? null,
+          doi: n.doi ?? null,
           parent_source_id: null,
           linked_card_id: n.linked_card_id ?? null,
         });
@@ -523,6 +592,15 @@
         links.push({ source: group[0].id, target: group[1].id, kind: 'sibling' });
       }
     }
+
+    // Index de recherche : calculé une fois par montage plutôt qu'à chaque
+    // frappe, sinon 300 nœuds seraient re-normalisés à chaque caractère saisi.
+    const index = new Map<string, string>();
+    for (const n of nodes) {
+      if (n.kind === 'junction') continue;
+      index.set(n.id, haystackOf(n));
+    }
+    searchIndex = index;
 
     return { nodes, links };
   }
@@ -1015,20 +1093,46 @@
     }
   });
 
+  // Opacité des nœuds. Survol et recherche agissent tous deux dessus : traités
+  // dans deux effets séparés, le dernier exécuté écraserait l'autre.
   $effect(() => {
+    const matched = matchedIds;
+    const hovered = hoveredId;
     if (!svgEl) return;
     const svg = select(svgEl);
     svg.selectAll<SVGGElement, GraphNode>('.node').style('opacity', (d) => {
-      if (hoveredId === null) return 1;
-      return d.id === hoveredId ? 1 : 0.35;
+      if (matched && !matched.has(d.id)) return 0.08;
+      if (hovered !== null && d.id !== hovered) return 0.35;
+      return 1;
     });
     svg.selectAll<SVGLineElement, GraphLink>('.link').style('opacity', (d) => {
-      if (hoveredId === null) return 1;
       const src = typeof d.source === 'string' ? d.source : d.source.id;
       const tgt = typeof d.target === 'string' ? d.target : d.target.id;
-      return src === hoveredId || tgt === hoveredId ? 1 : 0.2;
+      // Une arête reste visible dès qu'une de ses extrémités correspond : c'est
+      // elle qui dit à quelle fiche le résultat est rattaché.
+      if (matched) return matched.has(src) || matched.has(tgt) ? 0.9 : 0.05;
+      if (hovered === null) return 1;
+      return src === hovered || tgt === hovered ? 1 : 0.2;
     });
   });
+
+  /** Recadre la vue sur les résultats de recherche. */
+  function fitToMatches() {
+    const matched = matchedIds;
+    if (!matched || matched.size === 0) return;
+    // Le recadrage automatique de la simulation reprendrait la main au tick
+    // suivant et annulerait celui-ci.
+    hasUserAdjustedView = true;
+    fitToNodes(
+      layoutNodes.filter((n) => matched.has(n.id)),
+      400
+    );
+  }
+
+  function clearQuery() {
+    query = '';
+    resetView();
+  }
 
   // Recolore les nœuds au changement d'axe, sans re-monter la simulation.
   $effect(() => {
@@ -1063,12 +1167,15 @@
     const showAuthor = zoomLevel >= 0.7 * fitScale;
     const showTitle = zoomLevel >= 1.5 * fitScale;
     const hovered = hoveredId;
+    // Un résultat de recherche affiche son titre quel que soit le zoom : sans
+    // lui, l'utilisateur voit un point allumé sans savoir ce qu'il a trouvé.
+    const matched = matchedIds;
     svg
       .selectAll<SVGTextElement, GraphNode>('text.author-label, text.card-creator')
       .style('display', showAuthor ? '' : 'none');
     svg
       .selectAll<SVGTextElement, GraphNode>('text.title-label')
-      .style('display', (d) => (showTitle || d.id === hovered ? '' : 'none'))
+      .style('display', (d) => (showTitle || d.id === hovered || matched?.has(d.id) ? '' : 'none'))
       .attr('font-weight', (d) => (d.id === hovered ? 600 : null))
       .attr('fill', (d) => (d.id === hovered ? '#0f172a' : '#475569'))
       .attr('stroke', (d) => (d.id === hovered ? '#ffffff' : null))
@@ -1080,7 +1187,7 @@
       });
     svg
       .selectAll<SVGTextElement, GraphNode>('text.card-title-label')
-      .style('display', showTitle ? '' : 'none');
+      .style('display', (d) => (showTitle || matched?.has(d.id) ? '' : 'none'));
   });
 </script>
 
@@ -1092,26 +1199,93 @@
     aria-label="Graphe interactif des sources"
   ></svg>
 
-  <div
-    class="absolute top-3 left-3 flex items-center rounded-md bg-white/95 border border-slate-200 shadow-sm overflow-hidden text-xs"
-    role="group"
-    aria-label="Axe de couleur des nœuds"
-  >
-    {#each colorModeOptions as opt, i (opt.value)}
-      <button
-        type="button"
-        onclick={() => (colorMode = opt.value)}
-        class="px-2.5 py-1.5 transition-colors {i > 0
-          ? 'border-l border-slate-200'
-          : ''} {colorMode === opt.value
-          ? 'bg-slate-800 text-white font-medium'
-          : 'text-slate-600 hover:bg-slate-50'}"
-        aria-pressed={colorMode === opt.value}
-        title="Colorer par {opt.label.toLowerCase()}"
+  <div class="absolute top-3 left-3 flex flex-col items-start gap-1.5">
+    <div
+      class="flex items-center gap-1.5 rounded-md bg-white/95 border border-slate-200 shadow-sm px-2 py-1.5 text-xs"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        class="w-3.5 h-3.5 shrink-0 text-slate-400"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        aria-hidden="true"
       >
-        {opt.label}
-      </button>
-    {/each}
+        <circle cx="11" cy="11" r="7" />
+        <path d="M20 20l-3.5-3.5" stroke-linecap="round" />
+      </svg>
+      <input
+        bind:value={query}
+        onkeydown={(e) => e.key === 'Enter' && fitToMatches()}
+        type="search"
+        class="w-40 sm:w-52 bg-transparent outline-none placeholder:text-slate-400 text-slate-800"
+        placeholder="Titre, auteur, revue, DOI…"
+        aria-label="Rechercher une référence dans le graphe"
+      />
+      {#if query}
+        <button
+          type="button"
+          onclick={clearQuery}
+          class="shrink-0 text-slate-400 hover:text-slate-700"
+          aria-label="Effacer la recherche"
+          title="Effacer la recherche"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            class="w-3.5 h-3.5"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" />
+          </svg>
+        </button>
+      {/if}
+    </div>
+
+    {#if matchedIds}
+      <div
+        class="flex items-center gap-2 rounded-md bg-white/95 border border-slate-200 shadow-sm px-2 py-1 text-xs text-slate-600"
+        aria-live="polite"
+      >
+        <span>
+          {matchedIds.size === 0
+            ? 'Aucun résultat'
+            : `${matchedIds.size} résultat${matchedIds.size > 1 ? 's' : ''}`}
+        </span>
+        {#if matchedIds.size > 0}
+          <button
+            type="button"
+            onclick={fitToMatches}
+            class="text-indigo-600 hover:text-indigo-800 font-medium"
+          >
+            Recadrer
+          </button>
+        {/if}
+      </div>
+    {/if}
+
+    <div
+      class="flex items-center rounded-md bg-white/95 border border-slate-200 shadow-sm overflow-hidden text-xs"
+      role="group"
+      aria-label="Axe de couleur des nœuds"
+    >
+      {#each colorModeOptions as opt, i (opt.value)}
+        <button
+          type="button"
+          onclick={() => (colorMode = opt.value)}
+          class="px-2.5 py-1.5 transition-colors {i > 0
+            ? 'border-l border-slate-200'
+            : ''} {colorMode === opt.value
+            ? 'bg-slate-800 text-white font-medium'
+            : 'text-slate-600 hover:bg-slate-50'}"
+          aria-pressed={colorMode === opt.value}
+          title="Colorer par {opt.label.toLowerCase()}"
+        >
+          {opt.label}
+        </button>
+      {/each}
+    </div>
   </div>
 
   <div class="absolute top-3 right-3 flex flex-col gap-1.5">

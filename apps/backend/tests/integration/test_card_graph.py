@@ -49,7 +49,17 @@ def _card(user_id, slug, title, *, status="published", visibility="public"):
 
 
 def _source(
-    card_id, url, title, *, position=0, linked_card_id=None, authors=None, published_at=None
+    card_id,
+    url,
+    title,
+    *,
+    position=0,
+    linked_card_id=None,
+    authors=None,
+    published_at=None,
+    journal=None,
+    publisher=None,
+    doi=None,
 ):
     from app.models.source import Source
 
@@ -65,6 +75,9 @@ def _source(
         linked_card_id=linked_card_id,
         authors=authors,
         published_at=published_at,
+        journal=journal,
+        publisher=publisher,
+        doi=doi,
     )
 
 
@@ -90,6 +103,9 @@ async def chain(db_session, test_user):
                 "Source ordinaire de A",
                 position=0,
                 published_at=datetime(2023, 1, 1, tzinfo=UTC),
+                journal="World Psychiatry",
+                publisher="Wiley",
+                doi="10.1002/wps.21122",
             ),
             _source(
                 a.id,
@@ -327,6 +343,21 @@ async def test_source_node_carries_the_publication_date(client, chain):
     r = await client.get("/api/v1/@testuser/fiche-a/graph?depth=1")
     node = next(n for n in r.json()["nodes"] if n["title"] == "Source ordinaire de A")
     assert node["published_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_source_node_carries_its_bibliographic_metadata(client, chain):
+    """La recherche du graphe porte dessus.
+
+    Sans ces champs, une source de fiche voisine serait introuvable par revue,
+    editeur ou DOI alors qu'une source de la racine le serait : le filtre
+    donnerait des resultats differents selon la provenance du noeud.
+    """
+    r = await client.get("/api/v1/@testuser/fiche-a/graph?depth=1")
+    node = next(n for n in r.json()["nodes"] if n["title"] == "Source ordinaire de A")
+    assert node["journal"] == "World Psychiatry"
+    assert node["publisher"] == "Wiley"
+    assert node["doi"] == "10.1002/wps.21122"
 
 
 @pytest.mark.asyncio

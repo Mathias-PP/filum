@@ -161,6 +161,9 @@ class GraphNodeResponse(BaseModel):
     author_kind: str | None = None
     is_pivot: bool = False
     published_at: datetime | None = None
+    journal: str | None = None
+    publisher: str | None = None
+    doi: str | None = None
     slug: str | None = None
     creator_slug: str | None = None
     creator_name: str | None = None
