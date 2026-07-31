@@ -367,6 +367,10 @@ export interface GraphNode {
   author_kind?: string | null;
   is_pivot?: boolean;
   published_at?: string | null;
+  /** Métadonnées bibliographiques : la recherche du graphe porte dessus. */
+  journal?: string | null;
+  publisher?: string | null;
+  doi?: string | null;
   /** Nœuds `card` uniquement — nécessaires pour étiqueter et naviguer. */
   slug?: string | null;
   creator_slug?: string | null;
