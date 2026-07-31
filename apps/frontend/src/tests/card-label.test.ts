@@ -31,9 +31,9 @@ describe('cardNodeLabel', () => {
     expect(
       cardNodeLabel({ authors: null, creatorName: 'Mathias', creatorSlug: 'mp', isSeed: true })
     ).toBe('Mathias');
-    expect(cardNodeLabel({ authors: '   ', creatorName: null, creatorSlug: 'mp', isSeed: true })).toBe(
-      'mp'
-    );
+    expect(
+      cardNodeLabel({ authors: '   ', creatorName: null, creatorSlug: 'mp', isSeed: true })
+    ).toBe('mp');
   });
 
   it('retombe sur les auteurs quand aucun créateur n’est connu', () => {

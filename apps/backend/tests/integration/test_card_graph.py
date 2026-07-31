@@ -146,11 +146,15 @@ async def test_a_source_that_designates_a_card_is_not_also_a_source_node(client,
     """
     r = await client.get("/api/v1/@testuser/fiche-a/graph?depth=1")
     data = r.json()
-    assert _ids(data, "source") == {
-        n["id"] for n in data["nodes"] if n["title"] == "Source ordinaire de A"
+    # Fiche B est atteignable a cette profondeur : elle n'existe donc plus que
+    # comme fiche. Fiche C (hors profondeur) et Fiche secrete (privee) ne le
+    # sont pas et restent des sources ordinaires : c'est la degradation voulue.
+    assert {n["title"] for n in data["nodes"] if n["kind"] == "source"} == {
+        "Source ordinaire de A",
+        "Fiche C",
+        "Fiche secrete",
     }
-    assert not any(n["title"] == "Fiche B" and n["kind"] == "source" for n in data["nodes"])
-    # Aucune arete ne part d'un noeud source vers une fiche.
+    # Aucune arete ne part d'un noeud source : une source ne cite rien.
     sources = _ids(data, "source")
     assert not any(e["source"] in sources for e in data["edges"])
 
