@@ -276,85 +276,95 @@ def _demo_sources() -> list[dict]:
         },
         # --- Tier 3 — Press ---
         {
-            "url": "https://www.nytimes.com/2023/03/30/well/mind/memory-brain-science.html",
-            "title": "How Your Brain Builds Memories",
-            "authors": "Dana G. Smith — The New York Times",
+            "url": (
+                "https://www.quantamagazine.org/"
+                "light-triggered-genes-reveal-the-hidden-workings-of-memory-20171214/"
+            ),
+            "title": "Light-Triggered Genes Reveal the Hidden Workings of Memory",
+            "authors": "Elizabeth Svoboda — Quanta Magazine",
             "format": SourceFormat.TEXTE.value,
             "category": SourceCategory.ARTICLE_PRESSE.value,
             "author_kind": AuthorKind.MEDIA.value,
             "annotation": (
-                "Vulgarisation grand public des travaux de Kandel et successeurs. "
-                "Cite l'article fondateur de 2001 comme socle."
+                "Vulgarisation des travaux du laboratoire Tonegawa sur les engrammes "
+                "silencieux et le rôle du subiculum dans le rappel."
             ),
             "is_pivot": False,
             "parent_index": 1,
             "archive_url": (
                 "https://web.archive.org/web/20240601000000/"
-                "https://www.nytimes.com/2023/03/30/well/mind/memory-brain-science.html"
+                "https://www.quantamagazine.org/"
+                "light-triggered-genes-reveal-the-hidden-workings-of-memory-20171214/"
             ),
             "excerpts": [
                 (
-                    "Chaque souvenir rappelé est en partie reconstruit ; les neurosciences "
-                    "y voient moins un magnétoscope qu'un atelier d'assemblage."
+                    "Un souvenir peut exister sans être accessible : l'engramme est là, "
+                    "silencieux, et il faut la bonne clé pour le rallumer."
                 )
             ],
         },
         {
-            "url": "https://www.lemonde.fr/sciences/article/2024/03/15/le-sommeil-gardien-de-la-memoire.html",
-            "title": "Le sommeil, gardien de la mémoire",
-            "authors": "Hervé Morin — Le Monde Sciences",
-            "format": SourceFormat.TEXTE.value,
-            "category": SourceCategory.ARTICLE_PRESSE.value,
-            "author_kind": AuthorKind.MEDIA.value,
-            "annotation": "Article 2024 reprenant les ressources NIH sur sommeil et consolidation.",
-            "is_pivot": False,
-            "parent_index": 6,
-            "archive_url": (
-                "https://web.archive.org/web/20240601000000/"
-                "https://www.lemonde.fr/sciences/article/2024/03/15/"
-                "le-sommeil-gardien-de-la-memoire.html"
+            "url": (
+                "https://lejournal.cnrs.fr/nos-blogs/aux-frontieres-du-cerveau/"
+                "et-si-le-sommeil-nous-aidait-a-faire-le-tri-dans-nos-souvenirs"
             ),
-        },
-        {
-            "url": "https://www.nature.com/articles/d41586-022-04123-3",
-            "title": "The Neuroscience of Forgetting",
-            "authors": "Lauren Gravitz — Nature News",
+            "title": "Et si le sommeil nous aidait à faire le tri dans nos souvenirs ?",
+            "authors": "Alexandra Gros — CNRS Le Journal",
             "format": SourceFormat.TEXTE.value,
             "category": SourceCategory.ARTICLE_PRESSE.value,
             "author_kind": AuthorKind.MEDIA.value,
             "annotation": (
-                "Synthèse Nature News sur l'oubli comme processus actif. "
-                "Reprend l'effet de désinformation de Loftus."
+                "Billet de chercheuse sur la consolidation mnésique pendant le sommeil : "
+                "downscaling synaptique, gène Homer1a, rôle de la noradrénaline."
+            ),
+            "is_pivot": False,
+            "parent_index": 6,
+            "archive_url": (
+                "https://web.archive.org/web/20240601000000/"
+                "https://lejournal.cnrs.fr/nos-blogs/aux-frontieres-du-cerveau/"
+                "et-si-le-sommeil-nous-aidait-a-faire-le-tri-dans-nos-souvenirs"
+            ),
+        },
+        {
+            "url": "https://time.com/6171190/new-science-of-forgetting/",
+            "title": "The New Science of Forgetting",
+            "authors": "Corinne Purtill — TIME",
+            "format": SourceFormat.TEXTE.value,
+            "category": SourceCategory.ARTICLE_PRESSE.value,
+            "author_kind": AuthorKind.MEDIA.value,
+            "annotation": (
+                "Synthèse 2022 sur l'oubli comme processus actif et adaptatif, "
+                "de l'évolution du mécanisme jusqu'à ses dérèglements dans le TSPT."
             ),
             "is_pivot": False,
             "parent_index": 5,
             "archive_url": (
                 "https://web.archive.org/web/20240601000000/"
-                "https://www.nature.com/articles/d41586-022-04123-3"
+                "https://time.com/6171190/new-science-of-forgetting/"
             ),
         },
         # --- Tier 4 — Original ---
         {
-            "url": "https://lexfridman.com/karim-nader/",
-            "title": "Lex Fridman Podcast #310 — Karim Nader on Memory Reconsolidation",
-            "authors": "Lex Fridman & Karim Nader",
+            "url": "https://radiolab.org/podcast/memory-and-forgetting",
+            "title": "Memory and Forgetting",
+            "authors": "Jad Abumrad & Robert Krulwich — Radiolab (WNYC)",
             "format": SourceFormat.AUDIO.value,
             "category": SourceCategory.PODCAST.value,
-            "author_kind": AuthorKind.INDIVIDU.value,
+            "author_kind": AuthorKind.MEDIA.value,
             "annotation": (
-                "Entretien long format avec l'auteur de l'article 2000. "
-                "Source primaire complémentaire au papier scientifique."
+                "Épisode où Karim Nader raconte lui-même son expérience d'effacement "
+                "d'un souvenir pendant son rappel. Source orale complémentaire "
+                "de l'article de 2000."
             ),
             "is_pivot": False,
             "parent_index": 3,
-            "subscribers_count": 4_500_000,
-            "views_count": 2_300_000,
             "archive_url": (
-                "https://web.archive.org/web/20240601000000/https://lexfridman.com/karim-nader/"
+                "https://web.archive.org/web/20240601000000/"
+                "https://radiolab.org/podcast/memory-and-forgetting"
             ),
             "conflict_of_interest": (
-                "Lex Fridman est un podcasteur indépendant financé par des sponsors. "
-                "Il n'est pas chercheur ; ses entretiens sont éditorialisés."
+                "Radiolab est une production de radio publique éditorialisée : "
+                "le montage sonore sélectionne et dramatise les propos des chercheurs."
             ),
         },
         {
@@ -372,7 +382,7 @@ def _demo_sources() -> list[dict]:
             "parent_index": None,
         },
         {
-            "url": "https://www.simonandschuster.com/books/Remember/Lisa-Genova/9781982171544",
+            "url": ("https://www.penguinrandomhouse.com/books/624480/remember-by-lisa-genova/"),
             "title": "Remember: The Science of Memory and the Art of Forgetting",
             "authors": "Lisa Genova",
             "format": SourceFormat.TEXTE.value,
@@ -386,7 +396,7 @@ def _demo_sources() -> list[dict]:
             "parent_index": None,
             "archive_url": (
                 "https://web.archive.org/web/20240601000000/"
-                "https://www.simonandschuster.com/books/Remember/Lisa-Genova/9781982171544"
+                "https://www.penguinrandomhouse.com/books/624480/remember-by-lisa-genova/"
             ),
             "conflict_of_interest": (
                 "Auteure également romancière à succès ; le livre est commercialisé "
@@ -428,24 +438,23 @@ def _demo_sources() -> list[dict]:
             ],
         },
         {
-            "url": "https://www.youtube.com/watch?v=H8UQdB3vG6A",
-            "title": "How Memories Are Made: The Neuroscience of Memory Formation",
+            "url": "https://www.youtube.com/watch?v=X5trRLX7PQY",
+            "title": "Building Blocks of Memory in the Brain",
             "authors": "Artem Kirsanov",
             "format": SourceFormat.VIDEO.value,
             "category": SourceCategory.DOCUMENTAIRE.value,
             "author_kind": AuthorKind.INDIVIDU.value,
             "annotation": (
                 "Vidéo de vulgarisation scientifique qui synthétise les mécanismes "
-                "moléculaires et cellulaires de la mémoire, en s'appuyant notamment "
-                "sur les travaux de Kandel, Nader et Tonegawa. Approche visuelle "
+                "moléculaires de l'engramme : conditionnement de peur, gènes précoces "
+                "immédiats, marquage des populations neuronales. Approche visuelle "
                 "complémentaire au contenu de la vidéo principale."
             ),
             "is_pivot": False,
             "parent_index": 1,
-            "views_count": 1_800_000,
             "archive_url": (
                 "https://web.archive.org/web/20240601000000/"
-                "https://www.youtube.com/watch?v=H8UQdB3vG6A"
+                "https://www.youtube.com/watch?v=X5trRLX7PQY"
             ),
         },
         {
@@ -464,16 +473,16 @@ def _demo_sources() -> list[dict]:
             "parent_index": None,
         },
         {
-            "url": "https://wellcomecollection.org/works/pb7xkuyz",
-            "title": "Dessin des neurones de l'hippocampe — Santiago Ramón y Cajal, 1909",
+            "url": "https://commons.wikimedia.org/wiki/File:CajalHippocampus.jpeg",
+            "title": "Dessin du circuit neuronal de l'hippocampe — Santiago Ramón y Cajal, 1911",
             "authors": "Santiago Ramón y Cajal",
             "format": SourceFormat.IMAGE.value,
             "category": SourceCategory.PAGE_WEB.value,
             "author_kind": AuthorKind.CHERCHEUR.value,
             "annotation": (
-                "Dessin original du prix Nobel de médecine 1906, fondateur de la "
-                "neuroscience moderne. Cette planche représente pour la première fois "
-                "la structure détaillée des neurones hippocampiques — le siège "
+                "Planche du prix Nobel de médecine 1906, fondateur de la neuroscience "
+                "moderne, tirée de l'« Histologie du Système Nerveux de l'Homme et des "
+                "Vertébrés ». Elle représente la circuiterie hippocampique — le siège "
                 "anatomique de la mémoire décrit par Wiltgen et al."
             ),
             "is_pivot": False,
@@ -481,7 +490,7 @@ def _demo_sources() -> list[dict]:
             "impact_factor": None,
             "archive_url": (
                 "https://web.archive.org/web/20240601000000/"
-                "https://wellcomecollection.org/works/pb7xkuyz"
+                "https://commons.wikimedia.org/wiki/File:CajalHippocampus.jpeg"
             ),
         },
     ]
