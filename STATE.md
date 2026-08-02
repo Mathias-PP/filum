@@ -35,6 +35,30 @@ Avant : Phase 2 (identité visuelle Pulsar-graph + audit) et Phase 1 (MVP comple
 
 ## PRs ouvertes
 
+**#235** — `feat/card-node-source-panel`. Session 2026-08-02 (autonome) — **l'encadré d'une référence reste ouvrable quand elle est rendue comme fiche** :
+- Depuis #233, une référence qui fait l'objet d'une fiche **est** le nœud fiche. Mais ce nœud ne gardait aucune trace de la référence absorbée et son clic servait à déplier : revue, DOI, date et annotation devenaient inatteignables. Le nœud reprend désormais la référence (`absorbedSource`).
+- **Cliquer un nœud ouvre son encadré, source ou fiche.** La règle cesse de dépendre de la représentation choisie par le graphe — ce qu'un lecteur ne peut pas deviner. Déplier/replier passent aux pastilles, qui les annonçaient déjà : « +N » déplie, « − » referme, les deux avec `stopPropagation`.
+- Vérification visuelle navigateur **non faite** (extension Chrome déconnectée).
+
+**#234** — `fix/seed-demo-real-urls`. Session 2026-08-02 (autonome) — **la fiche d'exemple ne cite que des pages réelles** :
+- Sept des dix-huit références de `/@example/memoire-et-cerveau` pointaient vers des pages inexistantes ou tout autres : l'URL Nature rendait un article de Virginia Gewin sur le racisme dans la science, l'URL Simon & Schuster un roman d'Emma Fedor, et Lex Fridman / Wellcome / YouTube étaient en 404. Une vitrine dont les liens mentent contredit exactement la promesse du produit.
+- Remplacées par TIME (Purtill), Quanta (Svoboda), CNRS Le Journal (Gros), Radiolab (« Memory and Forgetting », transcript confirmant Karim Nader), Penguin Random House (le vrai éditeur de Genova), Wikimedia Commons (planche de Cajal, 1911) et « Building Blocks of Memory in the Brain » (Kirsanov). **Chaque URL a été ouverte** et son titre, auteur et date vérifiés sur la page servie.
+- ⚠️ `nytimes.com` et `lemonde.fr` bloquent toute vérification automatique : proposer une autre URL sur ces domaines aurait reproduit le problème. La Wayback Machine n'a **aucun** instantané des deux URL d'origine — alors qu'un vrai article NYT Well ou Le Monde Sciences est systématiquement archivé : elles étaient fabriquées.
+- **Mergée et déployée le 2026-08-02** (aucune migration ; `_get_or_create_demo_card` supprime et recrée ses sources à chaque exécution, le redéploiement suffit). Vérifié par curl : les 18 URL en prod sont les nouvelles.
+
+**#233** — `feat/source-card-identity`. Session 2026-08-02 (autonome) — **une source rejoint la fiche qui documente le même contenu** :
+- Une référence vers un article et la fiche Philum qui documente cet article sont le même objet. Le lien ne dépendait que d'un clic manuel dans le picker ou d'une URL `/@user/slug` : sur la fiche `examining-…`, la source vers `doi.org/10.3389/fpsyg.2022.651547` flottait isolée alors que la fiche `inhibitory-control-…` existait pour ce DOI exact.
+- `content_identity.py` (module pur, 20 tests) : deux références désignent le même contenu si elles partagent un DOI ou une URL normalisée. Critère **agnostique** — vaut pour un article, une vidéo, un blog ou un rapport, sans connaître le domaine. ⚠️ Le `/full` de Frontiers et le `/pdf` de Wiley sont retirés du DOI : sans ça la clé extraite d'une URL d'éditeur ne correspondait jamais au DOI nu saisi sur la source qui la cite, et le rattrapage ne faisait silencieusement rien.
+- **Matérialisé à l'écriture, pas résolu à la lecture** : trois points d'application (création/batch/édition de source, publication de fiche, migration `017` de rattrapage). Résoudre dans `card_graph` aurait été auto-réparateur mais laissait `find_cards_citing`, la constellation et le sens entrant aveugles.
+- La publication d'une fiche rattrape les références déjà saisies vers son contenu : une fiche existe souvent **parce que** quelqu'un a cité le contenu.
+- `_load_card_authors` retient désormais la liste d'auteurs la plus complète (« Kang » d'un côté, « Kang W., Hernández S., Rahman M., Voigt K., Malvaso A. » de l'autre), la plus ancienne départageant à longueur égale.
+- **Mergée et déployée le 2026-08-02** (migration `017_link_by_content` passée). Vérifié par curl sur `examining-…?depth=3` : le nœud source isolé a disparu, la 3ᵉ arête `is_card` racine → `inhibitory-control-…` est apparue, et le nœud fiche porte la liste d'auteurs complète.
+
+**#232** — `fix/graph-fade-and-seed-banner`. Session 2026-08-02 (autonome) — **apparition du graphe et place du bandeau seed** :
+- Le graphe s'allumait nœud par nœud pendant que les liens gris étaient dessinés d'emblée : des traits flottaient entre des extrémités invisibles, et l'animation durait quinze secondes sur une fiche de 300 références. Le groupe racine est désormais fondu d'un bloc en 350 ms. Fondre le parent plutôt que chaque nœud évite en plus le conflit avec le `$effect` de survol/recherche, qui écrit lui aussi l'opacité des `.node`.
+- Le bandeau « fiche non revendiquée / Réclamer cette fiche » passe **sous** le graphe : c'est une réserve sur la provenance, pas la première chose qu'un visiteur doit lire.
+- **Mergée le 2026-08-02** (frontend seul, déploiement Vercel automatique).
+
 **#227** — `feat/graph-search`. Session 2026-07-31 (autonome) — **recherche dans le graphe** :
 - Barre de recherche sur `SourceGraph`. Elle porte sur tout ce qui identifie une référence — titre, auteurs, revue, éditeur, DOI, URL, année, **et les libellés lisibles** du type d'auteur / format / catégorie (taper « article scientifique » fonctionne, pas seulement le code `article-scientifique`). Insensible à la casse et aux accents ; termes combinés en **ET à travers les champs**, si bien que `madigan 2023` trouve la référence alors que le nom et l'année ne sont jamais adjacents dans le texte indexé.
 - **Le backend devait suivre** : le méta-graphe ne renvoyait ni `journal`, ni `publisher`, ni `doi`. Sans eux, une source de fiche voisine aurait été introuvable sur des critères qui trouvent une source de la racine — le filtre aurait donné des résultats différents selon la provenance du nœud.
