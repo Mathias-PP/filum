@@ -701,7 +701,11 @@
     svg.selectAll('*').remove();
     svg.attr('viewBox', `0 0 ${width} ${height}`);
 
-    const root = svg.append('g').attr('class', 'graph-root');
+    // Le graphe apparaît d'un bloc. Allumer les nœuds un à un laissait les
+    // liens — dessinés d'emblée — flotter entre des extrémités encore
+    // invisibles, et durait quinze secondes sur une fiche de 300 références.
+    const root = svg.append('g').attr('class', 'graph-root').style('opacity', 0);
+    root.transition().duration(350).style('opacity', 1);
 
     root
       .append('g')
@@ -738,7 +742,6 @@
       .join('g')
       .attr('class', 'node')
       .style('cursor', 'pointer')
-      .style('opacity', 0)
       .on('click', (_event, d) => {
         if (d.expandable) {
           expandCard(d.expandable, d.id);
@@ -913,12 +916,6 @@
         }
         return `${d.cardMeta.title} — cliquer pour replier`;
       });
-
-    nodeG
-      .transition()
-      .delay((_d, i) => 50 * i)
-      .duration(300)
-      .style('opacity', 1);
 
     simulation = forceSimulation<GraphNode>(nodes)
       .force(
