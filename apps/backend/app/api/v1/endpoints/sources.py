@@ -184,6 +184,7 @@ async def create_source(
             url=source_data.url,
             user_id=current_user.id,
             current_card_id=card_id,
+            doi=source_data.doi,
         )
     except ValueError as e:
         raise HTTPException(
@@ -317,6 +318,7 @@ async def create_sources_batch(
                 url=sd.url,
                 user_id=current_user.id,
                 current_card_id=card_id,
+                doi=sd.doi,
             )
             source = Source(
                 biblio_card_id=card_id,
@@ -443,6 +445,7 @@ async def update_source(
                 url=source.url,
                 user_id=current_user.id,
                 current_card_id=card.id,
+                doi=update_data.get("doi", source.doi),
             )
         except ValueError as e:
             raise HTTPException(
