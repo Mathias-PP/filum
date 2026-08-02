@@ -151,8 +151,13 @@ async def _load_card_authors(db: AsyncSession, card_ids: set[UUID]) -> dict[UUID
     Une fiche ne porte pas le nom des auteurs du contenu qu'elle documente ;
     seule sa fiche parente le connait, via la source qui la designe
     (``Source.linked_card_id``). On remonte donc l'information depuis la
-    bibliographie de qui la cite. La plus ancienne source non vide gagne, pour
-    que le graphe soit stable d'un appel a l'autre.
+    bibliographie de qui la cite.
+
+    Plusieurs fiches citent souvent le meme contenu, avec des listes d'auteurs
+    de qualite inegale selon la source d'extraction : « Kang » d'un cote,
+    « Kang W., Hernandez S., Rahman M. » de l'autre. La plus complete gagne,
+    la plus ancienne departageant a longueur egale pour que le graphe reste
+    stable d'un appel a l'autre.
     """
     if not card_ids:
         return {}
@@ -169,7 +174,10 @@ async def _load_card_authors(db: AsyncSession, card_ids: set[UUID]) -> dict[UUID
     for card_id, value in result.all():
         if card_id is None or not value or not value.strip():
             continue
-        authors.setdefault(card_id, value.strip())
+        candidate = value.strip()
+        current = authors.get(card_id)
+        if current is None or len(candidate) > len(current):
+            authors[card_id] = candidate
     return authors
 
 

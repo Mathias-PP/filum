@@ -12,6 +12,7 @@ from app.models.biblio_card import BiblioCard, CardStatus
 from app.models.source import ArchiveStatus, AuthorKind, Source
 from app.models.user import User
 from app.schemas.biblio_card import CardCreate, CardStats
+from app.services.card_link import link_sources_designating_card
 
 settings = get_settings()
 
@@ -142,6 +143,11 @@ class CardService:
         now = datetime.now(UTC).replace(tzinfo=None)
         card.published_at = now
         card.status = CardStatus.PUBLISHED
+
+        # La fiche vient d'exister publiquement : les references deja saisies
+        # ailleurs vers le meme contenu la designent desormais. Sans ce
+        # rattrapage elles resteraient isolees sur le meta-graphe.
+        await link_sources_designating_card(self._db, card)
 
         await self._db.commit()
 
