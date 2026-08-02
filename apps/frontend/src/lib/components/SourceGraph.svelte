@@ -131,6 +131,14 @@
     source?: GraphSourceData;
     /** Fiche portée par ce nœud (`kind === 'card'`). */
     cardMeta?: NeighborCard;
+    /**
+     * Référence bibliographique qui désigne cette fiche, absorbée par le nœud.
+     *
+     * Le nœud fiche remplace le nœud source pour ne pas montrer deux fois le
+     * même contenu ; sans cette reprise, les métadonnées de la référence
+     * (revue, DOI, date, extraits) devenaient inatteignables au clic.
+     */
+    absorbedSource?: GraphSourceData;
     /** Fiche à laquelle appartient ce nœud, pour le repli en cascade. */
     ownerCardId: string;
     /** Source dépliable : fiche visée non encore dépliée. */
@@ -489,10 +497,11 @@
     // atteignables depuis les sources affichées masquait les chaînes
     // A -> B -> C tant que B n'était pas dépliée, et tout le sens entrant.
     const cardNodeIds = new Map<string, string>([[card.id, cardId]]);
+    const cardNodeByCid = new Map<string, GraphNode>();
     for (const [cid, meta] of neighborCards) {
       const nodeId = `card:${cid}`;
       cardNodeIds.set(cid, nodeId);
-      nodes.push({
+      const node: GraphNode = {
         id: nodeId,
         kind: 'card',
         label: meta.title,
@@ -505,7 +514,9 @@
         fill: '#1e293b',
         stroke: '#6366f1',
         tier: 'card',
-      });
+      };
+      cardNodeByCid.set(cid, node);
+      nodes.push(node);
     }
 
     // Arêtes fiche → fiche : celles du backend font autorité, elles portent les
@@ -526,8 +537,14 @@
       if (!ownerNodeId) continue;
       for (const s of sourcesOf(ownerId)) {
         // La source EST cette fiche : elle est déjà rendue comme nœud fiche,
-        // relié par l'arête ci-dessus. Un nœud source ferait doublon.
-        if (s.linked_card_id && cardNodeIds.has(s.linked_card_id)) continue;
+        // relié par l'arête ci-dessus. Un nœud source ferait doublon. Le nœud
+        // fiche reprend la référence pour que son encadré reste ouvrable ; la
+        // première rencontrée gagne, l'ordre des sources étant stable.
+        if (s.linked_card_id && cardNodeIds.has(s.linked_card_id)) {
+          const target = cardNodeByCid.get(s.linked_card_id);
+          if (target && !target.absorbedSource) target.absorbedSource = s;
+          continue;
+        }
         const colors = sourceColor(s, colorMode);
         const isSecondary = s.parent_source_id !== null;
         let radius = 14;
@@ -743,16 +760,17 @@
       .attr('class', 'node')
       .style('cursor', 'pointer')
       .on('click', (_event, d) => {
-        if (d.expandable) {
-          expandCard(d.expandable, d.id);
-        } else if (d.kind === 'source' && d.source) {
-          // Une source d'une fiche voisine ouvre le même encadré que celles de
-          // la racine, complété par `toSource`. Ouvrir directement un onglet
-          // sortait l'utilisateur du graphe sans qu'il l'ait demandé.
+        // Cliquer un nœud ouvre sa référence, qu'il soit rendu comme source ou
+        // comme fiche : une référence qui fait l'objet d'une fiche reste une
+        // référence, et son encadré doit rester atteignable. Déplier et replier
+        // passent par les pastilles, seule action que le nœud gagne à porter.
+        if (d.kind === 'source' && d.source) {
           selectSource(toSource(d.source), d);
-        } else if (d.kind === 'card' && d.cardMeta) {
-          collapseCard(d.cardMeta.id);
-        } else if (d.kind === 'card') {
+        } else if (d.absorbedSource) {
+          selectSource(toSource(d.absorbedSource), d);
+        } else if (d.expandable) {
+          expandCard(d.expandable, d.id);
+        } else {
           selectSource(null);
         }
       })
@@ -822,7 +840,13 @@
       .attr('cy', (d) => d.radius + 2)
       .attr('fill', '#6366f1')
       .attr('stroke', '#ffffff')
-      .attr('stroke-width', 1.5);
+      .attr('stroke-width', 1.5)
+      .on('click', (event, d) => {
+        // Sans arrêt de propagation, le clic remonterait au nœud et ouvrirait
+        // l'encadré à la place du dépliage annoncé par la pastille.
+        event.stopPropagation();
+        if (d.expandable) expandCard(d.expandable, d.id);
+      });
     expandableG
       .append('text')
       .attr('class', 'expand-badge-text')
@@ -835,6 +859,38 @@
       .attr('fill', '#ffffff')
       .style('pointer-events', 'none')
       .text((d) => `+${neighborCards.get(d.expandable!)?.sourcesCount ?? 0}`);
+
+    // Fiche dépliée : pastille « − » au même endroit, pour refermer. Le repli
+    // était porté par le clic sur le nœud ; il lui fallait une prise à lui
+    // depuis que ce clic ouvre l'encadré de la référence.
+    const collapsibleG = nodeG.filter(
+      (d) => !!d.cardMeta && expandedCardIds.includes(d.cardMeta.id)
+    );
+    collapsibleG
+      .append('circle')
+      .attr('class', 'collapse-badge')
+      .attr('r', 8)
+      .attr('cx', (d) => d.radius + 2)
+      .attr('cy', (d) => d.radius + 2)
+      .attr('fill', '#94a3b8')
+      .attr('stroke', '#ffffff')
+      .attr('stroke-width', 1.5)
+      .on('click', (event, d) => {
+        event.stopPropagation();
+        if (d.cardMeta) collapseCard(d.cardMeta.id);
+      });
+    collapsibleG
+      .append('text')
+      .attr('class', 'collapse-badge-text')
+      .attr('x', (d) => d.radius + 2)
+      .attr('y', (d) => d.radius + 2)
+      .attr('text-anchor', 'middle')
+      .attr('dominant-baseline', 'central')
+      .attr('font-size', 11)
+      .attr('font-weight', 700)
+      .attr('fill', '#ffffff')
+      .style('pointer-events', 'none')
+      .text('−');
 
     // Auteurs du contenu au-dessus du nœud fiche (visible dès zoom >= 0.7).
     nodeG
@@ -1394,7 +1450,7 @@
           {neighborCards.size} fiche{neighborCards.size > 1 ? 's' : ''} Philum reliée{neighborCards.size >
           1
             ? 's'
-            : ''} — cliquez sur un nœud cerclé pour la déplier.
+            : ''} — cliquez la pastille « + » pour déplier ses sources, le nœud pour voir sa référence.
         </p>
       {/if}
       {#if neighborhoodTruncated}
