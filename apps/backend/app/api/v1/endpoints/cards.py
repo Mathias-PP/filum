@@ -35,6 +35,7 @@ from app.services.card import CardService
 from app.services.card_graph import MAX_DEPTH, build_card_graph
 from app.services.citations import list_incoming_citations, mark_citations_seen
 from app.services.source_enrichment import schedule_source_enrichment
+from app.services.wayback import schedule_archiving
 
 logger = logging.getLogger(__name__)
 
@@ -397,6 +398,13 @@ async def get_public_card(
     ]
     if unchecked:
         schedule_source_enrichment(unchecked)
+
+    # Meme principe pour l'archivage : Save Page Now travaille en differe et
+    # peut n'avoir rien produit au moment de l'import. Sans cette reprise,
+    # `pending` serait un etat definitif deguise en attente.
+    unarchived = [(s.id, s.url) for s in card.sources if s.archive_status == "pending"]
+    if unarchived:
+        schedule_archiving(unarchived)
 
     # Badge "Fiche Philum" : enrichit chaque source liee a une autre fiche
     # avec le nombre de sources de cette fiche.
