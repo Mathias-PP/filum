@@ -434,6 +434,28 @@
     neighborhoodTruncated = graph.truncated;
   }
 
+  // Pastilles de dépliage/repli. Un disque de rayon fixe tronquait « +306 » :
+  // la pastille est une gélule dont la largeur suit le nombre affiché, et sa
+  // hauteur reste la même pour que les deux actions se ressemblent. La taille
+  // est aussi celle d'une cible tactile acceptable, ce qu'un disque de 8 px
+  // de rayon n'était pas.
+  const BADGE_HEIGHT = 18;
+  const BADGE_FONT_SIZE = 11;
+
+  function expandBadgeLabel(d: GraphNode): string {
+    return `+${neighborCards.get(d.expandable ?? '')?.sourcesCount ?? 0}`;
+  }
+
+  /** Largeur d'une gélule pour un libellé, en approximant l'avance des chiffres. */
+  function badgeWidth(label: string): number {
+    return Math.max(BADGE_HEIGHT, label.length * BADGE_FONT_SIZE * 0.62 + 10);
+  }
+
+  /** Bord gauche de la gélule : là où se tenait le disque, à la diagonale. */
+  function badgeX(d: GraphNode): number {
+    return d.radius + 2 - BADGE_HEIGHT / 2;
+  }
+
   /** Déplie la fiche visée par une source : ses propres sources apparaissent. */
   function expandCard(targetCardId: string, fromSourceId: string) {
     if (!neighborCards.has(targetCardId) || expandedCardIds.includes(targetCardId)) return;
@@ -833,11 +855,15 @@
       .attr('stroke-opacity', 0.6)
       .attr('stroke-dasharray', '3 3');
     expandableG
-      .append('circle')
+      .append('rect')
       .attr('class', 'expand-badge')
-      .attr('r', 8)
-      .attr('cx', (d) => d.radius + 2)
-      .attr('cy', (d) => d.radius + 2)
+      // La gélule part du point où se tenait le disque et s'allonge vers
+      // l'extérieur : la centrer ferait mordre « +306 » sur le nœud.
+      .attr('x', (d) => badgeX(d))
+      .attr('y', (d) => d.radius + 2 - BADGE_HEIGHT / 2)
+      .attr('width', (d) => badgeWidth(expandBadgeLabel(d)))
+      .attr('height', BADGE_HEIGHT)
+      .attr('rx', BADGE_HEIGHT / 2)
       .attr('fill', '#6366f1')
       .attr('stroke', '#ffffff')
       .attr('stroke-width', 1.5)
@@ -850,15 +876,15 @@
     expandableG
       .append('text')
       .attr('class', 'expand-badge-text')
-      .attr('x', (d) => d.radius + 2)
+      .attr('x', (d) => badgeX(d) + badgeWidth(expandBadgeLabel(d)) / 2)
       .attr('y', (d) => d.radius + 2)
       .attr('text-anchor', 'middle')
       .attr('dominant-baseline', 'central')
-      .attr('font-size', 8)
+      .attr('font-size', BADGE_FONT_SIZE)
       .attr('font-weight', 700)
       .attr('fill', '#ffffff')
       .style('pointer-events', 'none')
-      .text((d) => `+${neighborCards.get(d.expandable!)?.sourcesCount ?? 0}`);
+      .text(expandBadgeLabel);
 
     // Fiche dépliée : pastille « − » au même endroit, pour refermer. Le repli
     // était porté par le clic sur le nœud ; il lui fallait une prise à lui
@@ -867,11 +893,13 @@
       (d) => !!d.cardMeta && expandedCardIds.includes(d.cardMeta.id)
     );
     collapsibleG
-      .append('circle')
+      .append('rect')
       .attr('class', 'collapse-badge')
-      .attr('r', 8)
-      .attr('cx', (d) => d.radius + 2)
-      .attr('cy', (d) => d.radius + 2)
+      .attr('x', (d) => badgeX(d))
+      .attr('y', (d) => d.radius + 2 - BADGE_HEIGHT / 2)
+      .attr('width', BADGE_HEIGHT)
+      .attr('height', BADGE_HEIGHT)
+      .attr('rx', BADGE_HEIGHT / 2)
       .attr('fill', '#94a3b8')
       .attr('stroke', '#ffffff')
       .attr('stroke-width', 1.5)
@@ -882,11 +910,11 @@
     collapsibleG
       .append('text')
       .attr('class', 'collapse-badge-text')
-      .attr('x', (d) => d.radius + 2)
+      .attr('x', (d) => badgeX(d) + BADGE_HEIGHT / 2)
       .attr('y', (d) => d.radius + 2)
       .attr('text-anchor', 'middle')
       .attr('dominant-baseline', 'central')
-      .attr('font-size', 11)
+      .attr('font-size', BADGE_FONT_SIZE + 1)
       .attr('font-weight', 700)
       .attr('fill', '#ffffff')
       .style('pointer-events', 'none')
