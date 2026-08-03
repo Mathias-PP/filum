@@ -145,6 +145,14 @@ export interface Source {
   publisher?: string | null;
   doi?: string | null;
   conflict_of_interest: string | null;
+  /**
+   * Dérivé de Crossref, jamais saisi. `null` = jamais vérifié, ce qui ne se
+   * confond ni avec `none` (vérifié, aucun avis) ni avec `unverifiable`
+   * (vérification impossible, faute de DOI connu).
+   */
+  retraction_status?: RetractionStatus | null;
+  retraction_notice_doi?: string | null;
+  retraction_checked_at?: string | null;
   citations_count: number | null;
   subscribers_count: number | null;
   views_count: number | null;
@@ -286,6 +294,9 @@ export type ArchiveStatus = 'pending' | 'archived' | 'failed';
 
 /** Déclaratif, jamais inféré : l'auteur de la fiche l'affirme et en répond. */
 export type SourceStance = 'appuie' | 'nuance-contredit' | 'mentionne' | 'contexte';
+
+/** Verdict Crossref / Retraction Watch. Machine, jamais déclaratif. */
+export type RetractionStatus = 'none' | 'retracted' | 'concern' | 'corrected' | 'unverifiable';
 
 // --- Imports (biblio parsing → draft de fiche) -----------------------------
 

@@ -63,6 +63,21 @@ class SourceStance(str, Enum):
     CONTEXTE = "contexte"
 
 
+class RetractionStatus(str, Enum):
+    """Etat de l'article aux yeux de Crossref / Retraction Watch.
+
+    `NONE` (aucun avis, verifie) et `UNVERIFIABLE` (verification impossible)
+    sont deux affirmations differentes ; les confondre reviendrait a rassurer
+    le lecteur sans avoir rien verifie.
+    """
+
+    NONE = "none"
+    RETRACTED = "retracted"
+    CONCERN = "concern"
+    CORRECTED = "corrected"
+    UNVERIFIABLE = "unverifiable"
+
+
 class ArchiveStatus(str, Enum):
     PENDING = "pending"
     ARCHIVED = "archived"
@@ -166,6 +181,12 @@ class SourceResponse(BaseModel):
     # Enrichi uniquement sur l'endpoint public (nombre de sources de la fiche liee).
     linked_card_sources_count: int | None = None
     conflict_of_interest: str | None = None
+    # Derive de Crossref, jamais saisi : absent de SourceBase et SourceUpdate.
+    # NULL = jamais verifie, ce qui ne se confond ni avec « aucun avis » ni
+    # avec « non verifiable ».
+    retraction_status: RetractionStatus | None = None
+    retraction_notice_doi: str | None = None
+    retraction_checked_at: datetime | None = None
     journal: str | None = None
     volume: str | None = None
     pages: str | None = None

@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field, HttpUrl
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -17,6 +17,7 @@ from app.core.rate_limit import limiter
 from app.core.url_safety import UnsafeUrlError, assert_url_is_safe
 from app.db.database import async_session_maker, get_db
 from app.extractors import url_extractor
+from app.extractors.retraction import check_retraction
 from app.models.biblio_card import BiblioCard
 from app.models.source import Source
 from app.models.user import User
@@ -35,6 +36,39 @@ settings = get_settings()
 # Wayback archive job (source stuck in "pending"). Hold a strong reference
 # until the task completes.
 _background_tasks: set[asyncio.Task] = set()
+
+
+def _spawn(coro) -> None:
+    task = asyncio.create_task(coro)
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
+
+
+async def _check_retractions_bg(pairs: list[tuple[UUID, str | None]]) -> None:
+    """Interroge Crossref pour chaque source, puis persiste le verdict.
+
+    Sequentiel a dessein : un import peut creer 150 sources d'un coup, et
+    Crossref n'a aucune raison d'encaisser 150 requetes simultanees pour un
+    seul clic. Le lecteur, lui, attend le badge sur une page publique, pas
+    dans la seconde.
+    """
+    async with async_session_maker() as bg_db:
+        for source_id, doi in pairs:
+            try:
+                result = await check_retraction(doi)
+            except Exception as e:  # check_retraction ne leve pas, ceinture et bretelles
+                logger.warning("retraction check crashed for source=%s: %s", source_id, e)
+                continue
+            await bg_db.execute(
+                update(Source)
+                .where(Source.id == source_id)
+                .values(
+                    retraction_status=result.status.value,
+                    retraction_notice_doi=result.notice_doi,
+                    retraction_checked_at=datetime.now(UTC).replace(tzinfo=None),
+                )
+            )
+        await bg_db.commit()
 
 
 class ExtractResponse(BaseModel):
@@ -236,9 +270,12 @@ async def create_source(
                 wayback = WaybackService(bg_db, settings.wayback_api_key)
                 await wayback.archive_url(source_id_bg, source_url_bg)
 
-        task = asyncio.create_task(_archive_bg())
-        _background_tasks.add(task)
-        task.add_done_callback(_background_tasks.discard)
+        _spawn(_archive_bg())
+
+    # Verifie l'etat de retractation meme sans DOI : le verdict est alors
+    # « non verifiable », date, plutot qu'un silence indistinguable de
+    # « pas encore verifie ».
+    _spawn(_check_retractions_bg([(source.id, source.doi)]))
 
     return source
 
@@ -385,9 +422,12 @@ async def create_sources_batch(
                     wayback = WaybackService(bg_db, settings.wayback_api_key)
                     await wayback.archive_url(sid, surl)
 
-            task = asyncio.create_task(_archive_bg())
-            _background_tasks.add(task)
-            task.add_done_callback(_background_tasks.discard)
+            _spawn(_archive_bg())
+
+    # Une seule tache sequentielle pour tout le lot : 150 requetes Crossref
+    # simultanees pour un seul clic seraient impolies et se feraient jeter.
+    if created_full:
+        _spawn(_check_retractions_bg([(s.id, s.doi) for s in created_full]))
 
     return SourceBatchResponse(
         created=[SourceResponse.model_validate(s) for s in created_full],
@@ -468,11 +508,18 @@ async def update_source(
             update_data["archive_status"] = "pending"
             update_data["archive_timestamp"] = None
 
+    doi_changed = "doi" in update_data and (update_data["doi"] or None) != source.doi
+
     for field, value in update_data.items():
         setattr(source, field, value)
 
     await db.commit()
     await db.refresh(source)
+
+    # Un DOI corrige change ce qui est verifiable : l'ancien verdict ne dit
+    # plus rien de la source telle qu'elle est maintenant.
+    if doi_changed:
+        _spawn(_check_retractions_bg([(source.id, source.doi)]))
 
     return source
 

@@ -121,6 +121,13 @@ class Source(Base):
         index=True,
     )
     conflict_of_interest: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Avis de retractation (cf. extractors/retraction.py). Trois etats a ne pas
+    # confondre : NULL = jamais verifie, "unverifiable" = verification impossible,
+    # "none" = Crossref connait le DOI et ne signale rien. La date rend la
+    # troisieme affirmation datable, donc honnete.
+    retraction_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    retraction_notice_doi: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    retraction_checked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # Metadonnees bibliographiques optionnelles (exports BibTeX/CSL/APA).
     journal: Mapped[str | None] = mapped_column(String(300), nullable=True)
     volume: Mapped[str | None] = mapped_column(String(50), nullable=True)
