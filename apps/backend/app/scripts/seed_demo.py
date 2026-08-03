@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,7 +29,14 @@ from app.crypto.signing import Canonicalizer, SigningService
 from app.db.database import async_session_maker
 from app.models.biblio_card import BiblioCard, CardStatus, ContentType, Platform
 from app.models.content_attestation import ContentAttestation
-from app.models.source import ArchiveStatus, AuthorKind, Source, SourceCategory, SourceFormat
+from app.models.source import (
+    ArchiveStatus,
+    AuthorKind,
+    Source,
+    SourceCategory,
+    SourceFormat,
+    SourceStance,
+)
 from app.models.source_excerpt import SourceExcerpt
 from app.models.user import User
 
@@ -101,6 +108,10 @@ def _demo_sources() -> list[dict]:
             "url": "https://www.science.org/doi/10.1126/science.1067020",
             "title": "The Molecular Biology of Memory Storage: A Dialogue Between Genes and Synapses",
             "authors": "Eric R. Kandel",
+            "doi": "10.1126/science.1067020",
+            "journal": "Science",
+            "published_at": date(2001, 11, 2),
+            "stance": SourceStance.APPUIE.value,
             "format": SourceFormat.TEXTE.value,
             "category": SourceCategory.ARTICLE_SCIENTIFIQUE.value,
             "author_kind": AuthorKind.CHERCHEUR.value,
@@ -136,6 +147,10 @@ def _demo_sources() -> list[dict]:
             "url": "https://www.cell.com/current-biology/fulltext/S0960-9822(10)01007-0",
             "title": "The Hippocampus Plays a Selective Role in the Retrieval of Detailed Contextual Memories",
             "authors": "Brian J. Wiltgen et al.",
+            "doi": "10.1016/j.cub.2010.06.068",
+            "journal": "Current Biology",
+            "published_at": date(2010, 8, 10),
+            "stance": SourceStance.APPUIE.value,
             "format": SourceFormat.TEXTE.value,
             "category": SourceCategory.ARTICLE_SCIENTIFIQUE.value,
             "author_kind": AuthorKind.CHERCHEUR.value,
@@ -153,6 +168,10 @@ def _demo_sources() -> list[dict]:
             "url": "https://www.nature.com/articles/35021052",
             "title": "Fear Memories Require Protein Synthesis in the Amygdala for Reconsolidation After Retrieval",
             "authors": "Karim Nader, Glenn E. Schafe, Joseph E. LeDoux",
+            "doi": "10.1038/35021052",
+            "journal": "Nature",
+            "published_at": date(2000, 8, 17),
+            "stance": SourceStance.APPUIE.value,
             "format": SourceFormat.TEXTE.value,
             "category": SourceCategory.ARTICLE_SCIENTIFIQUE.value,
             "author_kind": AuthorKind.CHERCHEUR.value,
@@ -173,6 +192,10 @@ def _demo_sources() -> list[dict]:
             "url": "https://www.nature.com/articles/nature11028",
             "title": "Optogenetic Stimulation of a Hippocampal Engram Activates Fear Memory Recall",
             "authors": "Xu Liu, Steve Ramirez, Susumu Tonegawa et al.",
+            "doi": "10.1038/nature11028",
+            "journal": "Nature",
+            "published_at": date(2012, 3, 22),
+            "stance": SourceStance.APPUIE.value,
             "format": SourceFormat.TEXTE.value,
             "category": SourceCategory.ARTICLE_SCIENTIFIQUE.value,
             "author_kind": AuthorKind.CHERCHEUR.value,
@@ -199,6 +222,10 @@ def _demo_sources() -> list[dict]:
             "url": "https://learnmem.cshlp.org/content/12/4/361.full",
             "title": "Planting Misinformation in the Human Mind: A 30-Year Investigation of the Misinformation Effect",
             "authors": "Elizabeth F. Loftus",
+            "doi": "10.1101/lm.94705",
+            "journal": "Learning & Memory",
+            "published_at": date(2005, 7, 1),
+            "stance": SourceStance.NUANCE_CONTREDIT.value,
             "format": SourceFormat.TEXTE.value,
             "category": SourceCategory.ARTICLE_SCIENTIFIQUE.value,
             "author_kind": AuthorKind.CHERCHEUR.value,
@@ -264,6 +291,7 @@ def _demo_sources() -> list[dict]:
             "url": "https://www.inserm.fr/dossier/memoire/",
             "title": "Mémoire : Quand nos souvenirs façonnent notre cerveau",
             "authors": "Inserm",
+            "published_at": date(2017, 6, 23),
             "format": SourceFormat.TEXTE.value,
             "category": SourceCategory.PAGE_WEB.value,
             "author_kind": AuthorKind.LABORATOIRE.value,
@@ -282,6 +310,8 @@ def _demo_sources() -> list[dict]:
             ),
             "title": "Light-Triggered Genes Reveal the Hidden Workings of Memory",
             "authors": "Elizabeth Svoboda — Quanta Magazine",
+            "published_at": date(2017, 12, 14),
+            "stance": SourceStance.MENTIONNE.value,
             "format": SourceFormat.TEXTE.value,
             "category": SourceCategory.ARTICLE_PRESSE.value,
             "author_kind": AuthorKind.MEDIA.value,
@@ -329,6 +359,8 @@ def _demo_sources() -> list[dict]:
             "url": "https://time.com/6171190/new-science-of-forgetting/",
             "title": "The New Science of Forgetting",
             "authors": "Corinne Purtill — TIME",
+            "published_at": date(2022, 4, 28),
+            "stance": SourceStance.MENTIONNE.value,
             "format": SourceFormat.TEXTE.value,
             "category": SourceCategory.ARTICLE_PRESSE.value,
             "author_kind": AuthorKind.MEDIA.value,
@@ -368,15 +400,15 @@ def _demo_sources() -> list[dict]:
             ),
         },
         {
-            "url": "https://lea-marchand.filum.app/notes/tonegawa-tokyo-2024",
-            "title": "Notes de tournage : interview Susumu Tonegawa, Tokyo, mars 2024",
-            "authors": "Léa Marchand",
+            "url": "https://tonegawalab.mit.edu/susumu-tonegawa/",
+            "title": "Susumu Tonegawa — Picower Institute, MIT",
+            "authors": "Tonegawa Lab, MIT",
             "format": SourceFormat.TEXTE.value,
-            "category": SourceCategory.NOTES.value,
-            "author_kind": AuthorKind.INDIVIDU.value,
+            "category": SourceCategory.PAGE_WEB.value,
+            "author_kind": AuthorKind.LABORATOIRE.value,
             "annotation": (
-                "Notes personnelles prises pendant l'interview de Tonegawa. "
-                "Citations brutes utilisées dans la vidéo en voix off."
+                "Page du laboratoire dont sont issus les travaux sur l'engramme. "
+                "Sert de rattachement institutionnel à l'article de 2012."
             ),
             "is_pivot": False,
             "parent_index": None,
@@ -458,16 +490,16 @@ def _demo_sources() -> list[dict]:
             ),
         },
         {
-            "url": "https://lea-marchand.filum.app/notes/loftus-interview-2025",
-            "title": "Compte-rendu : entretien avec Elizabeth Loftus sur les faux souvenirs",
-            "authors": "Léa Marchand",
+            "url": "https://www.faculty.uci.edu/profile/?facultyId=4901",
+            "title": "Elizabeth F. Loftus — University of California, Irvine",
+            "authors": "University of California, Irvine",
             "format": SourceFormat.TEXTE.value,
-            "category": SourceCategory.NOTES.value,
-            "author_kind": AuthorKind.INDIVIDU.value,
+            "category": SourceCategory.PAGE_WEB.value,
+            "author_kind": AuthorKind.ECOLE.value,
             "annotation": (
-                "Notes personnelles prises lors d'un entretien informel avec Loftus "
-                "après une conférence à Paris en 2025. Échanges sur l'éthique "
-                "et la controverse autour de ses expertises judiciaires."
+                "Page institutionnelle de l'auteure de la synthèse sur les faux "
+                "souvenirs. Permet de rattacher la source à son affiliation, "
+                "et de replacer ses expertises judiciaires dans son parcours."
             ),
             "is_pivot": False,
             "parent_index": None,
@@ -476,6 +508,8 @@ def _demo_sources() -> list[dict]:
             "url": "https://commons.wikimedia.org/wiki/File:CajalHippocampus.jpeg",
             "title": "Dessin du circuit neuronal de l'hippocampe — Santiago Ramón y Cajal, 1911",
             "authors": "Santiago Ramón y Cajal",
+            "stance": SourceStance.CONTEXTE.value,
+            "published_at": date(1911, 1, 1),
             "format": SourceFormat.IMAGE.value,
             "category": SourceCategory.PAGE_WEB.value,
             "author_kind": AuthorKind.CHERCHEUR.value,
@@ -552,6 +586,16 @@ async def _get_or_create_demo_card(
             author_kind=src["author_kind"],
             annotation=src["annotation"],
             is_pivot=src["is_pivot"],
+            # Metadonnees verifiees (Crossref pour les DOI, extraction pour le
+            # reste). Sans elles, la fiche vitrine n'affichait que des absences :
+            # aucune date, donc tous les noeuds « s. d. » et une frise vide ;
+            # aucun DOI, donc « non verifiable » partout sur l'acces libre et la
+            # retractation. Les huit sources sans date le restent : une date
+            # inventee vaudrait moins qu'un « s. d. » assume.
+            doi=src.get("doi"),
+            journal=src.get("journal"),
+            published_at=src.get("published_at"),
+            stance=src.get("stance"),
             archive_url=manual_archive,
             archive_status=(
                 ArchiveStatus.ARCHIVED.value if manual_archive else ArchiveStatus.PENDING.value
