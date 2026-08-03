@@ -14,7 +14,7 @@
     {
       method: 'GET',
       path: '/@{createur}/{fiche}/export?format=…',
-      desc: 'Export de la bibliographie. Formats : json, csv, bibtex, markdown (Obsidian), xlsx, docx.',
+      desc: 'Export de la bibliographie. Formats : json, csv, bibtex, ris, csl, apa, markdown (Obsidian), xlsx, docx.',
       example: `${API_BASE}/@example/memoire-et-cerveau/export?format=bibtex`,
     },
     {

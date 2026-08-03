@@ -440,6 +440,7 @@ _EXPORT_FORMATS = {
         "xlsx",
     ),
     "bibtex": ("application/x-bibtex; charset=utf-8", "bib"),
+    "ris": ("application/x-research-info-systems; charset=utf-8", "ris"),
     "csl": ("application/vnd.citationstyles.csl+json; charset=utf-8", "csl.json"),
     "apa": ("text/plain; charset=utf-8", "apa.txt"),
     "markdown": ("text/markdown; charset=utf-8", "md"),
@@ -487,6 +488,8 @@ async def export_public_card(
         content = export_service.export_xlsx(card)
     elif format == "bibtex":
         content = export_service.export_bibtex(card)
+    elif format == "ris":
+        content = export_service.export_ris(card)
     elif format == "csl":
         content = export_service.export_csl_json(card)
     elif format == "apa":
