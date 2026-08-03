@@ -253,6 +253,7 @@ async def build_card_graph(
                     creator_slug=username,
                     creator_name=display_name,
                     sources_count=counts.get(card_id, 0),
+                    authors=card.content_authors,
                     is_seed=bool(card.is_seed),
                 )
             )
@@ -326,11 +327,15 @@ async def build_card_graph(
                 )
             )
 
-    card_nodes = [n for n in graph.nodes if n.kind == "card"]
-    real_authors = await _load_card_authors(
-        db, {UUID(n.id.removeprefix("card:")) for n in card_nodes}
-    )
-    for node in card_nodes:
-        node.authors = real_authors.get(UUID(node.id.removeprefix("card:")))
+    # Les fiches qui declarent les auteurs de leur contenu font foi. Pour les
+    # autres, on reconstitue depuis la bibliographie de qui les cite -- ce qui
+    # ne donne rien si personne ne les cite, d'ou la declaration.
+    card_nodes = [n for n in graph.nodes if n.kind == "card" and not n.authors]
+    if card_nodes:
+        real_authors = await _load_card_authors(
+            db, {UUID(n.id.removeprefix("card:")) for n in card_nodes}
+        )
+        for node in card_nodes:
+            node.authors = real_authors.get(UUID(node.id.removeprefix("card:")))
 
     return graph

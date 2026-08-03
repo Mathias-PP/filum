@@ -20,6 +20,10 @@
   let slug = $state('');
   let description = $state('');
   let contentUrl = $state('');
+  // Auteurs du contenu documenté — pas ceux de la fiche. Sans eux, le nœud de
+  // la fiche dans le graphe ne peut s'annoncer que sous le nom de son créateur
+  // Philum, laissant croire qu'il est l'auteur de ce qu'elle documente.
+  let contentAuthors = $state('');
   let platform = $state<Platform>('other');
   let contentType = $state<ContentType>('other');
   let isAuthor = $state(false);
@@ -42,6 +46,7 @@
       slugManual = true;
       description = card.description ?? '';
       contentUrl = card.content_url ?? '';
+      contentAuthors = card.content_authors ?? '';
       lastSuggestedUrl = contentUrl;
       platform = card.platform;
       contentType = card.content_type;
@@ -113,6 +118,9 @@
       if (meta.description && (overwriteOnSuggest || !description.trim())) {
         description = meta.description;
       }
+      if (meta.authors && (overwriteOnSuggest || !contentAuthors.trim())) {
+        contentAuthors = meta.authors.slice(0, 500);
+      }
       const guess = guessPlatform(trimmed);
       if (overwriteOnSuggest || platform === 'other') platform = guess.platform;
       if (overwriteOnSuggest || contentType === 'other') contentType = guess.contentType;
@@ -162,6 +170,9 @@
           title,
           description: description || undefined,
           content_url: contentUrl || undefined,
+          // Chaîne vide transmise à dessein : elle efface les auteurs et rend
+          // la main à la reconstitution depuis les fiches citantes.
+          content_authors: contentAuthors.trim(),
           platform,
           content_type: contentType,
           is_seed: !isAuthor,
@@ -174,6 +185,7 @@
           slug,
           description: description || undefined,
           content_url: contentUrl || undefined,
+          content_authors: contentAuthors.trim() || undefined,
           platform,
           content_type: contentType,
           is_seed: !isAuthor,
@@ -368,6 +380,25 @@
         placeholder="Ex: La mémoire et le cerveau — ce que dit la science"
         class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
       />
+    </div>
+
+    <div class="space-y-1.5">
+      <label for="content-authors" class="block text-sm font-medium text-ink-secondary">
+        Auteurs du contenu
+      </label>
+      <input
+        id="content-authors"
+        type="text"
+        value={contentAuthors}
+        oninput={(e) => (contentAuthors = (e.target as HTMLInputElement).value)}
+        maxlength={500}
+        placeholder="Ex: Diamond A., Ling D.S."
+        class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
+      />
+      <p class="text-xs text-ink-tertiary">
+        Qui a écrit ou réalisé le contenu documenté — pas qui publie la fiche. C'est ce nom qui
+        identifie la fiche dans le graphe des sources.
+      </p>
     </div>
 
     <div class="space-y-1.5">
