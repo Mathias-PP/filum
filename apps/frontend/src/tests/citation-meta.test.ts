@@ -29,6 +29,7 @@ const baseSource: Source = {
   category: 'page-web',
   author_kind: 'individu',
   annotation: null,
+  stance: null,
   is_pivot: false,
   archive_status: 'pending',
   archive_url: null,

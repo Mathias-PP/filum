@@ -15,8 +15,10 @@
     SourceCategory,
     SourceExcerpt,
     SourceFormat,
+    SourceStance,
     SuggestedExcerpt,
   } from '$lib/api';
+  import { STANCE_ORDER, STANCE_STYLES } from '$lib/utils/stance';
 
   const wizardSteps = [
     { label: 'Informations', description: 'Titre, plateforme', clickable: true },
@@ -45,6 +47,9 @@
   let sourceTitle = $state('');
   let authors = $state('');
   let annotation = $state('');
+  // '' = non déclaré. Distinct de « mentionne » : l'un est un silence, l'autre
+  // une réponse. Le sélecteur ne doit donc pas avoir de valeur par défaut.
+  let stance = $state<SourceStance | ''>('');
   let isPivot = $state(false);
   // Optional manual archive URL (e.g. a Wayback snapshot the user already has).
   // When empty, the backend auto-archives via Wayback Save Page Now.
@@ -152,6 +157,7 @@
     sourceTitle = '';
     authors = '';
     annotation = '';
+    stance = '';
     isPivot = false;
     parentSourceId = '';
     parentSourceQuery = '';
@@ -183,6 +189,7 @@
     sourceTitle = source.title ?? '';
     authors = source.authors ?? '';
     annotation = source.annotation ?? '';
+    stance = source.stance ?? '';
     isPivot = source.is_pivot;
     parentSourceId = source.parent_source_id ?? '';
     parentSourceQuery = '';
@@ -301,6 +308,7 @@
           title: sourceTitle || undefined,
           authors: authors || undefined,
           annotation: annotation || undefined,
+          stance: stance || null,
           is_pivot: isPivot,
           parent_source_id: parentSourceId || null,
           linked_card_id: linkedCardId || null,
@@ -323,6 +331,7 @@
           title: sourceTitle || undefined,
           authors: authors || undefined,
           annotation: annotation || undefined,
+          stance: stance || undefined,
           is_pivot: isPivot,
           parent_source_id: parentSourceId || undefined,
           linked_card_id: linkedCardId || undefined,
@@ -1624,6 +1633,41 @@
             placeholder="Pourquoi cette source est-elle importante ?"
             class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary resize-y min-h-[3rem]"
           ></textarea>
+        </div>
+
+        <div class="sm:col-span-2 space-y-1.5">
+          <span class="block text-sm font-medium text-ink-secondary">
+            Rapport au propos <span class="text-ink-tertiary font-normal">(optionnel)</span>
+            <span class="text-xs text-ink-tertiary font-normal block mt-0.5">
+              Vous seul pouvez le dire : Philum ne le devine pas. Laisser vide si vous ne souhaitez
+              pas vous prononcer.
+            </span>
+          </span>
+          <div class="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onclick={() => (stance = '')}
+              aria-pressed={stance === ''}
+              class="px-3 py-1.5 text-sm rounded-full border transition-colors {stance === ''
+                ? 'border-ink-primary bg-surface-secondary text-ink-primary'
+                : 'border-border text-ink-tertiary hover:border-border-strong'}"
+            >
+              Non déclaré
+            </button>
+            {#each STANCE_ORDER as key (key)}
+              <button
+                type="button"
+                onclick={() => (stance = key)}
+                aria-pressed={stance === key}
+                title={STANCE_STYLES[key].help}
+                class="px-3 py-1.5 text-sm rounded-full border transition-colors {stance === key
+                  ? 'border-transparent ' + STANCE_STYLES[key].bgClass
+                  : 'border-border text-ink-tertiary hover:border-border-strong'}"
+              >
+                {STANCE_STYLES[key].label}
+              </button>
+            {/each}
+          </div>
         </div>
 
         <div class="sm:col-span-2 space-y-1.5">

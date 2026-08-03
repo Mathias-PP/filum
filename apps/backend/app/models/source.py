@@ -55,6 +55,20 @@ class AuthorKind(str, Enum):
     INDIVIDU = "individu"
 
 
+class SourceStance(str, Enum):
+    """Rapport declare entre le propos du contenu et ce que dit la source.
+
+    Declaratif, jamais infere : c'est l'auteur de la fiche qui l'affirme et en
+    repond. NULL reste la valeur normale -- une bibliographie non annotee vaut
+    mieux qu'une bibliographie annotee au hasard.
+    """
+
+    APPUIE = "appuie"
+    NUANCE_CONTREDIT = "nuance-contredit"
+    MENTIONNE = "mentionne"
+    CONTEXTE = "contexte"
+
+
 class ArchiveStatus(str, Enum):
     PENDING = "pending"
     ARCHIVED = "archived"
@@ -84,6 +98,9 @@ class Source(Base):
     category: Mapped[str] = mapped_column(String(40), nullable=False)
     author_kind: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
     annotation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Rapport declare au propos (cf. SourceStance). NULL = non declare, ce qui
+    # se distingue de « mentionne » : l'un est un silence, l'autre une reponse.
+    stance: Mapped[str | None] = mapped_column(String(20), nullable=True)
     is_pivot: Mapped[bool] = mapped_column(default=False)
     archive_status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
     archive_url: Mapped[str | None] = mapped_column(String(2000), nullable=True)

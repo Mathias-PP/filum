@@ -50,6 +50,19 @@ class AuthorKind(str, Enum):
     INDIVIDU = "individu"
 
 
+class SourceStance(str, Enum):
+    """Rapport declare entre le propos du contenu et ce que dit la source.
+
+    Declaratif, jamais infere. `None` (non declare) n'est pas `MENTIONNE` :
+    l'un est un silence, l'autre une reponse.
+    """
+
+    APPUIE = "appuie"
+    NUANCE_CONTREDIT = "nuance-contredit"
+    MENTIONNE = "mentionne"
+    CONTEXTE = "contexte"
+
+
 class ArchiveStatus(str, Enum):
     PENDING = "pending"
     ARCHIVED = "archived"
@@ -69,6 +82,7 @@ class SourceBase(BaseModel):
     category: SourceCategory
     author_kind: AuthorKind
     annotation: str | None = Field(default=None, max_length=500)
+    stance: SourceStance | None = None
     is_pivot: bool = False
     parent_source_id: UUID | None = None
     # Fiche Philum que cette source designe (meta-graphe). Choisie au picker ou
@@ -105,6 +119,7 @@ class SourceUpdate(BaseModel):
     category: SourceCategory | None = None
     author_kind: AuthorKind | None = None
     annotation: str | None = None
+    stance: SourceStance | None = None
     is_pivot: bool | None = None
     parent_source_id: UUID | None = None
     linked_card_id: UUID | None = None
@@ -139,6 +154,7 @@ class SourceResponse(BaseModel):
     category: SourceCategory
     author_kind: AuthorKind
     annotation: str | None
+    stance: SourceStance | None = None
     is_pivot: bool
     archive_status: ArchiveStatus
     archive_url: str | None

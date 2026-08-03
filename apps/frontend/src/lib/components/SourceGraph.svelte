@@ -16,7 +16,14 @@
   import { onDestroy, onMount } from 'svelte';
 
   import { api } from '$lib/api';
-  import type { AuthorKind, CardDetail, Source, SourceCategory, SourceFormat } from '$lib/api';
+  import type {
+    AuthorKind,
+    CardDetail,
+    Source,
+    SourceCategory,
+    SourceFormat,
+    SourceStance,
+  } from '$lib/api';
   import {
     AUTHOR_COLORS,
     CATEGORY_COLORS,
@@ -30,6 +37,7 @@
   } from '$lib/utils/author-colors';
   import { cardNodeLabel } from '$lib/utils/card-label';
   import { buildHaystack, matchesAllTerms, searchTerms } from '$lib/utils/graph-search';
+  import { STANCE_ORDER, STANCE_STYLES, stanceStroke } from '$lib/utils/stance';
   import CardDetailPanel, { type CardPanelInfo } from './CardDetailPanel.svelte';
   import SourceDetailPanel from './SourceDetailPanel.svelte';
 
@@ -41,6 +49,9 @@
   let { card, onSelect }: Props = $props();
 
   type NodeKind = 'card' | 'source' | 'junction';
+
+  /** Arête fiche → fiche : origine, cible, rapport déclaré. */
+  type CardLink = [string, string, SourceStance | null];
 
   /**
    * Méta-graphe. Une source dont l'URL vise une autre fiche Philum porte
@@ -79,6 +90,8 @@
     doi: string | null;
     parent_source_id: string | null;
     linked_card_id: string | null;
+    /** Rapport déclaré au propos : colore le trait qui mène à la source. */
+    stance: SourceStance | null;
     /** Présente uniquement pour les sources de la fiche racine. */
     full?: Source;
   }
@@ -103,6 +116,7 @@
         category: s.category,
         author_kind: s.author_kind,
         annotation: null,
+        stance: s.stance,
         is_pivot: s.is_pivot,
         archive_status: 'pending',
         archive_url: null,
@@ -159,6 +173,8 @@
     source: string | GraphNode;
     target: string | GraphNode;
     kind: 'card' | 'parent' | 'sibling' | 'meta';
+    /** Rapport déclaré par la source qui porte l'arête, s'il y en a un. */
+    stance?: SourceStance | null;
     forkHide?: true;
   }
 
@@ -197,7 +213,7 @@
   // viennent du méta-graphe quand une autre fiche la cite.
   let rootAuthors = $state<string | null>(null);
   // Arêtes fiche → fiche du voisinage, dans les deux sens.
-  let cardLinks = $state<[string, string][]>([]);
+  let cardLinks = $state<CardLink[]>([]);
   let neighborSources = new Map<string, GraphSourceData[]>();
   let expandedCardIds = $state<string[]>([]);
   let neighborhoodTruncated = $state(false);
@@ -236,6 +252,7 @@
       doi: s.doi ?? null,
       parent_source_id: s.parent_source_id,
       linked_card_id: s.linked_card_id ?? null,
+      stance: s.stance ?? null,
       full: s,
     }))
   );
@@ -255,6 +272,17 @@
       if (!seen.has(c.label)) seen.set(c.label, c);
     }
     return [...seen.values()];
+  });
+
+  // Légende des traits. Absente tant qu'aucune source n'a de rapport déclaré :
+  // une légende qui explique une couleur invisible n'apprend rien et occupe la
+  // place sur les fiches — la majorité — qui n'annotent pas leur bibliographie.
+  const stanceLegend = $derived.by(() => {
+    const present = new Set(visibleSources.map((s) => s.stance).filter(Boolean));
+    return STANCE_ORDER.filter((k) => present.has(k)).map((k) => ({
+      key: k,
+      ...STANCE_STYLES[k],
+    }));
   });
 
   // Densité. Sur une fiche de 152 sources, des cercles de taille fixe se
@@ -403,6 +431,7 @@
           doi: n.doi ?? null,
           parent_source_id: null,
           linked_card_id: n.linked_card_id ?? null,
+          stance: (n.stance ?? null) as SourceStance | null,
         });
       }
     }
@@ -411,9 +440,10 @@
     // que la racine cite, jamais qui la cite ni les maillons plus lointains.
     cardLinks = graph.edges
       .filter((e) => e.kind === 'is_card')
-      .map((e): [string, string] => [
+      .map((e): CardLink => [
         e.source.slice('card:'.length),
         e.target.slice('card:'.length),
+        (e.stance ?? null) as SourceStance | null,
       ]);
     // Les arêtes `cites` donnent l'appartenance source → fiche, dans l'ordre de
     // position renvoyé par le backend.
@@ -549,14 +579,14 @@
     // Arêtes fiche → fiche : celles du backend font autorité, elles portent les
     // deux sens et les sauts que les sources visibles ne révèlent pas.
     const seenCardLinks = new Set<string>();
-    for (const [from, to] of cardLinks) {
+    for (const [from, to, stance] of cardLinks) {
       const a = cardNodeIds.get(from);
       const b = cardNodeIds.get(to);
       if (!a || !b || a === b) continue;
       const key = `${a}|${b}`;
       if (seenCardLinks.has(key)) continue;
       seenCardLinks.add(key);
-      links.push({ source: a, target: b, kind: 'meta' });
+      links.push({ source: a, target: b, kind: 'meta', stance });
     }
 
     for (const ownerId of ownerIds) {
@@ -592,9 +622,14 @@
         });
 
         if (isSecondary && s.parent_source_id) {
-          links.push({ source: s.id, target: s.parent_source_id, kind: 'parent' });
+          links.push({
+            source: s.id,
+            target: s.parent_source_id,
+            kind: 'parent',
+            stance: s.stance,
+          });
         } else {
-          links.push({ source: ownerNodeId, target: s.id, kind: 'card' });
+          links.push({ source: ownerNodeId, target: s.id, kind: 'card', stance: s.stance });
         }
 
         if (s.authors && s.authors.trim().length > 0) {
@@ -629,7 +664,7 @@
             (l.source === pidStr && l.target === s.id) || (l.source === s.id && l.target === pidStr)
         );
         if (idx !== -1) (links[idx] as GraphLink & { forkHide: true }).forkHide = true;
-        links.push({ source: jxId, target: s.id, kind: linkKind });
+        links.push({ source: jxId, target: s.id, kind: linkKind, stance: s.stance });
       }
       forks.push({ junctionId: jxId, parentId: pidStr, childIds: group.map((s) => s.id) });
       if (group.length >= 2) {
@@ -789,17 +824,24 @@
       .data(links)
       .join('line')
       .attr('class', 'link')
-      .attr('stroke', (d) => (d.kind === 'meta' ? '#6366f1' : '#94a3b8'))
+      // Le rapport déclaré prime : voir d'un coup d'œil ce qui contredit le
+      // propos est le seul intérêt de l'annoter. Sans rapport, le trait garde
+      // sa couleur d'origine.
+      .attr('stroke', (d) =>
+        d.stance ? stanceStroke(d.stance) : d.kind === 'meta' ? '#6366f1' : '#94a3b8'
+      )
       .attr('stroke-opacity', (d) => {
         if ((d as any).forkHide) return 0;
         if (d.kind === 'sibling') return 0;
         if (d.kind === 'meta') return 0.85;
+        if (d.stance) return 0.9;
         return d.kind === 'parent' ? 0.5 : 0.7;
       })
       .attr('stroke-width', (d) => {
         if ((d as any).forkHide) return 0;
         if (d.kind === 'sibling') return 0;
         if (d.kind === 'meta') return 2.5;
+        if (d.stance) return 2.5;
         return d.kind === 'parent' ? 1 : 1.5;
       })
       .attr('stroke-dasharray', (d) => (d.kind === 'parent' ? '4 3' : null))
@@ -1495,6 +1537,16 @@
         {c.label}
       </span>
     {/each}
+    {#if stanceLegend.length > 0}
+      <span class="w-px h-3 bg-slate-200" aria-hidden="true"></span>
+      {#each stanceLegend as s (s.key)}
+        <span class="inline-flex items-center gap-1.5 text-slate-700" title={s.help}>
+          <span class="inline-block w-3.5 h-0.5 rounded-full" style:background-color={s.stroke}
+          ></span>
+          {s.label}
+        </span>
+      {/each}
+    {/if}
   </div>
 
   {#if neighborCards.size > 0}

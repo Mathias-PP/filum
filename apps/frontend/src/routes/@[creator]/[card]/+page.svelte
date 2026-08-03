@@ -17,6 +17,7 @@
     categoryLabel,
   } from '$lib/utils/author-colors';
   import { cardHighwireTags, sourceCoins } from '$lib/utils/citation-meta';
+  import { STANCE_STYLES } from '$lib/utils/stance';
   import { slide } from 'svelte/transition';
   import { page } from '$app/stores';
   import { currentUser } from '$lib/stores/auth';
@@ -446,6 +447,15 @@
                       <AuthorKindBadge kind={source.author_kind} />
                       <FormatBadge format={source.format} />
                       <CategoryBadge category={source.category} />
+                      {#if source.stance}
+                        {@const st = STANCE_STYLES[source.stance]}
+                        <span
+                          class="px-2 py-0.5 text-xs rounded-full {st.bgClass}"
+                          title="Déclaré par l'auteur de la fiche — {st.help}"
+                        >
+                          {st.label}
+                        </span>
+                      {/if}
                       {#if source.is_pivot}
                         <span
                           class="px-2 py-0.5 text-xs bg-amber-100 text-amber-800 rounded-full"

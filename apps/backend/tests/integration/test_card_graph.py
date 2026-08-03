@@ -60,6 +60,7 @@ def _source(
     journal=None,
     publisher=None,
     doi=None,
+    stance=None,
 ):
     from app.models.source import Source
 
@@ -78,6 +79,7 @@ def _source(
         journal=journal,
         publisher=publisher,
         doi=doi,
+        stance=stance,
     )
 
 
@@ -106,6 +108,7 @@ async def chain(db_session, test_user):
                 journal="World Psychiatry",
                 publisher="Wiley",
                 doi="10.1002/wps.21122",
+                stance="appuie",
             ),
             _source(
                 a.id,
@@ -114,6 +117,7 @@ async def chain(db_session, test_user):
                 position=1,
                 linked_card_id=b.id,
                 authors="Doe, J.; Roe, R.",
+                stance="nuance-contredit",
             ),
             _source(
                 b.id, "http://test/@testuser/fiche-c", "Fiche C", position=0, linked_card_id=c.id
@@ -395,3 +399,38 @@ async def test_unknown_card_returns_404(client):
 async def test_depth_is_capped(client, chain):
     r = await client.get("/api/v1/@testuser/fiche-a/graph?depth=99")
     assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_stance_travels_on_the_source_node_and_its_edge(client, chain):
+    """Le rapport declare doit atteindre le trait, pas seulement le noeud.
+
+    Colorer l'arete est tout l'interet : reperer d'un coup d'oeil ce qui
+    contredit le propos evite d'ouvrir trente sources une par une.
+    """
+    r = await client.get("/api/v1/@testuser/fiche-a/graph?depth=1")
+    payload = r.json()
+    node = next(n for n in payload["nodes"] if n["title"] == "Source ordinaire de A")
+    assert node["stance"] == "appuie"
+    edge = next(e for e in payload["edges"] if e["target"] == node["id"])
+    assert edge["stance"] == "appuie"
+
+
+@pytest.mark.asyncio
+async def test_stance_survives_the_collapse_of_a_linked_source_into_a_card_edge(client, chain):
+    """Une source qui designe une fiche disparait au profit d'une arete fiche
+    a fiche. Le rapport declare doit suivre, sinon l'annotation serait perdue
+    exactement sur les liens qui structurent le graphe."""
+    r = await client.get("/api/v1/@testuser/fiche-a/graph?depth=1")
+    payload = r.json()
+    edge = next(e for e in payload["edges"] if e["kind"] == "is_card")
+    assert edge["stance"] == "nuance-contredit"
+
+
+@pytest.mark.asyncio
+async def test_absent_stance_stays_null_rather_than_defaulting(client, chain):
+    """Non declare n'est pas « mentionne » : l'un est un silence, l'autre une
+    reponse. Un defaut inventerait une position que personne n'a prise."""
+    r = await client.get("/api/v1/@testuser/fiche-c/graph?depth=0")
+    node = next(n for n in r.json()["nodes"] if n["kind"] == "source")
+    assert node["stance"] is None
