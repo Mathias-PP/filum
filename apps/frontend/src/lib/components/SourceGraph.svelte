@@ -59,7 +59,6 @@
     creatorName: string | null;
     /** Auteurs réels du contenu documenté, remontés par le backend. */
     authors: string | null;
-    isSeed: boolean;
     sourcesCount: number;
   }
 
@@ -326,20 +325,18 @@
     return ids;
   });
 
-  /** Étiquette d'un nœud fiche : auteurs réels si la fiche n'est pas revendiquée. */
+  /** Étiquette d'un nœud fiche : les auteurs du contenu, le créateur faute de mieux. */
   function cardLabelOf(d: GraphNode): string {
     return d.cardMeta
       ? cardNodeLabel({
           authors: d.cardMeta.authors,
           creatorName: d.cardMeta.creatorName,
           creatorSlug: d.cardMeta.creatorSlug,
-          isSeed: d.cardMeta.isSeed,
         })
       : cardNodeLabel({
           authors: rootAuthors,
           creatorName: card.creator.display_name,
           creatorSlug: card.creator.slug,
-          isSeed: card.is_seed,
         });
   }
 
@@ -379,7 +376,6 @@
           creatorSlug: n.creator_slug ?? '',
           creatorName: n.creator_name ?? null,
           authors: n.authors ?? null,
-          isSeed: n.is_seed ?? false,
           sourcesCount: n.sources_count ?? 0,
         });
       } else {
@@ -498,8 +494,11 @@
         label: card.title,
         ownerCardId: card.id,
         radius: 28,
-        fill: '#1e293b',
-        stroke: '#0f172a',
+        // La fiche consultée se distingue de ses voisines par un fond indigo
+        // profond plutôt que par une étiquette : les autres nœuds fiche sont
+        // ardoise, et le lecteur retrouve d'un regard d'où part sa lecture.
+        fill: '#312e81',
+        stroke: '#a5b4fc',
         tier: 'card',
       },
     ];
@@ -829,6 +828,18 @@
       .attr('fill', (d) => d.fill)
       .attr('stroke', (d) => d.stroke)
       .attr('stroke-width', (d) => (d.kind === 'card' ? 3 : 2));
+
+    // Halo de la fiche consultée : un anneau plein, là où les fiches voisines
+    // portent un anneau pointillé ou pâle. Redondant avec la couleur du fond,
+    // à dessein — la distinction doit tenir même en vision des couleurs réduite.
+    nodeG
+      .filter((d) => d.id === cardId)
+      .insert('circle', ':first-child')
+      .attr('r', (d) => d.radius + 8)
+      .attr('fill', 'none')
+      .attr('stroke', '#a5b4fc')
+      .attr('stroke-width', 2)
+      .attr('stroke-opacity', 0.55);
 
     // Halo des fiches dépliées : elles ne sont pas des sources parmi d'autres,
     // ce sont des fiches Philum entières entrées dans le graphe. Les fiches

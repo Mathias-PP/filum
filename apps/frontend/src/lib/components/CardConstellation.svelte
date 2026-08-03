@@ -42,7 +42,7 @@
     title: string;
     slug: string;
     creatorSlug: string;
-    /** Étiquette principale : auteurs réels si la fiche n'est pas revendiquée. */
+    /** Étiquette principale : les auteurs du contenu, le créateur faute de mieux. */
     label: string;
     sourcesCount: number;
     depth: number;
@@ -108,7 +108,6 @@
               authors: n.authors,
               creatorName: n.creator_name,
               creatorSlug: n.creator_slug,
-              isSeed: n.is_seed,
             }),
             sourcesCount: n.sources_count ?? 0,
             depth: n.depth,
