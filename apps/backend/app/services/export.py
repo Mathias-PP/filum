@@ -10,10 +10,11 @@ from __future__ import annotations
 import csv
 import io
 import json
-import re
 import zipfile
 from typing import TYPE_CHECKING
 from xml.sax.saxutils import escape
+
+from app.services.csl import author_display, to_csl
 
 if TYPE_CHECKING:
     from app.models.biblio_card import BiblioCard
@@ -128,92 +129,109 @@ def _bibtex_escape(value: str) -> str:
     return value.replace("\\", "\\textbackslash{}").replace("{", "\\{").replace("}", "\\}")
 
 
-def _bibtex_key(source: Source, index: int) -> str:
-    base = source.authors or source.title or "source"
-    word = re.sub(r"[^A-Za-z0-9]", "", base.split(",")[0].split()[0]) or "source"
-    year = source.published_at.year if source.published_at else "nd"
-    return f"{word.lower()}{year}n{index}"
-
-
 def export_bibtex(card: BiblioCard) -> str:
     entries: list[str] = []
     for i, source in enumerate(card.sources, start=1):
+        item = to_csl(source, i)
         entry_type = _BIBTEX_TYPE_BY_CATEGORY.get(source.category, "misc")
         fields = {
-            "title": source.title or source.url,
-            "url": source.url,
+            "title": item["title"],
+            "url": item["URL"],
         }
-        if source.authors:
-            fields["author"] = source.authors
+        if item.get("author"):
+            # BibTeX veut « Famille, Prenom and Famille, Prenom » : c'est ce
+            # decoupage qui permet a LaTeX d'abreger et de trier les noms.
+            fields["author"] = " and ".join(
+                author_display([a]) for a in item["author"] if author_display([a])
+            )
         if source.published_at:
             fields["year"] = str(source.published_at.year)
-        if source.journal:
-            fields["journal"] = source.journal
-        if source.volume:
-            fields["volume"] = source.volume
-        if source.pages:
-            fields["pages"] = source.pages
-        if source.publisher:
-            fields["publisher"] = source.publisher
-        if source.doi:
-            fields["doi"] = source.doi
-        if source.annotation:
-            fields["note"] = source.annotation
+        for bib_key, csl_key_name in (
+            ("journal", "container-title"),
+            ("volume", "volume"),
+            ("pages", "page"),
+            ("publisher", "publisher"),
+            ("doi", "DOI"),
+            ("note", "note"),
+        ):
+            if item.get(csl_key_name):
+                fields[bib_key] = item[csl_key_name]
         body = ",\n".join(f"  {k} = {{{_bibtex_escape(v)}}}" for k, v in fields.items())
-        entries.append(f"@{entry_type}{{{_bibtex_key(source, i)},\n{body}\n}}")
+        entries.append(f"@{entry_type}{{{item['id']},\n{body}\n}}")
     header = f"% Bibliographie Philum — {card.title}\n% {len(card.sources)} sources\n\n"
     return header + "\n\n".join(entries) + "\n"
 
 
 # --- CSL-JSON (Zotero et al.) -----------------------------------------------
 
-# Mapping category ADR-020 → type CSL 1.0.2. Les categories sans equivalent
-# net tombent sur "webpage" (le plus honnete pour une URL).
-_CSL_TYPE_BY_CATEGORY = {
-    "article-scientifique": "article-journal",
-    "preprint": "article-journal",
-    "article-presse": "article-newspaper",
-    "communique": "report",
-    "documentaire": "motion_picture",
-    "interview": "interview",
-    "podcast": "broadcast",
-    "livre": "book",
-    "notes": "manuscript",
+
+def export_csl_json(card: BiblioCard) -> str:
+    items = [to_csl(s, i) for i, s in enumerate(card.sources, start=1)]
+    return json.dumps(items, ensure_ascii=False, indent=2)
+
+
+# --- RIS (EndNote, Mendeley, Zotero) ----------------------------------------
+
+# Vocabulaire RIS, ferme lui aussi. Derive du type CSL pour que les deux
+# formats ne puissent pas diverger. Defaut « ELEC » (ressource electronique),
+# le plus honnete pour une URL dont on ne sait rien de plus.
+_RIS_TYPE_BY_CSL = {
+    "article-journal": "JOUR",
+    "article-newspaper": "NEWS",
+    "report": "RPRT",
+    "motion_picture": "MPCT",
+    "interview": "ICOMM",
+    "broadcast": "SOUND",
+    "book": "BOOK",
+    "manuscript": "UNPB",
+    "webpage": "ELEC",
 }
 
 
-def _csl_item(source: Source, index: int) -> dict:
-    item: dict = {
-        "id": _bibtex_key(source, index),
-        "type": _CSL_TYPE_BY_CATEGORY.get(source.category, "webpage"),
-        "title": source.title or source.url,
-        "URL": source.url,
-    }
-    if source.authors:
-        # La chaine authors est libre ("Dupont J., Martin A.") : on la passe
-        # en "literal" par entree pour ne pas inventer un decoupage family/given.
-        item["author"] = [{"literal": a.strip()} for a in source.authors.split(",") if a.strip()]
+def _ris_lines(item: dict, source: Source) -> list[str]:
+    """Un item CSL en lignes RIS.
+
+    Le format impose « XX  - valeur » (deux espaces avant le tiret) et une
+    balise « ER  - » de fin d'enregistrement : sans elle, le lecteur fusionne
+    silencieusement toutes les references en une seule.
+    """
+    lines = [f"TY  - {_RIS_TYPE_BY_CSL.get(item['type'], 'ELEC')}"]
+    # RIS veut un auteur par ligne AU, en « Famille, Prenom ».
+    for author in item.get("author", []):
+        rendered = author_display([author])
+        if rendered:
+            lines.append(f"AU  - {rendered}")
+    lines.append(f"TI  - {item['title']}")
     if source.published_at:
-        d = source.published_at
-        item["issued"] = {"date-parts": [[d.year, d.month, d.day]]}
-    if source.journal:
-        item["container-title"] = source.journal
-    if source.volume:
-        item["volume"] = source.volume
-    if source.pages:
-        item["page"] = source.pages
-    if source.publisher:
-        item["publisher"] = source.publisher
-    if source.doi:
-        item["DOI"] = source.doi
-    if source.annotation:
-        item["note"] = source.annotation
-    return item
+        # PY veut l'annee seule ; DA porte la date complete.
+        lines.append(f"PY  - {source.published_at.year}")
+        lines.append(f"DA  - {source.published_at.strftime('%Y/%m/%d')}")
+    for tag, key in (
+        ("JO", "container-title"),
+        ("VL", "volume"),
+        ("SP", "page"),
+        ("PB", "publisher"),
+        ("DO", "DOI"),
+        ("UR", "URL"),
+    ):
+        if item.get(key):
+            lines.append(f"{tag}  - {item[key]}")
+    if item.get("note"):
+        # Une note multi-ligne casserait le parsing : chaque ligne RIS doit
+        # commencer par une balise.
+        for chunk in str(item["note"]).splitlines():
+            if chunk.strip():
+                lines.append(f"N1  - {chunk.strip()}")
+    lines.append("ER  - ")
+    return lines
 
 
-def export_csl_json(card: BiblioCard) -> str:
-    items = [_csl_item(s, i) for i, s in enumerate(card.sources, start=1)]
-    return json.dumps(items, ensure_ascii=False, indent=2)
+def export_ris(card: BiblioCard) -> str:
+    out: list[str] = []
+    for i, source in enumerate(card.sources, start=1):
+        out.extend(_ris_lines(to_csl(source, i), source))
+        out.append("")
+    return "\n".join(out)
 
 
 # --- Bibliographie APA (texte) ----------------------------------------------
