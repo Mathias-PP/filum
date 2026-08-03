@@ -18,6 +18,7 @@
   } from '$lib/utils/author-colors';
   import { cardHighwireTags, sourceCoins } from '$lib/utils/citation-meta';
   import { STANCE_STYLES } from '$lib/utils/stance';
+  import { noticeUrl, retractionBadge, retractionTitle } from '$lib/utils/retraction';
   import { slide } from 'svelte/transition';
   import { page } from '$app/stores';
   import { currentUser } from '$lib/stores/auth';
@@ -456,6 +457,18 @@
                           {st.label}
                         </span>
                       {/if}
+                      {#if retractionBadge(source.retraction_status)}
+                        {@const rb = retractionBadge(source.retraction_status)!}
+                        <span
+                          class="px-2 py-0.5 text-xs rounded-full {rb.className}"
+                          title={retractionTitle(
+                            source.retraction_status,
+                            source.retraction_checked_at
+                          )}
+                        >
+                          {rb.isNotice ? '⚠ ' : ''}{rb.label}
+                        </span>
+                      {/if}
                       {#if source.is_pivot}
                         <span
                           class="px-2 py-0.5 text-xs bg-amber-100 text-amber-800 rounded-full"
@@ -543,6 +556,21 @@
                           </li>
                         {/each}
                       </ul>
+                    </div>
+                  {/if}
+                  {#if noticeUrl(source.retraction_notice_doi)}
+                    <div class="mt-4 p-3 rounded-lg bg-red-50 border border-red-200 text-sm">
+                      <p class="text-red-900">
+                        {retractionTitle(source.retraction_status, source.retraction_checked_at)}
+                      </p>
+                      <a
+                        class="text-red-800 underline break-all"
+                        href={noticeUrl(source.retraction_notice_doi)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Lire l’avis publié
+                      </a>
                     </div>
                   {/if}
                   <div class="mt-4 flex flex-wrap gap-2">
