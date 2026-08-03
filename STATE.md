@@ -35,6 +35,15 @@ Avant : Phase 2 (identité visuelle Pulsar-graph + audit) et Phase 1 (MVP comple
 
 ## PRs ouvertes
 
+**#238** — `feat/card-content-authors`. Session 2026-08-03 (autonome) — **la fiche porte enfin les auteurs de son contenu** :
+- Suite directe de #237, qui n'avait changé que la règle de préséance sans régler le manque de donnée : le nœud racine continuait d'afficher « Mathias ». ⚠️ **Une fiche n'avait aucun champ d'auteurs.** La seule source était `Source.authors` d'une source *d'une autre fiche* pointant vers elle (`_load_card_authors`) — donc rien du tout quand personne ne cite. Le repli sur le créateur était correct au regard du code et faux au regard du sens.
+- Colonne `biblio_cards.content_authors` (migration `018_card_authors`, backfill depuis les sources citantes en gardant le candidat le plus long). Trois voies d'alimentation, pour couvrir toutes les situations : backfill des lignes existantes, PATCH opportuniste après import (l'extraction connaît déjà les auteurs via Crossref/JSON-LD/OG), et champ « Auteurs du contenu » dans l'éditeur de fiche (seul recours pour une fiche saisie à la main et jamais citée). `/import/url-metadata` expose désormais `authors` pour pré-remplir ce champ.
+- Préséance à trois étages dans `card_graph.py` : `content_authors` déclarés → reconstitution depuis les fiches citantes → créateur. La fiche fait foi sur son propre contenu.
+- Correction de rendu associée : d3 pose les étiquettes **impérativement** dans `mountGraph()`. `rootAuthors` arrivant après coup, le garde de remontage `if (neighborCards.size > 0)` laissait le nœud avec le nom de son créateur — devenu `|| rootAuthors`.
+- Nouveau `CardDetailPanel.svelte` : cliquer un nœud fiche (racine, ou voisine sans source à déplier) ouvre un encadré — auteurs, date, nombre de sources, description, lien vers le contenu, créateur. Pendant du `SourceDetailPanel`, mêmes règles de placement ; les deux panneaux s'excluent.
+- ⚠️ **Redéploiement VM requis** (colonne + migration), contrairement aux PRs frontend-seul précédentes.
+- Vérification visuelle navigateur **non faite** (extension Chrome déconnectée).
+
 **#237** — `feat/root-node-identity`. Session 2026-08-03 (autonome) — **une fiche se nomme par les auteurs du contenu, pas par son créateur Philum** :
 - Le nœud d'une fiche revendiquée affichait le créateur (« Mathias »), laissant croire qu'il était l'auteur de l'article ou de la vidéo décrits. ⚠️ Revendiquer une fiche, c'est répondre de sa bibliographie, **pas** signer le contenu cité : la distinction `is_seed` n'avait pas lieu d'être dans l'étiquetage. Les auteurs réels priment désormais toujours, le créateur n'étant qu'un repli ; `isSeed` disparaît de `CardLabelInput` et de ses trois sites d'appel.
 - Le nom du créateur ne pouvant plus servir de « vous êtes ici », le nœud racine se distingue par un fond indigo profond `#312e81` (les voisines restent ardoise `#1e293b`) **et** un anneau plein. Redondance couleur + forme volontaire : la distinction doit tenir en vision des couleurs réduite. La vue constellation distinguait déjà sa racine en ambre, inchangée.

@@ -838,6 +838,10 @@ class ImportFromUrlRequest(BaseModel):
 class ImportedCardDraft(BaseModel):
     title: str | None = None
     description: str | None = None
+    # Auteurs du contenu vise, extraits de la page (Crossref, JSON-LD, meta).
+    # La fiche les porte ensuite elle-meme : sans quoi son noeud de graphe ne
+    # pourrait s'annoncer que sous le nom de son createur Philum.
+    authors: str | None = None
     content_url: str
 
 
@@ -1011,6 +1015,7 @@ async def parse_content_url(
         card = ImportedCardDraft(
             title=meta.title if meta else None,
             description=meta.description if meta else None,
+            authors=meta.authors if meta else None,
             content_url=url,
         )
         return ImportFromUrlResponse(
@@ -1211,6 +1216,7 @@ async def parse_content_url(
     card = ImportedCardDraft(
         title=meta.title if meta else None,
         description=meta.description if meta else None,
+        authors=meta.authors if meta else None,
         content_url=url,
     )
     return ImportFromUrlResponse(
@@ -1236,6 +1242,9 @@ class UrlMetadataRequest(BaseModel):
 class UrlMetadataResponse(BaseModel):
     title: str | None = None
     description: str | None = None
+    # Auteurs du contenu vise : le formulaire les propose pour que la fiche les
+    # porte elle-meme, au lieu de dependre des fiches qui la citent.
+    authors: str | None = None
 
 
 @router.post("/import/url-metadata", response_model=UrlMetadataResponse)
@@ -1266,4 +1275,5 @@ async def url_metadata(
     return UrlMetadataResponse(
         title=meta.title if meta else None,
         description=meta.description if meta else None,
+        authors=meta.authors if meta else None,
     )

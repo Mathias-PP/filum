@@ -30,6 +30,7 @@
   } from '$lib/utils/author-colors';
   import { cardNodeLabel } from '$lib/utils/card-label';
   import { buildHaystack, matchesAllTerms, searchTerms } from '$lib/utils/graph-search';
+  import CardDetailPanel, { type CardPanelInfo } from './CardDetailPanel.svelte';
   import SourceDetailPanel from './SourceDetailPanel.svelte';
 
   interface Props {
@@ -185,6 +186,9 @@
   let autoFitFallback: number | undefined;
   let isFullscreen = $state(false);
   let selectedSource = $state<Source | null>(null);
+  // Une fiche et une source ne s'affichent jamais ensemble : le panneau est un
+  // emplacement unique, sélectionner l'un ferme l'autre.
+  let selectedCard = $state<CardPanelInfo | null>(null);
   let panelAnchor = $state<{ x: number; y: number } | null>(null);
 
   // Voisinage méta-graphe, chargé une seule fois puis exploré côté client.
@@ -304,7 +308,7 @@
       const m = d.cardMeta;
       return buildHaystack([
         m?.title ?? card.title,
-        m ? m.authors : rootAuthors,
+        m ? m.authors : (card.content_authors ?? rootAuthors),
         m?.creatorName ?? card.creator.display_name,
         m?.creatorSlug ?? card.creator.slug,
         m?.slug ?? card.slug,
@@ -334,7 +338,9 @@
           creatorSlug: d.cardMeta.creatorSlug,
         })
       : cardNodeLabel({
-          authors: rootAuthors,
+          // La fiche fait foi sur les auteurs de son contenu ; `rootAuthors`,
+          // reconstitué depuis les fiches citantes, ne sert qu'à défaut.
+          authors: card.content_authors ?? rootAuthors,
           creatorName: card.creator.display_name,
           creatorSlug: card.creator.slug,
         });
@@ -705,9 +711,40 @@
 
   function selectSource(s: Source | null, d?: GraphNode) {
     selectedSource = s;
+    selectedCard = null;
     if (s && d) setAnchorFromNode(d);
     else panelAnchor = null;
     onSelect?.(s);
+  }
+
+  /** Encadré d'un nœud fiche : la racine se décrit elle-même, les autres via `cardMeta`. */
+  function selectCard(d: GraphNode) {
+    const m = d.cardMeta;
+    selectedCard = m
+      ? {
+          title: m.title,
+          authors: m.authors,
+          creatorName: m.creatorName,
+          creatorSlug: m.creatorSlug,
+          slug: m.slug,
+          sourcesCount: m.sourcesCount,
+          isRoot: false,
+        }
+      : {
+          title: card.title,
+          authors: card.content_authors ?? rootAuthors,
+          creatorName: card.creator.display_name,
+          creatorSlug: card.creator.slug,
+          slug: card.slug,
+          description: card.description,
+          contentUrl: card.content_url,
+          publishedAt: card.published_at,
+          sourcesCount: card.stats.total_sources,
+          isRoot: true,
+        };
+    selectedSource = null;
+    onSelect?.(null);
+    setAnchorFromNode(d);
   }
 
   function mountGraph() {
@@ -791,6 +828,10 @@
           selectSource(toSource(d.absorbedSource), d);
         } else if (d.expandable) {
           expandCard(d.expandable, d.id);
+        } else if (d.kind === 'card') {
+          // Fiche racine, ou fiche voisine sans source à déplier : elle n'a pas
+          // de référence propre à ouvrir, mais elle a de quoi se présenter.
+          selectCard(d);
         } else {
           selectSource(null);
         }
@@ -1170,9 +1211,11 @@
     document.addEventListener('fullscreenchange', onFullscreenChange);
 
     // Le voisinage arrive après coup : on ne remonte le graphe que s'il révèle
-    // effectivement des fiches à déplier, pour ne pas réanimer pour rien.
+    // quelque chose de neuf, pour ne pas réanimer pour rien. Les auteurs de la
+    // racine en font partie — les étiquettes sont posées impérativement par d3,
+    // sans remontage le nœud garderait le nom de son créateur.
     void loadNeighborhood().then(() => {
-      if (neighborCards.size > 0) mountGraph();
+      if (neighborCards.size > 0 || rootAuthors) mountGraph();
     });
   });
 
@@ -1506,5 +1549,13 @@
     containerHeight={height}
     onClose={() => selectSource(null)}
     onSelect={(s) => selectSource(s)}
+  />
+
+  <CardDetailPanel
+    info={selectedCard}
+    anchor={panelAnchor}
+    containerWidth={width}
+    containerHeight={height}
+    onClose={() => (selectedCard = null)}
   />
 </div>

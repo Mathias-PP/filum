@@ -58,6 +58,27 @@ class TestCardSchemas:
         )
         assert card.platform.value == "youtube"
 
+    def test_content_authors_optional_and_bounded(self):
+        """Les auteurs du contenu sont facultatifs, mais bornes a 500 signes."""
+        card = CardCreate(
+            slug="test-slug",
+            title="Test",
+            platform=Platform.YOUTUBE,
+            content_authors="Diamond A., Ling D.S.",
+        )
+        assert card.content_authors == "Diamond A., Ling D.S."
+
+        bare = CardCreate(slug="test-slug", title="T", platform=Platform.OTHER)
+        assert bare.content_authors is None
+
+        with pytest.raises(ValidationError):
+            CardCreate(
+                slug="test-slug",
+                title="T",
+                platform=Platform.OTHER,
+                content_authors="x" * 501,
+            )
+
 
 def _minimal_source_kwargs(**overrides):
     """Helper: minimal valid SourceCreate kwargs with the 3-axis taxonomy."""

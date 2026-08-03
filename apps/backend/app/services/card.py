@@ -28,6 +28,7 @@ class CardService:
             title=card_data.title,
             description=card_data.description,
             content_url=card_data.content_url,
+            content_authors=card_data.content_authors,
             platform=card_data.platform.value,
             content_type=card_data.content_type.value,
             is_seed=card_data.is_seed,

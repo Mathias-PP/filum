@@ -73,6 +73,12 @@ class BiblioCard(Base):
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     content_type: Mapped[str] = mapped_column(String(50), nullable=False)
     content_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    # Auteurs du contenu documente, qui ne sont pas ceux de la fiche : publier
+    # une fiche n'est pas signer ce qu'elle documente. Sans cette colonne, les
+    # auteurs n'existaient que dans la bibliographie des fiches citantes, et
+    # une fiche que personne ne cite ne pouvait porter que le nom de son
+    # createur Philum -- exactement le contresens a eviter.
+    content_authors: Mapped[str | None] = mapped_column(String(500), nullable=True)
     platform: Mapped[str] = mapped_column(String(50), nullable=False, default="other")
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(

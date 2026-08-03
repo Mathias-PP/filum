@@ -16,6 +16,15 @@ export interface Card {
   title: string;
   description: string | null;
   content_url: string | null;
+  /**
+   * Auteurs du contenu documenté — pas ceux de la fiche.
+   *
+   * Publier une fiche n'est pas signer ce qu'elle documente. Sans ce champ,
+   * les auteurs ne vivaient que dans la bibliographie des fiches citantes, et
+   * une fiche que personne ne cite ne pouvait s'annoncer que sous le nom de
+   * son créateur Philum.
+   */
+  content_authors: string | null;
   platform: Platform;
   content_type: ContentType;
   status: CardStatus;
@@ -66,6 +75,7 @@ export interface CardCreate {
   title: string;
   description?: string;
   content_url?: string;
+  content_authors?: string;
   platform: Platform;
   content_type: ContentType;
   /**
@@ -293,12 +303,16 @@ export interface ImportedSourceDraft {
 export interface ImportedCardDraft {
   title: string | null;
   description: string | null;
+  /** Auteurs du contenu visé, extraits de la page (Crossref, JSON-LD, meta). */
+  authors: string | null;
   content_url: string;
 }
 
 export interface UrlMetadataResponse {
   title: string | null;
   description: string | null;
+  /** Auteurs du contenu visé, extraits de la page (Crossref, JSON-LD, meta). */
+  authors: string | null;
 }
 
 export interface ImportFromUrlResponse {

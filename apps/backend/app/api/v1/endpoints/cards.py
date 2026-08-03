@@ -204,6 +204,10 @@ async def update_card(
         card.description = card_data.description
     if card_data.content_url is not None:
         card.content_url = card_data.content_url
+    if card_data.content_authors is not None:
+        # Chaine vide = l'utilisateur efface les auteurs, ce qui rend la main a
+        # la reconstitution depuis les fiches citantes.
+        card.content_authors = card_data.content_authors.strip() or None
     if card_data.platform is not None:
         card.platform = card_data.platform.value
     if card_data.content_type is not None:
@@ -357,6 +361,7 @@ async def get_public_card(
         title=card.title,
         description=card.description,
         content_url=card.content_url,
+        content_authors=card.content_authors,
         platform=card.platform,
         content_type=card.content_type,
         status=card.status,

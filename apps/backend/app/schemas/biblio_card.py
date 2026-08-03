@@ -46,6 +46,9 @@ class CardBase(BaseModel):
     title: str = Field(min_length=1, max_length=500)
     description: str | None = None
     content_url: str | None = None
+    # Auteurs du contenu documente, distincts du createur de la fiche : publier
+    # une fiche n'est pas signer ce qu'elle documente.
+    content_authors: str | None = Field(default=None, max_length=500)
     platform: Platform = Platform.OTHER
     content_type: ContentType = ContentType.VIDEO
     visibility: Visibility = Visibility.PUBLIC
@@ -65,6 +68,7 @@ class CardUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=500)
     description: str | None = None
     content_url: str | None = None
+    content_authors: str | None = Field(default=None, max_length=500)
     platform: Platform | None = None
     content_type: ContentType | None = None
     is_seed: bool | None = None
@@ -114,6 +118,7 @@ class CardResponse(BaseModel):
     title: str
     description: str | None
     content_url: str | None
+    content_authors: str | None = None
     platform: Platform
     content_type: ContentType
     status: CardStatus

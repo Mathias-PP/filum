@@ -843,6 +843,20 @@
     refsExtracting = true;
     try {
       const res = await api.imports.fromContentUrl(target);
+
+      // L'extraction connaît les auteurs du contenu visé : c'est le seul moment
+      // où on les obtient sans les demander. Sans eux, le nœud de la fiche dans
+      // le graphe s'annonce sous le nom de son créateur, laissant croire qu'il
+      // est l'auteur de ce qu'elle documente. On n'écrase jamais une saisie.
+      if (res.card.authors && card && !card.content_authors) {
+        try {
+          card = await api.cards.update(cardId, { content_authors: res.card.authors });
+        } catch {
+          // Enrichissement opportuniste : son échec ne doit pas priver
+          // l'utilisateur des références qui viennent d'être extraites.
+        }
+      }
+
       const hasRefs = res.sources.length > 0;
       // Le fetch_status decrit UNIQUEMENT le fetch HTML direct : Semantic
       // Scholar / Crossref restent interrogeables meme quand la page est
