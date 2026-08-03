@@ -35,6 +35,13 @@ Avant : Phase 2 (identité visuelle Pulsar-graph + audit) et Phase 1 (MVP comple
 
 ## PRs ouvertes
 
+**#246** — `feat/csl-pivot-ris`. Session 2026-08-03 (autonome) — **CSL-JSON devient le pivot, RIS s'ajoute** :
+- BibTeX et RIS sont des formats de *sortie*, pas des pivots. Les faire descendre d'un même `app/services/csl.py` garantit qu'ils ne divergent pas : un champ corrigé l'est partout. Neuvième format d'export (`?format=ris`, EndNote/Mendeley/Zotero).
+- ⚠️ **Le point dur est le nom d'auteur.** Philum stocke une chaîne libre, CSL attend `{family, given}`. L'ancien code passait tout en `[{literal}]` (tri dégradé dans Zotero) **et** cassait `"Dupont, Marie"` en deux co-auteurs. La virgule joue deux rôles : `"Dupont, J."` est *un* auteur, `"Dupont J., Martin A."` en fait deux. Le découpage s'appuie d'abord sur les initiales (seule marque typographique fiable), puis sur la parité des morceaux mono-mot. **Pari assumé et documenté** : il peut se tromper sur `"Bell, Aron"` (deux auteurs sans prénom), chaîne que rien ne distingue d'un auteur unique — **le point-virgule lève l'ambiguïté et reste la forme à préférer**.
+- Deux bugs trouvés par les tests pendant l'écriture : un auteur fantôme `{family: ""}` sur une chaîne de séparateurs seuls, et une clé de citation qui donnait `cerveau` pour « Mémoire et cerveau » (un titre n'a pas de nom de famille).
+- RIS : vocabulaire fermé dérivé du type CSL (défaut `ELEC`), un auteur par ligne `AU`, `ER  - ` obligatoire — sans lui les lecteurs fusionnent silencieusement toutes les références en une seule ; note multi-ligne repréfixée `N1` ligne par ligne.
+- **Mergée et déployée le 2026-08-03.** Vérifié en prod sur la fiche Frontiers : **152 enregistrements RIS, 152 `ER`, 0 ligne malformée** ; CSL et BibTeX rendent `{family, given}` sans `literal` résiduel (`author = {Adleman, N. and Menon, V. and …}`). 49 tests unitaires, dont un qui vérifie que RIS et BibTeX découpent les noms à l'identique — la garantie de non-divergence du pivot.
+
 **#245** — `feat/open-access`. Session 2026-08-03 (autonome) — **où lire gratuitement une référence payante** :
 - Une bibliographie qui renvoie à un paywall arrête le lecteur net. OpenAlex agrège les routes d'accès libre (dépôt HAL, revue en libre accès, version acceptée chez l'éditeur) et expose au passage le référencement DOAJ de la revue — l'item DOAJ du chantier 3 est donc réglé sans seconde intégration.
 - ⚠️ **Même règle à trois états que les rétractations.** `NULL` = jamais vérifié · `closed` = OpenAlex connaît la référence et ne trouve rien de gratuit, **information positive et datée** · `unverifiable` = pas de DOI, DOI inconnu, service muet. Afficher « payant » dans le troisième cas détournerait le lecteur d'une version libre qui existe. `in_doaj` est **nullable** pour la même raison : `False` affirmerait que la revue n'est pas référencée.
@@ -242,9 +249,9 @@ Vercel : `BACKEND_URL=https://philum-api.duckdns.org` (env var serverless, jamai
 - **Migrer Tailwind v3 → v4** (PR dédiée) : PR Dependabot #156 fermée car breaking (nouveau format config, PostCSS séparé `@tailwindcss/postcss`, syntaxes `@theme`/`@source`).
 
 **Chantiers outils-chercheurs** (étude `agent/research/2026-08-03-outils-chercheurs.md`, dans l'ordre)
-- ~~1. Meta tags Highwire + COinS~~ ✅ #239 · ~~2. Champ `stance` déclaratif~~ ✅ #240 · ~~3. Badge rétractation~~ ✅ #241+#242 · ~~4. Bornage + chronologie~~ ✅ #243+#244 · ~~5. Enrichissement OpenAlex~~ ✅ #245.
-- **6. Pivot CSL-JSON + exports BibTeX/RIS** — vérifier d'abord `app/services/export.py`, plusieurs formats existent déjà.
-- **7. Import de fichier BibTeX/RIS/CSL-JSON** · **8. Alertes « on vous cite »** · **9. Colonnes de comparaison sans IA**.
+- ~~1. Meta tags Highwire + COinS~~ ✅ #239 · ~~2. Champ `stance` déclaratif~~ ✅ #240 · ~~3. Badge rétractation~~ ✅ #241+#242 · ~~4. Bornage + chronologie~~ ✅ #243+#244 · ~~5. Enrichissement OpenAlex~~ ✅ #245 · ~~6. Pivot CSL-JSON + RIS~~ ✅ #246.
+- **7. Import de fichier BibTeX/RIS/CSL-JSON** — l'import BibTeX/CSL-JSON existe déjà ; reste **RIS**, et le décodage des séquences LaTeX (`\'e` → é) via `pylatexenc`. Le pivot `app/services/csl.py` est le point d'entrée naturel du sens inverse.
+- **8. Alertes « on vous cite »** · **9. Colonnes de comparaison sans IA**.
 - ~~**DOAJ**~~ ✅ — réglé par #245 sans seconde intégration : `best_oa_location.source.is_in_doaj` d'OpenAlex donne le drapeau au passage.
 
 **Court terme** (semaines)
