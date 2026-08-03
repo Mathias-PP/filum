@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field, HttpUrl
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -17,13 +17,13 @@ from app.core.rate_limit import limiter
 from app.core.url_safety import UnsafeUrlError, assert_url_is_safe
 from app.db.database import async_session_maker, get_db
 from app.extractors import url_extractor
-from app.extractors.retraction import check_retraction
 from app.models.biblio_card import BiblioCard
 from app.models.source import Source
 from app.models.user import User
 from app.schemas.source import SourceCreate, SourceResponse, SourceUpdate
 from app.services.auth import AuthService
 from app.services.card_link import effective_linked_card_id
+from app.services.retraction_check import schedule_retraction_checks
 from app.services.wayback import WaybackService
 
 logger = logging.getLogger(__name__)
@@ -42,33 +42,6 @@ def _spawn(coro) -> None:
     task = asyncio.create_task(coro)
     _background_tasks.add(task)
     task.add_done_callback(_background_tasks.discard)
-
-
-async def _check_retractions_bg(pairs: list[tuple[UUID, str | None]]) -> None:
-    """Interroge Crossref pour chaque source, puis persiste le verdict.
-
-    Sequentiel a dessein : un import peut creer 150 sources d'un coup, et
-    Crossref n'a aucune raison d'encaisser 150 requetes simultanees pour un
-    seul clic. Le lecteur, lui, attend le badge sur une page publique, pas
-    dans la seconde.
-    """
-    async with async_session_maker() as bg_db:
-        for source_id, doi in pairs:
-            try:
-                result = await check_retraction(doi)
-            except Exception as e:  # check_retraction ne leve pas, ceinture et bretelles
-                logger.warning("retraction check crashed for source=%s: %s", source_id, e)
-                continue
-            await bg_db.execute(
-                update(Source)
-                .where(Source.id == source_id)
-                .values(
-                    retraction_status=result.status.value,
-                    retraction_notice_doi=result.notice_doi,
-                    retraction_checked_at=datetime.now(UTC).replace(tzinfo=None),
-                )
-            )
-        await bg_db.commit()
 
 
 class ExtractResponse(BaseModel):
@@ -275,7 +248,7 @@ async def create_source(
     # Verifie l'etat de retractation meme sans DOI : le verdict est alors
     # « non verifiable », date, plutot qu'un silence indistinguable de
     # « pas encore verifie ».
-    _spawn(_check_retractions_bg([(source.id, source.doi)]))
+    schedule_retraction_checks([(source.id, source.doi)])
 
     return source
 
@@ -427,7 +400,7 @@ async def create_sources_batch(
     # Une seule tache sequentielle pour tout le lot : 150 requetes Crossref
     # simultanees pour un seul clic seraient impolies et se feraient jeter.
     if created_full:
-        _spawn(_check_retractions_bg([(s.id, s.doi) for s in created_full]))
+        schedule_retraction_checks([(s.id, s.doi) for s in created_full])
 
     return SourceBatchResponse(
         created=[SourceResponse.model_validate(s) for s in created_full],
@@ -519,7 +492,7 @@ async def update_source(
     # Un DOI corrige change ce qui est verifiable : l'ancien verdict ne dit
     # plus rien de la source telle qu'elle est maintenant.
     if doi_changed:
-        _spawn(_check_retractions_bg([(source.id, source.doi)]))
+        schedule_retraction_checks([(source.id, source.doi)])
 
     return source
 
