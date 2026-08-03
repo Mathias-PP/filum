@@ -35,10 +35,15 @@ Avant : Phase 2 (identité visuelle Pulsar-graph + audit) et Phase 1 (MVP comple
 
 ## PRs ouvertes
 
+**#236** — `fix/expand-badge-size`. Session 2026-08-03 (autonome) — **la pastille de dépliage montre son nombre en entier** :
+- Le disque de 8 px de rayon tronquait son propre libellé dès deux chiffres : sur une fiche de 306 références, la pastille censée annoncer ce que le clic révèle ne le montrait pas. Elle n'était pas non plus une cible cliquable acceptable, alors que #235 venait d'en faire la seule prise du dépliage.
+- Gélule de hauteur fixe (18 px) dont la largeur suit le libellé. ⚠️ Elle part du point où se tenait le disque et s'allonge **vers l'extérieur** : la centrer ferait mordre un nombre à trois chiffres sur le nœud. La pastille « − » adopte la même hauteur, pour que les deux actions se lisent comme un seul contrôle à deux états.
+- **Mergée le 2026-08-03** (frontend seul, déploiement Vercel automatique). Vérification visuelle navigateur **non faite** (extension Chrome déconnectée) : la largeur est approximée sur l'avance des chiffres, à contrôler sur un nombre à trois chiffres.
+
 **#235** — `feat/card-node-source-panel`. Session 2026-08-02 (autonome) — **l'encadré d'une référence reste ouvrable quand elle est rendue comme fiche** :
 - Depuis #233, une référence qui fait l'objet d'une fiche **est** le nœud fiche. Mais ce nœud ne gardait aucune trace de la référence absorbée et son clic servait à déplier : revue, DOI, date et annotation devenaient inatteignables. Le nœud reprend désormais la référence (`absorbedSource`).
 - **Cliquer un nœud ouvre son encadré, source ou fiche.** La règle cesse de dépendre de la représentation choisie par le graphe — ce qu'un lecteur ne peut pas deviner. Déplier/replier passent aux pastilles, qui les annonçaient déjà : « +N » déplie, « − » referme, les deux avec `stopPropagation`.
-- Vérification visuelle navigateur **non faite** (extension Chrome déconnectée).
+- **Mergée le 2026-08-03** (frontend seul, déploiement Vercel automatique). Vérification visuelle navigateur **non faite** (extension Chrome déconnectée).
 
 **#234** — `fix/seed-demo-real-urls`. Session 2026-08-02 (autonome) — **la fiche d'exemple ne cite que des pages réelles** :
 - Sept des dix-huit références de `/@example/memoire-et-cerveau` pointaient vers des pages inexistantes ou tout autres : l'URL Nature rendait un article de Virginia Gewin sur le racisme dans la science, l'URL Simon & Schuster un roman d'Emma Fedor, et Lex Fridman / Wellcome / YouTube étaient en 404. Une vitrine dont les liens mentent contredit exactement la promesse du produit.
