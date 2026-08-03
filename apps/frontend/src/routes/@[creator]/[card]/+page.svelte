@@ -16,6 +16,7 @@
     authorLabel,
     categoryLabel,
   } from '$lib/utils/author-colors';
+  import { cardHighwireTags, sourceCoins } from '$lib/utils/citation-meta';
   import { slide } from 'svelte/transition';
   import { page } from '$app/stores';
   import { currentUser } from '$lib/stores/auth';
@@ -125,6 +126,8 @@
   const publicUrl = $derived(`${siteOrigin}/@${creatorSlug}/${cardSlug}`);
   const isOwner = $derived($currentUser?.username === creatorSlug);
 
+  const highwireTags = $derived(cardHighwireTags(card, publicUrl));
+
   const jsonLd = $derived.by(() => {
     const citations = card.sources.map((s) => ({
       '@type': s.category === 'article-scientifique' ? 'ScholarlyArticle' : 'CreativeWork',
@@ -169,6 +172,10 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:image" content={ogImageUrl} />
   <link rel="canonical" href={publicUrl} />
+  <!-- Highwire : décrit le contenu documenté par la fiche (Google Scholar). -->
+  {#each highwireTags as tag (tag.name + tag.content)}
+    <meta name={tag.name} content={tag.content} />
+  {/each}
   {@html `<script type="application/ld+json">${JSON.stringify(jsonLd)}<` + `/script>`}
 </svelte:head>
 
@@ -422,6 +429,8 @@
         <div class="space-y-3">
           {#each card.sources as source, i (source.id)}
             <div class="bg-surface-primary rounded-lg border border-border overflow-hidden">
+              <!-- COinS : le connecteur Zotero détecte chaque source comme item. -->
+              <span class="Z3988" title={sourceCoins(source)}></span>
               <button
                 type="button"
                 class="w-full text-left p-4 hover:bg-surface-secondary transition-colors"
