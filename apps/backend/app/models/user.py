@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, String, Text
+from sqlalchemy import Boolean, DateTime, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -32,6 +33,9 @@ class User(Base, TimestampMixin):
     encrypted_private_key: Mapped[str] = mapped_column(Text, nullable=False)
     google_id: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Derniere consultation des citations entrantes. NULL = jamais consulte,
+    # pas « rien de nouveau » : dans ce cas toute citation entrante est neuve.
+    citations_seen_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     biblio_cards: Mapped[list[BiblioCard]] = relationship(
         "BiblioCard",

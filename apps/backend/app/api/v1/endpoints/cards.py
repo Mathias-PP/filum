@@ -25,12 +25,15 @@ from app.schemas.biblio_card import (
     CreatorInfo,
     GraphEdgeResponse,
     GraphNodeResponse,
+    IncomingCitationResponse,
+    IncomingCitationsResponse,
 )
 from app.schemas.claim import ClaimRequestCreate, ClaimRequestResponse
 from app.schemas.source import SourceResponse
 from app.services.auth import AuthService
 from app.services.card import CardService
 from app.services.card_graph import MAX_DEPTH, build_card_graph
+from app.services.citations import list_incoming_citations, mark_citations_seen
 from app.services.source_enrichment import schedule_source_enrichment
 
 logger = logging.getLogger(__name__)
@@ -56,6 +59,49 @@ async def get_current_user(
             detail={"code": "unauthorized", "message": "Not authenticated"},
         )
     return user
+
+
+@router.get("/cards/citations", response_model=IncomingCitationsResponse)
+async def list_incoming_citations_endpoint(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Qui s'appuie sur mes fiches.
+
+    Comme /cards/deleted, cette route DOIT preceder /cards/{card_id} : sinon
+    FastAPI lirait 'citations' comme un UUID et repondrait 422.
+    """
+    result = await list_incoming_citations(db, current_user)
+    return IncomingCitationsResponse(
+        citations=[IncomingCitationResponse(**vars(c)) for c in result.citations],
+        new_count=result.new_count,
+        seen_at=result.seen_at,
+        truncated=result.truncated,
+    )
+
+
+@router.post("/cards/citations/seen", response_model=IncomingCitationsResponse)
+async def mark_incoming_citations_seen(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Marque les citations entrantes comme vues et renvoie la liste a jour.
+
+    On renvoie la liste plutot qu'un 204 : le frontend doit pouvoir afficher
+    d'un seul coup ce qui vient d'etre marque, sans re-interroger et sans
+    reconstruire l'etat de son cote.
+    """
+    # La liste est calculee AVANT le marquage : l'utilisateur doit voir ce qui
+    # etait neuf, pas une liste ou tout vient d'etre eteint par son propre clic.
+    result = await list_incoming_citations(db, current_user)
+    seen_at = mark_citations_seen(current_user)
+    await db.flush()
+    return IncomingCitationsResponse(
+        citations=[IncomingCitationResponse(**vars(c)) for c in result.citations],
+        new_count=result.new_count,
+        seen_at=seen_at,
+        truncated=result.truncated,
+    )
 
 
 @router.get("/cards/deleted", response_model=list[CardResponse])
