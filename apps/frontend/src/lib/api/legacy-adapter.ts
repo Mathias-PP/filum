@@ -77,6 +77,9 @@ export function normalizeStats(raw: CardStats & LegacyCardStats): CardStats {
     return {
       ...raw,
       archived_count: raw.archived_count ?? (raw.all_archived ? raw.total_sources : 0),
+      // Une reponse anterieure au statut « sans objet » ne distinguait pas les
+      // sources depourvues d'URL : toutes y etaient reputees archivables.
+      archivable_count: raw.archivable_count ?? raw.total_sources,
     };
   }
   return {
@@ -86,6 +89,7 @@ export function normalizeStats(raw: CardStats & LegacyCardStats): CardStats {
     institution_publique: raw.institutional ?? 0,
     individu: (raw.original ?? 0) + (raw.image ?? 0),
     archived_count: raw.all_archived ? raw.total_sources : 0,
+    archivable_count: raw.total_sources,
     all_archived: raw.all_archived,
   };
 }

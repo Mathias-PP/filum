@@ -56,6 +56,10 @@ class WaybackService:
         # creation now also blocks these at the API boundary (sources.py),
         # but defense-in-depth in case the source was inserted via seed or
         # an older client.
+        if not url.strip():
+            await self._update_source(source_id, ArchiveStatus.NOT_APPLICABLE, None, None)
+            return {"status": "not_applicable", "reason": "no_url"}
+
         try:
             assert_url_is_safe(url)
         except UnsafeUrlError as e:
@@ -145,6 +149,12 @@ class WaybackService:
         todo: list[tuple[UUID, str]] = []
 
         for source_id, url in sources:
+            if not url.strip():
+                # Pas d'URL : il n'y a rien a archiver. L'inscrire `failed`
+                # affirmerait qu'on a essaye et que la page est perdue.
+                await self._update_source(source_id, ArchiveStatus.NOT_APPLICABLE, None, None)
+                results.append({"status": "not_applicable", "reason": "no_url"})
+                continue
             try:
                 assert_url_is_safe(url)
             except UnsafeUrlError as e:

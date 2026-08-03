@@ -169,7 +169,13 @@ class CardService:
         )
         individu = sum(1 for s in sources if s.author_kind == AuthorKind.INDIVIDU.value)
         archived_count = sum(1 for s in sources if s.archive_status == ArchiveStatus.ARCHIVED.value)
-        all_archived = total > 0 and archived_count == total
+        # Une source sans URL n'a rien a archiver. La compter au denominateur
+        # condamnerait une fiche pourtant complete a afficher « 148/152 » a
+        # perpetuite, et « tout archive » a ne jamais s'allumer.
+        archivable_count = sum(
+            1 for s in sources if s.archive_status != ArchiveStatus.NOT_APPLICABLE.value
+        )
+        all_archived = archivable_count > 0 and archived_count == archivable_count
 
         return CardStats(
             total_sources=total,
@@ -178,6 +184,7 @@ class CardService:
             institution_publique=institution_publique,
             individu=individu,
             archived_count=archived_count,
+            archivable_count=archivable_count,
             all_archived=all_archived,
         )
 

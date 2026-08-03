@@ -449,7 +449,7 @@
             <p class="text-xl sm:text-2xl font-bold text-ink-secondary">
               {card.stats.all_archived
                 ? '✓'
-                : `${card.stats.archived_count}/${card.stats.total_sources}`}
+                : `${card.stats.archived_count}/${card.stats.archivable_count}`}
             </p>
             <p class="text-xs sm:text-sm text-ink-tertiary">Archivées</p>
           </div>
