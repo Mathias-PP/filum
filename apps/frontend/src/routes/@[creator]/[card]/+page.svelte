@@ -18,6 +18,12 @@
   } from '$lib/utils/author-colors';
   import { cardHighwireTags, sourceCoins } from '$lib/utils/citation-meta';
   import { STANCE_STYLES } from '$lib/utils/stance';
+  import {
+    freeReadUrl,
+    licenseLabel,
+    openAccessBadge,
+    openAccessTitle,
+  } from '$lib/utils/open-access';
   import { noticeUrl, retractionBadge, retractionTitle } from '$lib/utils/retraction';
   import { slide } from 'svelte/transition';
   import { page } from '$app/stores';
@@ -469,6 +475,18 @@
                           {rb.isNotice ? '⚠ ' : ''}{rb.label}
                         </span>
                       {/if}
+                      {#if openAccessBadge(source.oa_status)?.isFree}
+                        <!-- Seul l'accès libre est signalé ici : un « accès
+                             payant » gris sur chaque référence serait du bruit.
+                             L'état complet, daté, reste dans le panneau. -->
+                        {@const ob = openAccessBadge(source.oa_status)!}
+                        <span
+                          class="px-2 py-0.5 text-xs rounded-full {ob.className}"
+                          title={openAccessTitle(source.oa_status, source.oa_checked_at)}
+                        >
+                          {ob.label}
+                        </span>
+                      {/if}
                       {#if source.is_pivot}
                         <span
                           class="px-2 py-0.5 text-xs bg-amber-100 text-amber-800 rounded-full"
@@ -573,7 +591,32 @@
                       </a>
                     </div>
                   {/if}
+                  {#if openAccessBadge(source.oa_status)}
+                    {@const oab = openAccessBadge(source.oa_status)!}
+                    <p class="mt-3 text-sm text-ink-tertiary">
+                      {openAccessTitle(source.oa_status, source.oa_checked_at)}
+                      {#if licenseLabel(source.oa_license)}
+                        <span class="text-ink-secondary">
+                          Licence {licenseLabel(source.oa_license)}.
+                        </span>
+                      {/if}
+                      {#if source.in_doaj}
+                        <span class="text-ink-secondary">Revue référencée au DOAJ.</span>
+                      {/if}
+                      {#if oab.isFree && !freeReadUrl(source.oa_status, source.oa_url)}
+                        <!-- Annoncer l'accès reste vrai ; ouvrir un lien qu'on
+                             n'a pas ne l'est pas. -->
+                        <span class="text-ink-secondary">Lien non fourni par OpenAlex.</span>
+                      {/if}
+                    </p>
+                  {/if}
                   <div class="mt-4 flex flex-wrap gap-2">
+                    {#if freeReadUrl(source.oa_status, source.oa_url)}
+                      {@const oaHref = freeReadUrl(source.oa_status, source.oa_url)!}
+                      <Button href={oaHref} target="_blank" variant="secondary" size="sm">
+                        Lire en accès libre ↗
+                      </Button>
+                    {/if}
                     {#if source.archive_url}
                       <Button
                         href={source.archive_url}

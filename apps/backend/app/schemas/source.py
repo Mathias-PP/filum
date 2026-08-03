@@ -78,6 +78,25 @@ class RetractionStatus(str, Enum):
     UNVERIFIABLE = "unverifiable"
 
 
+class OpenAccessStatus(str, Enum):
+    """Route d'acces libre a la reference, selon OpenAlex.
+
+    `CLOSED` (verifie, rien de gratuit) et `UNVERIFIABLE` (verification
+    impossible) sont deux affirmations differentes : les confondre pourrait
+    detourner le lecteur d'une version libre qui existe.
+    """
+
+    DIAMOND = "diamond"
+    GOLD = "gold"
+    GREEN = "green"
+    HYBRID = "hybrid"
+    BRONZE = "bronze"
+    #: Libre par une route qu'OpenAlex nomme d'une facon inconnue ici.
+    OPEN = "open"
+    CLOSED = "closed"
+    UNVERIFIABLE = "unverifiable"
+
+
 class ArchiveStatus(str, Enum):
     PENDING = "pending"
     ARCHIVED = "archived"
@@ -187,6 +206,13 @@ class SourceResponse(BaseModel):
     retraction_status: RetractionStatus | None = None
     retraction_notice_doi: str | None = None
     retraction_checked_at: datetime | None = None
+    # Derive d'OpenAlex, jamais saisi. Meme regle a trois etats.
+    oa_status: OpenAccessStatus | None = None
+    oa_url: str | None = None
+    oa_license: str | None = None
+    # NULL = OpenAlex ne dit rien, jamais « non » par defaut.
+    in_doaj: bool | None = None
+    oa_checked_at: datetime | None = None
     journal: str | None = None
     volume: str | None = None
     pages: str | None = None

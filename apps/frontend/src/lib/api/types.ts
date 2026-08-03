@@ -153,6 +153,16 @@ export interface Source {
   retraction_status?: RetractionStatus | null;
   retraction_notice_doi?: string | null;
   retraction_checked_at?: string | null;
+  /**
+   * Dérivé d'OpenAlex, jamais saisi. Même règle : `null` = jamais vérifié,
+   * `closed` = vérifié et rien de gratuit, `unverifiable` = pas vérifiable.
+   */
+  oa_status?: OpenAccessStatus | null;
+  oa_url?: string | null;
+  oa_license?: string | null;
+  /** `null` = OpenAlex ne dit rien, jamais « non » par défaut. */
+  in_doaj?: boolean | null;
+  oa_checked_at?: string | null;
   citations_count: number | null;
   subscribers_count: number | null;
   views_count: number | null;
@@ -297,6 +307,18 @@ export type SourceStance = 'appuie' | 'nuance-contredit' | 'mentionne' | 'contex
 
 /** Verdict Crossref / Retraction Watch. Machine, jamais déclaratif. */
 export type RetractionStatus = 'none' | 'retracted' | 'concern' | 'corrected' | 'unverifiable';
+
+/** Route d'accès libre selon OpenAlex. Machine, jamais déclaratif. */
+export type OpenAccessStatus =
+  | 'diamond'
+  | 'gold'
+  | 'green'
+  | 'hybrid'
+  | 'bronze'
+  /** Libre par une voie qu'OpenAlex nomme d'une façon inconnue ici. */
+  | 'open'
+  | 'closed'
+  | 'unverifiable';
 
 // --- Imports (biblio parsing → draft de fiche) -----------------------------
 
