@@ -160,7 +160,8 @@
         </a>
         <div class="mt-10 border-t border-white/10 pt-10">
           <p class="text-sm text-slate-400 mb-4">
-            Créateur·ice ? On crée votre fiche — recevez une notification à l'ouverture.
+            Pas envie de créer un compte maintenant ? Laissez votre email, on crée votre première
+            fiche à partir de votre contenu et on vous prévient quand elle est prête.
           </p>
           <WaitlistForm context="home-cta" />
         </div>
