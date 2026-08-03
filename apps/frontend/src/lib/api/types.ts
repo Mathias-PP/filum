@@ -120,6 +120,12 @@ export interface Source {
   category: SourceCategory;
   author_kind: AuthorKind;
   annotation: string | null;
+  /**
+   * Rapport déclaré entre le propos du contenu et ce que dit la source.
+   * `null` = non déclaré, ce qui ne vaut pas `mentionne` : l'un est un
+   * silence, l'autre une réponse.
+   */
+  stance: SourceStance | null;
   is_pivot: boolean;
   archive_status: ArchiveStatus;
   archive_url: string | null;
@@ -157,6 +163,7 @@ export interface SourceCreate {
   category: SourceCategory;
   author_kind: AuthorKind;
   annotation?: string;
+  stance?: SourceStance | null;
   is_pivot?: boolean;
   parent_source_id?: string | null;
   linked_card_id?: string | null;
@@ -277,6 +284,9 @@ export type AuthorKind =
 
 export type ArchiveStatus = 'pending' | 'archived' | 'failed';
 
+/** Déclaratif, jamais inféré : l'auteur de la fiche l'affirme et en répond. */
+export type SourceStance = 'appuie' | 'nuance-contredit' | 'mentionne' | 'contexte';
+
 // --- Imports (biblio parsing → draft de fiche) -----------------------------
 
 export interface ImportedSourceDraft {
@@ -379,6 +389,7 @@ export interface GraphNode {
   category?: string | null;
   format?: string | null;
   author_kind?: string | null;
+  stance?: string | null;
   is_pivot?: boolean;
   published_at?: string | null;
   /** Métadonnées bibliographiques : la recherche du graphe porte dessus. */
@@ -401,6 +412,8 @@ export interface GraphEdge {
   target: string;
   /** `cites` : fiche → source. `is_card` : fiche → fiche (arête du méta-graphe). */
   kind: 'cites' | 'is_card';
+  /** Rapport déclaré par la source qui porte l'arête : colore le trait. */
+  stance?: string | null;
 }
 
 export interface CardGraph {

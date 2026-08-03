@@ -12,6 +12,7 @@ from app.schemas.source import (
     SourceCategory,
     SourceCreate,
     SourceFormat,
+    SourceStance,
     SourceUpdate,
 )
 
@@ -155,6 +156,23 @@ class TestSourceSchemas:
         parent_id = uuid4()
         source = SourceCreate(**_minimal_source_kwargs(parent_source_id=parent_id))
         assert source.parent_source_id == parent_id
+
+    def test_stance_defaults_to_undeclared(self):
+        """Non declare n'est pas « mentionne ». Un defaut ferait dire a l'auteur
+        de la fiche une position qu'il n'a jamais prise."""
+        source = SourceCreate(**_minimal_source_kwargs())
+        assert source.stance is None
+
+    def test_stance_accepts_the_four_declared_relations(self):
+        for value in ("appuie", "nuance-contredit", "mentionne", "contexte"):
+            source = SourceCreate(**_minimal_source_kwargs(stance=value))
+            assert source.stance == SourceStance(value)
+
+    def test_stance_rejects_an_invented_relation(self):
+        # L'enum est le contrat : la colonne est un String(20) libre en base,
+        # seul le schema empeche d'y ecrire n'importe quoi.
+        with pytest.raises(ValidationError):
+            SourceCreate(**_minimal_source_kwargs(stance="refute-partiellement"))
 
     def test_source_update_partial(self):
         """SourceUpdate must accept any subset of fields without requiring url."""

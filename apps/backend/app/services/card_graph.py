@@ -55,6 +55,7 @@ class GraphNode:
     category: str | None = None
     format: str | None = None
     author_kind: str | None = None
+    stance: str | None = None
     is_pivot: bool = False
     # Le panneau de detail affiche la date de publication : sans elle, une
     # source d'une fiche voisine s'ouvrirait dans un encadre amputé.
@@ -80,6 +81,10 @@ class GraphEdge:
     source: str
     target: str
     kind: str  # "cites" (fiche -> source) | "is_card" (source -> fiche)
+    # Rapport declare par la source qui porte l'arete. Colore le trait : voir
+    # d'un coup d'oeil ce qui appuie et ce qui contredit vaut mieux que
+    # d'ouvrir trente sources une par une.
+    stance: str | None = None
 
 
 @dataclass
@@ -125,23 +130,31 @@ async def _load_sources(db: AsyncSession, card_ids: set[UUID]) -> dict[UUID, lis
     return grouped
 
 
-async def _load_citing_cards(db: AsyncSession, card_ids: set[UUID]) -> dict[UUID, set[UUID]]:
-    """Fiches qui citent celles demandees : ``cited_id -> {citing_ids}``.
+async def _load_citing_cards(
+    db: AsyncSession, card_ids: set[UUID]
+) -> dict[UUID, dict[UUID, str | None]]:
+    """Fiches qui citent celles demandees : ``cited_id -> {citing_id: stance}``.
 
     Le lien entre deux fiches n'a pas d'orientation privilegiee du point de vue
     du lecteur : "qui s'appuie sur cette fiche" est aussi informatif que "sur
     quoi elle s'appuie". Les deux vues remontent donc les citations entrantes.
+
+    Deux sources d'une meme fiche peuvent designer la meme fiche cible avec des
+    rapports differents ; l'arete etant unique, le premier rapport declare
+    l'emporte sur le silence.
     """
     if not card_ids:
         return {}
     result = await db.execute(
-        select(Source.linked_card_id, Source.biblio_card_id).where(
-            Source.linked_card_id.in_(card_ids), Source.deleted_at.is_(None)
-        )
+        select(Source.linked_card_id, Source.biblio_card_id, Source.stance)
+        .where(Source.linked_card_id.in_(card_ids), Source.deleted_at.is_(None))
+        .order_by(Source.position)
     )
-    citing: dict[UUID, set[UUID]] = {}
-    for cited_id, citing_id in result.all():
-        citing.setdefault(cited_id, set()).add(citing_id)
+    citing: dict[UUID, dict[UUID, str | None]] = {}
+    for cited_id, citing_id, stance in result.all():
+        edges = citing.setdefault(cited_id, {})
+        if edges.get(citing_id) is None:
+            edges[citing_id] = stance
     return citing
 
 
@@ -210,8 +223,13 @@ async def build_card_graph(
     card_depth: dict[UUID, int] = {root_card.id: 0}
 
     # Aretes fiche -> fiche de la constellation : le meme lien peut etre
-    # rencontre a l'aller et au retour, on ne le compte qu'une fois.
-    card_edges: set[tuple[UUID, UUID]] = set()
+    # rencontre a l'aller et au retour, on ne le compte qu'une fois. La valeur
+    # est le rapport declare, un rapport l'emportant toujours sur le silence.
+    card_edges: dict[tuple[UUID, UUID], str | None] = {}
+
+    def _record_card_edge(src_id: UUID, dst_id: UUID, stance: str | None) -> None:
+        if card_edges.get((src_id, dst_id)) is None:
+            card_edges[(src_id, dst_id)] = stance
 
     for level in range(depth + 1):
         sources_by_card = await _load_sources(db, frontier)
@@ -234,9 +252,9 @@ async def build_card_graph(
         reachable = set(next_meta) | set(card_meta)
 
         for cited_id, citers in citing_by_card.items():
-            for citing_id in citers:
+            for citing_id, stance in citers.items():
                 if citing_id in reachable:
-                    card_edges.add((citing_id, cited_id))
+                    _record_card_edge(citing_id, cited_id, stance)
 
         for card_id in frontier:
             meta = card_meta.get(card_id)
@@ -268,7 +286,7 @@ async def build_card_graph(
                     # rendre en plus comme noeud source intercale afficherait
                     # deux fois le meme contenu, relie en chaine, sans rien
                     # ajouter. Le lien va donc directement de fiche a fiche.
-                    card_edges.add((card_id, target_card))
+                    _record_card_edge(card_id, target_card, src.stance)
                     continue
                 if not include_sources:
                     continue
@@ -286,6 +304,7 @@ async def build_card_graph(
                         category=src.category,
                         format=src.format,
                         author_kind=src.author_kind,
+                        stance=src.stance,
                         is_pivot=bool(src.is_pivot),
                         published_at=src.published_at,
                         journal=src.journal,
@@ -299,6 +318,7 @@ async def build_card_graph(
                         source=card_node_id(card_id),
                         target=source_node_id(src.id),
                         kind="cites",
+                        stance=src.stance,
                     )
                 )
 
@@ -324,6 +344,7 @@ async def build_card_graph(
                     source=card_node_id(src_id),
                     target=card_node_id(dst_id),
                     kind="is_card",
+                    stance=card_edges[(src_id, dst_id)],
                 )
             )
 

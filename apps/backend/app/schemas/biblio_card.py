@@ -164,6 +164,7 @@ class GraphNodeResponse(BaseModel):
     category: str | None = None
     format: str | None = None
     author_kind: str | None = None
+    stance: str | None = None
     is_pivot: bool = False
     published_at: datetime | None = None
     journal: str | None = None
@@ -181,6 +182,8 @@ class GraphEdgeResponse(BaseModel):
     source: str
     target: str
     kind: str
+    # Rapport declare par la source qui porte l'arete : colore le trait.
+    stance: str | None = None
 
 
 class CardGraphResponse(BaseModel):
