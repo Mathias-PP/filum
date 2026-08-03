@@ -9,6 +9,7 @@
     Button,
     ClaimBanner,
     Skeleton,
+    SourceCompareTable,
   } from '$lib/components';
   import {
     AUTHOR_COLORS,
@@ -25,6 +26,7 @@
     openAccessTitle,
   } from '$lib/utils/open-access';
   import { noticeUrl, retractionBadge, retractionTitle } from '$lib/utils/retraction';
+  import { tick } from 'svelte';
   import { slide } from 'svelte/transition';
   import { page } from '$app/stores';
   import { currentUser } from '$lib/stores/auth';
@@ -83,6 +85,29 @@
       hint: 'Les fiches Philum reliées à celle-ci',
     },
   ];
+
+  // Deux lectures de la même bibliographie : la liste dit chaque source en
+  // détail, le tableau les met en regard sur les mêmes critères. Aucun des deux
+  // n'appelle de modèle : toutes les colonnes sont des champs déjà en base.
+  type SourceView = 'liste' | 'tableau';
+  let sourceView = $state<SourceView>('liste');
+  const sourceViews: { value: SourceView; label: string; hint: string }[] = [
+    { value: 'liste', label: 'Liste', hint: 'Chaque source en détail' },
+    { value: 'tableau', label: 'Tableau', hint: 'Les sources en regard, sur les mêmes critères' },
+  ];
+
+  async function openSourceFromTable(id: string) {
+    sourceView = 'liste';
+    expandedSource = id;
+    if (!browser) return;
+    // `tick()` et non `requestAnimationFrame` : la liste n'a pas encore de boîte
+    // de rendu tant que Svelte n'a pas retiré sa classe `hidden`, et
+    // `scrollIntoView` sur un élément sans géométrie ne fait rien du tout. Sans
+    // ce saut, le clic dans le tableau semble n'avoir aucun effet — la source
+    // dépliée se trouve des milliers de pixels plus bas.
+    await tick();
+    document.getElementById(`source-${id}`)?.scrollIntoView({ block: 'center' });
+  }
 
   $effect(() => {
     if (browser && !GraphComponent) {
@@ -434,10 +459,42 @@
 
     <section class="bg-surface-secondary border-t border-border">
       <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h2 class="text-xl font-semibold text-ink-primary mb-4">Sources citées</h2>
-        <div class="space-y-3">
+        <div class="flex items-center justify-between gap-3 flex-wrap mb-4">
+          <h2 class="text-xl font-semibold text-ink-primary">Sources citées</h2>
+          <div
+            class="inline-flex rounded-lg border border-border bg-surface-primary overflow-hidden text-sm print:hidden"
+            role="group"
+            aria-label="Affichage des sources"
+          >
+            {#each sourceViews as v, i (v.value)}
+              <button
+                type="button"
+                onclick={() => (sourceView = v.value)}
+                class="px-3.5 py-1.5 transition-colors {i > 0
+                  ? 'border-l border-border'
+                  : ''} {sourceView === v.value
+                  ? 'bg-ink-primary text-surface-primary font-medium'
+                  : 'text-ink-secondary hover:bg-surface-secondary'}"
+                aria-pressed={sourceView === v.value}
+                title={v.hint}
+              >
+                {v.label}
+              </button>
+            {/each}
+          </div>
+        </div>
+        {#if sourceView === 'tableau'}
+          <SourceCompareTable sources={card.sources} onselect={openSourceFromTable} />
+        {/if}
+        <!-- La liste reste montée quand le tableau s'affiche : à l'impression,
+             c'est elle qui porte la bibliographie complète, et les balises COinS
+             que Zotero détecte n'existent nulle part ailleurs. -->
+        <div class="space-y-3 {sourceView === 'tableau' ? 'hidden print:block' : ''}">
           {#each card.sources as source, i (source.id)}
-            <div class="bg-surface-primary rounded-lg border border-border overflow-hidden">
+            <div
+              id="source-{source.id}"
+              class="bg-surface-primary rounded-lg border border-border overflow-hidden"
+            >
               <!-- COinS : le connecteur Zotero détecte chaque source comme item. -->
               <span class="Z3988" title={sourceCoins(source)}></span>
               <button

@@ -35,7 +35,14 @@ Avant : Phase 2 (identité visuelle Pulsar-graph + audit) et Phase 1 (MVP comple
 
 ## PRs ouvertes
 
-**#249** — `fix/graphe-cadrage-dates`. Session 2026-08-03 (autonome) — **quatre défauts d'affichage du graphe, signalés à l'usage** :
+**#250** — `feat/colonnes-comparaison`. Session 2026-08-03 (autonome) — **chantier 9, la matrice de comparaison sans un seul appel à un modèle** :
+- Bouton « Liste / Tableau » au-dessus des sources citées. Six colonnes triables — année, type, revue ou éditeur, accès, rétraction, position déclarée — toutes lues dans des champs déjà en base. Rien n'est généré, donc rien ne peut être halluciné : c'est le contrat qui sépare ce tableau des matrices LLM.
+- ⚠️ **Aucune case n'est vide.** Le `N/A` indifférencié de SciSpace (étude §2.4) confond « l'information manque » et « le document est inaccessible ». Ici quatre formulations qui ne se recouvrent jamais : *non renseignée* (rien n'a été saisi), *sans objet* (un podcast n'a pas de revue), *non vérifié* (le contrôle n'a jamais tourné), *non vérifiable* (le contrôle ne peut pas conclure). Même règle à trois états que `retraction_status` / `oa_status` ; un `stance` non déclaré n'est jamais rabattu sur « mentionne ».
+- Le tri suit la même logique : **une absence n'a pas de rang** et se range en queue dans les deux sens. Troisième clic sur un en-tête → retour à l'ordre voulu par l'auteur. La liste reste montée sous le tableau (`hidden print:block`) car c'est elle qui porte les balises COinS que Zotero détecte.
+- 🔧 Bug attrapé au navigateur : le clic sur une ligne ne défilait pas jusqu'à la source. `requestAnimationFrame` s'exécutait avant que Svelte n'ait retiré la classe `hidden` — sans boîte de rendu, `scrollIntoView` est un no-op. Remplacé par `await tick()`.
+- Vérifié sur données de prod (Frontiers 651547, 152 références) : **152 lignes, 0 cellule vide**, trois formulations d'absence présentes en réel (152 « non déclarée », 24 « non vérifiable », 13 « non renseignée »). 12 tests unitaires ; 105 tests frontend au vert.
+
+**#249** — `fix/graphe-cadrage-dates`. Session 2026-08-03 (autonome) — **quatre défauts d'affichage du graphe, signalés à l'usage**. **Mergée le 2026-08-03** (frontend seul → Vercel déploie automatiquement) :
 - ⚠️ **La mise à l'échelle qui saute.** Le recadrage était appelé à *chaque tick* dès `alpha < 0.06` : le graphe s'affichait, le lecteur commençait à le parcourir, et deux à trois secondes plus tard tout changeait d'échelle. La disposition est désormais déroulée d'un coup (`simulation.tick(n)`) **avant** le premier rendu, puis la vue posée une seule fois. Mesuré sur la fiche Frontiers : **une seule transformation sur 24 s** d'observation. Coût du calcul synchrone ~200 ms, invisible puisqu'il précède l'affichage. (Cet item remplace le « Cadrage initial du graphe Sources » du court terme — le correctif envisagé, « recadrer à chaque tick », était précisément la cause.)
 - **Années rognées en frise.** Le bandeau était accroché au sommet du nuage, dont la hauteur dépend de la simulation. Il vit maintenant hors du groupe zoomable, à hauteur fixe, et ne suit le cadrage qu'horizontalement ; le recadrage lui réserve sa place.
 - **Date sous chaque nœud**, au même seuil de zoom que le nom d'auteur, avec la même source de vérité que la frise pour que les deux modes ne se contredisent pas. Date inconnue → « s. d. », jamais une place vide qui se confondrait avec un défaut d'affichage.
@@ -263,14 +270,15 @@ Vercel : `BACKEND_URL=https://philum-api.duckdns.org` (env var serverless, jamai
 - **Migrer Tailwind v3 → v4** (PR dédiée) : PR Dependabot #156 fermée car breaking (nouveau format config, PostCSS séparé `@tailwindcss/postcss`, syntaxes `@theme`/`@source`).
 
 **Chantiers outils-chercheurs** (étude `agent/research/2026-08-03-outils-chercheurs.md`, dans l'ordre)
-- ~~1. Meta tags Highwire + COinS~~ ✅ #239 · ~~2. Champ `stance` déclaratif~~ ✅ #240 · ~~3. Badge rétractation~~ ✅ #241+#242 · ~~4. Bornage + chronologie~~ ✅ #243+#244 · ~~5. Enrichissement OpenAlex~~ ✅ #245 · ~~6. Pivot CSL-JSON + RIS~~ ✅ #246 · ~~7. Import de fichier~~ ✅ #247 · ~~8. Alertes « on vous cite »~~ ✅ #248.
-- **9. Colonnes de comparaison sans IA** — année, type, revue, accès libre, rétraction. Tous les champs existent déjà sur `Source` : le chantier est surtout frontend. ⚠️ Contrainte de l'étude §2.4 : ne pas reproduire le `N/A` indifférencié de SciSpace, où l'absence de preuve devient indiscernable de la preuve d'absence. Une case vide doit dire **pourquoi** elle l'est (pas d'information / source inaccessible / source morte).
+- ~~1. Meta tags Highwire + COinS~~ ✅ #239 · ~~2. Champ `stance` déclaratif~~ ✅ #240 · ~~3. Badge rétractation~~ ✅ #241+#242 · ~~4. Bornage + chronologie~~ ✅ #243+#244 · ~~5. Enrichissement OpenAlex~~ ✅ #245 · ~~6. Pivot CSL-JSON + RIS~~ ✅ #246 · ~~7. Import de fichier~~ ✅ #247 · ~~8. Alertes « on vous cite »~~ ✅ #248 · ~~9. Colonnes de comparaison sans IA~~ ✅ #250.
+- **Les 9 chantiers de l'étude sont livrés.** Restent en réserve, plus lourds : extension navigateur (§3.6), colonnes custom LLM sur abstracts (§2.2), ancrage d'extrait fuzzy (§3.5), chemin entre deux nœuds (§3.4), Zotero Web API OAuth 1.0a (§4.7).
 - ~~**DOAJ**~~ ✅ — réglé par #245 sans seconde intégration : `best_oa_location.source.is_in_doaj` d'OpenAlex donne le drapeau au passage.
 
 **Court terme** (semaines)
-- **F1** — `openapi-typescript` (gen auto des types TS depuis OpenAPI, prévient drift back/front) — effort 3-4h.
-- **F4** — Endpoint `POST /cards/{id}/restore` (annule un soft-delete) — effort S.
-- **F2** — Tests d'intégration sur `POST /cards/{id}/publish` (couvre le path qui a coûté 4 PRs en mai).
+- ~~**F1** — `openapi-typescript`~~ ✅ — dépendance et script `generate:api` en place dans `apps/frontend/package.json`.
+- ~~**F4** — `POST /cards/{id}/restore`~~ ✅ — `cards.py:333`, vérifié en prod le 2026-08-03 (401 = route servie, auth requise).
+- ~~**F2** — Tests d'intégration sur `POST /cards/{id}/publish`~~ ✅ — `tests/integration/test_publish.py` couvre le path qui a coûté 4 PRs en mai.
+- ⚠️ Ces trois lignes traînaient comme « à faire » alors qu'elles étaient livrées. Vérifier l'état réel (grep + curl) **avant** de rouvrir un item de ce backlog.
 
 **Moyen terme** (déclencheurs naturels)
 - **F5** — Queue Wayback durable (Postgres-backed + worker) quand > 50 sources/jour.
