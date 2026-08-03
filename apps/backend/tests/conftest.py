@@ -17,6 +17,20 @@ os.environ["google_client_secret"] = "test-client-secret"
 os.environ["google_redirect_uri"] = "http://test/api/v1/auth/google/callback"
 os.environ["ci"] = "true"
 
+# Windows stocke les variables d'environnement en majuscules quoi qu'on ecrive :
+# les affectations ci-dessus deviennent DATABASE_URL, SESSION_SECRET, etc. Avec
+# `case_sensitive=True` (ADR-010), pydantic-settings ne les voit alors pas et
+# retombe sur les defauts -- dont un Postgres local absent. Les tests adossés a
+# la base echouaient donc systematiquement sur un poste Windows, et seule la CI
+# Linux les executait vraiment.
+#
+# On relache la contrainte ici et nulle part ailleurs : la garder en production
+# evite qu'un `DEBUG=1` d'un outil tiers active le mode debug par accident.
+from app.core.config import Settings, get_settings  # noqa: E402
+
+Settings.model_config["case_sensitive"] = False
+get_settings.cache_clear()
+
 from app.db.database import Base, engine  # noqa: E402
 
 import app.models.user  # noqa: E402, F401

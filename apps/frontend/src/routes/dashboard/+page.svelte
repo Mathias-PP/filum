@@ -4,7 +4,13 @@
   import { auth, currentUser } from '$lib/stores';
   import { api, ApiError } from '$lib/api';
   import { Button, Skeleton, EmptyState, ConfirmDialog, toast } from '$lib/components';
-  import type { Card as CardType, LinkedAccountIn, LinkedPlatform } from '$lib/api';
+  import { stanceStyle } from '$lib/utils/stance';
+  import type {
+    Card as CardType,
+    IncomingCitation,
+    LinkedAccountIn,
+    LinkedPlatform,
+  } from '$lib/api';
 
   let loading = $state(true);
   let loadFailed = $state(false);
@@ -13,6 +19,14 @@
   let showTrash = $state(false);
   let confirmOpen = $state(false);
   let confirmTarget = $state<CardType | null>(null);
+
+  let citations = $state<IncomingCitation[]>([]);
+  let citationsNewCount = $state(0);
+  // null = jamais consulté. À distinguer de « consulté, rien de neuf ».
+  let citationsSeenAt = $state<string | null>(null);
+  let citationsLoaded = $state(false);
+  let citationsTruncated = $state(false);
+  let showCitations = $state(false);
 
   let accounts = $state<LinkedAccountIn[]>([]);
   let accountsLoaded = $state(false);
@@ -97,6 +111,27 @@
     if (showTrash && deletedCards.length === 0) await loadTrash();
   }
 
+  /**
+   * Ouvrir la section vaut consultation : on marque comme vu côté serveur.
+   * La réponse décrit l'état d'AVANT le marquage, donc les pastilles « nouveau »
+   * restent visibles pendant la lecture au lieu de s'éteindre au clic.
+   */
+  async function toggleCitations() {
+    showCitations = !showCitations;
+    if (!showCitations || citationsNewCount === 0) return;
+    try {
+      const seen = await api.cards.markCitationsSeen();
+      citations = seen.citations;
+      citationsTruncated = seen.truncated;
+      citationsSeenAt = seen.seen_at ?? null;
+      // Le compteur du bandeau retombe : ce qui est lu n'est plus à signaler.
+      citationsNewCount = 0;
+    } catch {
+      // Le marquage a échoué : la liste déjà chargée reste affichée telle
+      // quelle, et les pastilles réapparaîtront au prochain chargement.
+    }
+  }
+
   async function restoreCard(card: CardType) {
     try {
       const restored = await api.cards.restore(card.id);
@@ -124,6 +159,17 @@
       toast.danger(err instanceof Error ? err.message : 'Erreur de chargement des fiches');
     } finally {
       loading = false;
+    }
+    try {
+      const incoming = await api.cards.incomingCitations();
+      citations = incoming.citations;
+      citationsNewCount = incoming.new_count;
+      citationsSeenAt = incoming.seen_at ?? null;
+      citationsTruncated = incoming.truncated;
+    } catch {
+      // Section non bloquante : le dashboard reste utilisable sans.
+    } finally {
+      citationsLoaded = true;
     }
     try {
       const existing = await api.users.getLinkedAccounts();
@@ -339,6 +385,92 @@
       {/if}
     </div>
   {/if}
+
+  <section class="mt-10">
+    <button
+      type="button"
+      onclick={toggleCitations}
+      class="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-ink-tertiary hover:text-ink-primary transition-colors mb-3"
+    >
+      <svg
+        viewBox="0 0 20 20"
+        class="w-3.5 h-3.5 transition-transform"
+        style:transform={showCitations ? 'rotate(90deg)' : 'rotate(0)'}
+        fill="currentColor"
+        aria-hidden="true"
+      >
+        <path
+          fill-rule="evenodd"
+          d="M7.293 4.707a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L10.586 10 7.293 6.707a1 1 0 010-1.414z"
+          clip-rule="evenodd"
+        />
+      </svg>
+      On vous cite{citations.length > 0 ? ` (${citations.length})` : ''}
+      {#if citationsNewCount > 0}
+        <span class="rounded-full bg-accent px-2 py-0.5 text-[0.65rem] font-semibold text-white">
+          {citationsNewCount} nouveau{citationsNewCount > 1 ? 'x' : ''}
+        </span>
+      {/if}
+    </button>
+
+    {#if showCitations}
+      {#if !citationsLoaded}
+        <Skeleton variant="card" height="3rem" />
+      {:else if citations.length === 0}
+        <p class="text-sm text-ink-tertiary italic">
+          Personne ne cite encore vos fiches. Seules les fiches publiées et publiques d'autres
+          créateurs comptent ici — vos propres renvois d'une fiche à l'autre ne sont pas des
+          reprises.
+        </p>
+      {:else}
+        <ul class="space-y-2">
+          {#each citations as citation (citation.source_id)}
+            {@const style = stanceStyle(citation.stance)}
+            <li class="card-row group">
+              <div class="min-w-0 flex-1">
+                <p class="truncate font-medium text-ink-primary">
+                  {#if citation.is_new}
+                    <span
+                      class="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-accent align-middle"
+                      title="Nouveau depuis votre dernière consultation"
+                    ></span>
+                  {/if}
+                  <a
+                    href="/@{citation.citing_creator_slug}/{citation.citing_card_slug}"
+                    class="hover:underline"
+                  >
+                    {citation.citing_card_title}
+                  </a>
+                </p>
+                <p class="mt-0.5 truncate text-xs text-ink-tertiary">
+                  par {citation.citing_creator_name || citation.citing_creator_slug} · cite
+                  <span class="text-ink-secondary">{citation.cited_card_title}</span>
+                  · {formatDate(citation.cited_at)}
+                </p>
+              </div>
+              {#if style}
+                <span
+                  class="flex-shrink-0 rounded-full px-2 py-0.5 text-[0.7rem] font-medium {style.bgClass}"
+                >
+                  {style.label}
+                </span>
+              {/if}
+            </li>
+          {/each}
+        </ul>
+        {#if citationsTruncated}
+          <p class="mt-2 text-xs text-ink-tertiary italic">
+            Seules les {citations.length} citations les plus récentes sont affichées.
+          </p>
+        {/if}
+      {/if}
+      {#if citationsLoaded && citationsSeenAt === null && citations.length > 0}
+        <p class="mt-2 text-xs text-ink-tertiary italic">
+          Première consultation : tout est signalé comme nouveau.
+        </p>
+      {/if}
+    {/if}
+  </section>
 
   <section class="mt-10">
     <button

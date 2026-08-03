@@ -193,3 +193,29 @@ class CardGraphResponse(BaseModel):
     # True si le plafond de noeuds a ete atteint : le frontend previent
     # l'utilisateur que le voisinage affiche est partiel.
     truncated: bool = False
+
+
+class IncomingCitationResponse(BaseModel):
+    """Une fiche publique tierce cite une fiche de l'utilisateur."""
+
+    source_id: UUID
+    cited_card_id: UUID
+    cited_card_title: str
+    cited_card_slug: str
+    citing_card_id: UUID
+    citing_card_title: str
+    citing_card_slug: str
+    citing_creator_slug: str
+    citing_creator_name: str | None = None
+    # NULL = aucun rapport declare, ce qui n'est pas « neutre ».
+    stance: str | None = None
+    cited_at: datetime
+    is_new: bool
+
+
+class IncomingCitationsResponse(BaseModel):
+    citations: list[IncomingCitationResponse]
+    new_count: int
+    # NULL = jamais consulte. Le frontend doit le dire, pas inventer une date.
+    seen_at: datetime | None = None
+    truncated: bool = False

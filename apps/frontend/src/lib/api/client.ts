@@ -11,6 +11,7 @@ import type {
   CardSearchResult,
   ExcerptSuggestResponse,
   ImportFromUrlResponse,
+  IncomingCitations,
   UrlMetadataResponse,
   YoutubeTranscriptResponse,
   LinkedAccount,
@@ -157,6 +158,20 @@ export const api = {
 
     restore: async (cardId: string): Promise<Card> => {
       return request<Card>(`/cards/${cardId}/restore`, { method: 'POST' });
+    },
+
+    /** Qui s'appuie sur mes fiches. */
+    incomingCitations: async (): Promise<IncomingCitations> => {
+      return request<IncomingCitations>('/cards/citations');
+    },
+
+    /**
+     * Marque les citations entrantes comme vues. Renvoie la liste telle
+     * qu'elle était AVANT le marquage : sinon la visite éteindrait sous les
+     * yeux de l'utilisateur ce qu'il vient tout juste d'ouvrir.
+     */
+    markCitationsSeen: async (): Promise<IncomingCitations> => {
+      return request<IncomingCitations>('/cards/citations/seen', { method: 'POST' });
     },
 
     getPublic: async (creatorSlug: string, cardSlug: string): Promise<CardDetail> => {

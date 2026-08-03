@@ -456,3 +456,28 @@ export interface CardGraph {
   /** true = plafond de nœuds atteint, le voisinage affiché est partiel. */
   truncated: boolean;
 }
+
+export interface IncomingCitation {
+  source_id: string;
+  cited_card_id: string;
+  cited_card_title: string;
+  cited_card_slug: string;
+  citing_card_id: string;
+  citing_card_title: string;
+  citing_card_slug: string;
+  citing_creator_slug: string;
+  citing_creator_name?: string | null;
+  /** null = aucun rapport déclaré, ce qui n'est pas « neutre ». */
+  stance?: string | null;
+  /** Date à laquelle la citation est devenue publique. */
+  cited_at: string;
+  is_new: boolean;
+}
+
+export interface IncomingCitations {
+  citations: IncomingCitation[];
+  new_count: number;
+  /** null = jamais consulté. À dire tel quel, sans inventer de date. */
+  seen_at?: string | null;
+  truncated: boolean;
+}
