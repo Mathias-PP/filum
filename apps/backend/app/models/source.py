@@ -5,7 +5,7 @@ from enum import Enum
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -128,6 +128,16 @@ class Source(Base):
     retraction_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
     retraction_notice_doi: Mapped[str | None] = mapped_column(String(200), nullable=True)
     retraction_checked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Acces libre (cf. extractors/open_access.py). Meme regle a trois etats :
+    # NULL = jamais verifie, "unverifiable" = verification impossible,
+    # "closed" = OpenAlex connait la reference et ne trouve rien de gratuit.
+    oa_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    oa_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    oa_license: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # NULL = OpenAlex ne dit rien. False affirmerait que la revue n'est pas
+    # referencee au DOAJ, ce que personne n'a verifie.
+    in_doaj: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    oa_checked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # Metadonnees bibliographiques optionnelles (exports BibTeX/CSL/APA).
     journal: Mapped[str | None] = mapped_column(String(300), nullable=True)
     volume: Mapped[str | None] = mapped_column(String(50), nullable=True)

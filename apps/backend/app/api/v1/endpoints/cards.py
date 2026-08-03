@@ -31,7 +31,7 @@ from app.schemas.source import SourceResponse
 from app.services.auth import AuthService
 from app.services.card import CardService
 from app.services.card_graph import MAX_DEPTH, build_card_graph
-from app.services.retraction_check import schedule_retraction_checks
+from app.services.source_enrichment import schedule_source_enrichment
 
 logger = logging.getLogger(__name__)
 
@@ -342,13 +342,15 @@ async def get_public_card(
     stats = card_service.compute_stats(card)
     sources_response = [SourceResponse.model_validate(s) for s in card.sources]
 
-    # Verification paresseuse : sans elle, seules les sources creees apres la
-    # migration 020 auraient un badge, et toutes les fiches deja publiees
-    # resteraient muettes sur les retractations. Le premier affichage declenche
-    # le controle, le suivant le montre.
-    unchecked = [(s.id, s.doi) for s in card.sources if s.retraction_status is None]
+    # Verification paresseuse : sans elle, seules les sources creees apres les
+    # migrations auraient un badge, et toutes les fiches deja publiees
+    # resteraient muettes sur les retractations comme sur l'acces libre. Le
+    # premier affichage declenche le controle, le suivant le montre.
+    unchecked = [
+        (s.id, s.doi) for s in card.sources if s.retraction_status is None or s.oa_status is None
+    ]
     if unchecked:
-        schedule_retraction_checks(unchecked)
+        schedule_source_enrichment(unchecked)
 
     # Badge "Fiche Philum" : enrichit chaque source liee a une autre fiche
     # avec le nombre de sources de cette fiche.

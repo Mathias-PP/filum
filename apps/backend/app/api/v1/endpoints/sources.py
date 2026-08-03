@@ -23,7 +23,7 @@ from app.models.user import User
 from app.schemas.source import SourceCreate, SourceResponse, SourceUpdate
 from app.services.auth import AuthService
 from app.services.card_link import effective_linked_card_id
-from app.services.retraction_check import schedule_retraction_checks
+from app.services.source_enrichment import schedule_source_enrichment
 from app.services.wayback import WaybackService
 
 logger = logging.getLogger(__name__)
@@ -248,7 +248,7 @@ async def create_source(
     # Verifie l'etat de retractation meme sans DOI : le verdict est alors
     # « non verifiable », date, plutot qu'un silence indistinguable de
     # « pas encore verifie ».
-    schedule_retraction_checks([(source.id, source.doi)])
+    schedule_source_enrichment([(source.id, source.doi)])
 
     return source
 
@@ -400,7 +400,7 @@ async def create_sources_batch(
     # Une seule tache sequentielle pour tout le lot : 150 requetes Crossref
     # simultanees pour un seul clic seraient impolies et se feraient jeter.
     if created_full:
-        schedule_retraction_checks([(s.id, s.doi) for s in created_full])
+        schedule_source_enrichment([(s.id, s.doi) for s in created_full])
 
     return SourceBatchResponse(
         created=[SourceResponse.model_validate(s) for s in created_full],
@@ -492,7 +492,7 @@ async def update_source(
     # Un DOI corrige change ce qui est verifiable : l'ancien verdict ne dit
     # plus rien de la source telle qu'elle est maintenant.
     if doi_changed:
-        schedule_retraction_checks([(source.id, source.doi)])
+        schedule_source_enrichment([(source.id, source.doi)])
 
     return source
 
