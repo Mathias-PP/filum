@@ -35,6 +35,20 @@ Avant : Phase 2 (identité visuelle Pulsar-graph + audit) et Phase 1 (MVP comple
 
 ## PRs ouvertes
 
+**#249** — `fix/graphe-cadrage-dates`. Session 2026-08-03 (autonome) — **quatre défauts d'affichage du graphe, signalés à l'usage** :
+- ⚠️ **La mise à l'échelle qui saute.** Le recadrage était appelé à *chaque tick* dès `alpha < 0.06` : le graphe s'affichait, le lecteur commençait à le parcourir, et deux à trois secondes plus tard tout changeait d'échelle. La disposition est désormais déroulée d'un coup (`simulation.tick(n)`) **avant** le premier rendu, puis la vue posée une seule fois. Mesuré sur la fiche Frontiers : **une seule transformation sur 24 s** d'observation. Coût du calcul synchrone ~200 ms, invisible puisqu'il précède l'affichage. (Cet item remplace le « Cadrage initial du graphe Sources » du court terme — le correctif envisagé, « recadrer à chaque tick », était précisément la cause.)
+- **Années rognées en frise.** Le bandeau était accroché au sommet du nuage, dont la hauteur dépend de la simulation. Il vit maintenant hors du groupe zoomable, à hauteur fixe, et ne suit le cadrage qu'horizontalement ; le recadrage lui réserve sa place.
+- **Date sous chaque nœud**, au même seuil de zoom que le nom d'auteur, avec la même source de vérité que la frise pour que les deux modes ne se contredisent pas. Date inconnue → « s. d. », jamais une place vide qui se confondrait avec un défaut d'affichage.
+- **Nœuds fiche** 28→22 px (racine) et 22→19 px (voisines), et ils suivent désormais la densité comme les références. Au passage, redimensionnement et plein écran ne relancent plus la simulation : ils ne changent pas les liens, et réchauffer la disposition faisait dériver un graphe qu'on venait de lire.
+
+**#248** — `feat/citations-entrantes`. Session 2026-08-03 (autonome) — **qui s'appuie sur mes fiches** :
+- `Source.linked_card_id` lu à l'envers donne les citations entrantes. Trois règles de prudence : seules les fiches **publiées ET publiques** d'un **tiers** comptent (un brouillon fuiterait, une auto-citation gonflerait le compteur), et la date de la citation est celle où elle est devenue **publique**, pas celle de la ligne en base.
+- ⚠️ **`citations_seen_at` est nullable et `NULL` veut dire « jamais consulté », pas « rien de nouveau »** : à la première visite tout est signalé neuf, et l'interface le dit explicitement au lieu de faire semblant. `POST /cards/citations/seen` renvoie l'état **d'avant** le marquage — sinon la visite éteindrait sous les yeux de l'utilisateur ce qu'il vient d'ouvrir.
+- 🔧 **Effet de bord notable : les 31 tests adossés à la base ne pouvaient pas tourner sous Windows.** Cause réelle trouvée (et non « Windows ne peut pas ») : Windows stocke les variables d'environnement en majuscules, donc `os.environ["database_url"]` du conftest devenait `DATABASE_URL`, que `case_sensitive=True` (ADR-010) rend invisible à pydantic-settings — repli silencieux sur un Postgres local absent. `case_sensitive` relâché **dans le conftest uniquement** (le garder en prod évite qu'un `DEBUG=1` d'un outil tiers active le mode debug). Résultat : **413 passed en 16 s** contre 369 passed / 31 errors en 147 s.
+- Migration `022_citations_seen`. **Mergée et déployée le 2026-08-03**, migration appliquée sur la VM (`alembic current` → `022_citations_seen (head)`), `/api/v1/cards/citations` → 401 en prod (route servie).
+
+**#247** — `feat/ris-import`. Session 2026-08-03 (autonome) — **le sens inverse du pivot CSL** : import RIS + décodage LaTeX. **Mergée et déployée le 2026-08-03.** Validée par un aller-retour réel sur la fiche Frontiers : **148/148 références ayant une URL relues avec titres et auteurs intacts**, 0 titre vide, 0 auteur manquant. Les 4 « perdues » sur 152 n'ont **ni URL ni DOI** en base — exactement le cas que le compteur `skipped` est fait pour exposer plutôt que masquer.
+
 **#246** — `feat/csl-pivot-ris`. Session 2026-08-03 (autonome) — **CSL-JSON devient le pivot, RIS s'ajoute** :
 - BibTeX et RIS sont des formats de *sortie*, pas des pivots. Les faire descendre d'un même `app/services/csl.py` garantit qu'ils ne divergent pas : un champ corrigé l'est partout. Neuvième format d'export (`?format=ris`, EndNote/Mendeley/Zotero).
 - ⚠️ **Le point dur est le nom d'auteur.** Philum stocke une chaîne libre, CSL attend `{family, given}`. L'ancien code passait tout en `[{literal}]` (tri dégradé dans Zotero) **et** cassait `"Dupont, Marie"` en deux co-auteurs. La virgule joue deux rôles : `"Dupont, J."` est *un* auteur, `"Dupont J., Martin A."` en fait deux. Le découpage s'appuie d'abord sur les initiales (seule marque typographique fiable), puis sur la parité des morceaux mono-mot. **Pari assumé et documenté** : il peut se tromper sur `"Bell, Aron"` (deux auteurs sans prénom), chaîne que rien ne distingue d'un auteur unique — **le point-virgule lève l'ambiguïté et reste la forme à préférer**.
@@ -249,13 +263,11 @@ Vercel : `BACKEND_URL=https://philum-api.duckdns.org` (env var serverless, jamai
 - **Migrer Tailwind v3 → v4** (PR dédiée) : PR Dependabot #156 fermée car breaking (nouveau format config, PostCSS séparé `@tailwindcss/postcss`, syntaxes `@theme`/`@source`).
 
 **Chantiers outils-chercheurs** (étude `agent/research/2026-08-03-outils-chercheurs.md`, dans l'ordre)
-- ~~1. Meta tags Highwire + COinS~~ ✅ #239 · ~~2. Champ `stance` déclaratif~~ ✅ #240 · ~~3. Badge rétractation~~ ✅ #241+#242 · ~~4. Bornage + chronologie~~ ✅ #243+#244 · ~~5. Enrichissement OpenAlex~~ ✅ #245 · ~~6. Pivot CSL-JSON + RIS~~ ✅ #246.
-- **7. Import de fichier BibTeX/RIS/CSL-JSON** — l'import BibTeX/CSL-JSON existe déjà ; reste **RIS**, et le décodage des séquences LaTeX (`\'e` → é) via `pylatexenc`. Le pivot `app/services/csl.py` est le point d'entrée naturel du sens inverse.
-- **8. Alertes « on vous cite »** · **9. Colonnes de comparaison sans IA**.
+- ~~1. Meta tags Highwire + COinS~~ ✅ #239 · ~~2. Champ `stance` déclaratif~~ ✅ #240 · ~~3. Badge rétractation~~ ✅ #241+#242 · ~~4. Bornage + chronologie~~ ✅ #243+#244 · ~~5. Enrichissement OpenAlex~~ ✅ #245 · ~~6. Pivot CSL-JSON + RIS~~ ✅ #246 · ~~7. Import de fichier~~ ✅ #247 · ~~8. Alertes « on vous cite »~~ ✅ #248.
+- **9. Colonnes de comparaison sans IA** — année, type, revue, accès libre, rétraction. Tous les champs existent déjà sur `Source` : le chantier est surtout frontend. ⚠️ Contrainte de l'étude §2.4 : ne pas reproduire le `N/A` indifférencié de SciSpace, où l'absence de preuve devient indiscernable de la preuve d'absence. Une case vide doit dire **pourquoi** elle l'est (pas d'information / source inaccessible / source morte).
 - ~~**DOAJ**~~ ✅ — réglé par #245 sans seconde intégration : `best_oa_location.source.is_in_doaj` d'OpenAlex donne le drapeau au passage.
 
 **Court terme** (semaines)
-- **Cadrage initial du graphe Sources** — `SourceGraph.svelte` souffre du même défaut que la constellation avant PR #224 : le premier rendu tasse les nœuds en bas à droite. Le correctif est le même (recadrer à chaque tick plutôt qu'à un seuil d'alpha).
 - **F1** — `openapi-typescript` (gen auto des types TS depuis OpenAPI, prévient drift back/front) — effort 3-4h.
 - **F4** — Endpoint `POST /cards/{id}/restore` (annule un soft-delete) — effort S.
 - **F2** — Tests d'intégration sur `POST /cards/{id}/publish` (couvre le path qui a coûté 4 PRs en mai).
