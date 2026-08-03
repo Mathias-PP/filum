@@ -35,6 +35,19 @@ Avant : Phase 2 (identité visuelle Pulsar-graph + audit) et Phase 1 (MVP comple
 
 ## PRs ouvertes
 
+**#245** — `feat/open-access`. Session 2026-08-03 (autonome) — **où lire gratuitement une référence payante** :
+- Une bibliographie qui renvoie à un paywall arrête le lecteur net. OpenAlex agrège les routes d'accès libre (dépôt HAL, revue en libre accès, version acceptée chez l'éditeur) et expose au passage le référencement DOAJ de la revue — l'item DOAJ du chantier 3 est donc réglé sans seconde intégration.
+- ⚠️ **Même règle à trois états que les rétractations.** `NULL` = jamais vérifié · `closed` = OpenAlex connaît la référence et ne trouve rien de gratuit, **information positive et datée** · `unverifiable` = pas de DOI, DOI inconnu, service muet. Afficher « payant » dans le troisième cas détournerait le lecteur d'une version libre qui existe. `in_doaj` est **nullable** pour la même raison : `False` affirmerait que la revue n'est pas référencée.
+- Migration `021_source_oa` (`oa_status`, `oa_url`, `oa_license`, `in_doaj`, `oa_checked_at`). `retraction_check.py` devient `source_enrichment.py` : une seule passe, mais chaque service enveloppé **séparément** — une panne OpenAlex n'efface pas un verdict de rétractation obtenu, et deux pannes n'écrivent **rien** plutôt que de dater une vérification qui n'a pas eu lieu.
+- `freeReadUrl` refuse de rendre un bouton mort (statut libre **et** URL en `http`). Le badge compact ne signale que l'accès libre : un « payant » gris sur 152 références serait du bruit ; le verdict complet et daté vit dans le panneau déplié.
+- **Mergée et déployée le 2026-08-03**, migration `021` appliquée. Vérifié en prod sur la fiche Frontiers (152 sources) : **0 NULL** — 76 `closed`, 24 `gold`, 20 `green`, 13 `bronze`, 7 `hybrid`, 12 `unverifiable` (exactement les 12 sans DOI). **64 références lisibles gratuitement avec un lien réel** là où la fiche n'en signalait aucune. DOAJ : 88 `None` / 36 `False` / 28 `True`. Vérification visuelle navigateur non faite.
+
+**#243 + #244** — `feat/graph-cap`, `feat/graph-chrono`. Session 2026-08-03 (autonome) — **le graphe reste lisible, et il sait dire le temps** :
+- #243 borne le rendu aux 60 premières références (`GRAPH_SOURCE_CAP`). La troncature n'est **jamais silencieuse** : bouton `+N autres` / `Réduire à 60` dans la barre d'outils et mention permanente « N sur M références affichées » dans la légende — un graphe de 60 nœuds sur 152 ne doit pas passer pour un graphe complet.
+- #244 ajoute un second axe de lecture (bascule Réseau / Chronologie). Le maillage dit qui dépend de qui, jamais l'ancienneté : « cette affirmation s'appuie sur un article de 1998 » est une information qu'il ne peut pas porter.
+- ⚠️ **Une source sans date connue ne reçoit jamais une position inventée sur la frise.** Elle est garée dans une colonne hachurée à part, étiquetée « sans date (N) ». Les cas dégénérés sont tous testés : rien de daté (tout au centre, aucune graduation), une seule année (centrée et non écrasée à gauche), et les bornes réelles toujours graduées — une frise 1998-2024 par pas de 5 commencerait à 2000 et ferait croire que la source la plus ancienne date de 2000.
+- Les nœuds de jonction restent libres (pas de date propre, ils tireraient leurs branches vers une année qu'ils n'ont pas) et `forceCenter` est désactivé en frise (il ramènerait une source de 1998 vers le milieu). **Mergées, frontend seul → Vercel.**
+
 **#241 + #242** — `feat/retraction-badge`, `feat/retraction-lazy-check`. Session 2026-08-03 (autonome) — **une source dit si l'article qu'elle cite a été rétracté** :
 - Une bibliographie qui cite un article rétracté le cite pour toujours : une fois le contenu publié, ni le lecteur ni l'auteur de la fiche n'ont de moyen de l'apprendre. Crossref agrège Retraction Watch et expose les avis sur `works/{doi}` (champ `updated-by`), vérifié empiriquement avant d'écrire une ligne.
 - ⚠️ **Trois états, pas deux.** `NULL` = jamais vérifié · `none` = Crossref connaît le DOI et ne signale rien, **information positive et datée** · `unverifiable` = pas de DOI, DOI inconnu, service muet. Afficher « aucune rétractation » dans le troisième cas serait un mensonge par omission. Le plus grave l'emporte (corrigé en 2004 puis rétracté en 2010 → « Rétracté ») et un type Crossref inconnu retombe sur `concern` : inviter à vérifier plutôt que rassurer à tort.
@@ -229,12 +242,10 @@ Vercel : `BACKEND_URL=https://philum-api.duckdns.org` (env var serverless, jamai
 - **Migrer Tailwind v3 → v4** (PR dédiée) : PR Dependabot #156 fermée car breaking (nouveau format config, PostCSS séparé `@tailwindcss/postcss`, syntaxes `@theme`/`@source`).
 
 **Chantiers outils-chercheurs** (étude `agent/research/2026-08-03-outils-chercheurs.md`, dans l'ordre)
-- ~~1. Meta tags Highwire + COinS~~ ✅ #239 · ~~2. Champ `stance` déclaratif~~ ✅ #240 · ~~3. Badge rétractation~~ ✅ #241+#242.
-- **4. Bornage du graphe + toggle chronologie** — cap « +N autres » et mode chronologie (x = date de publication, y = nombre de sources, **jamais** citations : Philum ne les a pas).
-- **5. Enrichissement OpenAlex + Unpaywall** — bouton « lire en accès libre ».
+- ~~1. Meta tags Highwire + COinS~~ ✅ #239 · ~~2. Champ `stance` déclaratif~~ ✅ #240 · ~~3. Badge rétractation~~ ✅ #241+#242 · ~~4. Bornage + chronologie~~ ✅ #243+#244 · ~~5. Enrichissement OpenAlex~~ ✅ #245.
 - **6. Pivot CSL-JSON + exports BibTeX/RIS** — vérifier d'abord `app/services/export.py`, plusieurs formats existent déjà.
 - **7. Import de fichier BibTeX/RIS/CSL-JSON** · **8. Alertes « on vous cite »** · **9. Colonnes de comparaison sans IA**.
-- **DOAJ** — différé après la rétractation ; `message.ISSN` de Crossref est déjà là, le branchement est peu coûteux.
+- ~~**DOAJ**~~ ✅ — réglé par #245 sans seconde intégration : `best_oa_location.source.is_in_doaj` d'OpenAlex donne le drapeau au passage.
 
 **Court terme** (semaines)
 - **Cadrage initial du graphe Sources** — `SourceGraph.svelte` souffre du même défaut que la constellation avant PR #224 : le premier rendu tasse les nœuds en bas à droite. Le correctif est le même (recadrer à chaque tick plutôt qu'à un seuil d'alpha).
