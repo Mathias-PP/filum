@@ -67,7 +67,7 @@ router = APIRouter(tags=["imports"])
 
 MAX_FILE_SIZE = 5 * 1024 * 1024
 
-_FORMATS = {"bibtex", "csl-json", "markdown", "pdf", "docx", "html"}
+_FORMATS = {"bibtex", "ris", "csl-json", "markdown", "pdf", "docx", "html"}
 
 _AUTHOR_KIND_BY_CATEGORY = {
     "article-scientifique": "chercheur",
