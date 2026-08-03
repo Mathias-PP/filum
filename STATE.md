@@ -2,7 +2,7 @@
 
 > Snapshot vivant, 1 page max. **Pour l'historique détaillé** : voir [`CHANGELOG.md`](./CHANGELOG.md). **Pour les items long terme** : voir [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md).
 
-**Dernière mise à jour : 2026-07-30**
+**Dernière mise à jour : 2026-08-03**
 
 ---
 
@@ -34,6 +34,23 @@ Avant : Phase 2 (identité visuelle Pulsar-graph + audit) et Phase 1 (MVP comple
 ---
 
 ## PRs ouvertes
+
+**#241 + #242** — `feat/retraction-badge`, `feat/retraction-lazy-check`. Session 2026-08-03 (autonome) — **une source dit si l'article qu'elle cite a été rétracté** :
+- Une bibliographie qui cite un article rétracté le cite pour toujours : une fois le contenu publié, ni le lecteur ni l'auteur de la fiche n'ont de moyen de l'apprendre. Crossref agrège Retraction Watch et expose les avis sur `works/{doi}` (champ `updated-by`), vérifié empiriquement avant d'écrire une ligne.
+- ⚠️ **Trois états, pas deux.** `NULL` = jamais vérifié · `none` = Crossref connaît le DOI et ne signale rien, **information positive et datée** · `unverifiable` = pas de DOI, DOI inconnu, service muet. Afficher « aucune rétractation » dans le troisième cas serait un mensonge par omission. Le plus grave l'emporte (corrigé en 2004 puis rétracté en 2010 → « Rétracté ») et un type Crossref inconnu retombe sur `concern` : inviter à vérifier plutôt que rassurer à tort.
+- Migration `020_source_retraction` (`retraction_status`, `retraction_notice_doi`, `retraction_checked_at`). Champs **read-only** sur `SourceResponse` seulement : dérivés machine, jamais saisis.
+- #242 comble le trou de #241 : la vérification ne partait qu'à la création, donc toute fiche antérieure serait restée muette indéfiniment. L'affichage d'une fiche publique planifie désormais le contrôle des sources jamais vérifiées, via `app/services/retraction_check.py` (garde anti-doublon + séquentiel sur le lot — le projet n'a pas d'ordonnanceur).
+- **Mergées et déployées le 2026-08-03**, migration `020` appliquée. Vérifié en prod sur la fiche Frontiers (152 sources) : **139 `none`, 12 `unverifiable` (exactement les 12 sans DOI), 1 `corrected`** avec le DOI de l'erratum (`10.1016/j.jecp.2017.04.001`). Vérification visuelle navigateur non faite.
+
+**#240** — `feat/source-stance`. Session 2026-08-03 (autonome) — **le rapport déclaré entre une source et le propos** :
+- Une bibliographie dit sur quoi on s'appuie, jamais comment. Quatre valeurs déclaratives (`appuie`, `nuance-contredit`, `mentionne`, `contexte`), migration `019_source_stance`, arêtes colorées dans le graphe et légende conditionnelle.
+- ⚠️ `NULL` (non déclaré) n'est **jamais** ramené à `mentionne` : l'un est un silence, l'autre une réponse. Invariant tenu dans le modèle, le schéma, le sélecteur (« Non déclaré » en premier), la légende et trois tests.
+- Point dur : une source qui désigne une fiche Philum est absorbée en arête fiche→fiche et disparaît comme nœud — sa position déclarée se serait perdue précisément sur les liens qui structurent le graphe. Résolu par `card_edges` en dict avec règle de fusion (premier non-nul gagne). **Mergée et déployée.**
+
+**#239** — `feat/citation-meta`. Session 2026-08-03 (autonome) — **meta tags Highwire + COinS sur les fiches publiques** :
+- Google Scholar exige titre + premier auteur + année ; Zotero résout dans l'ordre translator > unAPI > COinS > DOI. Les fiches n'exposaient rien : ni indexables, ni capturables en un clic.
+- COinS avec trois contextes OpenURL (`journal`, `book`, **`dc`**) — c'est le contexte Dublin Core qui rend l'export agnostique : sans lui une source YouTube devrait mentir sur son genre pour être exportable.
+- **Mergée et déployée.** Vérifié dans le HTML servi par Vercel : 5 tags Highwire, 18 spans COinS pour 18 sources.
 
 **#238** — `feat/card-content-authors`. Session 2026-08-03 (autonome) — **la fiche porte enfin les auteurs de son contenu** :
 - Suite directe de #237, qui n'avait changé que la règle de préséance sans régler le manque de donnée : le nœud racine continuait d'afficher « Mathias ». ⚠️ **Une fiche n'avait aucun champ d'auteurs.** La seule source était `Source.authors` d'une source *d'une autre fiche* pointant vers elle (`_load_card_authors`) — donc rien du tout quand personne ne cite. Le repli sur le créateur était correct au regard du code et faux au regard du sens.
@@ -210,6 +227,14 @@ Vercel : `BACKEND_URL=https://philum-api.duckdns.org` (env var serverless, jamai
 - **Alerte budget 1 € sur GCP** (Billing → Budgets & alerts) si pas déjà en place — filet de sécurité, pas de plafond natif.
 - **Décommissionner Railway** : supprimer le service + retirer l'ancienne redirect URI Railway du client OAuth Google.
 - **Migrer Tailwind v3 → v4** (PR dédiée) : PR Dependabot #156 fermée car breaking (nouveau format config, PostCSS séparé `@tailwindcss/postcss`, syntaxes `@theme`/`@source`).
+
+**Chantiers outils-chercheurs** (étude `agent/research/2026-08-03-outils-chercheurs.md`, dans l'ordre)
+- ~~1. Meta tags Highwire + COinS~~ ✅ #239 · ~~2. Champ `stance` déclaratif~~ ✅ #240 · ~~3. Badge rétractation~~ ✅ #241+#242.
+- **4. Bornage du graphe + toggle chronologie** — cap « +N autres » et mode chronologie (x = date de publication, y = nombre de sources, **jamais** citations : Philum ne les a pas).
+- **5. Enrichissement OpenAlex + Unpaywall** — bouton « lire en accès libre ».
+- **6. Pivot CSL-JSON + exports BibTeX/RIS** — vérifier d'abord `app/services/export.py`, plusieurs formats existent déjà.
+- **7. Import de fichier BibTeX/RIS/CSL-JSON** · **8. Alertes « on vous cite »** · **9. Colonnes de comparaison sans IA**.
+- **DOAJ** — différé après la rétractation ; `message.ISSN` de Crossref est déjà là, le branchement est peu coûteux.
 
 **Court terme** (semaines)
 - **Cadrage initial du graphe Sources** — `SourceGraph.svelte` souffre du même défaut que la constellation avant PR #224 : le premier rendu tasse les nœuds en bas à droite. Le correctif est le même (recadrer à chaque tick plutôt qu'à un seuil d'alpha).
