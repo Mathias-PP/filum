@@ -36,6 +36,7 @@
     type NodeColor,
   } from '$lib/utils/author-colors';
   import { cardNodeLabel } from '$lib/utils/card-label';
+  import { GRAPH_SOURCE_CAP, capSources } from '$lib/utils/graph-cap';
   import { buildHaystack, matchesAllTerms, searchTerms } from '$lib/utils/graph-search';
   import { STANCE_ORDER, STANCE_STYLES, stanceStroke } from '$lib/utils/stance';
   import CardDetailPanel, { type CardPanelInfo } from './CardDetailPanel.svelte';
@@ -257,12 +258,33 @@
     }))
   );
 
+  // Bornage. Une fiche de 152 références affichées d'un coup ne montre rien :
+  // les nœuds se touchent et les étiquettes se recouvrent. Le graphe s'ouvre
+  // sur une portion lisible et annonce ce qu'il garde en réserve — l'inverse
+  // d'un masquage silencieux.
+  let showAllSources = $state(false);
+  const sourceCap = $derived(showAllSources ? 0 : GRAPH_SOURCE_CAP);
+
+  /** Références d'une fiche, bornées. Même règle pour la racine et les dépliées. */
+  function cappedOf(sources: GraphSourceData[]): GraphSourceData[] {
+    return capSources(sources, sourceCap).kept;
+  }
+
   /** Tout ce qui est actuellement à l'écran : racine + fiches dépliées. */
   const visibleSources = $derived.by(() => {
-    const all = [...rootSources];
-    for (const id of expandedCardIds) all.push(...(neighborSources.get(id) ?? []));
+    const all = [...cappedOf(rootSources)];
+    for (const id of expandedCardIds) all.push(...cappedOf(neighborSources.get(id) ?? []));
     return all;
   });
+
+  /** Nombre total de références disponibles, bornage ignoré. */
+  const totalSources = $derived.by(() => {
+    let n = rootSources.length;
+    for (const id of expandedCardIds) n += (neighborSources.get(id) ?? []).length;
+    return n;
+  });
+
+  const hiddenSourcesCount = $derived(Math.max(0, totalSources - visibleSources.length));
 
   // Légende : uniquement les valeurs présentes à l'écran.
   const legendEntries = $derived.by(() => {
@@ -513,6 +535,11 @@
     remount();
   }
 
+  function toggleShowAllSources() {
+    showAllSources = !showAllSources;
+    remount();
+  }
+
   function remount() {
     selectSource(null);
     hoveredId = null;
@@ -547,7 +574,7 @@
     // dans le graphe.
     const ownerIds = [card.id, ...expandedCardIds];
     const sourcesOf = (id: string) =>
-      id === card.id ? rootSources : (neighborSources.get(id) ?? []);
+      cappedOf(id === card.id ? rootSources : (neighborSources.get(id) ?? []));
 
     // Toute fiche du voisinage est un nœud, qu'elle soit citée par la racine,
     // qu'elle la cite, ou qu'elle soit à deux sauts. Ne montrer que les fiches
@@ -1463,6 +1490,24 @@
         </button>
       {/each}
     </div>
+
+    {#if hiddenSourcesCount > 0 || showAllSources}
+      <button
+        type="button"
+        onclick={toggleShowAllSources}
+        class="rounded-md bg-white/95 border border-slate-200 shadow-sm px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
+        aria-pressed={showAllSources}
+        title={showAllSources
+          ? 'Revenir à une vue lisible'
+          : 'Afficher toutes les références, au prix de la lisibilité'}
+      >
+        {#if showAllSources}
+          Réduire à {GRAPH_SOURCE_CAP}
+        {:else}
+          +{hiddenSourcesCount} autres
+        {/if}
+      </button>
+    {/if}
   </div>
 
   <div class="absolute top-3 right-3 flex flex-col gap-1.5">
@@ -1546,6 +1591,12 @@
           {s.label}
         </span>
       {/each}
+    {/if}
+    {#if hiddenSourcesCount > 0}
+      <span class="w-px h-3 bg-slate-200" aria-hidden="true"></span>
+      <span class="text-slate-500">
+        {visibleSources.length} sur {totalSources} références affichées
+      </span>
     {/if}
   </div>
 
