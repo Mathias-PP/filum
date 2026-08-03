@@ -1225,7 +1225,7 @@
           <div>
             <input
               type="file"
-              accept=".bib,.bibtex,.json,.md,.markdown,.pdf,.docx,.html,.htm"
+              accept=".bib,.bibtex,.ris,.nbib,.enw,.json,.md,.markdown,.pdf,.docx,.html,.htm"
               class="hidden"
               bind:this={fileInput}
               onchange={importFile}

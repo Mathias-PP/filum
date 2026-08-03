@@ -15,6 +15,7 @@ from __future__ import annotations
 import io
 import json
 import re
+import unicodedata
 import zipfile
 import zlib
 from dataclasses import dataclass, field
@@ -145,6 +146,79 @@ def _dedupe(refs: list[ImportedRef]) -> list[ImportedRef]:
 
 _BIBTEX_ENTRY_RE = re.compile(r"@(\w+)\s*\{\s*([^,\s]*)\s*,", re.IGNORECASE)
 
+#: Accents LaTeX. Un .bib exporte par un gestionnaire de references ecrit
+#: « M\"uller » ou « Lev\'y » : laisser passer la sequence brute afficherait
+#: « Lev\'y » dans la fiche publique.
+_LATEX_ACCENTS = {
+    "`": "̀",
+    "'": "́",
+    "^": "̂",
+    "~": "̃",
+    '"': "̈",
+    "=": "̄",
+    ".": "̇",
+    "u": "̆",
+    "v": "̌",
+    "c": "̧",
+    "H": "̋",
+    "k": "̨",
+    "r": "̊",
+}
+
+#: Caracteres qui n'ont pas de forme « accent + lettre » a composer.
+_LATEX_LITERALS = {
+    r"\ss": "ß",
+    r"\ae": "æ",
+    r"\AE": "Æ",
+    r"\oe": "œ",
+    r"\OE": "Œ",
+    r"\o": "ø",
+    r"\O": "Ø",
+    r"\aa": "å",
+    r"\AA": "Å",
+    r"\l": "ł",
+    r"\L": "Ł",
+    r"\i": "ı",
+    r"\&": "&",
+    r"\%": "%",
+    r"\$": "$",
+    r"\_": "_",
+    r"\#": "#",
+    "--": "–",
+    "---": "—",
+    "~": " ",
+}
+
+_LATEX_ACCENT_RE = re.compile(r"\\([`'^~\"=.uvcHkr])\s*\{?\\?([a-zA-Z])\}?|\\([`'^~\"=.])\{\}")
+#: Toute commande restante. On la retire plutot que de l'afficher : un
+#: « \textbf » dans un titre est un artefact de format, jamais du contenu.
+_LATEX_COMMAND_RE = re.compile(r"\\[a-zA-Z]+\s*")
+
+
+def latex_to_unicode(value: str) -> str:
+    """Rend lisible un champ BibTeX ecrit en echappements LaTeX.
+
+    Aucune dependance : la couverture visee est celle d'une bibliographie
+    (accents, ligatures, tirets), pas celle d'un document LaTeX complet. Le
+    traitement degrade proprement -- une commande inconnue est retiree, jamais
+    laissee telle quelle -- pour qu'aucun `\\'e` ne parvienne au lecteur.
+    """
+
+    def _accent(m: re.Match[str]) -> str:
+        mark, letter = m.group(1), m.group(2)
+        if mark is None:
+            return ""
+        base = "i" if letter == "i" and mark else letter
+        return unicodedata.normalize("NFC", base + _LATEX_ACCENTS.get(mark, ""))
+
+    out = _LATEX_ACCENT_RE.sub(_accent, value)
+    # Les plus longs d'abord : « \AA » ne doit pas etre lu comme « \A » + A.
+    for token in sorted(_LATEX_LITERALS, key=len, reverse=True):
+        out = out.replace(token, _LATEX_LITERALS[token])
+    out = _LATEX_COMMAND_RE.sub("", out)
+    return re.sub(r"\s+", " ", out.replace("{", "").replace("}", "")).strip()
+
+
 _CATEGORY_BY_BIBTEX_TYPE = {
     "article": "article-scientifique",
     "inproceedings": "article-scientifique",
@@ -196,7 +270,7 @@ def _parse_bibtex_fields(body: str) -> dict[str, str]:
             m2 = re.match(r"[^,]*", body[i:])
             value = m2.group(0) if m2 else ""
             i += len(value)
-        fields[name] = re.sub(r"\s+", " ", value.replace("{", "").replace("}", "")).strip()
+        fields[name] = latex_to_unicode(value)
     return fields
 
 
@@ -306,6 +380,100 @@ def parse_csl_json(text: str) -> ParseResult:
                 category=_CATEGORY_BY_CSL_TYPE.get(str(item.get("type", "")), "page-web"),
             )
         )
+    result.refs = _dedupe(result.refs)
+    return result
+
+
+# --- RIS (EndNote, Mendeley, Zotero) ----------------------------------------
+
+_CATEGORY_BY_RIS_TYPE = {
+    "JOUR": "article-scientifique",
+    "CONF": "article-scientifique",
+    "CPAPER": "article-scientifique",
+    "THES": "article-scientifique",
+    "RPRT": "communique",
+    "NEWS": "article-presse",
+    "MGZN": "article-presse",
+    "BOOK": "livre",
+    "CHAP": "livre",
+    "EBOOK": "livre",
+    "ELEC": "page-web",
+    "BLOG": "blog",
+    "ICOMM": "interview",
+    "SOUND": "podcast",
+    "MPCT": "documentaire",
+    "VIDEO": "documentaire",
+}
+
+#: « TY  - JOUR ». La norme veut deux espaces, mais les exports reels en
+#: mettent un ou trois : etre strict ferait rater des fichiers valides
+#: partout ailleurs.
+_RIS_LINE_RE = re.compile(r"^([A-Z][A-Z0-9])\s+-\s?(.*)$")
+
+
+def parse_ris(text: str) -> ParseResult:
+    """Lit un fichier RIS. Un enregistrement va de ``TY`` a ``ER``.
+
+    Un champ repete (plusieurs ``AU``) s'accumule ; les autres gardent la
+    premiere valeur, car un second ``TI`` est presque toujours un sous-titre
+    mal exporte plutot qu'un remplacement.
+    """
+    result = ParseResult()
+    current: dict[str, list[str]] = {}
+
+    def flush() -> None:
+        if not current:
+            return
+        doi = (current.get("DO") or [""])[0].strip()
+        url = (current.get("UR") or [""])[0].strip()
+        if not url and doi:
+            url = _doi_to_url(doi)
+        if not url:
+            result.skipped += 1
+            return
+        year: int | None = None
+        for tag in ("PY", "Y1", "DA"):
+            raw = (current.get(tag) or [""])[0].strip()[:4]
+            if raw.isdigit():
+                year = int(raw)
+                break
+        title = next(
+            (v[0].strip() for k in ("TI", "T1", "BT") if (v := current.get(k)) and v[0].strip()),
+            None,
+        )
+        authors = ", ".join(
+            a.strip() for a in current.get("AU", []) + current.get("A1", []) if a.strip()
+        )
+        ris_type = (current.get("TY") or [""])[0].strip().upper()
+        result.refs.append(
+            ImportedRef(
+                url=url,
+                title=title,
+                authors=authors or None,
+                year=year,
+                category=_CATEGORY_BY_RIS_TYPE.get(ris_type, "page-web"),
+            )
+        )
+
+    for raw_line in text.splitlines():
+        m = _RIS_LINE_RE.match(raw_line.strip())
+        if not m:
+            continue
+        tag, value = m.group(1), m.group(2).strip()
+        if tag == "TY":
+            # Un « TY » sans « ER » precedent signale un fichier tronque ou mal
+            # exporte : on ferme l'enregistrement en cours plutot que de fondre
+            # deux references en une.
+            flush()
+            current = {"TY": [value]}
+        elif tag == "ER":
+            flush()
+            current = {}
+        elif current:
+            current.setdefault(tag, []).append(value)
+    # Fichier sans « ER » final : la derniere reference compte quand meme.
+    flush()
+
     result.refs = _dedupe(result.refs)
     return result
 
@@ -450,6 +618,8 @@ def detect_format(filename: str | None, data: bytes) -> str:
         return "bibtex"
     if name.endswith(".json"):
         return "csl-json"
+    if name.endswith((".ris", ".nbib", ".enw")):
+        return "ris"
     if name.endswith(".md") or name.endswith(".markdown"):
         return "markdown"
     if name.endswith(".docx"):
@@ -465,6 +635,10 @@ def detect_format(filename: str | None, data: bytes) -> str:
         return "csl-json"
     if re.search(r"@\w+\s*\{", head):
         return "bibtex"
+    # Un RIS commence toujours par « TY  - » ; le chercher en tete evite de
+    # confondre avec des notes Markdown qui citeraient la ligne.
+    if re.search(r"^TY\s+-\s", head, re.MULTILINE):
+        return "ris"
     if re.search(r"<!doctype html|<html", head, re.IGNORECASE):
         return "html"
     return "markdown"
@@ -483,4 +657,6 @@ def parse_file(filename: str | None, data: bytes, forced_format: str | None = No
         return parse_bibtex(text)
     if fmt == "csl-json":
         return parse_csl_json(text)
+    if fmt == "ris":
+        return parse_ris(text)
     return parse_markdown(text)
