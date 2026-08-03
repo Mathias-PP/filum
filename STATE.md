@@ -41,8 +41,9 @@ Avant : Phase 2 (identité visuelle Pulsar-graph + audit) et Phase 1 (MVP comple
 - Préséance à trois étages dans `card_graph.py` : `content_authors` déclarés → reconstitution depuis les fiches citantes → créateur. La fiche fait foi sur son propre contenu.
 - Correction de rendu associée : d3 pose les étiquettes **impérativement** dans `mountGraph()`. `rootAuthors` arrivant après coup, le garde de remontage `if (neighborCards.size > 0)` laissait le nœud avec le nom de son créateur — devenu `|| rootAuthors`.
 - Nouveau `CardDetailPanel.svelte` : cliquer un nœud fiche (racine, ou voisine sans source à déplier) ouvre un encadré — auteurs, date, nombre de sources, description, lien vers le contenu, créateur. Pendant du `SourceDetailPanel`, mêmes règles de placement ; les deux panneaux s'excluent.
-- ⚠️ **Redéploiement VM requis** (colonne + migration), contrairement aux PRs frontend-seul précédentes.
-- Vérification visuelle navigateur **non faite** (extension Chrome déconnectée).
+- **Mergée et déployée le 2026-08-03.** Migration `018_card_authors` appliquée sur la VM (`Running upgrade 017_link_by_content -> 018_card_authors`), backend sain. Vérifié en prod : la fiche Frontiers renvoie `content_authors = "Kang W., Hernández S., Rahman M., Voigt K., Malvaso A."` et son nœud racine les porte dans `/graph`.
+- Reste attendu : la fiche `f99a1b64` garde `authors: null` — personne ne la cite avec des auteurs et elle n'a jamais été importée. C'est le cas résiduel que la saisie manuelle est là pour couvrir, pas un défaut.
+- Vérification visuelle navigateur **non faite** (extension Chrome déconnectée) : l'encadré du nœud fiche n'a pas été observé en conditions réelles.
 
 **#237** — `feat/root-node-identity`. Session 2026-08-03 (autonome) — **une fiche se nomme par les auteurs du contenu, pas par son créateur Philum** :
 - Le nœud d'une fiche revendiquée affichait le créateur (« Mathias »), laissant croire qu'il était l'auteur de l'article ou de la vidéo décrits. ⚠️ Revendiquer une fiche, c'est répondre de sa bibliographie, **pas** signer le contenu cité : la distinction `is_seed` n'avait pas lieu d'être dans l'étiquetage. Les auteurs réels priment désormais toujours, le créateur n'étant qu'un repli ; `isSeed` disparaît de `CardLabelInput` et de ses trois sites d'appel.
