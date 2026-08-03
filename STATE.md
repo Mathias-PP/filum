@@ -275,9 +275,10 @@ Vercel : `BACKEND_URL=https://philum-api.duckdns.org` (env var serverless, jamai
 - ~~**DOAJ**~~ ✅ — réglé par #245 sans seconde intégration : `best_oa_location.source.is_in_doaj` d'OpenAlex donne le drapeau au passage.
 
 **Court terme** (semaines)
-- **F1** — `openapi-typescript` (gen auto des types TS depuis OpenAPI, prévient drift back/front) — effort 3-4h.
-- **F4** — Endpoint `POST /cards/{id}/restore` (annule un soft-delete) — effort S.
-- **F2** — Tests d'intégration sur `POST /cards/{id}/publish` (couvre le path qui a coûté 4 PRs en mai).
+- ~~**F1** — `openapi-typescript`~~ ✅ — dépendance et script `generate:api` en place dans `apps/frontend/package.json`.
+- ~~**F4** — `POST /cards/{id}/restore`~~ ✅ — `cards.py:333`, vérifié en prod le 2026-08-03 (401 = route servie, auth requise).
+- ~~**F2** — Tests d'intégration sur `POST /cards/{id}/publish`~~ ✅ — `tests/integration/test_publish.py` couvre le path qui a coûté 4 PRs en mai.
+- ⚠️ Ces trois lignes traînaient comme « à faire » alors qu'elles étaient livrées. Vérifier l'état réel (grep + curl) **avant** de rouvrir un item de ce backlog.
 
 **Moyen terme** (déclencheurs naturels)
 - **F5** — Queue Wayback durable (Postgres-backed + worker) quand > 50 sources/jour.
