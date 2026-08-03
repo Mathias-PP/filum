@@ -82,6 +82,15 @@ describe('compareCell — une cellule sans valeur dit pourquoi', () => {
     expect(cell.label).toBe('Nature');
   });
 
+  it('retombe sur l’éditeur quand la revue est une chaîne vide', () => {
+    // Un import BibTeX ou Crossref produit couramment `journal: ''` plutôt
+    // qu'absent : `??` ne l'aurait pas rattrapé et aurait masqué l'éditeur.
+    for (const journal of ['', '   ']) {
+      const cell = compareCell(makeSource({ journal, publisher: 'Springer' }), 'venue');
+      expect(cell.label).toBe('Springer');
+    }
+  });
+
   it('signale une date illisible plutôt que d’afficher NaN', () => {
     const cell = compareCell(makeSource({ published_at: 'pas-une-date' }), 'year');
     expect(cell.label).not.toContain('NaN');

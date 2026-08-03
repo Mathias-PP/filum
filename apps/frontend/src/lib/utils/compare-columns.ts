@@ -128,11 +128,15 @@ function categoryCell(source: Source): CompareCell {
 }
 
 function venueCell(source: Source): CompareCell {
-  const venue = (source.journal ?? source.publisher ?? '').trim();
+  // `??` ne suffit pas : un import BibTeX ou Crossref produit couramment un
+  // `journal` vide plutôt qu'absent, et l'éditeur serait alors masqué par une
+  // chaîne vide qui n'est pourtant `null` ni `undefined`.
+  const journal = (source.journal ?? '').trim();
+  const venue = journal || (source.publisher ?? '').trim();
   if (venue) {
     return {
       label: venue,
-      help: source.journal ? `Publiée dans ${venue}.` : `Éditée par ${venue}.`,
+      help: journal ? `Publiée dans ${venue}.` : `Éditée par ${venue}.`,
       tone: 'neutral',
       sortKey: venue.toLowerCase(),
     };
