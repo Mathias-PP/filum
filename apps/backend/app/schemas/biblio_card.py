@@ -82,6 +82,9 @@ class CardStats(BaseModel):
     institution_publique: int = 0
     individu: int = 0
     archived_count: int = 0
+    # Sources ayant une URL a archiver. Denominateur honnete du compteur :
+    # `total_sources` inclut les references sans lien, qui n'ont rien a archiver.
+    archivable_count: int = 0
     all_archived: bool = False
 
 

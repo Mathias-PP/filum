@@ -75,6 +75,7 @@ const baseCard: CardDetail = {
     institution_publique: 0,
     individu: 0,
     archived_count: 0,
+    archivable_count: 0,
     all_archived: false,
   },
 };

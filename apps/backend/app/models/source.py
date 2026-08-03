@@ -73,6 +73,11 @@ class ArchiveStatus(str, Enum):
     PENDING = "pending"
     ARCHIVED = "archived"
     FAILED = "failed"
+    # Rien a archiver : la reference n'a pas d'URL (un manuel, un chapitre de
+    # livre, un entretien non publie). Distinct de FAILED, qui affirme qu'on a
+    # essaye et que la page est perdue -- une affirmation invendable ici, et
+    # qui condamnait le compteur « Archivees » a ne jamais etre complet.
+    NOT_APPLICABLE = "not_applicable"
 
 
 class Source(Base):

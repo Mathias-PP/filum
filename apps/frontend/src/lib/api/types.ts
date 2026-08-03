@@ -67,6 +67,9 @@ export interface CardStats {
   institution_publique: number;
   individu: number;
   archived_count: number;
+  /** Sources ayant une URL à archiver — dénominateur du compteur. Les
+   *  références sans lien n'ont rien à archiver et en sont exclues. */
+  archivable_count: number;
   all_archived: boolean;
 }
 
@@ -300,7 +303,7 @@ export type AuthorKind =
   | 'asso'
   | 'individu';
 
-export type ArchiveStatus = 'pending' | 'archived' | 'failed';
+export type ArchiveStatus = 'pending' | 'archived' | 'failed' | 'not_applicable';
 
 /** Déclaratif, jamais inféré : l'auteur de la fiche l'affirme et en répond. */
 export type SourceStance = 'appuie' | 'nuance-contredit' | 'mentionne' | 'contexte';
