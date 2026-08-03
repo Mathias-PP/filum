@@ -35,7 +35,16 @@ Avant : Phase 2 (identité visuelle Pulsar-graph + audit) et Phase 1 (MVP comple
 
 ## PRs ouvertes
 
-**#250** — `feat/colonnes-comparaison`. Session 2026-08-03 (autonome) — **chantier 9, la matrice de comparaison sans un seul appel à un modèle** :
+**#251 → #256** — Session 2026-08-03 (autonome) — **passe de sécurité et de dépendances**, une fois les 9 chantiers livrés :
+- **#251** `fix/postcss-path-traversal` — la seule alerte Dependabot ouverte (sévérité haute, scope runtime) : postcss ≤ 8.5.17 laissait un `sourceMappingURL` forgé faire lire un `.map` arbitraire au build. Le lockfile était sur 8.5.14. ⚠️ **Le plancher déclaré `^8.5.0` autorisait la plage vulnérable** — il ne suffit pas de bouger le lockfile, le plancher est relevé à `^8.5.25` pour qu'il ne puisse plus redescendre. Même logique appliquée aux autres paquets : `^9.0.0` ou `^5.0.0` permettaient un lockfile très en deçà de ce qui est réellement testé. **Mergée. Zéro alerte Dependabot ouverte depuis.**
+- **#252** `chore/deps-patch-minor` — svelte 5.56.8, prettier 3.9.6, @eslint/js 9.39.5, @testing-library/svelte 5.4.2, @tailwindcss/typography 0.5.20. **Mergée.**
+- **#253** `chore/deps-actions` — setup-python v7, setup-node v7, codeql-action v4.37.3, trufflehog 6f3c981. ⚠️ De l'infra CI ne se vérifie pas en local : **la CI de la PR elle-même est la seule validation qui vaille**. **Mergée.**
+- **#254** `chore/deps-test-majors` — jsdom 30, jest-dom 7. Majeures, mais confinées à l'outillage de test. **Mergée.**
+- **#255** `chore/deps-prettier-svelte4` — prettier-plugin-svelte 4.1.1. La crainte usuelle (un reformatage massif noyant les revues suivantes) a été **mesurée plutôt que supposée** : `prettier --write .` ne modifie aucun fichier. **Mergée.**
+- **#256** `chore/deps-eslint10` — eslint 10.8.0. ⚠️ **La montée a trouvé un vrai défaut** : la nouvelle règle `no-useless-assignment` a relevé `let host = ''` dans `guessPlatform` (`dashboard/new/+page.svelte`), dont la valeur initiale n'était jamais lue puisque le `catch` sort en retour anticipé. Corrigé en `let host: string`.
+- **Méthode** : 15 PRs Dependabot regroupées en 6 PRs par nature de risque (patch/minor, infra CI, outillage de test, formateur, linter), pour ne pas déclencher 15 CI complètes et pour qu'un job rouge désigne sans ambiguïté sa cause.
+
+**#250** — `feat/colonnes-comparaison`. Session 2026-08-03 (autonome) — **chantier 9, la matrice de comparaison sans un seul appel à un modèle**. **Mergée et déployée le 2026-08-03** (sélecteur « Liste / Tableau » rendu côté serveur en prod) :
 - Bouton « Liste / Tableau » au-dessus des sources citées. Six colonnes triables — année, type, revue ou éditeur, accès, rétraction, position déclarée — toutes lues dans des champs déjà en base. Rien n'est généré, donc rien ne peut être halluciné : c'est le contrat qui sépare ce tableau des matrices LLM.
 - ⚠️ **Aucune case n'est vide.** Le `N/A` indifférencié de SciSpace (étude §2.4) confond « l'information manque » et « le document est inaccessible ». Ici quatre formulations qui ne se recouvrent jamais : *non renseignée* (rien n'a été saisi), *sans objet* (un podcast n'a pas de revue), *non vérifié* (le contrôle n'a jamais tourné), *non vérifiable* (le contrôle ne peut pas conclure). Même règle à trois états que `retraction_status` / `oa_status` ; un `stance` non déclaré n'est jamais rabattu sur « mentionne ».
 - Le tri suit la même logique : **une absence n'a pas de rang** et se range en queue dans les deux sens. Troisième clic sur un en-tête → retour à l'ordre voulu par l'auteur. La liste reste montée sous le tableau (`hidden print:block`) car c'est elle qui porte les balises COinS que Zotero détecte.
@@ -265,9 +274,10 @@ Vercel : `BACKEND_URL=https://philum-api.duckdns.org` (env var serverless, jamai
 **Immédiat**
 - ~~Redéployer la VM GCP~~ ✅ fait le 2026-07-21 (464ba95, vérifié par curl).
 - ~~3 alertes Dependabot high sur main~~ ✅ fermées le 2026-07-22 (PR #191 : overrides pnpm brace-expansion 1.x/5.x + js-yaml 4.x).
-- **Alerte budget 1 € sur GCP** (Billing → Budgets & alerts) si pas déjà en place — filet de sécurité, pas de plafond natif.
-- **Décommissionner Railway** : supprimer le service + retirer l'ancienne redirect URI Railway du client OAuth Google.
-- **Migrer Tailwind v3 → v4** (PR dédiée) : PR Dependabot #156 fermée car breaking (nouveau format config, PostCSS séparé `@tailwindcss/postcss`, syntaxes `@theme`/`@source`).
+- ~~Alerte Dependabot high postcss (traversée de chemin)~~ ✅ fermée le 2026-08-03 (PR #251). **Zéro alerte ouverte**, et les 15 PRs Dependabot en attente ont été traitées ou closes (#251→#256).
+- **Alerte budget 1 € sur GCP** (Billing → Budgets & alerts) si pas déjà en place — filet de sécurité, pas de plafond natif. *Action Cloud Console, hors de portée d'un agent.*
+- **Décommissionner Railway** : supprimer le service + retirer l'ancienne redirect URI Railway du client OAuth Google. *Destructif et touche le client OAuth Google — demande une autorisation explicite, à ne pas faire en autonomie.*
+- **Migrer Tailwind v3 → v4** (PR dédiée) : PR Dependabot #156 fermée car breaking (nouveau format config, PostCSS séparé `@tailwindcss/postcss`, syntaxes `@theme`/`@source`). ⚠️ Changement purement visuel : sans capture d'écran fonctionnelle, une régression ne serait pas détectable. Vérifier que l'outillage de capture marche **avant** de s'y lancer.
 
 **Chantiers outils-chercheurs** (étude `agent/research/2026-08-03-outils-chercheurs.md`, dans l'ordre)
 - ~~1. Meta tags Highwire + COinS~~ ✅ #239 · ~~2. Champ `stance` déclaratif~~ ✅ #240 · ~~3. Badge rétractation~~ ✅ #241+#242 · ~~4. Bornage + chronologie~~ ✅ #243+#244 · ~~5. Enrichissement OpenAlex~~ ✅ #245 · ~~6. Pivot CSL-JSON + RIS~~ ✅ #246 · ~~7. Import de fichier~~ ✅ #247 · ~~8. Alertes « on vous cite »~~ ✅ #248 · ~~9. Colonnes de comparaison sans IA~~ ✅ #250.
