@@ -82,7 +82,7 @@
   }
 
   function guessPlatform(u: string): { platform: Platform; contentType: ContentType } {
-    let host = '';
+    let host: string;
     try {
       host = new URL(u).hostname.replace(/^www\./, '').toLowerCase();
     } catch {
