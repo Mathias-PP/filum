@@ -3,6 +3,30 @@
 
   const shipped = [
     {
+      title: 'Accès libre et rétractations',
+      desc: "Chaque source indique si elle est en accès libre et si elle a été rétractée. Quand l'information n'a pas pu être vérifiée, c'est écrit — jamais deviné.",
+    },
+    {
+      title: 'Tableau comparatif',
+      desc: 'Comparez vos sources côte à côte : date, revue, position défendue, accès, archivage. Les déséquilibres se voient d’un coup d’œil.',
+    },
+    {
+      title: 'Citations entrantes',
+      desc: 'Voyez quelles autres fiches Philum citent une source donnée : votre bibliographie devient un réseau, pas une liste isolée.',
+    },
+    {
+      title: 'Mode chronologie',
+      desc: 'Basculez le graphe en frise temporelle pour lire vos sources dans leur ordre de publication.',
+    },
+    {
+      title: 'Recherche dans le graphe',
+      desc: 'Filtrez le graphe à la volée par titre, auteur ou revue, sans perdre la vue d’ensemble.',
+    },
+    {
+      title: 'Export RIS et CSL-JSON',
+      desc: 'Rapatriez vos fiches dans Zotero, Mendeley ou n’importe quel gestionnaire de références.',
+    },
+    {
       title: 'Copier-coller de bibliographie',
       desc: 'Collez votre bibliographie existante (depuis un article, YouTube, votre site) et Philum génère automatiquement une fiche avec les sources pré-remplies.',
     },

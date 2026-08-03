@@ -25,7 +25,7 @@
 </script>
 
 {#if submitStatus === 'done'}
-  <p class="text-sm text-slate-300">Merci ! Nous vous contacterons à l'ouverture.</p>
+  <p class="text-sm text-slate-300">Merci ! On revient vers vous dès que votre fiche est prête.</p>
 {:else}
   <form onsubmit={submit} class="flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
     <input
