@@ -6,10 +6,13 @@
     forceLink,
     forceManyBody,
     forceSimulation,
+    forceX,
+    forceY,
     select,
     zoom,
     zoomIdentity,
     type D3DragEvent,
+    type Selection,
     type Simulation,
     type ZoomBehavior,
   } from 'd3';
@@ -37,6 +40,7 @@
   } from '$lib/utils/author-colors';
   import { cardNodeLabel } from '$lib/utils/card-label';
   import { GRAPH_SOURCE_CAP, capSources } from '$lib/utils/graph-cap';
+  import { UNDATED_BAND, chronoLayout, type ChronoLayout } from '$lib/utils/graph-chrono';
   import { buildHaystack, matchesAllTerms, searchTerms } from '$lib/utils/graph-search';
   import { STANCE_ORDER, STANCE_STYLES, stanceStroke } from '$lib/utils/stance';
   import CardDetailPanel, { type CardPanelInfo } from './CardDetailPanel.svelte';
@@ -285,6 +289,18 @@
   });
 
   const hiddenSourcesCount = $derived(Math.max(0, totalSources - visibleSources.length));
+
+  // Deux axes de lecture. Le réseau dit qui dépend de qui ; il ne dit rien de
+  // l'ancienneté. « Cette affirmation s'appuie sur un article de 1998 » est une
+  // information que le maillage ne peut pas porter, d'où le second mode.
+  let layoutMode = $state<'network' | 'chrono'>('network');
+  const layoutModeOptions: { value: 'network' | 'chrono'; label: string; help: string }[] = [
+    { value: 'network', label: 'Réseau', help: 'Disposer les nœuds selon leurs liens' },
+    { value: 'chrono', label: 'Chronologie', help: 'Disposer les nœuds par année de publication' },
+  ];
+
+  /** Marge horizontale de la frise, pour que rien ne colle au bord du cadre. */
+  const CHRONO_MARGIN = 60;
 
   // Légende : uniquement les valeurs présentes à l'écran.
   const legendEntries = $derived.by(() => {
@@ -537,6 +553,15 @@
 
   function toggleShowAllSources() {
     showAllSources = !showAllSources;
+    remount();
+  }
+
+  function setLayoutMode(mode: 'network' | 'chrono') {
+    if (layoutMode === mode) return;
+    layoutMode = mode;
+    // Les positions mémorisées viennent de l'autre disposition : les rejouer
+    // ferait démarrer la frise depuis un maillage, avec un long réarrangement.
+    posMemory.clear();
     remount();
   }
 
@@ -809,12 +834,96 @@
     setAnchorFromNode(d);
   }
 
+  /**
+   * Repères de la frise : graduations d'années et enclos des sources sans date.
+   *
+   * Les traits couvrent délibérément bien plus que le cadre : la simulation
+   * étale les nœuds verticalement sans borne connue à l'avance, et un repère
+   * qui s'arrête avant les nœuds qu'il gradue ne repère plus rien. Les
+   * étiquettes, elles, sont replacées à chaque tick au-dessus du nuage.
+   */
+  function drawChronoAxis(
+    root: Selection<SVGGElement, unknown, null, undefined>,
+    chrono: ChronoLayout
+  ) {
+    const g = root.append('g').attr('class', 'chrono-axis').style('pointer-events', 'none');
+    const span = 8000;
+
+    if (chrono.undatedX !== null) {
+      g.append('rect')
+        .attr('x', CHRONO_MARGIN)
+        .attr('y', -span)
+        .attr('width', UNDATED_BAND)
+        .attr('height', span * 2)
+        .attr('fill', '#f1f5f9')
+        .attr('stroke', '#e2e8f0')
+        .attr('stroke-dasharray', '4 4');
+    }
+
+    for (const t of chrono.ticks) {
+      g.append('line')
+        .attr('x1', t.x + CHRONO_MARGIN)
+        .attr('x2', t.x + CHRONO_MARGIN)
+        .attr('y1', -span)
+        .attr('y2', span)
+        .attr('stroke', '#e2e8f0')
+        .attr('stroke-width', 1);
+    }
+
+    const labels = g.append('g').attr('class', 'chrono-labels');
+    for (const t of chrono.ticks) {
+      labels
+        .append('text')
+        .attr('x', t.x + CHRONO_MARGIN)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', 12)
+        .attr('fill', '#64748b')
+        .text(String(t.year));
+    }
+    if (chrono.undatedX !== null) {
+      labels
+        .append('text')
+        .attr('x', chrono.undatedX + CHRONO_MARGIN)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', 12)
+        .attr('fill', '#94a3b8')
+        .text(`sans date (${chrono.undatedCount})`);
+    }
+  }
+
   function mountGraph() {
     if (!svgEl) return;
     const { nodes, links } = buildGraph();
 
+    // Frise. Les nœuds de jonction n'ont pas de date propre : ils restent
+    // libres et suivent les liens, sinon ils tireraient leurs branches vers une
+    // année qu'ils n'ont pas.
+    const chrono: ChronoLayout | null =
+      layoutMode === 'chrono'
+        ? chronoLayout(
+            nodes
+              .filter((n) => n.tier !== 'junction')
+              .map((n) => ({
+                id: n.id,
+                // Un nœud fiche n'a pas de date propre : on prend celle de la
+                // référence qu'il absorbe, et la fiche racine connaît la sienne.
+                published_at:
+                  n.source?.published_at ??
+                  n.absorbedSource?.published_at ??
+                  (n.id === cardId ? card.published_at : null),
+              })),
+            width - CHRONO_MARGIN * 2
+          )
+        : null;
+    const chronoX = (id: string): number | undefined => {
+      const v = chrono?.x.get(id);
+      return v === undefined ? undefined : v + CHRONO_MARGIN;
+    };
+
     const cardNode = nodes[0];
-    cardNode.fx = width / 2;
+    // En frise, la fiche prend sa place dans le temps comme les autres ; la
+    // river au centre lui donnerait une date qu'elle n'a pas.
+    cardNode.fx = chrono ? (chronoX(cardNode.id) ?? width / 2) : width / 2;
     cardNode.fy = height / 2;
 
     // Réinjection des positions connues : après un dépliage, le graphe déjà à
@@ -843,6 +952,8 @@
     // invisibles, et durait quinze secondes sur une fiche de 300 références.
     const root = svg.append('g').attr('class', 'graph-root').style('opacity', 0);
     root.transition().duration(350).style('opacity', 1);
+
+    if (chrono) drawChronoAxis(root, chrono);
 
     root
       .append('g')
@@ -1148,7 +1259,20 @@
           })
       )
       .force('charge', forceManyBody().strength(-200 * spacingBoost))
-      .force('center', forceCenter(width / 2, height / 2).strength(0.05))
+      // En frise, le recentrage combattrait l'axe : une source de 1998 serait
+      // ramenée vers le milieu et mentirait sur sa date.
+      .force('center', chrono ? null : forceCenter(width / 2, height / 2).strength(0.05))
+      .force(
+        'chronoX',
+        chrono
+          ? forceX<GraphNode>((d) => chronoX(d.id) ?? d.x ?? width / 2).strength((d) =>
+              chronoX(d.id) === undefined ? 0 : 1
+            )
+          : null
+      )
+      // Rappel vertical faible : sans lui, la répulsion étire la frise en une
+      // bande si haute qu'aucun zoom ne la rend lisible.
+      .force('chronoY', chrono ? forceY<GraphNode>(height / 2).strength(0.04) : null)
       .force(
         'collide',
         // Le nom d'auteur est dessiné au-dessus du nœud : la marge de collision
@@ -1157,6 +1281,15 @@
       )
       .on('tick', () => {
         if (svgEl) ticked(svgEl, nodes, links);
+        if (chrono && svgEl) {
+          // Les étiquettes d'années se posent au-dessus du nuage, dont la
+          // hauteur n'est connue qu'une fois la simulation en route.
+          let top = Infinity;
+          for (const n of nodes) if ((n.y ?? 0) < top) top = n.y ?? 0;
+          select(svgEl)
+            .select('.chrono-labels')
+            .attr('transform', `translate(0, ${(Number.isFinite(top) ? top : 0) - 28})`);
+        }
         // Le maillage s'étale d'autant plus qu'il y a de sources : sans
         // recadrage, une fiche de 152 références déborde du cadre et oblige
         // l'utilisateur à dézoomer avant de voir quoi que ce soit. On recadre
@@ -1485,6 +1618,28 @@
             : 'text-slate-600 hover:bg-slate-50'}"
           aria-pressed={colorMode === opt.value}
           title="Colorer par {opt.label.toLowerCase()}"
+        >
+          {opt.label}
+        </button>
+      {/each}
+    </div>
+
+    <div
+      class="flex items-center rounded-md bg-white/95 border border-slate-200 shadow-sm overflow-hidden text-xs"
+      role="group"
+      aria-label="Disposition du graphe"
+    >
+      {#each layoutModeOptions as opt, i (opt.value)}
+        <button
+          type="button"
+          onclick={() => setLayoutMode(opt.value)}
+          class="px-2.5 py-1.5 transition-colors {i > 0
+            ? 'border-l border-slate-200'
+            : ''} {layoutMode === opt.value
+            ? 'bg-slate-800 text-white font-medium'
+            : 'text-slate-600 hover:bg-slate-50'}"
+          aria-pressed={layoutMode === opt.value}
+          title={opt.help}
         >
           {opt.label}
         </button>
