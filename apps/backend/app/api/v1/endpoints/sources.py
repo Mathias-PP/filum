@@ -24,7 +24,7 @@ from app.schemas.source import SourceCreate, SourceResponse, SourceUpdate
 from app.services.auth import AuthService
 from app.services.card_link import effective_linked_card_id
 from app.services.source_enrichment import schedule_source_enrichment
-from app.services.wayback import WaybackService
+from app.services.wayback import WaybackService, schedule_archiving
 
 logger = logging.getLogger(__name__)
 
@@ -384,18 +384,12 @@ async def create_sources_batch(
     else:
         created_full = []
 
-    # Declenche les archives Wayback en parallele (fire-and-forget).
-    for src in created_full:
-        if src.archive_status == "pending":
-            src_id = src.id
-            src_url = src.url
-
-            async def _archive_bg(sid=src_id, surl=src_url) -> None:
-                async with async_session_maker() as bg_db:
-                    wayback = WaybackService(bg_db, settings.wayback_api_key)
-                    await wayback.archive_url(sid, surl)
-
-            _spawn(_archive_bg())
+    # Une seule tache pour tout le lot, cadencee. Un archivage par source en
+    # parallele faisait jeter les 150 requetes par Save Page Now, et chacune
+    # s'inscrivait alors en echec definitif.
+    pending = [(s.id, s.url) for s in created_full if s.archive_status == "pending"]
+    if pending:
+        schedule_archiving(pending)
 
     # Une seule tache sequentielle pour tout le lot : 150 requetes Crossref
     # simultanees pour un seul clic seraient impolies et se feraient jeter.

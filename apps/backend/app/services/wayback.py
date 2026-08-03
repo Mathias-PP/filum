@@ -39,6 +39,12 @@ class WaybackService:
     # Back-off schedule (seconds) for polling the snapshot after triggering
     # SPN. Sum ~33 s.
     POLL_DELAYS: tuple[float, ...] = (3.0, 5.0, 8.0, 8.0, 9.0)
+    # Cadence des declenchements en lot. Save Page Now tolere quelques
+    # requetes par minute pour un client anonyme ; au-dela il jette le lot.
+    TRIGGER_GAP = 6.0
+    # Pause entre deux consultations de l'API de disponibilite : elle est bien
+    # plus permissive que SPN, mais 150 requetes d'affilee restent impolies.
+    LOOKUP_GAP = 1.0
 
     def __init__(self, db: AsyncSession, api_key: str | None = None):
         self._db = db
@@ -58,6 +64,25 @@ class WaybackService:
             return {"status": "failed", "reason": "unsafe_url"}
 
         # Step 1 — trigger Save Page Now (best effort).
+        await self._trigger_save(url)
+
+        # Step 2 — poll the availability API until we see a snapshot or run
+        # out of retries.
+        for delay in self.POLL_DELAYS:
+            await asyncio.sleep(delay)
+            found = await self._lookup_snapshot(url)
+            if found is None:
+                continue
+            return await self._mark_archived(source_id, *found)
+
+        # Aucun instantane apres le sondage. Ce n'est pas la preuve que l'URL
+        # soit inarchivable : Save Page Now travaille en differe et peut avoir
+        # simplement pris du retard. La source reste `pending`, et la reprise
+        # paresseuse la reproposera.
+        return {"status": "pending", "reason": "no_snapshot_yet"}
+
+    async def _trigger_save(self, url: str) -> None:
+        """Demande un instantane frais. N'attend pas qu'il soit produit."""
         try:
             async with httpx.AsyncClient(timeout=self.TIMEOUT, follow_redirects=False) as client:
                 # GET works for SPN public endpoint. We don't care about the
@@ -66,57 +91,85 @@ class WaybackService:
         except Exception as e:  # noqa: BLE001 — best-effort, log and continue.
             logger.info(f"Wayback SPN trigger failed for {url} (will still poll): {e}")
 
-        # Step 2 — poll the availability API until we see a snapshot or run
-        # out of retries.
-        for delay in self.POLL_DELAYS:
-            await asyncio.sleep(delay)
+    async def _lookup_snapshot(self, url: str) -> tuple[str, str | None] | None:
+        """(url d'archive, horodatage) si un instantane existe, sinon None.
+
+        Une panne du service et une absence d'instantane sont indistinguables
+        ici, et c'est voulu : les deux laissent la source en attente.
+        """
+        try:
+            async with httpx.AsyncClient(timeout=self.TIMEOUT) as client:
+                params = {"url": url}
+                if self._api_key:
+                    params["api_key"] = self._api_key
+                response = await client.get(self.AVAILABLE_URL, params=params)
+                response.raise_for_status()
+                data = response.json()
+        except httpx.TimeoutException:
+            logger.warning(f"Wayback poll timeout for {url}")
+            return None
+        except Exception as e:  # noqa: BLE001 — transient, the caller retries.
+            logger.info(f"Wayback poll error for {url}: {e}")
+            return None
+
+        snapshot = data.get("archived_snapshots", {}).get("closest")
+        if not snapshot or not snapshot.get("url"):
+            return None
+        return snapshot["url"], snapshot.get("timestamp")
+
+    async def _mark_archived(
+        self, source_id: UUID, archive_url: str, archive_timestamp: str | None
+    ) -> dict:
+        if archive_timestamp:
             try:
-                async with httpx.AsyncClient(timeout=self.TIMEOUT) as client:
-                    params = {"url": url}
-                    if self._api_key:
-                        params["api_key"] = self._api_key
-                    response = await client.get(self.AVAILABLE_URL, params=params)
-                    response.raise_for_status()
-                    data = response.json()
-            except httpx.TimeoutException:
-                logger.warning(f"Wayback poll timeout for {url}")
+                stamp = datetime.strptime(archive_timestamp[:14], "%Y%m%d%H%M%S")
+            except ValueError:
+                stamp = datetime.now().replace(tzinfo=None)
+        else:
+            stamp = datetime.now().replace(tzinfo=None)
+
+        await self._update_source(source_id, ArchiveStatus.ARCHIVED, archive_url, stamp)
+        return {"status": "archived", "archive_url": archive_url, "timestamp": stamp.isoformat()}
+
+    async def archive_batch(self, sources: list[tuple[UUID, str]]) -> list[dict]:
+        """Archive un lot en deux temps, a une cadence que SPN accepte.
+
+        Declencher puis sonder source par source ne marche pas a l'echelle
+        d'un import : 152 sondages de 33 s mis bout a bout tiendraient plus
+        d'une heure, et 152 declenchements simultanes se font jeter. On
+        declenche donc tout le lot d'abord, espace ; le temps que la derniere
+        URL soit demandee, les premieres ont eu plusieurs minutes pour etre
+        capturees. Les sondages suivent, un par URL.
+        """
+        results: list[dict] = []
+        todo: list[tuple[UUID, str]] = []
+
+        for source_id, url in sources:
+            try:
+                assert_url_is_safe(url)
+            except UnsafeUrlError as e:
+                # Definitif : cette URL ne sera jamais archivable.
+                logger.warning(f"Wayback skipped for non-public URL {url}: {e}")
+                await self._update_source(source_id, ArchiveStatus.FAILED, None, None)
+                results.append({"status": "failed", "reason": "unsafe_url"})
                 continue
-            except Exception as e:  # noqa: BLE001 — keep polling on transient errors.
-                logger.info(f"Wayback poll error for {url}: {e}")
+            todo.append((source_id, url))
+
+        for i, (_, url) in enumerate(todo):
+            if i:
+                await asyncio.sleep(self.TRIGGER_GAP)
+            await self._trigger_save(url)
+
+        for i, (source_id, url) in enumerate(todo):
+            if i:
+                await asyncio.sleep(self.LOOKUP_GAP)
+            found = await self._lookup_snapshot(url)
+            if found is None:
+                results.append({"status": "pending", "reason": "no_snapshot_yet"})
                 continue
+            results.append(await self._mark_archived(source_id, *found))
 
-            snapshot = data.get("archived_snapshots", {}).get("closest")
-            if not snapshot:
-                continue
-
-            archive_url = snapshot.get("url")
-            archive_timestamp = snapshot.get("timestamp")
-            if not archive_url:
-                continue
-
-            if archive_timestamp:
-                try:
-                    archive_timestamp_dt = datetime.strptime(archive_timestamp[:14], "%Y%m%d%H%M%S")
-                except ValueError:
-                    archive_timestamp_dt = datetime.now().replace(tzinfo=None)
-            else:
-                archive_timestamp_dt = datetime.now().replace(tzinfo=None)
-
-            await self._update_source(
-                source_id,
-                ArchiveStatus.ARCHIVED,
-                archive_url,
-                archive_timestamp_dt,
-            )
-            return {
-                "status": "archived",
-                "archive_url": archive_url,
-                "timestamp": archive_timestamp_dt.isoformat(),
-            }
-
-        # All polls exhausted without finding a snapshot.
-        await self._update_source(source_id, ArchiveStatus.FAILED, None, None)
-        return {"status": "failed", "reason": "no_snapshot_after_poll"}
+        return results
 
     async def _update_source(
         self,
@@ -134,9 +187,37 @@ class WaybackService:
             await self._db.commit()
 
     async def archive_all_pending(self, sources: list[tuple[UUID, str]]) -> list[dict]:
-        tasks = [self.archive_url(source_id, url) for source_id, url in sources]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        return [
-            r if not isinstance(r, Exception) else {"status": "error", "error": str(r)}  # type: ignore[misc]
-            for r in results
-        ]
+        return await self.archive_batch(sources)
+
+
+# La boucle d'evenements ne garde qu'une reference FAIBLE sur les taches : sans
+# cet ensemble, un create_task() peut etre collecte en vol et le travail perdu.
+_background_tasks: set[asyncio.Task] = set()
+
+# Une fiche publique populaire est servie des dizaines de fois par minute, et
+# la reprise paresseuse relancerait le meme archivage a chaque affichage.
+_in_flight: set[UUID] = set()
+
+
+async def _run_batch(pairs: list[tuple[UUID, str]]) -> None:
+    from app.core.config import get_settings
+    from app.db.database import async_session_maker
+
+    try:
+        async with async_session_maker() as db:
+            await WaybackService(db, get_settings().wayback_api_key).archive_batch(pairs)
+    except Exception as e:  # noqa: BLE001 — une tache de fond ne remonte a personne.
+        logger.warning("Wayback batch crashed: %s", e)
+    finally:
+        _in_flight.difference_update(sid for sid, _ in pairs)
+
+
+def schedule_archiving(pairs: list[tuple[UUID, str]]) -> None:
+    """Archive en tache de fond, a cadence tenable. Ne bloque jamais l'appelant."""
+    todo = [(sid, url) for sid, url in pairs if sid not in _in_flight]
+    if not todo:
+        return
+    _in_flight.update(sid for sid, _ in todo)
+    task = asyncio.create_task(_run_batch(todo))
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
