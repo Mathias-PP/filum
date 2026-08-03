@@ -15,6 +15,7 @@
     type Selection,
     type Simulation,
     type ZoomBehavior,
+    type ZoomTransform,
   } from 'd3';
   import { onDestroy, onMount } from 'svelte';
 
@@ -204,7 +205,6 @@
   let layoutNodes: GraphNode[] = [];
   let hasAutoFitted = false;
   let hasUserAdjustedView = false;
-  let autoFitFallback: number | undefined;
   let isFullscreen = $state(false);
   let selectedSource = $state<Source | null>(null);
   // Une fiche et une source ne s'affichent jamais ensemble : le panneau est un
@@ -301,6 +301,16 @@
 
   /** Marge horizontale de la frise, pour que rien ne colle au bord du cadre. */
   const CHRONO_MARGIN = 60;
+  /** Hauteur du bandeau d'années, réservée en haut du cadre. */
+  const CHRONO_HEADER_HEIGHT = 24;
+
+  interface ChronoHeaderTick {
+    x: number;
+    label: string;
+    muted: boolean;
+  }
+
+  let chronoTicks: ChronoHeaderTick[] = [];
 
   // Légende : uniquement les valeurs présentes à l'écran.
   const legendEntries = $derived.by(() => {
@@ -337,6 +347,23 @@
   // Les étiquettes se rétrécissent aussi : à taille fixe, deux noms d'auteurs
   // voisins se chevauchent dès que le maillage se resserre.
   const labelScale = $derived(Math.max(0.72, densityScale));
+
+  /**
+   * Année d'un nœud, ou chaîne vide si elle est inconnue.
+   *
+   * Même source de vérité que la frise : un nœud fiche n'a pas de date propre,
+   * il prend celle de la référence qu'il absorbe. Les deux modes doivent dater
+   * un nœud à l'identique, sinon la frise contredirait l'étiquette.
+   */
+  function nodeYear(d: GraphNode): string {
+    const raw =
+      d.source?.published_at ??
+      d.absorbedSource?.published_at ??
+      (d.id === cardId ? card.published_at : null);
+    if (!raw) return '';
+    const y = new Date(raw).getFullYear();
+    return Number.isNaN(y) ? '' : String(y);
+  }
 
   function truncate(text: string, max: number): string {
     return text.length > max ? text.slice(0, max) + '…' : text;
@@ -581,7 +608,11 @@
         kind: 'card',
         label: card.title,
         ownerCardId: card.id,
-        radius: 28,
+        // Plus gros qu'une référence, mais pas au point d'écraser le maillage :
+        // le rapport de taille suffit à dire la hiérarchie. Le nœud suit la
+        // densité comme les autres, sinon il grossit relativement sur une
+        // grosse fiche, là où justement la place manque.
+        radius: Math.max(15, Math.round(22 * densityScale)),
         // La fiche consultée se distingue de ses voisines par un fond indigo
         // profond plutôt que par une étiquette : les autres nœuds fiche sont
         // ardoise, et le lecteur retrouve d'un regard d'où part sa lecture.
@@ -619,7 +650,7 @@
         // Une fiche dépliée est un peu plus petite que la racine : la
         // hiérarchie visuelle dit d'où part la lecture.
         expandable: expandedCardIds.includes(cid) || meta.sourcesCount === 0 ? undefined : cid,
-        radius: 22,
+        radius: Math.max(13, Math.round(19 * densityScale)),
         fill: '#1e293b',
         stroke: '#6366f1',
         tier: 'card',
@@ -840,7 +871,7 @@
    * Les traits couvrent délibérément bien plus que le cadre : la simulation
    * étale les nœuds verticalement sans borne connue à l'avance, et un repère
    * qui s'arrête avant les nœuds qu'il gradue ne repère plus rien. Les
-   * étiquettes, elles, sont replacées à chaque tick au-dessus du nuage.
+   * années, elles, vivent dans un bandeau à part (`drawChronoHeader`).
    */
   function drawChronoAxis(
     root: Selection<SVGGElement, unknown, null, undefined>,
@@ -869,26 +900,72 @@
         .attr('stroke', '#e2e8f0')
         .attr('stroke-width', 1);
     }
+  }
 
-    const labels = g.append('g').attr('class', 'chrono-labels');
-    for (const t of chrono.ticks) {
-      labels
-        .append('text')
-        .attr('x', t.x + CHRONO_MARGIN)
-        .attr('text-anchor', 'middle')
-        .attr('font-size', 12)
-        .attr('fill', '#64748b')
-        .text(String(t.year));
-    }
+  /**
+   * Bandeau des années, posé HORS du groupe zoomable et à hauteur fixe.
+   *
+   * Accroché au sommet du nuage de points, il sortait du cadre par le haut dès
+   * que la simulation étirait la frise : les dates, qui sont la seule clé de
+   * lecture de ce mode, se retrouvaient rognées. Ici elles restent lisibles
+   * quel que soit le déplacement vertical, et suivent l'axe horizontalement.
+   */
+  function drawChronoHeader(
+    svg: Selection<SVGSVGElement, unknown, null, undefined>,
+    chrono: ChronoLayout
+  ) {
+    chronoTicks = chrono.ticks.map((t) => ({
+      x: t.x + CHRONO_MARGIN,
+      label: String(t.year),
+      muted: false,
+    }));
     if (chrono.undatedX !== null) {
-      labels
-        .append('text')
-        .attr('x', chrono.undatedX + CHRONO_MARGIN)
-        .attr('text-anchor', 'middle')
-        .attr('font-size', 12)
-        .attr('fill', '#94a3b8')
-        .text(`sans date (${chrono.undatedCount})`);
+      chronoTicks.push({
+        x: chrono.undatedX + CHRONO_MARGIN,
+        label: `sans date (${chrono.undatedCount})`,
+        muted: true,
+      });
     }
+
+    const g = svg.append('g').attr('class', 'chrono-header').style('pointer-events', 'none');
+    g.append('rect')
+      .attr('x', 0)
+      .attr('y', 0)
+      .attr('width', width)
+      .attr('height', CHRONO_HEADER_HEIGHT)
+      // Opaque : sous un fond translucide, les nœuds qui passent derrière se
+      // lisaient comme des fantômes au milieu des années.
+      .attr('fill', '#ffffff');
+    g.append('line')
+      .attr('x1', 0)
+      .attr('x2', width)
+      .attr('y1', CHRONO_HEADER_HEIGHT)
+      .attr('y2', CHRONO_HEADER_HEIGHT)
+      .attr('stroke', '#e2e8f0');
+    g.selectAll('text')
+      .data(chronoTicks)
+      .join('text')
+      .attr('y', CHRONO_HEADER_HEIGHT - 7)
+      .attr('text-anchor', 'middle')
+      .attr('font-size', 12)
+      .attr('fill', (d) => (d.muted ? '#94a3b8' : '#475569'));
+    placeChronoHeader(zoomIdentity);
+  }
+
+  /** Replace les années selon le cadrage courant. Seul x suit le zoom. */
+  function placeChronoHeader(transform: ZoomTransform) {
+    if (!svgEl || chronoTicks.length === 0) return;
+    select(svgEl)
+      .select('g.chrono-header')
+      .selectAll<SVGTextElement, ChronoHeaderTick>('text')
+      .attr('x', (d) => transform.applyX(d.x))
+      // Une graduation poussée hors cadre par la navigation ne doit pas
+      // s'écraser contre le bord : elle disparaît plutôt que de mentir.
+      .style('display', (d) => {
+        const sx = transform.applyX(d.x);
+        return sx < 24 || sx > width - 24 ? 'none' : '';
+      })
+      .text((d) => d.label);
   }
 
   function mountGraph() {
@@ -946,6 +1023,7 @@
     const svg = select(svgEl);
     svg.selectAll('*').remove();
     svg.attr('viewBox', `0 0 ${width} ${height}`);
+    chronoTicks = [];
 
     // Le graphe apparaît d'un bloc. Allumer les nœuds un à un laissait les
     // liens — dessinés d'emblée — flotter entre des extrémités encore
@@ -1217,6 +1295,21 @@
       .style('pointer-events', 'none')
       .text((d) => (d.source ? truncate(d.source.title ?? '', 40) : ''));
 
+    // Date sous chaque nœud, au même seuil de zoom que le nom d'auteur : situer
+    // une référence dans le temps compte autant que savoir qui l'a écrite, et
+    // en mode réseau c'est la seule façon de le lire. « s. d. » quand la date
+    // est inconnue — une place vide se confondrait avec un défaut d'affichage.
+    nodeG
+      .filter((d) => d.kind !== 'junction')
+      .append('text')
+      .attr('class', 'date-label')
+      .attr('text-anchor', 'middle')
+      .attr('dy', (d) => d.radius + 13)
+      .attr('font-size', 10 * labelScale)
+      .attr('fill', (d) => (nodeYear(d) ? '#64748b' : '#cbd5e1'))
+      .style('pointer-events', 'none')
+      .text((d) => nodeYear(d) || 's. d.');
+
     // Tooltip natif sur la fiche seule : sur une source, le titre s'affiche
     // desormais dans le graphe au survol, un second tooltip ferait doublon.
     nodeG
@@ -1281,24 +1374,6 @@
       )
       .on('tick', () => {
         if (svgEl) ticked(svgEl, nodes, links);
-        if (chrono && svgEl) {
-          // Les étiquettes d'années se posent au-dessus du nuage, dont la
-          // hauteur n'est connue qu'une fois la simulation en route.
-          let top = Infinity;
-          for (const n of nodes) if ((n.y ?? 0) < top) top = n.y ?? 0;
-          select(svgEl)
-            .select('.chrono-labels')
-            .attr('transform', `translate(0, ${(Number.isFinite(top) ? top : 0) - 28})`);
-        }
-        // Le maillage s'étale d'autant plus qu'il y a de sources : sans
-        // recadrage, une fiche de 152 références déborde du cadre et oblige
-        // l'utilisateur à dézoomer avant de voir quoi que ce soit. On recadre
-        // dès que la disposition est stable, sans attendre l'évènement `end`
-        // que la simulation peut ne jamais émettre si l'utilisateur interagit.
-        if (!hasUserAdjustedView && (simulation?.alpha() ?? 1) < 0.06) {
-          hasAutoFitted = true;
-          fitToNodes(nodes);
-        }
       });
 
     layoutNodes = nodes;
@@ -1308,11 +1383,33 @@
       .on('zoom', (event) => {
         root.attr('transform', event.transform.toString());
         zoomLevel = event.transform.k;
+        placeChronoHeader(event.transform);
         // `sourceEvent` n'est présent que si le zoom vient d'un geste : dès que
         // l'utilisateur cadre lui-même, le recadrage automatique se retire.
         if (event.sourceEvent) hasUserAdjustedView = true;
       });
     svg.call(zoomBehavior);
+
+    if (chrono) drawChronoHeader(svg, chrono);
+
+    // Disposition déroulée d'un seul coup, avant le premier rendu.
+    //
+    // On laissait auparavant la simulation se refroidir à l'écran, puis on
+    // recadrait : le graphe s'affichait, l'utilisateur commençait à le lire, et
+    // deux à trois secondes plus tard tout sautait à une autre échelle. Le
+    // calcul est le même, il a simplement lieu avant que quiconque regarde. La
+    // vue est ensuite posée une fois pour toutes ; les interactions (glisser un
+    // nœud, déplier une fiche) relancent la simulation sans jamais recadrer.
+    simulation.stop();
+    const settleTicks = Math.ceil(
+      Math.log(simulation.alphaMin()) / Math.log(1 - simulation.alphaDecay())
+    );
+    simulation.tick(settleTicks);
+    ticked(svgEl, nodes, links);
+    if (!hasUserAdjustedView) {
+      hasAutoFitted = true;
+      fitToNodes(nodes);
+    }
   }
 
   /** Recadre la vue pour que tous les nœuds tiennent dans le cadre. */
@@ -1332,10 +1429,14 @@
     }
     const spanX = Math.max(maxX - minX, 1);
     const spanY = Math.max(maxY - minY, 1);
-    const k = Math.min(4, Math.max(0.1, Math.min(width / spanX, height / spanY)));
+    // Le bandeau d'années occupe le haut du cadre : le graphe se cale dessous,
+    // sinon les nœuds les plus hauts passent derrière les dates.
+    const topInset = layoutMode === 'chrono' ? CHRONO_HEADER_HEIGHT + 6 : 0;
+    const usableH = Math.max(height - topInset, 1);
+    const k = Math.min(4, Math.max(0.1, Math.min(width / spanX, usableH / spanY)));
     fitScale = k;
     const tx = width / 2 - k * ((minX + maxX) / 2);
-    const ty = height / 2 - k * ((minY + maxY) / 2);
+    const ty = topInset + usableH / 2 - k * ((minY + maxY) / 2);
     const target = zoomIdentity.translate(tx, ty).scale(k);
     const sel = select(svgEl);
     if (duration > 0) sel.transition().duration(duration).call(zoomBehavior.transform, target);
@@ -1373,7 +1474,9 @@
 
   function onFullscreenChange() {
     isFullscreen = !!document.fullscreenElement;
-    simulation?.alpha(0.3).restart();
+    // Le passage en plein écran ne change pas les liens : réchauffer la
+    // simulation ferait dériver une disposition que l'utilisateur vient de
+    // lire. Le redimensionnement qui suit se contente de recadrer.
     selectSource(null);
   }
 
@@ -1383,14 +1486,6 @@
     width = Math.max(rect.width, 320);
     height = Math.max(rect.height, 360);
     mountGraph();
-    // Filet : si la simulation est encore agitée passé ce délai, on recadre
-    // quand même pour ne jamais laisser l'utilisateur devant un graphe tronqué.
-    autoFitFallback = window.setTimeout(() => {
-      if (!hasAutoFitted && layoutNodes.length > 0) {
-        hasAutoFitted = true;
-        fitToNodes(layoutNodes);
-      }
-    }, 2500);
 
     resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
@@ -1399,14 +1494,15 @@
         if (Math.abs(nextW - width) < 4 && Math.abs(nextH - height) < 4) continue;
         width = nextW;
         height = nextH;
-        if (simulation) {
-          hasAutoFitted = false;
-          simulation
-            .force('center', forceCenter(width / 2, height / 2).strength(0.05))
-            .alpha(0.3)
-            .restart();
+        // On recadre sans recalculer la disposition : relancer la simulation
+        // ferait bouger tous les nœuds pour un simple changement de cadre, et
+        // l'utilisateur perdrait le graphe qu'il était en train de lire.
+        if (svgEl) {
+          select(svgEl).attr('viewBox', `0 0 ${width} ${height}`);
+          select(svgEl).select('g.chrono-header').select('rect').attr('width', width);
+          select(svgEl).select('g.chrono-header').select('line').attr('x2', width);
         }
-        if (svgEl) select(svgEl).attr('viewBox', `0 0 ${width} ${height}`);
+        if (!hasUserAdjustedView && layoutNodes.length > 0) fitToNodes(layoutNodes);
       }
     });
     resizeObserver.observe(container);
@@ -1422,7 +1518,6 @@
   });
 
   onDestroy(() => {
-    if (autoFitFallback !== undefined) clearTimeout(autoFitFallback);
     simulation?.stop();
     resizeObserver?.disconnect();
     if (typeof document !== 'undefined') {
@@ -1508,7 +1603,7 @@
     // lui, l'utilisateur voit un point allumé sans savoir ce qu'il a trouvé.
     const matched = matchedIds;
     svg
-      .selectAll<SVGTextElement, GraphNode>('text.author-label, text.card-creator')
+      .selectAll<SVGTextElement, GraphNode>('text.author-label, text.card-creator, text.date-label')
       .style('display', showAuthor ? '' : 'none');
     svg
       .selectAll<SVGTextElement, GraphNode>('text.title-label')
