@@ -83,6 +83,8 @@ class WaybackService:
     """
 
     AVAILABLE_URL = "https://archive.org/wayback/available"
+    # Second canal sur le meme index, limite independamment du premier.
+    CDX_URL = "https://web.archive.org/cdx/search/cdx"
     SAVE_URL = "https://web.archive.org/save"
     TIMEOUT = 30.0
     # Back-off schedule (seconds) for polling the snapshot after triggering
@@ -184,30 +186,71 @@ class WaybackService:
     async def _lookup_snapshot(self, url: str) -> tuple[str, str | None] | None:
         """(url d'archive, horodatage) si un instantane existe, sinon None.
 
-        Leve ``ThrottledError`` si le service a refuse de repondre : c'est le seul
-        cas ou l'absence d'instantane ne veut rien dire. Une panne ou un
-        timeout restent indistinguables d'une absence, et c'est assume -- les
-        deux laissent la source en attente.
+        Deux canaux interrogent le meme index. Mesure depuis la VM le
+        2026-08-04, a la meme seconde et depuis la meme IP : `wayback/available`
+        repondait 429 pendant que CDX repondait 200 avec l'instantane. La
+        limitation porte sur le point d'entree, pas sur l'archive -- s'arreter
+        au premier refus reviendrait a conclure sans avoir regarde.
+
+        Leve ``ThrottledError`` seulement si *aucun* canal n'a pu se prononcer.
+        Une absence n'est affirmee que sur une reponse saine.
+        """
+        refusal: ThrottledError | None = None
+        for channel in (self._lookup_via_cdx, self._lookup_via_availability):
+            try:
+                return await channel(url)
+            except ThrottledError as e:
+                refusal = refusal or e
+        raise refusal or ThrottledError()
+
+    async def _get_json(self, endpoint: str, params: dict[str, str]):
+        """Le JSON d'un canal. Leve ``ThrottledError`` s'il n'a pas repondu.
+
+        Panne, timeout et reponse illisible sont regroupes a dessein : aucun ne
+        dit « pas d'instantane ». Ils disent « pas de reponse », et c'est a
+        l'appelant d'essayer ailleurs plutot que de conclure.
         """
         try:
             async with httpx.AsyncClient(timeout=self.TIMEOUT) as client:
-                params = {"url": url}
-                if self._api_key:
-                    params["api_key"] = self._api_key
-                response = await client.get(self.AVAILABLE_URL, params=params)
-                refusal = self._refusal(response)
-                if refusal is not None:
-                    raise refusal
-                response.raise_for_status()
-                data = response.json()
+                response = await client.get(endpoint, params=params)
+            refusal = self._refusal(response)
+            if refusal is not None:
+                raise refusal
+            response.raise_for_status()
+            return response.json()
         except ThrottledError:
             raise
-        except httpx.TimeoutException:
-            logger.warning(f"Wayback poll timeout for {url}")
+        except Exception as e:  # noqa: BLE001 — l'autre canal a peut-etre mieux.
+            logger.info(f"Wayback lookup unusable on {endpoint} for {params.get('url')}: {e}")
+            raise ThrottledError() from e
+
+    async def _lookup_via_cdx(self, url: str) -> tuple[str, str | None] | None:
+        """L'index CDX. Leve ``ThrottledError`` faute de reponse exploitable."""
+        params = {
+            "url": url,
+            "output": "json",
+            "limit": "1",
+            "filter": "statuscode:200",
+            "fl": "timestamp,original",
+        }
+        rows = await self._get_json(self.CDX_URL, params)
+        # CDX renvoie une matrice dont la premiere ligne est l'en-tete, et une
+        # liste vide quand il n'a rien. Un HTML d'erreur en 200 n'est ni l'un
+        # ni l'autre : on ne s'en sert pas pour conclure.
+        if not isinstance(rows, list) or (rows and not isinstance(rows[0], list)):
+            raise ThrottledError()
+        if len(rows) < 2:
             return None
-        except Exception as e:  # noqa: BLE001 — transient, the caller retries.
-            logger.info(f"Wayback poll error for {url}: {e}")
-            return None
+        timestamp, original = rows[1][0], rows[1][1]
+        return f"https://web.archive.org/web/{timestamp}/{original}", timestamp
+
+    async def _lookup_via_availability(self, url: str) -> tuple[str, str | None] | None:
+        params = {"url": url}
+        if self._api_key:
+            params["api_key"] = self._api_key
+        data = await self._get_json(self.AVAILABLE_URL, params)
+        if not isinstance(data, dict):
+            raise ThrottledError()
 
         snapshot = data.get("archived_snapshots", {}).get("closest")
         if not snapshot or not snapshot.get("url"):
