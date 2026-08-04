@@ -131,10 +131,37 @@
     expandedSource = expandedSource === sourceId ? null : sourceId;
   }
 
+  // Un bouton « copier » sans retour visuel laisse le visiteur cliquer deux
+  // fois sans savoir s'il s'est passé quelque chose.
+  let copied = $state<'' | 'link' | 'ai'>('');
+  let copiedTimer: ReturnType<typeof setTimeout>;
+
+  function copyText(text: string, kind: 'link' | 'ai') {
+    if (typeof navigator === 'undefined' || !navigator.clipboard) return;
+    navigator.clipboard.writeText(text).then(() => {
+      copied = kind;
+      clearTimeout(copiedTimer);
+      copiedTimer = setTimeout(() => (copied = ''), 2000);
+    });
+  }
+
   function copyLink() {
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(window.location.href);
-    }
+    copyText(window.location.href, 'link');
+  }
+
+  /** Ce qu'on colle dans un chatbot pour qu'il cite au lieu d'inventer.
+   *
+   * L'adresse `.md` sert le même contenu déjà structuré, avec DOI, statut de
+   * rétractation et archives. La phrase qui l'accompagne dit à l'agent ce
+   * qu'il tient — sans elle, il traite l'URL comme une page quelconque. */
+  function copyForAI() {
+    const url = `${$page.url.origin}/@${creatorSlug}/${cardSlug}.md`;
+    copyText(
+      `Voici la bibliographie que l'auteur de ce contenu a réellement consultée : ${url}\n` +
+        `Chaque source y porte son adresse d'origine, son archive et, le cas échéant, ` +
+        `son statut de rétractation. Appuie ta réponse dessus et cite précisément.`,
+      'ai'
+    );
   }
 
   let exportOpen = $state(false);
@@ -206,6 +233,9 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:image" content={ogImageUrl} />
   <link rel="canonical" href={publicUrl} />
+  <!-- Un agent qui tombe sur ce HTML apprend ici qu'il existe une version
+       markdown de la même fiche, sans avoir à deviner la convention. -->
+  <link rel="alternate" type="text/markdown" href="{publicUrl}.md" />
   <!-- Highwire : décrit le contenu documenté par la fiche (Google Scholar). -->
   {#each highwireTags as tag (tag.name + tag.content)}
     <meta name={tag.name} content={tag.content} />
@@ -317,10 +347,18 @@
           </div>
           <button
             type="button"
+            onclick={copyForAI}
+            title="Copie une consigne prête à coller dans un chatbot, avec l'adresse markdown de cette fiche"
+            class="text-xs text-ink-tertiary hover:text-ink-primary transition-colors px-2.5 py-1 rounded-md border border-border hover:border-border-strong shrink-0 print:hidden"
+          >
+            {copied === 'ai' ? 'Copié' : 'Pour une IA'}
+          </button>
+          <button
+            type="button"
             onclick={copyLink}
             class="text-xs text-ink-tertiary hover:text-ink-primary transition-colors px-2.5 py-1 rounded-md border border-border hover:border-border-strong shrink-0 print:hidden"
           >
-            Partager
+            {copied === 'link' ? 'Copié' : 'Partager'}
           </button>
         </div>
       </div>

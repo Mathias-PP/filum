@@ -267,7 +267,112 @@ def export_apa(card: BiblioCard, public_url: str) -> str:
     return "\n".join(lines) + "\n"
 
 
-# --- Markdown (Obsidian) ----------------------------------------------------
+# --- Markdown (Obsidian, et lecture par une IA) -----------------------------
+
+#: Rendu de `Source.stance`. Un `None` n'a volontairement pas d'entree : une
+#: position non declaree est un silence, la rabattre sur « mentionne » ferait
+#: dire au createur ce qu'il n'a pas dit.
+_STANCE_LABELS = {
+    "appuie": "appuie le propos",
+    "nuance-contredit": "nuance ou contredit le propos",
+    "mentionne": "est mentionnee",
+    "contexte": "apporte du contexte",
+}
+
+#: Etats de verification comptes en tete de document plutot que repetes sous
+#: chaque source. Mesure sur une fiche reelle de 185 references : les etats
+#: « vérification impossible » y etaient universels et ajoutaient 370 lignes
+#: qui n'affirmaient rien, noyant les quelques faits qui, eux, comptent.
+#: Le detail par source est reserve aux *trouvailles* — une retractation, un
+#: texte integral gratuit. Le bilan reste au complet ci-dessous, donc rien
+#: n'est tu : c'est la place de l'information qui change, pas son existence.
+_RETRACTION_TALLY = {
+    "retracted": "rétractée(s)",
+    "none": "vérifiée(s) sans rétractation",
+    "unverifiable": "non vérifiable(s)",
+    None: "jamais vérifiée(s)",
+}
+
+_OA_TALLY = {
+    "closed": "sans version gratuite connue",
+    "unverifiable": "accès non vérifiable",
+    None: "accès jamais vérifié",
+}
+
+
+def _tally(values: list[str | None], labels: dict[str | None, str]) -> str:
+    """« 3 rétractée(s), 180 vérifiée(s) sans rétractation, 2 jamais vérifiée(s) ».
+
+    Un etat inconnu du dictionnaire est compte tel quel plutot que fondu dans
+    un autre : mieux vaut un libelle brut qu'un total faux le jour ou une
+    nouvelle valeur apparait en base.
+    """
+    counts: dict[str | None, int] = {}
+    for value in values:
+        counts[value] = counts.get(value, 0) + 1
+    ordered = list(labels) + [v for v in counts if v not in labels]
+    return ", ".join(f"{counts[v]} {labels.get(v, v)}" for v in ordered if counts.get(v))
+
+
+def _reliability_summary(sources: list[Source]) -> list[str]:
+    if not sources:
+        return []
+    retraction = _tally([s.retraction_status for s in sources], _RETRACTION_TALLY)
+    # Ce qui compte pour un lecteur est le texte gratuit *effectivement*
+    # atteignable, pas le statut declare par OpenAlex : un « gold » sans URL ne
+    # lui ouvre aucune porte.
+    access = _tally(
+        ["en accès ouvert" if s.oa_url else s.oa_status for s in sources],
+        _OA_TALLY,
+    )
+    return [
+        "## Fiabilité des sources",
+        "",
+        f"Sur {len(sources)} source(s) :",
+        f"- Rétractation : {retraction}",
+        f"- Accès : {access}",
+        "",
+        "Le détail sous chaque source ne signale que les faits établis : une "
+        "rétractation, un texte intégral gratuit, une archive.",
+        "",
+    ]
+
+
+def _source_details(source: Source) -> list[str]:
+    """Les lignes qui rendent une source *verifiable*, pas seulement citable.
+
+    C'est le markdown qu'un agent conversationnel lira pour decider ce qu'il
+    ose affirmer d'une reference : y taire une retractation serait le pire
+    resultat possible pour Philum. Tout s'ecrit en texte plutot qu'en lien —
+    `parse_markdown` recolte toute URL du document, et une metadonnee ne doit
+    pas renaitre en source fantome au reimport. L'acces ouvert fait seul
+    exception : c'est le texte integral gratuit, l'omettre couterait plus que
+    la gene qu'il cause.
+    """
+    lines: list[str] = []
+
+    if source.retraction_status == "retracted":
+        retraction = "⚠️ RÉTRACTÉE"
+        if source.retraction_notice_doi:
+            retraction += f" — avis de rétractation : {source.retraction_notice_doi}"
+        lines.append(f"  - {retraction}")
+
+    # Le DOI n'est repete que s'il n'est pas deja l'adresse de la source : la
+    # plupart des references academiques pointent vers `doi.org/<doi>`, et le
+    # redire n'apprendrait rien a un lecteur tout en faisant naitre une source
+    # de plus au reimport (`parse_markdown` recolte aussi les DOI nus).
+    if source.doi and source.doi.lower() not in (source.url or "").lower():
+        lines.append(f"  - DOI : {source.doi}")
+
+    if source.oa_url:
+        label = f"Accès ouvert ({source.oa_status})" if source.oa_status else "Accès ouvert"
+        lines.append(f"  - {label} : {source.oa_url}")
+
+    stance = _STANCE_LABELS.get(source.stance or "")
+    if stance:
+        lines.append(f"  - Position déclarée : {stance}")
+
+    return lines
 
 
 def export_markdown(card: BiblioCard, public_url: str) -> str:
@@ -288,6 +393,7 @@ def export_markdown(card: BiblioCard, public_url: str) -> str:
     if card.content_url:
         lines.append(f"Contenu : {card.content_url}")
         lines.append("")
+    lines += _reliability_summary(list(card.sources))
     lines.append("## Sources")
     lines.append("")
     for source in card.sources:
@@ -300,7 +406,10 @@ def export_markdown(card: BiblioCard, public_url: str) -> str:
         if source.published_at:
             meta.append(source.published_at.date().isoformat())
         meta.append(source.category)
+        if source.journal:
+            meta.append(source.journal)
         lines.append(f"  - {' · '.join(meta)}")
+        lines += _source_details(source)
         if source.annotation:
             lines.append(f"  - > {source.annotation}")
         if source.archive_url:
