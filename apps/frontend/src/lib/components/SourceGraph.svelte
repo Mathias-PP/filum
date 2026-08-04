@@ -170,6 +170,13 @@
     /** Source dépliable : fiche visée non encore dépliée. */
     expandable?: string;
     radius: number;
+    /**
+     * Demi-largeur de l'étiquette toujours visible, mesurée après rendu.
+     *
+     * Sert à la force de séparation : sans elle, un nom d'auteur long n'est
+     * qu'un cercle de plus pour la simulation, et se pose sur son voisin.
+     */
+    labelHalfWidth?: number;
     fill: string;
     stroke: string;
     tier: 'card' | 'first' | 'second' | 'junction';
@@ -208,6 +215,10 @@
   // Échelle du recadrage automatique. Les seuils d'affichage des étiquettes sont
   // exprimés relativement à elle, sinon un graphe recadré à 0.3 masquerait tout.
   let fitScale = $state(1);
+  /** Panneau d'options, mesuré pour que le recadrage ne cache rien derrière. */
+  let overlayEl = $state<HTMLDivElement | null>(null);
+  /** Colonne de zoom, réservée au même titre que le panneau d'options. */
+  let controlsEl = $state<HTMLDivElement | null>(null);
   let layoutNodes: GraphNode[] = [];
   let hasAutoFitted = false;
   let hasUserAdjustedView = false;
@@ -1121,17 +1132,80 @@
         .attr('transform', `translate(${bx},0)`)
         .style('display', bx < 0 || bx > width ? 'none' : '');
     }
-    select(svgEl)
+    const ticks = select(svgEl)
       .select('g.chrono-header')
       .selectAll<SVGTextElement, ChronoHeaderTick>('text')
-      .attr('x', (d) => transform.applyX(d.x))
-      // Une graduation poussée hors cadre par la navigation ne doit pas
-      // s'écraser contre le bord : elle disparaît plutôt que de mentir.
-      .style('display', (d) => {
-        const sx = transform.applyX(d.x);
-        return sx < 24 || sx > width - 24 ? 'none' : '';
-      })
-      .text((d) => d.label);
+      .text((d) => d.label)
+      .attr('x', (d) => transform.applyX(d.x));
+
+    // Élagage de gauche à droite. Une graduation poussée hors cadre par la
+    // navigation ne doit pas s'écraser contre le bord, et deux années trop
+    // proches se chevauchaient en une bouillie de chiffres — « 20202026 » là
+    // où la frise s'achevait sur l'année de la fiche. Mieux vaut une règle
+    // moins graduée qu'une règle illisible.
+    let lastRight = -Infinity;
+    ticks.style('display', function (d) {
+      const sx = transform.applyX(d.x);
+      if (sx < 24 || sx > width - 24) return 'none';
+      // Un onglet en arrière-plan ne mesure pas son texte : `getComputedText-
+      // Length` y renvoie 0, et l'élagage laissait alors passer les
+      // chevauchements jusqu'au prochain rendu. À défaut de mesure, une
+      // estimation par le nombre de caractères, à cette taille de police.
+      const measured = this.getComputedTextLength();
+      const half = (measured > 0 ? measured : d.label.length * 6.8) / 2;
+      if (sx - half < lastRight + 8) return 'none';
+      lastRight = sx + half;
+      return '';
+    });
+  }
+
+  /**
+   * Écarte les nœuds dont les étiquettes se recouvrent.
+   *
+   * `forceCollide` raisonne en cercles ; une étiquette est une boîte large et
+   * plate. Un rayon assez grand pour dégager « NIH — National Institute of
+   * Neurological… » aurait éparpillé tout le graphe. On déplace donc chaque
+   * paire selon l'axe où le recouvrement est le moindre : deux étiquettes
+   * larges se séparent verticalement, ce qui les empile au lieu de les
+   * superposer, et laisse intacte l'abscisse dont la frise a besoin.
+   */
+  function separateLabels(nodes: GraphNode[], strength: number, lockX: boolean) {
+    const halfWidth = (d: GraphNode) => d.labelHalfWidth ?? d.radius;
+    const halfHeight = (d: GraphNode) => d.radius + 18;
+    for (let i = 0; i < nodes.length; i += 1) {
+      const a = nodes[i];
+      if (a.kind === 'junction') continue;
+      for (let j = i + 1; j < nodes.length; j += 1) {
+        const b = nodes[j];
+        if (b.kind === 'junction') continue;
+        const dx = (b.x ?? 0) - (a.x ?? 0);
+        const overlapX = halfWidth(a) + halfWidth(b) + 6 - Math.abs(dx);
+        if (overlapX <= 0) continue;
+        const dy = (b.y ?? 0) - (a.y ?? 0);
+        const overlapY = halfHeight(a) + halfHeight(b) + 4 - Math.abs(dy);
+        if (overlapY <= 0) continue;
+        // En frise, l'abscisse porte la date : la déplacer ferait mentir le
+        // bandeau d'années. Le dégagement s'y fait donc en hauteur seulement.
+        if (lockX || overlapY <= overlapX) {
+          const push = (overlapY / 2) * strength * (dy < 0 ? -1 : 1);
+          a.y = (a.y ?? 0) - push;
+          b.y = (b.y ?? 0) + push;
+        } else {
+          const push = (overlapX / 2) * strength * (dx < 0 ? -1 : 1);
+          a.x = (a.x ?? 0) - push;
+          b.x = (b.x ?? 0) + push;
+        }
+      }
+    }
+  }
+
+  function forceLabelSeparation(lockX: boolean) {
+    let nodes: GraphNode[] = [];
+    const force = (alpha: number) => separateLabels(nodes, alpha, lockX);
+    force.initialize = (n: GraphNode[]) => {
+      nodes = n;
+    };
+    return force;
   }
 
   function mountGraph() {
@@ -1168,6 +1242,19 @@
     // river au centre lui donnerait une date qu'elle n'a pas.
     cardNode.fx = chrono ? (chronoX(cardNode.id) ?? width / 2) : width / 2;
     cardNode.fy = height / 2;
+
+    // En frise, l'abscisse EST la date. Une simple force de rappel ne suffit
+    // pas : le lien qui relie une source à la fiche qui la cite tire vers
+    // l'autre bout de la frise, et l'équilibre se pose à côté de l'année. Le
+    // bandeau annonçait alors une date que le nœud démentait — Cajal, 1911, se
+    // posait sous 1950. Chaque nœud daté est donc rivé à son année ; seuls les
+    // nœuds sans date (jonctions comprises) restent libres.
+    if (chrono) {
+      for (const n of nodes) {
+        const x = chronoX(n.id);
+        if (x !== undefined) n.fx = x;
+      }
+    }
 
     // Réinjection des positions connues : après un dépliage, le graphe déjà à
     // l'écran doit rester en place et seul le nouveau rameau doit pousser.
@@ -1281,7 +1368,9 @@
       .on('end', (event: D3DragEvent<SVGGElement, GraphNode, GraphNode>, d) => {
         if (!event.active) simulation?.alphaTarget(0);
         if (d.id !== cardId) {
-          d.fx = null;
+          // Relâché en frise, un nœud daté retrouve son année : le déplacer à
+          // la main peut réordonner la hauteur, jamais la date.
+          d.fx = chronoX(d.id) ?? null;
           d.fy = null;
         }
       });
@@ -1523,6 +1612,16 @@
       .style('pointer-events', 'none')
       .text((d) => nodeYear(d) || 's. d.');
 
+    // Mesure des étiquettes une fois le texte posé, avant la simulation.
+    //
+    // Seule l'étiquette visible au repos compte : le titre n'apparaît qu'au
+    // zoom 3×, où les nœuds sont déjà loin les uns des autres à l'écran.
+    labelG.each(function (d) {
+      const text = this.querySelector<SVGTextElement>('text.author-label, text.card-creator');
+      const width = text ? text.getComputedTextLength() : 0;
+      d.labelHalfWidth = Math.max(d.radius, width / 2);
+    });
+
     // Tooltip natif sur la fiche seule : sur une source, le titre s'affiche
     // desormais dans le graphe au survol, un second tooltip ferait doublon.
     nodeG
@@ -1582,12 +1681,28 @@
       // Rappel vertical faible : sans lui, la répulsion étire la frise en une
       // bande si haute qu'aucun zoom ne la rend lisible.
       .force('chronoY', chrono ? forceY<GraphNode>(height / 2).strength(0.04) : null)
+      // Aplatissement à l'aspect du cadre.
+      //
+      // La disposition en réseau tend vers un disque, le cadre est deux fois
+      // plus large que haut : le recadrage automatique était donc limité par la
+      // hauteur, et perdait la moitié de la largeur en marges vides. Rapprocher
+      // la nuée d'une ellipse de même aspect que le cadre laisse le zoom monter
+      // d'autant, ce qui écarte les nœuds à l'écran sans les écarter dans la
+      // simulation — et sans rapetisser le texte, contrairement à un simple
+      // allongement des liens.
+      .force(
+        'flatten',
+        chrono
+          ? null
+          : forceY<GraphNode>(height / 2).strength(Math.max(0, 0.15 * (1 - height / width)))
+      )
       .force(
         'collide',
         // Le nom d'auteur est dessiné au-dessus du nœud : la marge de collision
         // doit lui laisser la place, sinon deux étiquettes se superposent.
         forceCollide<GraphNode>().radius((d) => d.radius + 8 * spacingBoost)
       )
+      .force('labels', forceLabelSeparation(Boolean(chrono)))
       .on('tick', () => {
         if (svgEl) ticked(svgEl, nodes, links);
       });
@@ -1621,6 +1736,14 @@
       Math.log(simulation.alphaMin()) / Math.log(1 - simulation.alphaDecay())
     );
     simulation.tick(settleTicks);
+    // Dégagement final des étiquettes, une fois la simulation froide.
+    //
+    // Pendant le refroidissement la séparation s'efface avec alpha, comme
+    // toute autre force — sans quoi elle continuerait de pousser un graphe déjà
+    // arrêté et, en frise, éloignerait les nœuds de leur date. Elle s'achève
+    // donc ici, seule, quand plus aucune force ne la contredit : c'est là
+    // qu'elle peut résoudre les derniers recouvrements sans rien déranger.
+    for (let i = 0; i < 60; i += 1) separateLabels(nodes, 0.4, Boolean(chrono));
     ticked(svgEl, nodes, links);
     if (!hasUserAdjustedView) {
       hasAutoFitted = true;
@@ -1637,11 +1760,14 @@
     let maxY = -Infinity;
     for (const n of nodes) {
       // La marge couvre le rayon du nœud et l'étiquette dessinée au-dessus.
-      const pad = n.radius + 26;
-      minX = Math.min(minX, (n.x ?? 0) - pad);
-      maxX = Math.max(maxX, (n.x ?? 0) + pad);
-      minY = Math.min(minY, (n.y ?? 0) - pad);
-      maxY = Math.max(maxY, (n.y ?? 0) + pad);
+      // En largeur, c'est l'étiquette qui déborde : cadrer sur le seul rayon
+      // laissait « Tonegawa Lab, MIT » se faire couper par le bord du cadre.
+      const padX = Math.max(n.radius, n.labelHalfWidth ?? 0) + 12;
+      const padY = n.radius + 26;
+      minX = Math.min(minX, (n.x ?? 0) - padX);
+      maxX = Math.max(maxX, (n.x ?? 0) + padX);
+      minY = Math.min(minY, (n.y ?? 0) - padY);
+      maxY = Math.max(maxY, (n.y ?? 0) + padY);
     }
     const spanX = Math.max(maxX - minX, 1);
     const spanY = Math.max(maxY - minY, 1);
@@ -1649,9 +1775,18 @@
     // sinon les nœuds les plus hauts passent derrière les dates.
     const topInset = layoutMode === 'chrono' ? CHRONO_HEADER_HEIGHT + 6 : 0;
     const usableH = Math.max(height - topInset, 1);
-    const k = Math.min(4, Math.max(0.1, Math.min(width / spanX, usableH / spanY)));
+    // Le panneau d'options flotte sur la gauche du cadre : sans cette réserve,
+    // le recadrage centrait le graphe sur toute la largeur et poussait les
+    // nœuds de gauche derrière le champ de recherche. Mesuré plutôt que codé en
+    // dur, parce que sa largeur change avec le repli des réglages et la langue.
+    // Au-delà du tiers du cadre (écran étroit) la réserve coûterait plus qu'elle
+    // ne rapporte : le panneau se lit alors comme une couche par-dessus.
+    const leftInset = Math.min((overlayEl?.offsetWidth ?? 0) + 20, width / 3);
+    const rightInset = Math.min((controlsEl?.offsetWidth ?? 0) + 20, width / 6);
+    const usableW = Math.max(width - leftInset - rightInset, 1);
+    const k = Math.min(4, Math.max(0.1, Math.min(usableW / spanX, usableH / spanY)));
     fitScale = k;
-    const tx = width / 2 - k * ((minX + maxX) / 2);
+    const tx = leftInset + usableW / 2 - k * ((minX + maxX) / 2);
     const ty = topInset + usableH / 2 - k * ((minY + maxY) / 2);
     const target = zoomIdentity.translate(tx, ty).scale(k);
     const sel = select(svgEl);
@@ -1863,7 +1998,11 @@
     aria-label="Graphe interactif des sources"
   ></svg>
 
-  <div class="absolute left-3 flex flex-col items-start gap-1.5" style="top: {overlayTop}px">
+  <div
+    bind:this={overlayEl}
+    class="absolute left-3 flex flex-col items-start gap-1.5"
+    style="top: {overlayTop}px"
+  >
     <div
       class="flex items-center gap-1.5 rounded-md bg-white/95 border border-slate-200 shadow-sm px-2 py-1.5 text-xs"
     >
@@ -2179,7 +2318,11 @@
     {/if}
   </div>
 
-  <div class="absolute right-3 flex flex-col gap-1.5" style="top: {overlayTop}px">
+  <div
+    bind:this={controlsEl}
+    class="absolute right-3 flex flex-col gap-1.5"
+    style="top: {overlayTop}px"
+  >
     <button
       onclick={() => zoomBy(1.25)}
       class="w-8 h-8 rounded-md bg-white/95 border border-slate-200 shadow-sm hover:bg-slate-50 flex items-center justify-center text-slate-700"
