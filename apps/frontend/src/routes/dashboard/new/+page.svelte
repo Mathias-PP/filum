@@ -69,6 +69,11 @@
   // refus du site et une page sans métadonnées se ressemblent : des champs
   // restés vides, sans qu'on sache s'il faut réessayer ou saisir soi-même.
   let suggestNotice = $state<string | null>(null);
+  const hasFieldsToOverwrite = $derived(
+    Boolean(title.trim() || description.trim() || contentAuthors.trim()) ||
+      platform !== 'other' ||
+      contentType !== 'other'
+  );
 
   // Fichier bibliographique déposé — transmis à la page Sources via le store.
   let droppedFile = $state<File | null>(null);
@@ -328,10 +333,17 @@
           {suggestNotice}
         </p>
       {/if}
-      <label class="flex items-center gap-2 cursor-pointer text-xs text-ink-tertiary">
-        <input type="checkbox" bind:checked={overwriteOnSuggest} class="rounded" />
-        Écraser les champs déjà remplis lors de la suggestion
-      </label>
+      <!--
+        Ne s'affiche que lorsqu'il y a quelque chose à écraser : sur un
+        formulaire vierge, cette case ne change rien et n'occupe l'attention
+        que pour poser une question qui ne se pose pas encore.
+      -->
+      {#if hasFieldsToOverwrite}
+        <label class="flex items-center gap-2 cursor-pointer text-xs text-ink-tertiary">
+          <input type="checkbox" bind:checked={overwriteOnSuggest} class="rounded" />
+          Écraser les champs déjà remplis lors de la suggestion
+        </label>
+      {/if}
     </div>
 
     <div
