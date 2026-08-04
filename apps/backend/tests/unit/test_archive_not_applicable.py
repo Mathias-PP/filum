@@ -89,3 +89,28 @@ class TestSansObjet:
         asyncio.run(svc.archive_batch([(sid, "http://127.0.0.1:8000/interne")]))
 
         assert (sid, ArchiveStatus.FAILED, None) in svc.written
+
+
+class TestLEtatEstServable:
+    """Un statut que la base sait ecrire mais que l'API ne sait pas relire est
+    une panne, pas une limitation.
+
+    Vecu : `not_applicable` a ete ajoute au modele et ecrit par la migration
+    024, mais le schema Pydantic en redeclarait une copie restee a trois
+    valeurs. La fiche de 152 sources a repondu 500 des sa premiere lecture --
+    la fiche de demo, elle, n'avait aucune source concernee et passait. Les
+    deux enums ne doivent pas pouvoir diverger.
+    """
+
+    def test_le_schema_accepte_tout_statut_que_le_modele_autorise(self):
+        from app.schemas.source import ArchiveStatus as SchemaStatus
+
+        assert {s.value for s in SchemaStatus} == {s.value for s in ArchiveStatus}
+
+    def test_la_reponse_publique_lit_bien_cet_enum(self):
+        """Egaliser les valeurs ne suffit pas si `SourceResponse` en referencait
+        une troisieme copie."""
+        from app.schemas.source import ArchiveStatus as SchemaStatus
+        from app.schemas.source import SourceResponse
+
+        assert SourceResponse.model_fields["archive_status"].annotation is SchemaStatus

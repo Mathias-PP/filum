@@ -6,6 +6,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.models.source import ArchiveStatus as ModelArchiveStatus
+
 
 def _naive_utc(value: datetime | None) -> datetime | None:
     """Colonne `sources.published_at` = TIMESTAMP WITHOUT TIME ZONE : asyncpg
@@ -97,10 +99,10 @@ class OpenAccessStatus(str, Enum):
     UNVERIFIABLE = "unverifiable"
 
 
-class ArchiveStatus(str, Enum):
-    PENDING = "pending"
-    ARCHIVED = "archived"
-    FAILED = "failed"
+# Reexporte depuis le modele, jamais redeclare : une copie locale avait laisse
+# le schema a trois valeurs quand `not_applicable` est arrive en base, et toute
+# fiche contenant une telle source repondait 500.
+ArchiveStatus = ModelArchiveStatus
 
 
 class SourceBase(BaseModel):
