@@ -8,6 +8,7 @@
   import { Button, ConfirmDialog, ProgressSteps } from '$lib/components';
   import { AUTHOR_COLORS, authorLabel } from '$lib/utils/author-colors';
   import type {
+    ArchiveOutcome,
     AuthorKind,
     Card,
     CardSearchResult,
@@ -439,6 +440,68 @@
         err instanceof Error ? err.message : 'Erreur lors de la suggestion de citations';
     } finally {
       suggesting = false;
+    }
+  }
+
+  // Archivage à la demande. L'archivage automatique est cadencé et peut prendre
+  // des heures sur une grosse fiche : ces contrôles servent à dire ce qui presse.
+  let selectedForArchive = $state<Set<string>>(new Set());
+  let archiving = $state(false);
+  let archiveMessage = $state<string | null>(null);
+
+  /** Une source déjà archivée ou sans URL n'a rien à relancer. */
+  function isArchivable(s: Source): boolean {
+    return Boolean((s.url ?? '').trim()) && s.archive_status !== 'archived';
+  }
+
+  const archivableSources = $derived(sources.filter(isArchivable));
+  const selectedCount = $derived(
+    archivableSources.filter((s) => selectedForArchive.has(s.id)).length
+  );
+
+  function toggleArchiveSelection(id: string) {
+    const next = new Set(selectedForArchive);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    selectedForArchive = next;
+  }
+
+  function toggleAllArchiveSelection() {
+    selectedForArchive =
+      selectedCount === archivableSources.length
+        ? new Set()
+        : new Set(archivableSources.map((s) => s.id));
+  }
+
+  /**
+   * Rend compte de ce qui a réellement été déclenché, poste par poste.
+   *
+   * Un seul compteur mentirait : « 3 » ne dirait pas si les 3 partent à
+   * l'archivage ou si deux d'entre elles étaient déjà en file.
+   */
+  function describeOutcome(o: ArchiveOutcome): string {
+    const parts: string[] = [];
+    if (o.scheduled > 0) parts.push(`${o.scheduled} mise${o.scheduled > 1 ? 's' : ''} en file`);
+    if (o.already_running > 0) parts.push(`${o.already_running} déjà en cours`);
+    if (o.already_archived > 0)
+      parts.push(`${o.already_archived} déjà archivée${o.already_archived > 1 ? 's' : ''}`);
+    if (o.nothing_to_archive > 0) parts.push(`${o.nothing_to_archive} sans URL à archiver`);
+    if (parts.length === 0) return 'Rien à archiver.';
+    return `${parts.join(', ')}. L'archivage se fait en arrière-plan : le statut se met à jour d'ici quelques minutes.`;
+  }
+
+  async function archiveSources(ids: string[]) {
+    if (ids.length === 0 || archiving) return;
+    archiving = true;
+    archiveMessage = null;
+    try {
+      archiveMessage = describeOutcome(await api.sources.archive(ids));
+      selectedForArchive = new Set();
+    } catch (err) {
+      archiveMessage =
+        err instanceof Error ? err.message : "Erreur lors du lancement de l'archivage";
+    } finally {
+      archiving = false;
     }
   }
 
@@ -2064,16 +2127,69 @@
       <h2 class="text-lg font-semibold text-ink-primary mb-3">
         Sources ajoutées ({sources.length})
       </h2>
+
+      {#if archivableSources.length > 0}
+        <div
+          class="flex flex-wrap items-center gap-3 mb-3 rounded-lg border border-border bg-surface-secondary px-4 py-2.5"
+        >
+          <label class="flex items-center gap-2 text-sm text-ink-secondary cursor-pointer">
+            <input
+              type="checkbox"
+              checked={selectedCount === archivableSources.length}
+              indeterminate={selectedCount > 0 && selectedCount < archivableSources.length}
+              onchange={toggleAllArchiveSelection}
+              class="w-4 h-4 rounded border-border text-info focus:ring-info/40"
+            />
+            Tout sélectionner ({archivableSources.length} archivable{archivableSources.length > 1
+              ? 's'
+              : ''})
+          </label>
+          <Button
+            variant="secondary"
+            disabled={selectedCount === 0 || archiving}
+            onclick={() => archiveSources([...selectedForArchive])}
+          >
+            {archiving ? 'Envoi…' : `Archiver la sélection (${selectedCount})`}
+          </Button>
+          <p class="text-xs text-ink-tertiary">
+            L'archivage automatique passe sur toutes les sources, mais à cadence lente. Ceci désigne
+            ce qui presse.
+          </p>
+        </div>
+      {/if}
+
+      {#if archiveMessage}
+        <p class="mb-3 rounded-lg bg-info-bg border border-info/30 px-4 py-2.5 text-sm text-info">
+          {archiveMessage}
+        </p>
+      {/if}
+
       <div class="space-y-2">
         {#each sources as source, sourceIndex (source.id)}
           {@const color = AUTHOR_COLORS[source.author_kind]}
           {@const isThisEditing = editingSourceId === source.id}
+          {@const archivable = isArchivable(source)}
           <div
             class="flex items-start justify-between gap-3 bg-surface-primary border rounded-lg px-4 py-3 transition-colors {isThisEditing
               ? 'border-info/50 ring-1 ring-info/30'
               : 'border-border'}"
           >
             <div class="flex items-start gap-3 min-w-0">
+              {#if archivableSources.length > 0}
+                <input
+                  type="checkbox"
+                  checked={selectedForArchive.has(source.id)}
+                  disabled={!archivable}
+                  onchange={() => toggleArchiveSelection(source.id)}
+                  class="mt-1 shrink-0 w-4 h-4 rounded border-border text-info focus:ring-info/40 disabled:opacity-30"
+                  aria-label="Sélectionner pour l'archivage"
+                  title={archivable
+                    ? "Sélectionner pour l'archivage"
+                    : source.archive_status === 'archived'
+                      ? 'Déjà archivée'
+                      : 'Sans URL : rien à archiver'}
+                />
+              {/if}
               <span
                 class="mt-0.5 shrink-0 inline-flex items-center justify-center min-w-[1.75rem] px-1.5 py-0.5 text-xs font-mono font-medium text-ink-tertiary bg-surface-tertiary border border-border rounded"
                 aria-label="Numéro de source"
@@ -2110,6 +2226,30 @@
               </div>
             </div>
             <div class="flex items-center gap-1 shrink-0">
+              {#if archivable}
+                <button
+                  type="button"
+                  onclick={() => archiveSources([source.id])}
+                  disabled={archiving}
+                  class="p-1.5 text-ink-tertiary hover:text-info disabled:opacity-40 disabled:cursor-default transition-colors"
+                  aria-label="Archiver cette source maintenant"
+                  title="Archiver cette source maintenant"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    class="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <rect x="3" y="4" width="18" height="4" rx="1" />
+                    <path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8" />
+                    <line x1="10" y1="12" x2="14" y2="12" />
+                  </svg>
+                </button>
+              {/if}
               {#if sources.length > 1}
                 <button
                   type="button"

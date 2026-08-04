@@ -593,12 +593,18 @@ async def _run_batch(pairs: list[tuple[UUID, str]]) -> None:
         _in_flight.difference_update(sid for sid, _ in pairs)
 
 
-def schedule_archiving(pairs: list[tuple[UUID, str]]) -> None:
-    """Archive en tache de fond, a cadence tenable. Ne bloque jamais l'appelant."""
+def schedule_archiving(pairs: list[tuple[UUID, str]]) -> int:
+    """Archive en tache de fond, a cadence tenable. Ne bloque jamais l'appelant.
+
+    Renvoie le nombre reellement mis en file. L'ecart avec `len(pairs)` est le
+    nombre de sources deja en cours : une demande explicite doit pouvoir le
+    dire a l'utilisateur, plutot que de compter un travail qu'elle n'a pas lance.
+    """
     todo = [(sid, url) for sid, url in pairs if sid not in _in_flight]
     if not todo:
-        return
+        return 0
     _in_flight.update(sid for sid, _ in todo)
     task = asyncio.create_task(_run_batch(todo))
     _background_tasks.add(task)
     task.add_done_callback(_background_tasks.discard)
+    return len(todo)
