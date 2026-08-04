@@ -360,6 +360,38 @@ async def delete_card(
         )
 
 
+async def _load_public_card(
+    creator_slug: str,
+    card_slug: str,
+    request: Request,
+    card_service: CardService,
+    auth_service: AuthService,
+) -> BiblioCard:
+    """Charge une fiche par son adresse publique, ou leve 404.
+
+    « Publiee » dit que le travail est acheve, « publique » qu'il est offert au
+    monde : une fiche peut etre l'un sans etre l'autre. Chaque porte de sortie
+    doit donc verifier les deux — et repondre 404 plutot que 403, pour ne pas
+    confirmer a un visiteur non autorise qu'une fiche existe a cette adresse.
+
+    Ce controle etait recopie a chaque route publique. L'export l'avait oublie
+    et servait en huit formats la bibliographie complete de fiches que leur
+    auteur avait gardees privees. Passer par ici rend l'oubli impossible.
+    """
+    not_found = HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail={"code": "not_found", "message": "Card not found"},
+    )
+    card = await card_service.get_card_by_slug(creator_slug, card_slug)
+    if not card:
+        raise not_found
+    if card.visibility == "private":
+        viewer = await auth_service.get_current_user(request)
+        if viewer is None or viewer.id != card.user_id:
+            raise not_found
+    return card
+
+
 @router.get("/@{creator_slug}/{card_slug}", response_model=CardDetail)
 async def get_public_card(
     creator_slug: str,
@@ -369,22 +401,7 @@ async def get_public_card(
     auth_service: AuthService = Depends(get_auth_service),
     db: AsyncSession = Depends(get_db),
 ):
-    card = await card_service.get_card_by_slug(creator_slug, card_slug)
-    if not card:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "not_found", "message": "Card not found"},
-        )
-
-    # Fiche privee : visible uniquement par l'owner connecte.
-    # 404 (pas 403) pour ne pas leaker l'existence a un visiteur non autorise.
-    if card.visibility == "private":
-        viewer = await auth_service.get_current_user(request)
-        if viewer is None or viewer.id != card.user_id:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={"code": "not_found", "message": "Card not found"},
-            )
+    card = await _load_public_card(creator_slug, card_slug, request, card_service, auth_service)
 
     stats = card_service.compute_stats(card)
     sources_response = [SourceResponse.model_validate(s) for s in card.sources]
@@ -471,19 +488,7 @@ async def get_public_card_graph(
     ``include_sources=false`` renvoie le graphe fiches-seules (constellation).
     Le parcours ne traverse que des fiches publiees et publiques.
     """
-    card = await card_service.get_card_by_slug(creator_slug, card_slug)
-    if not card:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "not_found", "message": "Card not found"},
-        )
-    if card.visibility == "private":
-        viewer = await auth_service.get_current_user(request)
-        if viewer is None or viewer.id != card.user_id:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail={"code": "not_found", "message": "Card not found"},
-            )
+    card = await _load_public_card(creator_slug, card_slug, request, card_service, auth_service)
 
     graph = await build_card_graph(db, card, depth=depth, include_sources=include_sources)
     return CardGraphResponse(
@@ -517,8 +522,10 @@ _EXPORT_FORMATS = {
 async def export_public_card(
     creator_slug: str,
     card_slug: str,
+    request: Request,
     format: str = Query("json"),
     card_service: CardService = Depends(get_card_service),
+    auth_service: AuthService = Depends(get_auth_service),
 ):
     if format not in _EXPORT_FORMATS:
         raise HTTPException(
@@ -529,12 +536,7 @@ async def export_public_card(
                 f"Supported: {', '.join(sorted(_EXPORT_FORMATS))}",
             },
         )
-    card = await card_service.get_card_by_slug(creator_slug, card_slug)
-    if not card:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "not_found", "message": "Card not found"},
-        )
+    card = await _load_public_card(creator_slug, card_slug, request, card_service, auth_service)
 
     from app.core.config import get_settings
     from app.services import export as export_service

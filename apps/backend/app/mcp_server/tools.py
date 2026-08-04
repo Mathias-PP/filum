@@ -18,7 +18,19 @@ from app.models.biblio_card import BiblioCard
 from app.models.source import Source
 from app.models.user import User
 
-_PUBLISHED = (BiblioCard.status == "published") & BiblioCard.deleted_at.is_(None)
+# Le seul filtre qui vaille pour une surface publique et anonyme.
+#
+# `status == "published"` decrit l'avancement du travail, pas l'audience : une
+# fiche peut etre achevee et signee sans etre offerte au monde. C'est
+# `visibility` qui tranche, et toutes les routes REST publiques le verifiaient
+# deja (cards.py, users.py). Le MCP ne le faisait pas, et livrait donc a qui le
+# demandait le titre, la description, l'URL du contenu et la bibliographie
+# complete de fiches que leur auteur avait gardees privees.
+_PUBLIC = (
+    (BiblioCard.status == "published")
+    & (BiblioCard.visibility == "public")
+    & BiblioCard.deleted_at.is_(None)
+)
 
 
 async def search_cards(db: AsyncSession, query: str, limit: int = 10) -> list[dict[str, Any]]:
@@ -26,7 +38,7 @@ async def search_cards(db: AsyncSession, query: str, limit: int = 10) -> list[di
         select(BiblioCard)
         .join(User, BiblioCard.user_id == User.id)
         .where(
-            _PUBLISHED,
+            _PUBLIC,
             func.lower(BiblioCard.title).contains(query.lower(), autoescape=True)
             | func.lower(User.username).contains(query.lower(), autoescape=True),
         )
@@ -42,7 +54,7 @@ async def get_card(db: AsyncSession, creator: str, slug: str) -> dict[str, Any] 
     stmt = (
         select(BiblioCard)
         .join(User, BiblioCard.user_id == User.id)
-        .where(_PUBLISHED, User.username == creator, BiblioCard.slug == slug)
+        .where(_PUBLIC, User.username == creator, BiblioCard.slug == slug)
         .options(selectinload(BiblioCard.user), selectinload(BiblioCard.sources))
     )
     card = await db.scalar(stmt)
@@ -77,7 +89,7 @@ async def get_source(db: AsyncSession, source_id: str) -> dict[str, Any] | None:
     source = await db.scalar(
         select(Source)
         .join(BiblioCard, Source.biblio_card_id == BiblioCard.id)
-        .where(_PUBLISHED, Source.id == sid, Source.deleted_at.is_(None))
+        .where(_PUBLIC, Source.id == sid, Source.deleted_at.is_(None))
     )
     if source is None:
         return None
@@ -103,7 +115,7 @@ async def find_cards_citing(db: AsyncSession, url: str, limit: int = 10) -> list
         select(BiblioCard)
         .join(Source, Source.biblio_card_id == BiblioCard.id)
         .join(User, BiblioCard.user_id == User.id)
-        .where(_PUBLISHED, Source.deleted_at.is_(None), Source.url == url.strip())
+        .where(_PUBLIC, Source.deleted_at.is_(None), Source.url == url.strip())
         .options(selectinload(BiblioCard.user))
         .distinct()
         .limit(min(max(limit, 1), 25))
