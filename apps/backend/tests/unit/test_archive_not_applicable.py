@@ -33,6 +33,10 @@ class _Recorder(wb.WaybackService):
         self.triggered: list[str] = []
         self.written: list[tuple] = []
 
+    async def _mark_attempted(self, source_id) -> None:  # type: ignore[override]
+        # Pas de base en test unitaire : la tentative n'a rien a dater.
+        return None
+
     async def _trigger_save(self, url: str) -> None:
         self.triggered.append(url)
 

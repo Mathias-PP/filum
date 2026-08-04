@@ -110,6 +110,10 @@ class Source(Base):
     archive_status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
     archive_url: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     archive_timestamp: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Quand on a *essaye* -- a ne pas confondre avec `archive_timestamp`, qui
+    # date la capture. Sert a servir en premier les sources tentees le moins
+    # recemment : sans cela, la queue d'un lot budgete n'est jamais atteinte.
+    archive_attempted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     parent_source_id: Mapped[UUID | None] = mapped_column(
         PG_UUID(as_uuid=True),
         ForeignKey("sources.id"),
