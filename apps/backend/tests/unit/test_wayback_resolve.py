@@ -233,3 +233,25 @@ class TestUneRedirectionResteUneRedirection:
         svc = self._svc()
 
         assert asyncio.run(svc._resolve(page)) == page
+
+    def test_une_entite_html_ne_tronque_pas_la_cible(self, monkeypatch):
+        """`&amp;` contient un point-virgule. L'exclure de l'URL coupait la
+        cible en plein milieu de l'entite : constate en prod le 2026-08-04,
+        la resolution rendait `...sciencedirect.com%2F&` sans le parametre
+        `key`, et la chaine s'arretait sur une page intermediaire."""
+        hub = "https://linkinghub.elsevier.com/retrieve/pii/X"
+        suite = "https://linkinghub.elsevier.com/select?Redirect=cible&key=7ced"
+        self._pages(
+            monkeypatch,
+            {
+                hub: (
+                    hub,
+                    b'<meta HTTP-EQUIV="REFRESH" content="2; '
+                    b"url='/select?Redirect=cible&amp;key=7ced'\"/>",
+                ),
+                suite: (suite, b"<html>article</html>"),
+            },
+        )
+        svc = self._svc()
+
+        assert asyncio.run(svc._resolve(hub)) == suite
