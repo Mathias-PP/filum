@@ -8,7 +8,7 @@ from collections.abc import Awaitable, Callable
 from datetime import datetime
 from functools import partial
 from html import unescape
-from typing import TypeVar
+from typing import Protocol, TypeVar
 from urllib.parse import urljoin
 from uuid import UUID
 
@@ -22,6 +22,11 @@ from app.models.source import ArchiveStatus, Source
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
+
+
+class _Attemptable(Protocol):
+    archive_attempted_at: datetime | None
+
 
 _META_TAG = re.compile(rb"<meta\b[^>]*>", re.IGNORECASE)
 _HTTP_EQUIV_REFRESH = re.compile(rb"""http-equiv\s*=\s*['"]?refresh\b""", re.IGNORECASE)
@@ -469,6 +474,10 @@ class WaybackService:
             # sondage espace naturellement ces requetes, ce qui suffit : le
             # resolveur limite lui aussi les rafales (constate en mesurant).
             target = await self._resolve(url)
+            # Consigner l'essai avant d'en connaitre l'issue : c'est ce qui
+            # distingue une source traitee d'une source jamais atteinte, et
+            # ce qui la fera passer en fin de file au prochain tour.
+            await self._mark_attempted(source_id)
             found = await self._attempt(pacer, partial(self._lookup_snapshot, target))
             if found is None:
                 results.append({"status": "pending", "reason": "no_snapshot_yet"})
@@ -487,6 +496,18 @@ class WaybackService:
 
         return results
 
+    async def _mark_attempted(self, source_id: UUID) -> None:
+        """Date la tentative, sans rien conclure sur son issue.
+
+        Avoir essaye n'est ni un succes ni un echec : seul `archive_status`
+        repond a cette question, et il n'est pas touche ici.
+        """
+        result = await self._db.execute(select(Source).where(Source.id == source_id))
+        source = result.scalar_one_or_none()
+        if source:
+            source.archive_attempted_at = datetime.now().replace(tzinfo=None)
+            await self._db.commit()
+
     async def _update_source(
         self,
         source_id: UUID,
@@ -504,6 +525,21 @@ class WaybackService:
 
     async def archive_all_pending(self, sources: list[tuple[UUID, str]]) -> list[dict]:
         return await self.archive_batch(sources)
+
+
+def least_recently_attempted[S: _Attemptable](sources: list[S]) -> list[S]:
+    """Les sources tentees le moins recemment d'abord, jamais tentees en tete.
+
+    Un lot est borne par un budget de temps : il ne traite qu'un prefixe de la
+    file. Servie toujours dans le meme ordre, la queue de cette file n'est pas
+    traitee « plus tard » -- elle ne l'est **jamais**. Mesure en prod le
+    2026-08-04 : 132 sources bloquees, dont certaines avaient une capture
+    disponible a l'instant meme.
+
+    Le tri est stable, donc deux sources equivalentes gardent leur ordre : rien
+    ne justifierait de les brasser.
+    """
+    return sorted(sources, key=lambda s: s.archive_attempted_at or datetime.min)
 
 
 # La boucle d'evenements ne garde qu'une reference FAIBLE sur les taches : sans

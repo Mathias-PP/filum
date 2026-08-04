@@ -35,6 +35,10 @@ class _Recorder(wb.WaybackService):
         self.snapshots: dict[str, str] = {}
         self.written: list[tuple] = []
 
+    async def _mark_attempted(self, source_id) -> None:  # type: ignore[override]
+        # Pas de base en test unitaire : la tentative n'a rien a dater.
+        return None
+
     async def _resolve(self, url: str) -> str:
         # Aucun reseau en test unitaire : ces URL ne redirigent pas.
         return url
