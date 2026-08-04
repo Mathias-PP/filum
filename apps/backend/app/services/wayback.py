@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Awaitable, Callable
 from datetime import datetime
+from functools import partial
+from typing import TypeVar
 from uuid import UUID
 
 import httpx
@@ -13,6 +16,52 @@ from app.core.url_safety import UnsafeUrlError, assert_url_is_safe
 from app.models.source import ArchiveStatus, Source
 
 logger = logging.getLogger(__name__)
+
+T = TypeVar("T")
+
+
+class ThrottledError(Exception):
+    """Le service a refuse de repondre et demande qu'on ralentisse.
+
+    Distinct d'une absence d'instantane. Confondre les deux revient a conclure
+    sur une URL qu'on n'a jamais reussi a interroger -- la meme faute que
+    d'inscrire `failed` faute d'avoir trouve a temps.
+    """
+
+    def __init__(self, retry_after: float | None = None) -> None:
+        super().__init__("throttled")
+        self.retry_after = retry_after
+
+
+class _Pacer:
+    """Cadence qui s'ajuste au service au lieu de la deviner.
+
+    On part du plancher, on double a chaque refus (en honorant un eventuel
+    `Retry-After`), on redescend doucement quand les requetes repassent. Le
+    temps d'attente cumule est plafonne : au-dela, le lot s'arrete et laisse le
+    reste en attente plutot que de mobiliser la base indefiniment.
+    """
+
+    def __init__(self, floor: float, ceiling: float, budget: float) -> None:
+        self._floor = floor
+        self._ceiling = ceiling
+        self._budget = budget
+        self.gap = floor
+        self.spent = 0.0
+
+    @property
+    def exhausted(self) -> bool:
+        return self.spent >= self._budget
+
+    async def pause(self) -> None:
+        await asyncio.sleep(self.gap)
+        self.spent += self.gap
+
+    def slow_down(self, retry_after: float | None = None) -> None:
+        self.gap = min(self._ceiling, max(self.gap * 2, retry_after or 0.0))
+
+    def speed_up(self) -> None:
+        self.gap = max(self._floor, self.gap * 0.8)
 
 
 class WaybackService:
@@ -39,12 +88,22 @@ class WaybackService:
     # Back-off schedule (seconds) for polling the snapshot after triggering
     # SPN. Sum ~33 s.
     POLL_DELAYS: tuple[float, ...] = (3.0, 5.0, 8.0, 8.0, 9.0)
-    # Cadence des declenchements en lot. Save Page Now tolere quelques
-    # requetes par minute pour un client anonyme ; au-dela il jette le lot.
+    # Planchers de cadence, pas cadences nominales : le rythme reel s'ajuste
+    # aux refus du service (cf. _Pacer). Les limites d'archive.org ne sont pas
+    # publiees et varient avec sa charge -- mesure en aout 2026, 6 s entre deux
+    # declenchements se faisait encore refuser.
     TRIGGER_GAP = 6.0
-    # Pause entre deux consultations de l'API de disponibilite : elle est bien
-    # plus permissive que SPN, mais 150 requetes d'affilee restent impolies.
     LOOKUP_GAP = 1.0
+    # Plafonds : au-dela, insister ne sert plus a rien.
+    TRIGGER_CEILING = 120.0
+    LOOKUP_CEILING = 60.0
+    # Tentatives par URL face a un refus.
+    MAX_ATTEMPTS = 3
+    # Temps d'attente cumule maximal d'un lot. Sans ce plafond, un archive.org
+    # durablement indisponible ferait tenir la session base ouverte des heures
+    # sur une VM d'un gigaoctet. Ce qui depasse reste `pending`, et la reprise
+    # paresseuse le reproposera au prochain affichage de la fiche.
+    BATCH_BUDGET = 900.0
 
     def __init__(self, db: AsyncSession, api_key: str | None = None):
         self._db = db
@@ -85,21 +144,50 @@ class WaybackService:
         # paresseuse la reproposera.
         return {"status": "pending", "reason": "no_snapshot_yet"}
 
+    @staticmethod
+    def _refusal(response: httpx.Response) -> ThrottledError | None:
+        """Un refus de service, s'il y en a un.
+
+        429 est explicite. Les 5xx le sont moins, mais un `523` de Cloudflare
+        (origine injoignable) ou un `503` disent la meme chose : le service ne
+        peut pas repondre maintenant, insister au meme rythme est inutile.
+        """
+        if response.status_code != 429 and response.status_code < 500:
+            return None
+        raw = response.headers.get("retry-after")
+        try:
+            return ThrottledError(float(raw) if raw else None)
+        except ValueError:
+            # `Retry-After` peut etre une date HTTP. On ignore la valeur et on
+            # laisse le doublement de cadence faire son office.
+            return ThrottledError()
+
     async def _trigger_save(self, url: str) -> None:
-        """Demande un instantane frais. N'attend pas qu'il soit produit."""
+        """Demande un instantane frais. N'attend pas qu'il soit produit.
+
+        Leve ``ThrottledError`` si le service refuse : l'appelant ralentit et
+        reessaie, au lieu de bruler l'URL a la cadence qui vient d'echouer.
+        """
         try:
             async with httpx.AsyncClient(timeout=self.TIMEOUT, follow_redirects=False) as client:
                 # GET works for SPN public endpoint. We don't care about the
-                # response — only that the archive request was kicked off.
-                await client.get(f"{self.SAVE_URL}/{url}")
+                # response body — only whether the request was accepted.
+                response = await client.get(f"{self.SAVE_URL}/{url}")
         except Exception as e:  # noqa: BLE001 — best-effort, log and continue.
             logger.info(f"Wayback SPN trigger failed for {url} (will still poll): {e}")
+            return
+
+        refusal = self._refusal(response)
+        if refusal is not None:
+            raise refusal
 
     async def _lookup_snapshot(self, url: str) -> tuple[str, str | None] | None:
         """(url d'archive, horodatage) si un instantane existe, sinon None.
 
-        Une panne du service et une absence d'instantane sont indistinguables
-        ici, et c'est voulu : les deux laissent la source en attente.
+        Leve ``ThrottledError`` si le service a refuse de repondre : c'est le seul
+        cas ou l'absence d'instantane ne veut rien dire. Une panne ou un
+        timeout restent indistinguables d'une absence, et c'est assume -- les
+        deux laissent la source en attente.
         """
         try:
             async with httpx.AsyncClient(timeout=self.TIMEOUT) as client:
@@ -107,8 +195,13 @@ class WaybackService:
                 if self._api_key:
                     params["api_key"] = self._api_key
                 response = await client.get(self.AVAILABLE_URL, params=params)
+                refusal = self._refusal(response)
+                if refusal is not None:
+                    raise refusal
                 response.raise_for_status()
                 data = response.json()
+        except ThrottledError:
+            raise
         except httpx.TimeoutException:
             logger.warning(f"Wayback poll timeout for {url}")
             return None
@@ -120,6 +213,26 @@ class WaybackService:
         if not snapshot or not snapshot.get("url"):
             return None
         return snapshot["url"], snapshot.get("timestamp")
+
+    async def _attempt(self, pacer: _Pacer, call: Callable[[], Awaitable[T]]) -> T | None:
+        """Execute `call` a la cadence du pacer, en reessayant les refus.
+
+        Retourne None quand toutes les tentatives ont ete refusees. C'est une
+        absence de reponse, pas une reponse negative : l'appelant doit laisser
+        la source en attente et surtout pas la declarer en echec.
+        """
+        for _ in range(self.MAX_ATTEMPTS):
+            if pacer.exhausted:
+                return None
+            await pacer.pause()
+            try:
+                result = await call()
+            except ThrottledError as refusal:
+                pacer.slow_down(refusal.retry_after)
+                continue
+            pacer.speed_up()
+            return result
+        return None
 
     async def _mark_archived(
         self, source_id: UUID, archive_url: str, archive_timestamp: str | None
@@ -165,15 +278,17 @@ class WaybackService:
                 continue
             todo.append((source_id, url))
 
-        for i, (_, url) in enumerate(todo):
-            if i:
-                await asyncio.sleep(self.TRIGGER_GAP)
-            await self._trigger_save(url)
+        pacer = _Pacer(self.TRIGGER_GAP, self.TRIGGER_CEILING, self.BATCH_BUDGET)
+        for _, url in todo:
+            if pacer.exhausted:
+                break
+            await self._attempt(pacer, partial(self._trigger_save, url))
 
-        for i, (source_id, url) in enumerate(todo):
-            if i:
-                await asyncio.sleep(self.LOOKUP_GAP)
-            found = await self._lookup_snapshot(url)
+        pacer = _Pacer(self.LOOKUP_GAP, self.LOOKUP_CEILING, self.BATCH_BUDGET)
+        for source_id, url in todo:
+            if pacer.exhausted:
+                break
+            found = await self._attempt(pacer, partial(self._lookup_snapshot, url))
             if found is None:
                 results.append({"status": "pending", "reason": "no_snapshot_yet"})
                 continue
