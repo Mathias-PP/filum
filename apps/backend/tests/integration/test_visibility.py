@@ -119,6 +119,35 @@ async def test_private_card_not_in_public_profile(client, private_card, test_use
 
 
 @pytest.mark.asyncio
+async def test_private_card_graph_hidden_from_anonymous(client, private_card, test_user):
+    """Le graphe d'une fiche privee ne doit pas non plus repondre a un anonyme."""
+    resp = await client.get(f"/api/v1/@{test_user.username}/{private_card.slug}/graph")
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("fmt", ["json", "csv", "bibtex", "ris", "csl", "apa"])
+async def test_private_card_export_hidden_from_anonymous(client, private_card, test_user, fmt):
+    """L'export est une porte de sortie comme une autre.
+
+    Il sert la bibliographie complete en huit formats ; l'oublier revient a
+    publier ce que la fiche detail refuse de montrer.
+    """
+    resp = await client.get(
+        f"/api/v1/@{test_user.username}/{private_card.slug}/export?format={fmt}"
+    )
+    assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_private_card_export_visible_to_owner(client, private_card, session_token, test_user):
+    """L'owner connecte exporte sa propre fiche privee."""
+    client.cookies.set("filum_session", session_token)
+    resp = await client.get(f"/api/v1/@{test_user.username}/{private_card.slug}/export?format=json")
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
 async def test_create_card_accepts_visibility(client, session_token):
     """POST /cards accepte visibility='private'."""
     client.cookies.set("filum_session", session_token)

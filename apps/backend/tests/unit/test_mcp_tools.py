@@ -129,6 +129,76 @@ async def test_get_source_of_draft_card_returns_none(db_session, test_user):
     assert await get_source(db_session, source_id=str(source.id)) is None
 
 
+@pytest_asyncio.fixture
+async def private_published_card(db_session, test_user):
+    """Fiche publiee mais gardee privee : le web public ne doit jamais la voir.
+
+    « Publiee » decrit l'etat du travail, pas l'audience. Une fiche peut etre
+    terminee et signee sans etre offerte au monde ; c'est `visibility` qui
+    tranche, et toutes les routes REST publiques le verifient.
+    """
+    from app.models.biblio_card import BiblioCard
+    from app.models.source import Source
+
+    card = BiblioCard(
+        id=uuid4(),
+        user_id=test_user.id,
+        slug="dossier-confidentiel",
+        title="Memoire dossier confidentiel",
+        content_type="video",
+        platform="youtube",
+        status="published",
+        visibility="private",
+    )
+    db_session.add(card)
+    await db_session.flush()
+    source = Source(
+        id=uuid4(),
+        biblio_card_id=card.id,
+        position=0,
+        url="https://example.org/piece-confidentielle",
+        title="Piece confidentielle",
+        format="texte",
+        category="article-scientifique",
+        author_kind="chercheur",
+    )
+    db_session.add(source)
+    await db_session.commit()
+    return card, source
+
+
+@pytest.mark.asyncio
+async def test_search_cards_ignores_private_cards(db_session, private_published_card):
+    from app.mcp_server.tools import search_cards
+
+    assert await search_cards(db_session, query="memoire") == []
+
+
+@pytest.mark.asyncio
+async def test_get_card_private_returns_none(db_session, private_published_card, test_user):
+    from app.mcp_server.tools import get_card
+
+    assert (
+        await get_card(db_session, creator=test_user.username, slug="dossier-confidentiel") is None
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_source_of_private_card_returns_none(db_session, private_published_card):
+    from app.mcp_server.tools import get_source
+
+    _, source = private_published_card
+    assert await get_source(db_session, source_id=str(source.id)) is None
+
+
+@pytest.mark.asyncio
+async def test_find_cards_citing_ignores_private_cards(db_session, private_published_card):
+    from app.mcp_server.tools import find_cards_citing
+
+    results = await find_cards_citing(db_session, url="https://example.org/piece-confidentielle")
+    assert results == []
+
+
 @pytest.mark.asyncio
 async def test_search_cards_escapes_like_wildcards(db_session, published_card):
     from app.mcp_server.tools import search_cards
