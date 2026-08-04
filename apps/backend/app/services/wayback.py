@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from collections.abc import Awaitable, Callable
 from datetime import datetime
 from functools import partial
@@ -46,8 +47,16 @@ class _Pacer:
         self._floor = floor
         self._ceiling = ceiling
         self._budget = budget
+        self._started = time.monotonic()
         self.gap = floor
-        self.spent = 0.0
+
+    @property
+    def spent(self) -> float:
+        # Le temps ecoule, pas la somme des pauses : une requete peut durer
+        # trente secondes et chaque refus est reessaye. Compter les seules
+        # pauses laissait un lot tenir des heures sans jamais « depasser » son
+        # budget -- qui ne protegeait donc pas ce qu'il pretendait proteger.
+        return time.monotonic() - self._started
 
     @property
     def exhausted(self) -> bool:
@@ -55,7 +64,6 @@ class _Pacer:
 
     async def pause(self) -> None:
         await asyncio.sleep(self.gap)
-        self.spent += self.gap
 
     def slow_down(self, retry_after: float | None = None) -> None:
         self.gap = min(self._ceiling, max(self.gap * 2, retry_after or 0.0))
@@ -321,21 +329,30 @@ class WaybackService:
                 continue
             todo.append((source_id, url))
 
-        pacer = _Pacer(self.TRIGGER_GAP, self.TRIGGER_CEILING, self.BATCH_BUDGET)
-        for _, url in todo:
-            if pacer.exhausted:
-                break
-            await self._attempt(pacer, partial(self._trigger_save, url))
-
+        # D'abord regarder. Une bibliographie academique cite surtout des
+        # travaux deja dans l'archive depuis des annees : leur demander une
+        # capture, c'est payer la partie la plus lente et la plus limitee du
+        # service pour un travail deja fait.
         pacer = _Pacer(self.LOOKUP_GAP, self.LOOKUP_CEILING, self.BATCH_BUDGET)
+        absents: list[str] = []
         for source_id, url in todo:
             if pacer.exhausted:
                 break
             found = await self._attempt(pacer, partial(self._lookup_snapshot, url))
             if found is None:
                 results.append({"status": "pending", "reason": "no_snapshot_yet"})
+                absents.append(url)
                 continue
             results.append(await self._mark_archived(source_id, *found))
+
+        # Puis demander une capture pour celles-la seulement. Save Page Now
+        # travaille en differe : le prochain affichage de la fiche relancera le
+        # sondage, et c'est lui qui les verra arriver.
+        pacer = _Pacer(self.TRIGGER_GAP, self.TRIGGER_CEILING, self.BATCH_BUDGET)
+        for url in absents:
+            if pacer.exhausted:
+                break
+            await self._attempt(pacer, partial(self._trigger_save, url))
 
         return results
 

@@ -61,13 +61,20 @@ class _Recorder(wb.WaybackService):
 
 @pytest.fixture
 def slept(monkeypatch):
-    """Les pauses sont observees, pas subies."""
+    """Les pauses sont observees, pas subies.
+
+    L'horloge du service suit ces pauses simulees : le budget d'un lot se
+    mesure en temps ecoule, et une horloge figee le rendrait inatteignable.
+    """
     out: list[float] = []
+    horloge = {"t": 0.0}
 
     async def _sleep(d: float) -> None:
         out.append(d)
+        horloge["t"] += d
 
     monkeypatch.setattr(wb.asyncio, "sleep", _sleep)
+    monkeypatch.setattr(wb.time, "monotonic", lambda: horloge["t"])
     return out
 
 
