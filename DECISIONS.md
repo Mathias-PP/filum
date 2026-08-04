@@ -1122,7 +1122,7 @@ Deux bugs aggravants : `SourceUpdate` ne déclarait pas `linked_card_id`, donc t
 
 **Contexte**
 
-Une fiche de 152 sources affichait **0 archivée** et **101 en échec**. Sept défauts empilés, tous de même nature : un état affirmatif avait absorbé un état d'ignorance.
+Une fiche de 152 sources affichait **0 archivée** et **101 en échec**. Huit défauts empilés, tous de même nature : un état affirmatif avait absorbé un état d'ignorance.
 
 1. `failed` était écrit faute d'avoir trouvé **à temps**. Save Page Now travaille en différé : un délai n'est pas un échec.
 2. 4 sources n'avaient **aucune URL** (un manuel DSM-IV-TR, un chapitre de livre). Marquées `failed`, elles affirmaient qu'on avait essayé et que la page était perdue. Elles condamnaient aussi le compteur : « 148/152 » indépassable sur une fiche pourtant complète.
@@ -1133,6 +1133,7 @@ Une fiche de 152 sources affichait **0 archivée** et **101 en échec**. Sept d�
 7. Le délai de lecture était partagé avec le reste (30 s) alors que CDX met 18 à 20 s à répondre. Sous charge, le sondage expirait — et un dépassement de délai n'est pas une réponse.
 8. Les six premiers corrigés, la fiche restait à **0 archivée** : les 148 URL en attente étaient toutes des `https://doi.org/...`. `doi.org` est un **résolveur** ; toutes ses captures dans l'archive sont des `302`. Le filtre `statuscode:200` les excluait donc toutes — et il avait raison : un redirect archivé ne préserve aucun contenu. On sondait le panneau indicateur au lieu de la ressource.
 9. Le résolveur branché, la fiche passait à 16 archivées — dont plusieurs sur `linkinghub.elsevier.com`, qui répond **200** (aucun client HTTP n'y voit une redirection) avec un `<meta http-equiv="refresh">` et, pour tout contenu, le mot « Redirecting ». Vérifié en lisant l'instantané : 9 514 octets, **un seul mot de texte**. Seize sources se déclaraient archivées sur du vide.
+10. Les 16 pointant enfin sur la bonne ressource, **132 restaient `pending` après six passes de reprise**, journal CDX sain à l'appui. La file des `pending` était construite **toujours dans le même ordre**, et le lot s'arrête sur son budget : il n'en traitait qu'un préfixe. Les sources situées après la frontière n'étaient **jamais atteintes** — pas « plus tard », jamais. Vérifié en résolvant un échantillon à la main : plusieurs avaient une capture `200` disponible à l'instant même. `pending` disait « en cours de traitement » pour des sources que personne ne traitait.
 
 **Décisions**
 
@@ -1146,6 +1147,8 @@ Une fiche de 152 sources affichait **0 archivée** et **101 en échec**. Sept d�
 8. **Archiver la ressource, pas le panneau qui y mène.** Chaque URL est résolue avant d'être sondée et avant qu'une capture soit demandée.
 9. **Une redirection reste une redirection quelle que soit sa forme** : redirect HTTP *et* `<meta http-equiv="refresh">` sont suivis, sur les seuls premiers 64 Ko du document (une redirection se déclare dans l'en-tête ; une VM d'un gigaoctet n'a pas à télécharger des articles entiers pour l'apprendre).
 10. **La détection se fait par comportement — cette URL redirige-t-elle ? — et jamais par liste de domaines.**
+11. **Une tentative se date, et rien d'autre.** `archive_attempted_at` consigne **quand on a essayé** ; `archive_timestamp` date **la capture**. Deux faits distincts : les confondre réintroduirait exactement l'erreur que corrige toute cette série. Avoir essayé n'est ni un succès ni un échec — `archive_status` reste seul juge.
+12. **La file sert d'abord ce qui a été tenté le moins récemment**, jamais-tenté en tête, tri stable. C'est la seule façon qu'un lot borné par un budget finisse par couvrir l'ensemble.
 
 **Justifications**
 
