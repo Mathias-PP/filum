@@ -279,6 +279,7 @@ Vercel : `BACKEND_URL=https://philum-api.duckdns.org` (env var serverless, jamai
 | Test composant Svelte 5 incompat | Faible | À réécrire avec API testing-library compatible Svelte 5. |
 | Wayback queue durability | Moyenne | `asyncio.create_task` perdu au restart du container backend. Cf. F5 dans `13-audit-2026-05-26-followups.md`. |
 | Pas de domaine custom | Feature | Brancher `philum.app` quand 1er ambassadeur prêt. |
+| Paramètre de suivi ajouté par un redirecteur | Moyenne | Mesuré le 2026-08-04 : `linkinghub` ajoute `?via=ihub`, et CDX cherche l'URL **exacte** — la capture de `…/pii/S0896627301005839` existe, celle de `…?via%3Dihub` non. Retirer la requête à l'aveugle serait pire : `article.aspx?doi=…` deviendrait `article.aspx`, une page générique, et on archiverait la mauvaise ressource. Il faut un critère qui distingue un paramètre de suivi d'un identifiant — pas une heuristique de plus. |
 
 ---
 

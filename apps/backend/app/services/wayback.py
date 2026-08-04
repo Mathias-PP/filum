@@ -26,7 +26,9 @@ T = TypeVar("T")
 _META_TAG = re.compile(rb"<meta\b[^>]*>", re.IGNORECASE)
 _HTTP_EQUIV_REFRESH = re.compile(rb"""http-equiv\s*=\s*['"]?refresh\b""", re.IGNORECASE)
 _CONTENT_ATTR = re.compile(rb"""content\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))""", re.IGNORECASE)
-_REFRESH_URL = re.compile(rb"""url\s*=\s*['"]?([^'"\s;]+)""", re.IGNORECASE)
+# Le point-virgule ne borne pas l'URL : il n'y apparait qu'a l'interieur d'une
+# entite (`&amp;`), et l'exclure coupait la cible en plein milieu de celle-ci.
+_REFRESH_URL = re.compile(rb"""url\s*=\s*['"]?([^'"\s>]+)""", re.IGNORECASE)
 
 
 class ThrottledError(Exception):
