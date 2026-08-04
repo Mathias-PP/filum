@@ -49,6 +49,10 @@ class ExtractedMetadata:
     # Texte brut de la page, conservé pour éviter un second fetch au stage LLM.
     # Jamais sérialisé vers l'API.
     page_text: str | None = None
+    # Le site a refusé l'accès (obstacle anti-bot, 403, 429). À distinguer d'une
+    # page dont on n'a simplement rien tiré : « je n'ai pas eu le droit de lire »
+    # n'est pas « il n'y avait rien à lire », et le formulaire doit le dire.
+    access_blocked: bool = False
 
 
 # ── Title cleaning ──────────────────────────────────────────────────────
@@ -332,24 +336,65 @@ _CHALLENGE_STRONG = (
     "request blocked",
     "unusual traffic from your computer",
     "vérification de votre navigateur",
+    # Famille Radware / Akamai / Imperva : le titre est le seul contenu de la
+    # page, le corps n'étant qu'un script. Aucun article ne s'intitule ainsi.
+    "client challenge",
+    "challenge validation",
+    "incapsula incident",
+    "pardon our interruption",
+    "one more step",
+    "additional security check",
 )
 
 # Termes qu'un article légitime peut employer en parlant du sujet. On ne les
 # retient que sur une page anormalement courte, signature d'un interstitiel.
-_CHALLENGE_WEAK = ("recaptcha", "captcha", "are you a human", "are you a robot", "bot detection")
+_CHALLENGE_WEAK = (
+    "recaptcha",
+    "captcha",
+    "are you a human",
+    "are you a robot",
+    "bot detection",
+    "human verification",
+    "press and hold",
+    # Noms des fournisseurs : sur une page longue c'est un sujet d'article, sur
+    # une page courte c'est la bannière de l'obstacle.
+    "incapsula",
+    "datadome",
+    "perimeterx",
+)
+
+# Mots qu'un texte ordinaire emploie couramment (« the challenge of… »). On ne
+# les retient que sur une page vide de contenu, où ils ne peuvent plus être
+# qu'une bannière d'obstacle.
+_CHALLENGE_GENERIC = (
+    "challenge",
+    "security check",
+    "cloudflare",
+    "enable javascript",
+    "javascript is disabled",
+)
+
+# En deçà, la page ne porte aucun contenu : son corps se réduit à un script.
+_CHALLENGE_EMPTY_BODY = 200
 
 # Un interstitiel tient en quelques centaines de caractères ; un article non.
 _CHALLENGE_MAX_BODY = 2000
 
 
 def _looks_like_challenge_page(title: str | None, page_text: str | None) -> bool:
-    """True si la page récupérée est un obstacle anti-bot, pas le contenu."""
+    """True si la page récupérée est un obstacle anti-bot, pas le contenu.
+
+    Trois niveaux d'exigence, du plus au moins tolérant sur le vocabulaire :
+    une formulation qu'aucun contenu n'emploie suffit seule ; un nom de
+    fournisseur exige une page courte ; un mot ordinaire exige une page vide.
+    """
     haystack = f"{title or ''} {page_text or ''}".lower()
     if any(sig in haystack for sig in _CHALLENGE_STRONG):
         return True
-    if len(page_text or "") >= _CHALLENGE_MAX_BODY:
-        return False
-    return any(sig in haystack for sig in _CHALLENGE_WEAK)
+    body_len = len(page_text or "")
+    if body_len < _CHALLENGE_MAX_BODY and any(sig in haystack for sig in _CHALLENGE_WEAK):
+        return True
+    return body_len < _CHALLENGE_EMPTY_BODY and any(sig in haystack for sig in _CHALLENGE_GENERIC)
 
 
 # PubMed/PMC n'exposent pas le DOI dans l'URL et bloquent les IP datacenter
@@ -574,6 +619,12 @@ async def _html_scrape(url: str) -> ExtractedMetadata | None:
             headers=_HEADERS, timeout=_TIMEOUT, follow_redirects=True
         ) as client:
             r = await client.get(url)
+        # 403/429 : le serveur a compris la demande et l'a refusée. 503 est
+        # ambigu (panne ou obstacle) mais les protections anti-bot s'en servent
+        # massivement, et « le site n'a pas voulu répondre » reste vrai des deux.
+        if r.status_code in (403, 429, 503):
+            logger.info("access_blocked url=%s status=%s", url, r.status_code)
+            return ExtractedMetadata(access_blocked=True)
         if r.status_code != 200 or "text/html" not in r.headers.get("content-type", ""):
             return None
         soup = BeautifulSoup(r.text, "lxml")
@@ -610,7 +661,7 @@ async def _html_scrape(url: str) -> ExtractedMetadata | None:
         page_text = soup.get_text(separator=" ", strip=True) or None
         if _looks_like_challenge_page(str(title) if title else None, page_text):
             logger.info("challenge_page_detected url=%s title=%r", url, title)
-            return None
+            return ExtractedMetadata(access_blocked=True)
 
         if title:
             title = clean_title(title, _meta("og:site_name"), url)
@@ -670,6 +721,11 @@ async def extract(url: str) -> ExtractedMetadata:
             result.published_at = result.published_at or html_meta.published_at
             result.description = result.description or html_meta.description
             page_text = html_meta.page_text
+            # Un refus n'est signalé que s'il a réellement privé la fiche de
+            # quelque chose : quand Crossref a déjà tout donné, le blocage de la
+            # page d'éditeur n'a aucune conséquence et l'annoncer inquiéterait
+            # pour rien.
+            result.access_blocked = html_meta.access_blocked and result.title is None
 
     if page_text:
         llm_meta = await llm.extract_metadata(page_text, url)

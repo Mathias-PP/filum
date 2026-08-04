@@ -374,6 +374,12 @@ export interface UrlMetadataResponse {
   description: string | null;
   /** Auteurs du contenu visé, extraits de la page (Crossref, JSON-LD, meta). */
   authors: string | null;
+  /**
+   * Le site a refusé l'accès (obstacle anti-bot, 403, 429) — à distinguer d'une
+   * page dont rien n'a pu être tiré. Les deux arrivent sous forme de champs
+   * vides ; seul ce drapeau dit lequel des deux s'est produit.
+   */
+  access_blocked: boolean;
 }
 
 export interface ImportFromUrlResponse {

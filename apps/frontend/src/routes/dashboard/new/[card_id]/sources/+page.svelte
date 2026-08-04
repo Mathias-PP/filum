@@ -961,7 +961,13 @@
         if (conf === 'high') {
           refsInfo = `${res.sources.length} référence${res.sources.length > 1 ? 's' : ''} extraite${res.sources.length > 1 ? 's' : ''}${detail}. Confiance élevée${noise}.`;
         } else if (conf === 'medium') {
-          refsInfo = `${res.sources.length} référence${res.sources.length > 1 ? 's' : ''} extraite${res.sources.length > 1 ? 's' : ''}${detail}. Confiance moyenne — aucune section « Références » nette n'a été détectée, la validation s'est faite sur le corps de la page. Vérifiez que ce sont bien des sources citées${noise}.`;
+          // La réserve ne porte que sur les références enrichies : demander de
+          // vérifier l'ensemble ferait douter de celles que l'éditeur a
+          // lui-même déposées, sur lesquelles il n'y a rien à trancher.
+          const toCheck = oracle
+            ? `Vérifiez les ${enrich} référence${enrich > 1 ? 's' : ''} enrichie${enrich > 1 ? 's' : ''} : ${enrich > 1 ? 'ce sont' : "c'est"} ${enrich > 1 ? 'des sources' : 'une source'} retrouvée${enrich > 1 ? 's' : ''} dans le corps de la page, pas dans une bibliographie déclarée`
+            : 'Vérifiez que ce sont bien des sources citées';
+          refsInfo = `${res.sources.length} référence${res.sources.length > 1 ? 's' : ''} extraite${res.sources.length > 1 ? 's' : ''}${detail}. Confiance moyenne — aucune section « Références » nette n'a été détectée. ${toCheck}${noise}.`;
         } else {
           refsInfo = `${res.sources.length} référence${res.sources.length > 1 ? 's' : ''} extraite${res.sources.length > 1 ? 's' : ''}. Confiance basse — aucune validation possible, à vérifier manuellement${noise}.`;
         }
@@ -1349,6 +1355,28 @@
 
         {#if drafts.length > 0}
           <div class="space-y-3 border-t border-border pt-4">
+            <!--
+              En tete de liste, et pas seulement en pied : sur une fiche de 131
+              references, chaque brouillon est un formulaire deplie, et « Tout
+              ajouter » se trouvait au bout du plus long defilement de
+              l'application. L'action la plus courante doit etre la plus proche.
+            -->
+            <div
+              class="flex items-center justify-between gap-3 rounded-lg bg-surface-secondary/50 border border-border px-4 py-3"
+            >
+              <p class="text-sm text-ink-secondary">
+                {drafts.length} référence{drafts.length > 1 ? 's' : ''} à valider — relisez-les ou ajoutez
+                tout d'un coup.
+              </p>
+              <Button
+                type="button"
+                loading={addingAll}
+                disabled={addingAll || multiExtracting}
+                onclick={addAllDrafts}
+              >
+                {addingAll ? 'Ajout en cours…' : `Tout ajouter (${drafts.length})`}
+              </Button>
+            </div>
             {#each drafts as draft, i (draft.key)}
               <div class="border border-border rounded-lg p-4 space-y-3 bg-surface-secondary/50">
                 <div class="flex items-start justify-between gap-2">
