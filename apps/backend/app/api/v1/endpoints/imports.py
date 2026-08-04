@@ -968,6 +968,22 @@ async def _drop_s2_hallucinations(
 @router.post("/import/from-content-url", response_model=ImportFromUrlResponse)
 # Rate-limit retire (phase test/pre-produit) : auth-only, iteration libre.
 # A reintroduire quand on aura une metrique de cout LLM/Crossref preoccupante.
+def _resolve_confidence(validation_confidence: str, enrichment_count: int) -> str:
+    """Confiance annoncee, une fois connue la composition du resultat.
+
+    La confiance de validation decrit la methode employee pour trancher les
+    candidats, pas la qualite de l'ensemble. Quand l'oracle a tout fourni, la
+    recherche dans le corps de page n'a rien eu a trancher : annoncer
+    « moyenne » ferait douter de references deposees par l'editeur lui-meme.
+
+    On ne remonte que depuis « medium » : « low » signale l'absence de tout
+    moyen de verification, ce qu'aucun compteur ne rattrape.
+    """
+    if validation_confidence == "medium" and enrichment_count == 0:
+        return "high"
+    return validation_confidence
+
+
 async def parse_content_url(
     request: Request,
     payload: ImportFromUrlRequest,
@@ -1173,7 +1189,7 @@ async def parse_content_url(
     if section is not None:
         validated = [r for r in candidates if is_ref_in_section(r, section)]
         dropped_validation = len(candidates) - len(validated)
-        confidence = "high" if crossref_refs or oracle_refs else "high"
+        confidence = "high"
     elif html is not None:
         validated = [r for r in candidates if is_ref_in_body(r, html)]
         dropped_validation = len(candidates) - len(validated)
@@ -1212,6 +1228,8 @@ async def parse_content_url(
     # Compteurs de provenance : combien viennent de Crossref vs enrichissement
     crossref_count = sum(1 for r in result.refs if any(same_ref(r, cr) for cr in crossref_refs))
     enrichment_count = len(result.refs) - crossref_count
+
+    confidence = _resolve_confidence(confidence, enrichment_count)
 
     card = ImportedCardDraft(
         title=meta.title if meta else None,

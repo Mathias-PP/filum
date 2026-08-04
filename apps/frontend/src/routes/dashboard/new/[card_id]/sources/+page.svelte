@@ -961,7 +961,13 @@
         if (conf === 'high') {
           refsInfo = `${res.sources.length} référence${res.sources.length > 1 ? 's' : ''} extraite${res.sources.length > 1 ? 's' : ''}${detail}. Confiance élevée${noise}.`;
         } else if (conf === 'medium') {
-          refsInfo = `${res.sources.length} référence${res.sources.length > 1 ? 's' : ''} extraite${res.sources.length > 1 ? 's' : ''}${detail}. Confiance moyenne — aucune section « Références » nette n'a été détectée, la validation s'est faite sur le corps de la page. Vérifiez que ce sont bien des sources citées${noise}.`;
+          // La réserve ne porte que sur les références enrichies : demander de
+          // vérifier l'ensemble ferait douter de celles que l'éditeur a
+          // lui-même déposées, sur lesquelles il n'y a rien à trancher.
+          const toCheck = oracle
+            ? `Vérifiez les ${enrich} référence${enrich > 1 ? 's' : ''} enrichie${enrich > 1 ? 's' : ''} : ${enrich > 1 ? 'ce sont' : "c'est"} ${enrich > 1 ? 'des sources' : 'une source'} retrouvée${enrich > 1 ? 's' : ''} dans le corps de la page, pas dans une bibliographie déclarée`
+            : 'Vérifiez que ce sont bien des sources citées';
+          refsInfo = `${res.sources.length} référence${res.sources.length > 1 ? 's' : ''} extraite${res.sources.length > 1 ? 's' : ''}${detail}. Confiance moyenne — aucune section « Références » nette n'a été détectée. ${toCheck}${noise}.`;
         } else {
           refsInfo = `${res.sources.length} référence${res.sources.length > 1 ? 's' : ''} extraite${res.sources.length > 1 ? 's' : ''}. Confiance basse — aucune validation possible, à vérifier manuellement${noise}.`;
         }

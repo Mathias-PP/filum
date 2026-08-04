@@ -8,7 +8,7 @@ fallback body nettoye du chrome UI, section trop petite ignoree.
 
 from __future__ import annotations
 
-from app.api.v1.endpoints.imports import _extract_references_text
+from app.api.v1.endpoints.imports import _extract_references_text, _resolve_confidence
 
 
 def test_extracts_dedicated_references_section():
@@ -176,3 +176,32 @@ def test_crossref_reference_item_parsing():
     weird = _crossref_reference_item_to_ref({"unstructured": "Some ref", "year": "n.d."})
     assert weird.year is None
     assert weird.title == "Some ref"
+
+
+# ---------------------------------------------------------------------------
+# Confiance annoncee : elle porte sur ce qui a eu besoin d'etre valide
+# ---------------------------------------------------------------------------
+
+
+def test_confidence_stays_medium_when_enrichment_contributed():
+    """Des refs retrouvees par recherche dans le corps : la reserve tient."""
+    assert _resolve_confidence("medium", 3) == "medium"
+
+
+def test_confidence_rises_when_oracle_supplied_everything():
+    """Vu en prod : 130 refs Crossref + 0 enrichie annoncees « confiance moyenne ».
+
+    Rien n'avait ete valide par recherche dans le corps de page, donc rien ne
+    justifiait de demander a l'auteur·ice de verifier le depot de l'editeur.
+    """
+    assert _resolve_confidence("medium", 0) == "high"
+
+
+def test_confidence_high_is_left_alone():
+    assert _resolve_confidence("high", 0) == "high"
+    assert _resolve_confidence("high", 12) == "high"
+
+
+def test_confidence_low_is_never_promoted():
+    """« low » dit qu'aucune verification n'etait possible : aucun compteur ne rattrape ca."""
+    assert _resolve_confidence("low", 0) == "low"
