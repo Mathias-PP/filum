@@ -36,6 +36,13 @@ _CONTENT_ATTR = re.compile(rb"""content\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))"
 _REFRESH_URL = re.compile(rb"""url\s*=\s*['"]?([^'"\s>]+)""", re.IGNORECASE)
 
 
+# Les seuls codes qui disent « reviens plus tard ». 429 est explicite ; 503 et
+# 523 (Cloudflare : origine injoignable) disent la meme chose -- mesures sur la
+# VM en aout 2026. Tout autre code est une reponse *au sujet d'une URL*, si
+# malheureuse soit-elle : insister au meme rythme ne peut rien y changer.
+_RETRY_LATER = frozenset({429, 503, 523})
+
+
 class ThrottledError(Exception):
     """Le service a refuse de repondre et demande qu'on ralentisse.
 
@@ -294,8 +301,25 @@ class WaybackService:
     async def _trigger_save(self, url: str) -> None:
         """Demande un instantane frais. N'attend pas qu'il soit produit.
 
-        Leve ``ThrottledError`` si le service refuse : l'appelant ralentit et
-        reessaie, au lieu de bruler l'URL a la cadence qui vient d'echouer.
+        Leve ``ThrottledError`` **seulement** si le service demande qu'on
+        revienne plus tard : l'appelant ralentit alors et reessaie.
+
+        Un autre code d'erreur n'est pas un refus de service, c'est une reponse
+        **au sujet de cette URL**. Mesure en prod le 2026-08-04, en lisant le
+        corps des `520` depuis la VM : soit « Job failed » -- archive.org a
+        essaye et n'a pas pu capturer, ce que confirment nos propres journaux
+        ou l'editeur repond `403` aux robots -- soit « already captured 5 times
+        today, [...] please try again tomorrow ». Dans les deux cas, redemander
+        la meme URL deux minutes plus tard ne peut rien changer ; et sur le cas
+        du quota, ce sont nos propres reessais qui le consomment.
+
+        Le cout mesure de la confusion : sept requetes pour deux URL, les 900 s
+        du budget brulees, et zero capture demandee pour les 128 autres sources
+        du lot.
+
+        Le critere est le code de reponse, jamais le corps : le message peut
+        changer, et lire de la prose HTML pour piloter un flot de controle
+        reintroduirait une fragilite du meme genre que celle de #269.
         """
         try:
             async with httpx.AsyncClient(timeout=self.TIMEOUT, follow_redirects=False) as client:
@@ -306,9 +330,14 @@ class WaybackService:
             logger.info(f"Wayback SPN trigger failed for {url} (will still poll): {e}")
             return
 
-        refusal = self._refusal(response)
-        if refusal is not None:
-            raise refusal
+        if response.status_code in _RETRY_LATER:
+            refusal = self._refusal(response)
+            if refusal is not None:
+                raise refusal
+        elif response.status_code >= 400:
+            # La source reste `pending` : « archive.org n'a pas pu capturer
+            # aujourd'hui » n'est pas « cette page est perdue ».
+            logger.info("Wayback SPN could not capture %s: HTTP %s", url, response.status_code)
 
     async def _lookup_snapshot(self, url: str) -> tuple[str, str | None] | None:
         """(url d'archive, horodatage) si un instantane existe, sinon None.
