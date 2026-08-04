@@ -73,10 +73,16 @@ class TestCadence:
         # Une pause d'au moins la cadence nominale separe deux declenchements.
         assert sum(1 for d in no_sleep if d >= wb.WaybackService.TRIGGER_GAP) >= len(pairs) - 1
 
-    def test_les_declenchements_precedent_tous_les_sondages(self, no_sleep):
-        """Save Page Now travaille en differe : sonder juste apres avoir
-        declenche ne laisse pas le temps a l'instantane d'exister. Declencher
-        tout le lot d'abord donne aux premieres URLs le temps du lot entier."""
+    def test_les_sondages_precedent_tous_les_declenchements(self, no_sleep):
+        """Save Page Now travaille en differe, donc sonder juste apres avoir
+        declenche ne prouve rien -- mais l'attente utile est fournie par la
+        reprise paresseuse, pas par l'ordre interne au lot.
+
+        Dans le lot, l'ordre inverse est le bon : on regarde d'abord ce qui est
+        deja archive, et on ne demande une capture que pour le reste. Une
+        bibliographie cite surtout des travaux presents dans l'archive depuis
+        des annees ; declencher pour eux consommait la partie la plus limitee
+        du service a ne rien faire."""
         svc = _Recorder()
         order: list[str] = []
         pairs = [(uuid4(), f"https://example.org/{i}") for i in range(3)]
@@ -95,9 +101,9 @@ class TestCadence:
 
         asyncio.run(svc.archive_batch(pairs))
 
-        first_poll = next(i for i, e in enumerate(order) if e.startswith("poll:"))
-        last_trigger = max(i for i, e in enumerate(order) if e.startswith("trigger:"))
-        assert last_trigger < first_poll
+        first_trigger = next(i for i, e in enumerate(order) if e.startswith("trigger:"))
+        last_poll = max(i for i, e in enumerate(order) if e.startswith("poll:"))
+        assert last_poll < first_trigger
 
 
 class TestHonneteteDesEtats:
