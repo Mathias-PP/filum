@@ -606,6 +606,35 @@
         // et disparaît vers le centre (occultée par la face avant du parent).
         float frontMix = smoothstep(0.0, ancR * 0.35, lineZ - anchorFrontZ);
         if (frontMix <= 0.001) continue;
+        // Cette passe repeint par-dessus des noeuds deja composites : sans ce
+        // test, la portion emergee traverserait n'importe quel autre noeud
+        // passant devant elle. On la masque donc partout ou une autre sphere
+        // (ou le pulsar) presente une face avant plus proche que la ligne.
+        float occL = 0.0;
+        for (int j = 0; j < 8; j++) {
+          if (j == i) continue;
+          float activeJ = step(float(j) + 0.5, float(uNodeCount));
+          if (activeJ < 0.5) continue;
+          vec4 nj = uNodes[j];
+          // L'ancre est deja traitee par anchorFrontZ, avec son degrade propre.
+          if (distance(nj.xy, anc) < 0.001 && abs(nj.z - ancZ) < 0.001) continue;
+          vec2 dJ = uv - nj.xy;
+          float dJ2 = dot(dJ, dJ);
+          float rJ2 = nj.w * nj.w;
+          if (dJ2 >= rJ2) continue;
+          float frontZJ = nj.z + sqrt(rJ2 - dJ2);
+          occL = max(occL, smoothstep(0.0, nj.w * 0.20, frontZJ - lineZ));
+        }
+        {
+          vec2 dC = uv - coreC;
+          float dC2 = dot(dC, dC);
+          float rC2 = coreRPulsed * coreRPulsed;
+          if (dC2 < rC2) {
+            occL = max(occL, smoothstep(0.0, coreRPulsed * 0.12, sqrt(rC2 - dC2) - lineZ));
+          }
+        }
+        frontMix *= 1.0 - occL;
+        if (frontMix <= 0.001) continue;
         float aaL = uAaPixel.x * 1.1;
         float lineMaskL = (1.0 - smoothstep(0.0022 - aaL, 0.0022 + aaL, across)) * onSeg;
         float tNormL = along / lineLen;
