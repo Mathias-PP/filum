@@ -41,6 +41,10 @@ class _Recorder(wb.WaybackService):
         self.lookup_throttles = 0
         self.snapshots: dict[str, str] = {}
 
+    async def _resolve(self, url: str) -> str:
+        # Aucun reseau en test unitaire : ces URL ne redirigent pas.
+        return url
+
     async def _trigger_save(self, url: str) -> None:
         self.triggered.append(url)
         if self.trigger_throttles > 0:

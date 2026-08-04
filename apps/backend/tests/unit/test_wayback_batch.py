@@ -35,6 +35,10 @@ class _Recorder(wb.WaybackService):
         self.snapshots: dict[str, str] = {}
         self.written: list[tuple] = []
 
+    async def _resolve(self, url: str) -> str:
+        # Aucun reseau en test unitaire : ces URL ne redirigent pas.
+        return url
+
     async def _trigger_save(self, url: str) -> None:
         self.triggered.append(url)
 

@@ -101,6 +101,10 @@ class WaybackService:
     # renvoie rien. A 30 s, la moindre charge faisait echouer le sondage sur un
     # timeout -- et un timeout n'est pas une reponse, donc rien ne concluait.
     LOOKUP_TIMEOUT = 60.0
+    # Resoudre une redirection est court : un resolveur repond ou ne repond
+    # pas. Inutile d'immobiliser le lot longtemps pour ca.
+    RESOLVE_TIMEOUT = 15.0
+    MAX_REDIRECTS = 5
     # Back-off schedule (seconds) for polling the snapshot after triggering
     # SPN. Sum ~33 s.
     POLL_DELAYS: tuple[float, ...] = (3.0, 5.0, 8.0, 8.0, 9.0)
@@ -177,6 +181,37 @@ class WaybackService:
             # `Retry-After` peut etre une date HTTP. On ignore la valeur et on
             # laisse le doublement de cadence faire son office.
             return ThrottledError()
+
+    async def _resolve(self, url: str) -> str:
+        """L'URL de la ressource, pas celle du panneau qui y mene.
+
+        Un resolveur -- `doi.org`, un raccourcisseur, un « linking hub »
+        d'editeur -- n'a dans l'archive que des captures `3xx`. Le sondage
+        filtre sur `200` et ne trouve donc jamais rien, et une capture de
+        redirection ne preserverait aucun contenu. Mesure le 2026-08-04 :
+        `doi.org/10.1002/brb3.244` n'a que des `302`, sa cible Wiley a une
+        capture `200`.
+
+        La detection est comportementale -- cette URL redirige-t-elle ? --
+        et jamais par liste de domaines, sans quoi le prochain resolveur
+        repasserait au travers.
+
+        Ne leve jamais et ne juge pas le code de reponse : les editeurs
+        refusent les robots par un `403`, mais la redirection a deja eu lieu
+        et l'URL finale est exacte. Ne pas savoir resoudre laisse l'URL
+        telle quelle -- une ignorance, pas une reponse.
+        """
+        try:
+            async with httpx.AsyncClient(
+                timeout=self.RESOLVE_TIMEOUT,
+                follow_redirects=True,
+                max_redirects=self.MAX_REDIRECTS,
+            ) as client:
+                response = await client.head(url)
+            return str(response.url) or url
+        except Exception as e:  # noqa: BLE001 — l'URL d'origine reste utilisable.
+            logger.info("Resolve failed for %s: %s %s", url, type(e).__name__, e)
+            return url
 
     async def _trigger_save(self, url: str) -> None:
         """Demande un instantane frais. N'attend pas qu'il soit produit.
@@ -314,14 +349,19 @@ class WaybackService:
         return {"status": "archived", "archive_url": archive_url, "timestamp": stamp.isoformat()}
 
     async def archive_batch(self, sources: list[tuple[UUID, str]]) -> list[dict]:
-        """Archive un lot en deux temps, a une cadence que SPN accepte.
+        """Archive un lot en deux temps, a une cadence que le service accepte.
 
-        Declencher puis sonder source par source ne marche pas a l'echelle
-        d'un import : 152 sondages de 33 s mis bout a bout tiendraient plus
-        d'une heure, et 152 declenchements simultanes se font jeter. On
-        declenche donc tout le lot d'abord, espace ; le temps que la derniere
-        URL soit demandee, les premieres ont eu plusieurs minutes pour etre
-        capturees. Les sondages suivent, un par URL.
+        On sonde tout le lot d'abord, puis on ne demande une capture que pour
+        ce qui en est reellement absent : une bibliographie academique cite
+        surtout des travaux archives depuis des annees, et Save Page Now est
+        la partie la plus lente et la plus limitee du service.
+
+        Chaque URL est resolue avant d'etre sondee : c'est la ressource qu'il
+        faut chercher et preserver, pas la redirection qui y mene.
+
+        Ce qui depasse le budget reste `pending` -- la reprise paresseuse le
+        reproposera au prochain affichage de la fiche, ce qui fournit aussi le
+        delai dont Save Page Now a besoin pour produire ses captures.
         """
         results: list[dict] = []
         todo: list[tuple[UUID, str]] = []
@@ -352,10 +392,14 @@ class WaybackService:
         for source_id, url in todo:
             if pacer.exhausted:
                 break
-            found = await self._attempt(pacer, partial(self._lookup_snapshot, url))
+            # Viser la ressource, pas le panneau qui y mene. La latence du
+            # sondage espace naturellement ces requetes, ce qui suffit : le
+            # resolveur limite lui aussi les rafales (constate en mesurant).
+            target = await self._resolve(url)
+            found = await self._attempt(pacer, partial(self._lookup_snapshot, target))
             if found is None:
                 results.append({"status": "pending", "reason": "no_snapshot_yet"})
-                absents.append(url)
+                absents.append(target)
                 continue
             results.append(await self._mark_archived(source_id, *found))
 
