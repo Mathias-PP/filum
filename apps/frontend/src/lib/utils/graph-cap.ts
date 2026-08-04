@@ -16,8 +16,14 @@
 /** Plafond par défaut. L'utilisateur peut le relever ou l'abaisser lui-même. */
 export const GRAPH_SOURCE_CAP = 250;
 
-/** Valeurs proposées au réglage, en plus de « tout afficher ». */
-export const GRAPH_CAP_CHOICES = [25, 50, 100, 250, 500] as const;
+/**
+ * Seuil au-delà duquel le graphe prévient que l'affichage devient dense.
+ *
+ * C'est un avertissement, pas une borne : le plafond saisi n'est jamais
+ * refusé. Une fiche peut légitimement compter 800 références, et interdire de
+ * les demander cacherait un travail réel derrière un confort de lecture.
+ */
+export const GRAPH_CAP_COMFORT = 500;
 
 interface Capable {
   id: string;

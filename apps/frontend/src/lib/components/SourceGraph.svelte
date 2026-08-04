@@ -40,7 +40,7 @@
     type NodeColor,
   } from '$lib/utils/author-colors';
   import { cardNodeLabel } from '$lib/utils/card-label';
-  import { GRAPH_CAP_CHOICES, GRAPH_SOURCE_CAP, capSources } from '$lib/utils/graph-cap';
+  import { GRAPH_CAP_COMFORT, GRAPH_SOURCE_CAP, capSources } from '$lib/utils/graph-cap';
   import { authorSummary } from '$lib/utils/author-names';
   import { UNDATED_BAND, chronoLayout, type ChronoLayout } from '$lib/utils/graph-chrono';
   import { buildHaystack, matchesAllTerms, searchTerms } from '$lib/utils/graph-search';
@@ -290,6 +290,14 @@
   });
 
   const hiddenSourcesCount = $derived(Math.max(0, totalSources - visibleSources.length));
+
+  /**
+   * Valeur montrée par le réglage.
+   *
+   * Le plafond par défaut vaut 250, mais une fiche de dix références n'en a
+   * pas 250 à cacher : afficher ce chiffre laisserait croire qu'il en manque.
+   */
+  const capValue = $derived(Math.min(sourceCap, totalSources));
 
   // Deux axes de lecture. Le réseau dit qui dépend de qui ; il ne dit rien de
   // l'ancienneté. « Cette affirmation s'appuie sur un article de 1998 » est une
@@ -558,8 +566,8 @@
   // hauteur reste la même pour que les deux actions se ressemblent. La taille
   // est aussi celle d'une cible tactile acceptable, ce qu'un disque de 8 px
   // de rayon n'était pas.
-  const BADGE_HEIGHT = 18;
-  const BADGE_FONT_SIZE = 11;
+  const BADGE_HEIGHT = 24;
+  const BADGE_FONT_SIZE = 13;
 
   function expandBadgeLabel(d: GraphNode): string {
     return `+${neighborCards.get(d.expandable ?? '')?.sourcesCount ?? 0}`;
@@ -601,8 +609,12 @@
   }
 
   function setSourceCap(cap: number) {
-    if (sourceCap === cap) return;
-    sourceCap = cap;
+    // Un plafond au-delà du nombre réel de références revient à tout afficher :
+    // on le ramène là plutôt que de laisser un chiffre qui promet plus que la
+    // fiche ne contient.
+    const clamped = Number.isFinite(cap) ? Math.max(1, Math.min(Math.round(cap), totalSources)) : 1;
+    if (sourceCap === clamped) return;
+    sourceCap = clamped;
     remount();
   }
 
@@ -824,9 +836,13 @@
       .attr('x2', (d) => (d.target as GraphNode).x ?? 0)
       .attr('y2', (d) => (d.target as GraphNode).y ?? 0);
 
+    // Jointure par identifiant, pas par position : les nœuds porteurs d'une
+    // pastille sont remontés en fin de liste DOM pour rester au premier plan,
+    // et un appariement par index leur donnerait alors les coordonnées d'un
+    // autre nœud.
     svg
       .selectAll<SVGGElement, GraphNode>('.node')
-      .data(nodes)
+      .data(nodes, (d) => d.id)
       .attr('transform', (d) => `translate(${d.x ?? 0}, ${d.y ?? 0})`);
 
     for (const n of nodes) {
@@ -1224,7 +1240,11 @@
 
     // Fiche dépliable : anneau extérieur + pastille « +N ». Le nombre est
     // celui de ses sources : il annonce ce que le clic révèle.
-    const expandableG = nodeG.filter((d) => !!d.expandable);
+    // Au premier plan : la pastille est une commande, pas une décoration. Un
+    // nœud voisin dessiné après elle la recouvrait, et l'action annoncée
+    // devenait injoignable là où le graphe est dense — c'est-à-dire là où
+    // déplier une fiche sert le plus.
+    const expandableG = nodeG.filter((d) => !!d.expandable).raise();
     expandableG
       .insert('circle', ':first-child')
       .attr('class', 'expand-ring')
@@ -1269,9 +1289,9 @@
     // Fiche dépliée : pastille « − » au même endroit, pour refermer. Le repli
     // était porté par le clic sur le nœud ; il lui fallait une prise à lui
     // depuis que ce clic ouvre l'encadré de la référence.
-    const collapsibleG = nodeG.filter(
-      (d) => !!d.cardMeta && expandedCardIds.includes(d.cardMeta.id)
-    );
+    const collapsibleG = nodeG
+      .filter((d) => !!d.cardMeta && expandedCardIds.includes(d.cardMeta.id))
+      .raise();
     collapsibleG
       .append('rect')
       .attr('class', 'collapse-badge')
@@ -1846,29 +1866,57 @@
     </div>
 
     <!--
-      Réglage explicite plutôt qu'un bouton « tout / rien » : la limite du
-      lisible dépend de l'écran et de la fiche, c'est au lecteur de la fixer.
-      Les sources clés sont retenues en priorité, quel que soit le plafond.
+      Nombre saisi librement plutôt que choisi dans une liste : la limite du
+      lisible dépend de l'écran, de la fiche et de ce qu'on y cherche, et des
+      paliers imposeraient des sauts que personne n'a demandés. Le curseur sert
+      au réglage à vue, le champ au chiffre exact. Aucun plafond dur : une
+      fiche de 800 références peut être demandée entière, on prévient seulement
+      que ce sera dense. Les sources clés passent devant quel que soit le
+      nombre retenu.
     -->
-    {#if totalSources > Math.min(...GRAPH_CAP_CHOICES)}
+    {#if totalSources > 1}
       <div
-        class="flex items-center gap-1.5 rounded-md bg-white/95 border border-slate-200 shadow-sm px-2.5 py-1.5 text-xs text-slate-600"
+        class="flex items-center gap-2 rounded-md bg-white/95 border border-slate-200 shadow-sm px-2.5 py-1.5 text-xs text-slate-600"
       >
-        <label for="graph-cap">Nœuds affichés</label>
-        <select
+        <label for="graph-cap" class="whitespace-nowrap">Nœuds affichés</label>
+        <input
+          id="graph-cap-range"
+          type="range"
+          min="1"
+          max={totalSources}
+          value={capValue}
+          oninput={(e) => setSourceCap(Number(e.currentTarget.value))}
+          class="w-24 accent-slate-700"
+          aria-label="Nombre maximum de références affichées"
+        />
+        <input
           id="graph-cap"
-          value={sourceCap}
+          type="number"
+          min="1"
+          max={totalSources}
+          value={capValue}
           onchange={(e) => setSourceCap(Number(e.currentTarget.value))}
-          class="bg-transparent font-medium text-slate-800 focus:outline-none"
+          class="w-14 rounded border border-slate-200 px-1 py-0.5 text-center font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-400"
           title="Nombre maximum de références affichées — les sources clés d'abord"
+        />
+        <button
+          type="button"
+          onclick={() => setSourceCap(totalSources)}
+          disabled={capValue >= totalSources}
+          class="whitespace-nowrap text-slate-500 hover:text-slate-800 disabled:text-slate-300 disabled:cursor-default transition-colors"
         >
-          {#each GRAPH_CAP_CHOICES as choice (choice)}
-            <option value={choice}>{choice}</option>
-          {/each}
-          <option value={0}>Toutes ({totalSources})</option>
-        </select>
+          Toutes ({totalSources})
+        </button>
         {#if hiddenSourcesCount > 0}
-          <span class="text-slate-400">· {hiddenSourcesCount} en réserve</span>
+          <span class="whitespace-nowrap text-slate-400">· {hiddenSourcesCount} en réserve</span>
+        {/if}
+        {#if capValue > GRAPH_CAP_COMFORT}
+          <span
+            class="whitespace-nowrap text-amber-600"
+            title="Le graphe reste utilisable, mais il faudra zoomer pour lire les étiquettes."
+          >
+            · dense
+          </span>
         {/if}
       </div>
     {/if}
