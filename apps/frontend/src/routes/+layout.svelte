@@ -63,6 +63,7 @@
 
   const navItems = [
     { href: '/', label: 'Accueil' },
+    { href: '/discover', label: 'Explorer' },
     { href: '/features', label: 'Fonctionnalités' },
     { href: '/roadmap', label: 'Roadmap' },
     { href: '/security', label: 'Sécurité' },
