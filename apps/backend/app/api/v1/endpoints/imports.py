@@ -1245,6 +1245,10 @@ class UrlMetadataResponse(BaseModel):
     # Auteurs du contenu vise : le formulaire les propose pour que la fiche les
     # porte elle-meme, au lieu de dependre des fiches qui la citent.
     authors: str | None = None
+    # Le site a refuse l'acces (obstacle anti-bot, 403, 429). Sans ce champ,
+    # « le site m'a bloque » et « la page n'annonce rien » arrivent au
+    # formulaire sous la meme forme : trois champs vides.
+    access_blocked: bool = False
 
 
 @router.post("/import/url-metadata", response_model=UrlMetadataResponse)
@@ -1276,4 +1280,5 @@ async def url_metadata(
         title=meta.title if meta else None,
         description=meta.description if meta else None,
         authors=meta.authors if meta else None,
+        access_blocked=bool(meta and meta.access_blocked),
     )

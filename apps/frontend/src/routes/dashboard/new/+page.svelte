@@ -65,6 +65,10 @@
   // On : la suggestion écrase les champs déjà remplis. Off : ne remplit
   // que les champs vides (les saisies manuelles sont préservées).
   let overwriteOnSuggest = $state(false);
+  // Ce que la suggestion n'a pas pu faire, et pourquoi. Sans ce message, un
+  // refus du site et une page sans métadonnées se ressemblent : des champs
+  // restés vides, sans qu'on sache s'il faut réessayer ou saisir soi-même.
+  let suggestNotice = $state<string | null>(null);
 
   // Fichier bibliographique déposé — transmis à la page Sources via le store.
   let droppedFile = $state<File | null>(null);
@@ -109,8 +113,15 @@
     }
     suggesting = true;
     lastSuggestedUrl = trimmed;
+    suggestNotice = null;
     try {
       const meta = await api.imports.urlMetadata(trimmed);
+      if (meta.access_blocked) {
+        suggestNotice =
+          "Ce site a refusé la lecture automatique de la page. Rien n'a été rempli : saisissez le titre et les auteurs à la main.";
+      } else if (!meta.title && !meta.description && !meta.authors) {
+        suggestNotice = "La page a été lue mais n'annonce ni titre ni auteurs exploitables.";
+      }
       if (meta.title && (overwriteOnSuggest || !title.trim())) {
         title = meta.title;
         if (!slugManual) slug = deriveSlug(meta.title);
@@ -125,7 +136,7 @@
       if (overwriteOnSuggest || platform === 'other') platform = guess.platform;
       if (overwriteOnSuggest || contentType === 'other') contentType = guess.contentType;
     } catch {
-      // silencieux : l'utilisateur remplit à la main
+      suggestNotice = "La page n'a pas pu être jointe. Saisissez les champs à la main.";
     } finally {
       suggesting = false;
     }
@@ -312,6 +323,11 @@
           </svg>
         </button>
       </div>
+      {#if suggestNotice}
+        <p class="text-xs text-warning bg-warning-bg border border-warning/30 rounded-md px-3 py-2">
+          {suggestNotice}
+        </p>
+      {/if}
       <label class="flex items-center gap-2 cursor-pointer text-xs text-ink-tertiary">
         <input type="checkbox" bind:checked={overwriteOnSuggest} class="rounded" />
         Écraser les champs déjà remplis lors de la suggestion

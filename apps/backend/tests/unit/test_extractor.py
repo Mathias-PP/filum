@@ -515,6 +515,26 @@ class TestChallengePageDetection:
     def test_ordinary_page_is_not_a_challenge(self):
         assert _looks_like_challenge_page("A study about memory", "Some article body.") is False
 
+    def test_radware_client_challenge_is_a_challenge(self):
+        """Le titre servi par nature.com derriere Radware, vu en prod le 2026-08-04."""
+        assert _looks_like_challenge_page("Client Challenge", "") is True
+
+    def test_imperva_challenge_validation_is_a_challenge(self):
+        assert _looks_like_challenge_page("Challenge Validation", "") is True
+
+    def test_provider_name_on_empty_page_is_a_challenge(self):
+        assert _looks_like_challenge_page("Attention", "Enable JavaScript to continue") is True
+
+    def test_generic_word_on_a_real_article_is_not_a_challenge(self):
+        """« challenge » est un mot ordinaire : il ne suffit pas sur une vraie page."""
+        body = "The challenge of reproducibility in psychology. " * 30
+        assert _looks_like_challenge_page("The challenge of reproducibility", body) is False
+
+    def test_short_legitimate_page_mentioning_challenge_is_not_a_challenge(self):
+        """Une page breve mais reelle (>200 car.) garde le benefice du doute."""
+        body = "This challenge was set by the lab in 2019 to test memory recall. " * 5
+        assert _looks_like_challenge_page("A memory challenge", body) is False
+
 
 @pytest.mark.asyncio
 async def test_extract_discards_challenge_page_metadata(monkeypatch):
@@ -534,6 +554,34 @@ async def test_extract_discards_challenge_page_metadata(monkeypatch):
 
     assert result.title is None
     assert result.description is None
+    assert result.access_blocked is True
+
+
+@pytest.mark.asyncio
+async def test_extract_reports_http_refusal_as_blocked(monkeypatch):
+    """403 : le site a compris et refuse. Ce n'est pas « page introuvable »."""
+    fake = _FakeAsyncClient(response=_FakeResponse(403, text="Forbidden", headers={}))
+    _patch_async_client(monkeypatch, fake)
+
+    result = await extract("https://example.com/paywalled")
+
+    assert result.title is None
+    assert result.access_blocked is True
+
+
+@pytest.mark.asyncio
+async def test_extract_does_not_report_blocked_when_page_reads_fine(monkeypatch):
+    html = "<html><head><title>A real article</title></head><body>%s</body></html>" % (
+        "Real content. " * 200
+    )
+    fake = _FakeAsyncClient(
+        response=_FakeResponse(200, text=html, headers={"content-type": "text/html"})
+    )
+    _patch_async_client(monkeypatch, fake)
+
+    result = await extract("https://example.com/article")
+
+    assert result.access_blocked is False
 
 
 # ---------------------------------------------------------------------------
