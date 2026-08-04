@@ -105,7 +105,29 @@ class TestLaResolutionNeConclutJamais:
     def _svc(self) -> wb.WaybackService:
         return wb.WaybackService(_FakeDb(), None)  # type: ignore[arg-type]
 
-    def _client(self, monkeypatch, handler):
+    def _pages(self, monkeypatch, pages: dict[str, tuple[str, bytes]]):
+        """Un web factice : url demandee -> (url finale HTTP, corps HTML).
+
+        Les redirections HTTP sont deja resolues par le client reel ; ce faux
+        ne simule donc que leur resultat, plus le corps ou peut se cacher une
+        redirection d'un autre genre.
+        """
+
+        class _Stream:
+            def __init__(self, final: str, body: bytes) -> None:
+                self.url = final
+                self.headers = {"content-type": "text/html; charset=utf-8"}
+                self._body = body
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *a):
+                return False
+
+            async def aiter_bytes(self):
+                yield self._body
+
         class _Client:
             async def __aenter__(self):
                 return self
@@ -113,46 +135,101 @@ class TestLaResolutionNeConclutJamais:
             async def __aexit__(self, *a):
                 return False
 
-            async def head(self, url, **k):
-                return handler(url)
+            def stream(self, method, url, **k):
+                if url not in pages:
+                    raise httpx.ConnectError(f"no route to {url}")
+                return _Stream(*pages[url])
 
         monkeypatch.setattr(wb.httpx, "AsyncClient", lambda **k: _Client())
 
     def test_la_cible_finale_est_retournee(self, monkeypatch):
         final = "https://onlinelibrary.wiley.com/doi/10.1002/brb3.244"
-        self._client(
-            monkeypatch,
-            lambda url: httpx.Response(200, request=httpx.Request("HEAD", final)),
-        )
+        self._pages(monkeypatch, {"https://doi.org/10.1002/brb3.244": (final, b"<html></html>")})
         svc = self._svc()
 
         assert asyncio.run(svc._resolve("https://doi.org/10.1002/brb3.244")) == final
-
-    def test_un_403_sur_la_cible_reste_une_resolution_valable(self, monkeypatch):
-        """Le cas reel : les editeurs refusent les robots, mais la redirection
-        a deja eu lieu -- l'URL finale est connue et c'est tout ce qu'on
-        demandait. Juger la resolution sur le code de reponse jetterait une
-        information exacte."""
-        final = "https://www.annualreviews.org/doi/10.1146/annurev.neuro.24.1.167"
-        self._client(
-            monkeypatch,
-            lambda url: httpx.Response(403, request=httpx.Request("HEAD", final)),
-        )
-        svc = self._svc()
-
-        assert asyncio.run(svc._resolve("https://doi.org/10.1146/annurev.neuro.24.1.167")) == final
 
     def test_une_resolution_impossible_laisse_l_url_intacte(self, monkeypatch):
         """`doi.org` limite lui aussi les rafales -- constate en mesurant. Un
         refus de sa part ne doit ni faire echouer la source ni la faire sonder
         sur une URL inventee."""
-
-        def _boom(url):
-            raise httpx.ReadTimeout("")
-
-        self._client(monkeypatch, _boom)
+        self._pages(monkeypatch, {})
         svc = self._svc()
 
         assert asyncio.run(svc._resolve("https://doi.org/10.1002/brb3.244")) == (
             "https://doi.org/10.1002/brb3.244"
         )
+
+
+class TestUneRedirectionResteUneRedirection:
+    """Peu importe comment elle est exprimee.
+
+    Constate en prod le 2026-08-04 : `linkinghub.elsevier.com` repond **200**
+    -- aucun client HTTP n'y voit une redirection -- avec un
+    `<meta http-equiv="refresh">` vers ScienceDirect et, pour tout contenu, le
+    mot « Redirecting ». Seize sources avaient ainsi ete marquees `archived`
+    sur un instantane qui ne preserve rien. Verifie en lisant l'instantane :
+    9,5 ko de HTML, un seul mot de texte.
+    """
+
+    def _svc(self) -> wb.WaybackService:
+        return wb.WaybackService(_FakeDb(), None)  # type: ignore[arg-type]
+
+    def _pages(self, monkeypatch, pages):
+        TestLaResolutionNeConclutJamais._pages(self, monkeypatch, pages)  # type: ignore[arg-type]
+
+    def test_un_meta_refresh_est_suivi(self, monkeypatch):
+        hub = "https://linkinghub.elsevier.com/retrieve/pii/S1388245701006010"
+        article = "https://www.sciencedirect.com/science/article/pii/S1388245701006010"
+        self._pages(
+            monkeypatch,
+            {
+                hub: (
+                    hub,
+                    b'<meta HTTP-EQUIV="REFRESH" content="2; url=\'' + article.encode() + b"'\"/>",
+                ),
+                article: (article, b"<html>le contenu</html>"),
+            },
+        )
+        svc = self._svc()
+
+        assert asyncio.run(svc._resolve(hub)) == article
+
+    def test_une_cible_relative_est_resolue_contre_la_page(self, monkeypatch):
+        hub = "https://exemple.org/retrieve/pii/X"
+        suite = "https://exemple.org/select?to=X"
+        self._pages(
+            monkeypatch,
+            {
+                hub: (hub, b'<meta http-equiv=refresh content="0; url=/select?to=X">'),
+                suite: (suite, b"<html>fin</html>"),
+            },
+        )
+        svc = self._svc()
+
+        assert asyncio.run(svc._resolve(hub)) == suite
+
+    def test_une_boucle_de_redirection_ne_tourne_pas_indefiniment(self, monkeypatch):
+        a, b = "https://exemple.org/a", "https://exemple.org/b"
+        self._pages(
+            monkeypatch,
+            {
+                a: (a, b'<meta http-equiv="refresh" content="0; url=https://exemple.org/b">'),
+                b: (b, b'<meta http-equiv="refresh" content="0; url=https://exemple.org/a">'),
+            },
+        )
+        svc = self._svc()
+
+        assert asyncio.run(svc._resolve(a)) in (a, b)
+
+    def test_une_page_sans_meta_refresh_est_la_destination(self, monkeypatch):
+        """Tout ne doit pas devenir une redirection : un `<meta>` quelconque
+        dans une vraie page d'article ne doit pas deplacer la cible."""
+        page = "https://onlinelibrary.wiley.com/doi/10.1002/brb3.244"
+        self._pages(
+            monkeypatch,
+            {page: (page, b'<meta name="citation_title" content="0; url=piege">')},
+        )
+        svc = self._svc()
+
+        assert asyncio.run(svc._resolve(page)) == page

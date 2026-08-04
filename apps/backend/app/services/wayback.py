@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import time
 from collections.abc import Awaitable, Callable
 from datetime import datetime
 from functools import partial
+from html import unescape
 from typing import TypeVar
+from urllib.parse import urljoin
 from uuid import UUID
 
 import httpx
@@ -19,6 +22,11 @@ from app.models.source import ArchiveStatus, Source
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
+
+_META_TAG = re.compile(rb"<meta\b[^>]*>", re.IGNORECASE)
+_HTTP_EQUIV_REFRESH = re.compile(rb"""http-equiv\s*=\s*['"]?refresh\b""", re.IGNORECASE)
+_CONTENT_ATTR = re.compile(rb"""content\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))""", re.IGNORECASE)
+_REFRESH_URL = re.compile(rb"""url\s*=\s*['"]?([^'"\s;]+)""", re.IGNORECASE)
 
 
 class ThrottledError(Exception):
@@ -105,6 +113,9 @@ class WaybackService:
     # pas. Inutile d'immobiliser le lot longtemps pour ca.
     RESOLVE_TIMEOUT = 15.0
     MAX_REDIRECTS = 5
+    # Une redirection se declare dans l'en-tete du document : inutile de
+    # telecharger un article entier sur une VM d'un gigaoctet pour l'apprendre.
+    PEEK_BYTES = 65_536
     # Back-off schedule (seconds) for polling the snapshot after triggering
     # SPN. Sum ~33 s.
     POLL_DELAYS: tuple[float, ...] = (3.0, 5.0, 8.0, 8.0, 9.0)
@@ -186,32 +197,92 @@ class WaybackService:
         """L'URL de la ressource, pas celle du panneau qui y mene.
 
         Un resolveur -- `doi.org`, un raccourcisseur, un « linking hub »
-        d'editeur -- n'a dans l'archive que des captures `3xx`. Le sondage
-        filtre sur `200` et ne trouve donc jamais rien, et une capture de
-        redirection ne preserverait aucun contenu. Mesure le 2026-08-04 :
+        d'editeur -- n'a dans l'archive que des captures de redirection. Le
+        sondage filtre sur `200` et ne trouve donc rien, et capturer une
+        redirection ne preserve aucun contenu. Mesure le 2026-08-04 :
         `doi.org/10.1002/brb3.244` n'a que des `302`, sa cible Wiley a une
         capture `200`.
 
-        La detection est comportementale -- cette URL redirige-t-elle ? --
-        et jamais par liste de domaines, sans quoi le prochain resolveur
+        **Une redirection reste une redirection quelle que soit sa forme.**
+        `linkinghub.elsevier.com` repond `200` -- aucun client HTTP n'y voit
+        une redirection -- avec un `<meta http-equiv="refresh">` et, pour tout
+        contenu, le mot « Redirecting ». Les deux formes sont suivies.
+
+        La detection est comportementale -- cette URL redirige-t-elle ? -- et
+        jamais par liste de domaines, sans quoi le prochain resolveur
         repasserait au travers.
 
         Ne leve jamais et ne juge pas le code de reponse : les editeurs
         refusent les robots par un `403`, mais la redirection a deja eu lieu
-        et l'URL finale est exacte. Ne pas savoir resoudre laisse l'URL
-        telle quelle -- une ignorance, pas une reponse.
+        et l'URL finale est exacte. Ne pas savoir resoudre laisse l'URL telle
+        quelle -- une ignorance, pas une reponse.
+        """
+        current = url
+        seen: set[str] = set()
+        for _ in range(self.MAX_REDIRECTS):
+            peeked = await self._peek(current)
+            if peeked is None:
+                return current
+            final, target = peeked
+            if target is None:
+                return final
+            nxt = urljoin(final, target)
+            if nxt == final or nxt in seen:
+                return final
+            seen.add(final)
+            current = nxt
+        return current
+
+    async def _peek(self, url: str) -> tuple[str, str | None] | None:
+        """(url finale HTTP, cible d'un meta refresh eventuel), ou None.
+
+        Le corps n'est lu que sur ses premiers octets : une redirection se
+        declare dans l'en-tete du document, et une VM d'un gigaoctet n'a pas a
+        telecharger des articles entiers pour l'apprendre.
         """
         try:
-            async with httpx.AsyncClient(
-                timeout=self.RESOLVE_TIMEOUT,
-                follow_redirects=True,
-                max_redirects=self.MAX_REDIRECTS,
-            ) as client:
-                response = await client.head(url)
-            return str(response.url) or url
+            async with (
+                httpx.AsyncClient(
+                    timeout=self.RESOLVE_TIMEOUT,
+                    follow_redirects=True,
+                    max_redirects=self.MAX_REDIRECTS,
+                ) as client,
+                client.stream("GET", url) as response,
+            ):
+                final = str(response.url) or url
+                if "html" not in response.headers.get("content-type", ""):
+                    return final, None
+                body = b""
+                async for chunk in response.aiter_bytes():
+                    body += chunk
+                    if len(body) >= self.PEEK_BYTES:
+                        break
+            return final, self._meta_refresh_target(body)
         except Exception as e:  # noqa: BLE001 — l'URL d'origine reste utilisable.
             logger.info("Resolve failed for %s: %s %s", url, type(e).__name__, e)
-            return url
+            return None
+
+    @staticmethod
+    def _meta_refresh_target(body: bytes) -> str | None:
+        """La cible d'un `<meta http-equiv="refresh">`, s'il y en a une.
+
+        Les deux conditions sont exigees sur la *meme* balise : un `content`
+        contenant « url= » ne redirige rien s'il appartient a un
+        `<meta name="citation_title">`.
+        """
+        for tag in _META_TAG.findall(body):
+            if not _HTTP_EQUIV_REFRESH.search(tag):
+                continue
+            content = _CONTENT_ATTR.search(tag)
+            if content is None:
+                continue
+            value = next(g for g in content.groups() if g is not None)
+            target = _REFRESH_URL.search(value)
+            if target is not None:
+                # `&amp;` dans un attribut HTML est un `&` dans l'URL : sans
+                # cela on sonderait une adresse qui n'existe pas.
+                return unescape(target.group(1).strip().decode("utf-8", "replace"))
+        return None
 
     async def _trigger_save(self, url: str) -> None:
         """Demande un instantane frais. N'attend pas qu'il soit produit.
