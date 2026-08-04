@@ -2,6 +2,7 @@ import { browser } from '$app/environment';
 import { env } from '$env/dynamic/public';
 
 import type {
+  ArchiveOutcome,
   Attestation,
   AttestationVerifyResponse,
   Card,
@@ -199,6 +200,18 @@ export const api = {
       const raw = await request<Source[]>(`/sources?card_id=${cardId}`);
       return raw.map((s) => normalizeSource(s));
     },
+
+    /**
+     * Relance l'archivage des sources désignées.
+     *
+     * L'archivage automatique est cadencé et peut prendre des heures sur une
+     * grosse fiche : cette route permet de dire ce qui presse.
+     */
+    archive: async (sourceIds: string[]): Promise<ArchiveOutcome> =>
+      request<ArchiveOutcome>('/sources/archive', {
+        method: 'POST',
+        body: JSON.stringify({ source_ids: sourceIds }),
+      }),
 
     create: async (cardId: string, data: SourceCreate): Promise<Source> => {
       const raw = await request<Source>(`/sources?card_id=${cardId}`, {

@@ -44,6 +44,25 @@ def _spawn(coro) -> None:
     task.add_done_callback(_background_tasks.discard)
 
 
+class ArchiveRequest(BaseModel):
+    source_ids: list[UUID]
+
+
+class ArchiveResponse(BaseModel):
+    """Ce que la demande a reellement declenche, poste par poste.
+
+    Un seul compteur global mentirait : « 40 » ne dirait pas si les 40 partent
+    a l'archivage ou si la moitie etait deja archivee. Chaque sort a sa case.
+    """
+
+    scheduled: int
+    already_archived: int
+    # Sans URL : il n'y a rien a archiver, ce n'est pas un echec d'archivage.
+    nothing_to_archive: int
+    # Deja dans la file d'une demande precedente : redemander ne fait rien.
+    already_running: int
+
+
 class ExtractResponse(BaseModel):
     title: str | None
     authors: str | None
@@ -399,6 +418,59 @@ async def create_sources_batch(
     return SourceBatchResponse(
         created=[SourceResponse.model_validate(s) for s in created_full],
         failed=failed,
+    )
+
+
+# Declaree avant `/{source_id}` : sinon FastAPI essaierait de lire "archive"
+# comme un UUID et renverrait 422.
+@router.post("/archive", response_model=ArchiveResponse)
+async def archive_sources(
+    payload: ArchiveRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Relance l'archivage des sources demandees, une ou plusieurs.
+
+    L'archivage automatique est cadence et peut prendre des heures sur une
+    grosse fiche. Cette route permet de designer ce qui presse, sans attendre
+    le tour de role.
+    """
+    if not payload.source_ids:
+        return ArchiveResponse(
+            scheduled=0, already_archived=0, nothing_to_archive=0, already_running=0
+        )
+
+    result = await db.execute(
+        select(Source, BiblioCard.user_id)
+        .join(BiblioCard, BiblioCard.id == Source.biblio_card_id)
+        .where(
+            Source.id.in_(payload.source_ids),
+            Source.deleted_at.is_(None),
+            BiblioCard.deleted_at.is_(None),
+        )
+    )
+    rows = result.all()
+
+    # Une source qui n'appartient pas au demandeur ne doit pas etre distinguee
+    # d'une source inexistante : repondre 403 dirait qu'elle existe.
+    owned = [s for s, user_id in rows if user_id == current_user.id]
+    if not owned:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": "No matching source"},
+        )
+
+    already_archived = sum(1 for s in owned if s.archive_status == "archived")
+    todo = [s for s in owned if s.archive_status != "archived"]
+    nothing_to_archive = sum(1 for s in todo if not (s.url or "").strip())
+    candidates = [(s.id, s.url) for s in todo if (s.url or "").strip()]
+
+    scheduled = schedule_archiving(candidates) if candidates else 0
+    return ArchiveResponse(
+        scheduled=scheduled,
+        already_archived=already_archived,
+        nothing_to_archive=nothing_to_archive,
+        already_running=len(candidates) - scheduled,
     )
 
 

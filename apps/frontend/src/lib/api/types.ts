@@ -305,6 +305,21 @@ export type AuthorKind =
 
 export type ArchiveStatus = 'pending' | 'archived' | 'failed' | 'not_applicable';
 
+/**
+ * Ce qu'une demande d'archivage a réellement déclenché, poste par poste.
+ *
+ * Un seul compteur mentirait : « 40 » ne dirait pas si les 40 partent à
+ * l'archivage ou si la moitié était déjà archivée.
+ */
+export interface ArchiveOutcome {
+  scheduled: number;
+  already_archived: number;
+  /** Sans URL : il n'y a rien à archiver, ce n'est pas un échec d'archivage. */
+  nothing_to_archive: number;
+  /** Déjà dans la file d'une demande précédente : redemander ne fait rien. */
+  already_running: number;
+}
+
 /** Déclaratif, jamais inféré : l'auteur de la fiche l'affirme et en répond. */
 export type SourceStance = 'appuie' | 'nuance-contredit' | 'mentionne' | 'contexte';
 
