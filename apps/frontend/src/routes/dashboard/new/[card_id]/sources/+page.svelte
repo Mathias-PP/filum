@@ -1355,6 +1355,28 @@
 
         {#if drafts.length > 0}
           <div class="space-y-3 border-t border-border pt-4">
+            <!--
+              En tete de liste, et pas seulement en pied : sur une fiche de 131
+              references, chaque brouillon est un formulaire deplie, et « Tout
+              ajouter » se trouvait au bout du plus long defilement de
+              l'application. L'action la plus courante doit etre la plus proche.
+            -->
+            <div
+              class="flex items-center justify-between gap-3 rounded-lg bg-surface-secondary/50 border border-border px-4 py-3"
+            >
+              <p class="text-sm text-ink-secondary">
+                {drafts.length} référence{drafts.length > 1 ? 's' : ''} à valider — relisez-les ou ajoutez
+                tout d'un coup.
+              </p>
+              <Button
+                type="button"
+                loading={addingAll}
+                disabled={addingAll || multiExtracting}
+                onclick={addAllDrafts}
+              >
+                {addingAll ? 'Ajout en cours…' : `Tout ajouter (${drafts.length})`}
+              </Button>
+            </div>
             {#each drafts as draft, i (draft.key)}
               <div class="border border-border rounded-lg p-4 space-y-3 bg-surface-secondary/50">
                 <div class="flex items-start justify-between gap-2">
