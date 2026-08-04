@@ -32,6 +32,9 @@ complete dans \`citation[]\`.
 
 ## Acces machine
 
+- Fiche en markdown: \`GET ${o}/@<createur>/<fiche>.md\` — la meme fiche, deja
+  structuree (sources, DOI, statut de retractation, archives). C'est la porte
+  d'entree la plus simple : suffixez \`.md\` a n'importe quelle adresse de fiche.
 - Recherche JSON: \`GET ${o}/api/v1/discover?q=<termes>\` — sans authentification
 - Facettes: \`GET ${o}/api/v1/discover/facets\`
 - Fiche: \`GET ${o}/api/v1/@<createur>/<fiche>\`
