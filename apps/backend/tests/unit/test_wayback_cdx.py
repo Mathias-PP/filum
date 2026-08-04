@@ -151,3 +151,60 @@ class TestSecondCanal:
         )
 
         assert asyncio.run(_svc()._lookup_snapshot("https://example.org/a")) is None
+
+
+class TestPatienceDuSondage:
+    """CDX cherche dans un index de centaines de milliards de captures.
+
+    Mesure depuis la VM le 2026-08-04, trois appels de suite : **18,4 s,
+    18,7 s, 19,7 s** pour une requete qui ne renvoie rien. Le delai de 30 s
+    partage avec le reste du service etait donc depasse des que la machine
+    etait chargee -- et le sondage echouait sur un timeout dont le message est
+    vide, ce qui rendait le diagnostic muet.
+    """
+
+    def test_le_sondage_a_son_propre_delai_plus_genereux(self, monkeypatch):
+        vus: list[float] = []
+
+        class _Client:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *a):
+                return False
+
+            async def get(self, url, **kwargs):
+                return httpx.Response(
+                    200, json=[], request=httpx.Request("GET", "https://web.archive.org")
+                )
+
+        def _factory(**kwargs):
+            vus.append(kwargs.get("timeout"))
+            return _Client()
+
+        monkeypatch.setattr(wb.httpx, "AsyncClient", _factory)
+
+        asyncio.run(_svc()._lookup_via_cdx("https://example.org/a"))
+
+        assert vus and vus[0] >= 3 * 19.7
+
+    def test_le_type_de_la_panne_est_journalise(self, monkeypatch, caplog):
+        """Un timeout de lecture a un message vide : sans son type, le journal
+        n'apprend rien a qui cherche la cause."""
+
+        class _Client:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *a):
+                return False
+
+            async def get(self, url, **kwargs):
+                raise httpx.ReadTimeout("")
+
+        monkeypatch.setattr(wb.httpx, "AsyncClient", lambda **k: _Client())
+
+        with caplog.at_level("INFO"), pytest.raises(wb.ThrottledError):
+            asyncio.run(_svc()._lookup_via_cdx("https://example.org/a"))
+
+        assert "ReadTimeout" in caplog.text

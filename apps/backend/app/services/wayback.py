@@ -95,6 +95,12 @@ class WaybackService:
     CDX_URL = "https://web.archive.org/cdx/search/cdx"
     SAVE_URL = "https://web.archive.org/save"
     TIMEOUT = 30.0
+    # Le sondage attend plus longtemps que le reste : CDX cherche dans un index
+    # de centaines de milliards de captures. Mesure depuis la VM le 2026-08-04,
+    # trois appels de suite : 18,4 s, 18,7 s, 19,7 s pour une requete qui ne
+    # renvoie rien. A 30 s, la moindre charge faisait echouer le sondage sur un
+    # timeout -- et un timeout n'est pas une reponse, donc rien ne concluait.
+    LOOKUP_TIMEOUT = 60.0
     # Back-off schedule (seconds) for polling the snapshot after triggering
     # SPN. Sum ~33 s.
     POLL_DELAYS: tuple[float, ...] = (3.0, 5.0, 8.0, 8.0, 9.0)
@@ -219,7 +225,7 @@ class WaybackService:
         l'appelant d'essayer ailleurs plutot que de conclure.
         """
         try:
-            async with httpx.AsyncClient(timeout=self.TIMEOUT) as client:
+            async with httpx.AsyncClient(timeout=self.LOOKUP_TIMEOUT) as client:
                 response = await client.get(endpoint, params=params)
             refusal = self._refusal(response)
             if refusal is not None:
@@ -229,7 +235,15 @@ class WaybackService:
         except ThrottledError:
             raise
         except Exception as e:  # noqa: BLE001 — l'autre canal a peut-etre mieux.
-            logger.info(f"Wayback lookup unusable on {endpoint} for {params.get('url')}: {e}")
+            # Le type, pas seulement le message : un `ReadTimeout` a un message
+            # vide, et sans son nom le journal n'apprend rien a qui cherche.
+            logger.info(
+                "Wayback lookup unusable on %s for %s: %s %s",
+                endpoint,
+                params.get("url"),
+                type(e).__name__,
+                e,
+            )
             raise ThrottledError() from e
 
     async def _lookup_via_cdx(self, url: str) -> tuple[str, str | None] | None:
