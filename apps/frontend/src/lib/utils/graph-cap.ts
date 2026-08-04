@@ -56,11 +56,21 @@ export function capSources<T extends Capable>(sources: T[], cap: number): CapRes
     .sort((a, b) => Number(b.s.is_pivot ?? false) - Number(a.s.is_pivot ?? false) || a.i - b.i)
     .map(({ s }) => s);
 
-  const byId = new Map<string, T>(sources.map((s) => [s.id, s]));
-  const keptIds = new Set<string>();
-  const selected = ranked.slice(0, cap);
+  const kept = withAncestors(sources, ranked.slice(0, cap));
+  return { kept, hiddenCount: sources.length - kept.length };
+}
 
-  for (const s of selected) keptIds.add(s.id);
+/**
+ * Complète une sélection par les parents dont elle dépend, en conservant
+ * l'ordre d'origine.
+ *
+ * Sans cette remontée, une source secondaire retenue verrait son parent coupé
+ * et flotterait détachée : le graphe montrerait une filiation qui n'a plus
+ * d'origine visible, ce qui est pire que de ne rien montrer.
+ */
+function withAncestors<T extends Capable>(sources: T[], selected: T[]): T[] {
+  const byId = new Map<string, T>(sources.map((s) => [s.id, s]));
+  const keptIds = new Set<string>(selected.map((s) => s.id));
 
   for (const s of selected) {
     let parentId = s.parent_source_id;
@@ -76,7 +86,19 @@ export function capSources<T extends Capable>(sources: T[], cap: number): CapRes
     }
   }
 
-  // On repart de `sources` pour préserver l'ordre d'origine.
-  const kept = sources.filter((s) => keptIds.has(s.id));
-  return { kept, hiddenCount: sources.length - kept.length };
+  return sources.filter((s) => keptIds.has(s.id));
+}
+
+/**
+ * Ne garde que les sources déclarées « clé », et ce dont elles descendent.
+ *
+ * Le filtre s'appuie sur la seule marque que la créatrice ou le créateur a
+ * posée : rien n'est deviné. Une liste sans aucune marque est rendue telle
+ * quelle — filtrer sur un critère absent viderait le graphe au lieu de le
+ * resserrer.
+ */
+export function keySourcesOnly<T extends Capable>(sources: T[]): T[] {
+  const pivots = sources.filter((s) => s.is_pivot);
+  if (pivots.length === 0) return sources;
+  return withAncestors(sources, pivots);
 }

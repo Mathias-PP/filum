@@ -40,7 +40,12 @@
     type NodeColor,
   } from '$lib/utils/author-colors';
   import { cardNodeLabel } from '$lib/utils/card-label';
-  import { GRAPH_CAP_COMFORT, GRAPH_SOURCE_CAP, capSources } from '$lib/utils/graph-cap';
+  import {
+    GRAPH_CAP_COMFORT,
+    GRAPH_SOURCE_CAP,
+    capSources,
+    keySourcesOnly,
+  } from '$lib/utils/graph-cap';
   import { authorSummary } from '$lib/utils/author-names';
   import { UNDATED_BAND, chronoLayout, type ChronoLayout } from '$lib/utils/graph-chrono';
   import { buildHaystack, matchesAllTerms, searchTerms } from '$lib/utils/graph-search';
@@ -270,10 +275,31 @@
   // où passe, pour lui, la limite du lisible. `0` = aucun plafond.
   let sourceCap = $state<number>(GRAPH_SOURCE_CAP);
 
-  /** Références d'une fiche, bornées. Même règle pour la racine et les dépliées. */
+  // Lire une bibliographie de bout en bout n'est pas toujours la question :
+  // « sur quoi cela repose-t-il d'abord ? » se répond en ne gardant que ce que
+  // la créatrice ou le créateur a lui-même marqué comme clé. Aucun tri n'est
+  // deviné, donc le filtre ne s'offre que si une marque existe.
+  let keyOnly = $state(false);
+
+  /** Panneau des réglages d'affichage : déplié à l'ouverture. */
+  let controlsOpen = $state(true);
+  /** Réglage du plafond : replié à l'ouverture, son chiffre restant lisible. */
+  let capOpen = $state(false);
+
+  /** Références d'une fiche, filtrées puis bornées. Même règle partout. */
   function cappedOf(sources: GraphSourceData[]): GraphSourceData[] {
-    return capSources(sources, sourceCap).kept;
+    const scoped = keyOnly ? keySourcesOnly(sources) : sources;
+    return capSources(scoped, sourceCap).kept;
   }
+
+  /** Au moins une source porte la marque « clé », quelque part à l'écran. */
+  const hasKeySources = $derived.by(() => {
+    if (rootSources.some((s) => s.is_pivot)) return true;
+    for (const id of expandedCardIds) {
+      if ((neighborSources.get(id) ?? []).some((s) => s.is_pivot)) return true;
+    }
+    return false;
+  });
 
   /** Tout ce qui est actuellement à l'écran : racine + fiches dépliées. */
   const visibleSources = $derived.by(() => {
@@ -282,14 +308,30 @@
     return all;
   });
 
-  /** Nombre total de références disponibles, bornage ignoré. */
+  /** Nombre total de références disponibles, filtre et bornage ignorés. */
   const totalSources = $derived.by(() => {
     let n = rootSources.length;
     for (const id of expandedCardIds) n += (neighborSources.get(id) ?? []).length;
     return n;
   });
 
-  const hiddenSourcesCount = $derived(Math.max(0, totalSources - visibleSources.length));
+  /**
+   * Références que le filtre en cours retient, avant bornage.
+   *
+   * Le plafond se règle sur cet ensemble et non sur la fiche entière : sinon
+   * « 18 / 18 » s'afficherait alors que le filtre « clés » en écarte la
+   * moitié, et le chiffre annoncerait une réserve qui n'est pas celle du
+   * plafond.
+   */
+  const scopedTotal = $derived.by(() => {
+    const count = (list: GraphSourceData[]) =>
+      keyOnly ? keySourcesOnly(list).length : list.length;
+    let n = count(rootSources);
+    for (const id of expandedCardIds) n += count(neighborSources.get(id) ?? []);
+    return n;
+  });
+
+  const hiddenSourcesCount = $derived(Math.max(0, scopedTotal - visibleSources.length));
 
   /**
    * Valeur montrée par le réglage.
@@ -297,7 +339,7 @@
    * Le plafond par défaut vaut 250, mais une fiche de dix références n'en a
    * pas 250 à cacher : afficher ce chiffre laisserait croire qu'il en manque.
    */
-  const capValue = $derived(Math.min(sourceCap, totalSources));
+  const capValue = $derived(Math.min(sourceCap, scopedTotal));
 
   // Deux axes de lecture. Le réseau dit qui dépend de qui ; il ne dit rien de
   // l'ancienneté. « Cette affirmation s'appuie sur un article de 1998 » est une
@@ -441,6 +483,22 @@
     }
     return ids;
   });
+
+  /**
+   * Référence dont un nœud tire sa couleur, `null` s'il n'en a aucune.
+   *
+   * Une fiche citée par une autre est aussi une référence du graphe : la
+   * citation lui a donné un type d'auteur, un format et une catégorie. Rien
+   * ne justifie alors de la peindre en ardoise à part, hors du code couleur
+   * commun — ce qui la désigne comme fiche est son anneau, pas son fond. La
+   * fiche consultée, elle, n'est citée par rien à l'écran : faute de
+   * classification saisie, elle garde son indigo.
+   */
+  function colorSourceOf(d: GraphNode): GraphSourceData | null {
+    if (d.kind === 'source') return d.source ?? null;
+    if (d.kind === 'card') return d.absorbedSource ?? null;
+    return null;
+  }
 
   /** Étiquette d'un nœud fiche : les auteurs du contenu, le créateur faute de mieux. */
   function cardLabelOf(d: GraphNode): string {
@@ -618,6 +676,11 @@
     remount();
   }
 
+  function toggleKeyOnly() {
+    keyOnly = !keyOnly;
+    remount();
+  }
+
   function setLayoutMode(mode: 'network' | 'chrono') {
     if (layoutMode === mode) return;
     layoutMode = mode;
@@ -757,6 +820,18 @@
           byAuthorAndParent.get(key)!.push(s);
         }
       }
+    }
+
+    // L'absorption ci-dessus vient de dire quelles fiches sont aussi des
+    // références du graphe. Elles rejoignent maintenant le code couleur commun :
+    // se lire « article scientifique » ou « institution » comme les autres nœuds
+    // vaut mieux qu'un ardoise uniforme qui n'apprend rien.
+    for (const node of cardNodeByCid.values()) {
+      const s = colorSourceOf(node);
+      if (!s) continue;
+      const c = sourceColor(s, colorMode);
+      node.fill = c.fill;
+      node.stroke = c.stroke;
     }
 
     // Replace direct links with invisible junction + fork for Y-branch groups
@@ -1327,7 +1402,11 @@
       .attr('class', 'card-creator')
       .attr('text-anchor', 'middle')
       .attr('y', (d) => -(d.radius + 8))
-      .attr('font-size', 12)
+      // Un cran au-dessus du nom d'auteur d'une source (11), et soumis à la
+      // même densité : en taille fixe, l'étiquette de fiche restait à 12 pendant
+      // que celles des sources tombaient à 8 sur une grosse fiche — un écart de
+      // moitié, là où le nœud de fiche n'a besoin que de se distinguer.
+      .attr('font-size', 12 * labelScale)
       .attr('font-weight', 600)
       .attr('fill', '#0f172a')
       // Halo blanc permanent — cf. `title-label` pour le pourquoi.
@@ -1345,7 +1424,7 @@
       .attr('class', 'card-title-label')
       .attr('text-anchor', 'middle')
       .attr('y', (d) => -(d.radius + 22))
-      .attr('font-size', 10)
+      .attr('font-size', 10.5 * labelScale)
       .attr('fill', '#475569')
       .style('paint-order', 'stroke')
       .attr('stroke', '#ffffff')
@@ -1690,14 +1769,16 @@
       .transition()
       .duration(250)
       .attr('fill', (d) => {
-        if (d.kind !== 'source' || !d.source) return d.fill;
-        const c = sourceColor(d.source, mode);
+        const s = colorSourceOf(d);
+        if (!s) return d.fill;
+        const c = sourceColor(s, mode);
         d.fill = c.fill;
         return c.fill;
       })
       .attr('stroke', (d) => {
-        if (d.kind !== 'source' || !d.source) return d.stroke;
-        const c = sourceColor(d.source, mode);
+        const s = colorSourceOf(d);
+        if (!s) return d.stroke;
+        const c = sourceColor(s, mode);
         d.stroke = c.stroke;
         return c.stroke;
       });
@@ -1821,51 +1902,95 @@
       </div>
     {/if}
 
-    <div
-      class="flex items-center rounded-md bg-white/95 border border-slate-200 shadow-sm overflow-hidden text-xs"
-      role="group"
-      aria-label="Axe de couleur des nœuds"
-    >
-      {#each colorModeOptions as opt, i (opt.value)}
-        <button
-          type="button"
-          onclick={() => (colorMode = opt.value)}
-          class="px-2.5 py-1.5 transition-colors {i > 0
-            ? 'border-l border-slate-200'
-            : ''} {colorMode === opt.value
-            ? 'bg-slate-800 text-white font-medium'
-            : 'text-slate-600 hover:bg-slate-50'}"
-          aria-pressed={colorMode === opt.value}
-          title="Colorer par {opt.label.toLowerCase()}"
-        >
-          {opt.label}
-        </button>
-      {/each}
-    </div>
-
-    <div
-      class="flex items-center rounded-md bg-white/95 border border-slate-200 shadow-sm overflow-hidden text-xs"
-      role="group"
-      aria-label="Disposition du graphe"
-    >
-      {#each layoutModeOptions as opt, i (opt.value)}
-        <button
-          type="button"
-          onclick={() => setLayoutMode(opt.value)}
-          class="px-2.5 py-1.5 transition-colors {i > 0
-            ? 'border-l border-slate-200'
-            : ''} {layoutMode === opt.value
-            ? 'bg-slate-800 text-white font-medium'
-            : 'text-slate-600 hover:bg-slate-50'}"
-          aria-pressed={layoutMode === opt.value}
-          title={opt.help}
-        >
-          {opt.label}
-        </button>
-      {/each}
-    </div>
-
     <!--
+      Les réglages restent dépliés à l'ouverture : les replier par défaut
+      reviendrait à cacher qu'ils existent. Le pli sert à récupérer la surface
+      du graphe une fois le réglage fait, pas à protéger l'utilisateur de ses
+      propres options.
+    -->
+    <button
+      type="button"
+      onclick={() => (controlsOpen = !controlsOpen)}
+      class="flex items-center gap-1.5 rounded-md bg-white/95 border border-slate-200 shadow-sm px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-50 transition-colors"
+      aria-expanded={controlsOpen}
+      aria-controls="graph-display-controls"
+      title={controlsOpen ? 'Replier les options d’affichage' : 'Déplier les options d’affichage'}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        class="w-3.5 h-3.5 shrink-0 text-slate-400"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        aria-hidden="true"
+      >
+        <path d="M4 7h16M4 12h16M4 17h16" stroke-linecap="round" />
+        <circle cx="9" cy="7" r="2" fill="white" />
+        <circle cx="15" cy="12" r="2" fill="white" />
+        <circle cx="8" cy="17" r="2" fill="white" />
+      </svg>
+      <span>Affichage</span>
+      <svg
+        viewBox="0 0 24 24"
+        class="w-3 h-3 shrink-0 text-slate-400 transition-transform {controlsOpen
+          ? 'rotate-180'
+          : ''}"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.5"
+        aria-hidden="true"
+      >
+        <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </button>
+
+    {#if controlsOpen}
+      <div id="graph-display-controls" class="flex flex-col items-start gap-1.5">
+        <div
+          class="flex items-center rounded-md bg-white/95 border border-slate-200 shadow-sm overflow-hidden text-xs"
+          role="group"
+          aria-label="Axe de couleur des nœuds"
+        >
+          {#each colorModeOptions as opt, i (opt.value)}
+            <button
+              type="button"
+              onclick={() => (colorMode = opt.value)}
+              class="px-2.5 py-1.5 transition-colors {i > 0
+                ? 'border-l border-slate-200'
+                : ''} {colorMode === opt.value
+                ? 'bg-slate-800 text-white font-medium'
+                : 'text-slate-600 hover:bg-slate-50'}"
+              aria-pressed={colorMode === opt.value}
+              title="Colorer par {opt.label.toLowerCase()}"
+            >
+              {opt.label}
+            </button>
+          {/each}
+        </div>
+
+        <div
+          class="flex items-center rounded-md bg-white/95 border border-slate-200 shadow-sm overflow-hidden text-xs"
+          role="group"
+          aria-label="Disposition du graphe"
+        >
+          {#each layoutModeOptions as opt, i (opt.value)}
+            <button
+              type="button"
+              onclick={() => setLayoutMode(opt.value)}
+              class="px-2.5 py-1.5 transition-colors {i > 0
+                ? 'border-l border-slate-200'
+                : ''} {layoutMode === opt.value
+                ? 'bg-slate-800 text-white font-medium'
+                : 'text-slate-600 hover:bg-slate-50'}"
+              aria-pressed={layoutMode === opt.value}
+              title={opt.help}
+            >
+              {opt.label}
+            </button>
+          {/each}
+        </div>
+
+        <!--
       Nombre saisi librement plutôt que choisi dans une liste : la limite du
       lisible dépend de l'écran, de la fiche et de ce qu'on y cherche, et des
       paliers imposeraient des sauts que personne n'a demandés. Le curseur sert
@@ -1873,88 +1998,158 @@
       fiche de 800 références peut être demandée entière, on prévient seulement
       que ce sera dense. Les sources clés passent devant quel que soit le
       nombre retenu.
-    -->
-    {#if totalSources > 1}
-      <div
-        class="flex items-center gap-2 rounded-md bg-white/95 border border-slate-200 shadow-sm px-2.5 py-1.5 text-xs text-slate-600"
-      >
-        <label for="graph-cap" class="whitespace-nowrap">Nœuds affichés</label>
-        <input
-          id="graph-cap-range"
-          type="range"
-          min="1"
-          max={totalSources}
-          value={capValue}
-          oninput={(e) => setSourceCap(Number(e.currentTarget.value))}
-          class="w-24 accent-slate-700"
-          aria-label="Nombre maximum de références affichées"
-        />
-        <input
-          id="graph-cap"
-          type="number"
-          min="1"
-          max={totalSources}
-          value={capValue}
-          onchange={(e) => setSourceCap(Number(e.currentTarget.value))}
-          class="w-14 rounded border border-slate-200 px-1 py-0.5 text-center font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-400"
-          title="Nombre maximum de références affichées — les sources clés d'abord"
-        />
-        <button
-          type="button"
-          onclick={() => setSourceCap(totalSources)}
-          disabled={capValue >= totalSources}
-          class="whitespace-nowrap text-slate-500 hover:text-slate-800 disabled:text-slate-300 disabled:cursor-default transition-colors"
-        >
-          Toutes ({totalSources})
-        </button>
-        {#if hiddenSourcesCount > 0}
-          <span class="whitespace-nowrap text-slate-400">· {hiddenSourcesCount} en réserve</span>
-        {/if}
-        {#if capValue > GRAPH_CAP_COMFORT}
-          <span
-            class="whitespace-nowrap text-amber-600"
-            title="Le graphe reste utilisable, mais il faudra zoomer pour lire les étiquettes."
-          >
-            · dense
-          </span>
-        {/if}
-      </div>
-    {/if}
 
-    <!--
+      Replié par défaut, à la différence des autres réglages : c'est le seul
+      qui déploie une rangée entière de commandes, et il ne sert qu'une fois.
+      Le chiffre reste inscrit sur le bouton, donc l'état courant se lit sans
+      déplier — et le bouton lui-même dit que le réglage existe.
+    -->
+        {#if totalSources > 1}
+          <div class="flex flex-col items-start gap-1.5">
+            <button
+              type="button"
+              onclick={() => (capOpen = !capOpen)}
+              class="flex items-center gap-1.5 rounded-md bg-white/95 border border-slate-200 shadow-sm px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-50 transition-colors"
+              aria-expanded={capOpen}
+              aria-controls="graph-cap-panel"
+              title="Régler le nombre de références affichées"
+            >
+              <span class="whitespace-nowrap">Nœuds</span>
+              <span class="font-medium text-slate-800">{capValue}</span>
+              {#if hiddenSourcesCount > 0}
+                <span class="whitespace-nowrap text-slate-400">/ {scopedTotal}</span>
+              {/if}
+              {#if capValue > GRAPH_CAP_COMFORT}
+                <span
+                  class="text-amber-600"
+                  title="Le graphe reste utilisable, mais il faudra zoomer pour lire les étiquettes."
+                >
+                  · dense
+                </span>
+              {/if}
+              <svg
+                viewBox="0 0 24 24"
+                class="w-3 h-3 shrink-0 text-slate-400 transition-transform {capOpen
+                  ? 'rotate-180'
+                  : ''}"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                aria-hidden="true"
+              >
+                <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </button>
+
+            {#if capOpen}
+              <div
+                id="graph-cap-panel"
+                class="flex items-center gap-2 rounded-md bg-white/95 border border-slate-200 shadow-sm px-2.5 py-1.5 text-xs text-slate-600"
+              >
+                <input
+                  id="graph-cap-range"
+                  type="range"
+                  min="1"
+                  max={scopedTotal}
+                  value={capValue}
+                  oninput={(e) => setSourceCap(Number(e.currentTarget.value))}
+                  class="w-24 accent-slate-700"
+                  aria-label="Nombre maximum de références affichées"
+                />
+                <input
+                  id="graph-cap"
+                  type="number"
+                  min="1"
+                  max={scopedTotal}
+                  value={capValue}
+                  onchange={(e) => setSourceCap(Number(e.currentTarget.value))}
+                  class="w-14 rounded border border-slate-200 px-1 py-0.5 text-center font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                  aria-label="Nombre exact de références affichées"
+                  title="Nombre maximum de références affichées — les sources clés d'abord"
+                />
+                <button
+                  type="button"
+                  onclick={() => setSourceCap(scopedTotal)}
+                  disabled={capValue >= scopedTotal}
+                  class="whitespace-nowrap text-slate-500 hover:text-slate-800 disabled:text-slate-300 disabled:cursor-default transition-colors"
+                >
+                  Toutes ({scopedTotal})
+                </button>
+                {#if hiddenSourcesCount > 0}
+                  <span class="whitespace-nowrap text-slate-400"
+                    >· {hiddenSourcesCount} en réserve</span
+                  >
+                {/if}
+              </div>
+            {/if}
+          </div>
+        {/if}
+
+        <!--
+      Filtre « clés » : proposé seulement si la fiche porte cette marque.
+      Un bouton qui ne peut rien filtrer laisserait croire qu'aucune source
+      n'est importante, alors qu'il dit seulement que rien n'a été marqué.
+    -->
+        {#if hasKeySources}
+          <button
+            type="button"
+            onclick={toggleKeyOnly}
+            class="flex items-center gap-1.5 rounded-md border shadow-sm px-2.5 py-1.5 text-xs transition-colors {keyOnly
+              ? 'bg-slate-800 border-slate-800 text-white font-medium'
+              : 'bg-white/95 border-slate-200 text-slate-600 hover:bg-slate-50'}"
+            aria-pressed={keyOnly}
+            title="N'afficher que les sources marquées comme clés par l'auteur·ice de la fiche"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              class="w-3.5 h-3.5 shrink-0"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                d="M12 2.5l2.9 5.9 6.5.95-4.7 4.58 1.11 6.47L12 17.4l-5.81 3.06 1.11-6.47-4.7-4.58 6.5-.95z"
+              />
+            </svg>
+            Sources clés
+          </button>
+        {/if}
+
+        <!--
       Une liste de quinze auteurs recouvre les nœuds voisins. Le premier nom
       seul est le réglage par défaut ; aucun des deux boutons enfoncé rend la
       liste entière, la seule option qui ne perd rien.
     -->
-    <div
-      class="flex items-center rounded-md bg-white/95 border border-slate-200 shadow-sm overflow-hidden text-xs"
-      role="group"
-      aria-label="Noms d'auteurs affichés"
-    >
-      <span class="px-2.5 py-1.5 text-slate-500">Auteurs</span>
-      <button
-        type="button"
-        onclick={() => (showFirstAuthor = !showFirstAuthor)}
-        class="px-2.5 py-1.5 border-l border-slate-200 transition-colors {showFirstAuthor
-          ? 'bg-slate-800 text-white font-medium'
-          : 'text-slate-600 hover:bg-slate-50'}"
-        aria-pressed={showFirstAuthor}
-        title="N'afficher que le premier nom d'auteur"
-      >
-        Premier
-      </button>
-      <button
-        type="button"
-        onclick={() => (showLastAuthor = !showLastAuthor)}
-        class="px-2.5 py-1.5 border-l border-slate-200 transition-colors {showLastAuthor
-          ? 'bg-slate-800 text-white font-medium'
-          : 'text-slate-600 hover:bg-slate-50'}"
-        aria-pressed={showLastAuthor}
-        title="N'afficher que le dernier nom d'auteur"
-      >
-        Dernier
-      </button>
-    </div>
+        <div
+          class="flex items-center rounded-md bg-white/95 border border-slate-200 shadow-sm overflow-hidden text-xs"
+          role="group"
+          aria-label="Noms d'auteurs affichés"
+        >
+          <span class="px-2.5 py-1.5 text-slate-500">Auteurs</span>
+          <button
+            type="button"
+            onclick={() => (showFirstAuthor = !showFirstAuthor)}
+            class="px-2.5 py-1.5 border-l border-slate-200 transition-colors {showFirstAuthor
+              ? 'bg-slate-800 text-white font-medium'
+              : 'text-slate-600 hover:bg-slate-50'}"
+            aria-pressed={showFirstAuthor}
+            title="N'afficher que le premier nom d'auteur"
+          >
+            Premier
+          </button>
+          <button
+            type="button"
+            onclick={() => (showLastAuthor = !showLastAuthor)}
+            class="px-2.5 py-1.5 border-l border-slate-200 transition-colors {showLastAuthor
+              ? 'bg-slate-800 text-white font-medium'
+              : 'text-slate-600 hover:bg-slate-50'}"
+            aria-pressed={showLastAuthor}
+            title="N'afficher que le dernier nom d'auteur"
+          >
+            Dernier
+          </button>
+        </div>
+      </div>
+    {/if}
   </div>
 
   <div class="absolute right-3 flex flex-col gap-1.5" style="top: {overlayTop}px">
