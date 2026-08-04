@@ -45,15 +45,33 @@ describe('chronoLayout', () => {
     const l = chronoLayout([item('a', '1990'), item('b', '2020'), item('x', null)], 1000);
     expect(l.undatedCount).toBe(1);
     expect(l.x.get('x')).toBe(l.undatedX);
-    expect(l.x.get('x')!).toBeLessThan(l.x.get('a')!);
-    expect(l.x.get('x')!).toBeLessThanOrEqual(UNDATED_BAND);
+    // À droite de la frise : à gauche, la colonne occupait la place que l'œil
+    // lit comme « le plus ancien ».
+    expect(l.x.get('x')!).toBeGreaterThan(l.x.get('b')!);
+    expect(l.x.get('x')!).toBeGreaterThanOrEqual(1000 - UNDATED_BAND);
   });
 
   it('ne réserve aucune colonne quand tout est daté', () => {
     const l = chronoLayout([item('a', '1990'), item('b', '2020')], 1000);
     expect(l.undatedX).toBeNull();
+    expect(l.breakX).toBeNull();
     expect(l.undatedCount).toBe(0);
     expect(l.x.get('a')).toBe(0);
+  });
+
+  it('détache la colonne « sans date » par un filet de rupture', () => {
+    // Un écart ne suffit pas : une position sur un axe temporel signifie une
+    // date, quel que soit l'écart. Il faut un signe que l'échelle s'interrompt.
+    const l = chronoLayout([item('a', '1935'), item('b', '2021'), item('x', null)], 1000);
+    expect(l.breakX).not.toBeNull();
+    expect(l.breakX!).toBeLessThan(l.undatedX!);
+    expect(l.breakX!).toBeGreaterThan(l.x.get('b')!);
+  });
+
+  it('ne place aucun filet quand il n’y a pas de frise dont se détacher', () => {
+    const l = chronoLayout([item('a', null), item('b', null)], 800);
+    expect(l.undatedX).not.toBeNull();
+    expect(l.breakX).toBeNull();
   });
 
   it('centre tout le monde quand rien n’est daté', () => {

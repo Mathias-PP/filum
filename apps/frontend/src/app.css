@@ -12,6 +12,9 @@
   --text-primary: 26 26 26;
   --text-secondary: 85 85 85;
   --text-tertiary: 136 136 136;
+  /* Un exemple dans un champ vide n'est pas du texte : à la nuance du texte
+     d'aide, il se lisait comme une valeur déjà saisie. */
+  --text-placeholder: 176 176 176;
   --border: 232 230 222;
   --border-strong: 207 205 196;
   --success: 29 158 117;
@@ -40,6 +43,7 @@
   --text-primary: 245 245 245; /* #F5F5F5 (lightened from #EDEDED) */
   --text-secondary: 156 163 175; /* #9CA3AF */
   --text-tertiary: 107 114 128; /* #6B7280 */
+  --text-placeholder: 82 88 100; /* plus discret que le texte d'aide */
   --border: 45 45 50; /* #2D2D32 */
   --border-strong: 61 61 66; /* #3D3D42 */
   --success: 52 211 153; /* #34D399 saturated +15% */

@@ -397,10 +397,7 @@
          qu'un visiteur doit lire. -->
     {#if card.is_seed}
       <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-        <ClaimBanner
-          cardId={card.id}
-          creatorName={card.creator.display_name ?? card.creator.slug}
-        />
+        <ClaimBanner cardId={card.id} />
       </div>
     {/if}
 

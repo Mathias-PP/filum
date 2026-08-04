@@ -40,7 +40,8 @@
     type NodeColor,
   } from '$lib/utils/author-colors';
   import { cardNodeLabel } from '$lib/utils/card-label';
-  import { GRAPH_SOURCE_CAP, capSources } from '$lib/utils/graph-cap';
+  import { GRAPH_CAP_CHOICES, GRAPH_SOURCE_CAP, capSources } from '$lib/utils/graph-cap';
+  import { authorSummary } from '$lib/utils/author-names';
   import { UNDATED_BAND, chronoLayout, type ChronoLayout } from '$lib/utils/graph-chrono';
   import { buildHaystack, matchesAllTerms, searchTerms } from '$lib/utils/graph-search';
   import { STANCE_ORDER, STANCE_STYLES, stanceStroke } from '$lib/utils/stance';
@@ -265,9 +266,9 @@
   // Bornage. Une fiche de 152 références affichées d'un coup ne montre rien :
   // les nœuds se touchent et les étiquettes se recouvrent. Le graphe s'ouvre
   // sur une portion lisible et annonce ce qu'il garde en réserve — l'inverse
-  // d'un masquage silencieux.
-  let showAllSources = $state(false);
-  const sourceCap = $derived(showAllSources ? 0 : GRAPH_SOURCE_CAP);
+  // d'un masquage silencieux. Le plafond se règle : c'est au lecteur de dire
+  // où passe, pour lui, la limite du lisible. `0` = aucun plafond.
+  let sourceCap = $state<number>(GRAPH_SOURCE_CAP);
 
   /** Références d'une fiche, bornées. Même règle pour la racine et les dépliées. */
   function cappedOf(sources: GraphSourceData[]): GraphSourceData[] {
@@ -304,6 +305,15 @@
   /** Hauteur du bandeau d'années, réservée en haut du cadre. */
   const CHRONO_HEADER_HEIGHT = 24;
 
+  /**
+   * Ordonnée des panneaux flottants du haut.
+   *
+   * En chronologie, le bandeau d'années occupe les premiers pixels du cadre :
+   * les panneaux posés à `top-3` recouvraient les graduations, c'est-à-dire la
+   * seule clé de lecture de ce mode. Ils descendent donc sous le bandeau.
+   */
+  const overlayTop = $derived(layoutMode === 'chrono' ? CHRONO_HEADER_HEIGHT + 12 : 12);
+
   interface ChronoHeaderTick {
     x: number;
     label: string;
@@ -311,6 +321,8 @@
   }
 
   let chronoTicks: ChronoHeaderTick[] = [];
+  /** Abscisse du filet de rupture dans le repère du graphe, `null` s'il n'y en a pas. */
+  let chronoBreakX: number | null = null;
 
   // Légende : uniquement les valeurs présentes à l'écran.
   const legendEntries = $derived.by(() => {
@@ -439,8 +451,18 @@
         });
   }
 
+  // Premier nom seul par défaut : c'est le réglage qui tient sur un graphe
+  // dense sans rien affirmer de faux, « et al. » disant que la liste continue.
+  let showFirstAuthor = $state(true);
+  let showLastAuthor = $state(false);
+
   function authorLabel(s: GraphSourceData): string {
-    if (s.authors && s.authors.trim().length > 0) return truncate(s.authors, 22);
+    if (s.authors && s.authors.trim().length > 0) {
+      return truncate(
+        authorSummary(s.authors, { first: showFirstAuthor, last: showLastAuthor }),
+        30
+      );
+    }
     return truncate(s.title ?? s.url, 22);
   }
 
@@ -578,8 +600,9 @@
     remount();
   }
 
-  function toggleShowAllSources() {
-    showAllSources = !showAllSources;
+  function setSourceCap(cap: number) {
+    if (sourceCap === cap) return;
+    sourceCap = cap;
     remount();
   }
 
@@ -891,6 +914,20 @@
         .attr('stroke-dasharray', '4 4');
     }
 
+    // Filet de rupture : l'échelle s'interrompt ici. Sans ce signe, la colonne
+    // « sans date » se lit comme la première décennie de la frise — mesuré à
+    // l'usage sur une frise 1935-2021, où elle passait pour « 1940-1960 ».
+    if (chrono.breakX !== null) {
+      g.append('line')
+        .attr('x1', chrono.breakX + CHRONO_MARGIN)
+        .attr('x2', chrono.breakX + CHRONO_MARGIN)
+        .attr('y1', -span)
+        .attr('y2', span)
+        .attr('stroke', '#cbd5e1')
+        .attr('stroke-width', 1.5)
+        .attr('stroke-dasharray', '2 6');
+    }
+
     for (const t of chrono.ticks) {
       g.append('line')
         .attr('x1', t.x + CHRONO_MARGIN)
@@ -949,12 +986,44 @@
       .attr('text-anchor', 'middle')
       .attr('font-size', 12)
       .attr('fill', (d) => (d.muted ? '#94a3b8' : '#475569'));
+
+    // Marque de rupture d'échelle, la convention usuelle du « ⁄⁄ » : elle
+    // interrompt visiblement la règle des années, pour que la colonne « sans
+    // date » ne se lise pas comme sa première graduation.
+    chronoBreakX = chrono.breakX === null ? null : chrono.breakX + CHRONO_MARGIN;
+    if (chronoBreakX !== null) {
+      const b = g.append('g').attr('class', 'chrono-break');
+      b.append('rect')
+        .attr('x', -7)
+        .attr('y', CHRONO_HEADER_HEIGHT - 5)
+        .attr('width', 14)
+        .attr('height', 10)
+        .attr('fill', '#ffffff');
+      for (const dx of [-3, 2]) {
+        b.append('line')
+          .attr('x1', dx - 2)
+          .attr('x2', dx + 3)
+          .attr('y1', CHRONO_HEADER_HEIGHT + 4)
+          .attr('y2', CHRONO_HEADER_HEIGHT - 4)
+          .attr('stroke', '#94a3b8')
+          .attr('stroke-width', 1.5)
+          .attr('stroke-linecap', 'round');
+      }
+    }
     placeChronoHeader(zoomIdentity);
   }
 
   /** Replace les années selon le cadrage courant. Seul x suit le zoom. */
   function placeChronoHeader(transform: ZoomTransform) {
     if (!svgEl || chronoTicks.length === 0) return;
+    if (chronoBreakX !== null) {
+      const bx = transform.applyX(chronoBreakX);
+      select(svgEl)
+        .select('g.chrono-header')
+        .select('g.chrono-break')
+        .attr('transform', `translate(${bx},0)`)
+        .style('display', bx < 0 || bx > width ? 'none' : '');
+    }
     select(svgEl)
       .select('g.chrono-header')
       .selectAll<SVGTextElement, ChronoHeaderTick>('text')
@@ -1024,6 +1093,7 @@
     svg.selectAll('*').remove();
     svg.attr('viewBox', `0 0 ${width} ${height}`);
     chronoTicks = [];
+    chronoBreakX = null;
 
     // Le graphe apparaît d'un bloc. Allumer les nœuds un à un laissait les
     // liens — dessinés d'emblée — flotter entre des extrémités encore
@@ -1240,6 +1310,11 @@
       .attr('font-size', 12)
       .attr('font-weight', 600)
       .attr('fill', '#0f172a')
+      // Halo blanc permanent — cf. `title-label` pour le pourquoi.
+      .style('paint-order', 'stroke')
+      .attr('stroke', '#ffffff')
+      .attr('stroke-width', 3)
+      .attr('stroke-linejoin', 'round')
       .style('pointer-events', 'none')
       .text((d) => truncate(cardLabelOf(d), 30));
 
@@ -1252,6 +1327,10 @@
       .attr('y', (d) => -(d.radius + 22))
       .attr('font-size', 10)
       .attr('fill', '#475569')
+      .style('paint-order', 'stroke')
+      .attr('stroke', '#ffffff')
+      .attr('stroke-width', 3)
+      .attr('stroke-linejoin', 'round')
       .style('pointer-events', 'none')
       .text((d) => truncate(d.cardMeta ? d.cardMeta.title : card.title, 35));
 
@@ -1276,6 +1355,10 @@
       .attr('font-size', 11 * labelScale)
       .attr('font-weight', 500)
       .attr('fill', '#0f172a')
+      .style('paint-order', 'stroke')
+      .attr('stroke', '#ffffff')
+      .attr('stroke-width', 3)
+      .attr('stroke-linejoin', 'round')
       .style('pointer-events', 'none')
       .text((d) => (d.source ? authorLabel(d.source) : ''));
 
@@ -1288,10 +1371,15 @@
       .attr('dy', (d) => -(d.radius + 18))
       .attr('font-size', 10 * labelScale)
       .attr('fill', '#475569')
-      // Halo blanc au survol : le titre passe alors au-dessus des liens et des
-      // nœuds voisins sans avoir à réordonner le DOM (ce que `ticked` interdit,
-      // sa liaison de données se fait par index).
+      // Halo blanc permanent : un libellé qui croise un lien devenait illisible,
+      // le trait passant au milieu des lettres. `paint-order: stroke` dessine le
+      // contour *sous* le remplissage, de sorte que le halo dégage la lettre
+      // sans l'épaissir — et sans réordonner le DOM, ce que `ticked` interdit
+      // (sa liaison de données se fait par index).
       .style('paint-order', 'stroke')
+      .attr('stroke', '#ffffff')
+      .attr('stroke-width', 3)
+      .attr('stroke-linejoin', 'round')
       .style('pointer-events', 'none')
       .text((d) => (d.source ? truncate(d.source.title ?? '', 40) : ''));
 
@@ -1307,6 +1395,10 @@
       .attr('dy', (d) => d.radius + 13)
       .attr('font-size', 10 * labelScale)
       .attr('fill', (d) => (nodeYear(d) ? '#64748b' : '#cbd5e1'))
+      .style('paint-order', 'stroke')
+      .attr('stroke', '#ffffff')
+      .attr('stroke-width', 3)
+      .attr('stroke-linejoin', 'round')
       .style('pointer-events', 'none')
       .text((d) => nodeYear(d) || 's. d.');
 
@@ -1340,7 +1432,10 @@
             if (l.kind === 'meta') return 150 * spacingBoost;
             if (l.kind === 'parent') return 75 * spacingBoost;
             if (l.kind === 'sibling') return 55 * spacingBoost;
-            return 130 * spacingBoost;
+            // Une référence appartient à sa fiche : la tenir à distance la
+            // faisait lire comme un satellite lointain plutôt que comme un
+            // membre de la bibliographie.
+            return 65 * spacingBoost;
           })
           .strength((l) => {
             const src = typeof l.source === 'string' ? l.source : l.source.id;
@@ -1597,7 +1692,10 @@
     if (!svgEl) return;
     const svg = select(svgEl);
     const showAuthor = zoomLevel >= 0.7 * fitScale;
-    const showTitle = zoomLevel >= 1.5 * fitScale;
+    // Seuil haut : à 1,5× les titres apparaissaient encore alors que les nœuds
+    // se touchaient, et le texte d'un nœud recouvrait celui de ses voisins. Il
+    // faut être assez près pour qu'un titre ne parle que de son propre nœud.
+    const showTitle = zoomLevel >= 3 * fitScale;
     const hovered = hoveredId;
     // Un résultat de recherche affiche son titre quel que soit le zoom : sans
     // lui, l'utilisateur voit un point allumé sans savoir ce qu'il a trouvé.
@@ -1605,13 +1703,19 @@
     svg
       .selectAll<SVGTextElement, GraphNode>('text.author-label, text.card-creator, text.date-label')
       .style('display', showAuthor ? '' : 'none');
+    // Le réglage « premier / dernier auteur » se relit ici plutôt que par un
+    // remontage : changer un libellé n'a pas à rejouer la simulation.
+    svg
+      .selectAll<SVGTextElement, GraphNode>('text.author-label')
+      .text((d) => (d.source ? authorLabel(d.source) : ''));
     svg
       .selectAll<SVGTextElement, GraphNode>('text.title-label')
       .style('display', (d) => (showTitle || d.id === hovered || matched?.has(d.id) ? '' : 'none'))
       .attr('font-weight', (d) => (d.id === hovered ? 600 : null))
       .attr('fill', (d) => (d.id === hovered ? '#0f172a' : '#475569'))
-      .attr('stroke', (d) => (d.id === hovered ? '#ffffff' : null))
-      .attr('stroke-width', (d) => (d.id === hovered ? 3 : null))
+      // Le halo est permanent ; le survol l'élargit seulement, parce que le
+      // titre complet y est plus long et croise donc davantage de liens.
+      .attr('stroke-width', (d) => (d.id === hovered ? 4 : 3))
       .text((d) => {
         if (!d.source) return '';
         if (d.id === hovered) return truncate(d.source.title ?? d.source.url, 90);
@@ -1631,7 +1735,7 @@
     aria-label="Graphe interactif des sources"
   ></svg>
 
-  <div class="absolute top-3 left-3 flex flex-col items-start gap-1.5">
+  <div class="absolute left-3 flex flex-col items-start gap-1.5" style="top: {overlayTop}px">
     <div
       class="flex items-center gap-1.5 rounded-md bg-white/95 border border-slate-200 shadow-sm px-2 py-1.5 text-xs"
     >
@@ -1741,26 +1845,71 @@
       {/each}
     </div>
 
-    {#if hiddenSourcesCount > 0 || showAllSources}
+    <!--
+      Réglage explicite plutôt qu'un bouton « tout / rien » : la limite du
+      lisible dépend de l'écran et de la fiche, c'est au lecteur de la fixer.
+      Les sources clés sont retenues en priorité, quel que soit le plafond.
+    -->
+    {#if totalSources > Math.min(...GRAPH_CAP_CHOICES)}
+      <div
+        class="flex items-center gap-1.5 rounded-md bg-white/95 border border-slate-200 shadow-sm px-2.5 py-1.5 text-xs text-slate-600"
+      >
+        <label for="graph-cap">Nœuds affichés</label>
+        <select
+          id="graph-cap"
+          value={sourceCap}
+          onchange={(e) => setSourceCap(Number(e.currentTarget.value))}
+          class="bg-transparent font-medium text-slate-800 focus:outline-none"
+          title="Nombre maximum de références affichées — les sources clés d'abord"
+        >
+          {#each GRAPH_CAP_CHOICES as choice (choice)}
+            <option value={choice}>{choice}</option>
+          {/each}
+          <option value={0}>Toutes ({totalSources})</option>
+        </select>
+        {#if hiddenSourcesCount > 0}
+          <span class="text-slate-400">· {hiddenSourcesCount} en réserve</span>
+        {/if}
+      </div>
+    {/if}
+
+    <!--
+      Une liste de quinze auteurs recouvre les nœuds voisins. Le premier nom
+      seul est le réglage par défaut ; aucun des deux boutons enfoncé rend la
+      liste entière, la seule option qui ne perd rien.
+    -->
+    <div
+      class="flex items-center rounded-md bg-white/95 border border-slate-200 shadow-sm overflow-hidden text-xs"
+      role="group"
+      aria-label="Noms d'auteurs affichés"
+    >
+      <span class="px-2.5 py-1.5 text-slate-500">Auteurs</span>
       <button
         type="button"
-        onclick={toggleShowAllSources}
-        class="rounded-md bg-white/95 border border-slate-200 shadow-sm px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
-        aria-pressed={showAllSources}
-        title={showAllSources
-          ? 'Revenir à une vue lisible'
-          : 'Afficher toutes les références, au prix de la lisibilité'}
+        onclick={() => (showFirstAuthor = !showFirstAuthor)}
+        class="px-2.5 py-1.5 border-l border-slate-200 transition-colors {showFirstAuthor
+          ? 'bg-slate-800 text-white font-medium'
+          : 'text-slate-600 hover:bg-slate-50'}"
+        aria-pressed={showFirstAuthor}
+        title="N'afficher que le premier nom d'auteur"
       >
-        {#if showAllSources}
-          Réduire à {GRAPH_SOURCE_CAP}
-        {:else}
-          +{hiddenSourcesCount} autres
-        {/if}
+        Premier
       </button>
-    {/if}
+      <button
+        type="button"
+        onclick={() => (showLastAuthor = !showLastAuthor)}
+        class="px-2.5 py-1.5 border-l border-slate-200 transition-colors {showLastAuthor
+          ? 'bg-slate-800 text-white font-medium'
+          : 'text-slate-600 hover:bg-slate-50'}"
+        aria-pressed={showLastAuthor}
+        title="N'afficher que le dernier nom d'auteur"
+      >
+        Dernier
+      </button>
+    </div>
   </div>
 
-  <div class="absolute top-3 right-3 flex flex-col gap-1.5">
+  <div class="absolute right-3 flex flex-col gap-1.5" style="top: {overlayTop}px">
     <button
       onclick={() => zoomBy(1.25)}
       class="w-8 h-8 rounded-md bg-white/95 border border-slate-200 shadow-sm hover:bg-slate-50 flex items-center justify-center text-slate-700"

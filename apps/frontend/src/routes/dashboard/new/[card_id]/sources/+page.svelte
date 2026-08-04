@@ -63,6 +63,9 @@
   let publisher = $state('');
   let doiField = $state('');
   let extraMetaOpen = $state(false);
+  // Le lien vers une autre source de la fiche est rare : replié par défaut, il
+  // ne doit pas peser autant que l'URL ou le titre dans le formulaire.
+  let parentLinkOpen = $state(false);
   let addError = $state<string | null>(null);
   let addLoading = $state(false);
   let editingSourceId = $state<string | null>(null);
@@ -173,6 +176,7 @@
     publisher = '';
     doiField = '';
     extraMetaOpen = false;
+    parentLinkOpen = false;
     lastExtractedUrl = '';
     taxonomySuggested = false;
     editingSourceId = null;
@@ -206,6 +210,7 @@
     publisher = source.publisher ?? '';
     doiField = source.doi ?? '';
     extraMetaOpen = Boolean(journal || volume || pages || publisher || doiField);
+    parentLinkOpen = Boolean(parentSourceId);
     lastExtractedUrl = source.url;
     taxonomySuggested = false;
     addError = null;
@@ -1015,7 +1020,7 @@
           type="url"
           bind:value={refsUrl}
           placeholder="https://youtube.com/watch?v=... ou https://votre-blog.fr/article"
-          class="flex-1 min-w-0 px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
+          class="flex-1 min-w-0 px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
         />
         {#if hasExtractedRefs}
           <button
@@ -1182,28 +1187,11 @@
     </div>
   {/if}
 
-  <!-- Add / edit source form -->
-  <div
-    class="bg-surface-primary border rounded-xl p-6 mb-6 {isEditing
-      ? 'border-info/50 ring-1 ring-info/30'
-      : 'border-border'}"
-  >
-    <div class="flex items-center justify-between mb-4">
-      <h2 class="text-lg font-semibold text-ink-primary">
-        {isEditing ? 'Modifier la source' : 'Ajouter des sources'}
-      </h2>
-      {#if isEditing}
-        <button
-          type="button"
-          onclick={cancelEdit}
-          class="text-sm text-ink-tertiary hover:text-ink-primary transition-colors"
-        >
-          Annuler
-        </button>
-      {/if}
-    </div>
+  <!-- Ajout en lot : coller ou importer -->
+  {#if !isEditing}
+    <div class="bg-surface-primary border border-border rounded-xl p-6 mb-6">
+      <h2 class="text-lg font-semibold text-ink-primary mb-4">Ajouter des sources</h2>
 
-    {#if !isEditing}
       <div class="space-y-4">
         <div class="space-y-1.5">
           <label for="multi-urls" class="block text-sm font-medium text-ink-secondary">
@@ -1218,7 +1206,7 @@
             bind:value={multiText}
             rows={8}
             placeholder={'— Une liste de liens :\nhttps://doi.org/10.1038/s41586-020-2649-2\nhttps://www.lemonde.fr/...\n\n— OU une bibliographie complète collée depuis un article, Zotero, un PDF… :\nWolfe, C. D., & Bell, M. A. (2007). The integration of cognition and emotion during infancy and early childhood: regulatory processes associated with the development of working memory. Brain and Cognition, 65(1), 3–13. https://doi.org/10.1016/j.bandc.2006.01.009\nDupont, J., & Martin, A. (2020). Titre. Journal, 12(3), 45-67.'}
-            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary font-mono text-sm resize-y min-h-[8rem]"
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder font-mono text-sm resize-y min-h-[8rem]"
           ></textarea>
         </div>
         <div class="flex items-center justify-between gap-3 flex-wrap">
@@ -1345,14 +1333,14 @@
                     bind:value={draft.title}
                     placeholder="Titre"
                     disabled={draft.status === 'extracting'}
-                    class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-tertiary disabled:opacity-60"
+                    class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-placeholder disabled:opacity-60"
                   />
                   <input
                     type="text"
                     bind:value={draft.authors}
                     placeholder="Auteurs"
                     disabled={draft.status === 'extracting'}
-                    class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-tertiary disabled:opacity-60"
+                    class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-placeholder disabled:opacity-60"
                   />
                   <select
                     bind:value={draft.format}
@@ -1420,31 +1408,31 @@
                         type="text"
                         bind:value={draft.journal}
                         placeholder="Journal / revue"
-                        class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-tertiary sm:col-span-2"
+                        class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-placeholder sm:col-span-2"
                       />
                       <input
                         type="text"
                         bind:value={draft.volume}
                         placeholder="Volume"
-                        class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-tertiary"
+                        class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-placeholder"
                       />
                       <input
                         type="text"
                         bind:value={draft.pages}
                         placeholder="Pages (ex. 123-145)"
-                        class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-tertiary"
+                        class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-placeholder"
                       />
                       <input
                         type="text"
                         bind:value={draft.publisher}
                         placeholder="Éditeur"
-                        class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-tertiary"
+                        class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-placeholder"
                       />
                       <input
                         type="text"
                         bind:value={draft.doi}
                         placeholder="DOI"
-                        class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-tertiary font-mono"
+                        class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-placeholder font-mono"
                       />
                     </div>
                   {/if}
@@ -1477,15 +1465,29 @@
           </div>
         {/if}
       </div>
+    </div>
+  {/if}
 
-      <div class="flex items-center gap-3 my-6" aria-hidden="true">
-        <div class="flex-1 h-px bg-border"></div>
-        <span class="text-xs uppercase tracking-wider text-ink-tertiary"
-          >Ou ajouter une source à la fois</span
+  <!-- Ajout ou modification d'une source unique -->
+  <div
+    class="bg-surface-primary border rounded-xl p-6 mb-6 {isEditing
+      ? 'border-info/50 ring-1 ring-info/30'
+      : 'border-border'}"
+  >
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-semibold text-ink-primary">
+        {isEditing ? 'Modifier la source' : 'Ajouter une source à la fois'}
+      </h2>
+      {#if isEditing}
+        <button
+          type="button"
+          onclick={cancelEdit}
+          class="text-sm text-ink-tertiary hover:text-ink-primary transition-colors"
         >
-        <div class="flex-1 h-px bg-border"></div>
-      </div>
-    {/if}
+          Annuler
+        </button>
+      {/if}
+    </div>
 
     <form onsubmit={submitSource} class="space-y-4">
       {#if addError}
@@ -1509,7 +1511,7 @@
               required
               readonly={isEditing}
               placeholder="https://doi.org/..."
-              class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary read-only:bg-surface-tertiary read-only:text-ink-tertiary read-only:cursor-not-allowed"
+              class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder read-only:bg-surface-tertiary read-only:text-ink-tertiary read-only:cursor-not-allowed"
             />
             {#if extracting}
               <div
@@ -1605,7 +1607,7 @@
             type="text"
             bind:value={sourceTitle}
             placeholder="Titre de la source"
-            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
           />
         </div>
 
@@ -1618,7 +1620,7 @@
             type="text"
             bind:value={authors}
             placeholder="Dupont J., Martin A."
-            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
           />
         </div>
 
@@ -1631,7 +1633,7 @@
             bind:value={annotation}
             rows={2}
             placeholder="Pourquoi cette source est-elle importante ?"
-            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary resize-y min-h-[3rem]"
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder resize-y min-h-[3rem]"
           ></textarea>
         </div>
 
@@ -1684,7 +1686,7 @@
             type="url"
             bind:value={archiveUrl}
             placeholder="https://web.archive.org/web/2026.../https://..."
-            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary font-mono text-sm"
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder font-mono text-sm"
           />
         </div>
 
@@ -1720,7 +1722,7 @@
                   type="text"
                   bind:value={journal}
                   placeholder="Nature Neuroscience"
-                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
+                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
                 />
               </div>
               <div class="space-y-1.5">
@@ -1732,7 +1734,7 @@
                   type="text"
                   bind:value={volume}
                   placeholder="42"
-                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
+                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
                 />
               </div>
               <div class="space-y-1.5">
@@ -1744,7 +1746,7 @@
                   type="text"
                   bind:value={pages}
                   placeholder="123-145"
-                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
+                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
                 />
               </div>
               <div class="space-y-1.5">
@@ -1756,7 +1758,7 @@
                   type="text"
                   bind:value={publisher}
                   placeholder="Elsevier"
-                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
+                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
                 />
               </div>
               <div class="space-y-1.5">
@@ -1768,7 +1770,7 @@
                   type="text"
                   bind:value={doiField}
                   placeholder="10.1038/s41593-023-01234-5"
-                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary font-mono text-sm"
+                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder font-mono text-sm"
                 />
               </div>
             </div>
@@ -1785,33 +1787,57 @@
         </div>
 
         {#if sources.length > 0}
-          <div class="sm:col-span-2 space-y-1.5">
-            <label for="source-parent" class="block text-sm font-medium text-ink-secondary">
-              Cette source en cite une autre de cette même fiche ?
-              <span class="text-xs text-ink-tertiary font-normal"
-                >— lien interne, affiché en pointillés dans le graphe</span
-              >
-            </label>
-            <input
-              type="search"
-              bind:value={parentSourceQuery}
-              placeholder="Filtrer les sources de cette fiche (numéro, titre, URL)…"
-              aria-label="Rechercher parmi les sources de cette fiche"
-              class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info"
-            />
-            <select
-              id="source-parent"
-              bind:value={parentSourceId}
-              size={numberedSources.length > 8 ? 8 : undefined}
-              class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
+          <div class="sm:col-span-2">
+            <button
+              type="button"
+              onclick={() => (parentLinkOpen = !parentLinkOpen)}
+              class="flex items-center gap-1.5 text-sm font-medium text-ink-secondary hover:text-ink-primary transition-colors"
+              aria-expanded={parentLinkOpen}
+              aria-controls="source-parent-link"
             >
-              <option value="">— Aucun lien parent —</option>
-              {#each numberedSources as { source: s, number } (s.id)}
-                <option value={s.id}>{number}. {s.title ?? s.url}</option>
-              {/each}
-            </select>
-            {#if parentSourceQuery.trim() && numberedSources.length === 0}
-              <p class="text-xs text-ink-tertiary">Aucune source ne correspond à ce filtre.</p>
+              <svg
+                viewBox="0 0 24 24"
+                class="w-4 h-4 transition-transform {parentLinkOpen ? 'rotate-180' : ''}"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+              Cette source en cite une autre de cette même fiche ?
+            </button>
+            {#if parentLinkOpen}
+              <div id="source-parent-link" class="mt-3 space-y-1.5">
+                <p class="text-xs text-ink-tertiary">
+                  Déclare que cette source cite l'une des autres sources de la fiche. Le graphe
+                  relie alors les deux par un trait en pointillés : la chaîne de citations entre vos
+                  propres références devient visible.
+                </p>
+                <label for="source-parent" class="sr-only">Source citée par celle-ci</label>
+                <input
+                  type="search"
+                  bind:value={parentSourceQuery}
+                  placeholder="Filtrer les sources de cette fiche (numéro, titre, URL)…"
+                  aria-label="Rechercher parmi les sources de cette fiche"
+                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-placeholder"
+                />
+                <select
+                  id="source-parent"
+                  bind:value={parentSourceId}
+                  size={numberedSources.length > 8 ? 8 : undefined}
+                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
+                >
+                  <option value="">— Aucun lien parent —</option>
+                  {#each numberedSources as { source: s, number } (s.id)}
+                    <option value={s.id}>{number}. {s.title ?? s.url}</option>
+                  {/each}
+                </select>
+                {#if parentSourceQuery.trim() && numberedSources.length === 0}
+                  <p class="text-xs text-ink-tertiary">Aucune source ne correspond à ce filtre.</p>
+                {/if}
+              </div>
             {/if}
           </div>
         {/if}
@@ -1992,7 +2018,7 @@
               bind:value={excerptText}
               maxlength={1000}
               placeholder="Ajouter une citation manuellement…"
-              class="flex-1 px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-tertiary"
+              class="flex-1 px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-placeholder"
             />
             <Button
               type="button"

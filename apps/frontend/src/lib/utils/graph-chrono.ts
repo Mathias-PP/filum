@@ -11,13 +11,29 @@
  * garée dans une colonne à part, explicitement étiquetée « sans date ».
  * L'alternative — la coller à l'année médiane, ou à l'extrémité — ferait dire au
  * graphe une chose que personne n'a vérifiée.
+ *
+ * ⚠️ Un simple écart ne suffit pas. **Une position sur un axe temporel signifie
+ * une date, quel que soit l'écart** : signalé à l'usage le 2026-08-04, la
+ * colonne collée à gauche d'une frise 1935→2021 se lisait « années 1940-1960 ».
+ * D'où `breakX` : la colonne est séparée de la frise par un **filet de rupture**
+ * explicite, la convention usuelle pour dire « l'échelle s'interrompt ici ».
+ * Sans ce filet, l'absence redevient une valeur — et une valeur fausse.
+ *
+ * La colonne est placée **après** la frise, à droite. À gauche, elle occupait la
+ * place que l'œil lit comme « le plus ancien » ; à droite, après la fin de
+ * l'échelle, elle se lit comme ce qu'elle est : hors frise.
  */
 
 /** Largeur de la colonne « sans date », en unités de repère du graphe. */
 export const UNDATED_BAND = 130;
 
-/** Écart entre la colonne « sans date » et la première année datée. */
-export const UNDATED_GUTTER = 70;
+/**
+ * Écart entre la colonne « sans date » et la première année datée.
+ *
+ * Assez large pour loger le filet de rupture et ne pas se lire comme un simple
+ * intervalle entre deux graduations.
+ */
+export const UNDATED_GUTTER = 170;
 
 export interface ChronoItem {
   id: string;
@@ -36,6 +52,13 @@ export interface ChronoLayout {
   ticks: ChronoTick[];
   /** Centre de la colonne des sources sans date, `null` s'il n'y en a aucune. */
   undatedX: number | null;
+  /**
+   * Abscisse du filet de rupture qui détache cette colonne de la frise.
+   *
+   * `null` quand tout est daté (rien à détacher) et quand rien ne l'est (il n'y
+   * a alors pas de frise dont se détacher).
+   */
+  breakX: number | null;
   /** Combien de sources n'ont pas de date exploitable. */
   undatedCount: number;
   minYear: number | null;
@@ -91,6 +114,7 @@ export function chronoLayout(items: ChronoItem[], width: number): ChronoLayout {
     x,
     ticks: [],
     undatedX: null,
+    breakX: null,
     undatedCount,
     minYear: null,
     maxYear: null,
@@ -111,9 +135,13 @@ export function chronoLayout(items: ChronoItem[], width: number): ChronoLayout {
   const minYear = Math.min(...values);
   const maxYear = Math.max(...values);
 
-  const undatedX = undatedCount > 0 ? UNDATED_BAND / 2 : null;
-  const left = undatedCount > 0 ? UNDATED_BAND + UNDATED_GUTTER : 0;
-  const right = Math.max(left + 1, width);
+  const left = 0;
+  const right =
+    undatedCount > 0
+      ? Math.max(left + 1, width - UNDATED_GUTTER - UNDATED_BAND)
+      : Math.max(left + 1, width);
+  const breakX = undatedCount > 0 ? right + UNDATED_GUTTER / 2 : null;
+  const undatedX = undatedCount > 0 ? right + UNDATED_GUTTER + UNDATED_BAND / 2 : null;
   const span = maxYear - minYear;
 
   const at = (year: number): number =>
@@ -143,5 +171,5 @@ export function chronoLayout(items: ChronoItem[], width: number): ChronoLayout {
     }
   }
 
-  return { x, ticks, undatedX, undatedCount, minYear, maxYear };
+  return { x, ticks, undatedX, breakX, undatedCount, minYear, maxYear };
 }
