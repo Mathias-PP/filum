@@ -1114,6 +1114,40 @@ Deux bugs aggravants : `SourceUpdate` ne déclarait pas `linked_card_id`, donc t
 - Les libellés du formulaire distinguent explicitement le lien interne (`parent_source_id`, entre sources d'une même fiche) du lien fiche→fiche.
 - `resolve_linked_card_id` reste un raccourci utile mais n'est plus le seul chemin : coller une URL Philum et choisir au picker produisent le même résultat.
 
+---
+
+## ADR-026 — Archivage : quatre états, une cadence mesurée, deux canaux
+
+**Date** : 2026-08-04
+
+**Contexte**
+
+Une fiche de 152 sources affichait **0 archivée** et **101 en échec**. Quatre défauts empilés, tous de même nature : un état affirmatif avait absorbé un état d'ignorance.
+
+1. `failed` était écrit faute d'avoir trouvé **à temps**. Save Page Now travaille en différé : un délai n'est pas un échec.
+2. 4 sources n'avaient **aucune URL** (un manuel DSM-IV-TR, un chapitre de livre). Marquées `failed`, elles affirmaient qu'on avait essayé et que la page était perdue. Elles condamnaient aussi le compteur : « 148/152 » indépassable sur une fiche pourtant complète.
+3. L'intervalle fixe de 6 s se faisait refuser (`429`, et des `523` Cloudflare) — mesuré sur la VM, pas supposé.
+4. `_lookup_snapshot` avalait le 429 pour répondre « aucun instantané » : conclure sur une URL qu'on n'avait **jamais réussi à interroger**.
+
+**Décisions**
+
+1. **Quatre états qui ne se recouvrent pas** : `pending` (essayé, pas encore abouti), `archived`, `failed` (jugé, définitivement impossible — une URL de loopback par exemple), `not_applicable` (rien à archiver). Le compteur se lit sur `archivable_count`, qui exclut le dernier.
+2. **Aucune cadence codée en dur.** Le rythme part d'un plancher, double à chaque refus (`Retry-After` honoré), redescend quand les requêtes repassent, sous un budget de temps par lot. Ce qui dépasse reste `pending` ; la reprise paresseuse le repropose au prochain affichage.
+3. **Un refus est un signal, pas une réponse.** `ThrottledError` est distinct d'une absence d'instantané.
+4. **Deux canaux avant de conclure** : CDX puis l'API de disponibilité. Une absence n'est affirmée que sur une réponse saine.
+
+**Justifications**
+
+- **Un intervalle fixe ne peut pas être juste** : les limites d'archive.org ne sont pas publiées et varient avec sa charge. Toute valeur en dur est soit trop lente, soit rejetée. Seule une cadence qui s'ajuste au service peut convenir dans toutes les situations.
+- **Les deux canaux interrogent le même index.** Mesuré depuis la VM, à la même seconde et depuis la même IP : `wayback/available` répondait 429 pendant que `cdx/search/cdx` répondait 200 avec l'instantané. La limitation porte sur le point d'entrée, pas sur l'archive.
+- C'est la règle déjà appliquée à `retraction_status` et `oa_status`, portée une couche plus bas : **ne jamais rabattre « je ne sais pas » sur une affirmation**. Le coût de l'inverse est direct — une fiche complète qui se déclare incomplète, ou qui déclare mortes des pages qui ne le sont pas.
+
+**Conséquences**
+
+- Un lot ne s'achève pas forcément en une passe, et c'est assumé : l'archivage est incrémental et convergent, pas transactionnel.
+- `Source.url` est `nullable=False` : une référence sans URL publique ne peut s'exprimer que par une chaîne vide. À revoir (backlog).
+- Panne silencieuse à surveiller : un état que la base sait écrire mais que le schéma d'API ne sait pas relire. Vécu le jour même (500 en production sur les seules fiches concernées), désormais interdit par un test de parité des enums `models`/`schemas`.
+
 <!--
 ## ADR-NNN — Titre court
 
