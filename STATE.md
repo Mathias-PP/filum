@@ -2,7 +2,7 @@
 
 > Snapshot vivant, 1 page max. **Pour l'historique détaillé** : voir [`CHANGELOG.md`](./CHANGELOG.md). **Pour les items long terme** : voir [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md).
 
-**Dernière mise à jour : 2026-08-03**
+**Dernière mise à jour : 2026-08-04**
 
 ---
 
@@ -34,6 +34,17 @@ Avant : Phase 2 (identité visuelle Pulsar-graph + audit) et Phase 1 (MVP comple
 ---
 
 ## PRs ouvertes
+
+**#257 → #263** — Session 2026-08-04 (autonome) — **audit UX de bout en bout, puis trois violations d'un même principe.** Toutes mergées, VM redéployée. Le fil conducteur : *un état ne doit jamais en absorber un autre.*
+- **#257** `fix/archivage-cadence` — l'archivage inscrivait `failed` faute d'avoir trouvé à temps. Un délai n'est pas un échec : la source reste `pending` et la reprise paresseuse la repropose.
+- **#258** `fix/fiche-demo` — métadonnées de la fiche démo. **Vérifié en prod** : 18 sources, 9 datées, 5 DOI, les 4 positions, 16 archivées, **0 en échec**.
+- **#259** `fix/coherence-pages-vitrine` — trois affirmations fausses sur les pages publiques, chacune vérifiée dans le code avant correction : l'inscription Google est ouverte, donc la liste d'attente ne pouvait pas promettre « une notification à l'ouverture ». Six fonctionnalités livrées mais jamais annoncées ont été ajoutées à `/features` et `/roadmap` — **chacune grepée dans le code avant d'être vendue**.
+- **#260** `fix/csrf-and-sandbox` — ⚠️ **vraie faille**. `csrf.checkOrigin: false` traînait depuis #22 sans justification écrite ; or le cookie de session est `SameSite=None` en prod et `/api/[...path]` relaie les POST avec ce cookie — une page tierce pouvait soumettre un formulaire authentifié. Rien ne requiert de POST cross-origin (les deux étapes OAuth sont des GET, aucune `action` SvelteKit). Bloc supprimé, **test vérifié rouge quand on le réintroduit**. Au passage `/sandbox` répond 404 hors développement.
+- **#261** `fix/archive-not-applicable` — 4 sources sur 152 n'avaient **aucune URL** (manuel DSM-IV-TR, chapitre de livre) et étaient marquées `failed`. Nouvel état `not_applicable`, et surtout **dénominateur honnête** : `archivable_count` exclut ce qui n'a rien à archiver, sinon « 148/152 » était indépassable sur une fiche pourtant complète.
+- **#262** `fix/wayback-adaptive-pacing` — mesuré sur la VM : Save Page Now répondait `429` **et** `523` malgré l'intervalle fixe de 6 s ; zéro source archivée sur 152. Deux défauts. ⚠️ **Un intervalle fixe ne peut pas être juste** — les limites d'archive.org ne sont pas publiées et varient avec sa charge. La cadence part d'un plancher, double à chaque refus (`Retry-After` honoré), redescend quand ça repasse, sous un budget de temps par lot. Et `_lookup_snapshot` avalait le 429 pour répondre « aucun instantané » — conclure sur une URL qu'on n'a **jamais réussi à interroger**. Le refus est désormais un signal distinct.
+- **#263** `fix/archive-status-schema-enum` — ⚠️ **régression de #261, active en prod, trouvée par la vérification post-déploiement**. `not_applicable` était écrit en base par la migration 024, mais `app/schemas/source.py` redéclarait **sa propre copie** de l'enum, restée à trois valeurs : toute fiche contenant une source sans URL répondait **500**. La fiche de démo n'en contient aucune — elle passait, ce qui a rendu la CI *et* le premier contrôle post-déploiement muets. La copie est supprimée, le schéma réexporte l'enum du modèle, deux tests interdisent la divergence de revenir.
+- **Leçon de méthode** : quatre expériences successives ont été nécessaires pour distinguer « archive.org est en panne » de « nous sommes limités » — et **deux hypothèses intermédiaires ont dû être corrigées** (un `200` isolé s'est révélé être un cache CDN). Instrumenter avant de spéculer, y compris contre soi-même.
+- **Décision assumée** : pas de refonte UI. L'interface est cohérente ; c'était la donnée affichée qui était vide ou fausse.
 
 **#251 → #256** — Session 2026-08-03 (autonome) — **passe de sécurité et de dépendances**, une fois les 9 chantiers livrés :
 - **#251** `fix/postcss-path-traversal` — la seule alerte Dependabot ouverte (sévérité haute, scope runtime) : postcss ≤ 8.5.17 laissait un `sourceMappingURL` forgé faire lire un `.map` arbitraire au build. Le lockfile était sur 8.5.14. ⚠️ **Le plancher déclaré `^8.5.0` autorisait la plage vulnérable** — il ne suffit pas de bouger le lockfile, le plancher est relevé à `^8.5.25` pour qu'il ne puisse plus redescendre. Même logique appliquée aux autres paquets : `^9.0.0` ou `^5.0.0` permettaient un lockfile très en deçà de ce qui est réellement testé. **Mergée. Zéro alerte Dependabot ouverte depuis.**
