@@ -965,9 +965,6 @@ async def _drop_s2_hallucinations(
     return [r for r in s2_refs if r.url not in drop_urls]
 
 
-@router.post("/import/from-content-url", response_model=ImportFromUrlResponse)
-# Rate-limit retire (phase test/pre-produit) : auth-only, iteration libre.
-# A reintroduire quand on aura une metrique de cout LLM/Crossref preoccupante.
 def _resolve_confidence(validation_confidence: str, enrichment_count: int) -> str:
     """Confiance annoncee, une fois connue la composition du resultat.
 
@@ -984,6 +981,9 @@ def _resolve_confidence(validation_confidence: str, enrichment_count: int) -> st
     return validation_confidence
 
 
+@router.post("/import/from-content-url", response_model=ImportFromUrlResponse)
+# Rate-limit retire (phase test/pre-produit) : auth-only, iteration libre.
+# A reintroduire quand on aura une metrique de cout LLM/Crossref preoccupante.
 async def parse_content_url(
     request: Request,
     payload: ImportFromUrlRequest,
