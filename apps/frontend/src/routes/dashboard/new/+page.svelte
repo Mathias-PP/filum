@@ -282,7 +282,7 @@
             oninput={(e) => (contentUrl = (e.target as HTMLInputElement).value)}
             onblur={() => suggestFromUrl()}
             placeholder="https://youtube.com/watch?v=… ou https://…/article"
-            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
           />
           {#if suggesting}
             <div
@@ -378,7 +378,7 @@
         oninput={onTitleInput}
         required
         placeholder="Ex: La mémoire et le cerveau — ce que dit la science"
-        class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
+        class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
       />
     </div>
 
@@ -393,7 +393,7 @@
         oninput={(e) => (contentAuthors = (e.target as HTMLInputElement).value)}
         maxlength={500}
         placeholder="Ex: Diamond A., Ling D.S."
-        class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary"
+        class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
       />
       <p class="text-xs text-ink-tertiary">
         Qui a écrit ou réalisé le contenu documenté — pas qui publie la fiche. C'est ce nom qui
@@ -417,7 +417,7 @@
           disabled={Boolean(editCardId)}
           pattern="[a-z0-9-]+"
           placeholder="memoire-et-cerveau"
-          class="flex-1 px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary disabled:opacity-60 disabled:cursor-not-allowed"
+          class="flex-1 px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder disabled:opacity-60 disabled:cursor-not-allowed"
         />
       </div>
       <p class="text-xs text-ink-tertiary">
@@ -437,7 +437,7 @@
         oninput={(e) => (description = (e.target as HTMLTextAreaElement).value)}
         rows={3}
         placeholder="Résumé de votre contenu..."
-        class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-tertiary resize-y min-h-[3rem]"
+        class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder resize-y min-h-[3rem]"
       ></textarea>
     </div>
 

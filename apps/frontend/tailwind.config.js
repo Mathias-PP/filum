@@ -18,6 +18,7 @@ export default {
           primary: 'rgb(var(--text-primary) / <alpha-value>)',
           secondary: 'rgb(var(--text-secondary) / <alpha-value>)',
           tertiary: 'rgb(var(--text-tertiary) / <alpha-value>)',
+          placeholder: 'rgb(var(--text-placeholder) / <alpha-value>)',
         },
         border: {
           DEFAULT: 'rgb(var(--border) / <alpha-value>)',

@@ -6,16 +6,23 @@
  * zoomer avant de comprendre ce qu'il regarde. Le graphe s'ouvre donc sur une
  * portion lisible, et dit combien il en garde en réserve.
  *
- * L'ordre retenu est celui de la fiche, pas un classement maison : choisir
- * « les plus importantes » supposerait un jugement que Philum n'a pas à
- * porter sur la bibliographie de quelqu'un d'autre.
+ * Le seul classement admis est celui que la créatrice ou le créateur a
+ * lui-même déclaré : les sources marquées « clé » passent devant. Pour tout le
+ * reste, l'ordre est celui de la fiche — décider laquelle des références de
+ * quelqu'un d'autre « compte » supposerait un jugement que Philum n'a pas à
+ * porter.
  */
 
-export const GRAPH_SOURCE_CAP = 60;
+/** Plafond par défaut. L'utilisateur peut le relever ou l'abaisser lui-même. */
+export const GRAPH_SOURCE_CAP = 250;
+
+/** Valeurs proposées au réglage, en plus de « tout afficher ». */
+export const GRAPH_CAP_CHOICES = [25, 50, 100, 250, 500] as const;
 
 interface Capable {
   id: string;
   parent_source_id: string | null;
+  is_pivot?: boolean;
 }
 
 export interface CapResult<T> {
@@ -24,8 +31,8 @@ export interface CapResult<T> {
 }
 
 /**
- * Garde les `cap` premières références dans l'ordre reçu, plus les parents
- * dont elles dépendent.
+ * Garde `cap` références — les sources clés d'abord, puis l'ordre de la fiche —
+ * plus les parents dont elles dépendent.
  *
  * Sans cette remontée, une source secondaire retenue verrait son parent
  * coupé et flotterait détachée : le graphe montrerait une filiation qui n'a
@@ -36,12 +43,20 @@ export function capSources<T extends Capable>(sources: T[], cap: number): CapRes
     return { kept: sources, hiddenCount: 0 };
   }
 
+  // Tri stable : les clés remontent, l'ordre de la fiche est conservé au sein
+  // de chaque groupe.
+  const ranked = sources
+    .map((s, i) => ({ s, i }))
+    .sort((a, b) => Number(b.s.is_pivot ?? false) - Number(a.s.is_pivot ?? false) || a.i - b.i)
+    .map(({ s }) => s);
+
   const byId = new Map<string, T>(sources.map((s) => [s.id, s]));
   const keptIds = new Set<string>();
+  const selected = ranked.slice(0, cap);
 
-  for (const s of sources.slice(0, cap)) keptIds.add(s.id);
+  for (const s of selected) keptIds.add(s.id);
 
-  for (const s of sources.slice(0, cap)) {
+  for (const s of selected) {
     let parentId = s.parent_source_id;
     // Garde-fou : un cycle de filiation, même invalide, ne doit pas figer le
     // rendu de la page.

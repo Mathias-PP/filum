@@ -5,10 +5,9 @@
 
   interface Props {
     cardId: string;
-    creatorName: string;
   }
 
-  let { cardId, creatorName }: Props = $props();
+  let { cardId }: Props = $props();
 
   let open = $state(false);
   let email = $state('');
@@ -36,9 +35,15 @@
 <div
   class="mb-6 flex flex-col sm:flex-row sm:items-center gap-3 rounded border border-border-strong bg-surface-secondary px-4 py-3 text-sm"
 >
+  <!--
+    Aucun nom ici. Le compte sous lequel vit la fiche est celui qui l'a établie,
+    pas l'auteur·rice du contenu d'origine : nommer le premier pour désigner le
+    second faisait dire au bandeau « non validée par X » à X lui-même. Philum ne
+    connaît pas de façon fiable l'auteur·rice du contenu — il ne le nomme donc pas.
+  -->
   <p class="flex-1 text-ink-secondary">
-    Fiche d'exemple établie par Philum à partir de sources publiques — non validée par
-    {creatorName}. Vous êtes {creatorName}&nbsp;?
+    Fiche établie par Philum à partir de sources publiques — elle n'a pas été validée par
+    l'auteur·rice du contenu d'origine. C'est votre contenu&nbsp;?
   </p>
   <Button size="sm" variant="secondary" onclick={() => (open = true)}>Réclamer cette fiche</Button>
 </div>

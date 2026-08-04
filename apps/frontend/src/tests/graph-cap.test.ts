@@ -5,6 +5,7 @@ import { capSources } from '$lib/utils/graph-cap';
 interface S {
   id: string;
   parent_source_id: string | null;
+  is_pivot?: boolean;
 }
 
 const flat = (n: number, offset = 0): S[] =>
@@ -27,6 +28,22 @@ describe('capSources', () => {
   it('respecte l’ordre de la fiche plutôt qu’un classement maison', () => {
     const r = capSources(flat(100), 5);
     expect(r.kept.map((s) => s.id)).toEqual(['s0', 's1', 's2', 's3', 's4']);
+  });
+
+  it('fait passer les sources clés devant, même en fin de fiche', () => {
+    // Le seul classement admis est celui que l'auteur·rice a déclaré.
+    const sources: S[] = [...flat(50), { id: 'cle', parent_source_id: null, is_pivot: true }];
+    expect(capSources(sources, 3).kept.map((s) => s.id)).toContain('cle');
+  });
+
+  it('garde l’ordre de la fiche entre sources clés', () => {
+    const sources: S[] = [
+      { id: 'k1', parent_source_id: null, is_pivot: true },
+      ...flat(50),
+      { id: 'k2', parent_source_id: null, is_pivot: true },
+    ];
+    const r = capSources(sources, 2);
+    expect(r.kept.map((s) => s.id)).toEqual(['k1', 'k2']);
   });
 
   it('remonte le parent d’une source retenue', () => {
