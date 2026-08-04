@@ -1122,7 +1122,7 @@ Deux bugs aggravants : `SourceUpdate` ne déclarait pas `linked_card_id`, donc t
 
 **Contexte**
 
-Une fiche de 152 sources affichait **0 archivée** et **101 en échec**. Huit défauts empilés, tous de même nature : un état affirmatif avait absorbé un état d'ignorance.
+Une fiche de 152 sources affichait **0 archivée** et **101 en échec**. Neuf défauts empilés, tous de même nature : un état affirmatif avait absorbé un état d'ignorance.
 
 1. `failed` était écrit faute d'avoir trouvé **à temps**. Save Page Now travaille en différé : un délai n'est pas un échec.
 2. 4 sources n'avaient **aucune URL** (un manuel DSM-IV-TR, un chapitre de livre). Marquées `failed`, elles affirmaient qu'on avait essayé et que la page était perdue. Elles condamnaient aussi le compteur : « 148/152 » indépassable sur une fiche pourtant complète.
@@ -1134,6 +1134,7 @@ Une fiche de 152 sources affichait **0 archivée** et **101 en échec**. Huit d�
 8. Les six premiers corrigés, la fiche restait à **0 archivée** : les 148 URL en attente étaient toutes des `https://doi.org/...`. `doi.org` est un **résolveur** ; toutes ses captures dans l'archive sont des `302`. Le filtre `statuscode:200` les excluait donc toutes — et il avait raison : un redirect archivé ne préserve aucun contenu. On sondait le panneau indicateur au lieu de la ressource.
 9. Le résolveur branché, la fiche passait à 16 archivées — dont plusieurs sur `linkinghub.elsevier.com`, qui répond **200** (aucun client HTTP n'y voit une redirection) avec un `<meta http-equiv="refresh">` et, pour tout contenu, le mot « Redirecting ». Vérifié en lisant l'instantané : 9 514 octets, **un seul mot de texte**. Seize sources se déclaraient archivées sur du vide.
 10. Les 16 pointant enfin sur la bonne ressource, **132 restaient `pending` après six passes de reprise**, journal CDX sain à l'appui. La file des `pending` était construite **toujours dans le même ordre**, et le lot s'arrête sur son budget : il n'en traitait qu'un préfixe. Les sources situées après la frontière n'étaient **jamais atteintes** — pas « plus tard », jamais. Vérifié en résolvant un échantillon à la main : plusieurs avaient une capture `200` disponible à l'instant même. `pending` disait « en cours de traitement » pour des sources que personne ne traitait.
+11. Le tour de rôle rétabli, le sondage repartait — puis la phase de **capture** se figeait : toutes ses requêtes recevaient un `520`, que le code classait comme « le service refuse de me répondre ». Il ralentissait donc la cadence globale et redemandait **la même URL** en doublant l'attente : 19 s, 30 s, 56 s, 102 s, 127 s — les 900 s du budget consommées par **sept requêtes sur deux URL**, et aucune capture demandée pour les 128 autres sources. Or le corps de ces `520`, lu depuis la VM, dit autre chose et pas toujours la même : « already captured 5 times today […] please try again tomorrow » pour l'une, « Job failed » pour l'autre (archive.org a essayé et n'a pas pu ; l'éditeur répond `403` à son robot comme au nôtre). Dans les deux cas le service **s'est prononcé sur cette URL** — et sur le cas du quota, ce sont nos propres réessais qui l'épuisent.
 
 **Décisions**
 
@@ -1149,6 +1150,8 @@ Une fiche de 152 sources affichait **0 archivée** et **101 en échec**. Huit d�
 10. **La détection se fait par comportement — cette URL redirige-t-elle ? — et jamais par liste de domaines.**
 11. **Une tentative se date, et rien d'autre.** `archive_attempted_at` consigne **quand on a essayé** ; `archive_timestamp` date **la capture**. Deux faits distincts : les confondre réintroduirait exactement l'erreur que corrige toute cette série. Avoir essayé n'est ni un succès ni un échec — `archive_status` reste seul juge.
 12. **La file sert d'abord ce qui a été tenté le moins récemment**, jamais-tenté en tête, tri stable. C'est la seule façon qu'un lot borné par un budget finisse par couvrir l'ensemble.
+13. **Un refus de service et un échec de capture sont deux choses.** Sur la demande de capture, seuls `429`, `503` et `523` disent « reviens plus tard » et ralentissent la cadence. Tout autre code est une réponse **au sujet de cette URL** : on passe à la suivante, et la source reste `pending` — « archive.org n'a pas pu capturer aujourd'hui » n'est pas « cette page est perdue ».
+14. **Le critère est le code de réponse, jamais le corps.** Le message peut changer sans préavis ; lire de la prose HTML pour piloter un flot de contrôle serait une fragilité de la même famille que celle du point-virgule dans `&amp;`. Et pas davantage de liste de domaines : elle ne couvrirait que le cas mesuré.
 
 **Justifications**
 
@@ -1159,6 +1162,7 @@ Une fiche de 152 sources affichait **0 archivée** et **101 en échec**. Huit d�
 - **Une liste de domaines aurait résolu le cas mesuré et rien d'autre.** Un raccourcisseur, un « linking hub » d'un autre éditeur ou le prochain résolveur en date repasseraient au travers. Le comportement observable est le seul critère qui vaille dans toutes les situations.
 - **Ne pas savoir résoudre est une ignorance, pas une réponse** — la même règle, à l'étage du résolveur. `doi.org` limite lui aussi les rafales (constaté en mesurant : deux séries groupées renvoyaient l'URL d'origine, les mêmes requêtes espacées résolvaient correctement ; les données contaminées ont été jetées, pas interprétées). Un refus de sa part laisse l'URL intacte : la source ne bascule ni en échec, ni sur une URL inventée.
 - **Le point-virgule ne borne pas une URL de meta-refresh** : il n'y apparaît qu'à l'intérieur d'une entité (`&amp;`). L'exclure coupait la cible en plein milieu de celle-ci et perdait un paramètre d'authentification, si bien que la chaîne s'arrêtait sur une page intermédiaire. Défaut livré puis corrigé le jour même — trouvé **en lisant la sortie d'une réparation, pas en relisant le code**.
+- **La distinction refus / échec n'a été relâchée que sur la demande de capture.** Sur le chemin du **sondage**, tout `5xx` reste une absence de réponse : y lire « aucun instantané » était précisément le défaut n° 4. La fonction qui en juge est donc laissée intacte, et un test dédié verrouille ce comportement dans les deux sens — un `429` reste réessayé, pour que le correctif ne devienne pas « on n'insiste plus jamais ».
 - C'est la règle déjà appliquée à `retraction_status` et `oa_status`, portée une couche plus bas : **ne jamais rabattre « je ne sais pas » sur une affirmation**. Le coût de l'inverse est direct — une fiche complète qui se déclare incomplète, ou qui déclare mortes des pages qui ne le sont pas.
 
 **Conséquences**
