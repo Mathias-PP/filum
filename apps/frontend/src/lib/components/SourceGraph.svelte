@@ -915,10 +915,16 @@
     // pastille sont remontés en fin de liste DOM pour rester au premier plan,
     // et un appariement par index leur donnerait alors les coordonnées d'un
     // autre nœud.
-    svg
-      .selectAll<SVGGElement, GraphNode>('.node')
-      .data(nodes, (d) => d.id)
-      .attr('transform', (d) => `translate(${d.x ?? 0}, ${d.y ?? 0})`);
+    const place = (selector: string) =>
+      svg
+        .selectAll<SVGGElement, GraphNode>(selector)
+        .data(nodes, (d) => d.id)
+        .attr('transform', (d) => `translate(${d.x ?? 0}, ${d.y ?? 0})`);
+    place('.node');
+    // Les étiquettes vivent dans leur propre calque : elles suivent le nœud sans
+    // partager son groupe. Deux liaisons distinctes, car une sélection mêlant
+    // les deux compterait deux éléments par donnée et n'en placerait qu'un.
+    place('.node-label');
 
     for (const n of nodes) {
       if (n.kind !== 'junction') posMemory.set(n.id, { x: n.x ?? 0, y: n.y ?? 0 });
@@ -1395,8 +1401,24 @@
       .style('pointer-events', 'none')
       .text('−');
 
+    // Calque des étiquettes, peint après *tous* les nœuds.
+    //
+    // Tant que chaque libellé vivait dans le groupe de son nœud, le nœud suivant
+    // le recouvrait : « Corinne Purtill » se lisait « Corinne Purtill…ME », le
+    // milieu du nom disparaissant sous une sphère voisine. Le halo blanc ne
+    // pouvait rien contre ça — il dégage la lettre du fond, pas d'un objet peint
+    // par-dessus. Les séparer règle le cas quel que soit l'ordre des nœuds.
+    const labelG = root
+      .append('g')
+      .attr('class', 'labels')
+      .style('pointer-events', 'none')
+      .selectAll<SVGGElement, GraphNode>('g')
+      .data(nodes)
+      .join('g')
+      .attr('class', 'node-label');
+
     // Auteurs du contenu au-dessus du nœud fiche (visible dès zoom >= 0.7).
-    nodeG
+    labelG
       .filter((d) => d.kind === 'card')
       .append('text')
       .attr('class', 'card-creator')
@@ -1418,7 +1440,7 @@
       .text((d) => truncate(cardLabelOf(d), 30));
 
     // Card title above creator (shown only at higher zoom levels)
-    nodeG
+    labelG
       .filter((d) => d.kind === 'card')
       .append('text')
       .attr('class', 'card-title-label')
@@ -1445,7 +1467,7 @@
       .attr('stroke-width', 0.5);
 
     // Author label above each source node
-    nodeG
+    labelG
       .filter((d) => d.kind === 'source')
       .append('text')
       .attr('class', 'author-label')
@@ -1462,7 +1484,7 @@
       .text((d) => (d.source ? authorLabel(d.source) : ''));
 
     // Title (shown only at higher zoom levels)
-    nodeG
+    labelG
       .filter((d) => d.kind === 'source')
       .append('text')
       .attr('class', 'title-label')
@@ -1486,7 +1508,7 @@
     // une référence dans le temps compte autant que savoir qui l'a écrite, et
     // en mode réseau c'est la seule façon de le lire. « s. d. » quand la date
     // est inconnue — une place vide se confondrait avec un défaut d'affichage.
-    nodeG
+    labelG
       .filter((d) => d.kind !== 'junction')
       .append('text')
       .attr('class', 'date-label')
@@ -1726,11 +1748,16 @@
     const hovered = hoveredId;
     if (!svgEl) return;
     const svg = select(svgEl);
-    svg.selectAll<SVGGElement, GraphNode>('.node').style('opacity', (d) => {
+    // L'étiquette s'estompe avec son nœud : laissée à pleine opacité dans son
+    // calque séparé, elle aurait surnagé au-dessus d'un graphe effacé par la
+    // recherche, et désigné des nœuds que la recherche venait d'écarter.
+    const fade = (d: GraphNode) => {
       if (matched && !matched.has(d.id)) return 0.08;
       if (hovered !== null && d.id !== hovered) return 0.35;
       return 1;
-    });
+    };
+    svg.selectAll<SVGGElement, GraphNode>('.node').style('opacity', fade);
+    svg.selectAll<SVGGElement, GraphNode>('.node-label').style('opacity', fade);
     svg.selectAll<SVGLineElement, GraphLink>('.link').style('opacity', (d) => {
       const src = typeof d.source === 'string' ? d.source : d.source.id;
       const tgt = typeof d.target === 'string' ? d.target : d.target.id;
