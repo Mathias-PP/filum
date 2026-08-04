@@ -61,6 +61,18 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const error = await response.json().catch(() => ({
       error: { code: 'unknown', message: 'An error occurred' },
     }));
+    // Une session qui expire pendant la saisie remontait « Not authenticated »,
+    // en anglais et sans suite à donner. Le message dit maintenant ce qui s'est
+    // passé et ce qui reste possible : la page n'a pas été rechargée, donc ce
+    // qui a été saisi est toujours là.
+    if (response.status === 401) {
+      throw new ApiError(
+        401,
+        'session_expired',
+        'Votre session a expiré. Cette page conserve votre saisie : reconnectez-vous dans un autre onglet, puis réessayez.',
+        error.error?.details
+      );
+    }
     throw new ApiError(
       response.status,
       error.error?.code || 'unknown',
