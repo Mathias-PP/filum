@@ -1779,10 +1779,16 @@
     // le recadrage centrait le graphe sur toute la largeur et poussait les
     // nœuds de gauche derrière le champ de recherche. Mesuré plutôt que codé en
     // dur, parce que sa largeur change avec le repli des réglages et la langue.
-    // Au-delà du tiers du cadre (écran étroit) la réserve coûterait plus qu'elle
-    // ne rapporte : le panneau se lit alors comme une couche par-dessus.
-    const leftInset = Math.min((overlayEl?.offsetWidth ?? 0) + 20, width / 3);
-    const rightInset = Math.min((controlsEl?.offsetWidth ?? 0) + 20, width / 6);
+    // Sur un cadre étroit la réserve est abandonnée entièrement plutôt que
+    // rabotée : céder la moitié de la largeur donnerait un graphe minuscule
+    // ET toujours à moitié caché. Le panneau redevient alors ce qu'il est sur
+    // mobile, une couche par-dessus qu'on replie ou qu'on écarte d'un geste.
+    const reserve = (el: HTMLElement | null, max: number) => {
+      const w = el ? el.offsetWidth + 20 : 0;
+      return w > max ? 0 : w;
+    };
+    const leftInset = reserve(overlayEl, width / 3);
+    const rightInset = reserve(controlsEl, width / 6);
     const usableW = Math.max(width - leftInset - rightInset, 1);
     const k = Math.min(4, Math.max(0.1, Math.min(usableW / spanX, usableH / spanY)));
     fitScale = k;
