@@ -1116,13 +1116,13 @@ Deux bugs aggravants : `SourceUpdate` ne déclarait pas `linked_card_id`, donc t
 
 ---
 
-## ADR-027 — Archivage : quatre états, une cadence mesurée, deux canaux, et regarder avant de demander
+## ADR-032 — Archivage : des états qui ne se recouvrent pas, une cadence mesurée, et viser la ressource
 
 **Date** : 2026-08-04
 
 **Contexte**
 
-Une fiche de 152 sources affichait **0 archivée** et **101 en échec**. Quatre défauts empilés, tous de même nature : un état affirmatif avait absorbé un état d'ignorance.
+Une fiche de 152 sources affichait **0 archivée** et **101 en échec**. Sept défauts empilés, tous de même nature : un état affirmatif avait absorbé un état d'ignorance.
 
 1. `failed` était écrit faute d'avoir trouvé **à temps**. Save Page Now travaille en différé : un délai n'est pas un échec.
 2. 4 sources n'avaient **aucune URL** (un manuel DSM-IV-TR, un chapitre de livre). Marquées `failed`, elles affirmaient qu'on avait essayé et que la page était perdue. Elles condamnaient aussi le compteur : « 148/152 » indépassable sur une fiche pourtant complète.
@@ -1131,6 +1131,8 @@ Une fiche de 152 sources affichait **0 archivée** et **101 en échec**. Quatre 
 5. Le lot **demandait une capture avant de regarder s'il en existait une**, et épuisait son budget dans la partie la plus lente du service pour un travail déjà fait.
 6. Ce budget comptait les **pauses**, pas le temps écoulé : avec des requêtes de 30 s, un lot tenait des heures sans jamais le « dépasser ».
 7. Le délai de lecture était partagé avec le reste (30 s) alors que CDX met 18 à 20 s à répondre. Sous charge, le sondage expirait — et un dépassement de délai n'est pas une réponse.
+8. Les six premiers corrigés, la fiche restait à **0 archivée** : les 148 URL en attente étaient toutes des `https://doi.org/...`. `doi.org` est un **résolveur** ; toutes ses captures dans l'archive sont des `302`. Le filtre `statuscode:200` les excluait donc toutes — et il avait raison : un redirect archivé ne préserve aucun contenu. On sondait le panneau indicateur au lieu de la ressource.
+9. Le résolveur branché, la fiche passait à 16 archivées — dont plusieurs sur `linkinghub.elsevier.com`, qui répond **200** (aucun client HTTP n'y voit une redirection) avec un `<meta http-equiv="refresh">` et, pour tout contenu, le mot « Redirecting ». Vérifié en lisant l'instantané : 9 514 octets, **un seul mot de texte**. Seize sources se déclaraient archivées sur du vide.
 
 **Décisions**
 
@@ -1141,6 +1143,9 @@ Une fiche de 152 sources affichait **0 archivée** et **101 en échec**. Quatre 
 5. **Regarder avant de demander.** Le lot sonde d'abord l'archive pour toutes les sources, et ne déclenche une capture que pour celles qui en sont réellement absentes.
 6. **Le budget se mesure en temps écoulé**, horloge monotone, pas en somme des pauses.
 7. **Le sondage a son propre délai** (60 s), plus généreux que le reste.
+8. **Archiver la ressource, pas le panneau qui y mène.** Chaque URL est résolue avant d'être sondée et avant qu'une capture soit demandée.
+9. **Une redirection reste une redirection quelle que soit sa forme** : redirect HTTP *et* `<meta http-equiv="refresh">` sont suivis, sur les seuls premiers 64 Ko du document (une redirection se déclare dans l'en-tête ; une VM d'un gigaoctet n'a pas à télécharger des articles entiers pour l'apprendre).
+10. **La détection se fait par comportement — cette URL redirige-t-elle ? — et jamais par liste de domaines.**
 
 **Justifications**
 
@@ -1148,6 +1153,9 @@ Une fiche de 152 sources affichait **0 archivée** et **101 en échec**. Quatre 
 - **Les deux canaux interrogent le même index.** Mesuré depuis la VM, à la même seconde et depuis la même IP : `wayback/available` répondait 429 pendant que `cdx/search/cdx` répondait 200 avec l'instantané. La limitation porte sur le point d'entrée, pas sur l'archive.
 - **Une bibliographie académique cite surtout des travaux archivés depuis des années.** Leur demander une capture consommait la ressource la plus rare du service à ne rien faire. L'ordre inverse est le bon ; le délai que Save Page Now exige est fourni par la reprise paresseuse au prochain affichage, pas par l'ordre interne au lot.
 - **CDX cherche dans un index de centaines de milliards de captures** : sa lenteur est structurelle, pas accidentelle. Mesuré depuis la VM, trois appels ne renvoyant rien : 18,41 s / 18,68 s / 19,67 s. Un délai partagé avec des appels ordinaires condamnait le sondage sous charge.
+- **Une liste de domaines aurait résolu le cas mesuré et rien d'autre.** Un raccourcisseur, un « linking hub » d'un autre éditeur ou le prochain résolveur en date repasseraient au travers. Le comportement observable est le seul critère qui vaille dans toutes les situations.
+- **Ne pas savoir résoudre est une ignorance, pas une réponse** — la même règle, à l'étage du résolveur. `doi.org` limite lui aussi les rafales (constaté en mesurant : deux séries groupées renvoyaient l'URL d'origine, les mêmes requêtes espacées résolvaient correctement ; les données contaminées ont été jetées, pas interprétées). Un refus de sa part laisse l'URL intacte : la source ne bascule ni en échec, ni sur une URL inventée.
+- **Le point-virgule ne borne pas une URL de meta-refresh** : il n'y apparaît qu'à l'intérieur d'une entité (`&amp;`). L'exclure coupait la cible en plein milieu de celle-ci et perdait un paramètre d'authentification, si bien que la chaîne s'arrêtait sur une page intermédiaire. Défaut livré puis corrigé le jour même — trouvé **en lisant la sortie d'une réparation, pas en relisant le code**.
 - C'est la règle déjà appliquée à `retraction_status` et `oa_status`, portée une couche plus bas : **ne jamais rabattre « je ne sais pas » sur une affirmation**. Le coût de l'inverse est direct — une fiche complète qui se déclare incomplète, ou qui déclare mortes des pages qui ne le sont pas.
 
 **Conséquences**
@@ -1155,6 +1163,8 @@ Une fiche de 152 sources affichait **0 archivée** et **101 en échec**. Quatre 
 - Un lot ne s'achève pas forcément en une passe, et c'est assumé : l'archivage est incrémental et convergent, pas transactionnel.
 - `Source.url` est `nullable=False` : une référence sans URL publique ne peut s'exprimer que par une chaîne vide. À revoir (backlog).
 - Panne silencieuse à surveiller : un état que la base sait écrire mais que le schéma d'API ne sait pas relire. Vécu le jour même (500 en production sur les seules fiches concernées), désormais interdit par un test de parité des enums `models`/`schemas`.
+- 23 sources marquées `archived` sur une capture de redirection ont été remises en attente par une passe de réparation, énoncée génériquement (une capture ne compte que si elle a capturé la ressource) et non par liste de domaines. La reprise paresseuse les réarchive sur la bonne cible.
+- Reste ouvert (backlog, `STATE.md`) : CDX cherche l'URL **exacte**, et un redirecteur ajoute parfois un paramètre de suivi (`?via=ihub`) qui fait manquer une capture existante. Retirer la requête à l'aveugle serait pire — `article.aspx?doi=...` deviendrait `article.aspx`, une page générique qu'on archiverait à la place de l'article. Il faut un critère distinguant un paramètre de suivi d'un identifiant, pas une heuristique de plus. En attendant, la fiche sous-déclare : c'est le sens honnête de l'erreur.
 - Panne silencieuse corrigée en chemin : `httpx.ReadTimeout` a un `str()` **vide**. Journaliser `{e}` seul produisait une ligne se terminant par un deux-points et rien — le log taisait sa propre cause et a coûté une passe de diagnostic entière. Le **type** de l'exception est désormais consigné avec son message.
 
 <!--
