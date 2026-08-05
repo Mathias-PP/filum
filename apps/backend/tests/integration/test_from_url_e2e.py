@@ -227,3 +227,48 @@ async def test_batch_create_reports_failures_without_dropping_others(client, ses
     assert resp.status_code == 201
     body = resp.json()
     assert len(body["created"]) == 2
+
+
+@pytest.mark.asyncio
+async def test_une_reference_sans_lien_survit_a_l_enregistrement(client, session_token):
+    """Un livre, un chapitre, un article ancien n'ont souvent aucune adresse.
+
+    Les parseurs les conservent desormais (url=""), mais l'extraction ne sert
+    a rien si l'enregistrement les refuse : 17 des 187 references du .ris de
+    10.1186/s12916-019-1380-z sont dans ce cas. Ce test tient la chaine
+    entiere, de l'envoi a la relecture.
+    """
+    client.cookies.set("filum_session", session_token)
+    resp = await client.post(
+        "/api/v1/cards",
+        json={
+            "slug": "test-source-sans-lien",
+            "title": "Reference sans lien",
+            "platform": "blog",
+            "content_type": "article",
+        },
+    )
+    card_id = resp.json()["id"]
+
+    resp = await client.post(
+        f"/api/v1/sources/batch?card_id={card_id}",
+        json={
+            "sources": [
+                {
+                    "url": "",
+                    "title": "Okada H, Kuhn C. The 'hygiene hypothesis'. Clin Exp Immunol. 2010",
+                    "format": "texte",
+                    "category": "article-scientifique",
+                    "author_kind": "chercheur",
+                }
+            ]
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["failed"] == []
+
+    resp = await client.get(f"/api/v1/sources?card_id={card_id}")
+    sources = resp.json()
+    assert len(sources) == 1
+    assert sources[0]["url"] == ""
+    assert sources[0]["title"].startswith("Okada H")

@@ -6,8 +6,12 @@ XML stdlib) et HTML sauvegarde (BeautifulSoup, deja en dependance).
 Fonctions pures — le PDF est fouille via zlib (streams FlateDecode),
 sans dependance d'extraction lourde.
 
-Chaque parseur retourne des ImportedRef ; les entrees sans URL ni DOI sont
-comptees dans `skipped` (le modele Source exige une URL).
+Chaque parseur retourne des ImportedRef. Une entree sans URL ni DOI mais
+avec un titre est **conservee** (url=""), car un livre, un chapitre ou un
+article ancien n'a souvent aucune adresse : l'ecarter revient a amputer une
+bibliographie de ses references les plus anciennes. `Source.url` accepte la
+chaine vide. Seule une entree sans URL *et* sans titre — donc non
+identifiable — est comptee dans `skipped`.
 """
 
 from __future__ import annotations
@@ -134,7 +138,14 @@ def _dedupe(refs: list[ImportedRef]) -> list[ImportedRef]:
     seen: set[str] = set()
     out: list[ImportedRef] = []
     for ref in refs:
-        key = _dedupe_key(ref.url)
+        # Sans URL, l'URL ne peut pas servir de cle : toutes les refs sans
+        # adresse s'effondreraient sur la meme entree vide. On les distingue
+        # par ce qui les identifie reellement.
+        if ref.url:
+            key = _dedupe_key(ref.url)
+        else:
+            key = f"nourl:{(ref.title or '').strip().lower()}|"
+            key += f"{(ref.authors or '').strip().lower()}|{ref.year or ''}"
         if key in seen:
             continue
         seen.add(key)
@@ -295,7 +306,8 @@ def parse_bibtex(text: str) -> ParseResult:
         body = text[m.end() : end]
         fields = _parse_bibtex_fields(body)
         url = fields.get("url") or (_doi_to_url(fields["doi"]) if fields.get("doi") else None)
-        if not url:
+        title = fields.get("title") or None
+        if not url and not title:
             result.skipped += 1
             continue
         year: int | None = None
@@ -303,8 +315,8 @@ def parse_bibtex(text: str) -> ParseResult:
             year = int(fields["year"].strip()[:4])
         result.refs.append(
             ImportedRef(
-                url=url,
-                title=fields.get("title") or None,
+                url=url or "",
+                title=title,
                 authors=fields.get("author", "").replace(" and ", ", ") or None,
                 year=year,
                 category=_CATEGORY_BY_BIBTEX_TYPE.get(entry_type, "page-web"),
@@ -347,7 +359,8 @@ def parse_csl_json(text: str) -> ParseResult:
         if not isinstance(item, dict):
             continue
         url = item.get("URL") or (_doi_to_url(item["DOI"]) if item.get("DOI") else None)
-        if not url:
+        title = item.get("title") or None
+        if not url and not title:
             result.skipped += 1
             continue
         authors = None
@@ -373,8 +386,8 @@ def parse_csl_json(text: str) -> ParseResult:
                     year = None
         result.refs.append(
             ImportedRef(
-                url=url,
-                title=item.get("title") or None,
+                url=url or "",
+                title=title,
                 authors=authors,
                 year=year,
                 category=_CATEGORY_BY_CSL_TYPE.get(str(item.get("type", "")), "page-web"),
@@ -428,7 +441,11 @@ def parse_ris(text: str) -> ParseResult:
         url = (current.get("UR") or [""])[0].strip()
         if not url and doi:
             url = _doi_to_url(doi)
-        if not url:
+        title = next(
+            (v[0].strip() for k in ("TI", "T1", "BT") if (v := current.get(k)) and v[0].strip()),
+            None,
+        )
+        if not url and not title:
             result.skipped += 1
             return
         year: int | None = None
@@ -437,10 +454,6 @@ def parse_ris(text: str) -> ParseResult:
             if raw.isdigit():
                 year = int(raw)
                 break
-        title = next(
-            (v[0].strip() for k in ("TI", "T1", "BT") if (v := current.get(k)) and v[0].strip()),
-            None,
-        )
         authors = ", ".join(
             a.strip() for a in current.get("AU", []) + current.get("A1", []) if a.strip()
         )

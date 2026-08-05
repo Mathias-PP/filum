@@ -42,12 +42,26 @@ class TestParseRis:
         ris = "TY  - JOUR\nTI  - Sans URL\nDO  - 10.1/abc\nER  - \n"
         assert parse_ris(ris).refs[0].url == "https://doi.org/10.1/abc"
 
-    def test_sans_url_ni_doi_l_entree_est_comptee_comme_ignoree(self):
-        # Le modele Source exige une URL. La compter dans `skipped` est
-        # honnete ; la laisser tomber en silence ne l'est pas.
-        r = parse_ris("TY  - JOUR\nTI  - Rien d'exploitable\nER  - \n")
+    def test_un_titre_sans_lien_reste_une_reference(self):
+        # Un livre, un chapitre, un article ancien n'ont souvent aucune
+        # adresse. Les ecarter ampute une bibliographie de ses references les
+        # plus anciennes — mesure : 17 des 187 refs de 10.1186/s12916-019-1380-z.
+        r = parse_ris("TY  - JOUR\nTI  - Un titre sans lien\nER  - \n")
+        assert r.skipped == 0
+        assert [(x.url, x.title) for x in r.refs] == [("", "Un titre sans lien")]
+
+    def test_sans_url_ni_titre_l_entree_est_comptee_comme_ignoree(self):
+        # Rien pour l'identifier : la compter dans `skipped` est honnete ;
+        # la laisser tomber en silence ne l'est pas.
+        r = parse_ris("TY  - JOUR\nPY  - 2020\nER  - \n")
         assert r.refs == []
         assert r.skipped == 1
+
+    def test_deux_refs_sans_lien_ne_fusionnent_pas(self):
+        # Sans URL, la cle de dedup ne peut pas etre l'URL : deux titres
+        # distincts s'effondreraient sur une entree vide unique.
+        ris = "TY  - BOOK\nTI  - Premier\nER  - \nTY  - BOOK\nTI  - Second\nER  - \n"
+        assert [x.title for x in parse_ris(ris).refs] == ["Premier", "Second"]
 
     def test_plusieurs_enregistrements(self):
         r = parse_ris(RIS_MIN + "\n" + RIS_MIN.replace("adleman", "menon"))
