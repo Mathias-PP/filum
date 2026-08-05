@@ -48,6 +48,15 @@ class SemanticScholarRef:
     doi: str | None = None
     # Pour les refs non-DOI (papiers arXiv, etc.) : URL calculee.
     url: str | None = None
+    # Citation brute telle que deposee par l'editeur, quand il n'a pas depose de
+    # champs structures. Ce n'est PAS un titre : la confondre avec un titre
+    # affiche « Okada H, Kuhn C. The hygiene hypothesis. Clin Exp Immunol. 2010 »
+    # la ou l'utilisateur attend « The hygiene hypothesis ».
+    raw_text: str | None = None
+    # Revue de publication. Pas un titre non plus : BMC ne depose souvent que
+    # « N Engl J Med », ce qui donnait 187 references toutes intitulees du nom
+    # de leur revue.
+    journal: str | None = None
 
 
 def _format_authors(raw: list[dict] | None) -> str | None:

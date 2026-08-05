@@ -175,7 +175,95 @@ def test_crossref_reference_item_parsing():
     # Annee illisible -> None, pas d'exception
     weird = _crossref_reference_item_to_ref({"unstructured": "Some ref", "year": "n.d."})
     assert weird.year is None
-    assert weird.title == "Some ref"
+
+
+def test_une_citation_brute_n_est_pas_un_titre():
+    """Springer, BMC, Wiley ne deposent souvent que la citation entiere.
+
+    La recopier dans `title` affiche « Okada H, Kuhn C. The hygiene hypothesis.
+    Clin Exp Immunol. 2010;160(1):1-9 » la ou l'utilisateur — et toute IA qui
+    lit la fiche — attend « The hygiene hypothesis ».
+    """
+    from app.extractors.url_extractor import _crossref_reference_item_to_ref
+
+    citation = "Okada H, Kuhn C. The hygiene hypothesis. Clin Exp Immunol. 2010;160(1):1-9."
+    ref = _crossref_reference_item_to_ref({"DOI": "10.1/abc", "unstructured": citation})
+    assert ref.title is None
+    assert ref.raw_text == citation
+
+
+class TestResolveMissingTitles:
+    """Le titre manquant se resout par le DOI, jamais en decoupant la citation.
+
+    Decouper une chaine de citation est une heuristique qui echoue des qu'un
+    editeur change de style. Interroger Crossref sur le DOI rend le titre exact
+    que l'editeur du papier cite a lui-meme depose — pour n'importe quel
+    editeur.
+    """
+
+    async def test_le_titre_vient_du_doi_pas_de_la_citation(self, monkeypatch):
+        from app.extractors import url_extractor as ux
+
+        captured: dict = {}
+
+        class FakeResponse:
+            status_code = 200
+
+            @staticmethod
+            def json():
+                return {
+                    "message": {
+                        "items": [
+                            {
+                                "DOI": "10.1/abc",
+                                "title": ["The hygiene hypothesis"],
+                                "author": [{"family": "Okada", "given": "Hiroshi"}],
+                                "issued": {"date-parts": [[2010]]},
+                            }
+                        ]
+                    }
+                }
+
+        class FakeClient:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *a):
+                return False
+
+            async def get(self, url, params=None):
+                captured["params"] = params
+                return FakeResponse()
+
+        monkeypatch.setattr(ux.httpx, "AsyncClient", lambda **kw: FakeClient())
+
+        ref = ux.SemanticScholarRef(doi="10.1/abc", raw_text="Okada H. The hygiene...")
+        await ux.resolve_missing_titles([ref])
+
+        assert ref.title == "The hygiene hypothesis"
+        assert ref.authors == "Okada H."
+        assert ref.year == 2010
+        assert captured["params"]["filter"] == "doi:10.1/abc"
+
+    async def test_une_ref_deja_titree_n_est_pas_reinterrogee(self, monkeypatch):
+        from app.extractors import url_extractor as ux
+
+        def explode(**kw):
+            raise AssertionError("aucun appel reseau ne doit partir")
+
+        monkeypatch.setattr(ux.httpx, "AsyncClient", explode)
+        await ux.resolve_missing_titles([ux.SemanticScholarRef(doi="10.1/abc", title="Deja la")])
+
+    async def test_un_echec_reseau_laisse_la_ref_intacte(self, monkeypatch):
+        from app.extractors import url_extractor as ux
+
+        def explode(**kw):
+            raise RuntimeError("crossref down")
+
+        monkeypatch.setattr(ux.httpx, "AsyncClient", explode)
+        ref = ux.SemanticScholarRef(doi="10.1/abc", raw_text="brut")
+        await ux.resolve_missing_titles([ref])
+        assert ref.title is None
 
 
 # ---------------------------------------------------------------------------

@@ -414,6 +414,7 @@ def _s2_ref_to_imported_ref(s2_ref: SemanticScholarRef) -> ImportedRef | None:
                 authors=s2_ref.authors,
                 year=s2_ref.year,
                 category="article-scientifique",
+                raw_text=s2_ref.raw_text,
             )
         return None
     return ImportedRef(
@@ -422,6 +423,7 @@ def _s2_ref_to_imported_ref(s2_ref: SemanticScholarRef) -> ImportedRef | None:
         authors=s2_ref.authors,
         year=s2_ref.year,
         category="article-scientifique",
+        raw_text=s2_ref.raw_text,
     )
 
 
