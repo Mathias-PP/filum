@@ -50,6 +50,42 @@ def test_duplicate_word_run():
     assert should_drop(r) is True
 
 
+def test_repetition_marginale_dans_un_texte_long_gardee():
+    """Une repetition qui ne couvre qu'une part du texte est ordinaire.
+
+    Deux auteurs homonymes, ou un titre qui reprend une expression : la
+    duplication n'est un artefact de concatenation que si elle recouvre
+    l'essentiel du titre. Cas reels de 10.1186/s12916-019-1380-z.
+    """
+    homonymes = _ref(
+        url="",
+        title=(
+            "Nasr I, Nasr I, Campling H, Ciclitira PJ. Approach to patients with "
+            "refractory coeliac disease. F1000Res. 2016;5."
+        ),
+    )
+    repetition = _ref(
+        url="",
+        title=(
+            "Mode of delivery and risk of celiac disease: risk of celiac disease "
+            "and age at gluten introduction cohort study"
+        ),
+    )
+    assert should_drop(homonymes) is False
+    assert should_drop(repetition) is False
+
+
+def test_un_doi_resolvable_protege_la_reference():
+    """Le scoring juge un titre, pas une oeuvre : il ne peut pas supprimer
+    une reference qui porte deja son identifiant enregistre."""
+    r = _ref(
+        url="https://doi.org/10.3390/nu7125506",
+        title="Recognising coeliac Recognising coeliac",
+    )
+    assert syntactic_score(r) < 0.4
+    assert should_drop(r) is False
+
+
 def test_normal_scientific_title_kept():
     r = _ref(
         url="https://doi.org/10.1/abc",
