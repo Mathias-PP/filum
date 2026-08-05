@@ -42,8 +42,11 @@ BIBTEX_SAMPLE = """
 
 def test_parse_bibtex():
     result = parse_bibtex(BIBTEX_SAMPLE)
-    assert result.skipped == 1
-    assert len(result.refs) == 2
+    # L'entree sans URL ni DOI porte un titre : elle reste une reference,
+    # avec url="". Rien d'identifiable n'est ecarte.
+    assert result.skipped == 0
+    assert len(result.refs) == 3
+    assert (result.refs[2].url, result.refs[2].title) == ("", "Entree sans URL ni DOI")
     art = result.refs[0]
     assert art.url == "https://doi.org/10.1234/abcd.5678"
     assert art.title == "Memoire et plasticite cerebrale"
@@ -73,8 +76,9 @@ def test_parse_csl_json_zotero():
         {"type": "book", "title": "Sans lien"},
     ]
     result = parse_csl_json(json.dumps(items))
-    assert result.skipped == 1
-    assert len(result.refs) == 2
+    assert result.skipped == 0
+    assert len(result.refs) == 3
+    assert (result.refs[2].url, result.refs[2].title) == ("", "Sans lien")
     assert result.refs[0].url == "https://doi.org/10.5555/sleep.42"
     assert result.refs[0].authors == "Walker Matthew"
     assert result.refs[0].year == 2019
@@ -127,7 +131,7 @@ def test_detect_format():
 
 def test_parse_file_dispatch():
     result = parse_file("refs.bib", BIBTEX_SAMPLE.encode())
-    assert len(result.refs) == 2
+    assert len(result.refs) == 3
     result = parse_file(None, b"https://example.org/x-longue-url")
     assert result.refs[0].url == "https://example.org/x-longue-url"
 
