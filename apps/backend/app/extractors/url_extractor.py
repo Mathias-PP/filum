@@ -8,6 +8,7 @@ Tries, in order:
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import re
@@ -540,7 +541,14 @@ async def get_crossref_references(doi: str) -> list[SemanticScholarRef] | None:
         raw_refs = r.json().get("message", {}).get("reference") or []
         if not raw_refs:
             return None
-        return [_crossref_reference_item_to_ref(item) for item in raw_refs]
+        refs = [_crossref_reference_item_to_ref(item) for item in raw_refs]
+        await resolve_missing_titles(refs)
+        for ref in refs:
+            # Derniers recours, dans l'ordre du moins mauvais : la citation
+            # brute identifie au moins l'oeuvre, le nom de revue presque pas.
+            if not ref.title:
+                ref.title = (ref.raw_text or ref.journal or "")[:300] or None
+        return refs
     except Exception as e:
         logger.debug("Crossref references lookup failed for doi=%s: %s", doi, e)
         return None
@@ -553,11 +561,11 @@ def _crossref_reference_item_to_ref(item: dict) -> SemanticScholarRef:
         or item.get("volume-title")
         # Livres : Elsevier depose le titre dans series-title
         or item.get("series-title")
-        or item.get("unstructured")
-        or item.get("journal-title")
     )
     if title:
         title = str(title).strip()[:300]
+    journal = item.get("journal-title")
+    unstructured = item.get("unstructured")
     year_raw = item.get("year")
     try:
         year = int(str(year_raw)[:4]) if year_raw else None
@@ -569,7 +577,71 @@ def _crossref_reference_item_to_ref(item: dict) -> SemanticScholarRef:
         year=year,
         doi=ref_doi,
         url=f"https://doi.org/{ref_doi}" if ref_doi else None,
+        raw_text=(str(unstructured).strip()[:1000] if unstructured else None),
+        journal=(str(journal).strip()[:300] if journal else None),
     )
+
+
+# Crossref accepte plusieurs `filter=doi:` dans une meme requete (OR logique).
+# 50 tient largement sous la limite de longueur d'URL et evite de multiplier
+# les allers-retours sur une bibliographie de 200 references.
+_DOI_BATCH_SIZE = 50
+
+
+async def resolve_missing_titles(refs: list[SemanticScholarRef]) -> None:
+    """Complete in-place les refs sans titre, par resolution de leur DOI.
+
+    Beaucoup d'editeurs (Springer, BMC, Wiley) ne deposent chez Crossref que la
+    citation brute — aucun champ structure. On ne devine pas le titre en
+    decoupant cette chaine : on interroge Crossref sur le DOI de la reference,
+    qui rend le titre exact tel que l'editeur du papier cite l'a lui-meme
+    depose. Exact plutot qu'heuristique, et valable pour n'importe quel
+    editeur.
+
+    Ne leve jamais : une resolution qui echoue laisse la ref telle quelle.
+    """
+    todo = {r.doi: r for r in refs if r.doi and not r.title}
+    if not todo:
+        return
+    dois = list(todo)
+    try:
+        async with httpx.AsyncClient(headers=_HEADERS, timeout=_TIMEOUT) as client:
+            for start in range(0, len(dois), _DOI_BATCH_SIZE):
+                batch = dois[start : start + _DOI_BATCH_SIZE]
+                params = {
+                    "filter": ",".join(f"doi:{d}" for d in batch),
+                    "rows": str(len(batch)),
+                    "select": "DOI,title,author,issued",
+                }
+                r = await client.get("https://api.crossref.org/works", params=params)
+                if r.status_code != 200:
+                    continue
+                for item in r.json().get("message", {}).get("items") or []:
+                    ref = todo.get((item.get("DOI") or "").lower())
+                    if ref is None:
+                        continue
+                    _apply_crossref_work_to_ref(item, ref)
+    except Exception as e:
+        logger.debug("Crossref batch title resolution failed: %s", e)
+
+
+def _apply_crossref_work_to_ref(item: dict, ref: SemanticScholarRef) -> None:
+    titles = item.get("title") or []
+    if titles:
+        ref.title = str(titles[0]).strip()[:300]
+    authors_raw = item.get("author") or []
+    authors = ", ".join(
+        f"{a.get('family', '')} {a.get('given', '')[:1]}.".strip()
+        for a in authors_raw[:5]
+        if a.get("family")
+    )
+    if authors:
+        ref.authors = authors
+    if not ref.year:
+        date_parts = (item.get("issued") or {}).get("date-parts") or []
+        if date_parts and date_parts[0]:
+            with contextlib.suppress(TypeError, ValueError):
+                ref.year = int(date_parts[0][0])
 
 
 async def resolve_doi_from_pii(url: str) -> str | None:
