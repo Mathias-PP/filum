@@ -1222,3 +1222,15 @@ Apru00e8s la du00e9mo de neuroscience (itu00e9ration 1), quatre faiblesses bloqu
 - Toutes les fiches du00e9ju00e0 publiu00e9es restent vu00e9rifiables : le payload signu00e9 est inchangu00e9.
 - La page publique devient indexable par Google et lisible par les moteurs IA.
 - L'ajout futur d'un champ visible doit systu00e9matiquement se demander : 'rentre-t-il dans la signature ou pas ?' (par du00e9faut, non).
+
+---
+
+## `llms.txt` écarté au profit de MCP (2026-08-06)
+
+Ahrefs a mesuré en mai 2026 que 97 % des fichiers `llms.txt` de 137 000 sites
+n'avaient reçu aucune requête. John Mueller (Google) parle d'une « béquille
+temporaire ». Le serveur MCP Philum existe déjà et sert le même besoin avec un
+protocole réellement consommé.
+
+Décision : ne pas produire de `llms.txt`. Si la question revient, relire cette
+entrée avant d'ouvrir le sujet.
