@@ -240,10 +240,36 @@
   let neighborSources = new Map<string, GraphSourceData[]>();
   let expandedCardIds = $state<string[]>([]);
   let neighborhoodTruncated = $state(false);
+  /**
+   * Fiches maintenues à l'écran quelle que soit la profondeur.
+   *
+   * Épingler est le contrepoids du repli automatique : un lecteur qui a trouvé
+   * une fiche à trois sauts ne doit pas la perdre parce qu'il replie le chemin
+   * qui l'y a mené.
+   */
+  let pinnedCardIds = $state<string[]>([]);
+
+  function togglePin(cid: string) {
+    pinnedCardIds = pinnedCardIds.includes(cid)
+      ? pinnedCardIds.filter((id) => id !== cid)
+      : [...pinnedCardIds, cid];
+    remount();
+  }
   // La légende explique un geste qu'on n'apprend qu'une fois. Elle doit donc
   // pouvoir disparaître, et rester disparue le temps de la session : la
   // rouvrir à chaque remontage la transformerait en bandeau publicitaire.
   let legendOpen = $state(true);
+
+  /**
+   * Sens de lecture du méta-graphe.
+   *
+   * `sortant` : ce que cette fiche cite. `entrant` : ce qui cite cette fiche.
+   * `deux` : les deux, distingués par la flèche. Le défaut est `deux` parce
+   * que le sens entrant est la moitié de la valeur du graphe ; c'était son
+   * illisibilité, pas sa présence, qui posait problème.
+   */
+  type GraphDirection = 'sortant' | 'entrant' | 'deux';
+  let direction = $state<GraphDirection>('deux');
   // Dernières positions connues : le dépliage remonte le graphe, sans ce
   // souvenir la disposition se réorganiserait entièrement à chaque clic.
   const posMemory = new Map<string, { x: number; y: number }>();
@@ -746,13 +772,20 @@
     const sourcesOf = (id: string) =>
       cappedOf(id === card.id ? rootSources : (neighborSources.get(id) ?? []));
 
-    // Toute fiche du voisinage est un nœud, qu'elle soit citée par la racine,
-    // qu'elle la cite, ou qu'elle soit à deux sauts. Ne montrer que les fiches
-    // atteignables depuis les sources affichées masquait les chaînes
-    // A -> B -> C tant que B n'était pas dépliée, et tout le sens entrant.
+    // Fiches retenues à l'affichage : la racine, ses dépliées, ses épinglées,
+    // et celles à un saut de l'une de ces ancres dans les deux sens.
+    // Les fiches à deux sauts n'apparaissent qu'une fois leur amont déplié.
+    const anchorIds = new Set<string>([card.id, ...expandedCardIds, ...pinnedCardIds]);
+    const visibleCardIds = new Set<string>(anchorIds);
+    for (const [from, to] of cardLinks) {
+      if (anchorIds.has(from)) visibleCardIds.add(to);
+      if (anchorIds.has(to)) visibleCardIds.add(from);
+    }
+
     const cardNodeIds = new Map<string, string>([[card.id, cardId]]);
     const cardNodeByCid = new Map<string, GraphNode>();
     for (const [cid, meta] of neighborCards) {
+      if (!visibleCardIds.has(cid)) continue;
       const nodeId = `card:${cid}`;
       cardNodeIds.set(cid, nodeId);
       const node: GraphNode = {
@@ -780,6 +813,12 @@
       const a = cardNodeIds.get(from);
       const b = cardNodeIds.get(to);
       if (!a || !b || a === b) continue;
+      // `from` cite `to`. Le sens demandé se lit depuis la fiche consultée :
+      // une arête qui part d'elle est sortante, une qui arrive est entrante.
+      // Les arêtes entre deux voisines ne concernent aucun des deux sens
+      // exclusifs : elles ne s'affichent qu'en vue complète.
+      if (direction === 'sortant' && from !== card.id) continue;
+      if (direction === 'entrant' && to !== card.id) continue;
       const key = `${a}|${b}`;
       if (seenCardLinks.has(key)) continue;
       seenCardLinks.add(key);
@@ -893,6 +932,24 @@
     return { nodes, links };
   }
 
+  /**
+   * Point d'arrivée d'une arête orientée : le bord du nœud cible, pas son
+   * centre. Sans ce recul, la pointe de flèche disparaît sous le disque et le
+   * sens redevient invisible.
+   */
+  function edgeStop(s: GraphNode, t: GraphNode): { x: number; y: number } {
+    const sx = s.x ?? 0;
+    const sy = s.y ?? 0;
+    const tx = t.x ?? 0;
+    const ty = t.y ?? 0;
+    const dx = tx - sx;
+    const dy = ty - sy;
+    const dist = Math.hypot(dx, dy);
+    if (dist === 0) return { x: tx, y: ty };
+    const back = (t.radius ?? 14) + 3;
+    return { x: tx - (dx / dist) * back, y: ty - (dy / dist) * back };
+  }
+
   function ticked(svgRoot: SVGSVGElement, nodes: GraphNode[], links: GraphLink[]) {
     const svg = select(svgRoot);
 
@@ -924,8 +981,16 @@
       .data(links)
       .attr('x1', (d) => (d.source as GraphNode).x ?? 0)
       .attr('y1', (d) => (d.source as GraphNode).y ?? 0)
-      .attr('x2', (d) => (d.target as GraphNode).x ?? 0)
-      .attr('y2', (d) => (d.target as GraphNode).y ?? 0);
+      .attr('x2', (d) => {
+        const t = d.target as GraphNode;
+        if (d.kind !== 'meta') return t.x ?? 0;
+        return edgeStop(d.source as GraphNode, t).x;
+      })
+      .attr('y2', (d) => {
+        const t = d.target as GraphNode;
+        if (d.kind !== 'meta') return t.y ?? 0;
+        return edgeStop(d.source as GraphNode, t).y;
+      });
 
     // Jointure par identifiant, pas par position : les nœuds porteurs d'une
     // pastille sont remontés en fin de liste DOM pour rester au premier plan,
@@ -976,6 +1041,7 @@
     const m = d.cardMeta;
     selectedCard = m
       ? {
+          id: d.id,
           title: m.title,
           authors: m.authors,
           creatorName: m.creatorName,
@@ -985,6 +1051,7 @@
           isRoot: false,
         }
       : {
+          id: d.id,
           title: card.title,
           authors: card.content_authors ?? rootAuthors,
           creatorName: card.creator.display_name,
@@ -1287,6 +1354,31 @@
     // Le graphe apparaît d'un bloc. Allumer les nœuds un à un laissait les
     // liens — dessinés d'emblée — flotter entre des extrémités encore
     // invisibles, et durait quinze secondes sur une fiche de 300 références.
+    // Flèches de sens pour les arêtes fiche → fiche. Un marqueur SVG n'hérite
+    // pas du stroke de son trait : on en déclare un par couleur de rapport.
+    const arrowDefs = svg.append('defs');
+    const ARROW_COLORS: Record<string, string> = {
+      default: '#6366f1',
+      appuie: STANCE_STYLES['appuie'].stroke,
+      'nuance-contredit': STANCE_STYLES['nuance-contredit'].stroke,
+      contexte: STANCE_STYLES['contexte'].stroke,
+      mentionne: STANCE_STYLES['mentionne'].stroke,
+    };
+    for (const [key, color] of Object.entries(ARROW_COLORS)) {
+      arrowDefs
+        .append('marker')
+        .attr('id', `arrow-${key}`)
+        .attr('viewBox', '0 -5 10 10')
+        .attr('refX', 10)
+        .attr('refY', 0)
+        .attr('markerWidth', 6)
+        .attr('markerHeight', 6)
+        .attr('orient', 'auto')
+        .append('path')
+        .attr('d', 'M0,-4L9,0L0,4')
+        .attr('fill', color);
+    }
+
     const root = svg.append('g').attr('class', 'graph-root').style('opacity', 0);
     root.transition().duration(350).style('opacity', 1);
 
@@ -1324,6 +1416,14 @@
         return d.kind === 'parent' ? 1 : 1.2;
       })
       .attr('stroke-dasharray', (d) => (d.kind === 'parent' ? '4 3' : null))
+      .attr('marker-end', (d) => {
+        // Seules les arêtes fiche → fiche portent un sens interprétable par le
+        // lecteur. Une source appartient à sa fiche, ce n'est pas une citation
+        // orientée : lui coller une flèche suggérerait une lecture fausse.
+        if (d.kind !== 'meta') return null;
+        if ((d as any).forkHide) return null;
+        return `url(#arrow-${d.stance ?? 'default'})`;
+      })
       .style('pointer-events', (d) => {
         if ((d as any).forkHide) return 'none';
         if (d.kind === 'sibling') return 'none';
@@ -1891,6 +1991,14 @@
     }
   });
 
+  // Changer de sens change la topologie : la simulation doit repartir, sinon
+  // les nœuds retirés laissent un trou et ceux ajoutés apparaissent au centre.
+  $effect(() => {
+    direction;
+    if (!svgEl) return;
+    remount();
+  });
+
   // Opacité des nœuds. Survol et recherche agissent tous deux dessus : traités
   // dans deux effets séparés, le dernier exécuté écraserait l'autre.
   $effect(() => {
@@ -2170,6 +2278,29 @@
             </button>
           {/each}
         </div>
+
+        {#if neighborCards.size > 0}
+          <div
+            class="flex items-center rounded-md bg-white/95 border border-slate-200 shadow-sm overflow-hidden text-xs"
+            role="group"
+            aria-label="Sens de citation affiché"
+          >
+            {#each [{ v: 'sortant', l: 'Ce que cite cette fiche' }, { v: 'entrant', l: 'Ce qui cite cette fiche' }, { v: 'deux', l: 'Les deux' }] as opt, i (opt.v)}
+              <button
+                type="button"
+                class="px-2.5 py-1.5 transition-colors {i > 0
+                  ? 'border-l border-slate-200'
+                  : ''} {direction === opt.v
+                  ? 'bg-slate-800 text-white font-medium'
+                  : 'text-slate-600 hover:bg-slate-50'}"
+                aria-pressed={direction === opt.v}
+                onclick={() => (direction = opt.v as GraphDirection)}
+              >
+                {opt.l}
+              </button>
+            {/each}
+          </div>
+        {/if}
 
         <!--
       Nombre saisi librement plutôt que choisi dans une liste : la limite du
@@ -2500,5 +2631,7 @@
     containerWidth={width}
     containerHeight={height}
     onClose={() => (selectedCard = null)}
+    pinned={selectedCard ? pinnedCardIds.includes(selectedCard.id) : false}
+    onTogglePin={togglePin}
   />
 </div>
