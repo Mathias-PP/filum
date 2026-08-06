@@ -18,6 +18,7 @@
     categoryLabel,
   } from '$lib/utils/author-colors';
   import { cardHighwireTags, sourceCoins } from '$lib/utils/citation-meta';
+  import { coinsTitle } from '$lib/utils/coins';
   import { STANCE_STYLES } from '$lib/utils/stance';
   import {
     freeReadUrl,
@@ -291,6 +292,8 @@
             >
               {card.title}
             </h1>
+            <!-- COinS : invisible, lu par le connecteur Zotero sans extension ni compte. -->
+            <span class="Z3988" title={coinsTitle(card)}></span>
             {#if card.description}
               <div class="relative">
                 <p class="text-xs text-ink-tertiary mt-0.5 {descriptionExpanded ? '' : 'truncate'}">
