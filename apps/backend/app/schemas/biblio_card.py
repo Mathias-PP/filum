@@ -178,6 +178,8 @@ class GraphNodeResponse(BaseModel):
     creator_name: str | None = None
     sources_count: int | None = None
     linked_card_id: UUID | None = None
+    linked_card_slug: str | None = None
+    linked_card_creator_slug: str | None = None
     is_seed: bool = False
 
 

@@ -103,6 +103,8 @@
     doi: string | null;
     parent_source_id: string | null;
     linked_card_id: string | null;
+    linked_card_slug: string | null;
+    linked_card_creator_slug: string | null;
     /** Rapport déclaré au propos : colore le trait qui mène à la source. */
     stance: SourceStance | null;
     /** Présente uniquement pour les sources de la fiche racine. */
@@ -136,6 +138,8 @@
         archive_timestamp: null,
         parent_source_id: null,
         linked_card_id: s.linked_card_id,
+        linked_card_slug: s.linked_card_slug ?? null,
+        linked_card_creator_slug: s.linked_card_creator_slug ?? null,
         journal: s.journal,
         publisher: s.publisher,
         doi: s.doi,
@@ -305,6 +309,8 @@
       doi: s.doi ?? null,
       parent_source_id: s.parent_source_id,
       linked_card_id: s.linked_card_id ?? null,
+      linked_card_slug: null,
+      linked_card_creator_slug: null,
       stance: s.stance ?? null,
       full: s,
     }))
@@ -626,6 +632,8 @@
           doi: n.doi ?? null,
           parent_source_id: null,
           linked_card_id: n.linked_card_id ?? null,
+          linked_card_slug: n.linked_card_slug ?? null,
+          linked_card_creator_slug: n.linked_card_creator_slug ?? null,
           stance: (n.stance ?? null) as SourceStance | null,
         });
       }

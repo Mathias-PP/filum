@@ -71,6 +71,10 @@ class GraphNode:
     creator_name: str | None = None
     sources_count: int | None = None
     linked_card_id: UUID | None = None
+    # Chemin public de la fiche designee par cette source. `linked_card_id`
+    # seul ne permet pas d'y aller : le frontend n'a pas de route par UUID.
+    linked_card_slug: str | None = None
+    linked_card_creator_slug: str | None = None
     # Fiche non revendiquee : son auteur Philum declare ne pas etre l'auteur du
     # contenu decrit. L'etiqueter a son nom induirait en erreur.
     is_seed: bool = False
@@ -192,6 +196,30 @@ async def _load_card_authors(db: AsyncSession, card_ids: set[UUID]) -> dict[UUID
         if current is None or len(candidate) > len(current):
             authors[card_id] = candidate
     return authors
+
+
+async def _load_linked_card_paths(
+    db: AsyncSession, card_ids: set[UUID]
+) -> dict[UUID, tuple[str, str]]:
+    """Chemin public des fiches designees : ``card_id -> (slug, username)``.
+
+    Distinct du BFS : une source peut designer une fiche hors profondeur ou
+    absente du graphe pour cause de troncature, et le lecteur doit quand meme
+    pouvoir l'ouvrir. Seules les fiches publiques et publiees remontent.
+    """
+    if not card_ids:
+        return {}
+    result = await db.execute(
+        select(BiblioCard.id, BiblioCard.slug, User.username)
+        .join(User, BiblioCard.user_id == User.id)
+        .where(
+            BiblioCard.id.in_(card_ids),
+            BiblioCard.status == "published",
+            BiblioCard.visibility == "public",
+            BiblioCard.deleted_at.is_(None),
+        )
+    )
+    return {row[0]: (row[1], row[2]) for row in result.all()}
 
 
 async def build_card_graph(
@@ -358,5 +386,16 @@ async def build_card_graph(
         )
         for node in card_nodes:
             node.authors = real_authors.get(UUID(node.id.removeprefix("card:")))
+
+    linked_ids = {n.linked_card_id for n in graph.nodes if n.linked_card_id}
+    if linked_ids:
+        paths = await _load_linked_card_paths(db, linked_ids)
+        for node in graph.nodes:
+            if node.linked_card_id is None:
+                continue
+            found = paths.get(node.linked_card_id)
+            if found is None:
+                continue
+            node.linked_card_slug, node.linked_card_creator_slug = found
 
     return graph

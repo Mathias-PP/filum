@@ -140,6 +140,9 @@ export interface Source {
    * construit le méta-graphe et la constellation.
    */
   linked_card_id?: string | null;
+  /** Chemin public de la fiche liée : peuplé depuis le méta-graphe seulement. */
+  linked_card_slug?: string | null;
+  linked_card_creator_slug?: string | null;
   /** Nombre de sources de la fiche liée (enrichi sur l'endpoint public). */
   linked_card_sources_count?: number | null;
   journal?: string | null;
@@ -462,6 +465,9 @@ export interface GraphNode {
   is_seed?: boolean;
   /** Nœuds `source` : fiche Philum visée, si elle existe. */
   linked_card_id?: string | null;
+  /** Chemin public de la fiche liée (slug + username créateur). */
+  linked_card_slug?: string | null;
+  linked_card_creator_slug?: string | null;
 }
 
 export interface GraphEdge {
