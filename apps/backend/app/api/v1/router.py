@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     attestations,
     auth,
+    card_connections,
     cards,
     discover,
     excerpts,
@@ -17,6 +18,7 @@ v1_router = APIRouter()
 
 v1_router.include_router(attestations.router)
 v1_router.include_router(auth.router)
+v1_router.include_router(card_connections.router)
 v1_router.include_router(cards.router)
 v1_router.include_router(discover.router)
 v1_router.include_router(excerpts.router)
