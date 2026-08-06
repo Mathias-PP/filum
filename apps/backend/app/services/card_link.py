@@ -18,6 +18,7 @@ fiche -> fiche, il porte tout le meta-graphe.
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from urllib.parse import urlparse
 from uuid import UUID
 
@@ -26,11 +27,28 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.models.biblio_card import BiblioCard
-from app.models.source import Source
+from app.models.source import LinkOrigin, Source
 from app.models.user import User
 from app.services.content_identity import escape_like, extract_doi, url_variants
 
 settings = get_settings()
+
+
+@dataclass(frozen=True)
+class LinkResolution:
+    """Lien resolu, avec sa provenance.
+
+    `effective_linked_card_id` ne rendait qu'un UUID : l'appelant ne pouvait
+    donc pas savoir s'il ecrivait un geste ou une hypothese. Le tuple est
+    nomme pour que le sens ne se perde pas au premier refactor.
+    """
+
+    card_id: UUID | None
+    origin: LinkOrigin | None
+
+    @property
+    def confirmed(self) -> bool:
+        return self.origin in (LinkOrigin.MANUEL, LinkOrigin.URL)
 
 _CARD_PATH_RE = re.compile(r"^/@([a-zA-Z0-9_.-]+)/([a-zA-Z0-9-]+)/?$")
 
@@ -199,8 +217,38 @@ async def link_sources_designating_card(db: AsyncSession, card: BiblioCard) -> N
             Source.biblio_card_id != card.id,
             Source.deleted_at.is_(None),
         )
-        .values(linked_card_id=card.id)
+        .values(
+            linked_card_id=card.id,
+            # Rattrapage en masse sur les sources d'autres createurs : personne
+            # n'a valide ce lien, il ne peut donc pas se presenter comme un
+            # fait. `link_confirmed_at` reste NULL exprès.
+            link_origin=LinkOrigin.CONTENU.value,
+        )
     )
+
+
+async def resolve_link(
+    db: AsyncSession,
+    *,
+    chosen: UUID | None,
+    url: str,
+    user_id: UUID,
+    current_card_id: UUID,
+    doi: str | None = None,
+) -> LinkResolution:
+    """Le lien fiche d'une source, avec la provenance qui le qualifie."""
+    if chosen is not None:
+        await assert_linked_card_allowed(
+            db, chosen, user_id=user_id, current_card_id=current_card_id
+        )
+        return LinkResolution(chosen, LinkOrigin.MANUEL)
+    by_path = await resolve_linked_card_id(db, url, exclude_card_id=current_card_id)
+    if by_path is not None:
+        return LinkResolution(by_path, LinkOrigin.URL)
+    by_content = await resolve_card_by_content(db, url, doi=doi, exclude_card_id=current_card_id)
+    if by_content is not None:
+        return LinkResolution(by_content, LinkOrigin.CONTENU)
+    return LinkResolution(None, None)
 
 
 async def effective_linked_card_id(
@@ -212,17 +260,13 @@ async def effective_linked_card_id(
     current_card_id: UUID,
     doi: str | None = None,
 ) -> UUID | None:
-    """Le lien fiche d'une source : le picker, l'URL Philum, sinon le contenu.
-
-    Un seul chemin pour la creation, le batch et l'edition : c'est ce qui
-    manquait, l'edition perdait le lien faute de le recalculer.
-    """
-    if chosen is not None:
-        await assert_linked_card_allowed(
-            db, chosen, user_id=user_id, current_card_id=current_card_id
-        )
-        return chosen
-    by_path = await resolve_linked_card_id(db, url, exclude_card_id=current_card_id)
-    if by_path is not None:
-        return by_path
-    return await resolve_card_by_content(db, url, doi=doi, exclude_card_id=current_card_id)
+    """Compatibilite : le seul identifiant, sans sa provenance."""
+    resolution = await resolve_link(
+        db,
+        chosen=chosen,
+        url=url,
+        user_id=user_id,
+        current_card_id=current_card_id,
+        doi=doi,
+    )
+    return resolution.card_id
