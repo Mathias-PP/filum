@@ -59,7 +59,7 @@
 </script>
 
 <svelte:head>
-  <title>Feuille de route — Philum</title>
+  <title>Feuille de route | Philum</title>
   <meta
     name="description"
     content="La feuille de route de Philum : ce qui est disponible, ce qui arrive, et ce qui est prévu pour le futur."

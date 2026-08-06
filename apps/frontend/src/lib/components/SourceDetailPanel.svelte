@@ -255,6 +255,14 @@
             <path d="M7 7h10v10" />
           </svg>
         </a>
+        {#if source.linked_card_slug && source.linked_card_creator_slug}
+          <a
+            href="/@{source.linked_card_creator_slug}/{source.linked_card_slug}"
+            class="inline-flex items-center gap-1.5 rounded-md border border-indigo-300 px-3 py-1.5 text-sm text-indigo-800 hover:bg-indigo-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 justify-center"
+          >
+            &#9733; Ouvrir la fiche Philum
+          </a>
+        {/if}
         {#if source.archive_url}
           <div class="flex flex-col gap-0.5">
             <a

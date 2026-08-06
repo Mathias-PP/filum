@@ -264,6 +264,12 @@ async def update_card(
         card.is_seed = card_data.is_seed
     if card_data.visibility is not None:
         card.visibility = card_data.visibility.value
+    if card_data.format is not None:
+        card.format = card_data.format.value
+    if card_data.category is not None:
+        card.category = card_data.category.value
+    if card_data.author_kind is not None:
+        card.author_kind = card_data.author_kind.value
 
     # The card is already attached to the request session (via CardService);
     # opening a second session here raised InvalidRequestError. Commit in place.

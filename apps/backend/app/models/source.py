@@ -69,6 +69,20 @@ class SourceStance(str, Enum):
     CONTEXTE = "contexte"
 
 
+class LinkOrigin(str, Enum):
+    """D'ou vient le lien d'une source vers une fiche Philum.
+
+    MANUEL et URL sont des gestes du createur : ils valent confirmation.
+    CONTENU est une hypothese de la machine (meme DOI, meme URL normalisee) :
+    elle vaut proposition, pas declaration. Les confondre ferait porter au
+    createur une affirmation qu'il n'a pas faite.
+    """
+
+    MANUEL = "manuel"
+    URL = "url"
+    CONTENU = "contenu"
+
+
 class ArchiveStatus(str, Enum):
     PENDING = "pending"
     ARCHIVED = "archived"
@@ -129,6 +143,9 @@ class Source(Base):
         nullable=True,
         index=True,
     )
+    # Provenance du lien fiche a fiche. NULL = anterieur a la tracabilite.
+    link_origin: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    link_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     conflict_of_interest: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Avis de retractation (cf. extractors/retraction.py). Trois etats a ne pas
     # confondre : NULL = jamais verifie, "unverifiable" = verification impossible,

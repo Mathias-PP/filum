@@ -7,6 +7,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.models.source import AuthorKind, SourceCategory, SourceFormat
 from app.schemas.source import SourceResponse
 
 
@@ -73,6 +74,10 @@ class CardUpdate(BaseModel):
     content_type: ContentType | None = None
     is_seed: bool | None = None
     visibility: Visibility | None = None
+    # Referencement du contenu documente, meme vocabulaire que les sources.
+    format: SourceFormat | None = None
+    category: SourceCategory | None = None
+    author_kind: AuthorKind | None = None
 
 
 class CardStats(BaseModel):
@@ -130,6 +135,10 @@ class CardResponse(BaseModel):
     published_at: datetime | None
     created_at: datetime
     updated_at: datetime | None
+    # Referencement du contenu documente. NULL = non declare.
+    format: SourceFormat | None = None
+    category: SourceCategory | None = None
+    author_kind: AuthorKind | None = None
 
 
 class CardDetail(CardResponse):
@@ -178,6 +187,8 @@ class GraphNodeResponse(BaseModel):
     creator_name: str | None = None
     sources_count: int | None = None
     linked_card_id: UUID | None = None
+    linked_card_slug: str | None = None
+    linked_card_creator_slug: str | None = None
     is_seed: bool = False
 
 

@@ -78,7 +78,7 @@
               type="button"
               class="inline-flex items-center gap-1 hover:text-ink-primary transition-colors"
               onclick={() => toggleSort(column.id)}
-              title="{column.hint} — cliquez pour trier"
+              title="{column.hint} : cliquez pour trier"
             >
               {column.label}
               <span class="text-ink-tertiary" aria-hidden="true">

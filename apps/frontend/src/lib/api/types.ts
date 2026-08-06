@@ -33,6 +33,10 @@ export interface Card {
   published_at: string | null;
   created_at: string;
   updated_at: string | null;
+  /** Referencement du contenu documente. null = non declare. */
+  format: SourceFormat | null;
+  category: SourceCategory | null;
+  author_kind: AuthorKind | null;
 }
 
 export interface CardDetail extends Card {
@@ -91,6 +95,10 @@ export interface CardCreate {
    * `private` : visible uniquement par l'owner connecté (404 pour les autres).
    */
   visibility?: Visibility;
+  /** Referencement du contenu documente. null = effacer la valeur. */
+  format?: SourceFormat | null;
+  category?: SourceCategory | null;
+  author_kind?: AuthorKind | null;
 }
 
 export interface SourceExcerpt {
@@ -140,6 +148,9 @@ export interface Source {
    * construit le méta-graphe et la constellation.
    */
   linked_card_id?: string | null;
+  /** Chemin public de la fiche liée : peuplé depuis le méta-graphe seulement. */
+  linked_card_slug?: string | null;
+  linked_card_creator_slug?: string | null;
   /** Nombre de sources de la fiche liée (enrichi sur l'endpoint public). */
   linked_card_sources_count?: number | null;
   journal?: string | null;
@@ -462,6 +473,9 @@ export interface GraphNode {
   is_seed?: boolean;
   /** Nœuds `source` : fiche Philum visée, si elle existe. */
   linked_card_id?: string | null;
+  /** Chemin public de la fiche liée (slug + username créateur). */
+  linked_card_slug?: string | null;
+  linked_card_creator_slug?: string | null;
 }
 
 export interface GraphEdge {
@@ -504,4 +518,25 @@ export interface IncomingCitations {
   /** null = jamais consulté. À dire tel quel, sans inventer de date. */
   seen_at?: string | null;
   truncated: boolean;
+}
+
+export type LinkOrigin = 'manuel' | 'url' | 'contenu';
+
+export interface CardConnection {
+  source_id: string;
+  source_title: string | null;
+  source_url: string;
+  card_id: string;
+  card_title: string;
+  card_slug: string;
+  card_creator_slug: string;
+  stance: SourceStance | null;
+  origin: LinkOrigin | null;
+  confirmed: boolean;
+  editable: boolean;
+}
+
+export interface CardConnections {
+  outgoing: CardConnection[];
+  incoming: CardConnection[];
 }

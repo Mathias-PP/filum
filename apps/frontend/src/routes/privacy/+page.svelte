@@ -3,7 +3,7 @@
 </script>
 
 <svelte:head>
-  <title>Confidentialité — Philum</title>
+  <title>Confidentialité | Philum</title>
   <meta
     name="description"
     content="Politique de confidentialité de Philum : données collectées, durée de conservation, droits."
@@ -55,7 +55,7 @@
     </section>
 
     <p class="text-sm text-ink-tertiary">
-      Page en cours de rédaction — une version complète sera publiée avant la mise en production
+      Page en cours de rédaction. Une version complète sera publiée avant la mise en production
       grand public.
     </p>
   </div>

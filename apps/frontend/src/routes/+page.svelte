@@ -16,7 +16,7 @@
 </script>
 
 <svelte:head>
-  <title>Philum — Votre bibliographie devient une galaxie</title>
+  <title>Philum | Votre bibliographie devient une galaxie</title>
   <meta
     name="description"
     content="Philum transforme votre bibliographie en un graphe interactif : sources organisées, archivées, et chaque création que vous revendiquez est attestée cryptographiquement."

@@ -60,6 +60,9 @@ const baseCard: CardDetail = {
   published_at: '2026-03-04T10:00:00',
   created_at: '2026-03-01T10:00:00',
   updated_at: null,
+  format: null,
+  category: null,
+  author_kind: null,
   creator: {
     slug: 'mathias-pinault',
     display_name: 'Mathias',

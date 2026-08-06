@@ -97,7 +97,7 @@
               <span></span>
             </div>
           </button>
-          <a href="/" class="flex items-center gap-2.5" aria-label="Philum — accueil">
+          <a href="/" class="flex items-center gap-2.5" aria-label="Philum, accueil">
             <Logo size={42} variant="color" className="block dark:hidden" />
             <Logo size={42} variant="dark" className="hidden dark:block" />
             <span class="text-base font-serif font-medium text-ink-primary">Philum</span>

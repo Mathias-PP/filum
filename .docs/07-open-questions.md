@@ -186,3 +186,22 @@
 ---
 
 *Cette liste évolue avec le projet. Toute nouvelle question importante doit y être ajoutée.*
+
+---
+
+## Q-feed-1 — Rétroactivité du feed sur une fiche dépubliée
+
+**Statut** : non tranché.
+
+**Question** : si une fiche publiée passe en brouillon ou est supprimée, son
+entrée dans le feed doit-elle disparaître ou rester marquée « dépubliée » ?
+
+**Arguments pour rester visible (marquée)** : le feed est une trace, pas une
+liste des fiches actuellement publiées. Effacer l'entrée permettrait de réécrire
+l'historique, ce qui va à l'encontre de la logique d'attestation (ADR-019).
+
+**Arguments pour disparaître** : le créateur a le droit d'effacer ses traces ;
+une fiche dépubliée peut avoir été retirée pour une raison légitime (contenu
+erroné, vie privée). Afficher une entrée sans lien fonctionnel est frustrant.
+
+**Décision à prendre avant** : implémentation de la table `feed_events`.

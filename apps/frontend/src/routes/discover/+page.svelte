@@ -97,7 +97,7 @@
 </script>
 
 <svelte:head>
-  <title>Explorer les fiches — Philum</title>
+  <title>Explorer les fiches | Philum</title>
   <meta
     name="description"
     content="Parcourez les bibliographies publiques de Philum : cherchez par titre, par auteur du contenu ou par créateur, filtrez par plateforme et par date."

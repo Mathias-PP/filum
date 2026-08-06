@@ -18,6 +18,7 @@
     categoryLabel,
   } from '$lib/utils/author-colors';
   import { cardHighwireTags, sourceCoins } from '$lib/utils/citation-meta';
+  import { coinsTitle } from '$lib/utils/coins';
   import { STANCE_STYLES } from '$lib/utils/stance';
   import {
     freeReadUrl,
@@ -221,7 +222,7 @@
 </script>
 
 <svelte:head>
-  <title>{card.title} — Philum</title>
+  <title>{card.title} | Philum</title>
   <meta name="description" content={card.description ?? card.title} />
   <meta property="og:title" content={card.title} />
   <meta property="og:description" content={card.description ?? card.title} />
@@ -291,6 +292,8 @@
             >
               {card.title}
             </h1>
+            <!-- COinS : invisible, lu par le connecteur Zotero sans extension ni compte. -->
+            <span class="Z3988" title={coinsTitle(card)}></span>
             {#if card.description}
               <div class="relative">
                 <p class="text-xs text-ink-tertiary mt-0.5 {descriptionExpanded ? '' : 'truncate'}">
@@ -551,7 +554,7 @@
                         {@const st = STANCE_STYLES[source.stance]}
                         <span
                           class="px-2 py-0.5 text-xs rounded-full {st.bgClass}"
-                          title="Déclaré par l'auteur de la fiche — {st.help}"
+                          title="Déclaré par l'auteur de la fiche : {st.help}"
                         >
                           {st.label}
                         </span>

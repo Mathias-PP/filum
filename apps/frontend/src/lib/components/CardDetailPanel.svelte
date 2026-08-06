@@ -10,6 +10,7 @@
    * porte.
    */
   export interface CardPanelInfo {
+    id: string;
     title: string;
     /** Auteurs du contenu documenté — jamais le créateur de la fiche. */
     authors: string | null;
@@ -37,6 +38,8 @@
     containerWidth?: number;
     containerHeight?: number;
     onClose: () => void;
+    pinned?: boolean;
+    onTogglePin?: (cardId: string) => void;
   }
 
   let {
@@ -45,6 +48,8 @@
     containerWidth = 800,
     containerHeight = 560,
     onClose,
+    pinned = false,
+    onTogglePin,
   }: Props = $props();
 
   const PANEL_WIDTH = 320;
@@ -187,6 +192,17 @@
           >
             Ouvrir la fiche
           </a>
+        {/if}
+        {#if onTogglePin && !info.isRoot}
+          <button
+            type="button"
+            onclick={() => onTogglePin?.(info.id)}
+            class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-colors {pinned
+              ? 'border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+              : 'border-slate-300 text-slate-600 hover:bg-slate-50'}"
+          >
+            {pinned ? 'Detacher du graphe' : 'Garder sur le graphe'}
+          </button>
         {/if}
       </div>
 

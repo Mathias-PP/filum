@@ -42,8 +42,8 @@
     connaît pas de façon fiable l'auteur·rice du contenu — il ne le nomme donc pas.
   -->
   <p class="flex-1 text-ink-secondary">
-    Fiche établie par Philum à partir de sources publiques — elle n'a pas été validée par
-    l'auteur·rice du contenu d'origine. C'est votre contenu&nbsp;?
+    Fiche établie par Philum à partir de sources publiques, non validée par l'auteur·rice du contenu
+    d'origine. C'est votre contenu&nbsp;?
   </p>
   <Button size="sm" variant="secondary" onclick={() => (open = true)}>Réclamer cette fiche</Button>
 </div>
@@ -51,7 +51,7 @@
 <Modal bind:open title="Réclamer cette fiche">
   {#if submitStatus === 'done'}
     <p class="text-sm text-ink-secondary">
-      Demande envoyée — nous vous recontactons sous 48&nbsp;h. Merci&nbsp;!
+      Demande envoyée. Nous vous recontactons sous 48&nbsp;h. Merci&nbsp;!
     </p>
   {:else}
     <form onsubmit={submit} class="flex flex-col gap-3">
@@ -79,7 +79,7 @@
       ></textarea>
       <Button type="submit" loading={submitStatus === 'loading'}>Envoyer la demande</Button>
       {#if submitStatus === 'error'}
-        <p class="text-sm text-danger">Erreur — réessayez.</p>
+        <p class="text-sm text-danger">Erreur, réessayez.</p>
       {/if}
     </form>
   {/if}

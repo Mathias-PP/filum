@@ -6,6 +6,8 @@ import type {
   Attestation,
   AttestationVerifyResponse,
   Card,
+  CardConnection,
+  CardConnections,
   CardDetail,
   CardCreate,
   CardGraph,
@@ -205,6 +207,17 @@ export const api = {
       return request<CardGraph>(`/@${creatorSlug}/${cardSlug}/graph${qs ? `?${qs}` : ''}`);
     },
     // `verify` removed (ADR-019). Use `api.attestations.verify(id)` instead.
+
+    connections: (cardId: string): Promise<CardConnections> =>
+      request<CardConnections>(`/cards/${cardId}/connections`),
+
+    confirmConnection: (cardId: string, sourceId: string): Promise<CardConnection> =>
+      request<CardConnection>(`/cards/${cardId}/connections/${sourceId}/confirm`, {
+        method: 'POST',
+      }),
+
+    removeConnection: (cardId: string, sourceId: string): Promise<void> =>
+      request<void>(`/cards/${cardId}/connections/${sourceId}`, { method: 'DELETE' }),
   },
 
   sources: {

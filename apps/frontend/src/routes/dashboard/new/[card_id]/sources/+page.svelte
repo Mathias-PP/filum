@@ -24,12 +24,14 @@
   const wizardSteps = [
     { label: 'Informations', description: 'Titre, plateforme', clickable: true },
     { label: 'Sources', description: 'Ajouter et publier' },
+    { label: 'Connexions', description: 'Fiches liees', clickable: true },
   ];
 
   const cardId = $derived($page.params.card_id ?? '');
 
   function onWizardStepClick(i: number) {
     if (i === 0) goto(`/dashboard/new?card_id=${cardId}`);
+    if (i === 2) goto(`/dashboard/new/${cardId}/connexions`);
   }
 
   let card = $state<Card | null>(null);
@@ -537,7 +539,7 @@
       console.error('publish error:', err);
       if (err instanceof TypeError && err.message === 'Failed to fetch') {
         publishError =
-          'La publication n’a pas abouti : le serveur n’a pas répondu. Vérifiez votre connexion puis réessayez — votre brouillon et vos sources sont conservés.';
+          'La publication n’a pas abouti : le serveur n’a pas répondu. Vérifiez votre connexion puis réessayez. Votre brouillon et vos sources sont conservés.';
       } else {
         publishError = err instanceof Error ? err.message : 'Erreur lors de la publication';
       }
@@ -808,7 +810,7 @@
     if (data.skipped > 0)
       parts.push(`${data.skipped} sans lien (ignorée${data.skipped > 1 ? 's' : ''})`);
     importSummary = `${parts.join(', ')}${
-      data.format_detected ? ` — format détecté : ${data.format_detected}` : ''
+      data.format_detected ? ` (format détecté : ${data.format_detected})` : ''
     }.`;
     // Les refs sans titre (URL/DOI nus) passent par l'extracteur existant.
     for (const u of needExtract) {
@@ -956,7 +958,7 @@
               : '';
         const noise =
           dropped > 0
-            ? ` — ${dropped} suggestion${dropped > 1 ? 's' : ''} bruit${dropped > 1 ? 'ées' : 'ée'} filtré${dropped > 1 ? 'es' : 'e'}`
+            ? ` (${dropped} suggestion${dropped > 1 ? 's' : ''} bruit${dropped > 1 ? 'ées' : 'ée'} filtré${dropped > 1 ? 'es' : 'e'})`
             : '';
         if (conf === 'high') {
           refsInfo = `${res.sources.length} référence${res.sources.length > 1 ? 's' : ''} extraite${res.sources.length > 1 ? 's' : ''}${detail}. Confiance élevée${noise}.`;
@@ -967,12 +969,12 @@
           const toCheck = oracle
             ? `Vérifiez les ${enrich} référence${enrich > 1 ? 's' : ''} enrichie${enrich > 1 ? 's' : ''} : ${enrich > 1 ? 'ce sont' : "c'est"} ${enrich > 1 ? 'des sources' : 'une source'} retrouvée${enrich > 1 ? 's' : ''} dans le corps de la page, pas dans une bibliographie déclarée`
             : 'Vérifiez que ce sont bien des sources citées';
-          refsInfo = `${res.sources.length} référence${res.sources.length > 1 ? 's' : ''} extraite${res.sources.length > 1 ? 's' : ''}${detail}. Confiance moyenne — aucune section « Références » nette n'a été détectée. ${toCheck}${noise}.`;
+          refsInfo = `${res.sources.length} référence${res.sources.length > 1 ? 's' : ''} extraite${res.sources.length > 1 ? 's' : ''}${detail}. Confiance moyenne : aucune section « Références » nette n'a été détectée. ${toCheck}${noise}.`;
         } else {
-          refsInfo = `${res.sources.length} référence${res.sources.length > 1 ? 's' : ''} extraite${res.sources.length > 1 ? 's' : ''}. Confiance basse — aucune validation possible, à vérifier manuellement${noise}.`;
+          refsInfo = `${res.sources.length} référence${res.sources.length > 1 ? 's' : ''} extraite${res.sources.length > 1 ? 's' : ''}. Confiance basse : aucune validation possible, à vérifier manuellement${noise}.`;
         }
         if (res.fetch_status === 'ok_via_wayback') {
-          refsInfo += ' — Source récupérée depuis Internet Archive.';
+          refsInfo += ' Source récupérée depuis Internet Archive.';
         }
         if (overwriteDrafts) drafts = [];
         await ingestImported({ sources: res.sources, skipped: res.skipped });
@@ -981,7 +983,7 @@
         refsError = 'La page n’a pas pu être récupérée (site inaccessible ou bloqué).';
       } else if (res.fetch_status === 'not_html') {
         refsError =
-          'Ce lien ne pointe pas vers une page web (PDF, image…) — l’extraction ne fonctionne que sur du HTML.';
+          'Ce lien ne pointe pas vers une page web (PDF, image…) : l’extraction ne fonctionne que sur du HTML.';
       } else {
         refsInfo = res.references_section_found
           ? 'Aucune référence exploitable trouvée sur cette page.'
@@ -1190,7 +1192,7 @@
                       <span class="text-ink-primary">{suggestion.title}</span>
                       {#if suggestion.authors || suggestion.published_at}
                         <span class="text-ink-tertiary">
-                          — {suggestion.authors ?? ''}{suggestion.authors && suggestion.published_at
+                          , {suggestion.authors ?? ''}{suggestion.authors && suggestion.published_at
                             ? ', '
                             : ''}{suggestion.published_at?.slice(0, 4) ?? ''}
                         </span>
@@ -1274,7 +1276,7 @@
             id="multi-urls"
             bind:value={multiText}
             rows={8}
-            placeholder={'— Une liste de liens :\nhttps://doi.org/10.1038/s41586-020-2649-2\nhttps://www.lemonde.fr/...\n\n— OU une bibliographie complète collée depuis un article, Zotero, un PDF… :\nWolfe, C. D., & Bell, M. A. (2007). The integration of cognition and emotion during infancy and early childhood: regulatory processes associated with the development of working memory. Brain and Cognition, 65(1), 3–13. https://doi.org/10.1016/j.bandc.2006.01.009\nDupont, J., & Martin, A. (2020). Titre. Journal, 12(3), 45-67.'}
+            placeholder={'Une liste de liens :\nhttps://doi.org/10.1038/s41586-020-2649-2\nhttps://www.lemonde.fr/...\n\nOU une bibliographie complète collée depuis un article, Zotero, un PDF… :\nWolfe, C. D., & Bell, M. A. (2007). The integration of cognition and emotion during infancy and early childhood: regulatory processes associated with the development of working memory. Brain and Cognition, 65(1), 3–13. https://doi.org/10.1016/j.bandc.2006.01.009\nDupont, J., & Martin, A. (2020). Titre. Journal, 12(3), 45-67.'}
             class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder font-mono text-sm resize-y min-h-[8rem]"
           ></textarea>
         </div>
@@ -1313,7 +1315,7 @@
               {importing ? 'Import…' : 'Importer un fichier'}
             </Button>
             <p class="text-xs text-ink-tertiary mt-1">
-              BibTeX, CSL-JSON (Zotero), Markdown (Obsidian), PDF, Word ou page HTML — 5 Mo max
+              BibTeX, CSL-JSON (Zotero), Markdown (Obsidian), PDF, Word ou page HTML, 5 Mo max
             </p>
           </div>
           <div class="flex gap-2">
@@ -1323,7 +1325,7 @@
               loading={analyzingText}
               disabled={analyzingText || multiExtracting || !multiText.trim()}
               onclick={analyzeText}
-              title="L'IA découpe une bibliographie collée en références structurées — fonctionne même sans liens ni DOIs"
+              title="L'IA découpe une bibliographie collée en références structurées (fonctionne même sans liens ni DOIs)"
             >
               {analyzingText ? 'Analyse…' : 'Analyser le texte (IA)'}
             </Button>
@@ -1365,7 +1367,7 @@
               class="flex items-center justify-between gap-3 rounded-lg bg-surface-secondary/50 border border-border px-4 py-3"
             >
               <p class="text-sm text-ink-secondary">
-                {drafts.length} référence{drafts.length > 1 ? 's' : ''} à valider — relisez-les ou ajoutez
+                {drafts.length} référence{drafts.length > 1 ? 's' : ''} à valider, relisez-les ou ajoutez
                 tout d'un coup.
               </p>
               <Button
@@ -1381,7 +1383,7 @@
               <div class="border border-border rounded-lg p-4 space-y-3 bg-surface-secondary/50">
                 <div class="flex items-start justify-between gap-2">
                   <p class="text-xs text-ink-tertiary font-mono truncate min-w-0">
-                    {draft.url || '(sans URL — livre / chapitre / ref sans DOI)'}
+                    {draft.url || '(sans URL : livre, chapitre ou ref sans DOI)'}
                   </p>
                   <div class="flex items-center gap-2 shrink-0">
                     {#if draft.status === 'extracting'}
@@ -1621,7 +1623,7 @@
           <label for="source-format" class="block text-sm font-medium text-ink-secondary">
             Format <span class="text-danger">*</span>
             {#if taxonomySuggested}
-              <span class="text-xs text-info font-normal">— suggéré</span>
+              <span class="text-xs text-info font-normal">(suggéré)</span>
             {/if}
           </label>
           <select
@@ -1640,7 +1642,7 @@
           <label for="source-category" class="block text-sm font-medium text-ink-secondary">
             Catégorie <span class="text-danger">*</span>
             {#if taxonomySuggested}
-              <span class="text-xs text-info font-normal">— suggéré</span>
+              <span class="text-xs text-info font-normal">(suggéré)</span>
             {/if}
           </label>
           <select
@@ -1660,7 +1662,7 @@
           <label for="source-author-kind" class="block text-sm font-medium text-ink-secondary">
             Type d'auteur <span class="text-danger">*</span>
             {#if taxonomySuggested}
-              <span class="text-xs text-info font-normal">— suggéré</span>
+              <span class="text-xs text-info font-normal">(suggéré)</span>
             {/if}
           </label>
           <select
@@ -1679,7 +1681,7 @@
         <div class="space-y-1.5">
           <label for="source-published-at" class="block text-sm font-medium text-ink-secondary">
             Date de publication
-            <span class="text-xs text-ink-tertiary font-normal">— par les auteurs originaux</span>
+            <span class="text-xs text-ink-tertiary font-normal">, par les auteurs originaux</span>
           </label>
           <input
             id="source-published-at"
@@ -1920,7 +1922,7 @@
                   size={numberedSources.length > 8 ? 8 : undefined}
                   class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
                 >
-                  <option value="">— Aucun lien parent —</option>
+                  <option value="">(Aucun lien parent)</option>
                   {#each numberedSources as { source: s, number } (s.id)}
                     <option value={s.id}>{number}. {s.title ?? s.url}</option>
                   {/each}
@@ -1941,9 +1943,9 @@
         <div class="sm:col-span-2 space-y-1.5">
           <label for="linked-card-search" class="block text-sm font-medium text-ink-secondary">
             Ce contenu source a-t-il déjà sa fiche Philum ?
-            <span class="text-xs text-ink-tertiary font-normal"
-              >— la source devient un nœud dépliable du graphe, et les deux fiches se relient dans
-              la constellation</span
+            <span class="text-xs text-ink-tertiary font-normal">
+              : la source devient un nœud dépliable du graphe, et les deux fiches se relient dans la
+              constellation</span
             >
           </label>
 
@@ -1954,7 +1956,7 @@
               <span class="text-sm text-ink-primary truncate">
                 {linkedCardSelected?.title ?? 'Fiche sélectionnée'}
                 {#if linkedCardSelected && !linkedCardSelected.is_own}
-                  <span class="text-xs text-ink-tertiary">— @{linkedCardSelected.creator_slug}</span
+                  <span class="text-xs text-ink-tertiary">, @{linkedCardSelected.creator_slug}</span
                   >
                 {/if}
               </span>
@@ -2012,8 +2014,8 @@
           <div class="flex items-center justify-between gap-2 flex-wrap">
             <h3 class="text-sm font-semibold text-ink-primary">
               Citations
-              <span class="text-xs text-ink-tertiary font-normal"
-                >— extraits marquants de cette source (max 10)</span
+              <span class="text-xs text-ink-tertiary font-normal">
+                : extraits marquants de cette source (max 10)</span
               >
             </h3>
             <Button

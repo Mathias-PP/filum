@@ -2,7 +2,7 @@
 
 > Snapshot vivant, 1 page max. **Pour l'historique détaillé** : voir [`CHANGELOG.md`](./CHANGELOG.md). **Pour les items long terme** : voir [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md).
 
-**Dernière mise à jour : 2026-08-05**
+**Dernière mise à jour : 2026-08-07**
 
 ---
 
@@ -34,6 +34,16 @@ Avant : Phase 2 (identité visuelle Pulsar-graph + audit) et Phase 1 (MVP comple
 ---
 
 ## PRs ouvertes
+
+**`feat/graphe-corrections-visuelles` (en cours, sessions 2026-08-06 / 2026-08-07)** — **graphe, connexions et identité** — PR à ouvrir après la vérification finale :
+- **Lot A** (A1-A3) : épaisseur des liens caractérisés réduite, légende repliable, purge des em-dashes.
+- **Lot B** (B1-B5) : flèches de sens sur les arêtes fiche→fiche, sélecteur à trois positions (sortant/entrant/deux), imbrication des fiches affichée, épinglage, lien « ★ Ouvrir la fiche Philum » dans l'encadré de source.
+- **Lot C** (C1-C3) : migration `026_card_ref` (columns `format`/`category`/`author_kind` sur `biblio_cards`), PATCH API + schéma, sélecteur UI dans le formulaire de fiche, coloration des nœuds fiche selon le mode de couleur actif.
+- **Lot D** (D1-D4) : migration `027_link_prov` (`link_origin`/`link_confirmed_at` sur `sources`), `LinkResolution` + `resolve_link()` dans `card_link.py`, endpoints REST de gestion des connexions (`GET/POST/DELETE /api/v1/cards/{id}/connections`), page `/dashboard/new/[card_id]/connexions` avec encart ambre pour les suggestions, liste des citations entrantes en lecture seule, bande d'annulation 8 s.
+- **Lot E** (E1-E3) : `coinsTitle()` dans `$lib/utils/coins.ts` + `<span class="Z3988">` sur la fiche publique, balises Highwire déjà en place (#239) ; alertes de citation déjà sur le dashboard (#248) ; décision `llms.txt` → MCP consignée dans `DECISIONS.md`.
+- **Lot F** (F1-F3) : `.docs/19-preuve-autorat.md` (périmètre honnête de la garantie, anti-usurpation, formulations interdites, ORCID, faux) ; `.docs/20-profils-et-feed.md` (feed chronologique, recherche créateurs) ; question feed rétroactivité dans `.docs/07-open-questions.md`.
+- **731 tests backend, 131 tests frontend, 0 erreur lint.**
+- **Non encore déployé** : les migrations 026 et 027 doivent être appliquées sur la VM après le merge.
 
 **#281 → #287** — Session 2026-08-05 (autonome) — **rendre les fiches trouvables, cesser de servir ce qui était privé, cesser de perdre des références, cesser de confondre une citation avec un titre.** Toutes mergées, VM redéployée et prod vérifiée.
 - **#281** `fix/mcp-fiches-privees` — ⚠️ **vraie fuite de données**. Le serveur MCP (ses quatre outils) et l'endpoint d'export public (ses huit formats) ne filtraient que sur `status == "published"`. Or **« publiée » dit que le travail est achevé, « publique » qu'il est offert au monde** : une fiche pouvait être l'un sans être l'autre, et n'importe quel appelant anonyme obtenait la bibliographie complète de fiches que leur autrice avait gardées privées. Prouvé rouge avant correction (4 échecs MCP, 6 échecs d'export — un par format). Le contrôle était recopié à chaque route publique et l'export l'avait simplement oublié : il passe désormais par un `_load_public_card()` unique, qui répond **404 et non 403** pour ne pas confirmer qu'une fiche existe à cette adresse. Le graphe, lui, était déjà protégé.
