@@ -310,7 +310,7 @@
       .append('title')
       .text(
         (d) =>
-          `${d.title} — ${d.label} · ${d.sourcesCount} source${d.sourcesCount > 1 ? 's' : ''}${d.isRoot ? ' (fiche affichée)' : ''}`
+          `${d.title} · ${d.label} · ${d.sourcesCount} source${d.sourcesCount > 1 ? 's' : ''}${d.isRoot ? ' (fiche affichée)' : ''}`
       );
 
     const sim = forceSimulation<StarNode>(nodes)

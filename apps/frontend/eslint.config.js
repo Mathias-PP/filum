@@ -9,7 +9,7 @@ export default [
   js.configs.recommended,
   prettier,
   {
-    ignores: ['.svelte-kit/', 'build/', 'node_modules/', '*.cjs', '*.mjs'],
+    ignores: ['.svelte-kit/', 'build/', 'node_modules/', '*.cjs', '*.mjs', 'scripts/'],
   },
   {
     files: ['**/*.ts', '**/*.svelte.ts'],

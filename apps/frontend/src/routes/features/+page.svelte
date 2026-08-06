@@ -4,7 +4,7 @@
   const shipped = [
     {
       title: 'Accès libre et rétractations',
-      desc: "Chaque source indique si elle est en accès libre et si elle a été rétractée. Quand l'information n'a pas pu être vérifiée, c'est écrit — jamais deviné.",
+      desc: "Chaque source indique si elle est en accès libre et si elle a été rétractée. Quand l'information n'a pas pu être vérifiée, c'est écrit, jamais deviné.",
     },
     {
       title: 'Tableau comparatif',
@@ -65,7 +65,7 @@
 </script>
 
 <svelte:head>
-  <title>Fonctionnalités — Philum</title>
+  <title>Fonctionnalités | Philum</title>
   <meta
     name="description"
     content="Découvrez toutes les fonctionnalités de Philum : graphe interactif, signature cryptographique, archivage, extraction automatique et plus."

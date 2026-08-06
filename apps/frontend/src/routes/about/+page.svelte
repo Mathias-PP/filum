@@ -3,7 +3,7 @@
 </script>
 
 <svelte:head>
-  <title>À propos — Philum</title>
+  <title>À propos | Philum</title>
   <meta
     name="description"
     content="Philum est un outil de gestion de références bibliographiques qui transforme votre bibliographie en graphe interactif et vérifiable."

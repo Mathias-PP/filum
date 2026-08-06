@@ -50,6 +50,7 @@
   import { UNDATED_BAND, chronoLayout, type ChronoLayout } from '$lib/utils/graph-chrono';
   import { buildHaystack, matchesAllTerms, searchTerms } from '$lib/utils/graph-search';
   import { STANCE_ORDER, STANCE_STYLES, stanceStroke } from '$lib/utils/stance';
+  import { legendLabel } from './graph-legend';
   import CardDetailPanel, { type CardPanelInfo } from './CardDetailPanel.svelte';
   import SourceDetailPanel from './SourceDetailPanel.svelte';
 
@@ -239,6 +240,10 @@
   let neighborSources = new Map<string, GraphSourceData[]>();
   let expandedCardIds = $state<string[]>([]);
   let neighborhoodTruncated = $state(false);
+  // La légende explique un geste qu'on n'apprend qu'une fois. Elle doit donc
+  // pouvoir disparaître, et rester disparue le temps de la session : la
+  // rouvrir à chaque remontage la transformerait en bandeau publicitaire.
+  let legendOpen = $state(true);
   // Dernières positions connues : le dépliage remonte le graphe, sans ce
   // souvenir la disposition se réorganiserait entièrement à chaque clic.
   const posMemory = new Map<string, { x: number; y: number }>();
@@ -1310,9 +1315,13 @@
       .attr('stroke-width', (d) => {
         if ((d as any).forkHide) return 0;
         if (d.kind === 'sibling') return 0;
-        if (d.kind === 'meta') return 2.5;
-        if (d.stance) return 2.5;
-        return d.kind === 'parent' ? 1 : 1.5;
+        // Un rapport déclaré se lit à la couleur du trait, pas à sa masse :
+        // 2.5 px empâtait le maillage dès qu'une fiche déclarait ses rapports
+        // sur la majorité de ses sources. L'écart avec un lien muet reste
+        // perceptible à 1.6 px, sans que le trait devienne un objet.
+        if (d.kind === 'meta') return 1.8;
+        if (d.stance) return 1.6;
+        return d.kind === 'parent' ? 1 : 1.2;
       })
       .attr('stroke-dasharray', (d) => (d.kind === 'parent' ? '4 3' : null))
       .style('pointer-events', (d) => {
@@ -1630,12 +1639,12 @@
       .text((d) => {
         if (!d.cardMeta) return card.title;
         if (d.expandable) {
-          return `Fiche Philum : ${d.cardMeta.title} — cliquer pour déplier ses sources`;
+          return `Fiche Philum : ${d.cardMeta.title}, cliquer pour déplier ses sources`;
         }
         if (d.cardMeta.sourcesCount === 0) {
-          return `Fiche Philum : ${d.cardMeta.title} — aucune source`;
+          return `Fiche Philum : ${d.cardMeta.title}, aucune source`;
         }
-        return `${d.cardMeta.title} — cliquer pour replier`;
+        return `${d.cardMeta.title}, cliquer pour replier`;
       });
 
     simulation = forceSimulation<GraphNode>(nodes)
@@ -2237,7 +2246,7 @@
                   onchange={(e) => setSourceCap(Number(e.currentTarget.value))}
                   class="w-14 rounded border border-slate-200 px-1 py-0.5 text-center font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-400"
                   aria-label="Nombre exact de références affichées"
-                  title="Nombre maximum de références affichées — les sources clés d'abord"
+                  title="Nombre maximum de références affichées, les sources clés d'abord"
                 />
                 <button
                   type="button"
@@ -2446,15 +2455,28 @@
             Tout replier
           </button>
         </div>
-      {:else}
-        <p
-          class="rounded-md border border-indigo-200 bg-indigo-50/95 px-2.5 py-1.5 text-indigo-900 backdrop-blur-sm"
+      {:else if legendOpen}
+        <div
+          class="flex items-start gap-2 rounded-md border border-indigo-200 bg-indigo-50/95 px-2.5 py-1.5 text-indigo-900 backdrop-blur-sm"
         >
-          {neighborCards.size} fiche{neighborCards.size > 1 ? 's' : ''} Philum reliée{neighborCards.size >
-          1
-            ? 's'
-            : ''} — cliquez la pastille « + » pour déplier ses sources, le nœud pour voir sa référence.
-        </p>
+          <p class="flex-1">{legendLabel(neighborCards.size)}</p>
+          <button
+            type="button"
+            class="shrink-0 rounded px-1 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500"
+            aria-label="Masquer l'aide du graphe"
+            onclick={() => (legendOpen = false)}
+          >
+            ✕
+          </button>
+        </div>
+      {:else}
+        <button
+          type="button"
+          class="rounded-md border border-indigo-200 bg-indigo-50/95 px-2.5 py-1.5 text-indigo-900 backdrop-blur-sm hover:bg-indigo-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500"
+          onclick={() => (legendOpen = true)}
+        >
+          ? Aide du graphe
+        </button>
       {/if}
       {#if neighborhoodTruncated}
         <p class="text-slate-500">Voisinage partiel : trop de fiches reliées pour tout afficher.</p>

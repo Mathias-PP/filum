@@ -271,7 +271,7 @@
       Modifiez les informations de la fiche, puis cliquez sur « Sources » ou sur le bouton pour
       enregistrer et revenir aux sources.
     {:else}
-      Collez l'URL du contenu — Philum suggère automatiquement les informations. Vous pourrez
+      Collez l'URL du contenu : Philum suggère automatiquement les informations. Vous pourrez
       extraire les sources citées à l'étape suivante.
     {/if}
   </p>
@@ -373,7 +373,7 @@
       {#if droppedFile}
         <p class="text-ink-primary font-medium">{droppedFile.name}</p>
         <p class="text-xs mt-0.5">
-          Prêt à être analysé — cliquez sur « {editCardId
+          Prêt à être analysé, cliquez sur « {editCardId
             ? 'Enregistrer et revenir aux sources'
             : 'Suivant : ajouter les sources'} » en bas de page pour lancer l'extraction.
           <button
@@ -390,7 +390,7 @@
       {:else}
         <p>ou déposez ici un fichier bibliographique</p>
         <p class="text-xs mt-0.5">
-          BibTeX, CSL-JSON (Zotero), Markdown (Obsidian), PDF, Word ou page HTML — 5 Mo max
+          BibTeX, CSL-JSON (Zotero), Markdown (Obsidian), PDF, Word ou page HTML, 5 Mo max
         </p>
       {/if}
     </div>
@@ -405,7 +405,7 @@
         value={title}
         oninput={onTitleInput}
         required
-        placeholder="Ex: La mémoire et le cerveau — ce que dit la science"
+        placeholder="Ex: La mémoire et le cerveau, ce que dit la science"
         class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
       />
     </div>
@@ -424,7 +424,7 @@
         class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
       />
       <p class="text-xs text-ink-tertiary">
-        Qui a écrit ou réalisé le contenu documenté — pas qui publie la fiche. C'est ce nom qui
+        Qui a écrit ou réalisé le contenu documenté, pas qui publie la fiche. C'est ce nom qui
         identifie la fiche dans le graphe des sources.
       </p>
     </div>

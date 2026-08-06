@@ -221,7 +221,7 @@
 </script>
 
 <svelte:head>
-  <title>{card.title} — Philum</title>
+  <title>{card.title} | Philum</title>
   <meta name="description" content={card.description ?? card.title} />
   <meta property="og:title" content={card.title} />
   <meta property="og:description" content={card.description ?? card.title} />
@@ -551,7 +551,7 @@
                         {@const st = STANCE_STYLES[source.stance]}
                         <span
                           class="px-2 py-0.5 text-xs rounded-full {st.bgClass}"
-                          title="Déclaré par l'auteur de la fiche — {st.help}"
+                          title="Déclaré par l'auteur de la fiche : {st.help}"
                         >
                           {st.label}
                         </span>

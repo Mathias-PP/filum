@@ -195,7 +195,7 @@
 </script>
 
 <svelte:head>
-  <title>Tableau de bord — Philum</title>
+  <title>Tableau de bord | Philum</title>
 </svelte:head>
 
 <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -227,7 +227,7 @@
     <div class="rounded-lg bg-danger-bg border border-danger/30 px-4 py-4 text-sm text-danger">
       <p class="font-medium mb-1">Impossible de charger vos fiches.</p>
       <p>
-        Vos fiches ne sont pas perdues — c'est un problème de connexion au serveur. Rechargez la
+        Vos fiches ne sont pas perdues : c'est un problème de connexion au serveur. Rechargez la
         page dans quelques instants.
       </p>
     </div>
@@ -419,7 +419,7 @@
       {:else if citations.length === 0}
         <p class="text-sm text-ink-tertiary italic">
           Personne ne cite encore vos fiches. Seules les fiches publiées et publiques d'autres
-          créateurs comptent ici — vos propres renvois d'une fiche à l'autre ne sont pas des
+          créateurs comptent ici, vos propres renvois d'une fiche à l'autre ne sont pas des
           reprises.
         </p>
       {:else}

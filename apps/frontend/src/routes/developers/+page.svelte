@@ -26,7 +26,7 @@
     {
       method: 'GET',
       path: '/sources/extract?url=…',
-      desc: 'Extraction de métadonnées (titre, auteurs, date, citations) depuis une URL — DOI, PII ScienceDirect, HTML. Limité à 10 req/min.',
+      desc: 'Extraction de métadonnées (titre, auteurs, date, citations) depuis une URL : DOI, PII ScienceDirect, HTML. Limité à 10 req/min.',
       example: `${API_BASE}/sources/extract?url=https://doi.org/10.1038/nature12373`,
     },
     {
@@ -54,7 +54,7 @@
 </script>
 
 <svelte:head>
-  <title>API &amp; développeurs — Philum</title>
+  <title>API &amp; développeurs | Philum</title>
   <meta
     name="description"
     content="API REST publique et serveur MCP de Philum : fiches, sources, exports, extraction de métadonnées et vérification d'attestations."
@@ -158,7 +158,7 @@
     <h2 class="text-2xl font-semibold text-ink-primary mb-3">Bonnes pratiques</h2>
     <ul class="list-disc pl-5 text-sm text-ink-secondary space-y-2">
       <li>
-        Les réponses des fiches publiques sont cachées 5 minutes (<code>Cache-Control</code>) —
+        Les réponses des fiches publiques sont cachées 5 minutes (<code>Cache-Control</code>) :
         inutile de poller plus vite.
       </li>
       <li>

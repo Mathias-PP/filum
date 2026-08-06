@@ -3,7 +3,7 @@
 </script>
 
 <svelte:head>
-  <title>Sécurité — Philum</title>
+  <title>Sécurité | Philum</title>
   <meta
     name="description"
     content="Comment Philum garantit l'identité des créateur·ice·s et l'authenticité de leurs revendications de contenu : signature Ed25519, hash SHA-256, gestion des clés."
