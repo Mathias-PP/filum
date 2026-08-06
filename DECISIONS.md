@@ -1234,3 +1234,17 @@ protocole réellement consommé.
 
 Décision : ne pas produire de `llms.txt`. Si la question revient, relire cette
 entrée avant d'ouvrir le sujet.
+
+---
+
+## Périmètre de la garantie Philum (2026-08-07)
+
+Voir `.docs/19-preuve-autorat.md` pour le texte complet.
+
+Règle de formulation, à appliquer partout dans l'interface :
+- **Autorisé :** « Déclaré par le titulaire du canal officiel le {date}. »
+- **Interdit :** « certifié », « garanti par Philum », « vérifié », « authentifié »,
+  « contenu suspect » (pour l'absence d'attestation).
+
+Le payload signé d'une attestation est immuable (ADR-019). Toute idée qui
+supposerait de l'enrichir doit passer par un ADR et un plan de ré-attestation.
