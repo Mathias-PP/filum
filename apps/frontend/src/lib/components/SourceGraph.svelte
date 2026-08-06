@@ -85,6 +85,9 @@
     /** Auteurs réels du contenu documenté, remontés par le backend. */
     authors: string | null;
     sourcesCount: number;
+    format: SourceFormat | null;
+    category: SourceCategory | null;
+    author_kind: AuthorKind | null;
   }
 
   /** Source normalisée : une source de la fiche racine ou d'une fiche voisine. */
@@ -612,6 +615,9 @@
           creatorName: n.creator_name ?? null,
           authors: n.authors ?? null,
           sourcesCount: n.sources_count ?? 0,
+          format: (n.format ?? null) as SourceFormat | null,
+          category: (n.category ?? null) as SourceCategory | null,
+          author_kind: (n.author_kind ?? null) as AuthorKind | null,
         });
       } else {
         const id = n.id.slice('source:'.length);
@@ -740,6 +746,25 @@
     remount();
   }
 
+  function cardNodeColors(
+    meta: NeighborCard,
+    mode: ColorMode,
+    pinned: boolean
+  ): { fill: string; stroke: string } {
+    const declared =
+      mode === 'format' ? meta.format : mode === 'category' ? meta.category : meta.author_kind;
+    if (!declared) {
+      return { fill: '#1e293b', stroke: pinned ? '#f59e0b' : '#6366f1' };
+    }
+    const fakeSource = {
+      format: meta.format,
+      category: meta.category,
+      author_kind: meta.author_kind,
+    } as GraphSourceData;
+    const colors = sourceColor(fakeSource, mode);
+    return { fill: colors.stroke, stroke: pinned ? '#f59e0b' : colors.stroke };
+  }
+
   function remount() {
     selectSource(null);
     hoveredId = null;
@@ -806,8 +831,7 @@
         // hiérarchie visuelle dit d'où part la lecture.
         expandable: expandedCardIds.includes(cid) || meta.sourcesCount === 0 ? undefined : cid,
         radius: Math.max(13, Math.round(19 * densityScale)),
-        fill: '#1e293b',
-        stroke: '#6366f1',
+        ...cardNodeColors(meta, colorMode, pinnedCardIds.includes(cid)),
         tier: 'card',
       };
       cardNodeByCid.set(cid, node);

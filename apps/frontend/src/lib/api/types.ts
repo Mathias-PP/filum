@@ -33,6 +33,10 @@ export interface Card {
   published_at: string | null;
   created_at: string;
   updated_at: string | null;
+  /** Referencement du contenu documente. null = non declare. */
+  format: SourceFormat | null;
+  category: SourceCategory | null;
+  author_kind: AuthorKind | null;
 }
 
 export interface CardDetail extends Card {
@@ -91,6 +95,10 @@ export interface CardCreate {
    * `private` : visible uniquement par l'owner connecté (404 pour les autres).
    */
   visibility?: Visibility;
+  /** Referencement du contenu documente. null = effacer la valeur. */
+  format?: SourceFormat | null;
+  category?: SourceCategory | null;
+  author_kind?: AuthorKind | null;
 }
 
 export interface SourceExcerpt {

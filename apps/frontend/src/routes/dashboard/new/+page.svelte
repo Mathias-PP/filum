@@ -5,7 +5,14 @@
   import { Button, ProgressSteps } from '$lib/components';
   import { currentUser } from '$lib/stores/auth';
   import { pendingImportFile } from '$lib/stores/import-file';
-  import type { Platform, ContentType, Visibility } from '$lib/api';
+  import type {
+    AuthorKind,
+    Platform,
+    ContentType,
+    SourceCategory,
+    SourceFormat,
+    Visibility,
+  } from '$lib/api';
 
   // Mode édition : /dashboard/new?card_id=<id> pré-remplit le formulaire
   // depuis la fiche existante et le submit fait un PATCH au lieu d'un POST.
@@ -28,6 +35,9 @@
   let contentType = $state<ContentType>('other');
   let isAuthor = $state(false);
   let visibility = $state<Visibility>('public');
+  let cardFormat = $state<SourceFormat | ''>('');
+  let cardCategory = $state<SourceCategory | ''>('');
+  let cardAuthorKind = $state<AuthorKind | ''>('');
   let error = $state<string | null>(null);
   let loading = $state(false);
   let loadingCard = $state(false);
@@ -52,6 +62,9 @@
       contentType = card.content_type;
       isAuthor = !card.is_seed;
       visibility = card.visibility;
+      cardFormat = (card.format ?? '') as SourceFormat | '';
+      cardCategory = (card.category ?? '') as SourceCategory | '';
+      cardAuthorKind = (card.author_kind ?? '') as AuthorKind | '';
     } catch (err) {
       error = err instanceof Error ? err.message : 'Impossible de charger la fiche';
     } finally {
@@ -193,6 +206,9 @@
           content_type: contentType,
           is_seed: !isAuthor,
           visibility,
+          format: cardFormat || null,
+          category: cardCategory || null,
+          author_kind: cardAuthorKind || null,
         });
         cardId = editCardId;
       } else {
@@ -249,6 +265,41 @@
     { value: 'post', label: 'Post' },
     { value: 'podcast', label: 'Podcast' },
     { value: 'other', label: 'Autre' },
+  ];
+
+  const formatOptions: { value: SourceFormat; label: string }[] = [
+    { value: 'texte', label: 'Texte' },
+    { value: 'video', label: 'Vidéo' },
+    { value: 'image', label: 'Image' },
+    { value: 'audio', label: 'Audio' },
+    { value: 'data', label: 'Données' },
+  ];
+
+  const categoryOptions: { value: SourceCategory; label: string }[] = [
+    { value: 'article-scientifique', label: 'Article scientifique' },
+    { value: 'preprint', label: 'Préprint' },
+    { value: 'article-presse', label: 'Article de presse' },
+    { value: 'communique', label: 'Communiqué' },
+    { value: 'documentaire', label: 'Documentaire' },
+    { value: 'interview', label: 'Interview' },
+    { value: 'podcast', label: 'Podcast' },
+    { value: 'blog', label: 'Blog' },
+    { value: 'post-social', label: 'Post réseaux sociaux' },
+    { value: 'livre', label: 'Livre' },
+    { value: 'page-web', label: 'Page web' },
+    { value: 'notes', label: 'Notes' },
+  ];
+
+  const authorKindOptions: { value: AuthorKind; label: string }[] = [
+    { value: 'chercheur', label: 'Chercheur·se' },
+    { value: 'media', label: 'Média' },
+    { value: 'institution-publique', label: 'Institution publique' },
+    { value: 'gouvernement', label: 'Gouvernement' },
+    { value: 'ecole', label: 'École / université' },
+    { value: 'laboratoire', label: 'Laboratoire' },
+    { value: 'entreprise', label: 'Entreprise' },
+    { value: 'asso', label: 'Association' },
+    { value: 'individu', label: 'Individu' },
   ];
 </script>
 
@@ -497,6 +548,58 @@
         >
           {#each contentTypes as ct (ct.value)}
             <option value={ct.value}>{ct.label}</option>
+          {/each}
+        </select>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-3 gap-4">
+      <div class="space-y-1.5">
+        <label for="card-format" class="block text-sm font-medium text-ink-secondary">Format</label>
+        <select
+          id="card-format"
+          value={cardFormat}
+          onchange={(e) =>
+            (cardFormat = (e.target as HTMLSelectElement).value as SourceFormat | '')}
+          class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
+        >
+          <option value="">Non déclaré</option>
+          {#each formatOptions as f (f.value)}
+            <option value={f.value}>{f.label}</option>
+          {/each}
+        </select>
+      </div>
+      <div class="space-y-1.5">
+        <label for="card-category" class="block text-sm font-medium text-ink-secondary"
+          >Catégorie</label
+        >
+        <select
+          id="card-category"
+          value={cardCategory}
+          onchange={(e) =>
+            (cardCategory = (e.target as HTMLSelectElement).value as SourceCategory | '')}
+          class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
+        >
+          <option value="">Non déclaré</option>
+          {#each categoryOptions as c (c.value)}
+            <option value={c.value}>{c.label}</option>
+          {/each}
+        </select>
+      </div>
+      <div class="space-y-1.5">
+        <label for="card-author-kind" class="block text-sm font-medium text-ink-secondary"
+          >Type d'auteur</label
+        >
+        <select
+          id="card-author-kind"
+          value={cardAuthorKind}
+          onchange={(e) =>
+            (cardAuthorKind = (e.target as HTMLSelectElement).value as AuthorKind | '')}
+          class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
+        >
+          <option value="">Non déclaré</option>
+          {#each authorKindOptions as a (a.value)}
+            <option value={a.value}>{a.label}</option>
           {/each}
         </select>
       </div>
