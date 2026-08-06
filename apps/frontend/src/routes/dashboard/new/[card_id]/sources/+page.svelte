@@ -24,12 +24,14 @@
   const wizardSteps = [
     { label: 'Informations', description: 'Titre, plateforme', clickable: true },
     { label: 'Sources', description: 'Ajouter et publier' },
+    { label: 'Connexions', description: 'Fiches liees', clickable: true },
   ];
 
   const cardId = $derived($page.params.card_id ?? '');
 
   function onWizardStepClick(i: number) {
     if (i === 0) goto(`/dashboard/new?card_id=${cardId}`);
+    if (i === 2) goto(`/dashboard/new/${cardId}/connexions`);
   }
 
   let card = $state<Card | null>(null);

@@ -519,3 +519,24 @@ export interface IncomingCitations {
   seen_at?: string | null;
   truncated: boolean;
 }
+
+export type LinkOrigin = 'manuel' | 'url' | 'contenu';
+
+export interface CardConnection {
+  source_id: string;
+  source_title: string | null;
+  source_url: string;
+  card_id: string;
+  card_title: string;
+  card_slug: string;
+  card_creator_slug: string;
+  stance: SourceStance | null;
+  origin: LinkOrigin | null;
+  confirmed: boolean;
+  editable: boolean;
+}
+
+export interface CardConnections {
+  outgoing: CardConnection[];
+  incoming: CardConnection[];
+}
