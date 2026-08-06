@@ -301,6 +301,9 @@ async def build_card_graph(
                     sources_count=counts.get(card_id, 0),
                     authors=card.content_authors,
                     is_seed=bool(card.is_seed),
+                    format=card.format,
+                    category=card.category,
+                    author_kind=card.author_kind,
                 )
             )
 

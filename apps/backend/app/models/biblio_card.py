@@ -79,6 +79,13 @@ class BiblioCard(Base):
     # une fiche que personne ne cite ne pouvait porter que le nom de son
     # createur Philum -- exactement le contresens a eviter.
     content_authors: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Referencement du contenu documente, meme vocabulaire que les sources
+    # (`SourceFormat`, `SourceCategory`, `AuthorKind`) : une fiche devient une
+    # reference des qu'une autre la cite, et doit se lire dans la meme grille.
+    # NULL = non declare, jamais une valeur par defaut.
+    format: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    category: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    author_kind: Mapped[str | None] = mapped_column(String(40), nullable=True)
     platform: Mapped[str] = mapped_column(String(50), nullable=False, default="other")
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(
