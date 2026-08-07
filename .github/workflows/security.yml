@@ -32,8 +32,13 @@ jobs:
         run: uv sync --all-extras
         working-directory: apps/backend
 
+      # Le chemin etait `apps/backend/app/` *avec* `working-directory:
+      # apps/backend`, soit `apps/backend/apps/backend/app/` : inexistant.
+      # Bandit sortait en 0 apres avoir analyse **0 fichier**, et le job
+      # affichait « pass ». Mesure du 2026-08-07 apres correction du chemin :
+      # 77 fichiers, 6 alertes, dont une MEDIUM restee invisible.
       - name: Run Bandit
-        run: uv run bandit -r apps/backend/app/ -f json -o bandit-results.json
+        run: uv run bandit -r app/ -f json -o bandit-results.json
         working-directory: apps/backend
 
       - name: Upload Bandit results

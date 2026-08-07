@@ -185,7 +185,7 @@ async def google_callback(
     auth_service = AuthService(db)
 
     try:
-        token_url = "https://oauth2.googleapis.com/token"
+        token_url = "https://oauth2.googleapis.com/token"  # nosec B105 - une URL publique
         async with httpx.AsyncClient() as client:
             token_response = await client.post(
                 token_url,

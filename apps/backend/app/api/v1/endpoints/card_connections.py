@@ -127,7 +127,11 @@ async def confirm_connection(
     source.link_confirmed_at = _utcnow_naive()
     await db.flush()
     linked = await db.get(BiblioCard, source.linked_card_id)
-    assert linked is not None
+    # Un `assert` disparait sous `python -O` : la ligne suivante levait alors
+    # un AttributeError, donc un 500 muet, la ou la fiche designee a
+    # simplement ete supprimee entre-temps. Le cas se dit, il ne s'affirme pas.
+    if linked is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "La fiche designee n'existe plus")
     result = await db.execute(select(User).where(User.id == linked.user_id))
     creator = result.scalar_one()
     return CardConnection(

@@ -12,7 +12,7 @@ import io
 import json
 import zipfile
 from typing import TYPE_CHECKING
-from xml.sax.saxutils import escape
+from xml.sax.saxutils import escape  # nosec B406 - echappe la sortie, ne parse rien
 
 from app.services.csl import author_display, to_csl
 
