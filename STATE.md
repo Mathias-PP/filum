@@ -33,6 +33,22 @@ Avant : Phase 2 (identité visuelle Pulsar-graph + audit) et Phase 1 (MVP comple
 
 ---
 
+## Session 2026-08-07 (nuit) — chantier 2 : DOI depuis URL editeur
+
+Branche `feat/extraction-pipeline-v2`. Le pipeline d'extraction v2 (ADR-030,
+389a291, 2026-07-23) etait deja en prod avec ses 7 etages, ses tests unitaires
+et son integration frontend (`extraction_confidence`, `refs_from_oracle`,
+`refs_dropped_validation`). Le plan `agent/plans/2026-08-07-chantiers-conception.md`
+listait « chantier 2 pending » a tort.
+
+Ce qui reste vraiment ajoute cette session :
+- **DOI derive de l'URL editeur** pour Nature (`10.1038/<slug>`), bioRxiv
+  et medRxiv (`10.1101/<date>.<id>` avec strip du suffixe de version `vN`).
+  Sans cette resolution, la fiche Nature `nrn3667` faisait echouer tout le
+  pipeline : anti-bot bloque le HTML, aucun DOI dans l'URL -> Crossref
+  jamais interroge -> zero ref extraite. Maintenant Crossref donne les 152
+  refs autoritatives et le blocage anti-bot est sans consequence.
+
 ## Session 2026-08-07 (soir) — chantiers de conception
 
 Branche `feat/chantiers-p0-p3-ia-feed-search`, 5 chantiers du plan `agent/plans/2026-08-07-chantiers-conception.md` :

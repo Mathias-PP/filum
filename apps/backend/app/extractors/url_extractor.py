@@ -297,12 +297,64 @@ def _parse_jsonld_metadata(soup: BeautifulSoup) -> ExtractedMetadata | None:
 # (ex. Wiley /doi/full/10.1002/xxx, T&F /doi/pdf/10.1080/yyy/abstract).
 _DOI_PATH_SUFFIXES = re.compile(r"/(?:full|abstract|pdf|epdf|epub|meta|figures|references)$", re.I)
 
+# bioRxiv / medRxiv publient un DOI par version (`10.1101/YYYY.MM.DD.NNNNvN`).
+# Crossref n'indexe QUE la forme canonique sans version : sans ce nettoyage,
+# la resolution renvoie un 404 alors que le papier existe. Cf. bioRxiv docs.
+_BIORXIV_VERSION_RE = re.compile(r"^(10\.1101/\d{4}\.\d{2}\.\d{2}\.\d+)v\d+(?:\.full)?$")
+
+
+# Editeurs dont le DOI se lit dans l'URL sans intermediaire mais qui bloquent
+# souvent le scraping direct (Cloudflare / DataDome). Sans cette resolution,
+# Crossref n'est jamais interroge sur eux et le pipeline retourne zero ref.
+#
+# Chaque motif capture le suffixe DOI (apres la barre du prefixe editeur) ;
+# les prefixes DOI correspondants sont donnes en commentaire pour audit :
+#   - Nature (10.1038)   : nrn3667, nature12345, s41586-024-08123-4
+#   - bioRxiv (10.1101)  : 2024.01.15.575984v1 (le suffixe `vN` est retire
+#     apres coup pour resolver la version *canonique* enregistree par Crossref)
+#   - medRxiv (10.1101)  : idem bioRxiv
+_PUBLISHER_URL_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
+    (
+        re.compile(
+            r"^https?://(?:www\.)?nature\.com/articles/([a-z]+\d[a-z\d\-]*)/?(?:[?#]|$)",
+            re.IGNORECASE,
+        ),
+        "10.1038",
+    ),
+    (
+        re.compile(
+            r"^https?://(?:www\.)?biorxiv\.org/content/10\.1101/(\d{4}\.\d{2}\.\d{2}\.\d+)"
+            r"(?:v\d+)?(?:\.full)?(?:[/?#]|$)",
+            re.IGNORECASE,
+        ),
+        "10.1101",
+    ),
+    (
+        re.compile(
+            r"^https?://(?:www\.)?medrxiv\.org/content/10\.1101/(\d{4}\.\d{2}\.\d{2}\.\d+)"
+            r"(?:v\d+)?(?:\.full)?(?:[/?#]|$)",
+            re.IGNORECASE,
+        ),
+        "10.1101",
+    ),
+)
+
+
+def _doi_from_publisher_url(url: str) -> str | None:
+    """DOI derive de l'URL d'un editeur qui l'expose comme slug d'URL."""
+    for pattern, prefix in _PUBLISHER_URL_PATTERNS:
+        m = pattern.match(url)
+        if m:
+            return f"{prefix}/{m.group(1)}"
+    return None
+
 
 def _extract_doi(url: str) -> str | None:
     """Return bare DOI from a URL.
 
-    Handles doi.org/dx.doi.org links, ``doi:`` prefixes, and DOIs embedded in
-    publisher URL paths (Wiley, Springer, PLOS, Taylor & Francis, PNAS…).
+    Handles doi.org/dx.doi.org links, ``doi:`` prefixes, DOIs embedded in
+    publisher URL paths (Wiley, Springer, PLOS, Taylor & Francis, PNAS…),
+    and Nature articles whose URL slug est le suffixe DOI (`10.1038/<slug>`).
     """
     patterns = [
         r"(?:https?://)?(?:dx\.)?doi\.org/([^\s?#]+)",
@@ -315,8 +367,14 @@ def _extract_doi(url: str) -> str | None:
         if m:
             doi = m.group(1).strip().rstrip(".,;)")
             doi = _DOI_PATH_SUFFIXES.sub("", doi)
+            biorxiv_match = _BIORXIV_VERSION_RE.match(doi)
+            if biorxiv_match:
+                doi = biorxiv_match.group(1)
             return doi
-    return None
+    # Editeurs dont l'URL contient le slug DOI (Nature, bioRxiv, medRxiv).
+    # Fait apres les patterns generiques pour ne pas court-circuiter un DOI
+    # explicite si l'editeur en propose un dans le chemin.
+    return _doi_from_publisher_url(url)
 
 
 # Signatures des pages-obstacle servies par les protections anti-bot
