@@ -283,7 +283,8 @@ export interface AttestationVerifyResponse {
   reason: string | null;
 }
 
-export type Platform = 'youtube' | 'podcast' | 'blog' | 'x' | 'bluesky' | 'other';
+export type Platform =
+  'youtube' | 'podcast' | 'blog' | 'x' | 'bluesky' | 'revue-scientifique' | 'other';
 export type ContentType = 'video' | 'article' | 'post' | 'podcast' | 'other';
 export type CardStatus = 'draft' | 'published' | 'archived';
 
