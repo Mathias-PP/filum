@@ -40,10 +40,17 @@ export const GET: RequestHandler = async ({ url, fetch, setHeaders }) => {
       const body = await res.json();
       for (const c of body.results ?? []) {
         const loc = `${url.origin}/@${c.creator_slug}/${c.slug}`;
+        // Sans `@` : les couches de navigation des agents conversationnels
+        // traitent une URL qui en contient comme une requete de recherche et ne
+        // font jamais le GET. Un crawler qui ne lirait que <loc> repartirait
+        // donc avec une adresse qu'il ne sait pas recuperer.
+        const agentLoc = `${url.origin}/c/${c.creator_slug}/${c.slug}`;
         const lastmod = c.published_at ? String(c.published_at).slice(0, 10) : null;
         entries.push(
           `  <url><loc>${esc(loc)}</loc>` +
             (lastmod ? `<lastmod>${lastmod}</lastmod>` : '') +
+            `<xhtml:link rel="alternate" type="text/markdown" href="${esc(agentLoc)}.md"/>` +
+            `<xhtml:link rel="alternate" type="application/vnd.philum+json" href="${esc(agentLoc)}.philum.json"/>` +
             `<changefreq>weekly</changefreq><priority>0.8</priority></url>`
         );
       }
@@ -59,6 +66,7 @@ export const GET: RequestHandler = async ({ url, fetch, setHeaders }) => {
   });
   return new Response(
     `<?xml version="1.0" encoding="UTF-8"?>\n` +
-      `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.join('\n')}\n</urlset>\n`
+      `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" ` +
+      `xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${entries.join('\n')}\n</urlset>\n`
   );
 };

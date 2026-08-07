@@ -19,7 +19,11 @@ export const load: PageLoad = async ({ fetch, params, setHeaders, url }) => {
   // les en-tetes HTTP avant meme le HTML — la version markdown, deja
   // structuree, leur epargne d'inventer une bibliographie a partir du rendu.
   // Doublonne volontairement le <link rel="alternate"> du <head>.
-  const base = `${url.origin}${url.pathname}`;
+  // Variante sans `@` : les couches de navigation de ChatGPT et consorts
+  // traitent une URL qui en contient comme une requete de recherche et ne font
+  // jamais le GET. Annoncer l'alternative en `/c/` est le seul moyen qu'un
+  // agent qui suit cet en-tete atterrisse sur quelque chose qu'il sait fetcher.
+  const base = `${url.origin}/c/${params.creator}/${params.card}`;
   setHeaders({
     Link:
       `<${base}.md>; rel="alternate"; type="text/markdown", ` +
