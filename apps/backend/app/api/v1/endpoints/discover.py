@@ -193,6 +193,82 @@ async def discover_cards(
     )
 
 
+class CreatorResult(BaseModel):
+    slug: str
+    display_name: str | None
+    bio: str | None
+    avatar_url: str | None
+    is_verified: bool
+    published_cards_count: int
+    url: str
+
+
+class CreatorSearchResponse(BaseModel):
+    total: int
+    limit: int
+    offset: int
+    results: list[CreatorResult]
+
+
+@router.get("/creators", response_model=CreatorSearchResponse)
+async def discover_creators(
+    q: str = Query("", max_length=200),
+    limit: int = Query(20, ge=1, le=50),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+) -> CreatorSearchResponse:
+    """Recherche de createurs qui ont au moins une fiche publique publiee.
+
+    Indexe uniquement ce que le createur a rendu public : `username`,
+    `display_name`, `bio`. Ne remonte jamais un compte qui n'a publie
+    aucune fiche : sans corpus, un profil n'a rien a offrir a la recherche.
+    """
+    published_count = (
+        select(func.count(BiblioCard.id))
+        .where(BiblioCard.user_id == User.id, _PUBLIC)
+        .correlate(User)
+        .scalar_subquery()
+    )
+    base = select(User, published_count.label("n")).where(published_count > 0)
+
+    term = q.strip().lower()
+    if term:
+        like = lambda col: func.lower(col).contains(term, autoescape=True)  # noqa: E731
+        base = base.where(
+            or_(like(User.username), like(User.display_name), like(User.bio))
+        )
+
+    total_stmt = select(func.count()).select_from(base.subquery())
+    total = (await db.scalar(total_stmt)) or 0
+
+    rows = (
+        await db.execute(
+            base.order_by(published_count.desc(), func.lower(User.username))
+            .limit(limit)
+            .offset(offset)
+        )
+    ).all()
+
+    base_url = get_settings().frontend_base_url.rstrip("/")
+    return CreatorSearchResponse(
+        total=total,
+        limit=limit,
+        offset=offset,
+        results=[
+            CreatorResult(
+                slug=user.username,
+                display_name=user.display_name,
+                bio=user.bio,
+                avatar_url=user.avatar_url,
+                is_verified=user.is_verified,
+                published_cards_count=n,
+                url=f"{base_url}/@{user.username}",
+            )
+            for user, n in rows
+        ],
+    )
+
+
 @router.get("/facets", response_model=DiscoverFacets)
 async def discover_facets(db: AsyncSession = Depends(get_db)) -> DiscoverFacets:
     """Ce qui existe reellement dans le corpus public.

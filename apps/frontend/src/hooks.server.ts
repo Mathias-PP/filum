@@ -25,11 +25,9 @@ export const handle: Handle = async ({ event, resolve }) => {
     // Un navigateur envoie `text/html,application/xhtml+xml,...,*/*;q=0.8`
     // dont le */* pourrait matcher n'importe quoi : on exige que le format
     // demande soit nomme explicitement.
-    const wantsMarkdown =
-      /\btext\/markdown\b/.test(accept) && !/\btext\/html\b/.test(accept);
+    const wantsMarkdown = /\btext\/markdown\b/.test(accept) && !/\btext\/html\b/.test(accept);
     const wantsPhilumJson =
-      /\bapplication\/vnd\.philum\+json\b/.test(accept) &&
-      !/\btext\/html\b/.test(accept);
+      /\bapplication\/vnd\.philum\+json\b/.test(accept) && !/\btext\/html\b/.test(accept);
 
     if (wantsMarkdown || wantsPhilumJson) {
       const [, creator, card] = match;
