@@ -893,3 +893,95 @@ class TestHighwireMetaScrape:
         assert meta is not None
         assert meta.authors == "Camille"
         assert meta.published_at == "2024-02-03"
+
+
+# ---------------------------------------------------------------------------
+# OSF — la page est rendue en JavaScript, son API ne l'est pas
+#
+# ⚠️ Garder ces noms de tests sous 35 caracteres apres le prefixe `test_`.
+# C'est exactement le motif d'une cle de test Lob, et TruffleHog la declare
+# « verifiee » — l'API Lob accepte n'importe quelle cle de test. Un nom trop
+# long bloque donc le scan de secrets de la CI. (La chaine fautive n'est pas
+# citee ici : l'ecrire suffirait a re-declencher la detection.)
+# ---------------------------------------------------------------------------
+
+
+OSF_PAYLOAD = {
+    "data": {
+        "attributes": {
+            "title": "Sex differences in error-related neural activation",
+            "date_published": "2021-09-09T14:59:36.312469",
+            "description": "Background: detecting and responding to errors.",
+            "doi": "10.1016/j.drugalcdep.2024.112421",
+        },
+        "embeds": {
+            "contributors": {
+                "data": [
+                    {
+                        "embeds": {
+                            "users": {"data": {"attributes": {"full_name": "Jillian E Hardee"}}}
+                        }
+                    },
+                    {"embeds": {"users": {"data": {"attributes": {"full_name": "Lora M. Cope"}}}}},
+                ]
+            }
+        },
+    }
+}
+
+
+class TestIdentifiantOsf:
+    def test_reconnait_une_url_de_preprint(self):
+        assert url_extractor._osf_preprint_id("https://osf.io/preprints/psyarxiv/x4yj3") == "x4yj3"
+
+    def test_url_sans_fournisseur(self):
+        assert url_extractor._osf_preprint_id("https://osf.io/preprints/x4yj3/") == "x4yj3"
+
+    def test_ignore_une_url_etrangere(self):
+        assert url_extractor._osf_preprint_id("https://arxiv.org/abs/1706.03762") is None
+
+
+@pytest.mark.asyncio
+async def test_osf_metadonnees_via_son_api(monkeypatch):
+    fake = _FakeAsyncClient(response=_FakeResponse(200, json_body=OSF_PAYLOAD))
+    _patch_async_client(monkeypatch, fake)
+
+    meta = await url_extractor._osf_preprint("https://osf.io/preprints/psyarxiv/x4yj3")
+
+    assert meta is not None
+    assert meta.title == "Sex differences in error-related neural activation"
+    assert meta.published_at == "2021-09-09"
+    assert meta.authors == "Jillian E Hardee; Lora M. Cope"
+    assert meta.doi == "10.1016/j.drugalcdep.2024.112421"
+
+
+@pytest.mark.asyncio
+async def test_osf_none_si_inconnu(monkeypatch):
+    fake = _FakeAsyncClient(response=_FakeResponse(404, json_body={}))
+    _patch_async_client(monkeypatch, fake)
+
+    assert await url_extractor._osf_preprint("https://osf.io/preprints/psyarxiv/zzzzz") is None
+
+
+@pytest.mark.asyncio
+async def test_osf_ne_leve_jamais(monkeypatch):
+    fake = _FakeAsyncClient(raise_exc=httpx.ConnectError("nope"))
+    _patch_async_client(monkeypatch, fake)
+
+    assert await url_extractor._osf_preprint("https://osf.io/preprints/psyarxiv/x4yj3") is None
+
+
+@pytest.mark.asyncio
+async def test_extract_osf_titre_reel(monkeypatch):
+    """Sans ce chemin, `extract` rendait `title='OSF'` — le titre de l'app JS.
+
+    Un titre faux est pire qu'un titre absent : il se recopie dans la fiche
+    sans que rien ne signale qu'il ne designe pas le document.
+    """
+    fake = _FakeAsyncClient(response=_FakeResponse(200, json_body=OSF_PAYLOAD))
+    _patch_async_client(monkeypatch, fake)
+
+    meta = await url_extractor.extract("https://osf.io/preprints/psyarxiv/x4yj3")
+
+    assert meta.title == "Sex differences in error-related neural activation"
+    assert meta.published_at == "2021-09-09"
