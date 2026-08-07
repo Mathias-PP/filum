@@ -224,18 +224,36 @@
   <footer class="bg-surface-secondary border-t border-border mt-auto">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <div class="flex flex-col md:flex-row items-center justify-between gap-3 text-sm">
+        <!-- min-h-[24px] sur chaque lien : ils faisaient 20px de haut, sous le
+             minimum de 24x24 du critere WCAG 2.5.8 (taille de cible tactile). -->
         <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-ink-tertiary">
           <Logo size={20} variant="color" className="block dark:hidden" />
           <Logo size={20} variant="dark" className="hidden dark:block" />
           <span>© 2026 Philum</span>
           <span aria-hidden="true">·</span>
-          <a href="/about" class="hover:text-ink-primary transition-colors">À propos</a>
+          <a
+            href="/about"
+            class="hover:text-ink-primary transition-colors inline-flex items-center min-h-[24px]"
+            >À propos</a
+          >
           <span aria-hidden="true">·</span>
-          <a href="/privacy" class="hover:text-ink-primary transition-colors">Confidentialité</a>
+          <a
+            href="/privacy"
+            class="hover:text-ink-primary transition-colors inline-flex items-center min-h-[24px]"
+            >Confidentialité</a
+          >
           <span aria-hidden="true">·</span>
-          <a href="/security" class="hover:text-ink-primary transition-colors">Sécurité</a>
+          <a
+            href="/security"
+            class="hover:text-ink-primary transition-colors inline-flex items-center min-h-[24px]"
+            >Sécurité</a
+          >
           <span aria-hidden="true">·</span>
-          <a href="/developers" class="hover:text-ink-primary transition-colors">API</a>
+          <a
+            href="/developers"
+            class="hover:text-ink-primary transition-colors inline-flex items-center min-h-[24px]"
+            >API</a
+          >
         </div>
         <a
           href="https://github.com/Mathias-PP/filum"

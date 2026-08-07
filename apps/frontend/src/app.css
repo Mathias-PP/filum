@@ -22,9 +22,15 @@
   --text-placeholder: 176 176 176;
   --border: 232 230 222;
   --border-strong: 207 205 196;
-  --success: 29 158 117;
+  /* #177C5C et #996013, et non #1D9E75 / #BA7517. Les deux servent de couleur
+     de texte sur leur propre fond de badge (toasts, statuts) : ils y tombaient
+     a 2,98:1 et 3,24:1, sous le seuil WCAG AA de 4,5:1. `danger` et `info`
+     avaient deja ete assombris, ces deux-la avaient ete oublies. Ils montent
+     respectivement a 4,54:1 et 4,53:1 sur leur fond, 5,15:1 et 5,20:1 sur
+     blanc, en gardant la meme teinte. */
+  --success: 23 124 92;
   --success-bg: 225 245 238;
-  --warning: 186 117 23;
+  --warning: 153 96 19;
   --warning-bg: 250 238 218;
   --danger: 163 45 45;
   --danger-bg: 252 235 235;
