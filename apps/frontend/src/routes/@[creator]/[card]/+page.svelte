@@ -186,6 +186,9 @@
 
   const siteOrigin = $derived($page.url.origin);
   const publicUrl = $derived(`${siteOrigin}/@${creatorSlug}/${cardSlug}`);
+  // Sans `@` : les agents conversationnels traitent une URL qui en contient
+  // comme une requête de recherche et ne font jamais le GET.
+  const agentUrl = $derived(`${siteOrigin}/c/${creatorSlug}/${cardSlug}`);
   const isOwner = $derived($currentUser?.username === creatorSlug);
 
   const highwireTags = $derived(cardHighwireTags(card, publicUrl));
@@ -236,8 +239,8 @@
   <link rel="canonical" href={publicUrl} />
   <!-- Un agent qui tombe sur ce HTML apprend ici qu'il existe une version
        markdown ou JSON-LD de la même fiche, sans avoir à deviner. -->
-  <link rel="alternate" type="text/markdown" href="{publicUrl}.md" />
-  <link rel="alternate" type="application/vnd.philum+json" href="{publicUrl}.philum.json" />
+  <link rel="alternate" type="text/markdown" href="{agentUrl}.md" />
+  <link rel="alternate" type="application/vnd.philum+json" href="{agentUrl}.philum.json" />
   <!-- Highwire : décrit le contenu documenté par la fiche (Google Scholar). -->
   {#each highwireTags as tag (tag.name + tag.content)}
     <meta name={tag.name} content={tag.content} />
