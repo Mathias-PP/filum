@@ -768,6 +768,64 @@ async def resolve_doi_from_url(url: str) -> str | None:
     return doi
 
 
+# OSF sert une application JavaScript : le HTML initial ne porte que le titre
+# `OSF`, celui de l'application, et aucune metadonnee du document. Son API
+# publique, elle, rend le dossier complet — un seul hote, pas une table de
+# prefixes DOI par fournisseur (psyarxiv, socarxiv, …), que le projet refuse.
+# Le fournisseur est optionnel dans le chemin : les deux formes circulent.
+_OSF_PREPRINT_RE = re.compile(
+    r"^https?://(?:www\.)?osf\.io/preprints/(?:[a-z]+/)?([a-z0-9]{5,})/?", re.I
+)
+
+
+def _osf_preprint_id(url: str) -> str | None:
+    """L'identifiant court d'une URL de preprint OSF. None si l'URL est ailleurs."""
+    m = _OSF_PREPRINT_RE.match(url)
+    return m.group(1) if m else None
+
+
+async def _osf_preprint(url: str) -> ExtractedMetadata | None:
+    """Les metadonnees qu'OSF publie sur son API. Never raises.
+
+    `doi` est celui de la **version parue en revue** quand elle existe, pas
+    celui du preprint : c'est la version de reference, et l'appelant s'en sert
+    pour interroger Crossref.
+    """
+    preprint_id = _osf_preprint_id(url)
+    if not preprint_id:
+        return None
+    api = f"https://api.osf.io/v2/preprints/{preprint_id}/?embed=contributors"
+    try:
+        async with httpx.AsyncClient(headers=_HEADERS, timeout=_TIMEOUT) as client:
+            r = await client.get(api)
+        if r.status_code != 200:
+            return None
+        data = r.json()["data"]
+    except Exception as e:
+        logger.debug("OSF lookup failed for %s: %s", url, e)
+        return None
+
+    attrs = data.get("attributes") or {}
+    noms = [
+        nom
+        for c in (data.get("embeds", {}).get("contributors", {}).get("data") or [])
+        if (
+            nom := c.get("embeds", {})
+            .get("users", {})
+            .get("data", {})
+            .get("attributes", {})
+            .get("full_name")
+        )
+    ]
+    return ExtractedMetadata(
+        title=attrs.get("title"),
+        authors="; ".join(noms) or None,
+        published_at=_iso_date_prefix(attrs.get("date_published")),
+        description=attrs.get("description"),
+        doi=attrs.get("doi"),
+    )
+
+
 async def _crossref_by_pii(pii: str) -> ExtractedMetadata | None:
     url = f"https://api.crossref.org/works?filter=alternative-id:{pii}&rows=1"
     try:
@@ -916,6 +974,19 @@ async def extract(url: str) -> ExtractedMetadata:
         pubmed_doi = await resolve_doi_from_pubmed(url)
         if pubmed_doi:
             crossref_meta = await _crossref(pubmed_doi)
+    osf_meta: ExtractedMetadata | None = None
+    if crossref_meta is None:
+        # OSF : la page est une application JavaScript, son scraping rendait
+        # `title='OSF'`. Un titre faux est pire qu'un titre absent — il se
+        # recopie dans la fiche sans que rien ne signale qu'il ne designe pas
+        # le document. Mesure du 2026-08-07 sur `osf.io/preprints/…/x4yj3`.
+        osf_meta = await _osf_preprint(url)
+        if osf_meta and osf_meta.doi:
+            # Crossref n'est retenu que s'il nomme le document : sinon il
+            # remplacerait un dossier OSF complet par une coquille vide.
+            paru = await _crossref(osf_meta.doi)
+            if paru and paru.title:
+                crossref_meta = paru
     if crossref_meta is None:
         # Dernier recours, valable pour tout editeur : demander aux index
         # bibliographiques quel article cette URL designe.
@@ -924,6 +995,13 @@ async def extract(url: str) -> ExtractedMetadata:
             crossref_meta = await _crossref(resolved_doi)
     if crossref_meta:
         result = crossref_meta
+        result.format = "texte"
+        result.category = "article-scientifique"
+        result.author_kind = "chercheur"
+    elif osf_meta:
+        # Le cas courant : un preprint pas encore paru en revue n'a pas de DOI
+        # que Crossref connaisse, mais OSF en decrit deja le dossier complet.
+        result = osf_meta
         result.format = "texte"
         result.category = "article-scientifique"
         result.author_kind = "chercheur"
