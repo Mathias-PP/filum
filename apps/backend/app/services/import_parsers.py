@@ -63,7 +63,17 @@ _URL_RE = re.compile(r"https?://[^\s\"'<>)\]}]+")
 # Suffixes de chemin ajoutés par les éditeurs après un DOI dans leurs URLs
 # (Wiley /doi/full/10.1002/xxx, T&F /doi/pdf/10.1080/yyy, Frontiers /full,
 # PLOS /article, etc.). Utilisé pour normaliser le DOI extrait d'une URL.
-_DOI_PATH_SUFFIXES = re.compile(r"/(?:full|abstract|pdf|epdf|epub|meta|figures|references)$", re.I)
+#
+# Le séparateur peut être un point : bioRxiv et medRxiv écrivent
+# `…174482.full.pdf`, sans barre oblique, et les cumulent.
+_DOI_PATH_SUFFIXES = re.compile(
+    r"[./](?:full|abstract|pdf|epdf|epub|meta|figures|references)$", re.I
+)
+
+# Numéro de version des serveurs de preprints, collé au DOI dans le chemin
+# (`…174482v1`). Exigé après un chiffre pour ne pas amputer un DOI qui se
+# terminerait légitimement par une lettre v suivie de chiffres.
+_DOI_PREPRINT_VERSION = re.compile(r"(?<=\d)v\d+$")
 
 
 def _doi_to_url(doi: str) -> str:
@@ -92,7 +102,13 @@ def _doi_from_url(url: str) -> str | None:
         m = re.search(p, decoded, re.IGNORECASE)
         if m:
             doi = m.group(1).strip().rstrip(".,;)/")
-            doi = _DOI_PATH_SUFFIXES.sub("", doi)
+            # En boucle : les suffixes se cumulent (`…v2.full.pdf`).
+            while True:
+                stripped = _DOI_PATH_SUFFIXES.sub("", doi)
+                if stripped == doi:
+                    break
+                doi = stripped
+            doi = _DOI_PREPRINT_VERSION.sub("", doi)
             # Vieux DOIs APA/legacy avec '//' (ex 10.1037//0012-1649.35.1.205)
             # non conformes ISO 26324 mais courants. Normaliser en '/' unique
             # pour matcher la version standard.
