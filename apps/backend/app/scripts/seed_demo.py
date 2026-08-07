@@ -122,7 +122,6 @@ def _demo_sources() -> list[dict]:
             "is_pivot": True,
             "parent_index": None,
             "citations_count": 12423,
-            "impact_factor": 49.8,
             # Pre-populated Wayback snapshots for a few demo sources so the
             # "Voir l'archive" CTA is exercised on the public card without
             # waiting for the background Save-Page-Now task to land. Wayback
@@ -158,7 +157,6 @@ def _demo_sources() -> list[dict]:
             "is_pivot": True,
             "parent_index": None,
             "citations_count": 987,
-            "impact_factor": 8.1,
             "archive_url": (
                 "https://web.archive.org/web/20240601000000/"
                 "https://www.cell.com/current-biology/fulltext/S0960-9822(10)01007-0"
@@ -182,7 +180,6 @@ def _demo_sources() -> list[dict]:
             "is_pivot": False,
             "parent_index": 1,
             "citations_count": 4567,
-            "impact_factor": 50.5,
             "archive_url": (
                 "https://web.archive.org/web/20240601000000/"
                 "https://www.nature.com/articles/35021052"
@@ -206,7 +203,6 @@ def _demo_sources() -> list[dict]:
             "is_pivot": False,
             "parent_index": 2,
             "citations_count": 2890,
-            "impact_factor": 50.5,
             "archive_url": (
                 "https://web.archive.org/web/20240601000000/"
                 "https://www.nature.com/articles/nature11028"
@@ -233,7 +229,6 @@ def _demo_sources() -> list[dict]:
             "is_pivot": False,
             "parent_index": None,
             "citations_count": 3120,
-            "impact_factor": 3.3,
             "archive_url": (
                 "https://web.archive.org/web/20240601000000/"
                 "https://learnmem.cshlp.org/content/12/4/361.full"
@@ -456,7 +451,6 @@ def _demo_sources() -> list[dict]:
             ),
             "is_pivot": False,
             "parent_index": 4,
-            "views_count": 2_100_000,
             "archive_url": (
                 "https://web.archive.org/web/20240601000000/"
                 "https://www.pbs.org/wgbh/nova/video/memory-hackers/"
@@ -521,7 +515,6 @@ def _demo_sources() -> list[dict]:
             ),
             "is_pivot": False,
             "parent_index": None,
-            "impact_factor": None,
             "archive_url": (
                 "https://web.archive.org/web/20240601000000/"
                 "https://commons.wikimedia.org/wiki/File:CajalHippocampus.jpeg"
@@ -603,9 +596,6 @@ async def _get_or_create_demo_card(
             archive_timestamp=(datetime.now(UTC).replace(tzinfo=None) if manual_archive else None),
             conflict_of_interest=src.get("conflict_of_interest"),
             citations_count=src.get("citations_count"),
-            subscribers_count=src.get("subscribers_count"),
-            views_count=src.get("views_count"),
-            impact_factor=src.get("impact_factor"),
         )
         db.add(source)
         created_sources.append(source)
