@@ -84,13 +84,29 @@ jobs:
         with:
           fetch-depth: 0
 
+      # `scan` n'est pas une sous-commande de TruffleHog : elle sortait en
+      # erreur d'usage, et `|| true` joint a `continue-on-error` le masquait.
+      # Le job affichait « pass » sans rien analyser. Un scan de secrets qui
+      # ne scanne pas est pire qu'aucun scan : il donne l'assurance sans le
+      # controle. Corrige le 2026-08-07 en `filesystem`.
+      #
+      # `--exclude-detectors=Lob` : le motif d'une cle de test Lob est
+      # `test_` suivi de 35 caracteres, soit n'importe quel nom de test un peu
+      # long — et il se declare « verifie », l'API Lob acceptant toute cle de
+      # test. Mesure du 2026-08-07 : des dizaines de correspondances, toutes
+      # des noms de tests. Philum n'utilise pas Lob : rien de reel n'est perdu.
       - name: Run TruffleHog
         run: |
           docker run --rm -v "$(pwd):/workspace" \
-            trufflesecurity/trufflehog:latest scan \
+            trufflesecurity/trufflehog:latest filesystem \
             /workspace \
             --no-update \
-            --json > trufflehog-results.json 2>&1 || true
+            --results=verified \
+            --exclude-detectors=Lob \
+            --json > trufflehog-results.json
+        # Un secret trouve fait sortir en 183 : c'est le job bloquant de
+        # ci.yml qui tranche, celui-ci ne fait qu'archiver le detail. Mais une
+        # commande invalide echoue autrement, et cela doit desormais se voir.
         continue-on-error: true
 
       - name: Upload results
