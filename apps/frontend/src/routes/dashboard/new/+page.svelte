@@ -5,6 +5,7 @@
   import { Button, ProgressSteps } from '$lib/components';
   import { currentUser } from '$lib/stores/auth';
   import { pendingImportFile } from '$lib/stores/import-file';
+  import { guessPlatform } from '$lib/utils/platform-guess';
   import type {
     AuthorKind,
     Platform,
@@ -101,23 +102,6 @@
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '')
       .slice(0, 60);
-  }
-
-  function guessPlatform(u: string): { platform: Platform; contentType: ContentType } {
-    let host: string;
-    try {
-      host = new URL(u).hostname.replace(/^www\./, '').toLowerCase();
-    } catch {
-      return { platform: 'other', contentType: 'article' };
-    }
-    if (host.includes('youtube.com') || host === 'youtu.be')
-      return { platform: 'youtube', contentType: 'video' };
-    if (host.includes('twitter.com') || host === 'x.com')
-      return { platform: 'x', contentType: 'post' };
-    if (host.includes('bsky.app')) return { platform: 'bluesky', contentType: 'post' };
-    if (host.includes('substack.com') || host.includes('medium.com'))
-      return { platform: 'blog', contentType: 'article' };
-    return { platform: 'other', contentType: 'article' };
   }
 
   async function suggestFromUrl(force = false) {
@@ -264,6 +248,7 @@
     { value: 'blog', label: 'Blog' },
     { value: 'x', label: 'X (Twitter)' },
     { value: 'bluesky', label: 'Bluesky' },
+    { value: 'revue-scientifique', label: 'Revue scientifique' },
     { value: 'other', label: 'Autre' },
   ];
 

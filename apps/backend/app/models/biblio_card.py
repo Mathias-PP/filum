@@ -32,6 +32,11 @@ class Platform(str, Enum):
     BLOG = "blog"
     X = "x"
     BLUESKY = "bluesky"
+    # Une revue scientifique n'est pas « autre » : c'est le support de
+    # publication du persona chercheur, et le faire retomber dans la case
+    # fourre-tout rendait `nature.com` et `sciencedirect.com` indistinguables
+    # d'un site sans genre.
+    REVUE_SCIENTIFIQUE = "revue-scientifique"
     OTHER = "other"
 
 

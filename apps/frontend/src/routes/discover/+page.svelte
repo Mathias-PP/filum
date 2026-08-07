@@ -12,6 +12,7 @@
     blog: 'Blog',
     x: 'X',
     bluesky: 'Bluesky',
+    'revue-scientifique': 'Revue scientifique',
     other: 'Autre',
   };
   const TYPE_LABELS: Record<string, string> = {
