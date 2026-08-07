@@ -197,6 +197,42 @@ personas. A refaire depuis le dashboard en prod.
 
 594 tests backend verts. PRs #306 → #309 toutes mergees sur `main`.
 
+## Session 2026-08-07 (autonome) — la surveillance du corpus vaut-elle la peine ?
+
+Question posee **avant** d'ecrire la moindre ligne de produit de veille : sur
+les sources reellement publiees, combien de retractations, de liens morts et
+de bascules en acces ouvert une surveillance periodique trouverait-elle ? Si
+le chiffre etait proche de zero, mieux valait le savoir tout de suite.
+Script `apps/backend/scripts/mesure_surveillance.py`, resultat brut dans
+`apps/backend/mesure_surveillance.json`.
+
+**643 sources publiees, 575 portant un DOI.** Ce qu'une veille trouverait :
+
+- **6 corrections/retractations** non refletees a l'ecran. ⚠️ **Deux d'entre
+  elles sont enregistrees en base comme `unverifiable`** : ce n'est pas une
+  absence d'information, c'est une information **perimee et fausse**. La
+  fiche affirme « je n'ai pas pu verifier » la ou le papier est corrige.
+- **117 bascules en acces ouvert.** Une source enregistree comme fermee est
+  devenue librement lisible sans que la fiche le dise. C'est le gisement le
+  plus gros, et de loin celui qui sert le plus le lecteur.
+- **5 liens morts**, dont **4 DOI `doi.org` qui ne resolvent plus** sur des
+  articles anciens (`10.1111/j.1572-0241.*`). Un DOI mort est une promesse de
+  permanence rompue : c'est precisement ce que Philum pretend garantir.
+- Repartition acces ouvert mesuree : 341 `unverifiable`, 114 `closed`, 36
+  `green`, 36 `bronze`, 31 `gold`, 15 `hybrid`, 2 `diamond`.
+
+⚠️ **Biais de mesure a ne pas oublier** : sur les 610 liens testes, **455 ont
+repondu « bloque »** (anti-bot). Les 5 morts sont donc un **plancher**, pas
+un compte. Le vrai chiffre est necessairement plus eleve, et une veille
+devra distinguer « le serveur me refuse » de « la ressource n'existe plus » —
+la faute deja payee neuf fois en session 2026-08-04.
+
+**Conclusion : la surveillance a un interet mesure**, porte surtout par les
+117 bascules d'acces ouvert et par les 2 etats perimes qui font mentir la
+fiche. Le corpus reste toutefois celui d'un seul createur (cf. la limite
+consignee ailleurs : il ne prouve rien sur le comportement des createurs en
+general).
+
 ## Session 2026-08-07 (nuit) — chantier 2 : DOI depuis URL editeur
 
 Branche `feat/extraction-pipeline-v2`. Le pipeline d'extraction v2 (ADR-030,
