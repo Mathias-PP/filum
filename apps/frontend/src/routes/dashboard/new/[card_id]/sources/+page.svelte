@@ -983,14 +983,23 @@
         await ingestImported({ sources: res.sources, skipped: res.skipped });
         hasExtractedRefs = true;
       } else if (res.fetch_status === 'unreachable') {
-        refsError = 'La page n’a pas pu être récupérée (site inaccessible ou bloqué).';
+        // Site anti-bot (Nature, Elsevier, IEEE, éditeurs académiques).
+        // Rediriger vers l'import fichier plutôt que de laisser l'user
+        // devant une impasse.
+        refsError =
+          'La page n’a pas pu être récupérée (site inaccessible ou anti-scraping). ' +
+          'Sur les éditeurs académiques, cliquez « Cite » ou « Export » sur la ' +
+          'page d’origine pour télécharger un .ris ou .bib, puis utilisez ' +
+          '« Importer un fichier » plus bas.';
       } else if (res.fetch_status === 'not_html') {
         refsError =
           'Ce lien ne pointe pas vers une page web (PDF, image…) : l’extraction ne fonctionne que sur du HTML.';
       } else {
         refsInfo = res.references_section_found
           ? 'Aucune référence exploitable trouvée sur cette page.'
-          : 'Aucune section « Références » détectée sur cette page.';
+          : 'Aucune section « Références » détectée sur cette page. ' +
+            'Si la bibliographie est ailleurs (description YouTube, PDF joint, fichier RIS…), ' +
+            'utilisez « Coller un texte » ou « Importer un fichier » plus bas.';
       }
     } catch (err) {
       refsError = err instanceof Error ? err.message : 'Erreur lors de l’extraction';
