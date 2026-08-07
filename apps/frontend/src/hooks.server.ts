@@ -32,9 +32,24 @@ export const handle: Handle = async ({ event, resolve }) => {
     if (wantsMarkdown || wantsPhilumJson) {
       const [, creator, card] = match;
       const suffix = wantsMarkdown ? '.md' : '.philum.json';
-      // Reecrire le chemin interne sans changer l'URL visible : le client
-      // reste sur /@createur/fiche, le routeur SvelteKit sert la variante.
-      event.url.pathname = `/@${creator}/${card}${suffix}`;
+      // Muter `event.url.pathname` ne suffit pas : le routeur SvelteKit lit
+      // le chemin une seule fois avant `resolve`. On appelle donc la variante
+      // via `event.fetch` (qui re-entre le routeur SSR) et on renvoie sa
+      // reponse en gardant les en-tetes qui comptent.
+      const alt = await event.fetch(`/@${creator}/${card}${suffix}`, {
+        headers: event.request.headers,
+      });
+      const body = await alt.text();
+      return new Response(body, {
+        status: alt.status,
+        headers: {
+          'content-type': alt.headers.get('content-type') ?? 'text/plain',
+          'cache-control': alt.headers.get('cache-control') ?? 'public, max-age=300',
+          // Precise que la reponse depend de Accept : les caches
+          // intermediaires ne doivent pas melanger les representations.
+          vary: 'Accept',
+        },
+      });
     }
   }
 
