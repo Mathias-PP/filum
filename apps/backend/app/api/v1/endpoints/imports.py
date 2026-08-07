@@ -51,6 +51,7 @@ from app.services.import_parsers import (
     _doi_to_url,
     detect_format,
     parse_file,
+    parse_freetext_citations,
     parse_markdown,
 )
 from app.services.llm import (
@@ -671,6 +672,24 @@ async def parse_pasted_bibliography(
     current_user: User = Depends(get_current_user),
 ):
     result = parse_markdown(payload.text)
+    # Copier-coller Nature/Science : le HTML ne conserve pas les liens vers
+    # les references, seules les citations textuelles subsistent. Le parseur
+    # markdown ne trouve alors rien. On complete avec le parseur de citations
+    # nues (« Auteurs. Titre. Journal Vol, Pages (Annee). ») qui capture ces
+    # cas sans dependance LLM.
+    freetext = parse_freetext_citations(payload.text)
+    if freetext.refs:
+        # Dedup par title|authors|year (les refs sans URL n'ont pas de cle URL).
+        known_keys = {
+            _dedupe_key(r.url) if r.url
+            else f"nourl:{(r.title or '').strip().lower()}|{(r.authors or '').strip().lower()}|{r.year or ''}"
+            for r in result.refs
+        }
+        for ref in freetext.refs:
+            key = f"nourl:{(ref.title or '').strip().lower()}|{(ref.authors or '').strip().lower()}|{ref.year or ''}"
+            if key not in known_keys:
+                result.refs.append(ref)
+                known_keys.add(key)
     llm_refs = await parse_bibliography(payload.text)
     if llm_refs:
         result = _merge_llm_refs(result, llm_refs)

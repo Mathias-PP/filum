@@ -520,6 +520,101 @@ def parse_markdown(text: str) -> ParseResult:
     return result
 
 
+# --- Citations en texte libre (Nature/Science/APA copie-colle) --------------
+
+# « (2009). » ou « (2009). » en fin de citation. Les intervalles retenus
+# couvrent la periode ou une bibliographie moderne a ete constituee : trop
+# large (1000-2099) ferait matcher des numeros de page ou des adresses.
+_YEAR_PAREN_RE = re.compile(r"\((18\d{2}|19\d{2}|20\d{2})\)")
+
+# « . Journal Vol, Pages » : la partie apres le titre. Le nom du journal peut
+# contenir des abreviations avec points (« Nature Rev. Neurosci. »), c'est
+# pourquoi on ancre sur le motif « Vol, PageDeb-PageFin » a la fin.
+_JOURNAL_TAIL_RE = re.compile(r"\.\s+[^.]+?\s+\d+[,:]\s*[\dA-Za-z]+")
+
+# Copier-coller Nature/Science : chaque reference est suivie d'un bloc de
+# tokens d'outils bibliographiques (« CAS », « PubMed », « Google Scholar »)
+# separes par des lignes vides. Ces paragraphes-jetons sont du bruit.
+_REFERENCE_TOOL_TOKENS = {
+    "CAS", "PubMed", "PubMed Central", "Google Scholar", "ADS",
+    "MathSciNet", "ISI", "Article", "Chapter", "Book",
+}
+
+
+def _split_authors_and_title(before_year: str) -> tuple[str | None, str | None]:
+    """« Silva, A. J. et al. Titre. Journal 12, 3–4 » → (auteurs, titre).
+
+    Heuristique en cascade : « et al. » est le marqueur de fin d'auteurs le
+    plus fiable ; a defaut, on decoupe sur « . » et on prend la premiere
+    phrase qui ne ressemble pas a une suite d'initiales.
+    """
+    m = _JOURNAL_TAIL_RE.search(before_year)
+    head = before_year[: m.start()].strip() if m else before_year.strip()
+    head = head.rstrip(".").strip()
+    if not head:
+        return None, None
+
+    eal = re.search(r"\bet\s+al\.\s+", head)
+    if eal:
+        authors = head[: eal.end()].strip().rstrip(".")
+        title = head[eal.end():].strip().rstrip(".")
+        return (authors or None), (title or None)
+
+    parts = re.split(r"(?<=\.)\s+(?=[A-Z])", head)
+    # Le titre est la premiere phrase substantielle (>=4 mots, sans etre une
+    # suite d'initiales). Les segments precedents sont les auteurs.
+    for i, seg in enumerate(parts):
+        if i == 0:
+            continue
+        words = seg.split()
+        if len(words) >= 4 and not all(re.match(r"^[A-Z]\.[A-Z]?\.?$", w) for w in words):
+            authors = " ".join(parts[:i]).strip().rstrip(".")
+            title = " ".join(parts[i:]).strip().rstrip(".")
+            return (authors or None), (title or None)
+    # Bloc court d'un seul segment : tout est titre.
+    return None, head
+
+
+def parse_freetext_citations(text: str) -> ParseResult:
+    """Extrait des references style Nature/Science : « Auteurs. Titre. Journal Vol, Pages (Annee). ».
+
+    Utilise en secours quand un copier-coller ne contient aucune URL ni DOI :
+    le HTML de Nature, par exemple, retire les liens vers les references et
+    laisse la citation textuelle nue, plus des jetons « CAS / PubMed / Google
+    Scholar » que ce parseur reconnait comme du bruit.
+    """
+    result = ParseResult()
+    blocks = re.split(r"\n\s*\n", text)
+    for block in blocks:
+        one_line = " ".join(line.strip() for line in block.splitlines() if line.strip()).strip()
+        if not one_line:
+            continue
+        if one_line in _REFERENCE_TOOL_TOKENS:
+            continue
+        ym = _YEAR_PAREN_RE.search(one_line)
+        if not ym:
+            continue
+        year = int(ym.group(1))
+        before = one_line[: ym.start()].rstrip()
+        if before.endswith("."):
+            before = before[:-1].rstrip()
+        authors, title = _split_authors_and_title(before)
+        if not title or len(title) < 6:
+            continue
+        result.refs.append(
+            ImportedRef(
+                url="",
+                title=title,
+                authors=authors,
+                year=year,
+                category="article-scientifique",
+                raw_text=one_line,
+            )
+        )
+    result.refs = _dedupe(result.refs)
+    return result
+
+
 # --- PDF --------------------------------------------------------------------
 
 

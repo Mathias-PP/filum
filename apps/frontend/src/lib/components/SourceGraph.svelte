@@ -801,18 +801,26 @@
     // Fiches dont les sources sont à l'écran : la racine, plus celles qu'on a
     // dépliées. Ce sont elles qui déterminent quelles autres fiches entrent
     // dans le graphe.
-    const ownerIds = [card.id, ...expandedCardIds];
+    // En « Cité par » (entrant), les sources sortantes de la racine ne sont
+    // pas la question — les afficher étale des nœuds éloignés qui n'ont rien
+    // à voir avec les fiches citantes, et le graphe dézoome pour rien. Les
+    // fiches dépliées ou épinglées, elles, gardent leurs sources : c'est un
+    // acte explicite qui prime sur le filtre de sens.
+    const ownerIds = direction === 'entrant' ? [...expandedCardIds] : [card.id, ...expandedCardIds];
     const sourcesOf = (id: string) =>
       cappedOf(id === card.id ? rootSources : (neighborSources.get(id) ?? []));
 
     // Fiches retenues à l'affichage : la racine, ses dépliées, ses épinglées,
-    // et celles à un saut de l'une de ces ancres dans les deux sens.
-    // Les fiches à deux sauts n'apparaissent qu'une fois leur amont déplié.
+    // et celles à un saut de l'une de ces ancres. Le sens de citation choisi
+    // filtre le voisinage : en « Cite » on ne voit que les cibles sortantes,
+    // en « Cité par » que les sources entrantes. Les épinglées passent dans
+    // les deux cas — les épingler est un geste explicite qu'on ne défait pas
+    // en changeant de mode.
     const anchorIds = new Set<string>([card.id, ...expandedCardIds, ...pinnedCardIds]);
     const visibleCardIds = new Set<string>(anchorIds);
     for (const [from, to] of cardLinks) {
-      if (anchorIds.has(from)) visibleCardIds.add(to);
-      if (anchorIds.has(to)) visibleCardIds.add(from);
+      if (direction !== 'entrant' && anchorIds.has(from)) visibleCardIds.add(to);
+      if (direction !== 'sortant' && anchorIds.has(to)) visibleCardIds.add(from);
     }
 
     const cardNodeIds = new Map<string, string>([[card.id, cardId]]);
@@ -2317,7 +2325,7 @@
             role="group"
             aria-label="Sens de citation affiché"
           >
-            {#each [{ v: 'sortant', l: 'Ce que cite cette fiche' }, { v: 'entrant', l: 'Ce qui cite cette fiche' }, { v: 'deux', l: 'Les deux' }] as opt, i (opt.v)}
+            {#each [{ v: 'sortant', l: 'Cite' }, { v: 'entrant', l: 'Cité par' }, { v: 'deux', l: 'Les deux' }] as opt, i (opt.v)}
               <button
                 type="button"
                 class="px-2.5 py-1.5 transition-colors {i > 0
