@@ -63,6 +63,53 @@ def _extract_player_response(html: str) -> dict | None:
     return obj if isinstance(obj, dict) else None
 
 
+def extract_channel_name_from_html(html: str) -> str | None:
+    """Nom de la chaine, depuis ``videoDetails.author``. None si absent."""
+    player = _extract_player_response(html)
+    if not player:
+        return None
+    details = player.get("videoDetails")
+    if not isinstance(details, dict):
+        return None
+    author = details.get("author")
+    if not isinstance(author, str):
+        return None
+    return author.strip() or None
+
+
+# En deca de cette longueur, le nom de chaine est un mot trop commun pour
+# servir de signal : « Vox » apparait dans voxeurop.eu, et filtrer dessus
+# emporterait de vraies sources.
+_CHANNEL_NAME_MIN_LEN = 6
+
+
+def _squash(s: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", s.lower())
+
+
+def is_creator_self_link(url: str, title: str | None, channel_name: str | None) -> bool:
+    """True si le lien pointe vers une propriete de l'auteur·ice de la video.
+
+    La fin d'une description YouTube est un bloc de signature — Patreon, site
+    perso, comptes sociaux, boutique — reconduit a l'identique d'une video a
+    l'autre. Mesure du 2026-08-07 : 11 des 16 sources extraites d'une video
+    3Blue1Brown en venaient. Ce bloc ne dit rien de ce sur quoi cette video-la
+    s'appuie, et il noie les quelques vraies sources.
+
+    On teste le nom de chaine dans l'URL et dans le titre du lien : l'album de
+    la bande-son a une URL Spotify opaque que seul son titre trahit.
+
+    Effet de bord accepte : un article tiers qui parle de l'auteur·ice et porte
+    son nom serait ecarte. C'est rare, et la fiche reste editable a l'ecran.
+    """
+    if not channel_name:
+        return False  # sans savoir a qui est la chaine, tout filtrage est arbitraire
+    needle = _squash(channel_name)
+    if len(needle) < _CHANNEL_NAME_MIN_LEN:
+        return False
+    return needle in _squash(url) or (bool(title) and needle in _squash(title or ""))
+
+
 def extract_description_from_html(html: str) -> str | None:
     """Description integrale depuis le HTML d'une page video. None si absente."""
     player = _extract_player_response(html)
@@ -179,8 +226,11 @@ async def fetch_youtube_transcript(url: str) -> str | None:
     return text
 
 
-async def fetch_youtube_description(url: str) -> str | None:
-    """Telecharge la page video et retourne sa description integrale."""
+async def fetch_youtube_description(url: str) -> tuple[str | None, str | None]:
+    """Telecharge la page video : (description integrale, nom de chaine).
+
+    Les deux viennent du meme objet JSON, d'ou un seul telechargement.
+    """
     try:
         async with httpx.AsyncClient(
             headers=_HEADERS, timeout=_TIMEOUT, follow_redirects=True
@@ -188,8 +238,10 @@ async def fetch_youtube_description(url: str) -> str | None:
             response = await client.get(url)
     except httpx.HTTPError as e:
         logger.warning("youtube_oracle fetch failed url=%s err=%s", url, e)
-        return None
+        return None, None
     if response.status_code != 200:
         logger.warning("youtube_oracle http=%d url=%s", response.status_code, url)
-        return None
-    return extract_description_from_html(response.text)
+        return None, None
+    return extract_description_from_html(response.text), extract_channel_name_from_html(
+        response.text
+    )
