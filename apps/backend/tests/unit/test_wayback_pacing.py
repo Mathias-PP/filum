@@ -109,7 +109,7 @@ class TestLeRefusEstUnSignal:
 
         _run(svc, [(uuid4(), "https://example.org/a")])
 
-        assert max(slept) > wb.WaybackService.TRIGGER_GAP
+        assert max(slept) > wb.WaybackService.TRIGGER_GAP_ANONYME
 
     def test_un_refus_au_declenchement_est_reessaye(self, slept):
         svc = _Recorder()

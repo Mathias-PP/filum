@@ -79,7 +79,7 @@ class TestCadence:
 
         assert svc.triggered == [u for _, u in pairs]
         # Une pause d'au moins la cadence nominale separe deux declenchements.
-        assert sum(1 for d in no_sleep if d >= wb.WaybackService.TRIGGER_GAP) >= len(pairs) - 1
+        assert sum(1 for d in no_sleep if d >= wb.WaybackService.TRIGGER_GAP_ANONYME) >= len(pairs) - 1
 
     def test_les_sondages_precedent_tous_les_declenchements(self, no_sleep):
         """Save Page Now travaille en differe, donc sonder juste apres avoir
