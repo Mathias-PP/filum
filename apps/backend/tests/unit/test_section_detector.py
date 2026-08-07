@@ -32,6 +32,29 @@ def test_detect_via_section_id():
     assert "Foreign paper" not in result.text
 
 
+def test_detect_pmc_section_ref_list():
+    """PMC porte `ref-list` sur un `<section>`, pas sur un `<div>`.
+
+    Mesure du 2026-08-07 sur PMC3181818 : la detection echouait, la liste ne
+    couvrant `ref-list` que sur `div`. PMC est la premiere source d'articles en
+    texte integral libre, donc l'echec le plus couteux du lot.
+    """
+    html = """
+    <html><body>
+    <section id="ref-list1" class="ref-list">
+      <h2>References</h2>
+      <ul class="ref-list font-sm">
+        <li>Kandel E. R. (2001). The Molecular Biology of Memory Storage. Science 294, 1030.</li>
+      </ul>
+    </section>
+    </body></html>
+    """
+    result = detect_references_section(html)
+    assert result is not None
+    assert result.method == "selector"
+    assert "Kandel" in result.text
+
+
 def test_detect_via_heading_fallback():
     html = """
     <html><body>
