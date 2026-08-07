@@ -50,7 +50,24 @@ Motif : une regex par site ne débloque que ce site. Il y a des milliers d'édit
 - OpenAlex `filter=locations.landing_page_url` : ne stocke que des URLs `doi.org`, jamais les pages d'éditeur. Zéro résultat sur `nature.com`.
 - Semantic Scholar `URL:` : répond `not found` sur `nature.com` **et** sur bioRxiv, et sature vite en 429 sans clé API. Conservé en repli seulement.
 
-Le diagnostic initial « Nature bloque le scraping » était par ailleurs faux : `GET nature.com/articles/nrn3667` avec notre propre User-Agent rend un **200** et la balise `citation_doi`. Vérifié aussi sur PLOS et Frontiers ; Cell, Wiley et The Lancet rendent 403 depuis une IP résidentielle mais portent leur DOI dans l'URL ou un PII déjà géré.
+**Ce que ça débloque, et ce que ça ne débloque pas.** Vérifié depuis le conteneur de prod : PLOS ✅, Frontiers ✅ — et des milliers d'éditeurs qui n'opposent pas d'obstacle. Nature ❌, en revanche, et pour une raison qui mérite d'être écrite noir sur blanc :
+
+> Depuis une IP résidentielle, `nature.com/articles/nrn3667` rend 444 Ko de HTML avec `citation_doi`. Depuis l'IP datacenter de la VM, la **même** requête rend un HTTP **200** de 3 Ko intitulé « Client Challenge » — un obstacle JS déguisé en succès. Le blocage est une question de réputation d'IP, pas d'en-têtes.
+
+Conséquence : **aucune** résolution générique ne sauvera Nature depuis la VM. Ni les balises meta (on ne reçoit pas la page), ni S2 (`not found`), ni Playwright (même IP, même challenge). La voie qui marche pour ces sites reste l'import RIS, que l'utilisateur récupère depuis le bouton *Cite* de l'éditeur.
+
+C'est aussi pourquoi `_looks_like_challenge_page` doit rester : sans lui, le titre « Client Challenge » atterrirait dans le formulaire de l'utilisateur.
+
+**Couverture mesurée depuis le conteneur de prod (12 URLs, 2026-08-07) :**
+
+| Issue | Éditeurs | Cause |
+|---|---|---|
+| DOI obtenu (5) | Frontiers, PNAS, BMC (DOI dans l'URL) ; PLOS, PubMed (balise meta) | — |
+| Bloqué anti-bot (4) | Nature, Scientific Reports (« Client Challenge ») ; MDPI (403) ; Cell (« Just a moment », Cloudflare) | Réputation d'IP datacenter — rien ne le contourne, RIS reste la voie |
+| Pas de balise DOI (1) | arXiv — n'émet que `citation_arxiv_id` | arXiv assigne pourtant `10.48550/arXiv.<id>` à tout papier ; règle officielle DataCite, à brancher (backlog « oracle arXiv ») |
+| Correctement `None` (1) | blog personnel | Comportement voulu |
+
+Autrement dit la lecture des balises meta apporte **2 gains nets** sur cet échantillon (PLOS, PubMed) ; les 3 autres succès venaient déjà du DOI présent dans l'URL. Le gain réel est ailleurs : il vaut pour la longue traîne d'éditeurs qui n'opposent aucun obstacle et que nous n'aurions jamais codés un par un.
 
 **Périmètre conservé :** l'extraction *syntaxique* du DOI depuis l'URL (`_extract_doi`) reste — un DOI écrit dans un chemin est un DOI, pas une devinette. La normalisation de version bioRxiv (`10.1101/…v2` → forme canonique) reste aussi : c'est une règle de syntaxe DOI, pas une connaissance d'éditeur.
 
