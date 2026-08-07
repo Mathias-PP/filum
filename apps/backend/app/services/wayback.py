@@ -182,10 +182,16 @@ class WaybackService:
     # SPN. Sum ~33 s.
     POLL_DELAYS: tuple[float, ...] = (3.0, 5.0, 8.0, 8.0, 9.0)
     # Planchers de cadence, pas cadences nominales : le rythme reel s'ajuste
-    # aux refus du service (cf. _Pacer). Les limites d'archive.org ne sont pas
-    # publiees et varient avec sa charge -- mesure en aout 2026, 6 s entre deux
-    # declenchements se faisait encore refuser.
-    TRIGGER_GAP = 6.0
+    # aux refus du service (cf. _Pacer).
+    #
+    # Save Page Now annonce **3 captures par minute en anonyme, 6 avec un
+    # compte**. Le plancher unique de 6 s en visait 10 -- au-dela meme de ce
+    # qu'un compte autorise. Demander plus vite que la limite ne rend rien plus
+    # rapide : cela transforme chaque demande en refus, et le budget du lot se
+    # consume en reessais. Mesure du 2026-08-07 : 493 sources en attente sur
+    # 931, et `429` sur toute URL, `example.com` comprise.
+    TRIGGER_GAP_ANONYME = 20.0
+    TRIGGER_GAP_AUTHENTIFIE = 10.0
     LOOKUP_GAP = 1.0
     # Plafonds : au-dela, insister ne sert plus a rien.
     TRIGGER_CEILING = 120.0
@@ -201,6 +207,20 @@ class WaybackService:
     def __init__(self, db: AsyncSession, api_key: str | None = None):
         self._db = db
         self._api_key = api_key
+
+    def _auth_headers(self) -> dict[str, str]:
+        """L'en-tete d'authentification archive.org, vide sans cle.
+
+        Le mecanisme documente est `Authorization: LOW <access>:<secret>`, les
+        cles s'obtenant sur `archive.org/account/s3.php`. Un en-tete et non un
+        parametre d'URL : ce que le destinataire journalise ne doit pas
+        contenir le secret.
+        """
+        return {"Authorization": f"LOW {self._api_key}"} if self._api_key else {}
+
+    def _trigger_gap(self) -> float:
+        """Le plancher de cadence que la limite annoncee autorise."""
+        return self.TRIGGER_GAP_AUTHENTIFIE if self._api_key else self.TRIGGER_GAP_ANONYME
 
     async def archive_url(self, source_id: UUID, url: str) -> dict:
         # Refuse non-public URLs up-front so we don't ask the Internet
@@ -376,7 +396,9 @@ class WaybackService:
         reintroduirait une fragilite du meme genre que celle de #269.
         """
         try:
-            async with httpx.AsyncClient(timeout=self.TIMEOUT, follow_redirects=False) as client:
+            async with httpx.AsyncClient(
+                timeout=self.TIMEOUT, follow_redirects=False, headers=self._auth_headers()
+            ) as client:
                 # GET works for SPN public endpoint. We don't care about the
                 # response body — only whether the request was accepted.
                 response = await client.get(f"{self.SAVE_URL}/{url}")
@@ -422,7 +444,9 @@ class WaybackService:
         l'appelant d'essayer ailleurs plutot que de conclure.
         """
         try:
-            async with httpx.AsyncClient(timeout=self.LOOKUP_TIMEOUT) as client:
+            async with httpx.AsyncClient(
+                timeout=self.LOOKUP_TIMEOUT, headers=self._auth_headers()
+            ) as client:
                 response = await client.get(endpoint, params=params)
             refusal = self._refusal(response)
             if refusal is not None:
@@ -464,10 +488,9 @@ class WaybackService:
         return f"https://web.archive.org/web/{timestamp}/{original}", timestamp
 
     async def _lookup_via_availability(self, url: str) -> tuple[str, str | None] | None:
-        params = {"url": url}
-        if self._api_key:
-            params["api_key"] = self._api_key
-        data = await self._get_json(self.AVAILABLE_URL, params)
+        # La cle passe par l'en-tete, jamais par `params` : un parametre d'URL
+        # se retrouve dans les journaux de qui le recoit.
+        data = await self._get_json(self.AVAILABLE_URL, {"url": url})
         if not isinstance(data, dict):
             raise ThrottledError()
 
@@ -572,7 +595,7 @@ class WaybackService:
         # Puis demander une capture pour celles-la seulement. Save Page Now
         # travaille en differe : le prochain affichage de la fiche relancera le
         # sondage, et c'est lui qui les verra arriver.
-        pacer = _Pacer(self.TRIGGER_GAP, self.TRIGGER_CEILING, self.BATCH_BUDGET)
+        pacer = _Pacer(self._trigger_gap(), self.TRIGGER_CEILING, self.BATCH_BUDGET)
         for url in absents:
             if pacer.exhausted:
                 break
