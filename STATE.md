@@ -132,6 +132,71 @@ le DNS de `philum.app` chez le registrar.
   `search_cards` et `get_card` repondent. C'est le canal d'acces qui marche
   aujourd'hui pour un agent conversationnel.
 
+## Session 2026-08-07 (autonome) — audits persona #74-#77 : quatre fiches mesurees
+
+Harnais `apps/backend/scripts/audit_personas.py` (PR #306) : il appelle
+`parse_content_url` directement — le code exact derriere le bouton « importer
+depuis une URL » du dashboard — sans aucune ecriture en base ni en prod.
+Quatre URLs publiques reelles, une par persona. Six defauts trouves, chacun
+mesure d'abord, chacun corrige par un test ecrit rouge avant le code.
+
+| persona | URL | avant | apres | confiance | sans titre |
+|---|---|---|---|---|---|
+| journaliste | ProPublica *How the IRS was gutted* | 0 | **12** | medium | 0 |
+| vulgarisateur | YouTube 3Blue1Brown *neural network* | 16 (bruitees) | **6** (propres) | high | 0 |
+| essayiste | gwern.net *scaling hypothesis* | 0 | **78** | medium | 0 |
+| institution | fiche depression de l'OMS | 1 | **6** | medium | 0 |
+
+Les correctifs, par PR :
+
+- **#306** `_resolve_confidence` — l'ecran annoncait « confiance haute » sur
+  **zero reference**, c'est-a-dire affirmait que le contenu ne cite rien. La
+  promotion medium → high exige desormais que l'oracle ait effectivement
+  fourni quelque chose : un resultat vide satisfait « zero ref enrichie » sans
+  etre le cas vise.
+- **#306** `_fallback_title_from_anchor` — 6 sources sur 11 arrivaient sans
+  titre, plusieurs sites (treasury.gov) refusant la visite du backfill. Une
+  source sans titre s'affiche comme une URL nue, que le lecteur ne peut pas
+  situer. Le texte du lien est le dernier filet, borne a 120 caracteres —
+  `raw_text` porte aussi des blocs de reference entiers (Frontiers, PMC).
+- **#307** `app/extractors/body_links.py` — un article de presse et un essai
+  n'ont pas de section References : leur bibliographie est faite de liens
+  poses dans le texte. Sans ce repli, journaliste et essayiste voyaient un
+  **ecran vide** la ou la page cite des dizaines de pieces. ⚠️ **Le module ne
+  tranche pas ce qui est une source** — il ecarte ce qui ne peut pas en etre
+  une (navigation, chrome, boutons de partage, ancres vides) et laisse
+  l'auteur·ice arbitrer a l'ecran. D'ou le branchement aux seules pages sans
+  section *et* sans refs Crossref, et la confiance maintenue a « medium ».
+- **#307** ⚠️ **Le texte du lien n'est pas un titre.** Premiere version :
+  `title = label`. Mesure : la fiche affichait « at least $3 billion », et
+  renseigner `title` **bloquait silencieusement** `_backfill_url_metadata`,
+  qui ne visite que les refs sans titre. Le label part en `raw_text`
+  (contexte de citation) ; les vrais titres remontent alors.
+- **#308** `is_creator_self_link` — la fin d'une description YouTube est un
+  **bloc de signature** (Patreon, site perso, comptes sociaux, boutique)
+  reconduit a l'identique d'une video a l'autre. 11 des 16 sources extraites
+  en venaient. Filtre sur le nom de chaine (`videoDetails.author`) dans l'URL
+  *et* dans le titre — l'album de la bande-son a une URL Spotify opaque que
+  seul son titre trahit. Plancher a 6 caracteres : « Vox » apparait dans
+  voxeurop.eu.
+- **#309** citations internes — l'OMS cite **cinq de ses propres
+  publications**, toutes ecartees comme « liens internes ». On distingue
+  desormais par la **position** : un lien pose au milieu d'une phrase de texte
+  courant (≥ 80 caracteres autour) est une citation, un lien isole dans un
+  bloc court est de la navigation. Plafond a 20 : mesure des « liens internes
+  dans une phrase » — ProPublica **0**, OMS **5**, Gwern **238**. Les trois
+  regimes se separent nettement ; au-dela du plafond on n'en garde aucun,
+  plutot que d'en trier arbitrairement (sinon la fiche Gwern passait de 78 a
+  316 sources).
+
+⚠️ **Non verifiable localement, consigne pour arbitrage ulterieur** :
+`classification` est `None` sur toutes les sources en execution locale.
+L'etage 7 (classification LLM source/promo/social/other) ne tourne pas sans
+cle API, donc l'etiquetage promo/social n'a pas pu etre mesure sur ces quatre
+personas. A refaire depuis le dashboard en prod.
+
+594 tests backend verts. PRs #306 → #309 toutes mergees sur `main`.
+
 ## Session 2026-08-07 (nuit) — chantier 2 : DOI depuis URL editeur
 
 Branche `feat/extraction-pipeline-v2`. Le pipeline d'extraction v2 (ADR-030,
