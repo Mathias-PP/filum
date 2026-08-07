@@ -197,6 +197,46 @@ personas. A refaire depuis le dashboard en prod.
 
 594 tests backend verts. PRs #306 → #309 toutes mergees sur `main`.
 
+### Suite : le manque d'annee (PR #315)
+
+Le re-audit apres #309→#314 ne montre **aucune regression** (12 / 6 / 78 / 6
+sources, `sans titre=0` partout) mais un manque massif : `sans annee` = 10/12,
+5/6, 35/78, 6/6. Une source sans annee tombe dans la colonne « sans date » de
+la frise chronologique.
+
+Sonde 1 : **100 %** de ces sources portent un titre. Le backfill d'URL les
+saute donc toutes, par construction (`imports.py:331` et `:386` ne visitent
+que les refs *sans titre*).
+
+Sonde 2 — la question decisive, posee aux pages elles-memes : **9 des 10
+pages sondees ne publient aucune date exploitable** (treasury.gov,
+washingtonpost/archive, colah.github.io, distill.pub, github, openai.com,
+incompleteideas.net, who.int, vizhub). Elargir le backfill aux refs « titrees
+mais sans annee » couterait des dizaines de visites reseau par import pour
+recuperer environ une date sur dix. **Ecarte, faute de justification.**
+
+La 10e page revele en revanche un vrai defaut, corrige par #315 : bioRxiv et
+medRxiv collent le numero de version et la variante d'affichage au DOI dans
+le chemin. `10.1101/2020.06.26.174482.full` ne retourne **rien** de Crossref ;
+le meme DOI sans suffixe retourne titre et date (2020-06-27). Le nettoyage
+existait mais n'attendait qu'un separateur `/`, la ou ces serveurs utilisent
+un point et les cumulent (`v2.full.pdf`).
+
+Sonde 3 : la date presente dans le *chemin* de certaines URLs de presse
+(`/1996/02/03/`) semblait un gisement gratuit — aucune requete reseau. Mesure
+sur les quatre personas : **1 source sur 55** sans annee en porte une
+(journaliste 1/10, vulgarisateur 0/5, essayiste 0/34, institution 0/6).
+Ecrire un extracteur de date d'URL pour une source rendrait le code plus
+lourd sans rendre une fiche plus lisible. **Ecarte.**
+
+Apres #315, l'essayiste passe de 35 a **34** sources sans annee : le preprint
+bioRxiv a recupere sa date. Reste que la majorite des sources sans annee sont
+des pages qui, reellement, n'en publient pas — ce n'est pas un defaut du
+pipeline mais un fait du web, et la colonne « sans date » de la frise existe
+precisement pour ca.
+
+609 tests backend verts.
+
 ## Session 2026-08-07 (autonome) — la surveillance du corpus vaut-elle la peine ?
 
 Question posee **avant** d'ecrire la moindre ligne de produit de veille : sur
