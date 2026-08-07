@@ -534,13 +534,13 @@ _YEAR_PAREN_RE = re.compile(r"\((18\d{2}|19\d{2}|20\d{2})\)")
 # suivis d'une virgule et de chiffres, avec eventuellement une lettre suffixe
 # comme « e123 » ou un tiret « 41-50 »).
 _JOURNAL_TAIL_RE = re.compile(
-    r"\.\s+"                                # separateur titre/journal
-    r"[A-Z][A-Za-z]*\.?"                    # premier mot du journal
+    r"\.\s+"  # separateur titre/journal
+    r"[A-Z][A-Za-z]*\.?"  # premier mot du journal
     r"(?:\s+(?:[A-Z][A-Za-z]*\.?|of|and|for|the|in|de|et))*"  # mots suivants, avec liaisons
-    r"\s+\d+[a-z]?"                         # volume (« 12 », « 12a »)
-    r"[,:]\s*[eE]?\d+"                      # premiere page (« 41 », « e123 »)
-    r"(?:\s*[–\-]\s*\d+)?"                  # -page finale (optionnelle)
-    r"\s*$"                                 # fin de chaine
+    r"\s+\d+[a-z]?"  # volume (« 12 », « 12a »)
+    r"[,:]\s*[eE]?\d+"  # premiere page (« 41 », « e123 »)
+    r"(?:\s*[–\-]\s*\d+)?"  # -page finale (optionnelle)
+    r"\s*$"  # fin de chaine
 )
 
 # Entetes de section a retirer si elles precedent le premier auteur (souvent
@@ -558,21 +558,29 @@ _LEADING_HEADER_RE = re.compile(
 # l'omettent.
 _AUTHORS_PREFIX_RE = re.compile(
     r"^"
-    r"[A-Z][A-Za-zÀ-ÿ'\-]+"                                # nom de famille
-    r"(?:,\s*[A-Z]\.(?:\s*[A-Z]\.)*)?"                     # , X. Y. (initiales pointees)
-    r"(?:\s*(?:,|&)\s*"                                    # , ou & entre auteurs
+    r"[A-Z][A-Za-zÀ-ÿ'\-]+"  # nom de famille
+    r"(?:,\s*[A-Z]\.(?:\s*[A-Z]\.)*)?"  # , X. Y. (initiales pointees)
+    r"(?:\s*(?:,|&)\s*"  # , ou & entre auteurs
     r"[A-Z][A-Za-zÀ-ÿ'\-]+"
     r"(?:,\s*[A-Z]\.(?:\s*[A-Z]\.)*)?)*"
-    r"(?:\s+et\s+al\.)?"                                   # ... et al.
-    r"\s+"                                                 # espace vers titre
+    r"(?:\s+et\s+al\.)?"  # ... et al.
+    r"\s+"  # espace vers titre
 )
 
 # Copier-coller Nature/Science : chaque reference est suivie d'un bloc de
 # tokens d'outils bibliographiques (« CAS », « PubMed », « Google Scholar »)
 # separes par des lignes vides. Ces paragraphes-jetons sont du bruit.
 _REFERENCE_TOOL_TOKENS = {
-    "CAS", "PubMed", "PubMed Central", "Google Scholar", "ADS",
-    "MathSciNet", "ISI", "Article", "Chapter", "Book",
+    "CAS",
+    "PubMed",
+    "PubMed Central",
+    "Google Scholar",
+    "ADS",
+    "MathSciNet",
+    "ISI",
+    "Article",
+    "Chapter",
+    "Book",
 }
 
 
@@ -596,12 +604,12 @@ def _split_authors_and_title(before_year: str) -> tuple[str | None, str | None]:
 
     # Approche principale : reconnaitre le prefixe auteur explicitement
     # (nom de famille + initiales, joints par « , » ou « & »). C'est plus
-    #robuste que de splitter sur « . » : un titre peut commencer par « A »
-    #ou « An » qu'on ne peut pas distinguer d'une initiale.
+    # robuste que de splitter sur « . » : un titre peut commencer par « A »
+    # ou « An » qu'on ne peut pas distinguer d'une initiale.
     m2 = _AUTHORS_PREFIX_RE.match(head)
     if m2:
         authors = head[: m2.end()].strip().rstrip(".").strip()
-        title = head[m2.end():].strip().rstrip(".").strip()
+        title = head[m2.end() :].strip().rstrip(".").strip()
         if title:
             return (authors or None), title
 

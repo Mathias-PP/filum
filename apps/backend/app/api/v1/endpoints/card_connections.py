@@ -109,9 +109,7 @@ async def list_connections(
     )
 
 
-@router.post(
-    "/cards/{card_id}/connections/{source_id}/confirm", response_model=CardConnection
-)
+@router.post("/cards/{card_id}/connections/{source_id}/confirm", response_model=CardConnection)
 async def confirm_connection(
     card_id: UUID,
     source_id: UUID,

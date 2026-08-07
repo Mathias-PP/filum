@@ -33,6 +33,7 @@ from app.extractors.url_extractor import (
     get_crossref_references,
     resolve_doi_from_pii,
     resolve_doi_from_pubmed,
+    resolve_doi_from_url,
 )
 from app.extractors.url_extractor import extract as extract_url_metadata
 from app.extractors.wikipedia_oracle import fetch_wikipedia_references, is_wikipedia_url
@@ -681,7 +682,8 @@ async def parse_pasted_bibliography(
     if freetext.refs:
         # Dedup par title|authors|year (les refs sans URL n'ont pas de cle URL).
         known_keys = {
-            _dedupe_key(r.url) if r.url
+            _dedupe_key(r.url)
+            if r.url
             else f"nourl:{(r.title or '').strip().lower()}|{(r.authors or '').strip().lower()}|{r.year or ''}"
             for r in result.refs
         }
@@ -1079,6 +1081,8 @@ async def parse_content_url(
         content_doi = await resolve_doi_from_pii(url)
     if not content_doi:
         content_doi = await resolve_doi_from_pubmed(url)
+    if not content_doi:
+        content_doi = await resolve_doi_from_url(url)
 
     crossref_refs: list[ImportedRef] = []
     s2_used_as_authoritative = False

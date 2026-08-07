@@ -50,6 +50,7 @@ class LinkResolution:
     def confirmed(self) -> bool:
         return self.origin in (LinkOrigin.MANUEL, LinkOrigin.URL)
 
+
 _CARD_PATH_RE = re.compile(r"^/@([a-zA-Z0-9_.-]+)/([a-zA-Z0-9-]+)/?$")
 
 

@@ -14,7 +14,7 @@ import logging
 import re
 from dataclasses import dataclass
 from datetime import date, datetime
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 import httpx
 from bs4 import BeautifulSoup
@@ -303,58 +303,13 @@ _DOI_PATH_SUFFIXES = re.compile(r"/(?:full|abstract|pdf|epdf|epub|meta|figures|r
 _BIORXIV_VERSION_RE = re.compile(r"^(10\.1101/\d{4}\.\d{2}\.\d{2}\.\d+)v\d+(?:\.full)?$")
 
 
-# Editeurs dont le DOI se lit dans l'URL sans intermediaire mais qui bloquent
-# souvent le scraping direct (Cloudflare / DataDome). Sans cette resolution,
-# Crossref n'est jamais interroge sur eux et le pipeline retourne zero ref.
-#
-# Chaque motif capture le suffixe DOI (apres la barre du prefixe editeur) ;
-# les prefixes DOI correspondants sont donnes en commentaire pour audit :
-#   - Nature (10.1038)   : nrn3667, nature12345, s41586-024-08123-4
-#   - bioRxiv (10.1101)  : 2024.01.15.575984v1 (le suffixe `vN` est retire
-#     apres coup pour resolver la version *canonique* enregistree par Crossref)
-#   - medRxiv (10.1101)  : idem bioRxiv
-_PUBLISHER_URL_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
-    (
-        re.compile(
-            r"^https?://(?:www\.)?nature\.com/articles/([a-z]+\d[a-z\d\-]*)/?(?:[?#]|$)",
-            re.IGNORECASE,
-        ),
-        "10.1038",
-    ),
-    (
-        re.compile(
-            r"^https?://(?:www\.)?biorxiv\.org/content/10\.1101/(\d{4}\.\d{2}\.\d{2}\.\d+)"
-            r"(?:v\d+)?(?:\.full)?(?:[/?#]|$)",
-            re.IGNORECASE,
-        ),
-        "10.1101",
-    ),
-    (
-        re.compile(
-            r"^https?://(?:www\.)?medrxiv\.org/content/10\.1101/(\d{4}\.\d{2}\.\d{2}\.\d+)"
-            r"(?:v\d+)?(?:\.full)?(?:[/?#]|$)",
-            re.IGNORECASE,
-        ),
-        "10.1101",
-    ),
-)
-
-
-def _doi_from_publisher_url(url: str) -> str | None:
-    """DOI derive de l'URL d'un editeur qui l'expose comme slug d'URL."""
-    for pattern, prefix in _PUBLISHER_URL_PATTERNS:
-        m = pattern.match(url)
-        if m:
-            return f"{prefix}/{m.group(1)}"
-    return None
-
-
 def _extract_doi(url: str) -> str | None:
     """Return bare DOI from a URL.
 
-    Handles doi.org/dx.doi.org links, ``doi:`` prefixes, DOIs embedded in
-    publisher URL paths (Wiley, Springer, PLOS, Taylor & Francis, PNAS…),
-    and Nature articles whose URL slug est le suffixe DOI (`10.1038/<slug>`).
+    Handles doi.org/dx.doi.org links, ``doi:`` prefixes et DOIs embarques dans
+    le chemin d'une URL d'editeur (Wiley, Springer, PLOS, Taylor & Francis,
+    PNAS, bioRxiv…). Purement syntaxique : quand l'URL ne porte pas son DOI,
+    c'est `resolve_doi_from_url` qui interroge les index.
     """
     patterns = [
         r"(?:https?://)?(?:dx\.)?doi\.org/([^\s?#]+)",
@@ -371,10 +326,7 @@ def _extract_doi(url: str) -> str | None:
             if biorxiv_match:
                 doi = biorxiv_match.group(1)
             return doi
-    # Editeurs dont l'URL contient le slug DOI (Nature, bioRxiv, medRxiv).
-    # Fait apres les patterns generiques pour ne pas court-circuiter un DOI
-    # explicite si l'editeur en propose un dans le chemin.
-    return _doi_from_publisher_url(url)
+    return None
 
 
 # Signatures des pages-obstacle servies par les protections anti-bot
@@ -727,6 +679,64 @@ async def resolve_doi_from_pii(url: str) -> str | None:
         return None
 
 
+_S2_PAPER_BY_URL = "https://api.semanticscholar.org/graph/v1/paper/URL:{url}"
+_CROSSREF_BY_URI = "https://api.crossref.org/works?filter=uri:{url}&rows=1"
+
+# Une meme URL est resolue plusieurs fois par requete d'import (metadonnees puis
+# references). Les deux API sont rate-limitees ; le cache evite d'en depenser le
+# quota pour rien. Vie du process, aucune invalidation : un DOI ne change pas.
+_url_doi_cache: dict[str, str | None] = {}
+
+
+async def _s2_doi_by_url(url: str) -> str | None:
+    api_url = _S2_PAPER_BY_URL.format(url=quote(url, safe=""))
+    async with httpx.AsyncClient(headers=_HEADERS, timeout=_TIMEOUT) as client:
+        r = await client.get(api_url, params={"fields": "externalIds"})
+    if r.status_code != 200:
+        return None
+    doi = (r.json().get("externalIds") or {}).get("DOI")
+    return doi.lower() if doi else None
+
+
+async def _crossref_doi_by_uri(url: str) -> str | None:
+    api_url = _CROSSREF_BY_URI.format(url=quote(url, safe=""))
+    async with httpx.AsyncClient(headers=_HEADERS, timeout=_TIMEOUT) as client:
+        r = await client.get(api_url)
+    if r.status_code != 200:
+        return None
+    items = r.json().get("message", {}).get("items") or []
+    if not items:
+        return None
+    doi = items[0].get("DOI")
+    return doi.lower() if doi else None
+
+
+async def resolve_doi_from_url(url: str) -> str | None:
+    """N'importe quelle URL d'article → DOI, sans connaissance de l'editeur.
+
+    Remplace les resolutions par site (Nature, bioRxiv, ScienceDirect…) : ce
+    sont les index bibliographiques qui savent quelle URL designe quel article,
+    pas nous. Semantic Scholar d'abord (couverture d'URL la plus large), puis
+    Crossref `filter=uri:` qui indexe les URLs de resolution deposees par les
+    editeurs. Never raises.
+    """
+    if url in _url_doi_cache:
+        return _url_doi_cache[url]
+
+    doi: str | None = None
+    for resolver in (_s2_doi_by_url, _crossref_doi_by_uri):
+        try:
+            doi = await resolver(url)
+        except Exception as e:
+            logger.debug("%s failed for url=%s: %s", resolver.__name__, url, e)
+            continue
+        if doi:
+            break
+
+    _url_doi_cache[url] = doi
+    return doi
+
+
 async def _crossref_by_pii(pii: str) -> ExtractedMetadata | None:
     url = f"https://api.crossref.org/works?filter=alternative-id:{pii}&rows=1"
     try:
@@ -836,6 +846,12 @@ async def extract(url: str) -> ExtractedMetadata:
         pubmed_doi = await resolve_doi_from_pubmed(url)
         if pubmed_doi:
             crossref_meta = await _crossref(pubmed_doi)
+    if crossref_meta is None:
+        # Dernier recours, valable pour tout editeur : demander aux index
+        # bibliographiques quel article cette URL designe.
+        resolved_doi = await resolve_doi_from_url(url)
+        if resolved_doi:
+            crossref_meta = await _crossref(resolved_doi)
     if crossref_meta:
         result = crossref_meta
         result.format = "texte"
