@@ -235,8 +235,9 @@
   <meta name="twitter:image" content={ogImageUrl} />
   <link rel="canonical" href={publicUrl} />
   <!-- Un agent qui tombe sur ce HTML apprend ici qu'il existe une version
-       markdown de la même fiche, sans avoir à deviner la convention. -->
+       markdown ou JSON-LD de la même fiche, sans avoir à deviner. -->
   <link rel="alternate" type="text/markdown" href="{publicUrl}.md" />
+  <link rel="alternate" type="application/vnd.philum+json" href="{publicUrl}.philum.json" />
   <!-- Highwire : décrit le contenu documenté par la fiche (Google Scholar). -->
   {#each highwireTags as tag (tag.name + tag.content)}
     <meta name={tag.name} content={tag.content} />

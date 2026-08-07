@@ -106,6 +106,70 @@ def export_json(card: BiblioCard, public_url: str) -> str:
     return json.dumps(payload, ensure_ascii=False, indent=2)
 
 
+def export_philum_json(card: BiblioCard, public_url: str) -> str:
+    """Format `application/vnd.philum+json` : cible primaire des agents IA.
+
+    Superset de `export_json` avec :
+    - un contexte JSON-LD (schema.org) : un agent qui connait schema.org peut
+      cabler directement Article, Person, ScholarlyArticle sans mapping ;
+    - le champ `stance` par source (declaration explicite de la relation
+      entre l'affirmation du contenu et la source citee) ;
+    - le statut de retraction (`retraction_status`, `retraction_notice_doi`)
+      indispensable pour qu'un agent evite de propager une source retiree ;
+    - la version du format en clair, pour permettre une evolution stricte.
+    """
+    return json.dumps(
+        {
+            "@context": "https://schema.org",
+            "@type": "Article",
+            "philum_format_version": "1.0",
+            "url": public_url,
+            "headline": card.title,
+            "description": card.description,
+            "datePublished": card.published_at.isoformat() if card.published_at else None,
+            "author": {
+                "@type": "Person",
+                "identifier": card.user.username,
+                "name": card.user.display_name or card.user.username,
+                "url": f"{public_url.rsplit('/@', 1)[0]}/@{card.user.username}",
+            },
+            "isBasedOn": card.content_url,
+            "citation": [
+                {
+                    "@type": "CreativeWork",
+                    "position": s.position,
+                    "name": s.title,
+                    "author": s.authors,
+                    "url": s.url,
+                    "datePublished": s.published_at.isoformat() if s.published_at else None,
+                    "identifier": {"@type": "PropertyValue", "propertyID": "DOI", "value": s.doi}
+                    if s.doi
+                    else None,
+                    "isPartOf": s.journal,
+                    "volumeNumber": s.volume,
+                    "pagination": s.pages,
+                    "publisher": s.publisher,
+                    "annotation": s.annotation,
+                    # Champs Philum specifiques : lisibles par un agent, meme si non
+                    # schema.org, grace au prefixe philum: (JSON-LD tolere).
+                    "philum:stance": s.stance,
+                    "philum:isPivot": s.is_pivot,
+                    "philum:retractionStatus": s.retraction_status,
+                    "philum:retractionNoticeDOI": s.retraction_notice_doi,
+                    "philum:archiveUrl": s.archive_url,
+                    "philum:archiveTimestamp": (
+                        s.archive_timestamp.isoformat() if s.archive_timestamp else None
+                    ),
+                    "philum:accessibility": s.archive_status,
+                }
+                for s in card.sources
+            ],
+        },
+        ensure_ascii=False,
+        indent=2,
+    )
+
+
 def export_csv(card: BiblioCard) -> str:
     buf = io.StringIO()
     writer = csv.writer(buf, lineterminator="\r\n")

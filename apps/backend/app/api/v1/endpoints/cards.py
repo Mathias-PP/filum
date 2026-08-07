@@ -507,6 +507,11 @@ async def get_public_card_graph(
 
 _EXPORT_FORMATS = {
     "json": ("application/json; charset=utf-8", "json"),
+    # Cible primaire des agents IA : JSON-LD schema.org + champs Philum
+    # explicites (stance, retraction, archive). Un client qui envoie
+    # `Accept: application/vnd.philum+json` sur l'URL canonique arrive
+    # ici via la reecriture dans hooks.server.ts cote frontend.
+    "philum": ("application/vnd.philum+json; charset=utf-8", "philum.json"),
     "csv": ("text/csv; charset=utf-8", "csv"),
     "xlsx": (
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -551,6 +556,8 @@ async def export_public_card(
     content: str | bytes
     if format == "json":
         content = export_service.export_json(card, public_url)
+    elif format == "philum":
+        content = export_service.export_philum_json(card, public_url)
     elif format == "csv":
         # BOM UTF-8 : Excel n'interprete pas l'UTF-8 sans lui.
         content = "\ufeff" + export_service.export_csv(card)

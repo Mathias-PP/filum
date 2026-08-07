@@ -19,8 +19,11 @@ export const load: PageLoad = async ({ fetch, params, setHeaders, url }) => {
   // les en-tetes HTTP avant meme le HTML — la version markdown, deja
   // structuree, leur epargne d'inventer une bibliographie a partir du rendu.
   // Doublonne volontairement le <link rel="alternate"> du <head>.
+  const base = `${url.origin}${url.pathname}`;
   setHeaders({
-    Link: `<${url.origin}${url.pathname}.md>; rel="alternate"; type="text/markdown"`,
+    Link:
+      `<${base}.md>; rel="alternate"; type="text/markdown", ` +
+      `<${base}.philum.json>; rel="alternate"; type="application/vnd.philum+json"`,
   });
   return { card, creatorSlug: params.creator ?? '', cardSlug: params.card ?? '' };
 };

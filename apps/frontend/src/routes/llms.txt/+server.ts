@@ -38,6 +38,15 @@ complete dans \`citation[]\`.
 - Alternative sans \`@\`: \`GET ${o}/c/<createur>/<fiche>.md\` — meme contenu, meme
   format. Reservee aux agents qui traitent \`@\` comme le separateur \`user@host\`
   de la RFC 3986 et refusent de fetcher l'URL canonique.
+- Fiche en JSON-LD Philum: \`GET ${o}/@<createur>/<fiche>.philum.json\` — la meme
+  fiche en \`application/vnd.philum+json\`, contenant schema.org Article + les
+  champs Philum (stance, retraction, archive) que l'export \`.md\` ne peut pas
+  rendre. C'est le format le plus riche pour un agent : chaque source y
+  porte son statut de retraction, son archive Wayback, et la relation
+  declaree entre l'affirmation du contenu et la source (\`philum:stance\`).
+- Content negotiation: envoyer \`Accept: text/markdown\` ou
+  \`Accept: application/vnd.philum+json\` sur l'URL canonique
+  \`${o}/@<createur>/<fiche>\` renvoie directement le format demande.
 - Recherche JSON: \`GET ${o}/api/v1/discover?q=<termes>\` — sans authentification
 - Facettes: \`GET ${o}/api/v1/discover/facets\`
 - Fiche: \`GET ${o}/api/v1/@<createur>/<fiche>\`
