@@ -6,6 +6,7 @@ import zipfile
 import zlib
 
 from app.services.import_parsers import (
+    _doi_from_url,
     detect_format,
     parse_bibtex,
     parse_csl_json,
@@ -347,3 +348,41 @@ def test_parse_freetext_citations_ignores_editorial_annotation():
         "Molecular and cellular approaches to memory allocation in neural circuits"
     )
     assert result.refs[0].year == 2009
+
+
+class TestDoiDansUneUrlDePreprint:
+    """bioRxiv et medRxiv accrochent leur numero de version et leur variante
+    d'affichage directement au DOI dans le chemin : `/content/10.1101/xxx v1`,
+    `.full`, `.full.pdf`. Le DOI ainsi extrait n'existe chez aucun index.
+
+    Mesure du 2026-08-07 : `10.1101/2020.06.26.174482.full` ne retourne rien
+    de Crossref, la meme reference sans le suffixe retourne titre et date
+    (2020-06-27). La source arrivait donc sans titre ni annee -- et sans
+    annee, elle tombe dans la colonne « sans date » de la frise.
+    """
+
+    def test_le_suffixe_d_affichage_colle_au_doi_est_retire(self):
+        assert (
+            _doi_from_url("https://www.biorxiv.org/content/10.1101/2020.06.26.174482.full")
+            == "10.1101/2020.06.26.174482"
+        )
+
+    def test_le_numero_de_version_est_retire(self):
+        assert (
+            _doi_from_url("https://www.biorxiv.org/content/10.1101/2020.06.26.174482v1")
+            == "10.1101/2020.06.26.174482"
+        )
+
+    def test_version_et_affichage_cumules(self):
+        assert (
+            _doi_from_url("https://www.medrxiv.org/content/10.1101/2021.03.02.21252747v2.full.pdf")
+            == "10.1101/2021.03.02.21252747"
+        )
+
+    def test_un_doi_ordinaire_n_est_pas_ampute(self):
+        """Le nettoyage ne doit pas mordre sur des DOIs qui se terminent
+        legitimement par une lettre suivie de chiffres."""
+        assert (
+            _doi_from_url("https://doi.org/10.1016/j.neuron.2018.01.v5x")
+            == "10.1016/j.neuron.2018.01.v5x"
+        )
