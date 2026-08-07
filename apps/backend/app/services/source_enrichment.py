@@ -8,16 +8,17 @@ transactions, et deux garde-fous a tenir en phase.
 
 Le projet n'a pas d'ordonnanceur : l'enrichissement se declenche a la creation
 d'une source, au changement de son DOI, et paresseusement quand une fiche
-publique est servie avec des sources jamais enrichies. Ce dernier cas est ce
-qui couvre les sources creees avant que les colonnes existent -- sans quoi la
-fonctionnalite ne servirait qu'au futur.
+publique est servie avec des sources jamais enrichies **ou dont le verdict a
+vieilli**. Ce dernier cas couvre les sources creees avant que les colonnes
+existent -- sans quoi la fonctionnalite ne servirait qu'au futur -- et le
+vieillissement, lui, evite qu'un verdict ecrit une fois le soit pour toujours.
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import update
@@ -37,6 +38,34 @@ _background_tasks: set[asyncio.Task] = set()
 # ce garde-fou, chaque requete relancerait le meme enrichissement tant que le
 # premier n'a pas commit.
 _in_flight: set[UUID] = set()
+
+
+# Un verdict de retractation ou d'acces libre porte sur un monde qui bouge :
+# un papier est corrige des annees apres sa parution, un article ferme bascule
+# en acces libre a la fin de son embargo. Mesure du 2026-08-07 sur les 643
+# sources publiees : 117 bascules d'acces libre non refletees et 2 papiers
+# corriges encore affiches « non verifiable ».
+_VERDICT_TTL = timedelta(days=30)
+
+# « Non verifiable » sur une source qui porte pourtant un DOI ne dit rien du
+# papier : il dit que le service n'a pas repondu. C'est une panne, pas un fait,
+# et attendre un mois pour redemander laisserait la fiche mentir tout ce temps.
+_UNVERIFIABLE_TTL = timedelta(hours=6)
+
+
+def needs_recheck(checked_at: datetime | None, status: str | None, doi: str | None) -> bool:
+    """Faut-il redemander ce verdict ?
+
+    Sans DOI, aucun service ne sait repondre : le « non verifiable » y est
+    definitif et non provisoire. Y repasser tous les mois serait du bruit
+    reseau pur sur les 341 sources concernees.
+    """
+    if checked_at is None:
+        return doi is not None or status is None
+    if doi is None:
+        return False
+    age = datetime.now(UTC).replace(tzinfo=None) - checked_at
+    return age >= (_UNVERIFIABLE_TTL if status == "unverifiable" else _VERDICT_TTL)
 
 
 async def _enrich_one(doi: str | None) -> dict:

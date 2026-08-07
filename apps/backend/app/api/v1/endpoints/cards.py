@@ -34,7 +34,7 @@ from app.services.auth import AuthService
 from app.services.card import CardService
 from app.services.card_graph import MAX_DEPTH, build_card_graph
 from app.services.citations import list_incoming_citations, mark_citations_seen
-from app.services.source_enrichment import schedule_source_enrichment
+from app.services.source_enrichment import needs_recheck, schedule_source_enrichment
 from app.services.wayback import least_recently_attempted, schedule_archiving
 
 logger = logging.getLogger(__name__)
@@ -416,8 +416,18 @@ async def get_public_card(
     # migrations auraient un badge, et toutes les fiches deja publiees
     # resteraient muettes sur les retractations comme sur l'acces libre. Le
     # premier affichage declenche le controle, le suivant le montre.
+    #
+    # Le verdict est aussi repris quand il a vieilli : un papier est corrige
+    # des annees apres sa parution, un article ferme bascule en acces libre a
+    # la fin de son embargo. Ne repecher que les verdicts *absents* gelait
+    # chaque source dans son premier etat -- 117 bascules d'acces libre non
+    # refletees et 2 papiers corriges affiches « non verifiable » (mesure du
+    # 2026-08-07 sur les 643 sources publiees).
     unchecked = [
-        (s.id, s.doi) for s in card.sources if s.retraction_status is None or s.oa_status is None
+        (s.id, s.doi)
+        for s in card.sources
+        if needs_recheck(s.retraction_checked_at, s.retraction_status, s.doi)
+        or needs_recheck(s.oa_checked_at, s.oa_status, s.doi)
     ]
     if unchecked:
         schedule_source_enrichment(unchecked)

@@ -93,6 +93,49 @@ class TestEnrichOne:
         assert await se._enrich_one("10.1/x") == {}
 
 
+class TestPeremption:
+    """Mesure du 2026-08-07 sur les 643 sources publiees : 117 avaient bascule
+    en acces ouvert sans que la fiche le dise, et 2 papiers corriges restaient
+    affiches « non verifiable ». Cause : le declenchement paresseux ne repechait
+    que les verdicts *absents*. Un verdict ecrit une fois ne l'etait pour
+    toujours, alors qu'il porte sur un monde qui bouge.
+    """
+
+    def test_un_verdict_frais_n_est_pas_reverifie(self):
+        assert se.needs_recheck(_days_ago(2), "none", "10.1/x") is False
+
+    def test_un_verdict_vieux_est_reverifie(self):
+        assert se.needs_recheck(_days_ago(60), "none", "10.1/x") is True
+
+    def test_un_verdict_absent_est_verifie(self):
+        assert se.needs_recheck(None, None, "10.1/x") is True
+
+    def test_un_service_muet_est_repris_bien_plus_tot(self):
+        """« Non verifiable » sur une source qui porte un DOI ne dit rien du
+        papier : il dit que le service n'a pas repondu. Attendre un mois pour
+        redemander laisserait la fiche mentir tout ce temps."""
+        assert se.needs_recheck(_days_ago(3), "unverifiable", "10.1/x") is True
+        assert se.needs_recheck(_hours_ago(2), "unverifiable", "10.1/x") is False
+
+    def test_sans_doi_rien_ne_peut_changer(self):
+        """Aucun service ne sait repondre sans identifiant. Repasser tous les
+        mois sur ces 341 sources serait du bruit reseau pur, et le verdict
+        « non verifiable » y est definitif, pas provisoire."""
+        assert se.needs_recheck(_days_ago(365), "unverifiable", None) is False
+
+
+def _days_ago(n: int):
+    from datetime import UTC, datetime, timedelta
+
+    return datetime.now(UTC).replace(tzinfo=None) - timedelta(days=n)
+
+
+def _hours_ago(n: int):
+    from datetime import UTC, datetime, timedelta
+
+    return datetime.now(UTC).replace(tzinfo=None) - timedelta(hours=n)
+
+
 def _returns(value):
     async def call(doi):
         return value
