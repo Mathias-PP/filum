@@ -897,12 +897,6 @@ class TestHighwireMetaScrape:
 
 # ---------------------------------------------------------------------------
 # OSF — la page est rendue en JavaScript, son API ne l'est pas
-#
-# ⚠️ Garder ces noms de tests sous 35 caracteres apres le prefixe `test_`.
-# C'est exactement le motif d'une cle de test Lob, et TruffleHog la declare
-# « verifiee » — l'API Lob accepte n'importe quelle cle de test. Un nom trop
-# long bloque donc le scan de secrets de la CI. (La chaine fautive n'est pas
-# citee ici : l'ecrire suffirait a re-declencher la detection.)
 # ---------------------------------------------------------------------------
 
 

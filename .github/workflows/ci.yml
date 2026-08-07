@@ -57,7 +57,14 @@ jobs:
           # Fixtures HTML captures depuis des sites tiers (Frontiers) contiennent
           # des cles publiques (Google Analytics, Maps) embedded dans leur JS.
           # Ce ne sont pas nos secrets. Exclu du scan.
-          extra_args: --exclude-paths=.trufflehogignore
+          #
+          # `--exclude-detectors=Lob` : le motif d'une cle de test Lob est
+          # `test_` suivi de 35 caracteres — soit n'importe quel nom de test un
+          # peu long, et il se declare « verifie » puisque l'API Lob accepte
+          # toute cle de test. Un simple nom de fonction de test a bloque cette
+          # CI le 2026-08-07 (PR #323). Philum n'utilise pas Lob : rien de reel
+          # n'est perdu, et le scan cesse de punir des noms de tests explicites.
+          extra_args: --exclude-paths=.trufflehogignore --exclude-detectors=Lob
 
   lint-backend:
     name: Lint Backend
