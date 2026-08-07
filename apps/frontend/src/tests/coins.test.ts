@@ -23,4 +23,11 @@ describe('coinsTitle', () => {
   it('encode le titre sans casser la chaine', () => {
     expect(coinsTitle(carte as never)).toContain(encodeURIComponent('A quoi sert le sommeil'));
   });
+
+  it('ne coupe pas un nom de la forme « Famille, X. » en deux auteurs', () => {
+    const t = coinsTitle({ ...carte, content_authors: 'Diamond, A.; Ling, D.S.' } as never);
+    expect(t).toContain(`rft.au=${encodeURIComponent('Diamond, A.')}`);
+    expect(t).toContain(`rft.au=${encodeURIComponent('Ling, D.S.')}`);
+    expect(t.match(/rft\.au=/g)).toHaveLength(2);
+  });
 });
