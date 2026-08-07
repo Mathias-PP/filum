@@ -479,9 +479,15 @@ def _parse_crossref_work(data: dict) -> ExtractedMetadata:
         )
         or None
     )
-    date_parts = (data.get("published-print") or data.get("published-online") or {}).get(
-        "date-parts"
-    )
+    # `issued` en dernier repli : un preprint (`posted-content` — OSF, bioRxiv,
+    # medRxiv, PsyArXiv) ne porte ni `published-print` ni `published-online`,
+    # et sa date etait donc jetee alors que Crossref la connaissait. `issued`
+    # est present sur tous les types, ce qui evite d'avoir a traiter les
+    # preprints a part. Il reste un repli : la parution papier fait foi quand
+    # elle est declaree.
+    date_parts = (
+        data.get("published-print") or data.get("published-online") or data.get("issued") or {}
+    ).get("date-parts")
     published_at: str | None = None
     if date_parts and date_parts[0]:
         parts = date_parts[0]

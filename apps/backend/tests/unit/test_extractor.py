@@ -784,3 +784,43 @@ async def test_resolve_doi_from_url_caches_result(monkeypatch):
     assert await resolve_doi_from_url(url) == "10.1038/nrn3667"
     assert await resolve_doi_from_url(url) == "10.1038/nrn3667"
     assert len(fake.urls) == 1
+
+
+class TestCrossrefPublicationDate:
+    """Signale a l'usage le 2026-08-04 : la fiche stockait `published_at = null`
+    pour un preprint alors que Crossref connaissait la date.
+
+    Cause mesuree : un enregistrement `posted-content` (OSF, bioRxiv, medRxiv,
+    PsyArXiv) ne porte **ni** `published-print` **ni** `published-online` — les
+    deux seuls champs lus. Sa date vit dans `issued`, present lui sur tous les
+    types. La donnee etait disponible et jetee.
+    """
+
+    def test_un_preprint_a_bien_une_date(self):
+        # Reponse Crossref reelle pour 10.31234/osf.io/x4yj3 (Hardee et al.).
+        meta = url_extractor._parse_crossref_work(
+            {
+                "type": "posted-content",
+                "title": ["Development of inhibitory control"],
+                "issued": {"date-parts": [[2021, 9, 9]]},
+            }
+        )
+        assert meta.published_at == "2021-09-09"
+
+    def test_la_date_de_parution_papier_reste_prioritaire(self):
+        """`issued` n'est qu'un repli : il ne doit rien changer aux
+        enregistrements qui declarent deja leur parution."""
+        meta = url_extractor._parse_crossref_work(
+            {
+                "published-print": {"date-parts": [[2014, 3]]},
+                "published-online": {"date-parts": [[2014, 2, 5]]},
+                "issued": {"date-parts": [[2014, 2, 5]]},
+            }
+        )
+        assert meta.published_at == "2014-03-01"
+
+    def test_sans_aucune_date_le_champ_reste_vide(self):
+        """Une date inventee serait pire que pas de date : la chronologie
+        placerait l'oeuvre a une position qui affirme quelque chose de faux."""
+        meta = url_extractor._parse_crossref_work({"title": ["Sans date"]})
+        assert meta.published_at is None
