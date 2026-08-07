@@ -8,7 +8,12 @@ fallback body nettoye du chrome UI, section trop petite ignoree.
 
 from __future__ import annotations
 
-from app.api.v1.endpoints.imports import _extract_references_text, _resolve_confidence
+from app.api.v1.endpoints.imports import (
+    _extract_references_text,
+    _fallback_title_from_anchor,
+    _resolve_confidence,
+)
+from app.services.import_parsers import ImportedRef
 
 
 def test_extracts_dedicated_references_section():
@@ -269,6 +274,35 @@ class TestResolveMissingTitles:
 # ---------------------------------------------------------------------------
 # Confiance annoncee : elle porte sur ce qui a eu besoin d'etre valide
 # ---------------------------------------------------------------------------
+
+
+def test_titre_de_repli_pris_sur_le_texte_du_lien():
+    """Mesure du 2026-08-07 : 6 sources sur 11 arrivaient sans titre sur un
+    article ProPublica, treasury.gov refusant la visite du backfill. Une source
+    sans titre s'affiche en URL nue, que le lecteur ne peut pas situer."""
+    ref = ImportedRef(url="https://www.treasury.gov/rapport", raw_text="au moins 3 milliards")
+    _fallback_title_from_anchor([ref])
+    assert ref.title == "au moins 3 milliards"
+
+
+def test_titre_de_repli_ne_recouvre_pas_un_titre_deja_trouve():
+    ref = ImportedRef(
+        url="https://ex.org/a", title="The Distribution of Tax Noncompliance", raw_text="une etude"
+    )
+    _fallback_title_from_anchor([ref])
+    assert ref.title == "The Distribution of Tax Noncompliance"
+
+
+def test_titre_de_repli_ignore_un_bloc_de_reference_entier():
+    """`raw_text` porte aussi les blocs Frontiers/PMC, qui ne sont pas des titres."""
+    bloc = (
+        "Adleman N. E., Menon V., Blasey C. M., White C. D., Warsofsky I. S., Glover G. H., "
+        "et al. (2002). A developmental fMRI study of the Stroop color-word task. "
+        "NeuroImage 16, 61-75. doi:10.1006/nimg.2001.1046"
+    )
+    ref = ImportedRef(url="https://ex.org/a", raw_text=bloc)
+    _fallback_title_from_anchor([ref])
+    assert ref.title is None
 
 
 def test_confidence_stays_medium_when_enrichment_contributed():

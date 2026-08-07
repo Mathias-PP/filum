@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 
 from app.api.v1.endpoints.cards import get_current_user
 from app.core.url_safety import UnsafeUrlError, assert_url_is_safe
+from app.extractors.body_links import extract_body_links
 from app.extractors.grobid import extract_pdf_references
 from app.extractors.ref_dedup import dedupe_refs, matches_authoritative_work, same_ref
 from app.extractors.ref_scorer import should_drop
@@ -350,6 +351,28 @@ async def _backfill_one_url(ref: ImportedRef, sem: asyncio.Semaphore) -> None:
             ref.year = int(year_str)
     if ref.category == "page-web" and meta.category:
         ref.category = meta.category
+
+
+_ANCHOR_TITLE_MAX = 120
+
+
+def _fallback_title_from_anchor(refs: list[ImportedRef]) -> None:
+    """Dernier filet : le texte du lien, quand rien d'autre n'a donne un titre.
+
+    Mesure du 2026-08-07 sur ProPublica : 6 sources sur 11 arrivaient sans
+    titre, plusieurs sites (treasury.gov) refusant la visite du backfill. Une
+    source sans titre s'affiche comme une URL nue, que le lecteur ne peut pas
+    situer. Le texte du lien vaut mieux que rien.
+
+    Borne en longueur : `raw_text` porte aussi des blocs de reference entiers
+    (Frontiers, PMC), qui ne sont pas des titres et depassent largement.
+    """
+    for ref in refs:
+        if ref.title or not ref.raw_text:
+            continue
+        anchor = ref.raw_text.strip()
+        if anchor and len(anchor) <= _ANCHOR_TITLE_MAX:
+            ref.title = anchor
 
 
 async def _backfill_url_metadata(refs: list[ImportedRef]) -> None:
@@ -1232,6 +1255,15 @@ async def parse_content_url(
         dropped_validation = 0
         confidence = "low"
 
+    # Repli : aucune bibliographie structuree trouvee. Un article de presse ou
+    # un essai cite en liant les mots de son texte ; sans ce repli l'ecran
+    # reste vide alors que la page cite des dizaines de pieces.
+    # Ajoutes en aval de la validation : ces liens viennent du corps, les
+    # revalider contre le corps serait tautologique et les ferait tomber, une
+    # URL de href n'apparaissant pas dans le texte visible.
+    if section is None and not crossref_refs and html:
+        validated = validated + extract_body_links(html, url)
+
     all_refs = list(crossref_refs) + validated
 
     # ETAGE 5 : dedup multi-cle sur l'union
@@ -1248,6 +1280,7 @@ async def parse_content_url(
     await _backfill_crossref_metadata(result.refs)
     await _backfill_llm_per_block(result.refs)
     await _backfill_url_metadata(result.refs)
+    _fallback_title_from_anchor(result.refs)
 
     # ETAGE 6 : scoring syntaxique (dernier filet universel)
     before_score = len(result.refs)
