@@ -41,6 +41,7 @@ from app.extractors.wikipedia_oracle import fetch_wikipedia_references, is_wikip
 from app.extractors.youtube_oracle import (
     fetch_youtube_description,
     fetch_youtube_transcript,
+    is_creator_self_link,
     is_youtube_url,
 )
 from app.models.user import User
@@ -1170,8 +1171,9 @@ async def parse_content_url(
     # (le HTML rendu ne contient que la version tronquee "...plus"). La
     # description integrale est un perimetre sur, equivalent a une section
     # References bornee : tout ce qu'elle contient a ete liste par l'auteur.
+    youtube_channel: str | None = None
     if is_youtube_url(url):
-        description = await fetch_youtube_description(url)
+        description, youtube_channel = await fetch_youtube_description(url)
         if description:
             logger.info("youtube_oracle_hit url=%s chars=%d", url, len(description))
             refs_text = description[:_REFS_TEXT_MAX]
@@ -1286,6 +1288,17 @@ async def parse_content_url(
     before_score = len(result.refs)
     result.refs = [r for r in result.refs if not should_drop(r)]
     dropped_scoring = before_score - len(result.refs)
+
+    # Le bloc de signature d'une chaine YouTube (Patreon, site perso, comptes
+    # sociaux) est reconduit a l'identique d'une video a l'autre : il ne dit
+    # rien de ce sur quoi cette video-la s'appuie. Filtre ici, une fois les
+    # titres resolus, le titre etant parfois le seul indice d'appartenance.
+    if youtube_channel:
+        before_self = len(result.refs)
+        result.refs = [
+            r for r in result.refs if not is_creator_self_link(r.url, r.title, youtube_channel)
+        ]
+        dropped_scoring += before_self - len(result.refs)
 
     # ETAGE 7 : classification (existant, indicatif, non filtrant)
     await _classify_refs(result.refs)
