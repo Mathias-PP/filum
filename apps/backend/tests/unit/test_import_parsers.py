@@ -304,3 +304,46 @@ def test_parse_freetext_citations_ignore_tool_tokens_only():
     """Un texte qui ne contient que des jetons d'outils ne produit rien."""
     result = parse_freetext_citations("CAS\n\nPubMed\n\nGoogle Scholar\n")
     assert result.refs == []
+
+
+def test_parse_freetext_citations_multi_initial_authors():
+    """« Simoncelli, E. P. » ne doit pas etre coupe entre « E. » et « P. » —
+    ces initiales appartiennent au meme auteur."""
+    text = (
+        "Simoncelli, E. P. & Olshausen, B. A. Natural image statistics "
+        "and neural representation. Annu. Rev. Neurosci. 24, 1193-1216 (2001).\n"
+    )
+    result = parse_freetext_citations(text)
+    assert len(result.refs) == 1
+    ref = result.refs[0]
+    assert ref.title == "Natural image statistics and neural representation"
+    assert ref.authors == "Simoncelli, E. P. & Olshausen, B. A"
+
+
+def test_parse_freetext_citations_strips_leading_header():
+    """Un « References » colle devant le premier auteur doit disparaitre."""
+    text = (
+        "References\nEichenbaum, H. A cortical-hippocampal system for "
+        "declarative memory. Nature Rev. Neurosci. 1, 41-50 (2000).\n"
+    )
+    result = parse_freetext_citations(text)
+    assert len(result.refs) == 1
+    ref = result.refs[0]
+    assert ref.title == "A cortical-hippocampal system for declarative memory"
+    assert ref.authors == "Eichenbaum, H"
+
+
+def test_parse_freetext_citations_ignores_editorial_annotation():
+    """L'annotation editoriale apres l'annee (« This review developed... »)
+    ne doit pas polluer la reference."""
+    text = (
+        "Silva, A. J. et al. Molecular and cellular approaches to memory "
+        "allocation in neural circuits. Science 326, 391-395 (2009). "
+        "This review developed the hypothesis that a CREB-dependent increase.\n"
+    )
+    result = parse_freetext_citations(text)
+    assert len(result.refs) == 1
+    assert result.refs[0].title == (
+        "Molecular and cellular approaches to memory allocation in neural circuits"
+    )
+    assert result.refs[0].year == 2009

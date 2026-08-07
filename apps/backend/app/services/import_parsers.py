@@ -529,8 +529,43 @@ _YEAR_PAREN_RE = re.compile(r"\((18\d{2}|19\d{2}|20\d{2})\)")
 
 # « . Journal Vol, Pages » : la partie apres le titre. Le nom du journal peut
 # contenir des abreviations avec points (« Nature Rev. Neurosci. »), c'est
-# pourquoi on ancre sur le motif « Vol, PageDeb-PageFin » a la fin.
-_JOURNAL_TAIL_RE = re.compile(r"\.\s+[^.]+?\s+\d+[,:]\s*[\dA-Za-z]+")
+# pourquoi on ne se contente pas de « [^.]+? » : chaque mot peut se terminer
+# par un point. La regex s'ancre sur le motif final « Vol, Pages » (chiffres
+# suivis d'une virgule et de chiffres, avec eventuellement une lettre suffixe
+# comme « e123 » ou un tiret « 41-50 »).
+_JOURNAL_TAIL_RE = re.compile(
+    r"\.\s+"                                # separateur titre/journal
+    r"[A-Z][A-Za-z]*\.?"                    # premier mot du journal
+    r"(?:\s+(?:[A-Z][A-Za-z]*\.?|of|and|for|the|in|de|et))*"  # mots suivants, avec liaisons
+    r"\s+\d+[a-z]?"                         # volume (« 12 », « 12a »)
+    r"[,:]\s*[eE]?\d+"                      # premiere page (« 41 », « e123 »)
+    r"(?:\s*[–\-]\s*\d+)?"                  # -page finale (optionnelle)
+    r"\s*$"                                 # fin de chaine
+)
+
+# Entetes de section a retirer si elles precedent le premier auteur (souvent
+# collees par le copier-coller depuis la page « References » d'un journal).
+_LEADING_HEADER_RE = re.compile(
+    r"^(?:References|Bibliography|Bibliographie|Références|Notes)\s+",
+    re.IGNORECASE,
+)
+
+# Prefixe « auteurs » : nom de famille + initiales, joints par « , » ou « & »,
+# terminant eventuellement par « et al. ». Reconnait « Eichenbaum, H. »,
+# « Simoncelli, E. P. & Olshausen, B. A. », « Silva, A. J. et al. »,
+# « Maren, S. & Quirk, G. J. », mais aussi le cas court « Marr, D. » sans
+# suite. Le point final apres l'initiale est optionnel car certains styles
+# l'omettent.
+_AUTHORS_PREFIX_RE = re.compile(
+    r"^"
+    r"[A-Z][A-Za-zÀ-ÿ'\-]+"                                # nom de famille
+    r"(?:,\s*[A-Z]\.(?:\s*[A-Z]\.)*)?"                     # , X. Y. (initiales pointees)
+    r"(?:\s*(?:,|&)\s*"                                    # , ou & entre auteurs
+    r"[A-Z][A-Za-zÀ-ÿ'\-]+"
+    r"(?:,\s*[A-Z]\.(?:\s*[A-Z]\.)*)?)*"
+    r"(?:\s+et\s+al\.)?"                                   # ... et al.
+    r"\s+"                                                 # espace vers titre
+)
 
 # Copier-coller Nature/Science : chaque reference est suivie d'un bloc de
 # tokens d'outils bibliographiques (« CAS », « PubMed », « Google Scholar »)
@@ -544,34 +579,33 @@ _REFERENCE_TOOL_TOKENS = {
 def _split_authors_and_title(before_year: str) -> tuple[str | None, str | None]:
     """« Silva, A. J. et al. Titre. Journal 12, 3–4 » → (auteurs, titre).
 
-    Heuristique en cascade : « et al. » est le marqueur de fin d'auteurs le
-    plus fiable ; a defaut, on decoupe sur « . » et on prend la premiere
-    phrase qui ne ressemble pas a une suite d'initiales.
+    Heuristique en cascade : le journal (Nature Rev. Neurosci. 1, 41-50) sert
+    d'ancre en fin de chaine pour retirer la partie citation ; « et al. » est
+    le marqueur de fin d'auteurs le plus fiable ; a defaut, on decoupe sur
+    « . » et on prend la premiere phrase qui ne ressemble pas a une suite
+    d'initiales.
     """
-    m = _JOURNAL_TAIL_RE.search(before_year)
-    head = before_year[: m.start()].strip() if m else before_year.strip()
+    # Un copier-coller depuis la page d'un journal peut coller « References »
+    # devant le premier auteur : cet entete parasite doit disparaitre.
+    working = _LEADING_HEADER_RE.sub("", before_year, count=1)
+    m = _JOURNAL_TAIL_RE.search(working)
+    head = working[: m.start()].strip() if m else working.strip()
     head = head.rstrip(".").strip()
     if not head:
         return None, None
 
-    eal = re.search(r"\bet\s+al\.\s+", head)
-    if eal:
-        authors = head[: eal.end()].strip().rstrip(".")
-        title = head[eal.end():].strip().rstrip(".")
-        return (authors or None), (title or None)
+    # Approche principale : reconnaitre le prefixe auteur explicitement
+    # (nom de famille + initiales, joints par « , » ou « & »). C'est plus
+    #robuste que de splitter sur « . » : un titre peut commencer par « A »
+    #ou « An » qu'on ne peut pas distinguer d'une initiale.
+    m2 = _AUTHORS_PREFIX_RE.match(head)
+    if m2:
+        authors = head[: m2.end()].strip().rstrip(".").strip()
+        title = head[m2.end():].strip().rstrip(".").strip()
+        if title:
+            return (authors or None), title
 
-    parts = re.split(r"(?<=\.)\s+(?=[A-Z])", head)
-    # Le titre est la premiere phrase substantielle (>=4 mots, sans etre une
-    # suite d'initiales). Les segments precedents sont les auteurs.
-    for i, seg in enumerate(parts):
-        if i == 0:
-            continue
-        words = seg.split()
-        if len(words) >= 4 and not all(re.match(r"^[A-Z]\.[A-Z]?\.?$", w) for w in words):
-            authors = " ".join(parts[:i]).strip().rstrip(".")
-            title = " ".join(parts[i:]).strip().rstrip(".")
-            return (authors or None), (title or None)
-    # Bloc court d'un seul segment : tout est titre.
+    # Fallback : pas d'auteur reconnu, tout est titre.
     return None, head
 
 
