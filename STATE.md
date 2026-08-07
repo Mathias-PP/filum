@@ -233,6 +233,19 @@ fiche. Le corpus reste toutefois celui d'un seul createur (cf. la limite
 consignee ailleurs : il ne prouve rien sur le comportement des createurs en
 general).
 
+✅ **Ces deux gisements sont desormais captes par #311**, sans ordonnanceur ni
+produit de veille nouveau : le declenchement paresseux existant reprend les
+verdicts qui ont vieilli. Trois regimes plutot qu'un delai unique — jamais
+sans DOI (aucun service ne sait repondre, le « non verifiable » y est
+definitif), 6 h quand le verdict est `unverifiable` **avec** un DOI (c'est une
+panne de service, pas un fait), 30 j pour un verdict etabli.
+
+⚠️ **Ce qui reste non justifie par la mesure** : la surveillance des liens
+morts. 5 sur 610 seulement, et **455 des liens testes repondent « bloque »** —
+le chiffre est un plancher, pas un compte. Construire un produit de veille de
+liens sur cette base serait batir sur une mesure qu'on sait aveugle. A
+remesurer si l'anti-bot se contourne.
+
 ## Session 2026-08-07 (nuit) — chantier 2 : DOI depuis URL editeur
 
 Branche `feat/extraction-pipeline-v2`. Le pipeline d'extraction v2 (ADR-030,
@@ -549,10 +562,10 @@ Vercel : `BACKEND_URL=https://philum-api.duckdns.org` (env var serverless, jamai
 > **Roadmap consolidée et priorisée** : [`.docs/19-roadmap-2026-07.md`](./.docs/19-roadmap-2026-07.md). Plan d'audit détaillé : [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md). Comptes plateformes liés : [`.docs/18-linked-accounts.md`](./.docs/18-linked-accounts.md).
 
 **Immédiat**
-- 🐛 **Dates manquantes et voie « sans date » illisible en chronologie** (signalé à l'usage le 2026-08-04, *à traiter proprement, pas en rustine*). Deux défauts distincts qui se combinent en un seul symptôme trompeur :
-  1. **L'identification de la date échoue là où la donnée existe.** Cas témoin : `https://osf.io/preprints/psyarxiv/x4yj3_v1` (Hardee et al., 2021). Le DOI `10.31234/osf.io/x4yj3` est présent dans la référence, et **Crossref renvoie bien `issued: 2021-09-09`** (vérifié par `curl` le 2026-08-04) — mais la fiche stocke `published_at = null`. Le type Crossref est `posted-content` : piste à creuser, l'enrichissement saute peut-être les preprints, ou le DOI n'est pas extrait des URLs `osf.io/preprints/...`. **Ce n'est pas un manque de source amont, c'est une donnée disponible et non récupérée.** À vérifier sur d'autres hébergeurs de preprints (bioRxiv, arXiv, SSRN) avant de conclure.
-  2. **La voie « sans date » se lit comme une date.** `graph-chrono.ts:114` place les nœuds non datés à `UNDATED_BAND / 2`, juste à gauche de la frise. Sur une échelle 1935→2021, cette bande est visuellement adjacente aux premières graduations : un nœud sans date **se lit comme « années 1940-1960 »**, ce qui est exactement l'inverse de l'invariant d'honnêteté du projet — une absence y devient une valeur, et une valeur fausse. La graduation « sans date (N) » existe déjà mais ne suffit pas à séparer les deux registres.
-  - ⚠️ **Le correctif ne doit pas être un simple décalage de la bande.** Une position sur un axe temporel *signifie* une date, quel que soit l'écart. Il faut une solution qui sorte les non-datés de l'axe (bandeau séparé, filet de rupture explicite, ou hors-frise) — cf. la même règle à trois états que `retraction_status` / `oa_status` / les colonnes de comparaison.
+- ✅ **Dates manquantes et voie « sans date » en chronologie** (signalé le 2026-08-04) — **les deux défauts sont traités**, vérifié le 2026-08-07.
+  1. ~~**L'identification de la date échoue là où la donnée existe.**~~ ✅ **#312**. Cause trouvée et mesurée comme générale : `_parse_crossref_work` ne lisait que `published-print` et `published-online`, et un enregistrement `posted-content` ne porte **ni l'un ni l'autre** — sa date vit dans `issued`. Vérifié sur OSF, bioRxiv et medRxiv comme la note le demandait. `issued` ajouté en **dernier** repli : présent sur tous les types (donc pas de branche par hébergeur ni de test sur `type`), et placé en dernier pour que la parution papier continue de faire foi — `nrn3667` reste à `2014-03-01`, aucun enregistrement déjà daté ne bouge. Cas témoin `10.31234/osf.io/x4yj3` : `null` → `2021-09-09`.
+     - ⚠️ **Mesuré au passage, hors périmètre** : `_extract_doi` *et* le résolveur générique `resolve_doi_from_url` rendent `None` sur `osf.io/preprints/…` **et** `arxiv.org/abs/…`. Le correctif ci-dessus ne sauve donc que les références dont le DOI est déjà connu. L'oracle arXiv est au backlog du plan d'extraction v2 ; OSF n'y est pas encore.
+  2. ~~**La voie « sans date » se lit comme une date.**~~ ✅ **déjà livré, la note était périmée**. `graph-chrono.ts` porte `breakX` — un **filet de rupture** explicite, convention usuelle pour « l'échelle s'interrompt ici » — et la colonne est passée **à droite** de la frise : à gauche elle occupait la place que l'œil lit comme « le plus ancien ». Rendu vérifié dans `SourceGraph.svelte:1140`, 16 tests dans `graph-chrono.test.ts`. Le principe est tenu : un simple décalage n'aurait pas suffi, une position sur un axe temporel *signifie* une date quel que soit l'écart.
 - ~~Redéployer la VM GCP~~ ✅ fait le 2026-07-21 (464ba95, vérifié par curl).
 - ~~3 alertes Dependabot high sur main~~ ✅ fermées le 2026-07-22 (PR #191 : overrides pnpm brace-expansion 1.x/5.x + js-yaml 4.x).
 - ~~Alerte Dependabot high postcss (traversée de chemin)~~ ✅ fermée le 2026-08-03 (PR #251). **Zéro alerte ouverte**, et les 15 PRs Dependabot en attente ont été traitées ou closes (#251→#256).
