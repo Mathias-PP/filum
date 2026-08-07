@@ -682,7 +682,8 @@ async def parse_pasted_bibliography(
     if freetext.refs:
         # Dedup par title|authors|year (les refs sans URL n'ont pas de cle URL).
         known_keys = {
-            _dedupe_key(r.url) if r.url
+            _dedupe_key(r.url)
+            if r.url
             else f"nourl:{(r.title or '').strip().lower()}|{(r.authors or '').strip().lower()}|{r.year or ''}"
             for r in result.refs
         }

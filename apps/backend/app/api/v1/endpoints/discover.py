@@ -234,9 +234,7 @@ async def discover_creators(
     term = q.strip().lower()
     if term:
         like = lambda col: func.lower(col).contains(term, autoescape=True)  # noqa: E731
-        base = base.where(
-            or_(like(User.username), like(User.display_name), like(User.bio))
-        )
+        base = base.where(or_(like(User.username), like(User.display_name), like(User.bio)))
 
     total_stmt = select(func.count()).select_from(base.subquery())
     total = (await db.scalar(total_stmt)) or 0
