@@ -33,6 +33,72 @@ Avant : Phase 2 (identité visuelle Pulsar-graph + audit) et Phase 1 (MVP comple
 
 ---
 
+## Session 2026-08-07 (fin) — accessibilite mesuree et cloture des lots B a F
+
+**Parcours visiteur (#78, clos).** Mesure sur le deploiement de prod, pas sur la
+PR — sonde iframe 375px dans Chrome, viewport reel 362px, sur
+`/@mathias-pinault/ca-sert-a-quoi-de-dormir`. Chrome refuse de descendre sous
+~547px de large, d'ou l'iframe.
+
+| mesure | avant | apres |
+|---|---|---|
+| scroll horizontal | 423px pour 362 de large | aucun (362/362) |
+| cibles tactiles sous 24x24 | 8 | 1 |
+| `--success` sur son fond de badge | 2,98:1 | 4,54:1 |
+| `--warning` sur son fond de badge | 3,24:1 | 4,53:1 |
+
+Le debordement venait du bouton « Partager » : les enfants de la barre d'action
+portent `shrink-0`, donc sous ~380px il sortait du conteneur (PR #301,
+`flex-wrap`). La cible restante, « En savoir plus », est un lien au fil d'une
+phrase : le critere WCAG 2.5.8 l'exempte explicitement (clause « Inline »), et
+l'agrandir casserait l'interligne du paragraphe. PRs #301 et #302.
+
+**Signale, pas corrige — arbitrage design en attente.** `--text-placeholder` a
+2,17:1 : le monter a 4,5:1 le rendrait indiscernable de `--text-tertiary`
+(4,61:1), ce qui contredit son intention documentee. Les bordures de champ
+(`--border-strong`) a 1,59:1 contre les 3:1 du critere 1.4.11, en zone
+authentifiee seulement. 22 textes sous 12px, essentiellement des etiquettes de
+graphe zoomables.
+
+**Interoperabilite (lot E, clos).** Bug reel trouve : `coins.ts` decoupait
+`content_authors` sur la virgule seule alors que `citation-meta.ts`, qui
+alimente les balises Highwire de la **meme page**, a un `splitAuthors` correct.
+Sur `Diamond, A.; Ling, D.S.`, Highwire annoncait 2 auteurs et COinS 4, dont
+`A.` et `D.S.` seuls — et Zotero resout COinS avant Embedded Metadata, donc
+c'est la version fausse qui gagnait. Corrige et teste (PR #302).
+
+**ADR perime corrige.** `DECISIONS.md` disait « ne pas produire de `llms.txt` »
+alors que la route existe et sert un fichier en prod. La route est posterieure a
+l'entree : c'est la decision qui visait a cote, elle confondait « mecanisme
+d'acces » (ecarte, argument toujours valable) et « panneau indicateur » (retenu,
+purement additif). Critere pose pour les cas suivants : est-ce qu'on en
+dependrait pour etre lu ? (PR #303)
+
+**Lots B, C, D, F : verifies complets, aucun code manquant.** B1-B5 (marqueurs
+de fleche, selecteur de sens a trois positions, imbrication au depliage,
+epinglage, acces a la fiche depuis une source absorbee), C1-C3 (migration 026,
+API, formulaire et coloration des noeuds fiche par mode de lecture), D1-D4
+(migration 027, provenance des liens, `card_connections.py`, ecran
+`/dashboard/new/[card_id]/connexions`), F1-F3 (`.docs/19-preuve-autorat.md`,
+`.docs/20-profils-et-feed.md`, perimetre de la garantie dans `DECISIONS.md`).
+Le selecteur de sens et les marqueurs de fleche sont confirmes en prod.
+
+**Reste a faire, et pourquoi ca bloque.** Les audits de persona (#74 a #77 :
+article de presse d'investigation, video de vulgarisation, essai de blog long
+format, rapport institutionnel) demandent de **creer du vrai contenu** sous un
+compte reel. Ils ne sont pas faisables sans l'utilisateur. Rappel : le corpus
+actuel est un echantillon de un, il ne prouve rien sur le comportement des
+createurs.
+
+**Hors de portee d'un agent, a faire par l'utilisateur.** Soumettre le sitemap a
+la Search Console — le rendu serveur rend les pages indexables, il ne les indexe
+pas ; sans soumission, l'indexation prend des semaines plutot que des jours. Et
+le DNS de `philum.app` chez le registrar.
+
+572 tests backend et 132 tests frontend au vert.
+
+---
+
 ## Session 2026-08-07 (apres-midi) — securite Supabase et rendu serveur
 
 - **ADR-034 / migration `030_rls_lockdown`** (PR #296, appliquee en prod).
