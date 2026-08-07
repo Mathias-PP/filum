@@ -35,6 +35,9 @@ complete dans \`citation[]\`.
 - Fiche en markdown: \`GET ${o}/@<createur>/<fiche>.md\` — la meme fiche, deja
   structuree (sources, DOI, statut de retractation, archives). C'est la porte
   d'entree la plus simple : suffixez \`.md\` a n'importe quelle adresse de fiche.
+- Alternative sans \`@\`: \`GET ${o}/c/<createur>/<fiche>.md\` — meme contenu, meme
+  format. Reservee aux agents qui traitent \`@\` comme le separateur \`user@host\`
+  de la RFC 3986 et refusent de fetcher l'URL canonique.
 - Recherche JSON: \`GET ${o}/api/v1/discover?q=<termes>\` — sans authentification
 - Facettes: \`GET ${o}/api/v1/discover/facets\`
 - Fiche: \`GET ${o}/api/v1/@<createur>/<fiche>\`
