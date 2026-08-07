@@ -29,7 +29,12 @@ _SECTION_SELECTORS = [
     "div[id*='bibliograph' i]",
     "section[class*='references' i]",
     "div[class*='references' i]",
-    "div[class*='ref-list' i]",
+    # `ref-list` sur toutes les balises qui le portent, pas seulement `div` :
+    # PMC sert `<section id="ref-list1" class="ref-list">` depuis sa refonte, et
+    # la detection y echouait alors que c'est la premiere source d'articles en
+    # texte integral libre.
+    "[class*='ref-list' i]",
+    "[id*='ref-list' i]",
     "ol[class*='references' i]",
     "ol[id*='references' i]",
     "ul[class*='references' i]",
