@@ -1275,6 +1275,24 @@ protocole réellement consommé.
 Décision : ne pas produire de `llms.txt`. Si la question revient, relire cette
 entrée avant d'ouvrir le sujet.
 
+**Révision du 2026-08-07.** La formulation ci-dessus était trop large et le code
+s'en est écarté : `apps/frontend/src/routes/llms.txt/+server.ts` existe et sert
+un fichier en production. C'est cette entrée qu'on corrige, pas le code, parce
+que c'est la décision qui visait à côté.
+
+Ce qui reste écarté : `llms.txt` comme **mécanisme d'accès**, un format que les
+robots liraient à la place du HTML. L'argument tient toujours — la mesure Ahrefs
+est sans appel, et ce sont le rendu serveur, le JSON-LD et le serveur MCP qui
+font le travail.
+
+Ce qui est retenu : `llms.txt` comme **panneau indicateur**. Vingt lignes qui
+disent à un agent déjà arrivé sur le domaine où sont les portes d'entrée machine
+(`.md`, `.philum.json`, `/discover`, MCP). Ça ne remplace rien et la seule chose
+qu'on perdrait à l'enlever, c'est la découverte par un agent curieux.
+
+Le test qui tranche, pour toute proposition future du même genre : est-ce qu'on
+en dépendrait pour être lu ? Si oui, refuser. Si c'est purement additif, accepter.
+
 ---
 
 ## Périmètre de la garantie Philum (2026-08-07)
