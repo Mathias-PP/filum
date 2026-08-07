@@ -62,10 +62,12 @@ jobs:
         run: uv sync --all-extras
         working-directory: apps/backend
 
+      # `--output` attend un *format* (screen/text/json/html), pas un chemin :
+      # les deux appels sortaient sur « Invalid value for '--output' » et
+      # n'analysaient rien, sans que le job cesse d'afficher « pass ». Le
+      # chemin de sortie, c'est `--save-json`. Corrige le 2026-08-07.
       - name: Run Safety check
-        run: |
-          uv run safety check --json --output safety-results.json || \
-          uv run safety check --output safety-results.txt || true
+        run: uv run safety check --save-json safety-results.json || true
         working-directory: apps/backend
 
       - name: Upload Safety results
