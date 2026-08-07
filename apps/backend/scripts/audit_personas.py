@@ -22,6 +22,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+# Une console Windows ecrit en cp1252 : le premier titre portant un tiret
+# cadratin interrompait l'audit sur un `UnicodeEncodeError`, apres le travail
+# reseau et avant le verdict. Les titres audites viennent du web entier ; s'y
+# attendre est la moindre des choses.
+for flux in (sys.stdout, sys.stderr):
+    if hasattr(flux, "reconfigure"):
+        flux.reconfigure(encoding="utf-8", errors="replace")
+
 os.environ.setdefault("database_url", "sqlite+aiosqlite:///./audit_personas.db")
 os.environ.setdefault("session_secret", "audit-secret-for-local-run-32chars")
 os.environ.setdefault("master_encryption_key", "audit-key-for-local-run-32bytes")

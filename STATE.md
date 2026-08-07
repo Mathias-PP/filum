@@ -633,7 +633,7 @@ Vercel : `BACKEND_URL=https://philum-api.duckdns.org` (env var serverless, jamai
 - ⚠️ Ces trois lignes traînaient comme « à faire » alors qu'elles étaient livrées. Vérifier l'état réel (grep + curl) **avant** de rouvrir un item de ce backlog.
 
 **Moyen terme** (déclencheurs naturels)
-- **F5** — Queue Wayback durable (Postgres-backed + worker) quand > 50 sources/jour.
+- ~~**F5** — Queue Wayback durable (Postgres-backed + worker)~~ ❌ **prémisse fausse, mesurée le 2026-08-07** — la file *est* déjà durable : l'état vit en base et chaque affichage de fiche relance les non-archivées. Les 493 sources en attente ne venaient pas d'un travail perdu (0 capture existante sur 60 échantillonnées) mais du quota Save Page Now, traité en #326. Un worker n'aurait rien changé ; il ne redeviendra utile que si la reprise paresseuse elle-même sature, ce qu'aucune mesure ne montre.
 - **Phases 2-4 du rename Philum** — convertir en issues GitHub plutôt qu'attendre un gros chantier (cf. `.docs/14-philum-rename-migration.md`).
 - **F3** — Tests Postgres au lieu de SQLite quand on ajoute un index partial / colonne JSONB.
 
