@@ -17,6 +17,7 @@ from typing import Any
 import httpx
 import pytest
 
+from app.extractors import url_extractor
 from app.extractors.url_extractor import (
     ExtractedMetadata,
     _extract_doi,
@@ -27,6 +28,7 @@ from app.extractors.url_extractor import (
     clean_title,
     extract,
     resolve_doi_from_pubmed,
+    resolve_doi_from_url,
 )
 
 
@@ -122,20 +124,11 @@ class TestExtractDoi:
             "https://onlinelibrary.wiley.com/doi/10.1111/j.1467-8624.2010.01564.x/abstract"
         ) == ("10.1111/j.1467-8624.2010.01564.x")
 
-    def test_nature_url_slug_becomes_doi(self):
-        """Nature n'expose pas le DOI dans l'URL mais son slug est le suffixe
-        du DOI : `10.1038/<slug>`. Sans cette resolution, Crossref n'est
-        jamais interroge sur Nature (site anti-bot -> aucune ref extraite)."""
-        assert _extract_doi("https://www.nature.com/articles/nrn3667") == "10.1038/nrn3667"
-        assert _extract_doi("https://www.nature.com/articles/nature12345") == (
-            "10.1038/nature12345"
-        )
-        assert _extract_doi("https://www.nature.com/articles/s41586-024-08123-4") == (
-            "10.1038/s41586-024-08123-4"
-        )
-
-    def test_nature_url_ignores_slug_without_digit(self):
-        """Un slug qui n'a pas la forme DOI Nature n'est pas force en DOI."""
+    def test_url_without_doi_is_not_guessed(self):
+        """Aucune deduction par editeur : une URL qui ne porte pas son DOI rend
+        None ici, c'est `resolve_doi_from_url` qui interroge les index. Deviner
+        le DOI depuis le slug ne marcherait que pour les editeurs codes en dur."""
+        assert _extract_doi("https://www.nature.com/articles/nrn3667") is None
         assert _extract_doi("https://www.nature.com/articles/xyz") is None
 
     def test_biorxiv_url_strips_version_suffix(self):
@@ -357,7 +350,7 @@ class _FakeAsyncClient:
     async def __aexit__(self, *_exc) -> None:
         return None
 
-    async def get(self, url: str) -> _FakeResponse:
+    async def get(self, url: str, **_kwargs) -> _FakeResponse:
         self.last_url = url
         if self._raise is not None:
             raise self._raise
@@ -644,7 +637,7 @@ class _SequencedAsyncClient(_FakeAsyncClient):
         self._responses = responses
         self.urls: list[str] = []
 
-    async def get(self, url: str) -> _FakeResponse:
+    async def get(self, url: str, **_kwargs) -> _FakeResponse:
         self.urls.append(url)
         return self._responses[min(len(self.urls) - 1, len(self._responses) - 1)]
 
@@ -681,3 +674,81 @@ async def test_resolve_doi_from_pubmed_returns_none_on_error(monkeypatch):
     _patch_async_client(monkeypatch, fake)
 
     assert await resolve_doi_from_pubmed("https://pubmed.ncbi.nlm.nih.gov/36300046/") is None
+
+
+# ---------------------------------------------------------------------------
+# resolve_doi_from_url — resolution generique, sans connaissance de l'editeur
+# ---------------------------------------------------------------------------
+
+
+S2_URL_OK_PAYLOAD = {"paperId": "abc", "externalIds": {"DOI": "10.1038/NRN3667"}}
+CROSSREF_URI_OK_PAYLOAD = {"message": {"items": [{"DOI": "10.1038/nrn3667"}]}}
+
+
+@pytest.fixture(autouse=True)
+def _clear_url_doi_cache():
+    url_extractor._url_doi_cache.clear()
+    yield
+    url_extractor._url_doi_cache.clear()
+
+
+@pytest.mark.asyncio
+async def test_resolve_doi_from_url_via_semantic_scholar(monkeypatch):
+    fake = _FakeAsyncClient(response=_FakeResponse(200, json_body=S2_URL_OK_PAYLOAD))
+    _patch_async_client(monkeypatch, fake)
+
+    doi = await resolve_doi_from_url("https://www.nature.com/articles/nrn3667")
+
+    assert doi == "10.1038/nrn3667"
+    assert "semanticscholar.org" in (fake.last_url or "")
+
+
+@pytest.mark.asyncio
+async def test_resolve_doi_from_url_falls_back_to_crossref(monkeypatch):
+    """S2 ne connait pas l'URL : Crossref `filter=uri:` prend le relais."""
+    fake = _SequencedAsyncClient(
+        [
+            _FakeResponse(404, json_body={}),
+            _FakeResponse(200, json_body=CROSSREF_URI_OK_PAYLOAD),
+        ]
+    )
+    _patch_async_client(monkeypatch, fake)
+
+    doi = await resolve_doi_from_url("https://www.nature.com/articles/nrn3667")
+
+    assert doi == "10.1038/nrn3667"
+    assert "crossref.org" in fake.urls[1]
+
+
+@pytest.mark.asyncio
+async def test_resolve_doi_from_url_returns_none_when_unknown(monkeypatch):
+    """Une URL sans identite bibliographique (blog, video) ne rend rien."""
+    fake = _SequencedAsyncClient(
+        [
+            _FakeResponse(404, json_body={}),
+            _FakeResponse(200, json_body={"message": {"items": []}}),
+        ]
+    )
+    _patch_async_client(monkeypatch, fake)
+
+    assert await resolve_doi_from_url("https://exemple.fr/mon-billet") is None
+
+
+@pytest.mark.asyncio
+async def test_resolve_doi_from_url_survives_network_error(monkeypatch):
+    fake = _FakeAsyncClient(raise_exc=httpx.ConnectError("nope"))
+    _patch_async_client(monkeypatch, fake)
+
+    assert await resolve_doi_from_url("https://www.nature.com/articles/nrn3667") is None
+
+
+@pytest.mark.asyncio
+async def test_resolve_doi_from_url_caches_result(monkeypatch):
+    """Le meme import resout l'URL plusieurs fois : une seule requete reseau."""
+    fake = _SequencedAsyncClient([_FakeResponse(200, json_body=S2_URL_OK_PAYLOAD)])
+    _patch_async_client(monkeypatch, fake)
+
+    url = "https://www.nature.com/articles/nrn3667"
+    assert await resolve_doi_from_url(url) == "10.1038/nrn3667"
+    assert await resolve_doi_from_url(url) == "10.1038/nrn3667"
+    assert len(fake.urls) == 1
