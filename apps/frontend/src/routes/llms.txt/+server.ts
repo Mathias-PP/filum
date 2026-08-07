@@ -28,6 +28,8 @@ complete dans \`citation[]\`.
 ## Trouver des fiches
 
 - [Annuaire public](${o}/discover): recherche plein texte et filtres (createur, auteur du contenu, plateforme, dates)
+- [Annuaire des createurs](${o}/discover/creators): profils avec fiches publiques, cherchables par nom / pseudo / bio
+- [Feed chronologique](${o}/feed): registre anti-chronologique strict des publications, jamais algorithmique
 - [Sitemap](${o}/sitemap.xml): toutes les fiches publiques
 
 ## Acces machine
@@ -47,6 +49,11 @@ complete dans \`citation[]\`.
 - Content negotiation: envoyer \`Accept: text/markdown\` ou
   \`Accept: application/vnd.philum+json\` sur l'URL canonique
   \`${o}/@<createur>/<fiche>\` renvoie directement le format demande.
+- Feed JSON: \`GET ${o}/api/v1/feed?limit=&before=\` — pagination par curseur
+  (\`before\` = ISO timestamp de la derniere entree vue). Un agent qui veut
+  suivre les publications recentes de Philum devrait interroger cet endpoint,
+  jamais scraper la page \`/feed\`.
+- Recherche de createurs: \`GET ${o}/api/v1/discover/creators?q=&limit=&offset=\`
 - Recherche JSON: \`GET ${o}/api/v1/discover?q=<termes>\` — sans authentification
 - Facettes: \`GET ${o}/api/v1/discover/facets\`
 - Fiche: \`GET ${o}/api/v1/@<createur>/<fiche>\`
