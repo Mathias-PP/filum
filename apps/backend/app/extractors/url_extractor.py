@@ -784,6 +784,27 @@ async def _crossref_by_pii(pii: str) -> ExtractedMetadata | None:
         return None
 
 
+def _iso_date_prefix(raw: str | None) -> str | None:
+    """Date ISO `AAAA-MM-JJ` tiree d'une chaine de page. None si indechiffrable.
+
+    Les balises Highwire separent volontiers par des barres obliques
+    (« 2017/06/12 » chez arXiv) et se contentent parfois de l'annee. Une annee
+    seule est completee au 1er janvier -- c'est deja la convention retenue
+    ailleurs pour Crossref -- plutot que jetee : « 2017 » situe une oeuvre sur
+    la frise, alors que « sans date » ne dit rien.
+    """
+    if not raw:
+        return None
+    m = re.match(r"\s*(\d{4})(?:[-/](\d{1,2})(?:[-/](\d{1,2}))?)?", raw)
+    if not m:
+        return None
+    year, month, day = m.group(1), m.group(2) or "1", m.group(3) or "1"
+    try:
+        return f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
+    except ValueError:
+        return None
+
+
 async def _html_scrape(url: str) -> ExtractedMetadata | None:
     try:
         async with httpx.AsyncClient(
@@ -812,13 +833,31 @@ async def _html_scrape(url: str) -> ExtractedMetadata | None:
         description = (
             _meta("og:description") or _meta("description") or _meta("twitter:description")
         )
-        authors_raw = _meta("author") or _meta("article:author")
-        published_at_raw = _meta("article:published_time") or _meta("datePublished")
-        published_at: str | None = None
-        if published_at_raw:
-            m = re.match(r"(\d{4}-\d{2}-\d{2})", published_at_raw)
-            if m:
-                published_at = m.group(1)
+        # Balises Highwire (`citation_*`) d'abord : c'est la convention
+        # d'indexation de Google Scholar, servie par arXiv, PubMed, PLOS,
+        # bioRxiv et la plupart des revues, et elle est faite pour porter une
+        # identite bibliographique -- la ou `og:` sert au partage social et ne
+        # porte presque jamais auteurs ni date. Philum les emet deja sur ses
+        # propres fiches et lit deja `citation_doi` : les lire ici couvre tous
+        # ces hebergeurs d'un coup, sans une branche par site.
+        citation_authors = [
+            content
+            for tag in soup.find_all("meta", attrs={"name": re.compile(r"^citation_author$", re.I)})
+            if (content := str(tag.get("content", "")).strip())
+        ]
+        authors_raw = (
+            "; ".join(citation_authors) or _meta("author") or _meta("article:author") or None
+        )
+        # `citation_online_date` est la derniere revision de la page (2023 chez
+        # arXiv pour un article de 2017), pas la parution de l'oeuvre : la
+        # prendre ferait glisser l'article sur la frise chronologique.
+        published_at_raw = (
+            _meta("citation_publication_date")
+            or _meta("citation_date")
+            or _meta("article:published_time")
+            or _meta("datePublished")
+        )
+        published_at = _iso_date_prefix(published_at_raw)
 
         # Supplement with JSON-LD structured data (richer, same HTTP response)
         jsonld_meta = _parse_jsonld_metadata(soup)
