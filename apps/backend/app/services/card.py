@@ -142,6 +142,7 @@ class CardService:
         card_slug = card.slug
 
         now = datetime.now(UTC).replace(tzinfo=None)
+        was_already_published = card.status == CardStatus.PUBLISHED
         card.published_at = now
         card.status = CardStatus.PUBLISHED
 
@@ -149,6 +150,23 @@ class CardService:
         # ailleurs vers le meme contenu la designent desormais. Sans ce
         # rattrapage elles resteraient isolees sur le meta-graphe.
         await link_sources_designating_card(self._db, card)
+
+        # Registre chronologique (voir .docs/20-profils-et-feed.md) : une
+        # entree par publication effective d'une fiche publique. Republier
+        # une fiche deja publiee n'en cree pas une seconde — le feed est un
+        # horodatage du premier passage au public, pas un journal d'edition.
+        # Les fiches privees n'entrent jamais dans le feed.
+        if not was_already_published and card.visibility == "public":
+            from app.models.feed_event import FeedEvent, FeedEventKind
+
+            self._db.add(
+                FeedEvent(
+                    kind=FeedEventKind.CARD_PUBLISHED,
+                    actor_id=card.user_id,
+                    card_id=card.id,
+                    occurred_at=now,
+                )
+            )
 
         await self._db.commit()
 

@@ -33,6 +33,23 @@ Avant : Phase 2 (identité visuelle Pulsar-graph + audit) et Phase 1 (MVP comple
 
 ---
 
+## Session 2026-08-07 (soir) — chantiers de conception
+
+Branche `feat/chantiers-p0-p3-ia-feed-search`, 5 chantiers du plan `agent/plans/2026-08-07-chantiers-conception.md` :
+
+- **3a** — message anti-scraping oriente maintenant vers l'import fichier (`.ris`/`.bib`) quand Nature/Elsevier/IEEE bloquent. Meme logique pour « aucune section References ».
+- **1B** — content negotiation : `hooks.server.ts` reecrit l'URL canonique vers `.md` ou `.philum.json` selon `Accept`. Une seule URL, plusieurs representations.
+- **1C** — nouveau format `application/vnd.philum+json` (JSON-LD schema.org + champs Philum : `philum:stance`, `philum:retractionStatus`, `philum:archiveUrl`). Route `.philum.json` et export backend `format=philum`.
+- **5** — recherche createurs : endpoint `GET /discover/creators`, page `/discover/creators` avec onglet depuis `/discover`.
+- **4** — feed chronologique : migration `028_feed_events`, endpoint `GET /feed` (curseur `before`), page `/feed` groupee par jour, insertion automatique dans `publish_card`. Registre, jamais fil algorithmique.
+
+Migrations a appliquer sur la VM apres merge : **028_feed_events**.
+
+Chantiers restant du plan :
+- **2** — pipeline extraction v2 (7 etages, plan `.claude/plans/effervescent-foraging-lollipop.md`), 3-4 j
+- **6** — audits persona (#74-#77) : besoin de creer du vrai contenu
+- **7** — audit visiteur (#78) : besoin de test mobile
+
 ## PRs ouvertes
 
 **`feat/graphe-corrections-visuelles` (en cours, sessions 2026-08-06 / 2026-08-07)** — **graphe, connexions et identité** — PR à ouvrir après la vérification finale :

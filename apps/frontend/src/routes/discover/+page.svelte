@@ -108,10 +108,20 @@
 <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
   <p class="page-overline">Explorer</p>
   <h1 class="text-3xl sm:text-4xl font-bold text-ink-primary mb-3">Les fiches publiques</h1>
-  <p class="text-lg text-ink-secondary mb-8 max-w-3xl">
+  <p class="text-lg text-ink-secondary mb-4 max-w-3xl">
     Chaque fiche relie un contenu à la bibliographie que son auteur a réellement consultée. Cherchez
     par titre, par auteur du contenu ou par créateur de la fiche.
   </p>
+
+  <nav class="mb-6 text-sm flex gap-4" aria-label="Onglets d'exploration">
+    <span class="font-medium text-ink-primary">Fiches</span>
+    <a
+      href="/discover/creators"
+      class="text-ink-secondary hover:text-ink-primary transition-colors"
+    >
+      Créateurs →
+    </a>
+  </nav>
 
   <search class="mb-6">
     <label for="discover-q" class="sr-only">Rechercher une fiche</label>

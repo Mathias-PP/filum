@@ -135,8 +135,16 @@
     try {
       const meta = await api.imports.urlMetadata(trimmed);
       if (meta.access_blocked) {
+        // Certains editeurs (Nature, Elsevier, IEEE...) refusent tout fetch
+        // automatique. La citation est presque toujours disponible en fichier
+        // depuis la page — plus fiable que la ressaisie a la main. On oriente
+        // le lecteur vers l'import fichier en aval du wizard.
         suggestNotice =
-          "Ce site a refusé la lecture automatique de la page. Rien n'a été rempli : saisissez le titre et les auteurs à la main.";
+          'Ce site a refusé la lecture automatique de la page. ' +
+          'Astuce : la plupart des éditeurs proposent un bouton « Cite » ou ' +
+          '« Export » qui télécharge un fichier .ris ou .bib — vous pourrez ' +
+          "l'importer à l'étape suivante. En attendant, saisissez le titre " +
+          'et les auteurs à la main.';
       } else if (!meta.title && !meta.description && !meta.authors) {
         suggestNotice = "La page a été lue mais n'annonce ni titre ni auteurs exploitables.";
       }

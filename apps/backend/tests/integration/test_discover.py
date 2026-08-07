@@ -206,6 +206,59 @@ async def test_discover_pagination(client, corpus):
 
 
 @pytest.mark.asyncio
+async def test_discover_creators_returns_only_creators_with_public_cards(client, corpus, test_user):
+    """Un compte qui n'a rien publie ne doit pas figurer dans l'index."""
+    from app.models.user import User
+
+    silent = User(
+        id=uuid4(),
+        email="silent@example.com",
+        username="silent-user",
+        display_name="Silent",
+        public_key="k",
+        encrypted_private_key="ek",
+    )
+    client.app if False else None  # keep test_user in fixture; silent won't have cards
+    from app.db.database import get_db  # noqa: F401
+    async for db in _yield_db_from_client(client):
+        db.add(silent)
+        await db.commit()
+        break
+
+    resp = await client.get("/api/v1/discover/creators")
+    assert resp.status_code == 200
+    body = resp.json()
+    slugs = {r["slug"] for r in body["results"]}
+    assert test_user.username in slugs
+    assert "silent-user" not in slugs
+    creator = next(r for r in body["results"] if r["slug"] == test_user.username)
+    assert creator["published_cards_count"] == 3
+    assert creator["url"].endswith(f"/@{test_user.username}")
+
+
+@pytest.mark.asyncio
+async def test_discover_creators_q_matches_username_display_bio(client, corpus, test_user):
+    """La recherche filtre sur username, display_name et bio."""
+    resp = await client.get(f"/api/v1/discover/creators?q={test_user.username[:4]}")
+    assert resp.status_code == 200
+    slugs = {r["slug"] for r in resp.json()["results"]}
+    assert test_user.username in slugs
+
+
+async def _yield_db_from_client(client):
+    """Recupere la session db liee au TestClient (override_get_db)."""
+    from app.db.database import get_db
+    from app.main import app
+
+    override = app.dependency_overrides.get(get_db)
+    if override is None:
+        return
+    gen = override()
+    async for db in gen:
+        yield db
+
+
+@pytest.mark.asyncio
 async def test_discover_facets_are_anonymous_and_public_only(client, corpus):
     """Les filtres de l'UI ne doivent proposer que des options qui existent."""
     resp = await client.get("/api/v1/discover/facets")
