@@ -148,7 +148,10 @@ def detect_references_section(html: str) -> SectionBoundary | None:
         try:
             node = soup.select_one(selector)
         except Exception:  # selector CSS invalide sur certains DOMs
-            continue
+            # nosec B112 - passer au selecteur suivant *est* la conduite
+            # voulue : la liste est une suite d'essais, aucun n'est cense
+            # reussir seul.
+            continue  # nosec B112
         if node is None:
             continue
         text = _text_of(node)

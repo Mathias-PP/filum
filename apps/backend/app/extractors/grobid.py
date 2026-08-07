@@ -12,8 +12,9 @@ from __future__ import annotations
 
 import logging
 import re
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ET  # nosec B405 - types et ParseError; le parsing passe par defusedxml
 
+import defusedxml.ElementTree as safe_ET
 import httpx
 
 from app.core.config import get_settings
@@ -40,7 +41,13 @@ def _parse_tei(xml_text: str) -> list[ImportedRef] | None:
     """TEI ``processReferences`` → refs. None si la réponse n'est pas du XML
     (page HTML « Preparing Space » tronquée, erreur proxy…)."""
     try:
-        root = ET.fromstring(xml_text)
+        # `defusedxml` et non `xml.etree` : ce XML derive d'un PDF fourni par
+        # l'utilisateur, donc d'une entree non fiable, et la stdlib expanse
+        # les entites internes — un fichier de quelques kilo-octets suffit a
+        # epuiser la memoire du conteneur (« billion laughs »).
+        # `ET` reste importe pour les types et `ParseError`, que defusedxml
+        # releve tel quel.
+        root = safe_ET.fromstring(xml_text)
     except ET.ParseError:
         return None
     refs: list[ImportedRef] = []
