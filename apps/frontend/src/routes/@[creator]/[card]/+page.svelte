@@ -252,7 +252,10 @@
   <article>
     <header class="bg-surface-primary border-b border-border">
       <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-        <div class="flex items-center gap-2">
+        <!-- flex-wrap : les boutons d'action portent `shrink-0`, donc sous ~380px
+             de large « Partager » sortait de la barre et decalait toute la page
+             lateralement. Ils passent maintenant a la ligne. -->
+        <div class="flex flex-wrap items-center gap-2">
           {#if isOwner}
             <a
               href="/dashboard"
