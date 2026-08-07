@@ -35,6 +35,22 @@ Réponse endpoint enrichie : `extraction_confidence`, `refs_from_oracle`, `refs_
 
 ---
 
+## ADR-033 — Résolution URL → DOI par les index, jamais par éditeur
+
+**Date :** 2026-08-07
+
+**Contexte :** Nature `nrn3667` ne rendait aucune référence : le site bloque le scraping et son URL ne porte pas le DOI. Un premier correctif (#292) a codé en dur `nature.com/articles/<slug>` → `10.1038/<slug>`, plus deux motifs pour bioRxiv et medRxiv.
+
+**Décision :** ce correctif est retiré. On ne code plus aucune connaissance d'éditeur dans le résolveur. `resolve_doi_from_url` demande à Semantic Scholar (`graph/v1/paper/URL:`) puis à Crossref (`works?filter=uri:`) quel article une URL désigne.
+
+Motif : une regex par site ne débloque que ce site. Il y a des milliers d'éditeurs et autant de schémas d'URL ; chacun demanderait une PR, et le premier changement de format côté éditeur casserait le motif en silence. Les index bibliographiques tiennent déjà cette correspondance et la maintiennent pour nous.
+
+**Périmètre conservé :** l'extraction *syntaxique* du DOI depuis l'URL (`_extract_doi`) reste — un DOI écrit dans un chemin est un DOI, pas une devinette. La normalisation de version bioRxiv (`10.1101/…v2` → forme canonique) reste aussi : c'est une règle de syntaxe DOI, pas une connaissance d'éditeur.
+
+**Conséquences :** un site anti-bot dont aucun index ne connaît l'URL rend toujours zéro référence. C'est le comportement voulu : mieux vaut un échec franc qu'un DOI deviné qui pointe sur le mauvais article. Le cache est à vie de process, sans invalidation (un DOI ne change pas).
+
+---
+
 ## ADR-031 — Playwright différé (biblio JS-only)
 
 **Date :** 2026-07-23
