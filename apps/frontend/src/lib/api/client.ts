@@ -347,15 +347,6 @@ export const api = {
     },
   },
 
-  waitlist: {
-    join: async (email: string, context: string = 'home'): Promise<{ ok: boolean }> => {
-      return request<{ ok: boolean }>('/waitlist', {
-        method: 'POST',
-        body: JSON.stringify({ email, context }),
-      });
-    },
-  },
-
   imports: {
     fromContentUrl: async (url: string): Promise<ImportFromUrlResponse> => {
       return request<ImportFromUrlResponse>('/import/from-content-url', {
