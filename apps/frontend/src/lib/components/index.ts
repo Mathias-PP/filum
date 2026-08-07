@@ -15,4 +15,3 @@ export { default as FormatBadge } from './FormatBadge.svelte';
 export { default as CategoryBadge } from './CategoryBadge.svelte';
 export { default as ClaimBanner } from './ClaimBanner.svelte';
 export { default as SourceCompareTable } from './SourceCompareTable.svelte';
-export { default as WaitlistForm } from './WaitlistForm.svelte';

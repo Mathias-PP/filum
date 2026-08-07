@@ -7,7 +7,6 @@ from app.models.linked_account import LinkedAccount
 from app.models.source import Source
 from app.models.source_excerpt import SourceExcerpt
 from app.models.user import User
-from app.models.waitlist_entry import WaitlistEntry
 
 __all__ = [
     "User",
@@ -20,5 +19,4 @@ __all__ = [
     "Source",
     "SourceExcerpt",
     "AuditEvent",
-    "WaitlistEntry",
 ]
