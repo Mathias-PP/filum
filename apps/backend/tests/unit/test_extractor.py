@@ -824,3 +824,72 @@ class TestCrossrefPublicationDate:
         placerait l'oeuvre a une position qui affirme quelque chose de faux."""
         meta = url_extractor._parse_crossref_work({"title": ["Sans date"]})
         assert meta.published_at is None
+
+
+# Extrait reel de https://arxiv.org/abs/1706.03762 (« Attention Is All You
+# Need »), l'un des articles les plus cites du domaine.
+ARXIV_HEAD = """<html><head>
+<meta name="citation_title" content="Attention Is All You Need" />
+<meta name="citation_author" content="Vaswani, Ashish" />
+<meta name="citation_author" content="Shazeer, Noam" />
+<meta name="citation_author" content="Parmar, Niki" />
+<meta name="citation_date" content="2017/06/12" />
+<meta name="citation_online_date" content="2023/08/02" />
+<title>Attention Is All You Need</title>
+</head><body>corps</body></html>"""
+
+
+class TestHighwireMetaScrape:
+    """Mesure du 2026-08-07 sur `arxiv.org/abs/1706.03762` : le titre remontait,
+    mais **auteurs et date restaient vides**. Une source sans auteur ni date ne
+    peut pas etre placee sur la chronologie et se lit mal a l'ecran.
+
+    La donnee etait pourtant la, dans les balises Highwire (`citation_*`) —
+    convention d'indexation de Google Scholar, servie par arXiv, PubMed, PLOS,
+    bioRxiv et la plupart des revues. Philum les **emet** deja sur ses propres
+    fiches (#239) et lit deja `citation_doi` (#294) : il ne les lisait pas ici.
+    Corriger au niveau de la convention plutot que par site couvre tous ces
+    hebergeurs d'un coup.
+    """
+
+    @pytest.mark.asyncio
+    async def test_les_auteurs_et_la_date_remontent(self, monkeypatch):
+        fake = _FakeAsyncClient(response=_FakeResponse(200, text=ARXIV_HEAD, headers=_HTML_HEADERS))
+        _patch_async_client(monkeypatch, fake)
+
+        meta = await url_extractor._html_scrape("https://arxiv.org/abs/1706.03762")
+
+        assert meta is not None
+        assert meta.authors == "Vaswani, Ashish; Shazeer, Noam; Parmar, Niki"
+        assert meta.published_at == "2017-06-12"
+
+    @pytest.mark.asyncio
+    async def test_la_date_de_depot_prime_sur_la_date_de_mise_en_ligne(self, monkeypatch):
+        """`citation_online_date` est la derniere revision de la page (2023 chez
+        arXiv), pas la parution de l'oeuvre. La placer sur la frise ferait passer
+        un article de 2017 pour un article de 2023."""
+        fake = _FakeAsyncClient(response=_FakeResponse(200, text=ARXIV_HEAD, headers=_HTML_HEADERS))
+        _patch_async_client(monkeypatch, fake)
+
+        meta = await url_extractor._html_scrape("https://arxiv.org/abs/1706.03762")
+
+        assert meta is not None
+        assert meta.published_at == "2017-06-12"
+
+    @pytest.mark.asyncio
+    async def test_une_page_sans_balise_highwire_est_inchangee(self, monkeypatch):
+        """Un blog n'en porte pas : le chemin existant doit continuer de servir."""
+        html = (
+            '<html><head><meta property="og:title" content="Mon billet">'
+            '<meta name="author" content="Camille">'
+            '<meta property="article:published_time" content="2024-02-03T10:00:00Z">'
+            "</head><body>texte</body></html>"
+        )
+        fake = _FakeAsyncClient(response=_FakeResponse(200, text=html, headers=_HTML_HEADERS))
+        _patch_async_client(monkeypatch, fake)
+
+        meta = await url_extractor._html_scrape("https://exemple.fr/billet")
+
+        assert meta is not None
+        assert meta.authors == "Camille"
+        assert meta.published_at == "2024-02-03"
