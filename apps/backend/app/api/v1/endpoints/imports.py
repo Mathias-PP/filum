@@ -988,7 +988,9 @@ async def _drop_s2_hallucinations(
     return [r for r in s2_refs if r.url not in drop_urls]
 
 
-def _resolve_confidence(validation_confidence: str, enrichment_count: int) -> str:
+def _resolve_confidence(
+    validation_confidence: str, enrichment_count: int, oracle_count: int
+) -> str:
     """Confiance annoncee, une fois connue la composition du resultat.
 
     La confiance de validation decrit la methode employee pour trancher les
@@ -996,10 +998,15 @@ def _resolve_confidence(validation_confidence: str, enrichment_count: int) -> st
     recherche dans le corps de page n'a rien eu a trancher : annoncer
     « moyenne » ferait douter de references deposees par l'editeur lui-meme.
 
+    La promotion exige que l'oracle ait effectivement fourni quelque chose. Un
+    resultat vide satisfait « zero ref enrichie » sans etre le cas vise : sur
+    ProPublica et Gwern (mesure du 2026-08-07) l'ecran annoncait « confiance
+    haute » sur zero reference, affirmant que le contenu ne cite rien.
+
     On ne remonte que depuis « medium » : « low » signale l'absence de tout
     moyen de verification, ce qu'aucun compteur ne rattrape.
     """
-    if validation_confidence == "medium" and enrichment_count == 0:
+    if validation_confidence == "medium" and enrichment_count == 0 and oracle_count > 0:
         return "high"
     return validation_confidence
 
@@ -1254,7 +1261,7 @@ async def parse_content_url(
     crossref_count = sum(1 for r in result.refs if any(same_ref(r, cr) for cr in crossref_refs))
     enrichment_count = len(result.refs) - crossref_count
 
-    confidence = _resolve_confidence(confidence, enrichment_count)
+    confidence = _resolve_confidence(confidence, enrichment_count, crossref_count)
 
     card = ImportedCardDraft(
         title=meta.title if meta else None,
