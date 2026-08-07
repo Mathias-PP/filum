@@ -273,7 +273,7 @@ class TestResolveMissingTitles:
 
 def test_confidence_stays_medium_when_enrichment_contributed():
     """Des refs retrouvees par recherche dans le corps : la reserve tient."""
-    assert _resolve_confidence("medium", 3) == "medium"
+    assert _resolve_confidence("medium", 3, 0) == "medium"
 
 
 def test_confidence_rises_when_oracle_supplied_everything():
@@ -282,14 +282,25 @@ def test_confidence_rises_when_oracle_supplied_everything():
     Rien n'avait ete valide par recherche dans le corps de page, donc rien ne
     justifiait de demander a l'auteur·ice de verifier le depot de l'editeur.
     """
-    assert _resolve_confidence("medium", 0) == "high"
+    assert _resolve_confidence("medium", 0, 130) == "high"
+
+
+def test_confidence_stays_medium_when_nothing_was_found_at_all():
+    """Mesure du 2026-08-07 sur ProPublica et Gwern : zero reference extraite,
+    aucune section detectee, et l'ecran annoncait « confiance haute ».
+
+    La promotion visait le cas « l'oracle a tout fourni ». Un resultat vide n'est
+    pas ce cas : rien n'a ete fourni. Annoncer « haute » sur une bibliographie
+    vide affirme au lecteur que le contenu ne cite rien, ce qu'on n'a pas mesure.
+    """
+    assert _resolve_confidence("medium", 0, 0) == "medium"
 
 
 def test_confidence_high_is_left_alone():
-    assert _resolve_confidence("high", 0) == "high"
-    assert _resolve_confidence("high", 12) == "high"
+    assert _resolve_confidence("high", 0, 0) == "high"
+    assert _resolve_confidence("high", 12, 0) == "high"
 
 
 def test_confidence_low_is_never_promoted():
     """« low » dit qu'aucune verification n'etait possible : aucun compteur ne rattrape ca."""
-    assert _resolve_confidence("low", 0) == "low"
+    assert _resolve_confidence("low", 0, 5) == "low"
