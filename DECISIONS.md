@@ -1288,3 +1288,32 @@ Règle de formulation, à appliquer partout dans l'interface :
 
 Le payload signé d'une attestation est immuable (ADR-019). Toute idée qui
 supposerait de l'enrichir doit passer par un ADR et un plan de ré-attestation.
+
+---
+
+## ADR-034 — Verrouiller le schéma `public` contre PostgREST (2026-08-07)
+
+**Contexte.** Alerte Supabase du 26/07 : « Table publicly accessible ». Mesuré sur
+`philum-prod` le 07/08 — les rôles `anon` et `authenticated` détenaient
+`SELECT, INSERT, UPDATE, DELETE, TRUNCATE` sur **les 11 tables**, dont `users` et
+`linked_accounts` (clés privées chiffrées), et aucune n'avait RLS activé.
+
+Ce n'est pas théorique : Supabase expose le schéma `public` en REST, et la clé
+`anon` est **publique par conception** — elle est faite pour être embarquée dans
+un navigateur. Quiconque la détient pouvait tout lire et tout détruire.
+
+**Décision.** Migration `030_rls_lockdown` : RLS activé sur toutes les tables
++ révocation complète pour `anon`/`authenticated`, y compris les *default
+privileges* (sinon toute table créée par une migration future serait réexposée).
+
+**Les deux couches sont nécessaires, pas redondantes.** `TRUNCATE` n'est pas
+soumis à RLS : avec RLS seul, `anon` pouvait encore vider chaque table. La
+révocation est la protection réelle ; RLS est le filet si un GRANT revient.
+
+**Sans effet sur l'application** : le backend se connecte en `postgres`, qui
+porte `BYPASSRLS`. Philum n'utilise pas PostgREST, seulement la connexion
+Postgres directe.
+
+**À retenir** : héberger Postgres chez Supabase n'est pas neutre. Une API REST
+publique est montée devant le schéma par défaut. Tout nouvel environnement
+Supabase doit rejouer ce verrou avant d'accueillir la moindre donnée réelle.
