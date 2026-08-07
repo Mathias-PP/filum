@@ -11,6 +11,7 @@ from app.services.import_parsers import (
     parse_csl_json,
     parse_docx,
     parse_file,
+    parse_freetext_citations,
     parse_html,
     parse_markdown,
     parse_pdf,
@@ -255,3 +256,51 @@ def test_parse_file_dispatch_docx_and_html():
     assert any(r.url == "https://doi.org/10.1234/docx.567" for r in result.refs)
     result = parse_file("page.html", HTML_SAMPLE.encode())
     assert any(r.url == "https://example.org/rapport" for r in result.refs)
+
+
+# Extrait reel d'un copier-coller depuis https://www.nature.com/articles/nrn3667
+# apres suppression des liens : les citations subsistent, les jetons d'outils
+# (CAS, PubMed, Google Scholar) restent en paragraphes isoles.
+NATURE_FREETEXT_SAMPLE = """Silva, A. J. et al. Molecular and cellular approaches to memory allocation in neural circuits. Science 326, 391-395 (2009). This review developed the hypothesis that a CREB-dependent increase in excitability is a mechanism by which memories are allocated.
+
+CAS
+
+PubMed
+
+Google Scholar
+
+
+Marr, D. Simple memory: a theory for archicortex. Phil. Trans. R. Soc. Lond. B 262, 23-81 (1971).
+
+Google Scholar
+
+
+Bouton, M. E. Context and behavioral processes in extinction. Learn. Mem. 11, 485-494 (2004).
+
+PubMed
+"""
+
+
+def test_parse_freetext_citations_nature_style():
+    """Un copier-coller Nature sans URL doit produire des refs, pas rien."""
+    result = parse_freetext_citations(NATURE_FREETEXT_SAMPLE)
+    assert len(result.refs) == 3
+    titles = [r.title for r in result.refs]
+    assert any("Molecular and cellular approaches" in t for t in titles if t)
+    assert any("Simple memory" in t for t in titles if t)
+    assert any("Context and behavioral processes" in t for t in titles if t)
+    years = sorted(r.year for r in result.refs if r.year)
+    assert years == [1971, 2004, 2009]
+    # Les jetons d'outils (CAS, PubMed, Google Scholar) ne comptent pas comme
+    # references.
+    assert all(r.title != "CAS" and r.title != "PubMed" for r in result.refs)
+    # Silva est le premier auteur, « et al. » doit borner correctement.
+    silva = next(r for r in result.refs if r.title and "Molecular" in r.title)
+    assert silva.authors is not None and silva.authors.startswith("Silva")
+    assert "et al" in silva.authors
+
+
+def test_parse_freetext_citations_ignore_tool_tokens_only():
+    """Un texte qui ne contient que des jetons d'outils ne produit rien."""
+    result = parse_freetext_citations("CAS\n\nPubMed\n\nGoogle Scholar\n")
+    assert result.refs == []

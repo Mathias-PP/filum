@@ -793,7 +793,10 @@
         author_kind: authorKindOptions.includes(ref.author_kind as AuthorKind)
           ? (ref.author_kind as AuthorKind)
           : 'individu',
-        published_at: ref.published_at,
+        // <input type="date"> refuse silencieusement une chaine ISO complete
+        // (« 2009-01-01T00:00:00Z ») et affiche « jj/mm/aaaa » : on tronque
+        // au jour, seul format que l'input reconnait.
+        published_at: ref.published_at ? ref.published_at.slice(0, 10) : null,
         journal: ref.journal ?? '',
         volume: ref.volume ?? '',
         pages: ref.pages ?? '',
