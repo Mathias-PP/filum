@@ -170,37 +170,22 @@
         {/if}
       </div>
 
-      <!-- Structured indicators -->
-      {#if source.citations_count || source.impact_factor || source.subscribers_count || source.views_count}
+      <!--
+        Seul `citations_count` est renseigné par du code : Crossref le donne
+        (`is-referenced-by-count`) à chaque import. `impact_factor`,
+        `subscribers_count` et `views_count` n'étaient écrits que par le seed
+        de démo, en dur — mesuré le 2026-08-07 sur la fiche vitrine en prod :
+        5 impact factors affichés sur 18 sources, aucun issu d'une mesure.
+        Un chiffre non sourcé sur une fiche qui promet la traçabilité dit
+        l'inverse de ce que Philum affirme. Retirés de l'affichage.
+      -->
+      {#if source.citations_count}
         <div class="mt-3 flex flex-wrap gap-1.5">
-          {#if source.citations_count}
-            <span
-              class="inline-flex items-center text-xs text-slate-700 bg-slate-100 px-2 py-0.5 rounded"
-            >
-              {formatCount(source.citations_count)} citations
-            </span>
-          {/if}
-          {#if source.impact_factor}
-            <span
-              class="inline-flex items-center text-xs text-slate-700 bg-slate-100 px-2 py-0.5 rounded"
-            >
-              Impact factor {source.impact_factor.toFixed(1)}
-            </span>
-          {/if}
-          {#if source.subscribers_count}
-            <span
-              class="inline-flex items-center text-xs text-slate-700 bg-slate-100 px-2 py-0.5 rounded"
-            >
-              {formatCount(source.subscribers_count)} abonnés
-            </span>
-          {/if}
-          {#if source.views_count}
-            <span
-              class="inline-flex items-center text-xs text-slate-700 bg-slate-100 px-2 py-0.5 rounded"
-            >
-              {formatCount(source.views_count)} vues
-            </span>
-          {/if}
+          <span
+            class="inline-flex items-center text-xs text-slate-700 bg-slate-100 px-2 py-0.5 rounded"
+          >
+            {formatCount(source.citations_count)} citations
+          </span>
         </div>
       {/if}
 
