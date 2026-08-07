@@ -43,6 +43,54 @@ _REFRESH_URL = re.compile(rb"""url\s*=\s*['"]?([^'"\s>]+)""", re.IGNORECASE)
 _RETRY_LATER = frozenset({429, 503, 523})
 
 
+# Parametres connus pour ne jamais designer la ressource : ils disent d'ou
+# vient le visiteur, pas ce qu'il vient chercher. Liste **explicite** et non
+# heuristique : vider la requete a l'aveugle transformerait
+# `article.aspx?doi=10.1/x` en `article.aspx`, une page generique, et on
+# archiverait la mauvaise ressource.
+_TRACKING_PARAMS = frozenset(
+    {
+        "via",  # redirecteur Elsevier (`?via=ihub`)
+        "fbclid",
+        "gclid",
+        "msclkid",
+        "igshid",
+        "mc_cid",
+        "mc_eid",
+        "ref_src",
+        "_hsenc",
+        "_hsmi",
+    }
+)
+
+
+def strip_tracking_params(url: str) -> str:
+    """L'URL debarrassee de ses parametres de suivi, l'ordre du reste intact.
+
+    CDX cherche l'URL **exacte** : `…/pii/S0896627301005839?via=ihub` et
+    `…/pii/S0896627301005839` sont deux cles distinctes, et seule la seconde a
+    une capture (mesure du 2026-08-07 : instantane de 2019). Sans ce menage,
+    une source s'affiche « non archivee » alors que l'archive existe.
+
+    L'ordre est preserve parce que le reordonner changerait l'URL, donc la cle.
+    Les morceaux sont gardes **bruts** : les re-encoder transformerait
+    `doi=10.1000/xyz` en `doi=10.1000%2Fxyz`, une troisieme cle qui n'a pas
+    plus de capture que la premiere.
+    """
+    from urllib.parse import urlsplit, urlunsplit
+
+    parts = urlsplit(url)
+    if not parts.query:
+        return url
+    kept = [
+        chunk
+        for chunk in parts.query.split("&")
+        if (name := chunk.split("=", 1)[0].lower()) not in _TRACKING_PARAMS
+        and not name.startswith("utm_")
+    ]
+    return urlunsplit(parts._replace(query="&".join(kept)))
+
+
 class ThrottledError(Exception):
     """Le service a refuse de repondre et demande qu'on ralentisse.
 
@@ -170,6 +218,12 @@ class WaybackService:
             logger.warning(f"Wayback skipped for non-public URL {url}: {e}")
             await self._update_source(source_id, ArchiveStatus.FAILED, None, None)
             return {"status": "failed", "reason": "unsafe_url"}
+
+        # Un parametre de suivi ne designe pas la ressource, mais CDX cherche
+        # l'URL exacte : archiver `…?via=ihub` puis chercher `…?via=ihub`
+        # creerait une capture que personne d'autre ne retrouve, a cote d'une
+        # capture existante qu'on ne verrait jamais.
+        url = strip_tracking_params(url)
 
         # Step 1 — trigger Save Page Now (best effort).
         await self._trigger_save(url)
@@ -351,6 +405,7 @@ class WaybackService:
         Leve ``ThrottledError`` seulement si *aucun* canal n'a pu se prononcer.
         Une absence n'est affirmee que sur une reponse saine.
         """
+        url = strip_tracking_params(url)
         refusal: ThrottledError | None = None
         for channel in (self._lookup_via_cdx, self._lookup_via_availability):
             try:
