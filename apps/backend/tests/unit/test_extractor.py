@@ -26,6 +26,7 @@ from app.extractors.url_extractor import (
     _looks_like_challenge_page,
     _parse_jsonld_metadata,
     clean_title,
+    doi_from_page_meta,
     extract,
     resolve_doi_from_pubmed,
     resolve_doi_from_url,
@@ -134,17 +135,20 @@ class TestExtractDoi:
     def test_biorxiv_url_strips_version_suffix(self):
         """bioRxiv publie un DOI par version (`...v1`, `...v2.full`) mais
         Crossref n'indexe que la forme canonique sans version."""
-        assert _extract_doi(
-            "https://www.biorxiv.org/content/10.1101/2024.01.15.575984v1"
-        ) == "10.1101/2024.01.15.575984"
-        assert _extract_doi(
-            "https://www.biorxiv.org/content/10.1101/2024.01.15.575984v2.full"
-        ) == "10.1101/2024.01.15.575984"
+        assert (
+            _extract_doi("https://www.biorxiv.org/content/10.1101/2024.01.15.575984v1")
+            == "10.1101/2024.01.15.575984"
+        )
+        assert (
+            _extract_doi("https://www.biorxiv.org/content/10.1101/2024.01.15.575984v2.full")
+            == "10.1101/2024.01.15.575984"
+        )
 
     def test_medrxiv_url_strips_version_suffix(self):
-        assert _extract_doi(
-            "https://www.medrxiv.org/content/10.1101/2023.05.10.12345v1"
-        ) == "10.1101/2023.05.10.12345"
+        assert (
+            _extract_doi("https://www.medrxiv.org/content/10.1101/2023.05.10.12345v1")
+            == "10.1101/2023.05.10.12345"
+        )
 
 
 class TestExtractPii:
@@ -682,7 +686,14 @@ async def test_resolve_doi_from_pubmed_returns_none_on_error(monkeypatch):
 
 
 S2_URL_OK_PAYLOAD = {"paperId": "abc", "externalIds": {"DOI": "10.1038/NRN3667"}}
-CROSSREF_URI_OK_PAYLOAD = {"message": {"items": [{"DOI": "10.1038/nrn3667"}]}}
+_HTML_HEADERS = {"content-type": "text/html; charset=utf-8"}
+
+# Extrait reel du <head> de https://www.nature.com/articles/nrn3667.
+NATURE_HEAD = """<html><head>
+<meta name="prism.doi" content="doi:10.1038/nrn3667"/>
+<meta name="dc.identifier" content="doi:10.1038/nrn3667"/>
+<meta name="citation_doi" content="10.1038/nrn3667"/>
+</head><body></body></html>"""
 
 
 @pytest.fixture(autouse=True)
@@ -692,24 +703,45 @@ def _clear_url_doi_cache():
     url_extractor._url_doi_cache.clear()
 
 
+class TestDoiFromPageMeta:
+    def test_highwire_citation_doi(self):
+        assert doi_from_page_meta(NATURE_HEAD) == "10.1038/nrn3667"
+
+    def test_prism_doi_prefix_is_stripped(self):
+        html = '<meta name="prism.doi" content="doi:10.1038/nrn3667">'
+        assert doi_from_page_meta(html) == "10.1038/nrn3667"
+
+    def test_meta_name_is_case_insensitive(self):
+        html = '<meta name="CITATION_DOI" content="10.1371/journal.pone.0123456">'
+        assert doi_from_page_meta(html) == "10.1371/journal.pone.0123456"
+
+    def test_dc_identifier_holding_an_issn_is_ignored(self):
+        """`dc.identifier` sert aussi aux ISSN/ISBN : seul un DOI est retenu."""
+        assert doi_from_page_meta('<meta name="dc.identifier" content="1471-003X">') is None
+
+    def test_page_without_doi_meta(self):
+        assert doi_from_page_meta("<html><head><title>Un blog</title></head></html>") is None
+
+
 @pytest.mark.asyncio
-async def test_resolve_doi_from_url_via_semantic_scholar(monkeypatch):
-    fake = _FakeAsyncClient(response=_FakeResponse(200, json_body=S2_URL_OK_PAYLOAD))
+async def test_resolve_doi_from_url_reads_publisher_meta(monkeypatch):
+    """Nature ne met pas le DOI dans l'URL mais le declare dans sa page."""
+    fake = _FakeAsyncClient(response=_FakeResponse(200, text=NATURE_HEAD, headers=_HTML_HEADERS))
     _patch_async_client(monkeypatch, fake)
 
     doi = await resolve_doi_from_url("https://www.nature.com/articles/nrn3667")
 
     assert doi == "10.1038/nrn3667"
-    assert "semanticscholar.org" in (fake.last_url or "")
+    assert fake.last_url == "https://www.nature.com/articles/nrn3667"
 
 
 @pytest.mark.asyncio
-async def test_resolve_doi_from_url_falls_back_to_crossref(monkeypatch):
-    """S2 ne connait pas l'URL : Crossref `filter=uri:` prend le relais."""
+async def test_resolve_doi_from_url_falls_back_to_semantic_scholar(monkeypatch):
+    """Page refusee (403) : S2 sait parfois relier l'URL a un papier."""
     fake = _SequencedAsyncClient(
         [
-            _FakeResponse(404, json_body={}),
-            _FakeResponse(200, json_body=CROSSREF_URI_OK_PAYLOAD),
+            _FakeResponse(403, text=""),
+            _FakeResponse(200, json_body=S2_URL_OK_PAYLOAD),
         ]
     )
     _patch_async_client(monkeypatch, fake)
@@ -717,7 +749,7 @@ async def test_resolve_doi_from_url_falls_back_to_crossref(monkeypatch):
     doi = await resolve_doi_from_url("https://www.nature.com/articles/nrn3667")
 
     assert doi == "10.1038/nrn3667"
-    assert "crossref.org" in fake.urls[1]
+    assert "semanticscholar.org" in fake.urls[1]
 
 
 @pytest.mark.asyncio
@@ -725,8 +757,8 @@ async def test_resolve_doi_from_url_returns_none_when_unknown(monkeypatch):
     """Une URL sans identite bibliographique (blog, video) ne rend rien."""
     fake = _SequencedAsyncClient(
         [
-            _FakeResponse(404, json_body={}),
-            _FakeResponse(200, json_body={"message": {"items": []}}),
+            _FakeResponse(200, text="<html><head></head></html>", headers=_HTML_HEADERS),
+            _FakeResponse(404, json_body={"error": "not found"}),
         ]
     )
     _patch_async_client(monkeypatch, fake)
@@ -745,7 +777,7 @@ async def test_resolve_doi_from_url_survives_network_error(monkeypatch):
 @pytest.mark.asyncio
 async def test_resolve_doi_from_url_caches_result(monkeypatch):
     """Le meme import resout l'URL plusieurs fois : une seule requete reseau."""
-    fake = _SequencedAsyncClient([_FakeResponse(200, json_body=S2_URL_OK_PAYLOAD)])
+    fake = _SequencedAsyncClient([_FakeResponse(200, text=NATURE_HEAD, headers=_HTML_HEADERS)])
     _patch_async_client(monkeypatch, fake)
 
     url = "https://www.nature.com/articles/nrn3667"

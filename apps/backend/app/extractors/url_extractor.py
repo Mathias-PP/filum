@@ -680,7 +680,6 @@ async def resolve_doi_from_pii(url: str) -> str | None:
 
 
 _S2_PAPER_BY_URL = "https://api.semanticscholar.org/graph/v1/paper/URL:{url}"
-_CROSSREF_BY_URI = "https://api.crossref.org/works?filter=uri:{url}&rows=1"
 
 # Une meme URL est resolue plusieurs fois par requete d'import (metadonnees puis
 # references). Les deux API sont rate-limitees ; le cache evite d'en depenser le
@@ -698,33 +697,59 @@ async def _s2_doi_by_url(url: str) -> str | None:
     return doi.lower() if doi else None
 
 
-async def _crossref_doi_by_uri(url: str) -> str | None:
-    api_url = _CROSSREF_BY_URI.format(url=quote(url, safe=""))
-    async with httpx.AsyncClient(headers=_HEADERS, timeout=_TIMEOUT) as client:
-        r = await client.get(api_url)
-    if r.status_code != 200:
+# Balises par lesquelles un editeur declare lui-meme le DOI de la page.
+# Ce sont des standards inter-editeurs, pas des cas particuliers :
+#   - `citation_doi`   : Highwire Press tags, suivis par Google Scholar, donc
+#     emis par la quasi-totalite des editeurs qui veulent y etre indexes
+#   - `prism.doi`      : PRISM (IDEAlliance), courant chez Nature/Springer
+#   - `dc.identifier`  : Dublin Core, prefixe `doi:` quand il en porte un
+_DOI_META_NAMES = ("citation_doi", "prism.doi", "dc.identifier", "dc.identifier.doi")
+
+
+def doi_from_page_meta(html: str) -> str | None:
+    """DOI declare par la page elle-meme dans ses balises meta standard."""
+    soup = BeautifulSoup(html, "html.parser")
+    for name in _DOI_META_NAMES:
+        tag = soup.find("meta", attrs={"name": re.compile(f"^{re.escape(name)}$", re.I)})
+        content = tag.get("content") if tag else None
+        if not isinstance(content, str):
+            continue
+        # `dc.identifier` sert aussi a porter des ISSN/ISBN : on ne garde que
+        # ce qui a la forme d'un DOI.
+        m = re.search(r"(10\.\d{4,9}/\S+)", content)
+        if m:
+            return m.group(1).rstrip(".,;)").lower()
+    return None
+
+
+async def _doi_from_page(url: str) -> str | None:
+    async with httpx.AsyncClient(
+        headers=_HEADERS, timeout=_TIMEOUT, follow_redirects=True
+    ) as client:
+        r = await client.get(url)
+    if r.status_code != 200 or "text/html" not in r.headers.get("content-type", ""):
         return None
-    items = r.json().get("message", {}).get("items") or []
-    if not items:
-        return None
-    doi = items[0].get("DOI")
-    return doi.lower() if doi else None
+    return doi_from_page_meta(r.text)
 
 
 async def resolve_doi_from_url(url: str) -> str | None:
     """N'importe quelle URL d'article → DOI, sans connaissance de l'editeur.
 
-    Remplace les resolutions par site (Nature, bioRxiv, ScienceDirect…) : ce
-    sont les index bibliographiques qui savent quelle URL designe quel article,
-    pas nous. Semantic Scholar d'abord (couverture d'URL la plus large), puis
-    Crossref `filter=uri:` qui indexe les URLs de resolution deposees par les
-    editeurs. Never raises.
+    Remplace les resolutions par site (Nature, bioRxiv…) : chacune ne
+    debloquait qu'un editeur, et il y en a des milliers.
+
+    On demande d'abord a la page le DOI qu'elle declare dans ses balises meta
+    standard — c'est l'editeur lui-meme qui repond, donc jamais faux, et ces
+    balises existent partout parce que Google Scholar les exige. En repli,
+    Semantic Scholar, qui connait certaines URLs sans DOI dans la page.
+
+    Never raises.
     """
     if url in _url_doi_cache:
         return _url_doi_cache[url]
 
     doi: str | None = None
-    for resolver in (_s2_doi_by_url, _crossref_doi_by_uri):
+    for resolver in (_doi_from_page, _s2_doi_by_url):
         try:
             doi = await resolver(url)
         except Exception as e:

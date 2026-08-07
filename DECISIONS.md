@@ -41,9 +41,16 @@ Réponse endpoint enrichie : `extraction_confidence`, `refs_from_oracle`, `refs_
 
 **Contexte :** Nature `nrn3667` ne rendait aucune référence : le site bloque le scraping et son URL ne porte pas le DOI. Un premier correctif (#292) a codé en dur `nature.com/articles/<slug>` → `10.1038/<slug>`, plus deux motifs pour bioRxiv et medRxiv.
 
-**Décision :** ce correctif est retiré. On ne code plus aucune connaissance d'éditeur dans le résolveur. `resolve_doi_from_url` demande à Semantic Scholar (`graph/v1/paper/URL:`) puis à Crossref (`works?filter=uri:`) quel article une URL désigne.
+**Décision :** ce correctif est retiré. On ne code plus aucune connaissance d'éditeur dans le résolveur. `resolve_doi_from_url` lit le DOI **que la page déclare elle-même** dans ses balises meta standard — `citation_doi` (Highwire Press), `prism.doi` (PRISM), `dc.identifier` (Dublin Core) — puis se rabat sur Semantic Scholar (`graph/v1/paper/URL:`).
 
-Motif : une regex par site ne débloque que ce site. Il y a des milliers d'éditeurs et autant de schémas d'URL ; chacun demanderait une PR, et le premier changement de format côté éditeur casserait le motif en silence. Les index bibliographiques tiennent déjà cette correspondance et la maintiennent pour nous.
+Motif : une regex par site ne débloque que ce site. Il y a des milliers d'éditeurs et autant de schémas d'URL ; chacun demanderait une PR, et le premier changement de format côté éditeur casserait le motif en silence. Les balises Highwire, elles, sont universelles parce que Google Scholar les exige pour indexer un article : c'est l'éditeur qui répond, donc la réponse ne peut pas être fausse.
+
+**Mesuré le 2026-08-07, pas supposé.** Deux pistes plausibles ont été écartées par l'expérience, après avoir été codées :
+- Crossref `works?filter=uri:<url>` : **ce filtre n'existe pas** (l'API répond `filter-not-available`). Branche morte, supprimée.
+- OpenAlex `filter=locations.landing_page_url` : ne stocke que des URLs `doi.org`, jamais les pages d'éditeur. Zéro résultat sur `nature.com`.
+- Semantic Scholar `URL:` : répond `not found` sur `nature.com` **et** sur bioRxiv, et sature vite en 429 sans clé API. Conservé en repli seulement.
+
+Le diagnostic initial « Nature bloque le scraping » était par ailleurs faux : `GET nature.com/articles/nrn3667` avec notre propre User-Agent rend un **200** et la balise `citation_doi`. Vérifié aussi sur PLOS et Frontiers ; Cell, Wiley et The Lancet rendent 403 depuis une IP résidentielle mais portent leur DOI dans l'URL ou un PII déjà géré.
 
 **Périmètre conservé :** l'extraction *syntaxique* du DOI depuis l'URL (`_extract_doi`) reste — un DOI écrit dans un chemin est un DOI, pas une devinette. La normalisation de version bioRxiv (`10.1101/…v2` → forme canonique) reste aussi : c'est une règle de syntaxe DOI, pas une connaissance d'éditeur.
 
