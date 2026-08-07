@@ -33,6 +33,39 @@ Avant : Phase 2 (identité visuelle Pulsar-graph + audit) et Phase 1 (MVP comple
 
 ---
 
+## Session 2026-08-07 (apres-midi) — securite Supabase et rendu serveur
+
+- **ADR-034 / migration `030_rls_lockdown`** (PR #296, appliquee en prod).
+  Supabase exposait le schema `public` en PostgREST : les 11 tables etaient
+  sans RLS et les roles `anon` / `authenticated` portaient
+  `SELECT, INSERT, UPDATE, DELETE, TRUNCATE` sur toutes, y compris `users` et
+  les cles privees chiffrees de `linked_accounts` — avec une cle `anon`
+  publique par conception. Verifie apres coup :
+  `tables=11 sans_RLS=0 grants_anon_auth=0`, application intacte.
+  **Tout nouvel environnement Supabase doit rejouer ce verrou.**
+
+- **Rendu serveur retabli** (PR #297). `src/routes/+layout.ts` portait
+  `export const ssr = false` : accueil, pages vitrine et profils renvoyaient
+  1477 octets et **zero caractere de texte indexable**. C'est la cause du
+  `site:filum-eight.vercel.app` -> zero resultat, donc de l'echec de ChatGPT a
+  atteindre les fiches (une couche de navigation IA qui ne trouve rien dans
+  l'index ne tente jamais le GET). Le SSR redevient le defaut ; `dashboard`,
+  `auth` et `sandbox` s'en exemptent explicitement. Le profil `/@[username]`
+  passe d'un chargement en `$effect` (jamais execute en SSR) a un `load`
+  SvelteKit, ce qui corrige aussi le soft-404. Mesure en prod apres deploiement :
+  `/` 1500 car, `/about` 3406, `/features` 3693, `/discover` 4066,
+  `/@mathias-pinault` 1587, `/@inexistant-xyz` -> **404**.
+
+- **Diagnostic invalide a ne pas rejouer** : le `@` dans l'URL n'etait pas la
+  cause de l'echec de ChatGPT. Teste avec les deux formes, echec identique.
+  Les variantes `/c/<createur>/<fiche>` (PR #295) restent utiles pour les
+  agents qui suivent l'en-tete `Link`, mais elles ne reglaient pas le probleme.
+
+- **Serveur MCP** verifie de bout en bout sans authentification sur
+  `https://philum-api.duckdns.org/mcp/` (protocole 2025-06-18) :
+  `search_cards` et `get_card` repondent. C'est le canal d'acces qui marche
+  aujourd'hui pour un agent conversationnel.
+
 ## Session 2026-08-07 (nuit) — chantier 2 : DOI depuis URL editeur
 
 Branche `feat/extraction-pipeline-v2`. Le pipeline d'extraction v2 (ADR-030,
