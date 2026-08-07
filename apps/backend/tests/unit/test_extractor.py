@@ -122,6 +122,37 @@ class TestExtractDoi:
             "https://onlinelibrary.wiley.com/doi/10.1111/j.1467-8624.2010.01564.x/abstract"
         ) == ("10.1111/j.1467-8624.2010.01564.x")
 
+    def test_nature_url_slug_becomes_doi(self):
+        """Nature n'expose pas le DOI dans l'URL mais son slug est le suffixe
+        du DOI : `10.1038/<slug>`. Sans cette resolution, Crossref n'est
+        jamais interroge sur Nature (site anti-bot -> aucune ref extraite)."""
+        assert _extract_doi("https://www.nature.com/articles/nrn3667") == "10.1038/nrn3667"
+        assert _extract_doi("https://www.nature.com/articles/nature12345") == (
+            "10.1038/nature12345"
+        )
+        assert _extract_doi("https://www.nature.com/articles/s41586-024-08123-4") == (
+            "10.1038/s41586-024-08123-4"
+        )
+
+    def test_nature_url_ignores_slug_without_digit(self):
+        """Un slug qui n'a pas la forme DOI Nature n'est pas force en DOI."""
+        assert _extract_doi("https://www.nature.com/articles/xyz") is None
+
+    def test_biorxiv_url_strips_version_suffix(self):
+        """bioRxiv publie un DOI par version (`...v1`, `...v2.full`) mais
+        Crossref n'indexe que la forme canonique sans version."""
+        assert _extract_doi(
+            "https://www.biorxiv.org/content/10.1101/2024.01.15.575984v1"
+        ) == "10.1101/2024.01.15.575984"
+        assert _extract_doi(
+            "https://www.biorxiv.org/content/10.1101/2024.01.15.575984v2.full"
+        ) == "10.1101/2024.01.15.575984"
+
+    def test_medrxiv_url_strips_version_suffix(self):
+        assert _extract_doi(
+            "https://www.medrxiv.org/content/10.1101/2023.05.10.12345v1"
+        ) == "10.1101/2023.05.10.12345"
+
 
 class TestExtractPii:
     def test_sciencedirect_abs_url(self):

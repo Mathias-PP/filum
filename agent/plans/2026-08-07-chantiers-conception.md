@@ -106,21 +106,20 @@ route et de l'annoncer dans `llms.txt`. Effort : 1 h.
 
 ## Chantier 2 — Pipeline d'extraction agnostique (7 étages)
 
-**Plan existant :** `.claude/plans/effervescent-foraging-lollipop.md`.
+**FAIT.** Livré le 2026-07-23 sous ADR-030 (commit `389a291`), affiné dans plusieurs PR entre le 2026-07-23 et le 2026-08-05.
 
-Résumé : la fiche prod `/@mathias-pinault/inhibitory-control-development-a-network-neuroscience-perspe`
-contient 156 refs alors que Crossref en atteste 152 (vérité terrain) et
-Semantic Scholar en produit 160 dont 8 hallucinations ML. La cause : S2 appelé
-en priorité, Crossref en fallback, sans validation croisée.
+Ce plan (2026-08-07) le listait par erreur comme « pending » parce que
+`.claude/plans/effervescent-foraging-lollipop.md` avait pris la valeur d'un
+plan futur alors qu'il servait de spec au travail déjà réalisé.
 
-Cible : sur cette fiche, exactement 152 refs, aucune de plus, aucune erreur.
+État réel en prod :
+- 7 étages implémentés dans `apps/backend/app/api/v1/endpoints/imports.py`
+- Modules dédiés : `section_detector.py`, `wikipedia_oracle.py`, `ref_dedup.py`, `ref_scorer.py`
+- Réponse enrichie : `extraction_confidence`, `refs_from_oracle`, `refs_from_enrichment`, `refs_dropped_validation`, `refs_dropped_scoring`, `refs_dropped_s2_hallucination`
+- Frontend affiche le badge de confiance dans `sources/+page.svelte`
+- 61 tests unitaires + intégration sur Frontiers 651547 → objectif 152 refs tenu
 
-Effort estimé : 3-4 j. Voir le plan pour les 7 étages (oracle spécialisé →
-autoritatif si DOI → enrichissement → validation section-detection →
-dédup multi-clé → scoring syntaxique → classification).
-
-**À nouveau prioritaire** après le retour d'usage 2026-08-07 (Nature nrn3667
-non-scrapable + parseur texte-libre insuffisant).
+**Ajout 2026-08-07 (nuit)** : résolution DOI Nature/bioRxiv/medRxiv depuis l'URL éditeur. Nature `nrn3667` produisait 0 ref parce que le site bloque le scraping et que le DOI n'était pas dérivé de l'URL. Corrigé dans `url_extractor._extract_doi`.
 
 ---
 
@@ -229,14 +228,14 @@ Effort : 0.5 j.
 
 ## Priorisation suggérée
 
-| Ordre | Chantier | Motivation |
+| Ordre | Chantier | État |
 |---|---|---|
-| P0 | 1B + 1C (content nego + JSON structuré) | Débloque l'usage AI, pierre angulaire de la valeur du projet |
-| P1 | 2 (pipeline extraction v2) | Corrige le bug 156→152 refs, fondation qualité |
-| P2 | 3a (détection anti-scraping) | Petit effort, gros gain UX |
-| P3 | 4 + 5 (feed + recherche créateurs) | Fondation « effet plate-forme » |
-| P4 | 6 (audits persona) | Découverte de bugs cachés |
-| P5 | 7 (audit visiteur) | Après les bugs métier |
+| ~~P0~~ | 1B + 1C (content nego + JSON structuré) | ✅ fait 2026-08-07 (PR #291) |
+| ~~P1~~ | 2 (pipeline extraction v2) | ✅ fait 2026-07-23 (ADR-030) + fix DOI éditeur 2026-08-07 |
+| ~~P2~~ | 3a (détection anti-scraping) | ✅ fait 2026-08-07 (PR #291) |
+| ~~P3~~ | 4 + 5 (feed + recherche créateurs) | ✅ fait 2026-08-07 (PR #291) |
+| P4 | 6 (audits persona) | Pending — nécessite créer du vrai contenu |
+| P5 | 7 (audit visiteur) | Pending — nécessite test mobile |
 
 ## Hors scope de ce plan (par choix explicite)
 
