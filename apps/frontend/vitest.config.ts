@@ -12,6 +12,10 @@ export default defineConfig({
     passWithNoTests: true,
   },
   resolve: {
+    // Sans cette condition, Svelte 5 sert sa version serveur et `mount()` lève
+    // `lifecycle_function_unavailable` : aucun composant n'est montable, ce
+    // qui se lisait comme « testing-library incompatible Svelte 5 ».
+    conditions: ['browser'],
     alias: {
       $lib: path.resolve('./src/lib'),
       $components: path.resolve('./src/lib/components'),
