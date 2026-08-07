@@ -8,7 +8,7 @@ Sans ce repli, un journaliste et un essayiste voient un ecran vide.
 
 from __future__ import annotations
 
-from app.extractors.body_links import extract_body_links
+from app.extractors.body_links import _INTERNAL_LINKS_MAX, extract_body_links
 
 PAGE = """
 <html><body>
@@ -71,12 +71,50 @@ def test_ecarte_les_boutons_de_partage_mais_garde_un_message_cite():
     assert "https://x.com/unauteur/status/12345" in urls
 
 
-def test_ecarte_les_liens_internes():
-    """Renvoyer le contenu vers lui-meme ne dit rien de ses sources."""
+def test_ecarte_un_renvoi_interne_pose_hors_phrase():
+    """« notre enquete », dans un paragraphe trop court pour etre du texte
+    courant, est un renvoi editorial et non une citation."""
     refs = extract_body_links(PAGE, "https://www.propublica.org/article/how-the-irs-was-gutted")
     urls = {r.url for r in refs}
-    assert not any(u.startswith("/") for u in urls)
     assert "https://www.propublica.org/article/autre" not in urls
+
+
+PAGE_INSTITUTION = """
+<html><body><main>
+  <p>L'organisation publie un
+    <a href="/publications/i/item/9789240031029">plan d'action 2013-2030</a>
+    qui detaille les etapes necessaires pour offrir des interventions adaptees
+    aux personnes souffrant de troubles mentaux, dont la depression.</p>
+  <p>Le <a href="/publications/i/item/WHO-MSD-MER-18.5">manuel Problem Management Plus</a>
+    est l'un des outils diffuses dans ce cadre, aux cotes de plusieurs autres
+    guides destines aux personnels non specialises et largement traduits.</p>
+</main></body></html>
+"""
+
+
+def test_garde_un_document_de_la_meme_institution_cite_dans_une_phrase():
+    """Mesure du 2026-08-07 sur la fiche depression de l'OMS : elle citait cinq
+    publications de l'OMS, toutes ecartees comme « liens internes ». Une
+    institution qui renvoie a ses propres rapports cite bel et bien ses
+    sources ; l'ecran n'en montrait qu'une, externe."""
+    refs = extract_body_links(PAGE_INSTITUTION, "https://www.who.int/news-room/fact-sheets/x")
+    urls = {r.url for r in refs}
+    assert "https://www.who.int/publications/i/item/9789240031029" in urls
+    assert "https://www.who.int/publications/i/item/WHO-MSD-MER-18.5" in urls
+
+
+def test_renonce_aux_liens_internes_quand_le_site_en_fait_un_dispositif():
+    """Mesure du 2026-08-07 : l'essai Gwern porte 238 liens internes poses dans
+    ses phrases — c'est son systeme de renvois, pas une bibliographie. Les
+    reprendre ferait passer la fiche de 78 a 316 sources. Au-dela du plafond on
+    n'en garde aucun, plutot que d'en trier arbitrairement."""
+    phrase = "Un paragraphe assez long pour ressembler a du texte courant reel. "
+    corps = "".join(
+        f"<p>{phrase}<a href='/note-{i}'>note {i}</a> {phrase}</p>"
+        for i in range(_INTERNAL_LINKS_MAX + 1)
+    )
+    refs = extract_body_links(f"<html><body><main>{corps}</main></body></html>", "https://blog.ex/a")
+    assert refs == []
 
 
 def test_ecarte_les_liens_sans_texte():
