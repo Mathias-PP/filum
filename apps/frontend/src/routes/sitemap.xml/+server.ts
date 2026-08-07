@@ -3,6 +3,8 @@ import type { RequestHandler } from './$types';
 const STATIC_PAGES = [
   { path: '/', priority: '1.0', changefreq: 'daily' },
   { path: '/discover', priority: '0.9', changefreq: 'daily' },
+  { path: '/discover/creators', priority: '0.7', changefreq: 'daily' },
+  { path: '/feed', priority: '0.7', changefreq: 'daily' },
   { path: '/about', priority: '0.5', changefreq: 'monthly' },
   { path: '/features', priority: '0.5', changefreq: 'monthly' },
   { path: '/developers', priority: '0.5', changefreq: 'monthly' },
@@ -58,6 +60,24 @@ export const GET: RequestHandler = async ({ url, fetch, setHeaders }) => {
     }
   } catch {
     // Backend injoignable : on sert les pages statiques seules.
+  }
+
+  // Les profils sont la porte d'entree vers l'ensemble des fiches d'un
+  // createur ; les omettre laissait un moteur les decouvrir uniquement par
+  // rebond depuis une fiche.
+  try {
+    const res = await fetch('/api/v1/discover/creators?limit=500');
+    if (res.ok) {
+      const body = await res.json();
+      for (const c of body.results ?? []) {
+        entries.push(
+          `  <url><loc>${esc(`${url.origin}/@${c.slug}`)}</loc>` +
+            `<changefreq>weekly</changefreq><priority>0.6</priority></url>`
+        );
+      }
+    }
+  } catch {
+    // Idem : un sitemap sans les profils reste utile.
   }
 
   setHeaders({
