@@ -66,8 +66,13 @@ export const GET: RequestHandler = async ({ url, fetch, setHeaders }) => {
   // createur ; les omettre laissait un moteur les decouvrir uniquement par
   // rebond depuis une fiche.
   try {
-    const res = await fetch('/api/v1/discover/creators?limit=500');
-    if (res.ok) {
+    // L'endpoint plafonne `limit` a 50 : un seul appel large repondait 422, et
+    // le `if (res.ok)` avalait l'echec en silence.
+    const LIMIT = 50;
+    const MAX = 5000;
+    for (let offset = 0; offset < MAX; offset += LIMIT) {
+      const res = await fetch(`/api/v1/discover/creators?limit=${LIMIT}&offset=${offset}`);
+      if (!res.ok) break;
       const body = await res.json();
       for (const c of body.results ?? []) {
         entries.push(
@@ -75,6 +80,7 @@ export const GET: RequestHandler = async ({ url, fetch, setHeaders }) => {
             `<changefreq>weekly</changefreq><priority>0.6</priority></url>`
         );
       }
+      if (offset + LIMIT >= (body.total ?? 0)) break;
     }
   } catch {
     // Idem : un sitemap sans les profils reste utile.
