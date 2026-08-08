@@ -16,6 +16,7 @@ from xml.sax.saxutils import escape  # nosec B406 - echappe la sortie, ne parse 
 
 from app.services import citation_styles
 from app.services.csl import author_display, to_csl
+from app.services.export_neighbourhood import NeighbourCard, Neighbourhood
 from app.services.export_scope import FULL, ExportScope
 
 if TYPE_CHECKING:
@@ -90,7 +91,42 @@ def _excerpts(source: Source) -> list[dict]:
     ]
 
 
-def export_json(card: BiblioCard, public_url: str, scope: ExportScope = FULL) -> str:
+def _json_neighbourhood(voisinage: Neighbourhood, base_url: str) -> dict:
+    """Les fiches voisines, chaque sens dans son propre bac.
+
+    Le sens est porte par la cle plutot que par un champ de chaque entree :
+    « citee » et « citante » ne sont pas deux valeurs d'un meme attribut mais
+    deux relations differentes, et un consommateur qui n'en lit qu'une doit
+    pouvoir le faire sans filtrer.
+    """
+
+    def rendre(voisines: list[NeighbourCard]) -> list[dict]:
+        return [
+            {
+                "degree": v.degree,
+                "title": v.card.title,
+                "slug": v.card.slug,
+                "creator": v.card.user.username,
+                "public_url": f"{base_url}/@{v.card.user.username}/{v.card.slug}",
+                "content_url": v.card.content_url,
+                "sources": [_json_source(s, v.scope) for s in v.card.sources],
+            }
+            for v in voisines
+        ]
+
+    return {
+        "cited": rendre(voisinage.cited),
+        "citing": rendre(voisinage.citing),
+        "truncated": voisinage.truncated,
+    }
+
+
+def export_json(
+    card: BiblioCard,
+    public_url: str,
+    scope: ExportScope = FULL,
+    neighbourhood: Neighbourhood | None = None,
+) -> str:
     payload = {
         "philum_export_version": 1,
         "card": {
@@ -107,6 +143,10 @@ def export_json(card: BiblioCard, public_url: str, scope: ExportScope = FULL) ->
         },
         "sources": [_json_source(s, scope) for s in card.sources],
     }
+    if neighbourhood is not None:
+        payload["connected_cards"] = _json_neighbourhood(
+            neighbourhood, public_url.rsplit("/@", 1)[0]
+        )
     return json.dumps(payload, ensure_ascii=False, indent=2)
 
 
@@ -144,7 +184,12 @@ def _json_source(s: Source, scope: ExportScope) -> dict:
     return entry
 
 
-def export_philum_json(card: BiblioCard, public_url: str, scope: ExportScope = FULL) -> str:
+def export_philum_json(
+    card: BiblioCard,
+    public_url: str,
+    scope: ExportScope = FULL,
+    neighbourhood: Neighbourhood | None = None,
+) -> str:
     """Format `application/vnd.philum+json` : cible primaire des agents IA.
 
     Superset de `export_json` avec :
@@ -156,27 +201,28 @@ def export_philum_json(card: BiblioCard, public_url: str, scope: ExportScope = F
       indispensable pour qu'un agent evite de propager une source retiree ;
     - la version du format en clair, pour permettre une evolution stricte.
     """
-    return json.dumps(
-        {
-            "@context": "https://schema.org",
-            "@type": "Article",
-            "philum_format_version": "1.0",
-            "url": public_url,
-            "headline": card.title,
-            "description": card.description,
-            "datePublished": card.published_at.isoformat() if card.published_at else None,
-            "author": {
-                "@type": "Person",
-                "identifier": card.user.username,
-                "name": card.user.display_name or card.user.username,
-                "url": f"{public_url.rsplit('/@', 1)[0]}/@{card.user.username}",
-            },
-            "isBasedOn": card.content_url,
-            "citation": [_philum_source(s, scope) for s in card.sources],
+    document: dict = {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "philum_format_version": "1.0",
+        "url": public_url,
+        "headline": card.title,
+        "description": card.description,
+        "datePublished": card.published_at.isoformat() if card.published_at else None,
+        "author": {
+            "@type": "Person",
+            "identifier": card.user.username,
+            "name": card.user.display_name or card.user.username,
+            "url": f"{public_url.rsplit('/@', 1)[0]}/@{card.user.username}",
         },
-        ensure_ascii=False,
-        indent=2,
-    )
+        "isBasedOn": card.content_url,
+        "citation": [_philum_source(s, scope) for s in card.sources],
+    }
+    if neighbourhood is not None:
+        document["philum:connectedCards"] = _json_neighbourhood(
+            neighbourhood, public_url.rsplit("/@", 1)[0]
+        )
+    return json.dumps(document, ensure_ascii=False, indent=2)
 
 
 def _philum_source(s: Source, scope: ExportScope) -> dict:
@@ -493,7 +539,89 @@ def _excerpt_lines(source: Source) -> list[str]:
     return lines
 
 
-def export_markdown(card: BiblioCard, public_url: str, scope: ExportScope = FULL) -> str:
+def _source_lines(source: Source, scope: ExportScope) -> list[str]:
+    """Une source en puce Markdown, detail selon le perimetre."""
+    label = source.title or source.url
+    pivot = " ⭐" if source.is_pivot else ""
+    lines = [f"- [{label}]({source.url}){pivot}"]
+    meta = []
+    if source.authors:
+        meta.append(source.authors)
+    if source.published_at:
+        meta.append(source.published_at.date().isoformat())
+    meta.append(source.category)
+    if source.journal:
+        meta.append(source.journal)
+    lines.append(f"  - {' · '.join(meta)}")
+    lines += _source_details(source, scope)
+    if scope.annotations and source.annotation:
+        # Nommee, parce que l'extrait juste en dessous porte la meme marque
+        # de citation : l'un est ce que la source dit, l'autre ce que le
+        # createur en dit. Les confondre attribuerait a un auteur des mots
+        # qu'il n'a pas ecrits — le contraire exact de ce que Philum sert.
+        lines.append(f"  - > **Note du créateur** — {source.annotation}")
+    if scope.excerpts:
+        lines += _excerpt_lines(source)
+    if scope.archives and source.archive_url:
+        lines.append(f"  - [Archive]({source.archive_url})")
+    return lines
+
+
+#: Intitules des deux sens. Ecrits en toutes lettres parce que « fiches liees »
+#: ne dirait pas laquelle s'appuie sur l'autre — et c'est tout ce qui compte.
+_DIRECTION_TITRES = {
+    "cited": "Fiches citées par celle-ci",
+    "citing": "Fiches qui citent celle-ci",
+}
+
+
+def _neighbourhood_lines(voisinage: Neighbourhood, base_url: str) -> list[str]:
+    lines: list[str] = []
+    for sens, voisines in (("cited", voisinage.cited), ("citing", voisinage.citing)):
+        if not voisines:
+            continue
+        lines += [f"## {_DIRECTION_TITRES[sens]}", ""]
+        for degre in sorted({v.degree for v in voisines}):
+            au_degre = [v for v in voisines if v.degree == degre]
+            lines += [f"### Degré {degre}", ""]
+            for v in au_degre:
+                lines += _neighbour_lines(v, base_url)
+        lines.append("")
+    if voisinage.truncated:
+        lines += [
+            "> Le voisinage a été tronqué : la fiche en compte plus que ce "
+            "qu'un export peut porter.",
+            "",
+        ]
+    return lines
+
+
+def _neighbour_lines(v: NeighbourCard, base_url: str) -> list[str]:
+    # Le titre est un lien vers la fiche voisine : sans lui, l'export dit
+    # qu'une fiche existe sans donner le moyen d'y aller, ce qui est le
+    # contraire de ce que Philum sert.
+    adresse = f"{base_url}/@{v.card.user.username}/{v.card.slug}"
+    entete = f"Par @{v.card.user.username}"
+    if v.card.content_url:
+        entete += f" — contenu : {v.card.content_url}"
+    lines = [f"#### [{v.card.title}]({adresse})", "", entete, ""]
+    if v.scope.references_only:
+        # Perimetre reduit au minimum : la liste nue suffit, l'entete « Sources »
+        # ferait un titre par fiche voisine pour trois lignes en dessous.
+        lines += [f"- [{s.title or s.url}]({s.url})" for s in v.card.sources]
+    else:
+        for source in v.card.sources:
+            lines += _source_lines(source, v.scope)
+    lines.append("")
+    return lines
+
+
+def export_markdown(
+    card: BiblioCard,
+    public_url: str,
+    scope: ExportScope = FULL,
+    neighbourhood: Neighbourhood | None = None,
+) -> str:
     lines = [
         "---",
         f'title: "{card.title}"',
@@ -516,30 +644,10 @@ def export_markdown(card: BiblioCard, public_url: str, scope: ExportScope = FULL
     lines.append("## Sources")
     lines.append("")
     for source in card.sources:
-        label = source.title or source.url
-        pivot = " ⭐" if source.is_pivot else ""
-        lines.append(f"- [{label}]({source.url}){pivot}")
-        meta = []
-        if source.authors:
-            meta.append(source.authors)
-        if source.published_at:
-            meta.append(source.published_at.date().isoformat())
-        meta.append(source.category)
-        if source.journal:
-            meta.append(source.journal)
-        lines.append(f"  - {' · '.join(meta)}")
-        lines += _source_details(source, scope)
-        if scope.annotations and source.annotation:
-            # Nommee, parce que l'extrait juste en dessous porte la meme marque
-            # de citation : l'un est ce que la source dit, l'autre ce que le
-            # createur en dit. Les confondre attribuerait a un auteur des mots
-            # qu'il n'a pas ecrits — le contraire exact de ce que Philum sert.
-            lines.append(f"  - > **Note du créateur** — {source.annotation}")
-        if scope.excerpts:
-            lines += _excerpt_lines(source)
-        if scope.archives and source.archive_url:
-            lines.append(f"  - [Archive]({source.archive_url})")
+        lines += _source_lines(source, scope)
     lines.append("")
+    if neighbourhood is not None:
+        lines += _neighbourhood_lines(neighbourhood, public_url.rsplit("/@", 1)[0])
     return "\n".join(lines)
 
 
