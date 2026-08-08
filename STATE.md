@@ -804,7 +804,7 @@ Vercel : `BACKEND_URL=https://philum-api.duckdns.org` (env var serverless, jamai
 
 **Moyen terme** (déclencheurs naturels)
 - ~~**F5** — Queue Wayback durable (Postgres-backed + worker)~~ ❌ **prémisse fausse, mesurée le 2026-08-07** — la file *est* déjà durable : l'état vit en base et chaque affichage de fiche relance les non-archivées. Les 493 sources en attente ne venaient pas d'un travail perdu (0 capture existante sur 60 échantillonnées) mais du quota Save Page Now, traité en #326. Un worker n'aurait rien changé ; il ne redeviendra utile que si la reprise paresseuse elle-même sature, ce qu'aucune mesure ne montre.
-- **Phases 2-4 du rename Philum** — convertir en issues GitHub plutôt qu'attendre un gros chantier (cf. `.docs/14-philum-rename-migration.md`).
+- ~~**Phases 2-4 du rename Philum** — convertir en issues GitHub~~ ✅ le 2026-08-08 : issues **#345** (docs), **#346** (identifiants frontend + dbt), **#347** (cookies, headers, domaine, dépôt). Chacune porte son déclencheur naturel plutôt qu'une date, et les deux gestes hors autonomie d'agent y sont nommés : renommer le cookie déconnecte toutes les sessions ouvertes, renommer le dépôt touche les URI de redirection du client OAuth Google.
 - **F3** — Tests Postgres au lieu de SQLite quand on ajoute un index partial / colonne JSONB.
 
 **Long terme** (conditionnel à validation produit)
