@@ -767,22 +767,41 @@
   }
 
   /**
-   * La couleur du fond du graphe, telle qu'elle est en ce moment.
+   * La valeur d'un jeton de couleur du theme, telle qu'elle est en ce moment.
    *
-   * Onze halos et fonds de pastille etaient ecrits `#ffffff` : leur role n'est
-   * pas « blanc », c'est « la couleur du fond », pour detacher un libelle du
-   * trait qui passe derriere. En mode sombre ils restaient blancs sur un fond
-   * a #1A1A1E et devenaient des taches. On ne peut pas y mettre `var(--…)` :
-   * D3 ecrit un attribut de presentation SVG, ou `var()` n'est pas resolu — il
-   * faut donc lire la valeur calculee.
+   * Le chassis du graphe etait peint en nuances figees : `#ffffff` pour les
+   * halos, `#0f172a` / `#475569` / `#64748b` pour les libelles. Ces valeurs
+   * disent « blanc » et « presque noir » la ou le role est « la couleur du
+   * fond » et « la couleur du texte » — et un role, lui, s'inverse avec le
+   * theme. En sombre les libelles devenaient invisibles et les halos des
+   * taches claires.
+   *
+   * On ne peut pas y ecrire `var(--…)` : D3 pose un attribut de presentation
+   * SVG, ou `var()` n'est pas resolu. Il faut donc lire la valeur calculee, et
+   * redessiner quand le theme change (l'effet sur `$theme` plus bas).
+   *
+   * Le repli sombre-sur-clair sert au rendu serveur, ou il n'y a pas de
+   * `document` : c'est le theme par defaut de Philum.
    */
-  function couleurDuFond(): string {
-    if (typeof document === 'undefined') return '#ffffff';
-    const triplet = getComputedStyle(document.documentElement)
-      .getPropertyValue('--bg-primary')
-      .trim();
-    return triplet ? `rgb(${triplet})` : '#ffffff';
+  const REPLIS: Record<string, string> = {
+    '--bg-primary': '#ffffff',
+    '--bg-tertiary': '#f1f5f9',
+    '--text-primary': '#0f172a',
+    '--text-secondary': '#475569',
+    '--text-tertiary': '#64748b',
+    '--text-placeholder': '#94a3b8',
+    '--border': '#e2e8f0',
+    '--border-strong': '#cbd5e1',
+  };
+
+  function jeton(nom: keyof typeof REPLIS | string): string {
+    const repli = REPLIS[nom] ?? '#000000';
+    if (typeof document === 'undefined') return repli;
+    const triplet = getComputedStyle(document.documentElement).getPropertyValue(nom).trim();
+    return triplet ? `rgb(${triplet})` : repli;
   }
+
+  const couleurDuFond = () => jeton('--bg-primary');
 
   function remount() {
     selectSource(null);
@@ -1148,8 +1167,8 @@
         .attr('y', -span)
         .attr('width', UNDATED_BAND)
         .attr('height', span * 2)
-        .attr('fill', '#f1f5f9')
-        .attr('stroke', '#e2e8f0')
+        .attr('fill', jeton('--bg-tertiary'))
+        .attr('stroke', jeton('--border'))
         .attr('stroke-dasharray', '4 4');
     }
 
@@ -1162,7 +1181,7 @@
         .attr('x2', chrono.breakX + CHRONO_MARGIN)
         .attr('y1', -span)
         .attr('y2', span)
-        .attr('stroke', '#cbd5e1')
+        .attr('stroke', jeton('--border-strong'))
         .attr('stroke-width', 1.5)
         .attr('stroke-dasharray', '2 6');
     }
@@ -1173,7 +1192,7 @@
         .attr('x2', t.x + CHRONO_MARGIN)
         .attr('y1', -span)
         .attr('y2', span)
-        .attr('stroke', '#e2e8f0')
+        .attr('stroke', jeton('--border'))
         .attr('stroke-width', 1);
     }
   }
@@ -1217,14 +1236,14 @@
       .attr('x2', width)
       .attr('y1', CHRONO_HEADER_HEIGHT)
       .attr('y2', CHRONO_HEADER_HEIGHT)
-      .attr('stroke', '#e2e8f0');
+      .attr('stroke', jeton('--border'));
     g.selectAll('text')
       .data(chronoTicks)
       .join('text')
       .attr('y', CHRONO_HEADER_HEIGHT - 7)
       .attr('text-anchor', 'middle')
       .attr('font-size', 12)
-      .attr('fill', (d) => (d.muted ? '#94a3b8' : '#475569'));
+      .attr('fill', (d) => (d.muted ? jeton('--text-placeholder') : jeton('--text-secondary')));
 
     // Marque de rupture d'échelle, la convention usuelle du « ⁄⁄ » : elle
     // interrompt visiblement la règle des années, pour que la colonne « sans
@@ -1244,7 +1263,7 @@
           .attr('x2', dx + 3)
           .attr('y1', CHRONO_HEADER_HEIGHT + 4)
           .attr('y2', CHRONO_HEADER_HEIGHT - 4)
-          .attr('stroke', '#94a3b8')
+          .attr('stroke', jeton('--text-placeholder'))
           .attr('stroke-width', 1.5)
           .attr('stroke-linecap', 'round');
       }
@@ -1454,7 +1473,11 @@
       // propos est le seul intérêt de l'annoter. Sans rapport, le trait garde
       // sa couleur d'origine.
       .attr('stroke', (d) =>
-        d.stance ? stanceStroke(d.stance) : d.kind === 'meta' ? '#6366f1' : '#94a3b8'
+        d.stance
+          ? stanceStroke(d.stance)
+          : d.kind === 'meta'
+            ? '#6366f1'
+            : jeton('--text-placeholder')
       )
       .attr('stroke-opacity', (d) => {
         if ((d as any).forkHide) return 0;
@@ -1638,7 +1661,7 @@
       .attr('width', BADGE_HEIGHT)
       .attr('height', BADGE_HEIGHT)
       .attr('rx', BADGE_HEIGHT / 2)
-      .attr('fill', '#94a3b8')
+      .attr('fill', jeton('--text-placeholder'))
       .attr('stroke', couleurDuFond())
       .attr('stroke-width', 1.5)
       .on('click', (event, d) => {
@@ -1687,7 +1710,7 @@
       // moitié, là où le nœud de fiche n'a besoin que de se distinguer.
       .attr('font-size', 12 * labelScale)
       .attr('font-weight', 600)
-      .attr('fill', '#0f172a')
+      .attr('fill', jeton('--text-primary'))
       // Halo blanc permanent — cf. `title-label` pour le pourquoi.
       .style('paint-order', 'stroke')
       .attr('stroke', couleurDuFond())
@@ -1704,7 +1727,7 @@
       .attr('text-anchor', 'middle')
       .attr('y', (d) => -(d.radius + 22))
       .attr('font-size', 10.5 * labelScale)
-      .attr('fill', '#475569')
+      .attr('fill', jeton('--text-secondary'))
       .style('paint-order', 'stroke')
       .attr('stroke', couleurDuFond())
       .attr('stroke-width', 3)
@@ -1732,7 +1755,7 @@
       .attr('dy', (d) => -(d.radius + 6))
       .attr('font-size', 11 * labelScale)
       .attr('font-weight', 500)
-      .attr('fill', '#0f172a')
+      .attr('fill', jeton('--text-primary'))
       .style('paint-order', 'stroke')
       .attr('stroke', couleurDuFond())
       .attr('stroke-width', 3)
@@ -1748,7 +1771,7 @@
       .attr('text-anchor', 'middle')
       .attr('dy', (d) => -(d.radius + 18))
       .attr('font-size', 10 * labelScale)
-      .attr('fill', '#475569')
+      .attr('fill', jeton('--text-secondary'))
       // Halo blanc permanent : un libellé qui croise un lien devenait illisible,
       // le trait passant au milieu des lettres. `paint-order: stroke` dessine le
       // contour *sous* le remplissage, de sorte que le halo dégage la lettre
@@ -1772,7 +1795,7 @@
       .attr('text-anchor', 'middle')
       .attr('dy', (d) => d.radius + 13)
       .attr('font-size', 10 * labelScale)
-      .attr('fill', (d) => (nodeYear(d) ? '#64748b' : '#cbd5e1'))
+      .attr('fill', (d) => (nodeYear(d) ? jeton('--text-tertiary') : jeton('--border-strong')))
       .style('paint-order', 'stroke')
       .attr('stroke', couleurDuFond())
       .attr('stroke-width', 3)
@@ -2166,7 +2189,7 @@
       .selectAll<SVGTextElement, GraphNode>('text.title-label')
       .style('display', (d) => (showTitle || d.id === hovered || matched?.has(d.id) ? '' : 'none'))
       .attr('font-weight', (d) => (d.id === hovered ? 600 : null))
-      .attr('fill', (d) => (d.id === hovered ? '#0f172a' : '#475569'))
+      .attr('fill', (d) => (d.id === hovered ? jeton('--text-primary') : jeton('--text-secondary')))
       // Le halo est permanent ; le survol l'élargit seulement, parce que le
       // titre complet y est plus long et croise donc davantage de liens.
       .attr('stroke-width', (d) => (d.id === hovered ? 4 : 3))
@@ -2315,7 +2338,7 @@
               class="px-2.5 py-1.5 transition-colors {i > 0
                 ? 'border-l border-border'
                 : ''} {colorMode === opt.value
-                ? 'bg-ink-primary text-white font-medium'
+                ? 'bg-ink-primary text-surface-primary font-medium'
                 : 'text-ink-secondary hover:bg-surface-secondary'}"
               aria-pressed={colorMode === opt.value}
               title="Colorer par {opt.label.toLowerCase()}"
@@ -2337,7 +2360,7 @@
               class="px-2.5 py-1.5 transition-colors {i > 0
                 ? 'border-l border-border'
                 : ''} {layoutMode === opt.value
-                ? 'bg-ink-primary text-white font-medium'
+                ? 'bg-ink-primary text-surface-primary font-medium'
                 : 'text-ink-secondary hover:bg-surface-secondary'}"
               aria-pressed={layoutMode === opt.value}
               title={opt.help}
@@ -2359,7 +2382,7 @@
                 class="px-2.5 py-1.5 transition-colors {i > 0
                   ? 'border-l border-border'
                   : ''} {direction === opt.v
-                  ? 'bg-ink-primary text-white font-medium'
+                  ? 'bg-ink-primary text-surface-primary font-medium'
                   : 'text-ink-secondary hover:bg-surface-secondary'}"
                 aria-pressed={direction === opt.v}
                 onclick={() => (direction = opt.v as GraphDirection)}
@@ -2509,7 +2532,7 @@
             type="button"
             onclick={() => (showFirstAuthor = !showFirstAuthor)}
             class="px-2.5 py-1.5 border-l border-border transition-colors {showFirstAuthor
-              ? 'bg-ink-primary text-white font-medium'
+              ? 'bg-ink-primary text-surface-primary font-medium'
               : 'text-ink-secondary hover:bg-surface-secondary'}"
             aria-pressed={showFirstAuthor}
             title="N'afficher que le premier nom d'auteur"
@@ -2520,7 +2543,7 @@
             type="button"
             onclick={() => (showLastAuthor = !showLastAuthor)}
             class="px-2.5 py-1.5 border-l border-border transition-colors {showLastAuthor
-              ? 'bg-ink-primary text-white font-medium'
+              ? 'bg-ink-primary text-surface-primary font-medium'
               : 'text-ink-secondary hover:bg-surface-secondary'}"
             aria-pressed={showLastAuthor}
             title="N'afficher que le dernier nom d'auteur"
