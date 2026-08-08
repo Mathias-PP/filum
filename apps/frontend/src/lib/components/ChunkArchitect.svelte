@@ -182,6 +182,22 @@
 </script>
 
 <div class="space-y-3 rounded-lg border border-border-subtle bg-surface-secondary p-3">
+  <!--
+    Le champ de collage vient en premier : c'est le geste d'entree. Il etait
+    sous les reglages et sous le bouton « Proposer un decoupage », si bien que
+    l'ecran demandait de choisir une taille cible et de lancer le decoupage
+    avant meme d'avoir de quoi decouper.
+  -->
+  <label class="block text-xs text-ink-secondary">
+    Texte du contenu original — laissez vide pour tenter de lire la page
+    <textarea
+      bind:value={pasted}
+      rows="4"
+      placeholder="Collez ici tout ou partie du texte de la source…"
+      class="mt-1 w-full rounded-lg border border-border-strong bg-surface-primary px-3 py-2 text-sm text-ink-primary placeholder:text-ink-placeholder"
+    ></textarea>
+  </label>
+
   <div class="flex flex-wrap items-end gap-2">
     <label class="flex flex-col gap-1 text-xs text-ink-secondary">
       Unité
@@ -234,16 +250,6 @@
       </button>
     {/if}
   </div>
-
-  <label class="block text-xs text-ink-secondary">
-    Texte du contenu original — laissez vide pour tenter de lire la page
-    <textarea
-      bind:value={pasted}
-      rows="4"
-      placeholder="Collez ici tout ou partie du texte de la source…"
-      class="mt-1 w-full rounded-lg border border-border-strong bg-surface-primary px-3 py-2 text-sm text-ink-primary placeholder:text-ink-placeholder"
-    ></textarea>
-  </label>
 
   {#if error}
     <p class="text-xs text-danger">{error}</p>

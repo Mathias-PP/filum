@@ -15,6 +15,7 @@ import type {
   ChunkResponse,
   ChunkUnit,
   ExcerptSuggestResponse,
+  ExcerptVerifyResponse,
   ImportFromUrlResponse,
   IncomingCitations,
   UrlMetadataResponse,
@@ -304,6 +305,21 @@ export const api = {
 
     delete: async (sourceId: string, excerptId: string): Promise<void> => {
       await request(`/sources/${sourceId}/excerpts/${excerptId}`, { method: 'DELETE' });
+    },
+
+    /**
+     * Relit la page de la source et cherche chaque extrait dans le texte
+     * d'aujourd'hui.
+     *
+     * Les quatre états ne se replient pas l'un sur l'autre : `unreadable` dit
+     * que la page n'a rendu aucun texte — on ne sait pas — là où `missing` dit
+     * que le passage n'y est pas. Les confondre ferait passer une source
+     * inaccessible pour une citation inventée.
+     */
+    verify: async (sourceId: string): Promise<ExcerptVerifyResponse> => {
+      return request<ExcerptVerifyResponse>(`/sources/${sourceId}/excerpts/verify`, {
+        method: 'POST',
+      });
     },
 
     suggest: async (sourceId: string): Promise<ExcerptSuggestResponse> => {
