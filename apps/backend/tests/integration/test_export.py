@@ -29,6 +29,7 @@ async def client(db_session):
 async def published_card(db_session, test_user):
     from app.models.biblio_card import BiblioCard
     from app.models.source import Source
+    from app.models.source_excerpt import SourceExcerpt
 
     card = BiblioCard(
         id=uuid4(),
@@ -43,10 +44,11 @@ async def published_card(db_session, test_user):
     )
     db_session.add(card)
     await db_session.flush()
+    pivot_id = uuid4()
     db_session.add_all(
         [
             Source(
-                id=uuid4(),
+                id=pivot_id,
                 biblio_card_id=card.id,
                 position=0,
                 url="https://example.org/paper",
@@ -69,6 +71,18 @@ async def published_card(db_session, test_user):
                 author_kind="media",
             ),
         ]
+    )
+    await db_session.flush()
+    db_session.add(
+        SourceExcerpt(
+            id=uuid4(),
+            source_id=pivot_id,
+            position=0,
+            title="Le passage decisif",
+            text="Les enfants de six ans montrent deja une inhibition mesurable.",
+            anchor_prefix="Or, ",
+            anchor_offset=1204,
+        )
     )
     await db_session.commit()
     await db_session.refresh(card)
@@ -210,6 +224,74 @@ async def test_export_chaque_style_de_citation(client, published_card, test_user
     assert resp.text.startswith(f"Bibliographie ({libelle}) —")
     assert "https://" in resp.text
     assert resp.headers["content-disposition"].endswith(f'.{style}.txt"')
+
+
+@pytest.mark.asyncio
+async def test_export_complet_par_defaut_porte_les_extraits(client, published_card, test_user):
+    """Sans `include`, l'export est complet — extraits compris.
+
+    Les extraits n'apparaissaient dans aucun format avant le perimetre : c'est
+    pourtant le verbatim qui relie une affirmation a sa source, donc la piece la
+    plus specifique a Philum.
+    """
+    resp = await client.get(
+        f"/api/v1/@{test_user.username}/{published_card.slug}/export",
+        params={"format": "markdown"},
+    )
+    assert resp.status_code == 200
+    assert "Les enfants de six ans" in resp.text
+    assert "Le passage decisif" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_export_include_vide_donne_la_bibliographie_seule(client, published_card, test_user):
+    resp = await client.get(
+        f"/api/v1/@{test_user.username}/{published_card.slug}/export",
+        params={"format": "markdown", "include": ""},
+    )
+    assert resp.status_code == 200
+    body = resp.text
+    # Les references restent : le perimetre choisit ce qu'on ajoute autour.
+    assert "[Titre {avec} accolades](https://example.org/paper)" in body
+    assert "Les enfants de six ans" not in body
+    assert 'Note "importante"' not in body
+    assert "## Fiabilité des sources" not in body
+
+
+@pytest.mark.asyncio
+async def test_export_json_selection_partielle(client, published_card, test_user):
+    resp = await client.get(
+        f"/api/v1/@{test_user.username}/{published_card.slug}/export",
+        params={"format": "json", "include": "excerpts"},
+    )
+    assert resp.status_code == 200
+    source = resp.json()["sources"][0]
+    assert source["excerpts"][0]["anchor"]["offset"] == 1204
+    assert "annotation" not in source
+    assert "archive_url" not in source
+
+
+@pytest.mark.asyncio
+async def test_export_section_inconnue_422(client, published_card, test_user):
+    resp = await client.get(
+        f"/api/v1/@{test_user.username}/{published_card.slug}/export",
+        params={"format": "json", "include": "fiches-connectees"},
+    )
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_export_bibtex_ignore_le_perimetre(client, published_card, test_user):
+    """Un format bibliographique obeit a sa convention, pas au perimetre.
+
+    Y glisser un extrait produirait un `.bib` que Zotero refuserait.
+    """
+    resp = await client.get(
+        f"/api/v1/@{test_user.username}/{published_card.slug}/export",
+        params={"format": "bibtex", "include": ""},
+    )
+    assert resp.status_code == 200
+    assert "@article{" in resp.text
 
 
 @pytest.mark.asyncio

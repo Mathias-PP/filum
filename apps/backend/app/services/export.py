@@ -16,6 +16,7 @@ from xml.sax.saxutils import escape  # nosec B406 - echappe la sortie, ne parse 
 
 from app.services import citation_styles
 from app.services.csl import author_display, to_csl
+from app.services.export_scope import FULL, ExportScope
 
 if TYPE_CHECKING:
     from app.models.biblio_card import BiblioCard
@@ -64,7 +65,32 @@ def _source_row(source: Source) -> list[str]:
     ]
 
 
-def export_json(card: BiblioCard, public_url: str) -> str:
+def _excerpts(source: Source) -> list[dict]:
+    """Les extraits d'une source, ancrage compris.
+
+    L'ancrage (`prefix`/`suffix`/`offset`) part avec le texte : sans lui, un
+    extrait exporte n'est plus qu'une citation invérifiable, et retrouver le
+    passage dans une page qui a bouge redevient impossible.
+    """
+    return [
+        {
+            "position": e.position,
+            "title": e.title,
+            "text": e.text,
+            "suggested_by_ai": e.suggested_by_ai,
+            "anchor": {
+                "prefix": e.anchor_prefix,
+                "suffix": e.anchor_suffix,
+                "offset": e.anchor_offset,
+            }
+            if e.anchor_prefix or e.anchor_suffix or e.anchor_offset is not None
+            else None,
+        }
+        for e in sorted(source.excerpts, key=lambda e: e.position)
+    ]
+
+
+def export_json(card: BiblioCard, public_url: str, scope: ExportScope = FULL) -> str:
     payload = {
         "philum_export_version": 1,
         "card": {
@@ -79,35 +105,46 @@ def export_json(card: BiblioCard, public_url: str) -> str:
             },
             "published_at": card.published_at.isoformat() if card.published_at else None,
         },
-        "sources": [
-            {
-                "position": s.position,
-                "title": s.title,
-                "authors": s.authors,
-                "url": s.url,
-                "published_at": s.published_at.isoformat() if s.published_at else None,
-                "format": s.format,
-                "category": s.category,
-                "author_kind": s.author_kind,
-                "annotation": s.annotation,
-                "is_pivot": s.is_pivot,
-                "journal": s.journal,
-                "volume": s.volume,
-                "pages": s.pages,
-                "publisher": s.publisher,
-                "doi": s.doi,
-                "archive_url": s.archive_url,
-                "archive_timestamp": (
-                    s.archive_timestamp.isoformat() if s.archive_timestamp else None
-                ),
-            }
-            for s in card.sources
-        ],
+        "sources": [_json_source(s, scope) for s in card.sources],
     }
     return json.dumps(payload, ensure_ascii=False, indent=2)
 
 
-def export_philum_json(card: BiblioCard, public_url: str) -> str:
+def _json_source(s: Source, scope: ExportScope) -> dict:
+    entry: dict = {
+        "position": s.position,
+        "title": s.title,
+        "authors": s.authors,
+        "url": s.url,
+        "published_at": s.published_at.isoformat() if s.published_at else None,
+        "format": s.format,
+        "category": s.category,
+        "author_kind": s.author_kind,
+        "is_pivot": s.is_pivot,
+        "journal": s.journal,
+        "volume": s.volume,
+        "pages": s.pages,
+        "publisher": s.publisher,
+        "doi": s.doi,
+    }
+    if scope.annotations:
+        entry["annotation"] = s.annotation
+    if scope.excerpts:
+        entry["excerpts"] = _excerpts(s)
+    if scope.archives:
+        entry["archive_url"] = s.archive_url
+        entry["archive_timestamp"] = (
+            s.archive_timestamp.isoformat() if s.archive_timestamp else None
+        )
+    if scope.reliability:
+        entry["retraction_status"] = s.retraction_status
+        entry["retraction_notice_doi"] = s.retraction_notice_doi
+        entry["oa_status"] = s.oa_status
+        entry["oa_url"] = s.oa_url
+    return entry
+
+
+def export_philum_json(card: BiblioCard, public_url: str, scope: ExportScope = FULL) -> str:
     """Format `application/vnd.philum+json` : cible primaire des agents IA.
 
     Superset de `export_json` avec :
@@ -135,40 +172,54 @@ def export_philum_json(card: BiblioCard, public_url: str) -> str:
                 "url": f"{public_url.rsplit('/@', 1)[0]}/@{card.user.username}",
             },
             "isBasedOn": card.content_url,
-            "citation": [
-                {
-                    "@type": "CreativeWork",
-                    "position": s.position,
-                    "name": s.title,
-                    "author": s.authors,
-                    "url": s.url,
-                    "datePublished": s.published_at.isoformat() if s.published_at else None,
-                    "identifier": {"@type": "PropertyValue", "propertyID": "DOI", "value": s.doi}
-                    if s.doi
-                    else None,
-                    "isPartOf": s.journal,
-                    "volumeNumber": s.volume,
-                    "pagination": s.pages,
-                    "publisher": s.publisher,
-                    "annotation": s.annotation,
-                    # Champs Philum specifiques : lisibles par un agent, meme si non
-                    # schema.org, grace au prefixe philum: (JSON-LD tolere).
-                    "philum:stance": s.stance,
-                    "philum:isPivot": s.is_pivot,
-                    "philum:retractionStatus": s.retraction_status,
-                    "philum:retractionNoticeDOI": s.retraction_notice_doi,
-                    "philum:archiveUrl": s.archive_url,
-                    "philum:archiveTimestamp": (
-                        s.archive_timestamp.isoformat() if s.archive_timestamp else None
-                    ),
-                    "philum:accessibility": s.archive_status,
-                }
-                for s in card.sources
-            ],
+            "citation": [_philum_source(s, scope) for s in card.sources],
         },
         ensure_ascii=False,
         indent=2,
     )
+
+
+def _philum_source(s: Source, scope: ExportScope) -> dict:
+    entry: dict = {
+        "@type": "CreativeWork",
+        "position": s.position,
+        "name": s.title,
+        "author": s.authors,
+        "url": s.url,
+        "datePublished": s.published_at.isoformat() if s.published_at else None,
+        "identifier": {"@type": "PropertyValue", "propertyID": "DOI", "value": s.doi}
+        if s.doi
+        else None,
+        "isPartOf": s.journal,
+        "volumeNumber": s.volume,
+        "pagination": s.pages,
+        "publisher": s.publisher,
+        # Champs Philum specifiques : lisibles par un agent, meme si non
+        # schema.org, grace au prefixe philum: (JSON-LD tolere).
+        # `stance` reste hors perimetre : c'est la relation declaree entre le
+        # propos et la source, donc une propriete de la citation elle-meme, pas
+        # un supplement qu'on emporte ou non.
+        "philum:stance": s.stance,
+        "philum:isPivot": s.is_pivot,
+    }
+    if scope.annotations:
+        entry["annotation"] = s.annotation
+    if scope.excerpts:
+        # `citation` schema.org ne prevoit pas d'extrait ; `philum:excerpts`
+        # porte donc le verbatim que l'agent peut recouper avec la source.
+        entry["philum:excerpts"] = _excerpts(s)
+    if scope.archives:
+        entry["philum:archiveUrl"] = s.archive_url
+        entry["philum:archiveTimestamp"] = (
+            s.archive_timestamp.isoformat() if s.archive_timestamp else None
+        )
+        entry["philum:accessibility"] = s.archive_status
+    if scope.reliability:
+        entry["philum:retractionStatus"] = s.retraction_status
+        entry["philum:retractionNoticeDOI"] = s.retraction_notice_doi
+        entry["philum:openAccessStatus"] = s.oa_status
+        entry["philum:openAccessUrl"] = s.oa_url
+    return entry
 
 
 def export_csv(card: BiblioCard) -> str:
@@ -389,7 +440,7 @@ def _reliability_summary(sources: list[Source]) -> list[str]:
     ]
 
 
-def _source_details(source: Source) -> list[str]:
+def _source_details(source: Source, scope: ExportScope = FULL) -> list[str]:
     """Les lignes qui rendent une source *verifiable*, pas seulement citable.
 
     C'est le markdown qu'un agent conversationnel lira pour decider ce qu'il
@@ -402,7 +453,7 @@ def _source_details(source: Source) -> list[str]:
     """
     lines: list[str] = []
 
-    if source.retraction_status == "retracted":
+    if scope.reliability and source.retraction_status == "retracted":
         retraction = "⚠️ RÉTRACTÉE"
         if source.retraction_notice_doi:
             retraction += f" — avis de rétractation : {source.retraction_notice_doi}"
@@ -415,7 +466,7 @@ def _source_details(source: Source) -> list[str]:
     if source.doi and source.doi.lower() not in (source.url or "").lower():
         lines.append(f"  - DOI : {source.doi}")
 
-    if source.oa_url:
+    if scope.reliability and source.oa_url:
         label = f"Accès ouvert ({source.oa_status})" if source.oa_status else "Accès ouvert"
         lines.append(f"  - {label} : {source.oa_url}")
 
@@ -426,7 +477,23 @@ def _source_details(source: Source) -> list[str]:
     return lines
 
 
-def export_markdown(card: BiblioCard, public_url: str) -> str:
+def _excerpt_lines(source: Source) -> list[str]:
+    """Les extraits en citation Markdown, un bloc par extrait.
+
+    Le titre de l'extrait precede le texte quand il existe. L'ancrage n'est pas
+    rendu : il n'a de sens que pour une machine, et le Markdown est ici lu par
+    un humain — le JSON le porte pour l'autre usage.
+    """
+    lines: list[str] = []
+    for e in sorted(source.excerpts, key=lambda e: e.position):
+        intitule = f"**{e.title}** — " if e.title else "**Extrait** — "
+        marque = " *(proposé par IA)*" if e.suggested_by_ai else ""
+        texte = " ".join(e.text.split())
+        lines.append(f"  - > {intitule}« {texte} »{marque}")
+    return lines
+
+
+def export_markdown(card: BiblioCard, public_url: str, scope: ExportScope = FULL) -> str:
     lines = [
         "---",
         f'title: "{card.title}"',
@@ -444,7 +511,8 @@ def export_markdown(card: BiblioCard, public_url: str) -> str:
     if card.content_url:
         lines.append(f"Contenu : {card.content_url}")
         lines.append("")
-    lines += _reliability_summary(list(card.sources))
+    if scope.reliability:
+        lines += _reliability_summary(list(card.sources))
     lines.append("## Sources")
     lines.append("")
     for source in card.sources:
@@ -460,10 +528,16 @@ def export_markdown(card: BiblioCard, public_url: str) -> str:
         if source.journal:
             meta.append(source.journal)
         lines.append(f"  - {' · '.join(meta)}")
-        lines += _source_details(source)
-        if source.annotation:
-            lines.append(f"  - > {source.annotation}")
-        if source.archive_url:
+        lines += _source_details(source, scope)
+        if scope.annotations and source.annotation:
+            # Nommee, parce que l'extrait juste en dessous porte la meme marque
+            # de citation : l'un est ce que la source dit, l'autre ce que le
+            # createur en dit. Les confondre attribuerait a un auteur des mots
+            # qu'il n'a pas ecrits — le contraire exact de ce que Philum sert.
+            lines.append(f"  - > **Note du créateur** — {source.annotation}")
+        if scope.excerpts:
+            lines += _excerpt_lines(source)
+        if scope.archives and source.archive_url:
             lines.append(f"  - [Archive]({source.archive_url})")
     lines.append("")
     return "\n".join(lines)
@@ -494,7 +568,7 @@ def _docx_p(*runs: str) -> str:
     return f"<w:p>{''.join(runs)}</w:p>"
 
 
-def export_docx(card: BiblioCard, public_url: str) -> bytes:
+def export_docx(card: BiblioCard, public_url: str, scope: ExportScope = FULL) -> bytes:
     """Document Word minimal : titre, méta, sources numérotées.
 
     Généré sans dépendance (zipfile + XML), comme le XLSX. Word/LibreOffice
@@ -528,9 +602,16 @@ def export_docx(card: BiblioCard, public_url: str) -> bytes:
         meta_parts.append(s.category)
         paragraphs.append(_docx_p(_docx_run(" · ".join(meta_parts))))
         paragraphs.append(_docx_p(_docx_run(s.url)))
-        if s.annotation:
+        if scope.reliability and s.retraction_status == "retracted":
+            paragraphs.append(_docx_p(_docx_run("RÉTRACTÉE", bold=True)))
+        if scope.annotations and s.annotation:
             paragraphs.append(_docx_p(_docx_run(s.annotation, italic=True)))
-        if s.archive_url:
+        if scope.excerpts:
+            for e in sorted(s.excerpts, key=lambda e: e.position):
+                paragraphs.append(
+                    _docx_p(_docx_run(f"« {' '.join(e.text.split())} »", italic=True))
+                )
+        if scope.archives and s.archive_url:
             paragraphs.append(_docx_p(_docx_run(f"Archive : {s.archive_url}")))
         paragraphs.append(_docx_p())
 
