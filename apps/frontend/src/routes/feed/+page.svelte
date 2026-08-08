@@ -71,7 +71,7 @@
             {#each entries as entry (entry.id)}
               <li class="flex gap-3">
                 <time
-                  class="text-xs font-mono text-ink-tertiary pt-1 w-12 flex-shrink-0"
+                  class="text-xs font-mono text-ink-tertiary pt-1 w-12 shrink-0"
                   datetime={entry.occurred_at}
                 >
                   {fmtTime(entry.occurred_at)}

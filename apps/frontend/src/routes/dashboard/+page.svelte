@@ -450,7 +450,7 @@
               </div>
               {#if style}
                 <span
-                  class="flex-shrink-0 rounded-full px-2 py-0.5 text-[0.7rem] font-medium {style.bgClass}"
+                  class="shrink-0 rounded-full px-2 py-0.5 text-[0.7rem] font-medium {style.bgClass}"
                 >
                   {style.label}
                 </span>
@@ -538,7 +538,7 @@
         {#each accounts as account, i (i)}
           <div class="account-row">
             <select
-              class="account-input w-32 flex-shrink-0"
+              class="account-input w-32 shrink-0"
               bind:value={account.platform}
               onchange={() => (accountsDirty = true)}
               aria-label="Plateforme"
@@ -557,7 +557,7 @@
             />
             <input
               type="text"
-              class="account-input w-36 flex-shrink-0 hidden sm:block"
+              class="account-input w-36 shrink-0 hidden sm:block"
               placeholder="@handle (optionnel)"
               bind:value={account.handle}
               oninput={() => (accountsDirty = true)}

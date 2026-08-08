@@ -2167,7 +2167,7 @@
     style="top: {overlayTop}px"
   >
     <div
-      class="flex items-center gap-1.5 rounded-md bg-white/95 border border-slate-200 shadow-sm px-2 py-1.5 text-xs"
+      class="flex items-center gap-1.5 rounded-md bg-white/95 border border-slate-200 shadow-xs px-2 py-1.5 text-xs"
     >
       <svg
         viewBox="0 0 24 24"
@@ -2184,7 +2184,7 @@
         bind:value={query}
         onkeydown={(e) => e.key === 'Enter' && fitToMatches()}
         type="search"
-        class="w-40 sm:w-52 bg-transparent outline-none placeholder:text-slate-400 text-slate-800"
+        class="w-40 sm:w-52 bg-transparent outline-hidden placeholder:text-slate-400 text-slate-800"
         placeholder="Titre, auteur, revue, DOI…"
         aria-label="Rechercher une référence dans le graphe"
       />
@@ -2211,7 +2211,7 @@
 
     {#if matchedIds}
       <div
-        class="flex items-center gap-2 rounded-md bg-white/95 border border-slate-200 shadow-sm px-2 py-1 text-xs text-slate-600"
+        class="flex items-center gap-2 rounded-md bg-white/95 border border-slate-200 shadow-xs px-2 py-1 text-xs text-slate-600"
         aria-live="polite"
       >
         <span>
@@ -2240,7 +2240,7 @@
     <button
       type="button"
       onclick={() => (controlsOpen = !controlsOpen)}
-      class="flex items-center gap-1.5 rounded-md bg-white/95 border border-slate-200 shadow-sm px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-50 transition-colors"
+      class="flex items-center gap-1.5 rounded-md bg-white/95 border border-slate-200 shadow-xs px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-50 transition-colors"
       aria-expanded={controlsOpen}
       aria-controls="graph-display-controls"
       title={controlsOpen ? 'Replier les options d’affichage' : 'Déplier les options d’affichage'}
@@ -2276,7 +2276,7 @@
     {#if controlsOpen}
       <div id="graph-display-controls" class="flex flex-col items-start gap-1.5">
         <div
-          class="flex items-center rounded-md bg-white/95 border border-slate-200 shadow-sm overflow-hidden text-xs"
+          class="flex items-center rounded-md bg-white/95 border border-slate-200 shadow-xs overflow-hidden text-xs"
           role="group"
           aria-label="Axe de couleur des nœuds"
         >
@@ -2298,7 +2298,7 @@
         </div>
 
         <div
-          class="flex items-center rounded-md bg-white/95 border border-slate-200 shadow-sm overflow-hidden text-xs"
+          class="flex items-center rounded-md bg-white/95 border border-slate-200 shadow-xs overflow-hidden text-xs"
           role="group"
           aria-label="Disposition du graphe"
         >
@@ -2321,7 +2321,7 @@
 
         {#if neighborCards.size > 0}
           <div
-            class="flex items-center rounded-md bg-white/95 border border-slate-200 shadow-sm overflow-hidden text-xs"
+            class="flex items-center rounded-md bg-white/95 border border-slate-200 shadow-xs overflow-hidden text-xs"
             role="group"
             aria-label="Sens de citation affiché"
           >
@@ -2361,7 +2361,7 @@
             <button
               type="button"
               onclick={() => (capOpen = !capOpen)}
-              class="flex items-center gap-1.5 rounded-md bg-white/95 border border-slate-200 shadow-sm px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-50 transition-colors"
+              class="flex items-center gap-1.5 rounded-md bg-white/95 border border-slate-200 shadow-xs px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-50 transition-colors"
               aria-expanded={capOpen}
               aria-controls="graph-cap-panel"
               title="Régler le nombre de références affichées"
@@ -2396,7 +2396,7 @@
             {#if capOpen}
               <div
                 id="graph-cap-panel"
-                class="flex items-center gap-2 rounded-md bg-white/95 border border-slate-200 shadow-sm px-2.5 py-1.5 text-xs text-slate-600"
+                class="flex items-center gap-2 rounded-md bg-white/95 border border-slate-200 shadow-xs px-2.5 py-1.5 text-xs text-slate-600"
               >
                 <input
                   id="graph-cap-range"
@@ -2415,7 +2415,7 @@
                   max={scopedTotal}
                   value={capValue}
                   onchange={(e) => setSourceCap(Number(e.currentTarget.value))}
-                  class="w-14 rounded border border-slate-200 px-1 py-0.5 text-center font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-400"
+                  class="w-14 rounded border border-slate-200 px-1 py-0.5 text-center font-medium text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-slate-400"
                   aria-label="Nombre exact de références affichées"
                   title="Nombre maximum de références affichées, les sources clés d'abord"
                 />
@@ -2446,7 +2446,7 @@
           <button
             type="button"
             onclick={toggleKeyOnly}
-            class="flex items-center gap-1.5 rounded-md border shadow-sm px-2.5 py-1.5 text-xs transition-colors {keyOnly
+            class="flex items-center gap-1.5 rounded-md border shadow-xs px-2.5 py-1.5 text-xs transition-colors {keyOnly
               ? 'bg-slate-800 border-slate-800 text-white font-medium'
               : 'bg-white/95 border-slate-200 text-slate-600 hover:bg-slate-50'}"
             aria-pressed={keyOnly}
@@ -2472,7 +2472,7 @@
       liste entière, la seule option qui ne perd rien.
     -->
         <div
-          class="flex items-center rounded-md bg-white/95 border border-slate-200 shadow-sm overflow-hidden text-xs"
+          class="flex items-center rounded-md bg-white/95 border border-slate-200 shadow-xs overflow-hidden text-xs"
           role="group"
           aria-label="Noms d'auteurs affichés"
         >
@@ -2511,7 +2511,7 @@
   >
     <button
       onclick={() => zoomBy(1.25)}
-      class="w-8 h-8 rounded-md bg-white/95 border border-slate-200 shadow-sm hover:bg-slate-50 flex items-center justify-center text-slate-700"
+      class="w-8 h-8 rounded-md bg-white/95 border border-slate-200 shadow-xs hover:bg-slate-50 flex items-center justify-center text-slate-700"
       aria-label="Zoom avant"
       title="Zoom avant"
     >
@@ -2522,7 +2522,7 @@
     </button>
     <button
       onclick={() => zoomBy(0.8)}
-      class="w-8 h-8 rounded-md bg-white/95 border border-slate-200 shadow-sm hover:bg-slate-50 flex items-center justify-center text-slate-700"
+      class="w-8 h-8 rounded-md bg-white/95 border border-slate-200 shadow-xs hover:bg-slate-50 flex items-center justify-center text-slate-700"
       aria-label="Zoom arrière"
       title="Zoom arrière"
     >
@@ -2532,7 +2532,7 @@
     </button>
     <button
       onclick={resetView}
-      class="w-8 h-8 rounded-md bg-white/95 border border-slate-200 shadow-sm hover:bg-slate-50 flex items-center justify-center text-slate-700"
+      class="w-8 h-8 rounded-md bg-white/95 border border-slate-200 shadow-xs hover:bg-slate-50 flex items-center justify-center text-slate-700"
       aria-label="Recentrer"
       title="Recentrer"
     >
@@ -2545,7 +2545,7 @@
     </button>
     <button
       onclick={toggleFullscreen}
-      class="w-8 h-8 rounded-md bg-white/95 border border-slate-200 shadow-sm hover:bg-slate-50 flex items-center justify-center text-slate-700"
+      class="w-8 h-8 rounded-md bg-white/95 border border-slate-200 shadow-xs hover:bg-slate-50 flex items-center justify-center text-slate-700"
       aria-label={isFullscreen ? 'Quitter le plein écran' : 'Plein écran'}
       title={isFullscreen ? 'Quitter le plein écran' : 'Plein écran'}
     >
@@ -2568,7 +2568,7 @@
   </div>
 
   <div
-    class="absolute bottom-3 left-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs bg-white/90 border border-slate-200 rounded-md px-2.5 py-1.5 backdrop-blur-sm"
+    class="absolute bottom-3 left-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs bg-white/90 border border-slate-200 rounded-md px-2.5 py-1.5 backdrop-blur-xs"
   >
     {#each legendEntries as c (c.label)}
       <span class="inline-flex items-center gap-1.5 text-slate-700">
@@ -2613,7 +2613,7 @@
                 class="inline-flex items-center gap-1 rounded-full border border-indigo-300 bg-indigo-50 px-2 py-0.5 text-indigo-800 hover:bg-indigo-100"
                 title="Replier « {meta.title} »"
               >
-                <span class="truncate max-w-[10rem]">{meta.title}</span>
+                <span class="truncate max-w-40">{meta.title}</span>
                 <span aria-hidden="true">×</span>
               </button>
             {/if}
@@ -2628,12 +2628,12 @@
         </div>
       {:else if legendOpen}
         <div
-          class="flex items-start gap-2 rounded-md border border-indigo-200 bg-indigo-50/95 px-2.5 py-1.5 text-indigo-900 backdrop-blur-sm"
+          class="flex items-start gap-2 rounded-md border border-indigo-200 bg-indigo-50/95 px-2.5 py-1.5 text-indigo-900 backdrop-blur-xs"
         >
           <p class="flex-1">{legendLabel(neighborCards.size)}</p>
           <button
             type="button"
-            class="shrink-0 rounded px-1 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500"
+            class="shrink-0 rounded px-1 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-900 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-indigo-500"
             aria-label="Masquer l'aide du graphe"
             onclick={() => (legendOpen = false)}
           >
@@ -2643,7 +2643,7 @@
       {:else}
         <button
           type="button"
-          class="rounded-md border border-indigo-200 bg-indigo-50/95 px-2.5 py-1.5 text-indigo-900 backdrop-blur-sm hover:bg-indigo-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500"
+          class="rounded-md border border-indigo-200 bg-indigo-50/95 px-2.5 py-1.5 text-indigo-900 backdrop-blur-xs hover:bg-indigo-100 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-indigo-500"
           onclick={() => (legendOpen = true)}
         >
           ? Aide du graphe

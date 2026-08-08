@@ -5581,7 +5581,7 @@
             </g>
           </svg>
         </div>
-        <div class="num">W23 · effet drop-shadow</div>
+        <div class="num">W23 · effet drop-shadow-sm</div>
         <h3>V11 + soft shadow</h3>
         <p class="caption">
           Ombre douce sous chaque élément. Sensation de matérialité, papier-collé.
@@ -5627,7 +5627,7 @@
             </g>
           </svg>
         </div>
-        <div class="num">W24 · effet drop-shadow</div>
+        <div class="num">W24 · effet drop-shadow-sm</div>
         <h3>V11 + shadow · Duo</h3>
         <p class="caption">Ombre douce + bichromie. Editorial press style.</p>
       </div>
@@ -6311,7 +6311,7 @@
       principalement Editorial Indigo ; deux variantes en Editorial Duo pour donner du contraste de marque.
     </p>
     <div class="grid grid--dense">
-      <!-- X01 — V11 BL + z-layered + drop-shadow · Editorial Indigo (TRIPLE COMBO) -->
+      <!-- X01 — V11 BL + z-layered + drop-shadow-sm · Editorial Indigo (TRIPLE COMBO) -->
       <div class="card highlight">
         <div class="canvas" style="background: #fafbfc">
           <svg
@@ -6379,7 +6379,7 @@
         </p>
       </div>
 
-      <!-- X02 — V11 BL + drop-shadow · Editorial Indigo -->
+      <!-- X02 — V11 BL + drop-shadow-sm · Editorial Indigo -->
       <div class="card">
         <div class="canvas" style="background: #fafbfc">
           <svg
@@ -6530,7 +6530,7 @@
         </p>
       </div>
 
-      <!-- X05 — V10 BL + drop-shadow · Editorial Indigo -->
+      <!-- X05 — V10 BL + drop-shadow-sm · Editorial Indigo -->
       <div class="card">
         <div class="canvas" style="background: #fafbfc">
           <svg
@@ -6572,10 +6572,10 @@
         </div>
         <div class="num">X05 · W15+W23 (V10)</div>
         <h3>V10 BL · shadow</h3>
-        <p class="caption">V10 en BL avec drop-shadow uniquement. Lecture organique.</p>
+        <p class="caption">V10 en BL avec drop-shadow-sm uniquement. Lecture organique.</p>
       </div>
 
-      <!-- X06 — V10 BL + z-layered + drop-shadow · Editorial Indigo -->
+      <!-- X06 — V10 BL + z-layered + drop-shadow-sm · Editorial Indigo -->
       <div class="card">
         <div class="canvas" style="background: #fafbfc">
           <svg
@@ -6643,7 +6643,7 @@
         </p>
       </div>
 
-      <!-- X07 — V11 BL + z-layered + drop-shadow · Editorial Duo -->
+      <!-- X07 — V11 BL + z-layered + drop-shadow-sm · Editorial Duo -->
       <div class="card">
         <div class="canvas" style="background: #fafbfc">
           <svg
@@ -9817,7 +9817,7 @@
               </g>
             </svg>
           </div>
-          <div class="num">Z28 · drop-shadow</div>
+          <div class="num">Z28 · drop-shadow-sm</div>
           <h3>Ombre douce</h3>
           <p class="caption">
             Y01 avec ombre douce sous chaque élément. Sensation papier-collé matérielle.
@@ -10013,7 +10013,7 @@
           <div class="num">Z30 · maximalist ⭐</div>
           <h3>Combo tout-en-un</h3>
           <p class="caption">
-            Gradient radial pulsar + halo + z-layered + drop-shadow + palette hero. La version «
+            Gradient radial pulsar + halo + z-layered + drop-shadow-sm + palette hero. La version «
             hero of hero ».
           </p>
         </div>

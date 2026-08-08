@@ -96,14 +96,14 @@
               </div>
               <button
                 type="button"
-                class="rounded-md bg-emerald-600 px-3 py-1.5 text-sm text-white hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-500"
+                class="rounded-md bg-emerald-600 px-3 py-1.5 text-sm text-white hover:bg-emerald-700 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-emerald-500"
                 onclick={() => confirm(c)}
               >
                 Confirmer
               </button>
               <button
                 type="button"
-                class="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-400"
+                class="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-slate-400"
                 onclick={() => remove(c)}
               >
                 Retirer
@@ -130,7 +130,7 @@
               </a>
               <button
                 type="button"
-                class="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-slate-400"
+                class="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-slate-400"
                 onclick={() => remove(c)}
               >
                 Retirer
