@@ -185,6 +185,25 @@ Les correctifs, par PR :
   elle, reste juste. Discriminant retenu : minuscule initiale ⇒ refus, sauf
   majuscule interne au premier mot (`iGPT`, seul vrai titre des 15 ; `arXiv`,
   `eLife`, `iPhone` sont du meme genre).
+- **2026-08-08, #330 — le prix de cette rigueur, et ce qui n'en faisait pas
+  partie.** Le re-audit d'apres #327 compte **8 sources sans titre sur l'essai
+  gwern**, la ou le tableau ci-dessus dit `sans titre=0` : ce chiffre est
+  desormais perime, et le refus des ancres non-titres en explique une part
+  attendue. Restait a savoir laquelle. Sonde
+  `scripts/probe_titres_manquants.py`, qui redemande son titre a chacune de ces
+  pages sans plafond : **5 des 8 repondaient tres bien** — Wikipedia
+  *Activation function*, *Sigmoid function*, *Stochastic gradient descent*…
+  Le pipeline ne le leur avait jamais demande. `_backfill_url_metadata`
+  plafonnait a 60 visites (`url_backfill capped: 77 candidates -> 60`), un
+  plafond qui coupe la liste **a un rang arbitraire**. Sa justification —
+  « une biblio de cette taille vient forcement d'une source structuree deja
+  traitee » — est fausse pour un essai web de 78 liens nus sans un seul DOI.
+  Ce qu'il fallait borner etait la latence, pas le nombre de pages : plafond
+  remplace par un budget de temps global (`_URL_BACKFILL_BUDGET_S = 45 s`),
+  l'enrichissement se faisant en place, un budget epuise laisse acquis tout ce
+  qui est deja revenu. **8 sans titre → 3**, et les trois derniers (openai.com,
+  lesswrong, metaculus) n'ont reellement pas de titre a donner : l'URL nue y
+  est la reponse honnete.
 - **2026-08-08, #328 — decouper soi-meme le texte d'une source en extraits**
   La suggestion automatique lisait la page, et la page ne se laisse pas
   toujours lire. Mesure du jour sur dix URLs dont les quatre personas
