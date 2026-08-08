@@ -176,7 +176,15 @@ class SourceExcerptResponse(BaseModel):
     position: int
     text: str
     title: str | None = None
+    #: Une phrase qui situe le passage pour qui le rencontre hors de sa page —
+    #: en export, en reponse MCP, dans un moteur. Champ separe du verbatim et
+    #: jamais recolle dedans : `text` reste exactement ce que la source dit.
+    context: str | None = None
     suggested_by_ai: bool
+    #: Vrai quand l'intitule ou la mise en situation viennent d'un modele. De
+    #: la prose generee cotoie ici du verbatim ; ne pas la distinguer laisserait
+    #: attribuer a la source des mots qu'elle n'a jamais ecrits.
+    annotated_by_ai: bool = False
     #: Verdict de la derniere relecture, expose au lecteur. `None` = jamais
     #: relu, et cet etat compte : sans lui, une citation jamais verifiee se
     #: lirait exactement comme une citation verifiee.

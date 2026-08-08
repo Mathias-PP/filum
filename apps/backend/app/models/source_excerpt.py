@@ -38,6 +38,17 @@ class SourceExcerpt(Base):
     # la ou il n'y a rien a dire.
     title: Mapped[str | None] = mapped_column(String(200), nullable=True)
     suggested_by_ai: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Une phrase qui situe le passage : de quoi il parle, dans quel texte, de
+    # qui. Un extrait se cite hors de sa page — « ce modele distingue trois
+    # composantes » ne nomme ni son auteur ni son objet, et qui le rencontre
+    # seul ne peut pas savoir de quoi il traite. Champ separe du verbatim, et
+    # jamais concatene dedans : la citation doit rester exactement ce que la
+    # source dit, la mise en situation exactement ce qu'elle n'a pas dit.
+    context: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Vrai quand l'intitule ou la mise en situation viennent d'un modele. La
+    # prose generee cotoie ici du verbatim : ne pas la distinguer laisserait
+    # attribuer a la source des mots qu'elle n'a jamais ecrits.
+    annotated_by_ai: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # Selecteurs d'ancrage (cf. `app/services/excerpt_anchor.py`) : de quoi
     # retrouver le passage dans une page qui a bouge. Nullables et le restent —
     # les extraits saisis sans que le texte de la source soit connu n'en ont

@@ -107,7 +107,19 @@ export interface SourceExcerpt {
   text: string;
   /** Intitulé de repérage, facultatif : dix extraits empilés ne se distinguent pas. */
   title: string | null;
+  /**
+   * Une phrase qui situe le passage pour qui le rencontre hors de sa page —
+   * en export, en réponse MCP, dans un moteur. Champ séparé du verbatim et
+   * jamais recollé dedans : `text` reste exactement ce que la source dit.
+   */
+  context: string | null;
   suggested_by_ai: boolean;
+  /**
+   * Vrai quand l'intitulé ou la mise en situation viennent d'un modèle. De la
+   * prose générée côtoie ici du verbatim ; ne pas la distinguer laisserait
+   * attribuer à la source des mots qu'elle n'a jamais écrits.
+   */
+  annotated_by_ai: boolean;
   /**
    * Verdict de la dernière relecture. `null` veut dire « jamais relu », et cet
    * état doit s'afficher : sans lui, une citation jamais vérifiée se lit
@@ -139,6 +151,13 @@ export interface ChunkResponse {
   unit: ChunkUnit;
   suggested_size: number;
   /** Faux quand aucun modèle n'est configuré : la suggestion d'intitulés ne rendrait rien. */
+  llm_enabled: boolean;
+}
+
+export interface AnnotationResponse {
+  title: string | null;
+  context: string | null;
+  /** Faux quand aucun modèle n'est configuré : « rien trouvé » ≠ « pas de modèle ». */
   llm_enabled: boolean;
 }
 

@@ -529,3 +529,99 @@ async def test_le_verdict_part_avec_la_fiche_publique(client, source, monkeypatc
     assert extrait["verified_status"] == "found"
     assert extrait["verified_text_source"] == "fetched"
     assert extrait["verified_at"] is not None
+
+
+# --- Mise en situation d'un passage ---------------------------------------
+#
+# Un extrait voyage seul : export, reponse MCP, moteur. La phrase de mise en
+# situation lui rend les reperes que son document portait pour lui. Elle
+# cotoie donc du verbatim, d'ou la regle que ces tests tiennent : elle reste
+# un champ a part, et son origine se sait.
+
+
+@pytest.mark.asyncio
+async def test_la_mise_en_situation_ne_se_recolle_pas_dans_la_citation(client, source):
+    resp = await client.post(
+        f"/api/v1/sources/{source.id}/excerpts",
+        json={
+            "text": "le sommeil joue un rôle actif",
+            "context": "Extrait d'une revue sur la consolidation mnésique.",
+            "title": "Rôle du sommeil",
+        },
+    )
+    assert resp.status_code == 201
+    corps = resp.json()
+    # La citation doit rester exactement ce que la source dit.
+    assert corps["text"] == "le sommeil joue un rôle actif"
+    assert corps["context"] == "Extrait d'une revue sur la consolidation mnésique."
+
+
+@pytest.mark.asyncio
+async def test_l_origine_de_l_annotation_se_sait(client, source):
+    resp = await client.post(
+        f"/api/v1/sources/{source.id}/excerpts",
+        json={"text": "le sommeil joue un rôle actif", "annotated_by_ai": True},
+    )
+    assert resp.json()["annotated_by_ai"] is True
+
+
+@pytest.mark.asyncio
+async def test_un_passage_sans_annotation_reste_sans_annotation(client, source):
+    # Rien ne doit combler ces champs par defaut : une mise en situation
+    # inventee ferait dire au passage ce qu'il ne dit pas.
+    resp = await client.post(
+        f"/api/v1/sources/{source.id}/excerpts", json={"text": "le sommeil joue un rôle actif"}
+    )
+    corps = resp.json()
+    assert corps["context"] is None
+    assert corps["annotated_by_ai"] is False
+
+
+@pytest.mark.asyncio
+async def test_la_mise_en_situation_part_avec_la_fiche_publique(client, source):
+    await client.post(
+        f"/api/v1/sources/{source.id}/excerpts",
+        json={"text": "le sommeil joue un rôle actif", "context": "Revue sur la consolidation."},
+    )
+    resp = await client.get(f"/api/v1/sources?card_id={source.biblio_card_id}")
+    (extrait,) = resp.json()[0]["excerpts"]
+    assert extrait["context"] == "Revue sur la consolidation."
+
+
+@pytest.mark.asyncio
+async def test_sans_modele_annoter_le_dit_plutot_que_de_se_taire(client, source, monkeypatch):
+    from app.core.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "litellm_base_url", "")
+    resp = await client.post(
+        f"/api/v1/sources/{source.id}/excerpts/annotate", json={"text": "un passage"}
+    )
+    assert resp.status_code == 200
+    corps = resp.json()
+    # Sans ce drapeau, l'ecran lirait l'absence de modele comme un modele qui
+    # n'a rien trouve, et donnerait la mauvaise cause a corriger.
+    assert corps["llm_enabled"] is False
+    assert corps["title"] is None and corps["context"] is None
+
+
+@pytest.mark.asyncio
+async def test_annoter_ne_persiste_rien(client, source, monkeypatch):
+    from app.api.v1.endpoints import excerpts as module
+    from app.core.config import get_settings
+    from app.services.llm import LlmAnnotation
+
+    monkeypatch.setattr(get_settings(), "litellm_base_url", "https://exemple.test")
+
+    async def faux(passage, entourage=""):
+        return LlmAnnotation(title="Rôle du sommeil", context="Revue sur la consolidation.")
+
+    monkeypatch.setattr(module, "suggest_annotation", faux)
+    resp = await client.post(
+        f"/api/v1/sources/{source.id}/excerpts/annotate",
+        json={"text": "le sommeil joue un rôle actif", "surrounding": PAGE_TEXT},
+    )
+    assert resp.json()["context"] == "Revue sur la consolidation."
+    # La suggestion n'engage a rien : elle remplit un champ que l'auteur·ice
+    # relit. Rien ne doit avoir ete cree en base.
+    liste = await client.get(f"/api/v1/sources?card_id={source.biblio_card_id}")
+    assert liste.json()[0]["excerpts"] == []

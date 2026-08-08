@@ -77,7 +77,9 @@
     contenu: string,
     parIA = false,
     ancrage: Ancrage | null = null,
-    titre: string | null = null
+    titre: string | null = null,
+    contexte: string | null = null,
+    annoteParIA = false
   ) {
     const propre = contenu.trim();
     if (!propre) return;
@@ -87,6 +89,8 @@
       const cree = await api.excerpts.create(sourceId, {
         text: propre,
         title: titre,
+        context: contexte,
+        annotated_by_ai: annoteParIA,
         suggested_by_ai: parIA,
         anchor_prefix: ancrage?.prefix ?? null,
         anchor_suffix: ancrage?.suffix ?? null,
@@ -368,7 +372,8 @@
       {sourceId}
       remaining={MAX - excerpts.length}
       bind:sourceText={texteSource}
-      onadd={(t, titre, ancrage) => ajouter(t, false, ancrage, titre)}
+      onadd={(t, annotation, ancrage) =>
+        ajouter(t, false, ancrage, annotation.title, annotation.context, annotation.parIA)}
     />
   {/if}
 </div>

@@ -7,6 +7,7 @@ import type {
   AttestationVerifyResponse,
   Card,
   CardConnection,
+  AnnotationResponse,
   CardConnections,
   CardDetail,
   CardCreate,
@@ -292,7 +293,10 @@ export const api = {
       data: {
         text: string;
         title?: string | null;
+        /** Phrase qui situe le passage. Rangée à part : jamais recollée dans `text`. */
+        context?: string | null;
         suggested_by_ai?: boolean;
+        annotated_by_ai?: boolean;
         // Voisinage et position du passage dans le texte d'où il vient : c'est
         // ce qui permet de le retrouver dans une page qui a bougé. Absents
         // d'une saisie à la main, où le texte de la source n'est pas connu.
@@ -324,6 +328,25 @@ export const api = {
       return request<ExcerptVerifyResponse>(`/sources/${sourceId}/excerpts/verify`, {
         method: 'POST',
         body: JSON.stringify({ text: text ?? null }),
+      });
+    },
+
+    /**
+     * Propose un intitulé et une phrase de mise en situation pour un passage.
+     *
+     * Ne persiste rien : la réponse remplit des champs que l'auteur·ice relit,
+     * corrige ou vide. `surrounding` est le texte d'où vient le passage —
+     * sans lui un modèle ne peut que le paraphraser, alors que tout l'objet
+     * de la mise en situation est de dire ce que le passage suppose connu.
+     */
+    annotate: async (
+      sourceId: string,
+      text: string,
+      surrounding?: string
+    ): Promise<AnnotationResponse> => {
+      return request<AnnotationResponse>(`/sources/${sourceId}/excerpts/annotate`, {
+        method: 'POST',
+        body: JSON.stringify({ text, surrounding: surrounding ?? null }),
       });
     },
 

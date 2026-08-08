@@ -48,6 +48,8 @@ function extrait(id: string, text: string) {
     verified_at: null,
     verified_status: null,
     verified_text_source: null,
+    context: null,
+    annotated_by_ai: false,
   };
 }
 
