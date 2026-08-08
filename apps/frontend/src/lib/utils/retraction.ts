@@ -21,6 +21,11 @@ export interface RetractionBadge {
  * nuance y est figee a raison, elle ne s'inverse pas. Les deux non-avis sont
  * du texte nu pose sur la surface de la page, donc des jetons — `text-neutral-*`
  * y laissait la lisibilite dependre du theme.
+ *
+ * Les deux non-avis partagent le meme jeton : `ink-placeholder` mesurait 2,17:1
+ * en clair, sous le plancher WCAG AA. Un etat qu'on ne peut pas lire n'est pas
+ * discret, il est absent. Ce qui les distingue est le mot et l'italique, pas
+ * une nuance de gris.
  */
 const BADGES: Record<RetractionStatus, RetractionBadge> = {
   retracted: {
@@ -50,7 +55,7 @@ const BADGES: Record<RetractionStatus, RetractionBadge> = {
   unverifiable: {
     label: 'Non vérifiable',
     help: 'Sans DOI connu de Crossref, l’existence d’un avis de rétractation ne peut pas être vérifiée.',
-    className: 'text-ink-placeholder',
+    className: 'text-ink-tertiary italic',
     isNotice: false,
   },
 };

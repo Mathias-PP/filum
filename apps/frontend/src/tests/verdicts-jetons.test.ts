@@ -43,6 +43,13 @@ describe('verdicts sans avis', () => {
         `${famille} : « ${classes} » fige la couleur du texte sur une surface qui, elle, s’inverse`
       ).toBeNull();
       expect(classes, `${famille} : la couleur doit venir du theme`).toMatch(/text-ink-/);
+      // `ink-placeholder` vient bien d'un jeton, et mesurait pourtant 2,17:1
+      // en clair : un jeton ne garantit pas la lisibilite, seulement qu'elle
+      // suit le theme.
+      expect(
+        classes,
+        `${famille} : « ${classes} » passe sous le plancher WCAG AA (2,17:1 en clair)`
+      ).not.toMatch(/\btext-ink-placeholder\b/);
     }
   });
 });

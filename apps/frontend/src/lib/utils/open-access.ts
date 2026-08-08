@@ -21,6 +21,10 @@ export interface OpenAccessBadge {
  * Les routes (or, vert, hybride…) sont nommées séparément parce qu'elles ne
  * promettent pas la même chose : une version « verte » est un dépôt d'auteur,
  * qui peut différer de la version publiée.
+ *
+ * Les deux non-avis partagent le même jeton : `ink-placeholder` mesurait 2,17:1
+ * en clair, sous le plancher WCAG AA. Ce qui les distingue est le mot et
+ * l'italique, pas une nuance de gris.
  */
 const BADGES: Record<OpenAccessStatus, OpenAccessBadge> = {
   diamond: {
@@ -68,7 +72,7 @@ const BADGES: Record<OpenAccessStatus, OpenAccessBadge> = {
   unverifiable: {
     label: 'Accès non vérifié',
     help: 'Sans DOI connu d’OpenAlex, l’existence d’une version gratuite ne peut pas être vérifiée.',
-    className: 'text-ink-placeholder',
+    className: 'text-ink-tertiary italic',
     isFree: false,
   },
 };
