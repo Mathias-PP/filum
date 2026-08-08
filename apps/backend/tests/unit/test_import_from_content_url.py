@@ -279,10 +279,24 @@ class TestResolveMissingTitles:
 def test_titre_de_repli_pris_sur_le_texte_du_lien():
     """Mesure du 2026-08-07 : 6 sources sur 11 arrivaient sans titre sur un
     article ProPublica, treasury.gov refusant la visite du backfill. Une source
-    sans titre s'affiche en URL nue, que le lecteur ne peut pas situer."""
+    sans titre s'affiche en URL nue, que le lecteur ne peut pas situer.
+
+    Le repli ne vaut que si l'ancre nomme un document : l'audit du meme jour a
+    montre que les ancres en minuscule sont des morceaux de phrase soulignes.
+    Cf. `test_anchor_title.py`.
+    """
+    ref = ImportedRef(
+        url="https://www.treasury.gov/rapport", raw_text="The Distribution of Tax Noncompliance"
+    )
+    _fallback_title_from_anchor([ref])
+    assert ref.title == "The Distribution of Tax Noncompliance"
+
+
+def test_titre_de_repli_refuse_un_fragment_de_phrase():
+    """« au moins 3 milliards » n'est pas le nom d'un rapport du Tresor."""
     ref = ImportedRef(url="https://www.treasury.gov/rapport", raw_text="au moins 3 milliards")
     _fallback_title_from_anchor([ref])
-    assert ref.title == "au moins 3 milliards"
+    assert ref.title is None
 
 
 def test_titre_de_repli_ne_recouvre_pas_un_titre_deja_trouve():

@@ -357,6 +357,26 @@ async def _backfill_one_url(ref: ImportedRef, sem: asyncio.Semaphore) -> None:
 _ANCHOR_TITLE_MAX = 120
 
 
+def _anchor_names_a_document(anchor: str) -> bool:
+    """Le texte du lien nomme-t-il un document, ou est-ce un bout de phrase ?
+
+    Un article de presse ou un essai lie *les mots de son texte* : le texte du
+    lien y est un fragment de la phrase qui l'entoure, pas le nom de ce qui
+    est cite. Audit persona du 2026-08-07, sur 102 titres produits pour quatre
+    contenus reels : les 15 qui commencent par une minuscule sont tous de ce
+    genre -- « ran for president », « targeted right-leaning nonprofits »,
+    « criticized the IRS for loose spending on its conferences. » Un titre,
+    lui, est ecrit comme il se lit, donc capitalise.
+
+    L'exception, seule vraie de l'echantillon : le nom propre a majuscule
+    interne (`iGPT`, et de la meme famille `arXiv`, `eLife`, `iPhone`).
+    """
+    premier = anchor.split(maxsplit=1)[0] if anchor.split() else ""
+    if not premier[:1].islower():
+        return True
+    return any(c.isupper() for c in premier)
+
+
 def _fallback_title_from_anchor(refs: list[ImportedRef]) -> None:
     """Dernier filet : le texte du lien, quand rien d'autre n'a donne un titre.
 
@@ -365,6 +385,11 @@ def _fallback_title_from_anchor(refs: list[ImportedRef]) -> None:
     source sans titre s'affiche comme une URL nue, que le lecteur ne peut pas
     situer. Le texte du lien vaut mieux que rien.
 
+    Mais pas n'importe quel texte : un fragment de phrase affiche comme titre
+    se lit comme si l'auteur avait cite un document portant ce nom. Un titre
+    faux est pire qu'un titre absent -- l'URL, elle, reste juste. Cf.
+    `_anchor_names_a_document`.
+
     Borne en longueur : `raw_text` porte aussi des blocs de reference entiers
     (Frontiers, PMC), qui ne sont pas des titres et depassent largement.
     """
@@ -372,7 +397,7 @@ def _fallback_title_from_anchor(refs: list[ImportedRef]) -> None:
         if ref.title or not ref.raw_text:
             continue
         anchor = ref.raw_text.strip()
-        if anchor and len(anchor) <= _ANCHOR_TITLE_MAX:
+        if anchor and len(anchor) <= _ANCHOR_TITLE_MAX and _anchor_names_a_document(anchor):
             ref.title = anchor
 
 

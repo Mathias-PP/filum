@@ -172,6 +172,19 @@ Les correctifs, par PR :
   renseigner `title` **bloquait silencieusement** `_backfill_url_metadata`,
   qui ne visite que les refs sans titre. Le label part en `raw_text`
   (contexte de citation) ; les vrais titres remontent alors.
+- **2026-08-07, revision du repli sur l'ancre** — le repli de #306 valait mieux
+  que rien, mais l'audit persona du meme jour mesure ce que « mieux que rien »
+  donne : sur **102 titres produits pour les quatre contenus, 15 commencent par
+  une minuscule**, et ce sont des morceaux de phrase soulignes — « at least
+  $3 billion », « ran for president », « criticized the IRS for loose spending
+  on its conferences. » Aucun ne nomme un document ; affiches comme titres de
+  source, ils se lisent comme si l'auteur avait cite un texte portant ce nom.
+  C'est la regle deja tenue en #317 (`impact_factor`) et #323 (`title='OSF'`) :
+  **un titre faux est pire qu'un titre absent**, parce qu'il se recopie dans la
+  fiche sans que rien ne signale qu'il ne designe pas ce qu'il pretend. L'URL,
+  elle, reste juste. Discriminant retenu : minuscule initiale ⇒ refus, sauf
+  majuscule interne au premier mot (`iGPT`, seul vrai titre des 15 ; `arXiv`,
+  `eLife`, `iPhone` sont du meme genre).
 - **#308** `is_creator_self_link` — la fin d'une description YouTube est un
   **bloc de signature** (Patreon, site perso, comptes sociaux, boutique)
   reconduit a l'identique d'une video a l'autre. 11 des 16 sources extraites
