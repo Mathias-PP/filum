@@ -1335,3 +1335,45 @@ Postgres directe.
 **À retenir** : héberger Postgres chez Supabase n'est pas neutre. Une API REST
 publique est montée devant le schéma par défaut. Tout nouvel environnement
 Supabase doit rejouer ce verrou avant d'accueillir la moindre donnée réelle.
+
+---
+
+## ADR-035 — Un LLM vivant en prod sans conteneur : parler OpenAI directement au provider (2026-08-08)
+
+**Constat, mesuré et non suppose.** Aucun appel LLM ne fonctionne en production.
+`POST /sources/{id}/excerpts/suggest` sur l'API reelle repond `llm_enabled:
+false`. Les sept points d'appel de `app/services/llm.py` passent tous par
+`settings.litellm_base_url`, vide en prod ; chaque fonction rend `None` des sa
+premiere ligne. Il n'existe **aucun chemin qui contourne le proxy**. Trois
+fonctionnalites sont donc inertes depuis leur livraison : suggestion d'extraits,
+intitules de morceaux, extraction de metadonnees par LLM.
+
+Deux verrous etaient identifies : des cles free tier a creer, et la RAM (VM GCP
+e2-micro, 1 Go, ou un conteneur LiteLLM de plus n'est pas gratuit).
+
+**Cloud Run ne leve pas le blocage.** L'idee est bonne contre la RAM, mais
+LiteLLM est un **proxy** : il ne contient aucun modele. Ou qu'il tourne, il lui
+faut toujours une cle provider en amont. L'y deplacer ajoute une chose a
+deployer sans retirer celle qui bloque.
+
+**Decision.** Pour un premier utilisateur, LiteLLM n'est pas necessaire. Le
+backend envoie du `/v1/chat/completions` au format OpenAI avec un en-tete
+`Authorization: Bearer`. Gemini expose exactement cette forme nativement, a
+`https://generativelanguage.googleapis.com/v1beta/openai`. Il suffit donc de
+pointer `litellm_base_url` sur cette URL et `litellm_master_key` sur une cle
+Gemini : **zero conteneur, zero RAM supplementaire, zero Cloud Run.**
+
+Ce que cela demande : les sept appels nomment des **alias de tache**
+(`biblio-parse`, `excerpt-suggest`, `metadata-extract`), que seul LiteLLM sait
+resoudre. Parler au provider en direct impose une table alias → nom de modele
+reel dans `llm.py`.
+
+Ce que cela coute : le repli multi-provider (Gemini → Mistral → Groq) disparait.
+C'est la raison d'etre de LiteLLM, et elle est reelle — mais elle ne l'est pas
+pour un utilisateur unique. `infra/litellm/` reste versionne et redevient la
+voie le jour ou le volume ou la disponibilite le justifient. **Le reglage est un
+changement de variable d'environnement dans les deux sens.**
+
+**Ce qui reste hors de portee d'un agent** : la cle elle-meme. Elle se cree sur
+AI Studio avec le compte Google **existant** — aucun compte nouveau — mais
+saisir des identifiants ne fait pas partie de ce qu'un agent doit faire.
