@@ -42,6 +42,7 @@ function reponseEnDeuxMorceaux() {
     text_source: 'pasted',
     unit: 'caracteres',
     suggested_size: 120,
+    llm_enabled: true,
     chunks: [
       { text: TEXTE.slice(0, coupe).trim(), start: 0, end: coupe, size: coupe, title: null },
       {
@@ -83,10 +84,19 @@ describe('ChunkArchitect', () => {
       text_source: 'none',
       unit: 'caracteres',
       suggested_size: 200,
+      llm_enabled: true,
       chunks: [],
     });
     await proposer();
     expect(screen.getByText(/ne laisse pas lire son texte/)).toBeTruthy();
+  });
+
+  it("ne propose pas de suggérer des intitulés quand aucun modèle n'est configuré", async () => {
+    chunk.mockResolvedValue({ ...reponseEnDeuxMorceaux(), llm_enabled: false });
+    await proposer();
+    const case_ = screen.getByRole('checkbox') as HTMLInputElement;
+    expect(case_.disabled).toBe(true);
+    expect(screen.getByText(/les intitulés se saisissent à la main/)).toBeTruthy();
   });
 
   it('ne perd ni n’invente de texte quand on déplace une borne', async () => {

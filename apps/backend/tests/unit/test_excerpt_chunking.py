@@ -46,6 +46,27 @@ class TestLaTailleSePropose:
         assert len(petit.chunks) > len(gros.chunks)
 
 
+class TestLaSuggestionDIntitulesNePrometPasCeQuelleNaPas:
+    """Mesure du 2026-08-08 : la prod ne definit aucune variable LiteLLM.
+
+    La case « Suggerer les intitules » y cochait donc dans le vide. Une
+    commande qui promet un service absent se lit comme une offre ; c'est la
+    meme faute qu'un titre faux. La reponse dit ce que le serveur sait faire,
+    et l'ecran en tire les consequences.
+    """
+
+    def test_sans_modele_configure_la_reponse_le_declare(self) -> None:
+        # `ci=true` en test : aucune `litellm_base_url` n'est definie.
+        rep = decouper_pour_reponse(TEXTE, ChunkRequest(text=TEXTE))
+        assert rep.llm_enabled is False
+
+    def test_le_decoupage_lui_meme_ne_depend_pas_du_modele(self) -> None:
+        """Le decoupage est le plancher : ni reseau ni cle."""
+        rep = decouper_pour_reponse(TEXTE, ChunkRequest(text=TEXTE))
+        assert rep.llm_enabled is False
+        assert rep.chunks
+
+
 class TestLUniteEstAuChoix:
     def test_les_trois_unites_sont_acceptees(self) -> None:
         for unite in (Unite.CARACTERES, Unite.MOTS, Unite.TOKENS):
