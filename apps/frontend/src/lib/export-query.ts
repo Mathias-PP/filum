@@ -40,11 +40,14 @@ export function emptyScope(): Scope {
  * fermées : y glisser un extrait produirait un fichier qu'un gestionnaire de
  * références refuserait. Le panneau grise leurs cases plutôt que de laisser
  * croire à un choix qui n'aura aucun effet. */
-export const SCOPED_FORMATS = new Set(['json', 'philum', 'markdown', 'docx']);
+export const SCOPED_FORMATS = new Set(['json', 'philum', 'markdown', 'docx', 'csv', 'xlsx']);
 
-/** Les formats qui savent porter des fiches voisines. Le Word en est exclu :
- * un document imprimable a une fin, un voisinage n'en a pas. */
-export const NEIGHBOUR_FORMATS = new Set(['json', 'philum', 'markdown']);
+/** Les formats qui savent porter des fiches voisines.
+ *
+ * Le tableur en fait partie parce qu'il n'a pas à les imbriquer : ce qui ne
+ * tient pas en colonne tient en feuille. Le Word aussi — le voisinage y est
+ * borné par le degré demandé, donc le document a bien une fin. */
+export const NEIGHBOUR_FORMATS = new Set(['json', 'philum', 'markdown', 'xlsx', 'docx']);
 
 export function serialiseScope(scope: Scope): string {
   return SECTIONS.filter(({ key }) => scope[key])

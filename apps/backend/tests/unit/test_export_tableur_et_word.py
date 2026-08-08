@@ -183,6 +183,45 @@ class TestLeTableurPorteLesDegres:
         )
         assert "cite celle-ci" in _feuilles(classeur)["Fiches voisines"]
 
+    def test_les_sources_des_voisines_partent_aussi(self):
+        """On ne va pas chercher une fiche voisine pour son titre.
+
+        La feuille « Fiches voisines » ne porte que des metadonnees de fiche :
+        s'en tenir la ferait d'un degre demande une promesse creuse.
+        """
+        from app.services.export import export_xlsx
+
+        classeur = export_xlsx(
+            _card([_source()]),
+            neighbourhood=_voisinage(cited=[_voisine(1, "Fiche proche")]),
+            base_url="https://philum.example",
+        )
+        feuille = _feuilles(classeur)["Sources des voisines"]
+        assert "Fiche proche" in feuille
+        assert "https://example.org/article" in feuille
+
+    def test_un_degre_moins_genereux_garde_ses_colonnes_vides(self):
+        """Une feuille n'a qu'un en-tete, et les degres n'ont pas le meme
+        perimetre. La forme vient du plus large ; ce qu'un degre exclut se rend
+        vide, jamais absent — sinon les lignes se decaleraient."""
+        from app.services.export import export_xlsx
+        from app.services.export_scope import parse_scope
+
+        classeur = export_xlsx(
+            _card([_source()]),
+            neighbourhood=_voisinage(
+                cited=[
+                    _voisine(1, "Fiche large"),
+                    _voisine(2, "Fiche etroite", scope=parse_scope("")),
+                ]
+            ),
+            base_url="https://philum.example",
+        )
+        feuille = _feuilles(classeur)["Sources des voisines"]
+        assert "retraction_status" in feuille
+        largeurs = {ligne.count("<c ") for ligne in feuille.split("<row ")[1:] if "<c " in ligne}
+        assert len(largeurs) == 1
+
     def test_sans_voisinage_demande_pas_de_feuille_vide(self):
         # Une feuille vide ferait croire que la fiche n'a pas de voisines,
         # alors qu'on ne les a pas cherchees.
@@ -203,9 +242,7 @@ class TestLeTableurPorteLesExtraits:
         """Recollee au texte, elle passerait pour du verbatim."""
         from app.services.export import EXCERPT_COLUMNS, export_xlsx
 
-        source = _source(
-            excerpts=[_extrait(text="Un passage cite.", context="Situe le passage.")]
-        )
+        source = _source(excerpts=[_extrait(text="Un passage cite.", context="Situe le passage.")])
         feuille = _feuilles(export_xlsx(_card([source])))["Extraits"]
         assert EXCERPT_COLUMNS.index("context") != EXCERPT_COLUMNS.index("text")
         assert "Un passage cite.</t>" in feuille
@@ -214,9 +251,7 @@ class TestLeTableurPorteLesExtraits:
     def test_l_origine_de_l_annotation_se_sait(self):
         from app.services.export import export_xlsx
 
-        source = _source(
-            excerpts=[_extrait(context="Situe le passage.", annotated_by_ai=True)]
-        )
+        source = _source(excerpts=[_extrait(context="Situe le passage.", annotated_by_ai=True)])
         feuille = _feuilles(export_xlsx(_card([source])))["Extraits"]
         assert "annotated_by_ai" in feuille
         assert ">oui<" in feuille
