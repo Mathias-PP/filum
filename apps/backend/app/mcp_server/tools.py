@@ -90,6 +90,7 @@ async def get_source(db: AsyncSession, source_id: str) -> dict[str, Any] | None:
         select(Source)
         .join(BiblioCard, Source.biblio_card_id == BiblioCard.id)
         .where(_PUBLIC, Source.id == sid, Source.deleted_at.is_(None))
+        .options(selectinload(Source.excerpts))
     )
     if source is None:
         return None
@@ -103,10 +104,42 @@ async def get_source(db: AsyncSession, source_id: str) -> dict[str, Any] | None:
         "category": source.category,
         "author_kind": source.author_kind,
         "annotation": source.annotation,
+        "doi": source.doi,
+        "journal": source.journal,
+        "publisher": source.publisher,
+        # La relation declaree entre le propos du contenu et la source. Un agent
+        # qui l'ignore lira « cite par » la ou le createur a ecrit « contredit ».
+        "stance": source.stance,
+        # Le seul champ dont l'omission peut faire propager une source retiree.
+        "retraction_status": source.retraction_status,
+        "retraction_notice_doi": source.retraction_notice_doi,
+        "oa_status": source.oa_status,
+        "oa_url": source.oa_url,
         "archive_url": source.archive_url,
         "archive_timestamp": (
             source.archive_timestamp.isoformat() if source.archive_timestamp else None
         ),
+        # Le verbatim, avec ce qui le situe et ce qui l'atteste. C'est ici que
+        # la frugalite en tokens coutait le plus cher : un agent obtenait moins
+        # d'une source par MCP que n'importe qui en telechargeant le CSV.
+        "excerpts": [
+            {
+                "position": e.position,
+                "title": e.title,
+                "text": e.text,
+                #: Situe le passage. Separe du verbatim, et jamais recolle
+                #: dedans : le confondre attribuerait a la source des mots
+                #: qu'elle n'a pas ecrits.
+                "context": e.context,
+                "suggested_by_ai": e.suggested_by_ai,
+                "annotated_by_ai": e.annotated_by_ai,
+                #: `null` = jamais relu, ce qui n'est pas « relu et introuvable ».
+                "verified_at": e.verified_at.isoformat() if e.verified_at else None,
+                "verified_status": e.verified_status,
+                "verified_text_source": e.verified_text_source,
+            }
+            for e in sorted(source.excerpts, key=lambda e: e.position)
+        ],
     }
 
 
