@@ -755,7 +755,10 @@
     const declared =
       mode === 'format' ? meta.format : mode === 'category' ? meta.category : meta.author_kind;
     if (!declared) {
-      return { fill: '#1e293b', stroke: pinned ? '#f59e0b' : '#6366f1' };
+      // Un noeud sans type declare n'a pas de couleur propre : il emprunte
+      // celle du texte, qui s'inverse. `#1e293b` en dur en faisait une tache
+      // sombre sur un fond sombre.
+      return { fill: jeton('--text-primary'), stroke: pinned ? '#f59e0b' : '#6366f1' };
     }
     const fakeSource = {
       format: meta.format,
