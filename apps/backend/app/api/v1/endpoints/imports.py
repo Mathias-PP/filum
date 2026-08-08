@@ -317,8 +317,17 @@ async def _backfill_one_crossref(ref: ImportedRef, sem: asyncio.Semaphore) -> No
         ref.category = "article-scientifique"
 
 
-_URL_BACKFILL_CONCURRENCY = 8
-_URL_BACKFILL_MAX = 60
+_URL_BACKFILL_CONCURRENCY = 12
+# Ce qu'il faut borner est la latence, pas le nombre de pages : un plafond en
+# nombre coupe la liste a un rang arbitraire et laisse nues des refs dont la
+# page repondait tres bien. Mesure du 2026-08-08 sur gwern.net/scaling-hypothesis
+# (`scripts/probe_titres_manquants.py`) : 77 candidats, 60 visites, 17 ecartes,
+# dont cinq pages Wikipedia qui rendent leur titre en une requete. Le plafond
+# se justifiait par « une biblio de cette taille vient forcement d'une source
+# structuree deja traitee » — un essai web de 78 liens nus, sans un seul DOI,
+# dit le contraire. Le budget ci-dessous tient la promesse que le plafond
+# tentait de tenir, sans en payer le prix.
+_URL_BACKFILL_BUDGET_S = 45.0
 
 
 async def _backfill_one_url(ref: ImportedRef, sem: asyncio.Semaphore) -> None:
@@ -404,18 +413,25 @@ def _fallback_title_from_anchor(refs: list[ImportedRef]) -> None:
 async def _backfill_url_metadata(refs: list[ImportedRef]) -> None:
     """Visite en parallele les URLs des refs restees sans titre.
 
-    Borne a _URL_BACKFILL_MAX fetches : au-dela, la latence de l'endpoint
-    devient inacceptable et une biblio de cette taille vient forcement d'une
-    source structuree (Crossref/oracle) deja traitee en amont.
+    Toutes sont tentees ; c'est le temps total qui est borne
+    (`_URL_BACKFILL_BUDGET_S`). L'enrichissement se fait en place au fil des
+    reponses, donc un budget epuise laisse acquis tout ce qui est deja revenu
+    et ne perd que ce qui n'avait pas encore repondu.
     """
     targets = [r for r in refs if r.url and not r.title and not _doi_from_url(r.url)]
     if not targets:
         return
-    if len(targets) > _URL_BACKFILL_MAX:
-        logger.info("url_backfill capped: %d candidates -> %d", len(targets), _URL_BACKFILL_MAX)
-        targets = targets[:_URL_BACKFILL_MAX]
     sem = asyncio.Semaphore(_URL_BACKFILL_CONCURRENCY)
-    await asyncio.gather(*(_backfill_one_url(ref, sem) for ref in targets))
+    taches = asyncio.gather(*(_backfill_one_url(ref, sem) for ref in targets))
+    try:
+        await asyncio.wait_for(taches, timeout=_URL_BACKFILL_BUDGET_S)
+    except TimeoutError:
+        restantes = sum(1 for r in targets if not r.title)
+        logger.info(
+            "url_backfill budget exhausted: %d candidates, %d still untitled",
+            len(targets),
+            restantes,
+        )
 
 
 async def _backfill_crossref_metadata(refs: list[ImportedRef]) -> None:

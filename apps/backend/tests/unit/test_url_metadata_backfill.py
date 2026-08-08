@@ -79,7 +79,15 @@ async def test_backfill_skips_dois(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_backfill_is_capped(monkeypatch):
+async def test_backfill_ne_laisse_personne_de_cote(monkeypatch):
+    """Aucune ref n'est ecartee sur son rang dans la liste.
+
+    Mesure du 2026-08-08 sur gwern.net/scaling-hypothesis : le plafond de 60
+    visites ecartait 17 des 77 candidats, dont cinq pages Wikipedia qui
+    rendaient leur titre en une requete. Le rang dans la liste n'est pas un
+    critere : ces cinq sources arrivaient nues sur la fiche sans que rien ne
+    dise qu'on ne leur avait rien demande.
+    """
     called: list[str] = []
 
     async def _spy(url: str) -> ExtractedMetadata:
@@ -89,7 +97,31 @@ async def test_backfill_is_capped(monkeypatch):
     monkeypatch.setattr(imports_mod, "extract_url_metadata", _spy)
     refs = [ImportedRef(url=f"https://example.com/{i}") for i in range(200)]
     await imports_mod._backfill_url_metadata(refs)
-    assert len(called) == imports_mod._URL_BACKFILL_MAX
+    assert len(called) == 200
+    assert all(r.title == "T" for r in refs)
+
+
+@pytest.mark.asyncio
+async def test_backfill_rend_la_main_quand_le_budget_est_epuise(monkeypatch):
+    """Ce qui est borne est le temps, et ce qui est revenu reste acquis.
+
+    Sans cette borne, une seule page qui ne repond jamais suspendrait
+    l'import entier ; avec elle, l'ecran recoit les titres deja obtenus.
+    """
+    import asyncio
+
+    async def _lent(url: str) -> ExtractedMetadata:
+        if url.endswith("/lent"):
+            await asyncio.sleep(30)
+        return ExtractedMetadata(title="T")
+
+    monkeypatch.setattr(imports_mod, "extract_url_metadata", _lent)
+    monkeypatch.setattr(imports_mod, "_URL_BACKFILL_BUDGET_S", 0.2)
+    rapide = ImportedRef(url="https://example.com/rapide")
+    lent = ImportedRef(url="https://example.com/lent")
+    await imports_mod._backfill_url_metadata([rapide, lent])
+    assert rapide.title == "T"
+    assert lent.title is None
 
 
 @pytest.mark.asyncio
