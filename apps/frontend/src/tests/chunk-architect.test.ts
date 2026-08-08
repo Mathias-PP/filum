@@ -20,12 +20,14 @@ const TEXTE =
 
 const chunk = vi.fn();
 const chunkFile = vi.fn();
+const annotate = vi.fn();
 
 vi.mock('$lib/api/client', () => ({
   api: {
     excerpts: {
       chunk: (...args: unknown[]) => chunk(...args),
       chunkFile: (...args: unknown[]) => chunkFile(...args),
+      annotate: (...args: unknown[]) => annotate(...args),
     },
   },
 }));
@@ -77,6 +79,8 @@ describe('ChunkArchitect', () => {
     chunk.mockResolvedValue(reponseEnDeuxMorceaux());
     chunkFile.mockReset();
     chunkFile.mockResolvedValue({ ...reponseEnDeuxMorceaux(), text_source: 'uploaded' });
+    annotate.mockReset();
+    annotate.mockResolvedValue({ title: null, context: null, llm_enabled: true });
   });
 
   it('affiche les morceaux proposés, tels qu’ils sont dans la source', async () => {
@@ -177,7 +181,7 @@ describe('ChunkArchitect', () => {
       props: {
         sourceId: 's1',
         remaining: 10,
-        onadd: async (_t: string, _ti: string | null, a: typeof ancrage) => {
+        onadd: async (_t: string, _a: unknown, a: typeof ancrage) => {
           ancrage = a;
         },
       },
@@ -258,5 +262,59 @@ describe('ChunkArchitect', () => {
     });
     await deposer(vue, 'scan.pdf');
     await vi.waitFor(() => expect(screen.getByText(/image scannée/)).toBeTruthy());
+  });
+
+  /**
+   * L'annotation est un geste offert, pas un formulaire à remplir : découper
+   * un texte doit rester possible sans jamais rencontrer ces deux champs.
+   */
+  it('la barre d’annotation reste repliée tant qu’on ne la demande pas', async () => {
+    await proposer();
+    expect(screen.queryByPlaceholderText(/Intitulé/)).toBeNull();
+    const boutons = screen.getAllByRole('button', { name: 'annoter' });
+    await fireEvent.click(boutons[0]);
+    expect(screen.getAllByPlaceholderText(/Intitulé/)).toHaveLength(1);
+  });
+
+  /**
+   * Un serveur sans modèle et un modèle qui ne trouve rien mènent au même
+   * écran vide ; seul le premier appelle une action de la part du serveur.
+   */
+  it('l’absence de modèle se dit au lieu d’échouer en silence', async () => {
+    annotate.mockResolvedValue({ title: null, context: null, llm_enabled: false });
+    await proposer();
+    await fireEvent.click(screen.getAllByRole('button', { name: 'annoter' })[0]);
+    await fireEvent.click(screen.getByRole('button', { name: 'Suggérer' }));
+    await vi.waitFor(() => expect(screen.getByText(/Aucun modèle n’est configuré/)).toBeTruthy());
+  });
+
+  it('une suggestion retenue part avec le morceau, marquée comme telle', async () => {
+    annotate.mockResolvedValue({
+      title: 'Modèle de Baddeley',
+      context: 'Baddeley décrit ici les sous-systèmes de la mémoire de travail.',
+      llm_enabled: true,
+    });
+    const recus: unknown[] = [];
+    render(ChunkArchitect, {
+      props: {
+        sourceId: 's1',
+        remaining: 10,
+        onadd: async (_t: string, a: unknown) => {
+          recus.push(a);
+        },
+      },
+    });
+    await fireEvent.click(screen.getByRole('button', { name: /Proposer un découpage/ }));
+    await vi.waitFor(() => expect(chunk).toHaveBeenCalled());
+    await fireEvent.click(screen.getAllByRole('button', { name: 'annoter' })[0]);
+    await fireEvent.click(screen.getByRole('button', { name: 'Suggérer' }));
+    await vi.waitFor(() => expect(annotate).toHaveBeenCalled());
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Ajouter' })[0]);
+    await vi.waitFor(() => expect(recus).toHaveLength(1));
+    expect(recus[0]).toEqual({
+      title: 'Modèle de Baddeley',
+      context: 'Baddeley décrit ici les sous-systèmes de la mémoire de travail.',
+      parIA: true,
+    });
   });
 });

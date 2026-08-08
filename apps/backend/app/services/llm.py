@@ -409,6 +409,9 @@ _CHUNK_TITLE_SYSTEM_PROMPT = (
 )
 
 _MAX_TITLE_CHARS = 200
+# Une phrase, pas un resume : au-dela, la mise en situation prend le pas sur
+# le passage qu'elle est censee servir. Meme plafond que la colonne.
+_MAX_CONTEXT_CHARS = 500
 
 
 async def suggest_chunk_titles(chunks: list[str]) -> list[str | None] | None:
@@ -449,6 +452,72 @@ def normalize_chunk_titles(titles: list[str], chunks: list[str]) -> list[str | N
         brut = titles[i].strip() if i < len(titles) else ""
         sortie.append(brut[:_MAX_TITLE_CHARS] if brut else None)
     return sortie
+
+
+# --- Mise en situation d'un extrait ---------------------------------------
+#
+# Un extrait voyage seul : export, reponse MCP, fiche publique. « Ce modele
+# distingue trois composantes » ne nomme ni son objet ni son auteur, et qui le
+# rencontre isole ne peut pas savoir de quoi il traite. La phrase de mise en
+# situation restitue ces reperes -- elle ne resume pas le passage, elle dit ce
+# que le passage suppose connu.
+
+
+class LlmAnnotation(BaseModel):
+    title: str | None = None
+    context: str | None = None
+
+
+_ANNOTATION_SYSTEM_PROMPT = (
+    "On te donne un passage extrait d'un document, et l'entourage d'ou il vient. "
+    "Tu produis deux choses. `title` : un intitulé de repérage de 2 à 6 mots, "
+    "dans la langue du passage, qui nomme ce dont il parle — ni résumé ni "
+    "accroche, il sert à retrouver le passage dans une liste. `context` : UNE "
+    "phrase, 40 mots maximum, qui situe le passage pour quelqu'un qui le "
+    "rencontre seul, hors de son document — de quel texte il vient, de quoi il "
+    "traite, à quoi renvoient ses pronoms et ses démonstratifs. Réponds "
+    "UNIQUEMENT avec le JSON demandé. Règles strictes : ne réutilise pas les "
+    "mots du passage pour les paraphraser, apporte ce qu'il ne dit pas ; "
+    "n'affirme rien que l'entourage ne permette d'établir ; si l'entourage ne "
+    "suffit pas à situer honnêtement le passage, rends null plutôt qu'une "
+    "approximation."
+)
+
+
+async def suggest_annotation(passage: str, entourage: str = "") -> LlmAnnotation | None:
+    """Intitule et mise en situation d'un passage. Never raises.
+
+    Rendre `None` plutot qu'un a-peu-pres est la meme regle que pour les
+    intitules : cette prose s'affiche a cote d'un verbatim, et une mise en
+    situation fausse ferait porter au passage un sens que sa source ne lui
+    donne pas. L'appelant l'expose comme une proposition a valider, jamais
+    comme un acquis.
+    """
+    settings = get_settings()
+    if not settings.litellm_base_url or not passage.strip():
+        return None
+
+    user_content = f"Passage :\n{passage[:2000]}"
+    if entourage.strip():
+        user_content = f"Entourage :\n{entourage[:6000]}\n\n{user_content}"
+
+    content = await _appel_json(
+        "excerpt-suggest",
+        _ANNOTATION_SYSTEM_PROMPT,
+        user_content,
+        "annotation",
+        LlmAnnotation.model_json_schema(),
+    )
+    if content is None:
+        return None
+    try:
+        annotation = LlmAnnotation.model_validate_json(content)
+    except ValidationError:
+        return None
+    return LlmAnnotation(
+        title=(annotation.title or "").strip()[:_MAX_TITLE_CHARS] or None,
+        context=(annotation.context or "").strip()[:_MAX_CONTEXT_CHARS] or None,
+    )
 
 
 # --- Classifieur : type d'URL (source | promo | social | other) -----------

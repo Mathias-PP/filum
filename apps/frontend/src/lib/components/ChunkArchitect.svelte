@@ -23,7 +23,7 @@
     sourceId: string;
     /** Places restantes : le serveur plafonne à 10 extraits par source. */
     remaining: number;
-    onadd: (text: string, title: string | null, ancrage: Ancrage) => Promise<void>;
+    onadd: (text: string, annotation: Annotation, ancrage: Ancrage) => Promise<void>;
     /**
      * Le texte de la source, collé ici ou tiré d'un document déposé.
      *
@@ -33,6 +33,21 @@
      * les cinq sites de la mesure qui se dérobent.
      */
     sourceText?: string;
+  }
+
+  /**
+   * Ce qu'on ajoute autour d'un passage sans y toucher.
+   *
+   * `title` repère, `context` situe : un extrait voyage seul — export, réponse
+   * MCP, moteur — et « ce modèle distingue trois composantes » ne nomme ni son
+   * objet ni son auteur. Les deux restent facultatifs, et `parIA` dit leur
+   * origine : cette prose côtoie du verbatim, et rien ne doit laisser attribuer
+   * à la source des mots qu'elle n'a pas écrits.
+   */
+  interface Annotation {
+    title: string | null;
+    context: string | null;
+    parIA: boolean;
   }
 
   /** De quoi retrouver le passage dans une page qui aura bougé. */
@@ -62,6 +77,14 @@
   let text = $state('');
   let boundaries = $state<number[]>([]);
   let titles = $state<(string | null)[]>([]);
+  let contexts = $state<(string | null)[]>([]);
+  // Les barres d'annotation dépliées, par bornes. Repliées par défaut : la
+  // plupart des passages se passent d'intitulé, et un champ vide affiché à
+  // côté de chacun se lit comme une case à remplir.
+  let ouvertes = $state<Set<string>>(new Set());
+  // Les morceaux dont l'annotation vient d'un modèle, par bornes.
+  let parIA = $state<Set<string>>(new Set());
+  let annotant = $state<string | null>(null);
   let textSource = $state<'pasted' | 'uploaded' | 'fetched' | 'none' | null>(null);
   let fileName = $state<string | null>(null);
   let survol = $state(false);
@@ -90,12 +113,25 @@
   });
 
   const chunks = $derived.by(() => {
-    const out: { text: string; start: number; end: number; title: string | null }[] = [];
+    const out: {
+      text: string;
+      start: number;
+      end: number;
+      title: string | null;
+      context: string | null;
+    }[] = [];
     for (let i = 0; i < boundaries.length - 1; i++) {
       const start = boundaries[i];
       const end = boundaries[i + 1];
       const slice = text.slice(start, end).trim();
-      if (slice) out.push({ text: slice, start, end, title: titles[i] ?? null });
+      if (slice)
+        out.push({
+          text: slice,
+          start,
+          end,
+          title: titles[i] ?? null,
+          context: contexts[i] ?? null,
+        });
     }
     return out;
   });
@@ -110,6 +146,9 @@
     text = fullText;
     boundaries = list.length ? [list[0].start, ...list.map((c) => c.end)] : [];
     titles = list.map((c) => c.title);
+    contexts = list.map(() => null);
+    ouvertes = new Set();
+    parIA = new Set();
   }
 
   async function propose() {
@@ -184,6 +223,7 @@
   function merge(i: number) {
     boundaries = boundaries.filter((_, j) => j !== i + 1);
     titles = titles.filter((_, j) => j !== i + 1);
+    contexts = contexts.filter((_, j) => j !== i + 1);
   }
 
   /** Coupe le morceau `i` à la fin de phrase la plus proche de son milieu. */
@@ -196,21 +236,67 @@
     const at = inside.reduce((a, b) => (Math.abs(b - middle) < Math.abs(a - middle) ? b : a));
     boundaries = [...boundaries.slice(0, i + 1), at, ...boundaries.slice(i + 1)];
     titles = [...titles.slice(0, i + 1), null, ...titles.slice(i + 1)];
+    contexts = [...contexts.slice(0, i + 1), null, ...contexts.slice(i + 1)];
   }
 
   function setTitle(i: number, value: string) {
     titles = titles.map((t, j) => (j === i ? value.trim() || null : t));
   }
 
+  function setContext(i: number, value: string) {
+    contexts = contexts.map((c, j) => (j === i ? value.trim() || null : c));
+  }
+
+  function basculer(k: string) {
+    const suite = new Set(ouvertes);
+    if (!suite.delete(k)) suite.add(k);
+    ouvertes = suite;
+  }
+
+  /**
+   * Demande au serveur un intitulé et une mise en situation pour ce morceau.
+   *
+   * Le texte entier part avec : sans lui, un modèle ne peut que paraphraser le
+   * passage, alors que tout l'objet de la mise en situation est de dire ce que
+   * le passage suppose connu. Rien n'est enregistré — les champs se relisent et
+   * se corrigent avant l'ajout.
+   */
+  async function annoter(i: number) {
+    const chunk = chunks[i];
+    const k = cle(chunk);
+    error = null;
+    annotant = k;
+    try {
+      const res = await api.excerpts.annotate(sourceId, chunk.text, text);
+      llmEnabled = res.llm_enabled;
+      if (!res.llm_enabled) return;
+      if (res.title) setTitle(i, res.title);
+      if (res.context) setContext(i, res.context);
+      if (res.title || res.context) parIA = new Set([...parIA, k]);
+    } catch (err) {
+      error = err instanceof Error ? err.message : 'Erreur lors de la suggestion';
+    } finally {
+      annotant = null;
+    }
+  }
+
   async function add(i: number) {
     adding = i;
     try {
       const { start, end } = chunks[i];
-      await onadd(chunks[i].text, chunks[i].title, {
-        prefix: text.slice(Math.max(0, start - CONTEXTE), start),
-        suffix: text.slice(end, end + CONTEXTE),
-        offset: start,
-      });
+      await onadd(
+        chunks[i].text,
+        {
+          title: chunks[i].title,
+          context: chunks[i].context,
+          parIA: parIA.has(cle(chunks[i])),
+        },
+        {
+          prefix: text.slice(Math.max(0, start - CONTEXTE), start),
+          suffix: text.slice(end, end + CONTEXTE),
+          offset: start,
+        }
+      );
       // Le morceau reste à sa place, marqué. Il ne peut pas être retiré de la
       // liste : les bornes partitionnent le texte, et en ôter un segment
       // recollerait ses voisins — c'est ce que faisait `merge()` ici, si bien
@@ -375,15 +461,66 @@
     <ul class="space-y-2">
       {#each chunks as chunk, i (chunk.start)}
         <li class="rounded-lg border border-border-subtle bg-surface-primary p-2">
-          <input
-            type="text"
-            value={chunk.title ?? ''}
-            maxlength={200}
-            placeholder="Intitulé (facultatif)…"
-            oninput={(e) => setTitle(i, e.currentTarget.value)}
-            class="mb-1.5 w-full rounded border border-border-subtle bg-surface-secondary px-2 py-1 text-xs font-medium text-ink-primary placeholder:text-ink-placeholder"
-          />
+          {#if chunk.title}
+            <p class="mb-1 text-xs font-medium text-ink-primary">{chunk.title}</p>
+          {/if}
           <p class="text-sm text-ink-primary">{chunk.text}</p>
+          {#if chunk.context && !ouvertes.has(cle(chunk))}
+            <!--
+              La mise en situation reste visuellement distincte du passage :
+              elle dit ce que la source n'a pas dit, et les confondre ferait
+              lui attribuer des mots qu'elle n'a jamais écrits.
+            -->
+            <p class="mt-1 border-l-2 border-border pl-2 text-xs text-ink-tertiary">
+              {chunk.context}
+              {#if parIA.has(cle(chunk))}<span class="italic">(proposé par un modèle)</span>{/if}
+            </p>
+          {/if}
+
+          {#if ouvertes.has(cle(chunk))}
+            <div
+              class="mt-2 space-y-1.5 rounded border border-border-subtle bg-surface-secondary p-2"
+            >
+              <input
+                type="text"
+                value={chunk.title ?? ''}
+                maxlength={200}
+                placeholder="Intitulé — 2 à 6 mots pour retrouver ce passage"
+                oninput={(e) => setTitle(i, e.currentTarget.value)}
+                class="w-full rounded border border-border-subtle bg-surface-primary px-2 py-1 text-xs font-medium text-ink-primary placeholder:text-ink-placeholder"
+              />
+              <textarea
+                value={chunk.context ?? ''}
+                rows="2"
+                maxlength={500}
+                placeholder="Une phrase qui situe ce passage pour qui le lit hors de son document…"
+                oninput={(e) => setContext(i, e.currentTarget.value)}
+                class="w-full rounded border border-border-subtle bg-surface-primary px-2 py-1 text-xs text-ink-primary placeholder:text-ink-placeholder"
+              ></textarea>
+              <div class="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  loading={annotant === cle(chunk)}
+                  disabled={annotant !== null || llmEnabled === false}
+                  onclick={() => annoter(i)}
+                >
+                  Suggérer
+                </Button>
+                {#if llmEnabled === false}
+                  <span class="text-xs text-ink-tertiary">
+                    Aucun modèle n’est configuré sur ce serveur : ces deux champs se saisissent à la
+                    main.
+                  </span>
+                {:else if parIA.has(cle(chunk))}
+                  <span class="text-xs text-ink-tertiary italic">
+                    Proposé par un modèle — à relire : cette prose voisine un verbatim.
+                  </span>
+                {/if}
+              </div>
+            </div>
+          {/if}
           <div class="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-ink-secondary">
             <span>{measure(chunk.text)} {UNITS.find((u) => u.value === unit)?.label}</span>
             <button
@@ -402,6 +539,14 @@
             {#if i < chunks.length - 1}
               <button type="button" class="underline" onclick={() => merge(i)}>fusionner</button>
             {/if}
+            <button
+              type="button"
+              class="underline"
+              aria-expanded={ouvertes.has(cle(chunk))}
+              onclick={() => basculer(cle(chunk))}
+            >
+              {ouvertes.has(cle(chunk)) ? 'replier' : 'annoter'}
+            </button>
             {#if added.has(cle(chunk))}
               <span class="text-success">✓ ajouté</span>
             {:else}

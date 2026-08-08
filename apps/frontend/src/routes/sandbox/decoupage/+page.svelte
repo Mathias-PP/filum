@@ -32,7 +32,7 @@
   let pageLisible = $state(true);
   /** Le PDF scanné : l'état qu'on ne peut pas produire à volonté sur un vrai serveur. */
   let documentLisible = $state(true);
-  let ajoutes = $state<{ text: string; title: string | null }[]>([]);
+  let ajoutes = $state<{ text: string; title: string | null; context: string | null }[]>([]);
 
   /** Découpe naïve par phrases, à la seule fin de peupler l'écran. */
   function decouper(texte: string, taille: number) {
@@ -145,8 +145,8 @@
   <ChunkArchitect
     sourceId="atelier"
     remaining={10}
-    onadd={async (text, title) => {
-      ajoutes = [...ajoutes, { text, title }];
+    onadd={async (text, annotation) => {
+      ajoutes = [...ajoutes, { text, title: annotation.title, context: annotation.context }];
     }}
   />
 

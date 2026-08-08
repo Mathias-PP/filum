@@ -36,7 +36,7 @@ from app.schemas.source import SourceExcerptResponse
 from app.services.chunker import Unite, chunk_text, compter, suggerer_taille
 from app.services.document_text import MAX_BYTES, DocumentError, extract_text
 from app.services.excerpt_anchor import Selecteurs, ancrer
-from app.services.llm import suggest_chunk_titles, suggest_excerpts
+from app.services.llm import suggest_annotation, suggest_chunk_titles, suggest_excerpts
 
 router = APIRouter(prefix="/sources/{source_id}/excerpts", tags=["excerpts"])
 
@@ -46,7 +46,12 @@ MAX_EXCERPTS_PER_SOURCE = 10
 class ExcerptCreate(BaseModel):
     text: str = Field(min_length=1, max_length=1000)
     title: str | None = Field(default=None, max_length=200)
+    # Une phrase qui situe le passage pour qui le rencontre seul. Facultative,
+    # et rangee a part du verbatim : jamais recollee dans `text`.
+    context: str | None = Field(default=None, max_length=500)
     suggested_by_ai: bool = False
+    # Vrai quand l'intitule ou la mise en situation viennent d'un modele.
+    annotated_by_ai: bool = False
     # Voisinage et position du passage dans le texte d'ou il vient. Facultatifs :
     # un extrait saisi a la main, sans que le texte de la source soit connu, n'en
     # a pas — et l'ecran doit alors le dire plutot que de faire semblant.
@@ -202,7 +207,9 @@ async def create_excerpt(
         position=(max_pos or 0) + 1,
         text=payload.text.strip(),
         title=(payload.title or "").strip() or None,
+        context=(payload.context or "").strip() or None,
         suggested_by_ai=payload.suggested_by_ai,
+        annotated_by_ai=payload.annotated_by_ai,
         anchor_prefix=payload.anchor_prefix,
         anchor_suffix=payload.anchor_suffix,
         anchor_offset=payload.anchor_offset,
@@ -528,4 +535,60 @@ async def suggest_source_excerpts(
         )
     return ExcerptSuggestResponse(
         suggestions=suggestions, page_text_length=len(page_text), llm_enabled=True
+    )
+
+
+# --- Annoter un passage : intitule et mise en situation --------------------
+#
+# Ces deux champs se saisissent a la main ; la suggestion n'est qu'un depart.
+# Elle ne persiste rien : le morceau qu'elle annote n'existe pas encore en
+# base au moment ou on le regarde dans l'atelier de decoupage, et c'est
+# justement la que l'annotation a le plus de sens -- avant de trancher.
+
+
+class AnnotationRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=2000)
+    # L'entourage du passage dans son document. Sans lui, un modele ne peut
+    # que paraphraser le passage ; avec lui, il peut dire ce que le passage
+    # suppose connu, ce qui est tout l'objet de la mise en situation.
+    surrounding: str | None = Field(default=None, max_length=20_000)
+
+
+class AnnotationResponse(BaseModel):
+    title: str | None = None
+    context: str | None = None
+    # Comme ailleurs : distinguer « le modele n'a rien trouve » de « il n'y a
+    # pas de modele », sans quoi l'ecran donne la mauvaise cause a lire.
+    llm_enabled: bool
+
+
+@router.post("/annotate", response_model=AnnotationResponse)
+@limiter.limit("60/hour")
+async def annotate_excerpt(
+    request: Request,
+    source_id: UUID,
+    payload: AnnotationRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Propose un intitule et une phrase de mise en situation pour un passage.
+
+    Ne persiste rien et n'engage a rien : la reponse remplit des champs que
+    l'auteur·ice relit, corrige ou vide avant d'ajouter le passage.
+    """
+    source = await _get_owned_source(source_id, current_user, db)
+    if not get_settings().litellm_base_url:
+        return AnnotationResponse(llm_enabled=False)
+
+    entourage = (payload.surrounding or "").strip()
+    if not entourage:
+        # A defaut du texte d'ou vient le passage, ce que la fiche sait de la
+        # source vaut mieux que rien : titre et annotation situent deja.
+        entourage = " — ".join(filter(None, [source.title, source.annotation]))
+
+    annotation = await suggest_annotation(payload.text, entourage)
+    if annotation is None:
+        return AnnotationResponse(llm_enabled=True)
+    return AnnotationResponse(
+        title=annotation.title, context=annotation.context, llm_enabled=True
     )
