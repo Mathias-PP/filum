@@ -78,6 +78,21 @@
   const vraiFetch = globalThis.fetch;
   globalThis.fetch = (async (entree: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof entree === 'string' ? entree : entree.toString();
+
+    // La suggestion d'annotation : ce que rendrait un modèle, en dur. Le
+    // serveur, lui, ne persiste rien ici — la proposition se relit d'abord.
+    if (url.includes('/excerpts/annotate')) {
+      if (!llmEnabled) return json({ title: null, context: null, llm_enabled: false });
+      const corps = JSON.parse((init?.body as string) ?? '{}');
+      const passage: string = corps.text ?? '';
+      return json({
+        title: passage.split(/\s+/).slice(0, 4).join(' '),
+        context:
+          'Ce passage vient d’un exposé sur la mémoire de travail ; il en situe le modèle de Baddeley.',
+        llm_enabled: true,
+      });
+    }
+
     if (!url.includes('/excerpts/chunk')) return vraiFetch(entree, init);
 
     // Le dépôt de fichier passe par la même adresse, à un suffixe près, et son
@@ -158,6 +173,12 @@
           <li class="rounded border border-border-subtle p-2">
             {#if extrait.title}<strong>{extrait.title}</strong> —{/if}
             {extrait.text}
+            {#if extrait.context}
+              <!-- Séparé du passage à l'affichage comme il l'est en base. -->
+              <p class="mt-1 border-l-2 border-border pl-2 text-xs text-ink-tertiary">
+                {extrait.context}
+              </p>
+            {/if}
           </li>
         {/each}
       </ul>
