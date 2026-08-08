@@ -26,7 +26,7 @@
 
 <div class="min-h-screen bg-surface-secondary">
   <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <header class="bg-white rounded-xl shadow-sm border border-border p-8 mb-8">
+    <header class="bg-white rounded-xl shadow-xs border border-border p-8 mb-8">
       <div class="flex items-start gap-6">
         <Avatar
           avatarUrl={profile.avatar_url}

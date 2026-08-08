@@ -1123,7 +1123,7 @@
           type="url"
           bind:value={refsUrl}
           placeholder="https://youtube.com/watch?v=... ou https://votre-blog.fr/article"
-          class="flex-1 min-w-0 px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
+          class="flex-1 min-w-0 px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-hidden focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
         />
         {#if hasExtractedRefs}
           <button
@@ -1309,7 +1309,7 @@
             bind:value={multiText}
             rows={8}
             placeholder={'Une liste de liens :\nhttps://doi.org/10.1038/s41586-020-2649-2\nhttps://www.lemonde.fr/...\n\nOU une bibliographie complète collée depuis un article, Zotero, un PDF… :\nWolfe, C. D., & Bell, M. A. (2007). The integration of cognition and emotion during infancy and early childhood: regulatory processes associated with the development of working memory. Brain and Cognition, 65(1), 3–13. https://doi.org/10.1016/j.bandc.2006.01.009\nDupont, J., & Martin, A. (2020). Titre. Journal, 12(3), 45-67.'}
-            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder font-mono text-sm resize-y min-h-[8rem]"
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder font-mono text-sm resize-y min-h-32"
           ></textarea>
         </div>
         <div class="flex items-center justify-between gap-3 flex-wrap">
@@ -1458,19 +1458,19 @@
                     bind:value={draft.title}
                     placeholder="Titre"
                     disabled={draft.status === 'extracting'}
-                    class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-placeholder disabled:opacity-60"
+                    class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-hidden focus:ring-2 focus:ring-info placeholder:text-ink-placeholder disabled:opacity-60"
                   />
                   <input
                     type="text"
                     bind:value={draft.authors}
                     placeholder="Auteurs"
                     disabled={draft.status === 'extracting'}
-                    class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-placeholder disabled:opacity-60"
+                    class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-hidden focus:ring-2 focus:ring-info placeholder:text-ink-placeholder disabled:opacity-60"
                   />
                   <select
                     bind:value={draft.format}
                     disabled={draft.status === 'extracting'}
-                    class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info disabled:opacity-60"
+                    class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-hidden focus:ring-2 focus:ring-info disabled:opacity-60"
                   >
                     {#each formatOptions as opt}
                       <option value={opt.value}>{opt.label}</option>
@@ -1479,7 +1479,7 @@
                   <select
                     bind:value={draft.category}
                     disabled={draft.status === 'extracting'}
-                    class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info disabled:opacity-60"
+                    class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-hidden focus:ring-2 focus:ring-info disabled:opacity-60"
                   >
                     {#each categoryOptions as opt}
                       <option value={opt.value}>{opt.label}</option>
@@ -1488,7 +1488,7 @@
                   <select
                     bind:value={draft.author_kind}
                     disabled={draft.status === 'extracting'}
-                    class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info disabled:opacity-60"
+                    class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-hidden focus:ring-2 focus:ring-info disabled:opacity-60"
                     style:border-left="4px solid {AUTHOR_COLORS[draft.author_kind].stroke}"
                   >
                     {#each authorKindOptions as opt}
@@ -1500,7 +1500,7 @@
                     bind:value={draft.published_at}
                     placeholder="Date de publication"
                     disabled={draft.status === 'extracting'}
-                    class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info disabled:opacity-60"
+                    class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-hidden focus:ring-2 focus:ring-info disabled:opacity-60"
                     title="Date de publication (par les auteurs originaux)"
                   />
                 </div>
@@ -1533,31 +1533,31 @@
                         type="text"
                         bind:value={draft.journal}
                         placeholder="Journal / revue"
-                        class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-placeholder sm:col-span-2"
+                        class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-hidden focus:ring-2 focus:ring-info placeholder:text-ink-placeholder sm:col-span-2"
                       />
                       <input
                         type="text"
                         bind:value={draft.volume}
                         placeholder="Volume"
-                        class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-placeholder"
+                        class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-hidden focus:ring-2 focus:ring-info placeholder:text-ink-placeholder"
                       />
                       <input
                         type="text"
                         bind:value={draft.pages}
                         placeholder="Pages (ex. 123-145)"
-                        class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-placeholder"
+                        class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-hidden focus:ring-2 focus:ring-info placeholder:text-ink-placeholder"
                       />
                       <input
                         type="text"
                         bind:value={draft.publisher}
                         placeholder="Éditeur"
-                        class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-placeholder"
+                        class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-hidden focus:ring-2 focus:ring-info placeholder:text-ink-placeholder"
                       />
                       <input
                         type="text"
                         bind:value={draft.doi}
                         placeholder="DOI"
-                        class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-placeholder font-mono"
+                        class="w-full px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-hidden focus:ring-2 focus:ring-info placeholder:text-ink-placeholder font-mono"
                       />
                     </div>
                   {/if}
@@ -1636,7 +1636,7 @@
               required
               readonly={isEditing}
               placeholder="https://doi.org/..."
-              class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder read-only:bg-surface-tertiary read-only:text-ink-tertiary read-only:cursor-not-allowed"
+              class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder read-only:bg-surface-tertiary read-only:text-ink-tertiary read-only:cursor-not-allowed"
             />
             {#if extracting}
               <div
@@ -1662,7 +1662,7 @@
             id="source-format"
             value={sourceFormat}
             onchange={(e) => (sourceFormat = (e.target as HTMLSelectElement).value as SourceFormat)}
-            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info"
           >
             {#each formatOptions as opt}
               <option value={opt.value}>{opt.label}</option>
@@ -1682,7 +1682,7 @@
             value={sourceCategory}
             onchange={(e) =>
               (sourceCategory = (e.target as HTMLSelectElement).value as SourceCategory)}
-            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info"
           >
             {#each categoryOptions as opt}
               <option value={opt.value}>{opt.label}</option>
@@ -1701,7 +1701,7 @@
             id="source-author-kind"
             value={authorKind}
             onchange={(e) => (authorKind = (e.target as HTMLSelectElement).value as AuthorKind)}
-            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info"
             style:border-left="4px solid {AUTHOR_COLORS[authorKind].stroke}"
           >
             {#each authorKindOptions as opt}
@@ -1719,7 +1719,7 @@
             id="source-published-at"
             type="date"
             bind:value={publishedAt}
-            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info"
           />
         </div>
 
@@ -1732,7 +1732,7 @@
             type="text"
             bind:value={sourceTitle}
             placeholder="Titre de la source"
-            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
           />
         </div>
 
@@ -1745,7 +1745,7 @@
             type="text"
             bind:value={authors}
             placeholder="Dupont J., Martin A."
-            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
           />
         </div>
 
@@ -1758,7 +1758,7 @@
             bind:value={annotation}
             rows={2}
             placeholder="Pourquoi cette source est-elle importante ?"
-            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder resize-y min-h-[3rem]"
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder resize-y min-h-12"
           ></textarea>
         </div>
 
@@ -1811,7 +1811,7 @@
             type="url"
             bind:value={archiveUrl}
             placeholder="https://web.archive.org/web/2026.../https://..."
-            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder font-mono text-sm"
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder font-mono text-sm"
           />
         </div>
 
@@ -1847,7 +1847,7 @@
                   type="text"
                   bind:value={journal}
                   placeholder="Nature Neuroscience"
-                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
+                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
                 />
               </div>
               <div class="space-y-1.5">
@@ -1859,7 +1859,7 @@
                   type="text"
                   bind:value={volume}
                   placeholder="42"
-                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
+                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
                 />
               </div>
               <div class="space-y-1.5">
@@ -1871,7 +1871,7 @@
                   type="text"
                   bind:value={pages}
                   placeholder="123-145"
-                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
+                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
                 />
               </div>
               <div class="space-y-1.5">
@@ -1883,7 +1883,7 @@
                   type="text"
                   bind:value={publisher}
                   placeholder="Elsevier"
-                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
+                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
                 />
               </div>
               <div class="space-y-1.5">
@@ -1895,7 +1895,7 @@
                   type="text"
                   bind:value={doiField}
                   placeholder="10.1038/s41593-023-01234-5"
-                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder font-mono text-sm"
+                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder font-mono text-sm"
                 />
               </div>
             </div>
@@ -1946,13 +1946,13 @@
                   bind:value={parentSourceQuery}
                   placeholder="Filtrer les sources de cette fiche (numéro, titre, URL)…"
                   aria-label="Rechercher parmi les sources de cette fiche"
-                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-placeholder"
+                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-hidden focus:ring-2 focus:ring-info placeholder:text-ink-placeholder"
                 />
                 <select
                   id="source-parent"
                   bind:value={parentSourceId}
                   size={numberedSources.length > 8 ? 8 : undefined}
-                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
+                  class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info"
                 >
                   <option value="">(Aucun lien parent)</option>
                   {#each numberedSources as { source: s, number } (s.id)}
@@ -2010,7 +2010,7 @@
                 if (linkedCardResults.length === 0) void searchLinkedCards();
               }}
               placeholder="Rechercher une fiche par titre…"
-              class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info"
+              class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-hidden focus:ring-2 focus:ring-info"
             />
             {#if linkedCardLoading}
               <p class="text-xs text-ink-tertiary">Recherche…</p>
@@ -2143,7 +2143,7 @@
               bind:value={excerptText}
               maxlength={1000}
               placeholder="Ajouter une citation manuellement…"
-              class="flex-1 px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-none focus:ring-2 focus:ring-info placeholder:text-ink-placeholder"
+              class="flex-1 px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-hidden focus:ring-2 focus:ring-info placeholder:text-ink-placeholder"
             />
             <Button
               type="button"
@@ -2269,7 +2269,7 @@
                 />
               {/if}
               <span
-                class="mt-0.5 shrink-0 inline-flex items-center justify-center min-w-[1.75rem] px-1.5 py-0.5 text-xs font-mono font-medium text-ink-tertiary bg-surface-tertiary border border-border rounded"
+                class="mt-0.5 shrink-0 inline-flex items-center justify-center min-w-7 px-1.5 py-0.5 text-xs font-mono font-medium text-ink-tertiary bg-surface-tertiary border border-border rounded"
                 aria-label="Numéro de source"
                 title="Position dans la fiche"
               >

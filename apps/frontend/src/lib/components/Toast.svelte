@@ -71,7 +71,7 @@
 >
   {#each $store as item (item.id)}
     <div
-      class="pointer-events-auto rounded border-l-4 bg-surface-primary border border-border shadow-sm overflow-hidden flex items-start gap-3 p-3 {variantClasses[
+      class="pointer-events-auto rounded border-l-4 bg-surface-primary border border-border shadow-xs overflow-hidden flex items-start gap-3 p-3 {variantClasses[
         item.variant
       ]}"
       role="alert"

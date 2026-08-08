@@ -342,7 +342,7 @@
             oninput={(e) => (contentUrl = (e.target as HTMLInputElement).value)}
             onblur={() => suggestFromUrl()}
             placeholder="https://youtube.com/watch?v=… ou https://…/article"
-            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
           />
           {#if suggesting}
             <div
@@ -450,7 +450,7 @@
         oninput={onTitleInput}
         required
         placeholder="Ex: La mémoire et le cerveau, ce que dit la science"
-        class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
+        class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
       />
     </div>
 
@@ -465,7 +465,7 @@
         oninput={(e) => (contentAuthors = (e.target as HTMLInputElement).value)}
         maxlength={500}
         placeholder="Ex: Diamond A., Ling D.S."
-        class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
+        class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
       />
       <p class="text-xs text-ink-tertiary">
         Qui a écrit ou réalisé le contenu documenté, pas qui publie la fiche. C'est ce nom qui
@@ -489,7 +489,7 @@
           disabled={Boolean(editCardId)}
           pattern="[a-z0-9-]+"
           placeholder="memoire-et-cerveau"
-          class="flex-1 px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder disabled:opacity-60 disabled:cursor-not-allowed"
+          class="flex-1 px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder disabled:opacity-60 disabled:cursor-not-allowed"
         />
       </div>
       <p class="text-xs text-ink-tertiary">
@@ -509,7 +509,7 @@
         oninput={(e) => (description = (e.target as HTMLTextAreaElement).value)}
         rows={3}
         placeholder="Résumé de votre contenu..."
-        class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder resize-y min-h-[3rem]"
+        class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder resize-y min-h-12"
       ></textarea>
     </div>
 
@@ -521,7 +521,7 @@
           id="platform"
           value={platform}
           onchange={(e) => (platform = (e.target as HTMLSelectElement).value as Platform)}
-          class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
+          class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info"
         >
           {#each platforms as p (p.value)}
             <option value={p.value}>{p.label}</option>
@@ -537,7 +537,7 @@
           id="content-type"
           value={contentType}
           onchange={(e) => (contentType = (e.target as HTMLSelectElement).value as ContentType)}
-          class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
+          class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info"
         >
           {#each contentTypes as ct (ct.value)}
             <option value={ct.value}>{ct.label}</option>
@@ -554,7 +554,7 @@
           value={cardFormat}
           onchange={(e) =>
             (cardFormat = (e.target as HTMLSelectElement).value as SourceFormat | '')}
-          class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
+          class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info"
         >
           <option value="">Non déclaré</option>
           {#each formatOptions as f (f.value)}
@@ -571,7 +571,7 @@
           value={cardCategory}
           onchange={(e) =>
             (cardCategory = (e.target as HTMLSelectElement).value as SourceCategory | '')}
-          class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
+          class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info"
         >
           <option value="">Non déclaré</option>
           {#each categoryOptions as c (c.value)}
@@ -588,7 +588,7 @@
           value={cardAuthorKind}
           onchange={(e) =>
             (cardAuthorKind = (e.target as HTMLSelectElement).value as AuthorKind | '')}
-          class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
+          class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info"
         >
           <option value="">Non déclaré</option>
           {#each authorKindOptions as a (a.value)}

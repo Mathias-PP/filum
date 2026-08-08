@@ -41,7 +41,7 @@
     oninput={(e) => setParam('q', (e.currentTarget as HTMLInputElement).value)}
     placeholder="Chercher un créateur"
     aria-label="Chercher un créateur"
-    class="w-full px-4 py-2 mb-6 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-none focus:ring-2 focus:ring-info"
+    class="w-full px-4 py-2 mb-6 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info"
   />
 
   {#if data.failed}
@@ -63,11 +63,11 @@
               <img
                 src={creator.avatar_url}
                 alt=""
-                class="w-12 h-12 rounded-full object-cover flex-shrink-0"
+                class="w-12 h-12 rounded-full object-cover shrink-0"
               />
             {:else}
               <div
-                class="w-12 h-12 rounded-full bg-surface-elevated flex items-center justify-center text-ink-secondary text-lg font-medium flex-shrink-0"
+                class="w-12 h-12 rounded-full bg-surface-elevated flex items-center justify-center text-ink-secondary text-lg font-medium shrink-0"
               >
                 {(creator.display_name ?? creator.slug).charAt(0).toUpperCase()}
               </div>

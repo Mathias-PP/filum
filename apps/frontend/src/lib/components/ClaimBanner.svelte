@@ -60,7 +60,7 @@
         bind:value={email}
         required
         placeholder="votre@email.fr"
-        class="rounded border border-border-strong bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-1"
+        class="rounded border border-border-strong bg-transparent px-3 py-2 text-sm focus:outline-hidden focus:ring-1"
         aria-label="Email"
       />
       <input
@@ -68,14 +68,14 @@
         bind:value={channelUrl}
         required
         placeholder="Lien de votre chaîne / site"
-        class="rounded border border-border-strong bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-1"
+        class="rounded border border-border-strong bg-transparent px-3 py-2 text-sm focus:outline-hidden focus:ring-1"
         aria-label="Lien de votre chaîne"
       />
       <textarea
         bind:value={message}
         rows="3"
         placeholder="Message (optionnel)"
-        class="rounded border border-border-strong bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-1"
+        class="rounded border border-border-strong bg-transparent px-3 py-2 text-sm focus:outline-hidden focus:ring-1"
       ></textarea>
       <Button type="submit" loading={submitStatus === 'loading'}>Envoyer la demande</Button>
       {#if submitStatus === 'error'}

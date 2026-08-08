@@ -439,7 +439,7 @@
     </div>
   {:else}
     <div
-      class="absolute bottom-3 left-3 rounded-md bg-slate-900/80 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-300 backdrop-blur-sm"
+      class="absolute bottom-3 left-3 rounded-md bg-slate-900/80 border border-slate-700 px-2.5 py-1.5 text-xs text-slate-300 backdrop-blur-xs"
     >
       {cardCount} fiches reliées · la taille dit le nombre de sources
       {#if truncated}
@@ -451,7 +451,7 @@
          le recadrage automatique s'est retire des que l'utilisateur a agi. -->
     <button
       onclick={resetView}
-      class="absolute top-3 right-3 h-8 w-8 rounded-md border border-slate-700 bg-slate-900/80 text-slate-300 backdrop-blur-sm hover:bg-slate-800 flex items-center justify-center"
+      class="absolute top-3 right-3 h-8 w-8 rounded-md border border-slate-700 bg-slate-900/80 text-slate-300 backdrop-blur-xs hover:bg-slate-800 flex items-center justify-center"
       aria-label="Recentrer"
       title="Recentrer"
     >

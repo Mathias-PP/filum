@@ -56,7 +56,7 @@
   >
     <button
       type="button"
-      class="absolute inset-0 bg-ink-primary/40 backdrop-blur-sm"
+      class="absolute inset-0 bg-ink-primary/40 backdrop-blur-xs"
       aria-label="Fermer"
       onclick={onBackdropClick}
       transition:fade={{ duration: 150 }}

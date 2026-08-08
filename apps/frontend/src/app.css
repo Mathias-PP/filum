@@ -1,70 +1,179 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=JetBrains+Mono:wght@400;500&display=swap')
+layer(base);
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
-:root {
-  /* Design system tokens (RGB triples — use rgb(var(--token) / alpha)) */
-  --bg-primary: 255 255 255;
-  --bg-secondary: 250 250 247;
-  --bg-tertiary: 241 239 232;
-  --text-primary: 26 26 26;
-  --text-secondary: 85 85 85;
-  /* #757575, et non #888888. La nuance tertiaire porte des dates, des
+@plugin '@tailwindcss/forms' {
+  strategy: 'class';
+}
+@plugin '@tailwindcss/typography';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-surface: rgb(var(--bg-primary));
+  --color-surface-primary: rgb(var(--bg-primary));
+  --color-surface-secondary: rgb(var(--bg-secondary));
+  --color-surface-tertiary: rgb(var(--bg-tertiary));
+
+  --color-ink-primary: rgb(var(--text-primary));
+  --color-ink-secondary: rgb(var(--text-secondary));
+  --color-ink-tertiary: rgb(var(--text-tertiary));
+  --color-ink-placeholder: rgb(var(--text-placeholder));
+
+  --color-border: rgb(var(--border));
+  --color-border-strong: rgb(var(--border-strong));
+
+  --color-peer-fill: #c0dd97;
+  --color-peer-stroke: #639922;
+  --color-peer-text: #173404;
+
+  --color-inst-fill: #b5d4f4;
+  --color-inst-stroke: #378add;
+  --color-inst-text: #042c53;
+
+  --color-press-fill: #fac775;
+  --color-press-stroke: #ef9f27;
+  --color-press-text: #412402;
+
+  --color-orig-fill: #cecbf6;
+  --color-orig-stroke: #7f77dd;
+  --color-orig-text: #26215c;
+
+  --color-success: rgb(var(--success));
+  --color-success-bg: rgb(var(--success-bg));
+
+  --color-warning: rgb(var(--warning));
+  --color-warning-bg: rgb(var(--warning-bg));
+
+  --color-danger: rgb(var(--danger));
+  --color-danger-bg: rgb(var(--danger-bg));
+
+  --color-info: rgb(var(--info));
+  --color-info-bg: rgb(var(--info-bg));
+
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+  --color-primary-300: #93c5fd;
+  --color-primary-400: #60a5fa;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-primary-800: #1e40af;
+  --color-primary-900: #1e3a8a;
+  --color-primary-950: #172554;
+
+  --font-sans: Inter, system-ui, sans-serif;
+  --font-serif: 'Source Serif 4', Georgia, serif;
+  --font-mono: 'JetBrains Mono', Consolas, monospace;
+
+  --radius: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  --breakpoint-xs: 480px;
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+@utility text-balance {
+  text-wrap: balance;
+}
+
+@utility animate-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@utility skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--bg-tertiary)) 0%,
+    rgb(var(--bg-secondary)) 50%,
+    rgb(var(--bg-tertiary)) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+@layer utilities {
+  :root {
+    /* Design system tokens (RGB triples — use rgb(var(--token) / alpha)) */
+    /* Ne jamais nommer un jeton `--color-*` ici : depuis Tailwind v4,
+       `--color-*` est l'espace de noms du theme, et une declaration de ce nom
+       dans `:root` ecrase la variable generee par `@theme`. Six alias hérités
+       le faisaient — `--color-border: var(--border)` rendait un triplet nu,
+       invalide comme couleur, si bien que `border-border` retombait sur
+       `currentColor` : les contours de carte viraient au noir du texte. */
+    --bg-primary: 255 255 255;
+    --bg-secondary: 250 250 247;
+    --bg-tertiary: 241 239 232;
+    --text-primary: 26 26 26;
+    --text-secondary: 85 85 85;
+    /* #757575, et non #888888. La nuance tertiaire porte des dates, des
      compteurs et des libellés de filtre, souvent en 12px : à 3,54:1 sur blanc
      elle échouait au seuil WCAG AA (4,5:1) partout où elle sert, soit une
      centaine d'endroits. #757575 monte à 4,61:1 en restant nettement plus
      discret que la nuance secondaire (7,13:1). */
-  --text-tertiary: 117 117 117;
-  /* Un exemple dans un champ vide n'est pas du texte : à la nuance du texte
+    --text-tertiary: 117 117 117;
+    /* Un exemple dans un champ vide n'est pas du texte : à la nuance du texte
      d'aide, il se lisait comme une valeur déjà saisie. */
-  --text-placeholder: 176 176 176;
-  --border: 232 230 222;
-  --border-strong: 207 205 196;
-  /* #177C5C et #996013, et non #1D9E75 / #BA7517. Les deux servent de couleur
+    --text-placeholder: 176 176 176;
+    --border: 232 230 222;
+    --border-strong: 207 205 196;
+    /* #177C5C et #996013, et non #1D9E75 / #BA7517. Les deux servent de couleur
      de texte sur leur propre fond de badge (toasts, statuts) : ils y tombaient
      a 2,98:1 et 3,24:1, sous le seuil WCAG AA de 4,5:1. `danger` et `info`
      avaient deja ete assombris, ces deux-la avaient ete oublies. Ils montent
      respectivement a 4,54:1 et 4,53:1 sur leur fond, 5,15:1 et 5,20:1 sur
      blanc, en gardant la meme teinte. */
-  --success: 23 124 92;
-  --success-bg: 225 245 238;
-  --warning: 153 96 19;
-  --warning-bg: 250 238 218;
-  --danger: 163 45 45;
-  --danger-bg: 252 235 235;
-  --info: 24 95 165;
-  --info-bg: 230 241 251;
+    --success: 23 124 92;
+    --success-bg: 225 245 238;
+    --warning: 153 96 19;
+    --warning-bg: 250 238 218;
+    --danger: 163 45 45;
+    --danger-bg: 252 235 235;
+    --info: 24 95 165;
+    --info-bg: 230 241 251;
+  }
 
-  /* Legacy aliases (kept for components not yet migrated) */
-  --color-primary: var(--info);
-  --color-surface: var(--bg-primary);
-  --color-background: var(--bg-secondary);
-  --color-text: var(--text-primary);
-  --color-text-muted: var(--text-secondary);
-  --color-border: var(--border);
-}
-
-.dark {
-  --bg-primary: 26 26 30; /* #1A1A1E — surface card */
-  --bg-secondary: 20 20 26; /* #14141A — body (lightened from #0F0F11) */
-  --bg-tertiary: 37 37 41; /* #252529 — hover/panel */
-  --bg-surface-secondary: 26 26 36; /* #1A1A24 — alternate surface */
-  --text-primary: 245 245 245; /* #F5F5F5 (lightened from #EDEDED) */
-  --text-secondary: 156 163 175; /* #9CA3AF */
-  --text-tertiary: 139 146 161; /* #8B92A1 — 5,52:1, l'ancien #6B7280 tombait à 3,57:1 */
-  --text-placeholder: 82 88 100; /* plus discret que le texte d'aide */
-  --border: 45 45 50; /* #2D2D32 */
-  --border-strong: 61 61 66; /* #3D3D42 */
-  --success: 52 211 153; /* #34D399 saturated +15% */
-  --success-bg: 21 50 41;
-  --warning: 251 191 36; /* #FBBF24 saturated +15% */
-  --warning-bg: 56 41 14;
-  --danger: 248 113 113; /* #F87171 saturated +15% */
-  --danger-bg: 60 22 22;
-  --info: 96 165 250; /* #60A5FA saturated +15% */
-  --info-bg: 17 39 70;
+  .dark {
+    --bg-primary: 26 26 30; /* #1A1A1E — surface card */
+    --bg-secondary: 20 20 26; /* #14141A — body (lightened from #0F0F11) */
+    --bg-tertiary: 37 37 41; /* #252529 — hover/panel */
+    --bg-surface-secondary: 26 26 36; /* #1A1A24 — alternate surface */
+    --text-primary: 245 245 245; /* #F5F5F5 (lightened from #EDEDED) */
+    --text-secondary: 156 163 175; /* #9CA3AF */
+    --text-tertiary: 139 146 161; /* #8B92A1 — 5,52:1, l'ancien #6B7280 tombait à 3,57:1 */
+    --text-placeholder: 82 88 100; /* plus discret que le texte d'aide */
+    --border: 45 45 50; /* #2D2D32 */
+    --border-strong: 61 61 66; /* #3D3D42 */
+    --success: 52 211 153; /* #34D399 saturated +15% */
+    --success-bg: 21 50 41;
+    --warning: 251 191 36; /* #FBBF24 saturated +15% */
+    --warning-bg: 56 41 14;
+    --danger: 248 113 113; /* #F87171 saturated +15% */
+    --danger-bg: 60 22 22;
+    --info: 96 165 250; /* #60A5FA saturated +15% */
+    --info-bg: 17 39 70;
+  }
 }
 
 @layer base {
@@ -144,14 +253,6 @@
 }
 
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-
-  .animate-in {
-    animation: fadeIn 0.3s ease-out;
-  }
-
   @keyframes fadeIn {
     from {
       opacity: 0;
@@ -170,17 +271,6 @@
     100% {
       background-position: 200% 0;
     }
-  }
-
-  .skeleton-shimmer {
-    background: linear-gradient(
-      90deg,
-      rgb(var(--bg-tertiary)) 0%,
-      rgb(var(--bg-secondary)) 50%,
-      rgb(var(--bg-tertiary)) 100%
-    );
-    background-size: 200% 100%;
-    animation: shimmer 1.6s ease-in-out infinite;
   }
 }
 
