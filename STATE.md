@@ -185,6 +185,21 @@ Les correctifs, par PR :
   elle, reste juste. Discriminant retenu : minuscule initiale ⇒ refus, sauf
   majuscule interne au premier mot (`iGPT`, seul vrai titre des 15 ; `arXiv`,
   `eLife`, `iPhone` sont du meme genre).
+- **2026-08-08, #331 — ce que sept tests verts ne voyaient pas.** L'ecran de
+  decoupage (#328, #329) etait couvert par sept tests de composant tenant
+  l'invariant « le texte affiche est celui de la source », et n'avait jamais
+  ete exerce dans un navigateur : il vit derriere l'authentification Google,
+  dans un formulaire a plusieurs etapes. `/sandbox/decoupage` leve cet
+  obstacle — atelier dev-only, meme convention que `/sandbox/logo`, reponse
+  serveur simulee — et a montre du premier coup un defaut qu'aucun test ne
+  cherchait : apres « Ajouter », le morceau etait **fusionne avec son voisin**,
+  son texte restait donc affiche et un second clic produisait un extrait
+  **chevauchant le premier**. Deux extraits qui se recouvrent se lisent sur la
+  fiche comme deux passages distincts de la source. Les bornes partitionnent le
+  texte : on ne peut pas en oter un segment sans recoller ses voisins. Le
+  morceau reste donc en place, marque `✓ ajoute` ; deplacer une borne fait
+  tomber la marque, le passage n'etant alors plus le meme. **Un test de
+  composant tient une logique, pas un usage.**
 - **2026-08-08, #330 — le prix de cette rigueur, et ce qui n'en faisait pas
   partie.** Le re-audit d'apres #327 compte **8 sources sans titre sur l'essai
   gwern**, la ou le tableau ci-dessus dit `sans titre=0` : ce chiffre est
