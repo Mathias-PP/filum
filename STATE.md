@@ -185,6 +185,26 @@ Les correctifs, par PR :
   elle, reste juste. Discriminant retenu : minuscule initiale ⇒ refus, sauf
   majuscule interne au premier mot (`iGPT`, seul vrai titre des 15 ; `arXiv`,
   `eLife`, `iPhone` sont du meme genre).
+- **2026-08-08, #328 — decouper soi-meme le texte d'une source en extraits**
+  La suggestion automatique lisait la page, et la page ne se laisse pas
+  toujours lire. Mesure du jour sur dix URLs dont les quatre personas
+  (`scripts/probe_excerpt_text.py`) : **cinq ne rendent aucun texte
+  exploitable** — NYT, ScienceDirect, treasury.gov et Cell rendent zero
+  caractere, YouTube 313. Une capture Wayback ne rattraperait ni ScienceDirect
+  ni Cell, dont le texte est derriere un paywall : l'archive n'en detient pas
+  plus que la page vivante. Le seul chemin qui marche a tous les coups est le
+  texte que la personne a sous les yeux et colle elle-meme. D'ou le `422
+  no_text` de `/suggest` remplace par une reponse vide qui **declare sa
+  provenance** (`text_source`) — une page illisible n'est pas une erreur, c'est
+  un etat, et c'est lui qui fait basculer l'ecran sur le collage. Nouveau
+  `POST /sources/{id}/excerpts/chunk` adosse a `app/services/chunker.py` (ni
+  reseau ni cle, ce qui en fait le plancher sur lequel tout le reste repose),
+  taille cible suggeree ou choisie en caracteres / mots / tokens, bornes
+  deplacables **de phrase en phrase, jamais de caractere en caractere** : une
+  coupe au milieu d'une phrase produit un fragment, et un fragment cite se lit
+  comme une affirmation tronquee. Intitules d'extraits facultatifs (migration
+  `032_excerpt_title`), saisis ou suggeres — facultatifs parce qu'imposer un
+  intitule ferait inventer une etiquette la ou il n'y a rien a dire.
 - **#308** `is_creator_self_link` — la fin d'une description YouTube est un
   **bloc de signature** (Patreon, site perso, comptes sociaux, boutique)
   reconduit a l'identique d'une video a l'autre. 11 des 16 sources extraites
