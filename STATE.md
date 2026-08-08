@@ -203,7 +203,12 @@ Les correctifs, par PR :
   l'enrichissement se faisant en place, un budget epuise laisse acquis tout ce
   qui est deja revenu. **8 sans titre → 3**, et les trois derniers (openai.com,
   lesswrong, metaculus) n'ont reellement pas de titre a donner : l'URL nue y
-  est la reponse honnete.
+  est la reponse honnete. Sonde repassee sur les quatre personas apres
+  correctif — journaliste 6 sans titre, vulgarisateur 0, essayiste 3,
+  institution 0 ; **les 9 restants sont tous non recuperables**, leur page
+  refusant la visite ou ne publiant aucun titre. Le tableau plus haut
+  (`sans titre=0` partout) date d'avant #327 et n'est plus a jour : ce n'est
+  pas une regression mais le prix assume du refus des faux titres.
 - **2026-08-08, #328 — decouper soi-meme le texte d'une source en extraits**
   La suggestion automatique lisait la page, et la page ne se laisse pas
   toujours lire. Mesure du jour sur dix URLs dont les quatre personas
