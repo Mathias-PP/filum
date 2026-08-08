@@ -14,6 +14,7 @@ import zipfile
 from typing import TYPE_CHECKING
 from xml.sax.saxutils import escape  # nosec B406 - echappe la sortie, ne parse rien
 
+from app.services import citation_styles
 from app.services.csl import author_display, to_csl
 
 if TYPE_CHECKING:
@@ -298,36 +299,22 @@ def export_ris(card: BiblioCard) -> str:
     return "\n".join(out)
 
 
-# --- Bibliographie APA (texte) ----------------------------------------------
+# --- Bibliographie formatee (texte) -----------------------------------------
 
 
-def _apa_line(source: Source) -> str:
-    parts: list[str] = []
-    who = source.authors or source.title or source.url
-    year = f"({source.published_at.year})." if source.published_at else "(s. d.)."
-    parts.append(f"{who} {year}")
-    if source.authors and source.title:
-        parts.append(f"{source.title}.")
-    if source.journal:
-        ref = f"{source.journal}"
-        if source.volume:
-            ref += f", {source.volume}"
-        if source.pages:
-            ref += f", {source.pages}"
-        parts.append(ref + ".")
-    elif source.publisher:
-        parts.append(f"{source.publisher}.")
-    parts.append(f"https://doi.org/{source.doi}" if source.doi else source.url)
-    return " ".join(parts)
+def export_bibliography(card: BiblioCard, public_url: str, style: str) -> str:
+    """La bibliographie de la fiche, rendue dans le style demande.
 
-
-def export_apa(card: BiblioCard, public_url: str) -> str:
+    L'en-tete rappelle la fiche d'origine : une bibliographie collee dans un
+    document perd sinon toute trace de sa provenance, et c'est precisement ce
+    lien que Philum sert a etablir.
+    """
     lines = [
-        f"Bibliographie — {card.title}",
+        f"Bibliographie ({citation_styles.STYLES[style]}) — {card.title}",
         f"Fiche Philum : {public_url}",
         "",
     ]
-    lines += [_apa_line(s) for s in card.sources]
+    lines += citation_styles.format_bibliography(list(card.sources), style)
     return "\n".join(lines) + "\n"
 
 
