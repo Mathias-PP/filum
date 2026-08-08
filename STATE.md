@@ -48,7 +48,9 @@ Deux règles tenues, à ne pas défaire : un champ exclu du périmètre **garde 
 
 Vérifié en prod après redéploiement VM : XLSX à 3 feuilles, DOCX portant DOI + position déclarée + extraits, MCP rendant 2 extraits avec `context`/`verified_*`. La fiche de démo n'ayant aucune voisine, la feuille « Fiches voisines » n'a que son en-tête — c'est correct, le cas peuplé est couvert par les tests unitaires.
 
-Au passage : `app/api/v1/endpoints/excerpts.py` était resté non formaté après #350 et rendait **`main` rouge** sur `Lint Backend`. Corrigé dans #351.
+**PR #352 mergée** (sha `195283c`) — la moitié visible du même défaut. Le backend savait porter le voisinage en XLSX et DOCX, mais le panneau d'export ne le proposait pas : `NEIGHBOUR_FORMATS` excluait les deux et `SCOPED_FORMATS` excluait aussi le CSV, si bien que choisir « Excel » affichait *« Ce format ne sait pas porter de fiches voisines »* devant un format qui le savait. Ajoutée au passage : une feuille **« Sources des voisines »**, sans quoi demander un degré n'aurait rapporté au tableur que des titres — on ne va pas chercher une fiche voisine pour son titre, mais pour ce qu'elle cite. Vérifié en prod : le classeur a bien ses 4 feuilles.
+
+Au passage : `app/api/v1/endpoints/excerpts.py` était resté non formaté après #350 et rendait **`main` rouge** sur `Lint Backend`. Corrigé dans #351. **Leçon** : `Lint Backend` fait tourner `ruff format --check app/`, que ni `ruff check` ni les tests ne remplacent — le lancer avant de pousser.
 
 ---
 
