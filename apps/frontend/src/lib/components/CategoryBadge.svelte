@@ -16,7 +16,7 @@
 </script>
 
 <span
-  class="inline-flex items-center rounded-full font-medium bg-slate-100 text-slate-700 {sizeClasses[
+  class="inline-flex items-center rounded-full font-medium bg-surface-tertiary text-ink-primary {sizeClasses[
     size
   ]}"
 >

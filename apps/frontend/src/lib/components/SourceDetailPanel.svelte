@@ -86,6 +86,9 @@
 
 {#if source}
   {#if isMobile}
+    <!-- `slate-900/30` volontairement fige : un voile assombrit, dans les
+         deux themes. Le passer a un jeton l'eclaircirait en mode sombre,
+         c'est-a-dire l'inverse de ce qu'on lui demande. -->
     <button
       type="button"
       class="absolute inset-0 z-40 bg-slate-900/30"
@@ -93,7 +96,7 @@
       onclick={onClose}
     ></button>
     <div
-      class="panel-scroll absolute z-50 left-0 right-0 bottom-0 max-h-[80%] overflow-y-auto bg-white rounded-t-2xl border-t border-slate-200 shadow-2xl"
+      class="panel-scroll absolute z-50 left-0 right-0 bottom-0 max-h-[80%] overflow-y-auto bg-surface-primary rounded-t-2xl border-t border-border shadow-2xl"
       role="dialog"
       aria-modal="true"
       aria-labelledby="source-panel-title"
@@ -102,7 +105,7 @@
     </div>
   {:else}
     <div
-      class="panel-scroll absolute z-50 bg-white shadow-xl border border-slate-200 rounded-xl overflow-y-auto"
+      class="panel-scroll absolute z-50 bg-surface-primary shadow-xl border border-border rounded-xl overflow-y-auto"
       style={panelStyle}
       role="dialog"
       aria-modal="false"
@@ -141,7 +144,7 @@
         <button
           type="button"
           onclick={onClose}
-          class="text-slate-500 hover:text-slate-900 transition-colors shrink-0"
+          class="text-ink-tertiary hover:text-ink-primary transition-colors shrink-0"
           aria-label="Fermer"
         >
           <svg
@@ -157,16 +160,16 @@
         </button>
       </div>
 
-      <h2 id="source-panel-title" class="text-lg font-serif text-slate-900 leading-snug">
+      <h2 id="source-panel-title" class="text-lg font-serif text-ink-primary leading-snug">
         {source.title ?? source.url}
       </h2>
 
-      <div class="mt-2 text-sm text-slate-600 space-y-0.5">
+      <div class="mt-2 text-sm text-ink-secondary space-y-0.5">
         {#if source.authors}
           <p>{source.authors}</p>
         {/if}
         {#if publishedDate}
-          <p class="text-slate-500">Publié le {publishedDate}</p>
+          <p class="text-ink-tertiary">Publié le {publishedDate}</p>
         {/if}
       </div>
 
@@ -182,7 +185,7 @@
       {#if source.citations_count}
         <div class="mt-3 flex flex-wrap gap-1.5">
           <span
-            class="inline-flex items-center text-xs text-slate-700 bg-slate-100 px-2 py-0.5 rounded"
+            class="inline-flex items-center text-xs text-ink-primary bg-surface-tertiary px-2 py-0.5 rounded"
           >
             {formatCount(source.citations_count)} citations
           </span>
@@ -191,7 +194,7 @@
 
       {#if source.annotation}
         <p
-          class="mt-4 text-sm text-slate-700 italic leading-relaxed border-l-2 pl-3"
+          class="mt-4 text-sm text-ink-primary italic leading-relaxed border-l-2 pl-3"
           style:border-color={AUTHOR_COLORS[source.author_kind].stroke}
         >
           {source.annotation}
@@ -200,22 +203,24 @@
 
       {#if source.excerpts && source.excerpts.length > 0}
         <div class="mt-4">
-          <p class="text-xs uppercase tracking-wide text-slate-500 mb-2">Extraits cités</p>
+          <p class="text-xs uppercase tracking-wide text-ink-tertiary mb-2">Extraits cités</p>
           <div class="flex gap-2 overflow-x-auto snap-x pb-1 -mx-1 px-1">
             {#each source.excerpts as excerpt (excerpt.id)}
               <div
-                class="relative shrink-0 snap-start w-64 max-h-32 overflow-y-auto bg-slate-50 border border-slate-200 rounded-md p-3 text-sm text-slate-700 italic"
+                class="relative shrink-0 snap-start w-64 max-h-32 overflow-y-auto bg-surface-secondary border border-border rounded-md p-3 text-sm text-ink-primary italic"
               >
                 {#if excerpt.suggested_by_ai}
                   <span
-                    class="absolute top-1 right-2 text-xs text-slate-400"
+                    class="absolute top-1 right-2 text-xs text-ink-tertiary"
                     title="Extrait suggéré par IA"
                   >
                     ✨
                   </span>
                 {/if}
                 {#if excerpt.title}
-                  <p class="mb-1 text-xs font-medium not-italic text-slate-600">{excerpt.title}</p>
+                  <p class="mb-1 text-xs font-medium not-italic text-ink-secondary">
+                    {excerpt.title}
+                  </p>
                 {/if}
                 «&nbsp;{excerpt.text}&nbsp;»
               </div>
@@ -229,7 +234,7 @@
           href={source.url}
           target="_blank"
           rel="noopener noreferrer"
-          class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 transition-colors"
+          class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-ink-primary text-surface-primary text-sm font-medium hover:bg-ink-secondary transition-colors"
         >
           Voir la source
           <svg
@@ -257,18 +262,18 @@
               href={source.archive_url}
               target="_blank"
               rel="noopener noreferrer"
-              class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors"
+              class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-border-strong text-ink-primary text-sm font-medium hover:bg-surface-secondary transition-colors"
             >
               Voir l'archive
             </a>
-            <span class="text-xs text-slate-500 text-center">Snapshot horodaté</span>
+            <span class="text-xs text-ink-tertiary text-center">Snapshot horodaté</span>
           </div>
         {/if}
       </div>
 
       {#if parent}
-        <div class="mt-4 pt-3 border-t border-slate-200">
-          <p class="text-xs uppercase tracking-wide text-slate-500 mb-1">Cite cette source</p>
+        <div class="mt-4 pt-3 border-t border-border">
+          <p class="text-xs uppercase tracking-wide text-ink-tertiary mb-1">Cite cette source</p>
           <button
             type="button"
             class="text-left text-sm text-blue-700 hover:underline"

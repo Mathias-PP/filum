@@ -88,6 +88,9 @@
 
 {#if info}
   {#if isMobile}
+    <!-- `slate-900/30` volontairement fige : un voile assombrit, dans les
+         deux themes. Le passer a un jeton l'eclaircirait en mode sombre,
+         c'est-a-dire l'inverse de ce qu'on lui demande. -->
     <button
       type="button"
       class="absolute inset-0 z-40 bg-slate-900/30"
@@ -95,7 +98,7 @@
       onclick={onClose}
     ></button>
     <div
-      class="panel-scroll absolute z-50 left-0 right-0 bottom-0 max-h-[80%] overflow-y-auto bg-white rounded-t-2xl border-t border-slate-200 shadow-2xl"
+      class="panel-scroll absolute z-50 left-0 right-0 bottom-0 max-h-[80%] overflow-y-auto bg-surface-primary rounded-t-2xl border-t border-border shadow-2xl"
       role="dialog"
       aria-modal="true"
       aria-labelledby="card-panel-title"
@@ -104,7 +107,7 @@
     </div>
   {:else}
     <div
-      class="panel-scroll absolute z-50 bg-white shadow-xl border border-slate-200 rounded-xl overflow-y-auto"
+      class="panel-scroll absolute z-50 bg-surface-primary shadow-xl border border-border rounded-xl overflow-y-auto"
       style={panelStyle}
       role="dialog"
       aria-modal="false"
@@ -127,7 +130,7 @@
         <button
           type="button"
           onclick={onClose}
-          class="text-slate-500 hover:text-slate-900 transition-colors shrink-0"
+          class="text-ink-tertiary hover:text-ink-primary transition-colors shrink-0"
           aria-label="Fermer"
         >
           <svg
@@ -143,25 +146,25 @@
         </button>
       </div>
 
-      <h2 id="card-panel-title" class="text-lg font-serif text-slate-900 leading-snug">
+      <h2 id="card-panel-title" class="text-lg font-serif text-ink-primary leading-snug">
         {info.title}
       </h2>
 
-      <div class="mt-2 text-sm text-slate-600 space-y-0.5">
+      <div class="mt-2 text-sm text-ink-secondary space-y-0.5">
         {#if info.authors}
           <p>{info.authors}</p>
         {/if}
         {#if publishedDate}
-          <p class="text-slate-500">Publié le {publishedDate}</p>
+          <p class="text-ink-tertiary">Publié le {publishedDate}</p>
         {/if}
-        <p class="text-slate-500">
+        <p class="text-ink-tertiary">
           {info.sourcesCount}
           {info.sourcesCount > 1 ? 'sources citées' : 'source citée'}
         </p>
       </div>
 
       {#if info.description}
-        <p class="mt-3 text-sm text-slate-700 leading-relaxed">{info.description}</p>
+        <p class="mt-3 text-sm text-ink-primary leading-relaxed">{info.description}</p>
       {/if}
 
       <div class="mt-4 flex flex-col gap-2">
@@ -170,7 +173,7 @@
             href={info.contentUrl}
             target="_blank"
             rel="noopener noreferrer"
-            class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 transition-colors"
+            class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-ink-primary text-surface-primary text-sm font-medium hover:bg-ink-secondary transition-colors"
           >
             Voir le contenu
             <svg
@@ -188,7 +191,7 @@
         {#if !info.isRoot}
           <a
             href="/@{info.creatorSlug}/{info.slug}"
-            class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm font-medium hover:bg-slate-50 transition-colors"
+            class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-border-strong text-ink-primary text-sm font-medium hover:bg-surface-secondary transition-colors"
           >
             Ouvrir la fiche
           </a>
@@ -199,15 +202,15 @@
             onclick={() => onTogglePin?.(info.id)}
             class="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-colors {pinned
               ? 'border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
-              : 'border-slate-300 text-slate-600 hover:bg-slate-50'}"
+              : 'border-border-strong text-ink-secondary hover:bg-surface-secondary'}"
           >
             {pinned ? 'Detacher du graphe' : 'Garder sur le graphe'}
           </button>
         {/if}
       </div>
 
-      <div class="mt-4 pt-3 border-t border-slate-200">
-        <p class="text-xs text-slate-500">
+      <div class="mt-4 pt-3 border-t border-border">
+        <p class="text-xs text-ink-tertiary">
           Bibliographie publiée par
           <a href="/@{info.creatorSlug}" class="text-blue-700 hover:underline">
             {info.creatorName ?? info.creatorSlug}
