@@ -8,6 +8,7 @@
     CategoryBadge,
     Button,
     ClaimBanner,
+    ExportCustomizer,
     Skeleton,
     SourceCompareTable,
   } from '$lib/components';
@@ -166,7 +167,11 @@
   }
 
   let exportOpen = $state(false);
+  let exportCustomOpen = $state(false);
   const exportBase = $derived(`${API_BASE}/api/v1/@${creatorSlug}/${cardSlug}/export`);
+  // Le menu court : un format, un clic, tout le contenu. Les six styles de
+  // citation et le réglage fin vivent dans le panneau personnalisé — les
+  // empiler ici ferait une liste de quinze entrées pour un geste courant.
   const exportFormats = [
     { format: 'json', label: 'JSON' },
     { format: 'csv', label: 'CSV' },
@@ -352,9 +357,21 @@
                 >
                   PDF (imprimer)
                 </button>
+                <button
+                  type="button"
+                  onclick={() => {
+                    exportOpen = false;
+                    exportCustomOpen = true;
+                  }}
+                  class="block w-full text-left px-3 py-1.5 text-xs text-info hover:bg-surface-tertiary border-t border-border mt-1 pt-2"
+                  role="menuitem"
+                >
+                  Export personnalisé…
+                </button>
               </div>
             {/if}
           </div>
+          <ExportCustomizer bind:open={exportCustomOpen} {exportBase} />
           <button
             type="button"
             onclick={copyForAI}

@@ -5,6 +5,7 @@ export { default as Logo } from './Logo.svelte';
 export { default as HeroPulsar } from './HeroPulsar.svelte';
 export { default as Modal } from './Modal.svelte';
 export { default as ConfirmDialog } from './ConfirmDialog.svelte';
+export { default as ExportCustomizer } from './ExportCustomizer.svelte';
 export { default as Skeleton } from './Skeleton.svelte';
 export { default as EmptyState } from './EmptyState.svelte';
 export { default as ProgressSteps } from './ProgressSteps.svelte';
