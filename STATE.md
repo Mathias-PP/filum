@@ -185,6 +185,40 @@ Les correctifs, par PR :
   elle, reste juste. Discriminant retenu : minuscule initiale ⇒ refus, sauf
   majuscule interne au premier mot (`iGPT`, seul vrai titre des 15 ; `arXiv`,
   `eLife`, `iPhone` sont du meme genre).
+- **2026-08-08, #341 #342 #343 — l'export a la carte, et deux defauts que 774
+  tests verts n'ont pas vus.** Trois briques. #341 : six styles de citation
+  (APA 7, Harvard, MLA 9, Chicago auteur-date, Vancouver, IEEE). #342 : un
+  perimetre (`?include=annotations,excerpts,archives,reliability`) et les
+  fiches voisines par degre **et par sens** (`?cited=`, `?citing=`). #343 :
+  le panneau qui permet de les demander.
+  Trois points de doctrine s'y jouent.
+  **(1) Les deux sens du lien ne sont pas deux valeurs d'un meme attribut.**
+  `build_card_graph` les confond, et il a raison : il sert a *dessiner*, et un
+  lecteur qui regarde une constellation se moque de savoir par quel bout il est
+  entre. Un export ne peut pas se le permettre — « les fiches qui citent
+  celle-ci » est la posterite d'un propos, « les fiches qu'elle cite » ses
+  fondations ; melangees dans un fichier, on ne sait plus lire la liste. D'ou
+  un parcours oriente separe (`export_neighbourhood.py`), et deux zones dans
+  l'UI, jamais fondues en un reglage.
+  **(2) Un format ferme n'obeit pas au perimetre, et doit le dire.** BibTeX,
+  RIS, CSL et les styles suivent des conventions closes : y glisser un extrait
+  produirait un fichier que Zotero refuserait. Le panneau grise les cases et
+  ecrit la raison — cocher « extraits » et recevoir un `.bib` sans extraits
+  ressemblerait a un bug plutot qu'a une convention.
+  **(3) Les extraits n'etaient dans AUCUN format.** C'est pourtant le verbatim
+  qui relie une affirmation a sa source, la piece la plus specifique a Philum.
+  Ils partent desormais avec leur ancrage : sans lui, un extrait exporte n'est
+  plus qu'une citation invérifiable.
+  Les deux defauts trouves l'ont ete **en imprimant la sortie a l'ecran**, pas
+  en lisant des assertions. (a) En Markdown, l'annotation du createur et
+  l'extrait de la source se rendaient tous deux `- > texte` — attribuer a un
+  auteur une phrase ecrite par le createur de la fiche est la faute exacte que
+  Philum existe pour rendre impossible ; les deux voix portent chacune son nom
+  desormais. (b) Le voisinage nommait les fiches voisines **sans lier vers
+  elles** : un export qui dit qu'une fiche existe sans donner le moyen d'y
+  aller ne sert a rien. Ni les 774 tests, ni ruff, ni mypy ne pouvaient voir
+  l'un ou l'autre. **Un defaut de rendu est invisible a l'outillage** — c'est
+  la troisieme fois cette semaine (#331, #335, ici).
 - **2026-08-08, #331 — ce que sept tests verts ne voyaient pas.** L'ecran de
   decoupage (#328, #329) etait couvert par sept tests de composant tenant
   l'invariant « le texte affiche est celui de la source », et n'avait jamais
