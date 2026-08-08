@@ -33,6 +33,25 @@ Avant : Phase 2 (identité visuelle Pulsar-graph + audit) et Phase 1 (MVP comple
 
 ---
 
+## Session 2026-08-08/09 (autonome) — aucun format ne perd ce qu'il pourrait porter
+
+**PR #350 mergée** (sha `09bbacd`) — barre optionnelle d'intitulé et de mise en situation par morceau, repliée par défaut, avec suggestion LLM (`POST /excerpts/annotate`). Migration `035_excerpt_context` appliquée en prod. `/health/llm-diagnose` répond `status: off` : **il reste à créer une clé Gemini AI Studio et à la poser sur la VM** — c'est la seule action manuelle en attente.
+
+**PR #351 mergée** (sha `02bd69e`) — les exports Excel et Word étaient les surfaces les plus pauvres du projet, et le MCP plus pauvre encore : un agent obtenait par `get_source` moins que quiconque téléchargeant le CSV.
+
+- **Tableur** : un tableur n'imbrique pas, donc ce qui ne tient pas en colonne tient en feuille — « Extraits » (jointe par `source_position`) et « Fiches voisines » (par sens et par degré). Le périmètre `include=` était jusqu'ici **entièrement ignoré** en XLSX, tout comme `cited=`/`citing=` : c'est le « les degrés ne sont pas exportables » signalé.
+- **Word** : les mêmes faits en sections. C'est le format qu'on lit hors ligne, donc le pire endroit où omettre une rétractation — personne n'ira recouper.
+- **MCP `get_source`** : rend désormais le verbatim de chaque extrait, sa mise en situation, le verdict de relecture, la rétractation, l'accès ouvert, le DOI et la position déclarée.
+- **`llms.txt`** annonçait 6 formats sur 12 et taisait `include`/`cited`/`citing`.
+
+Deux règles tenues, à ne pas défaire : un champ exclu du périmètre **garde sa colonne, vide** (une colonne absente se lit « ce format ne sait pas porter ça », une colonne vide « il n'y a rien à en dire ») ; et `verified_at: null` reste **silencieux**, parce que « jamais relu » n'est pas « relu et introuvable ».
+
+Vérifié en prod après redéploiement VM : XLSX à 3 feuilles, DOCX portant DOI + position déclarée + extraits, MCP rendant 2 extraits avec `context`/`verified_*`. La fiche de démo n'ayant aucune voisine, la feuille « Fiches voisines » n'a que son en-tête — c'est correct, le cas peuplé est couvert par les tests unitaires.
+
+Au passage : `app/api/v1/endpoints/excerpts.py` était resté non formaté après #350 et rendait **`main` rouge** sur `Lint Backend`. Corrigé dans #351.
+
+---
+
 ## Session 2026-08-07 (fin) — accessibilite mesuree et cloture des lots B a F
 
 **Parcours visiteur (#78, clos).** Mesure sur le deploiement de prod, pas sur la
