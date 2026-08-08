@@ -105,7 +105,30 @@ export interface SourceExcerpt {
   id: string;
   position: number;
   text: string;
+  /** Intitulé de repérage, facultatif : dix extraits empilés ne se distinguent pas. */
+  title: string | null;
   suggested_by_ai: boolean;
+}
+
+/** L'unité dans laquelle la taille cible d'un extrait est exprimée. */
+export type ChunkUnit = 'caracteres' | 'mots' | 'tokens';
+
+export interface Chunk {
+  text: string;
+  start: number;
+  end: number;
+  size: number;
+  title: string | null;
+}
+
+export interface ChunkResponse {
+  chunks: Chunk[];
+  /** Le texte découpé, pour que les bornes déplaçables désignent quelque chose. */
+  text: string;
+  /** 'none' fait basculer l'écran sur le collage plutôt que d'afficher un échec. */
+  text_source: 'pasted' | 'fetched' | 'none';
+  unit: ChunkUnit;
+  suggested_size: number;
 }
 
 export interface SuggestedExcerpt {

@@ -175,6 +175,7 @@ class SourceExcerptResponse(BaseModel):
     id: UUID
     position: int
     text: str
+    title: str | None = None
     suggested_by_ai: bool
 
 

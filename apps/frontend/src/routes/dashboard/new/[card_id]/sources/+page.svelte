@@ -6,6 +6,7 @@
   import { api } from '$lib/api';
   import { pendingImportFile } from '$lib/stores/import-file';
   import { Button, ConfirmDialog, ProgressSteps } from '$lib/components';
+  import ChunkArchitect from '$lib/components/ChunkArchitect.svelte';
   import { AUTHOR_COLORS, authorLabel } from '$lib/utils/author-colors';
   import type {
     ArchiveOutcome,
@@ -373,6 +374,7 @@
   let suggesting = $state(false);
   let suggestions = $state<SuggestedExcerpt[]>([]);
   let suggestInfo = $state<string | null>(null);
+  let architectOpen = $state(false);
 
   const editingSource = $derived(sources.find((s) => s.id === editingSourceId) ?? null);
 
@@ -381,6 +383,7 @@
     excerptError = null;
     suggestions = [];
     suggestInfo = null;
+    architectOpen = false;
   }
 
   function updateSourceExcerpts(sourceId: string, excerpts: SourceExcerpt[]) {
@@ -406,6 +409,17 @@
     } finally {
       excerptAdding = false;
     }
+  }
+
+  /** Ajoute un morceau découpé, avec son intitulé s'il en porte un. */
+  async function addExcerptFromChunk(text: string, title: string | null) {
+    if (!editingSourceId) return;
+    const created = await api.excerpts.create(editingSourceId, {
+      text,
+      title,
+      suggested_by_ai: true,
+    });
+    updateSourceExcerpts(editingSourceId, [...(editingSource?.excerpts ?? []), created]);
   }
 
   async function removeExcerpt(excerptId: string) {
@@ -2136,6 +2150,22 @@
               Ajouter
             </Button>
           </div>
+
+          <button
+            type="button"
+            class="text-xs text-ink-secondary underline"
+            onclick={() => (architectOpen = !architectOpen)}
+          >
+            {architectOpen ? 'Fermer le découpage' : 'Découper un texte en extraits…'}
+          </button>
+
+          {#if architectOpen}
+            <ChunkArchitect
+              sourceId={editingSource.id}
+              remaining={10 - editingSource.excerpts.length}
+              onadd={addExcerptFromChunk}
+            />
+          {/if}
         </div>
       {/if}
 

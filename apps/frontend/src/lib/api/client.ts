@@ -12,6 +12,8 @@ import type {
   CardCreate,
   CardGraph,
   CardSearchResult,
+  ChunkResponse,
+  ChunkUnit,
   ExcerptSuggestResponse,
   ImportFromUrlResponse,
   IncomingCitations,
@@ -282,7 +284,7 @@ export const api = {
   excerpts: {
     create: async (
       sourceId: string,
-      data: { text: string; suggested_by_ai?: boolean }
+      data: { text: string; title?: string | null; suggested_by_ai?: boolean }
     ): Promise<SourceExcerpt> => {
       return request<SourceExcerpt>(`/sources/${sourceId}/excerpts`, {
         method: 'POST',
@@ -297,6 +299,28 @@ export const api = {
     suggest: async (sourceId: string): Promise<ExcerptSuggestResponse> => {
       return request<ExcerptSuggestResponse>(`/sources/${sourceId}/excerpts/suggest`, {
         method: 'POST',
+      });
+    },
+
+    /**
+     * Découpe le texte d'une source en extraits proposables.
+     *
+     * Sans `text`, le serveur tente de lire la page — mesuré le 2026-08-08 :
+     * cinq URLs sur dix n'en rendent rien. Avec `text`, rien ne dépend du site,
+     * ce qui est le seul chemin qui marche derrière un anti-crawler.
+     */
+    chunk: async (
+      sourceId: string,
+      data: {
+        text?: string;
+        unit?: ChunkUnit;
+        size?: number;
+        suggest_titles?: boolean;
+      } = {}
+    ): Promise<ChunkResponse> => {
+      return request<ChunkResponse>(`/sources/${sourceId}/excerpts/chunk`, {
+        method: 'POST',
+        body: JSON.stringify(data),
       });
     },
   },

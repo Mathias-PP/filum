@@ -214,6 +214,9 @@
                     ✨
                   </span>
                 {/if}
+                {#if excerpt.title}
+                  <p class="mb-1 text-xs font-medium not-italic text-slate-600">{excerpt.title}</p>
+                {/if}
                 «&nbsp;{excerpt.text}&nbsp;»
               </div>
             {/each}

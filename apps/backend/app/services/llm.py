@@ -400,6 +400,84 @@ async def suggest_excerpts(page_text: str, context: str | None = None) -> list[s
         return None
 
 
+# --- Intitules d'extraits -------------------------------------------------
+#
+# Un extrait fait plusieurs centaines de caracteres ; dix empiles obligent a
+# tout relire pour retrouver un passage. L'intitule est un reperage, pas un
+# resume : il nomme le sujet du passage en quelques mots.
+
+
+class LlmChunkTitles(BaseModel):
+    titles: list[str] = []
+
+
+_CHUNK_TITLE_SYSTEM_PROMPT = (
+    "On te donne des passages numérotés issus d'un même texte. Pour chacun, "
+    "écris un intitulé de repérage de 2 à 6 mots, dans la langue du passage, "
+    "qui nomme ce dont il parle. Ce n'est ni un résumé ni une accroche : il "
+    "sert à retrouver le passage dans une liste. Réponds UNIQUEMENT avec le "
+    "JSON demandé, un intitulé par passage, dans le même ordre. Si un passage "
+    "ne se laisse pas nommer, rends une chaîne vide plutôt qu'un intitulé "
+    "approximatif."
+)
+
+_MAX_TITLE_CHARS = 200
+
+
+async def suggest_chunk_titles(chunks: list[str]) -> list[str | None] | None:
+    """Un intitule par passage, `None` la ou il n'y a rien a dire. Never raises.
+
+    Rendre `None` plutot qu'un a-peu-pres est deliberé : un intitule faux se
+    recopie dans la fiche sans que rien ne signale qu'il ne designe pas ce
+    qu'il pretend designer (regle tenue en #317, #323, #327).
+    """
+    settings = get_settings()
+    if not settings.litellm_base_url or not chunks:
+        return None
+
+    user_content = "\n\n".join(f"[{i + 1}] {c[:1500]}" for i, c in enumerate(chunks))
+    payload = {
+        "model": "excerpt-suggest",
+        "messages": [
+            {"role": "system", "content": _CHUNK_TITLE_SYSTEM_PROMPT},
+            {"role": "user", "content": user_content},
+        ],
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {"name": "titles", "schema": LlmChunkTitles.model_json_schema()},
+        },
+        "temperature": 0,
+    }
+    try:
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+            r = await client.post(
+                f"{settings.litellm_base_url.rstrip('/')}/v1/chat/completions",
+                json=payload,
+                headers={"Authorization": f"Bearer {settings.litellm_master_key}"},
+            )
+        if r.status_code != 200:
+            logger.warning("LLM chunk-titles HTTP %s: %s", r.status_code, r.text[:200])
+            return None
+        content = r.json()["choices"][0]["message"]["content"]
+        return normalize_chunk_titles(LlmChunkTitles.model_validate_json(content).titles, chunks)
+    except Exception as e:
+        logger.warning("LLM chunk-titles failed: %s", e)
+        return None
+
+
+def normalize_chunk_titles(titles: list[str], chunks: list[str]) -> list[str | None]:
+    """Aligne les intitules sur les passages : un par passage, ni plus ni moins.
+
+    Un modele qui en rend trop peu ne doit pas decaler les suivants ; un
+    intitule vide ou trop long ne doit pas s'afficher.
+    """
+    sortie: list[str | None] = []
+    for i in range(len(chunks)):
+        brut = titles[i].strip() if i < len(titles) else ""
+        sortie.append(brut[:_MAX_TITLE_CHARS] if brut else None)
+    return sortie
+
+
 # --- Classifieur : type d'URL (source | promo | social | other) -----------
 #
 # Utilise pour distinguer les vraies references bibliographiques des liens
