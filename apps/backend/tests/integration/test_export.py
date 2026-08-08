@@ -29,6 +29,7 @@ async def client(db_session):
 async def published_card(db_session, test_user):
     from app.models.biblio_card import BiblioCard
     from app.models.source import Source
+    from app.models.source_excerpt import SourceExcerpt
 
     card = BiblioCard(
         id=uuid4(),
@@ -43,10 +44,11 @@ async def published_card(db_session, test_user):
     )
     db_session.add(card)
     await db_session.flush()
+    pivot_id = uuid4()
     db_session.add_all(
         [
             Source(
-                id=uuid4(),
+                id=pivot_id,
                 biblio_card_id=card.id,
                 position=0,
                 url="https://example.org/paper",
@@ -69,6 +71,18 @@ async def published_card(db_session, test_user):
                 author_kind="media",
             ),
         ]
+    )
+    await db_session.flush()
+    db_session.add(
+        SourceExcerpt(
+            id=uuid4(),
+            source_id=pivot_id,
+            position=0,
+            title="Le passage decisif",
+            text="Les enfants de six ans montrent deja une inhibition mesurable.",
+            anchor_prefix="Or, ",
+            anchor_offset=1204,
+        )
     )
     await db_session.commit()
     await db_session.refresh(card)
@@ -213,6 +227,74 @@ async def test_export_chaque_style_de_citation(client, published_card, test_user
 
 
 @pytest.mark.asyncio
+async def test_export_complet_par_defaut_porte_les_extraits(client, published_card, test_user):
+    """Sans `include`, l'export est complet — extraits compris.
+
+    Les extraits n'apparaissaient dans aucun format avant le perimetre : c'est
+    pourtant le verbatim qui relie une affirmation a sa source, donc la piece la
+    plus specifique a Philum.
+    """
+    resp = await client.get(
+        f"/api/v1/@{test_user.username}/{published_card.slug}/export",
+        params={"format": "markdown"},
+    )
+    assert resp.status_code == 200
+    assert "Les enfants de six ans" in resp.text
+    assert "Le passage decisif" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_export_include_vide_donne_la_bibliographie_seule(client, published_card, test_user):
+    resp = await client.get(
+        f"/api/v1/@{test_user.username}/{published_card.slug}/export",
+        params={"format": "markdown", "include": ""},
+    )
+    assert resp.status_code == 200
+    body = resp.text
+    # Les references restent : le perimetre choisit ce qu'on ajoute autour.
+    assert "[Titre {avec} accolades](https://example.org/paper)" in body
+    assert "Les enfants de six ans" not in body
+    assert 'Note "importante"' not in body
+    assert "## Fiabilité des sources" not in body
+
+
+@pytest.mark.asyncio
+async def test_export_json_selection_partielle(client, published_card, test_user):
+    resp = await client.get(
+        f"/api/v1/@{test_user.username}/{published_card.slug}/export",
+        params={"format": "json", "include": "excerpts"},
+    )
+    assert resp.status_code == 200
+    source = resp.json()["sources"][0]
+    assert source["excerpts"][0]["anchor"]["offset"] == 1204
+    assert "annotation" not in source
+    assert "archive_url" not in source
+
+
+@pytest.mark.asyncio
+async def test_export_section_inconnue_422(client, published_card, test_user):
+    resp = await client.get(
+        f"/api/v1/@{test_user.username}/{published_card.slug}/export",
+        params={"format": "json", "include": "fiches-connectees"},
+    )
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_export_bibtex_ignore_le_perimetre(client, published_card, test_user):
+    """Un format bibliographique obeit a sa convention, pas au perimetre.
+
+    Y glisser un extrait produirait un `.bib` que Zotero refuserait.
+    """
+    resp = await client.get(
+        f"/api/v1/@{test_user.username}/{published_card.slug}/export",
+        params={"format": "bibtex", "include": ""},
+    )
+    assert resp.status_code == 200
+    assert "@article{" in resp.text
+
+
+@pytest.mark.asyncio
 async def test_export_unknown_format_422(client, published_card, test_user):
     resp = await client.get(
         f"/api/v1/@{test_user.username}/{published_card.slug}/export",
@@ -238,3 +320,140 @@ async def test_export_404_on_draft_card(client, db_session, test_user):
     await db_session.commit()
     resp = await client.get(f"/api/v1/@{test_user.username}/brouillon/export")
     assert resp.status_code == 404
+
+
+@pytest_asyncio.fixture
+async def chaine_de_fiches(db_session, test_user, published_card):
+    """D -> fiche -> B -> C.
+
+    « D cite la fiche », « la fiche cite B », « B cite C ». De quoi verifier
+    qu'un export sait distinguer sa posterite (D) de ses fondations (B, C), et
+    que le degre 2 descendant atteint bien C sans passer par D.
+    """
+    from app.models.biblio_card import BiblioCard
+    from app.models.source import Source
+
+    def _fiche(slug, titre):
+        return BiblioCard(
+            id=uuid4(),
+            user_id=test_user.id,
+            slug=slug,
+            title=titre,
+            content_type="video",
+            platform="youtube",
+            status="published",
+            visibility="public",
+        )
+
+    b, c, d = _fiche("fiche-b", "Fiche B"), _fiche("fiche-c", "Fiche C"), _fiche("fiche-d", "D")
+    db_session.add_all([b, c, d])
+    await db_session.flush()
+
+    def _lien(depuis, vers, titre):
+        return Source(
+            id=uuid4(),
+            biblio_card_id=depuis.id,
+            position=9,
+            url=f"https://philum.example/@x/{titre}",
+            title=titre,
+            format="texte",
+            category="article-scientifique",
+            author_kind="chercheur",
+            linked_card_id=vers.id,
+        )
+
+    db_session.add_all(
+        [
+            _lien(published_card, b, "vers-b"),
+            _lien(b, c, "vers-c"),
+            _lien(d, published_card, "vers-la-fiche"),
+            # C doit porter une reference ordinaire : sans elle, le test du
+            # perimetre par degre passerait au vert sur une liste vide.
+            Source(
+                id=uuid4(),
+                biblio_card_id=c.id,
+                position=0,
+                url="https://example.org/fond",
+                title="Une source de C",
+                format="texte",
+                category="article-scientifique",
+                author_kind="chercheur",
+                archive_url="https://web.archive.org/x",
+            ),
+        ]
+    )
+    await db_session.commit()
+    return {"b": b, "c": c, "d": d}
+
+
+@pytest.mark.asyncio
+async def test_les_deux_sens_ne_se_melangent_pas(
+    client, published_card, test_user, chaine_de_fiches
+):
+    resp = await client.get(
+        f"/api/v1/@{test_user.username}/{published_card.slug}/export",
+        params={"format": "json", "cited": "1", "citing": "1"},
+    )
+    assert resp.status_code == 200
+    voisins = resp.json()["connected_cards"]
+    assert [v["title"] for v in voisins["cited"]] == ["Fiche B"]
+    assert [v["title"] for v in voisins["citing"]] == ["D"]
+
+
+@pytest.mark.asyncio
+async def test_le_degre_2_descendant_atteint_la_fiche_citee_par_la_citee(
+    client, published_card, test_user, chaine_de_fiches
+):
+    resp = await client.get(
+        f"/api/v1/@{test_user.username}/{published_card.slug}/export",
+        params={"format": "json", "cited": "2"},
+    )
+    assert resp.status_code == 200
+    cites = resp.json()["connected_cards"]["cited"]
+    assert {(v["title"], v["degree"]) for v in cites} == {("Fiche B", 1), ("Fiche C", 2)}
+
+
+@pytest.mark.asyncio
+async def test_un_perimetre_par_degre(client, published_card, test_user, chaine_de_fiches):
+    """Le degre 1 complet, le degre 2 en references seules."""
+    resp = await client.get(
+        f"/api/v1/@{test_user.username}/{published_card.slug}/export",
+        params={"format": "json", "cited": "1:archives|2:"},
+    )
+    assert resp.status_code == 200
+    par_degre = {v["degree"]: v for v in resp.json()["connected_cards"]["cited"]}
+    assert "archive_url" in par_degre[1]["sources"][0]
+    assert "archive_url" not in par_degre[2]["sources"][0]
+
+
+@pytest.mark.asyncio
+async def test_sans_demande_aucune_cle_de_voisinage(client, published_card, test_user):
+    """Pas de voisinage vide : ne pas chercher n'est pas ne rien trouver."""
+    resp = await client.get(
+        f"/api/v1/@{test_user.username}/{published_card.slug}/export",
+        params={"format": "json"},
+    )
+    assert "connected_cards" not in resp.json()
+
+
+@pytest.mark.asyncio
+async def test_le_markdown_nomme_les_deux_sens(
+    client, published_card, test_user, chaine_de_fiches
+):
+    resp = await client.get(
+        f"/api/v1/@{test_user.username}/{published_card.slug}/export",
+        params={"format": "markdown", "cited": "1", "citing": "1"},
+    )
+    assert resp.status_code == 200
+    body = resp.text
+    assert "## Fiches citées par celle-ci" in body
+    assert "## Fiches qui citent celle-ci" in body
+
+
+@pytest.mark.asyncio
+async def test_degre_hors_bornes_422(client, published_card, test_user):
+    resp = await client.get(
+        f"/api/v1/@{test_user.username}/{published_card.slug}/export",
+        params={"format": "json", "cited": "9"},
+    )
+    assert resp.status_code == 422

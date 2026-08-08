@@ -39,6 +39,7 @@ def _source(**kw):
         "retraction_notice_doi": None,
         "oa_status": None,
         "oa_url": None,
+        "excerpts": [],
     }
     base.update(kw)
     return SimpleNamespace(**base)
@@ -205,3 +206,27 @@ class TestRegressionExistant:
     def test_une_source_sans_rien_ne_casse_pas(self):
         body = _md(title=None, authors=None, published_at=None)
         assert "https://doi.org/10.1234/abcd" in body
+
+
+class TestDeuxVoix:
+    """Ce que la source dit, et ce que le createur en dit.
+
+    Les deux se rendaient d'abord a l'identique (`- > texte`). Attribuer a un
+    auteur une phrase ecrite par le createur de la fiche serait exactement la
+    faute que Philum existe pour rendre impossible : les deux voix portent donc
+    chacune son nom.
+    """
+
+    def test_annotation_et_extrait_ne_se_confondent_pas(self):
+        extrait = SimpleNamespace(
+            position=0,
+            title=None,
+            text="Ce que la source dit.",
+            suggested_by_ai=False,
+            anchor_prefix=None,
+            anchor_suffix=None,
+            anchor_offset=None,
+        )
+        body = _md(annotation="Ce que le createur en dit.", excerpts=[extrait])
+        assert "**Note du créateur** — Ce que le createur en dit." in body
+        assert "**Extrait** — « Ce que la source dit. »" in body

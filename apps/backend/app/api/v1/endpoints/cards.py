@@ -553,8 +553,29 @@ async def export_public_card(
     card_slug: str,
     request: Request,
     format: str = Query("json"),
+    include: str | None = Query(
+        None,
+        description=(
+            "Sections a emporter, separees par des virgules. Absent : tout. "
+            "Vide : les references seules. Ignore par les formats "
+            "bibliographiques (BibTeX, RIS, CSL, styles de citation)."
+        ),
+    ),
+    cited: str | None = Query(
+        None,
+        description=(
+            "Fiches citees par celle-ci. « 2 » : degres 1 et 2, complets. "
+            "« 1:excerpts|2: » : un perimetre par degre, meme grammaire "
+            "qu'`include`. Absent : aucune."
+        ),
+    ),
+    citing: str | None = Query(
+        None,
+        description="Fiches qui citent celle-ci. Meme grammaire que `cited`.",
+    ),
     card_service: CardService = Depends(get_card_service),
     auth_service: AuthService = Depends(get_auth_service),
+    db: AsyncSession = Depends(get_db),
 ):
     if format not in _EXPORT_FORMATS:
         raise HTTPException(
@@ -565,18 +586,39 @@ async def export_public_card(
                 f"Supported: {', '.join(sorted(_EXPORT_FORMATS))}",
             },
         )
-    card = await _load_public_card(creator_slug, card_slug, request, card_service, auth_service)
-
     from app.core.config import get_settings
     from app.services import citation_styles
     from app.services import export as export_service
+    from app.services.export_neighbourhood import collect_neighbourhood, parse_degrees
+    from app.services.export_scope import parse_scope
+
+    try:
+        scope = parse_scope(include)
+        cited_degrees = parse_degrees(cited)
+        citing_degrees = parse_degrees(citing)
+    except ValueError as err:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": "validation_error", "message": str(err)},
+        ) from err
+
+    card = await _load_public_card(creator_slug, card_slug, request, card_service, auth_service)
+
+    # `None` plutot qu'un voisinage vide quand rien n'est demande : un export
+    # qui porterait « connected_cards: {cited: [], citing: []} » ferait croire
+    # que la fiche n'a pas de voisines, alors qu'on ne les a pas cherchees.
+    neighbourhood = None
+    if cited_degrees or citing_degrees:
+        neighbourhood = await collect_neighbourhood(
+            db, card, cited=cited_degrees, citing=citing_degrees
+        )
 
     public_url = f"{get_settings().frontend_base_url}/@{creator_slug}/{card_slug}"
     content: str | bytes
     if format == "json":
-        content = export_service.export_json(card, public_url)
+        content = export_service.export_json(card, public_url, scope, neighbourhood)
     elif format == "philum":
-        content = export_service.export_philum_json(card, public_url)
+        content = export_service.export_philum_json(card, public_url, scope, neighbourhood)
     elif format == "csv":
         # BOM UTF-8 : Excel n'interprete pas l'UTF-8 sans lui.
         content = "\ufeff" + export_service.export_csv(card)
@@ -591,9 +633,9 @@ async def export_public_card(
     elif format in citation_styles.STYLES:
         content = export_service.export_bibliography(card, public_url, format)
     elif format == "docx":
-        content = export_service.export_docx(card, public_url)
+        content = export_service.export_docx(card, public_url, scope)
     else:
-        content = export_service.export_markdown(card, public_url)
+        content = export_service.export_markdown(card, public_url, scope, neighbourhood)
 
     media_type, ext = _EXPORT_FORMATS[format]
     return Response(
