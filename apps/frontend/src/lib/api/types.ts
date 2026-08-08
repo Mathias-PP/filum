@@ -146,6 +146,29 @@ export interface ExcerptSuggestResponse {
   llm_enabled: boolean;
 }
 
+/**
+ * Le sort d'un extrait dans la page telle qu'elle est aujourd'hui.
+ *
+ * `found` : le passage y est. `moved` : il y est, mais plus tout à fait dans
+ * ces mots. `missing` : il n'y est pas. `unreadable` : la page n'a rendu aucun
+ * texte — **on ne sait pas**, ce qui n'est pas la même chose qu'absent.
+ */
+export type ExcerptCheckStatus = 'found' | 'moved' | 'missing' | 'unreadable';
+
+export interface ExcerptCheck {
+  excerpt_id: string;
+  status: ExcerptCheckStatus;
+  start: number | null;
+  end: number | null;
+  context_before: string | null;
+  context_after: string | null;
+}
+
+export interface ExcerptVerifyResponse {
+  checks: ExcerptCheck[];
+  page_text_length: number;
+}
+
 export interface Source {
   id: string;
   url: string;

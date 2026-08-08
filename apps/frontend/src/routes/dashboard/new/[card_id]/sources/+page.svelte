@@ -19,6 +19,8 @@
     SourceFormat,
     SourceStance,
     SuggestedExcerpt,
+    ExcerptCheck,
+    ExcerptCheckStatus,
   } from '$lib/api';
   import { STANCE_ORDER, STANCE_STYLES } from '$lib/utils/stance';
 
@@ -374,7 +376,15 @@
   let suggesting = $state(false);
   let suggestions = $state<SuggestedExcerpt[]>([]);
   let suggestInfo = $state<string | null>(null);
-  let architectOpen = $state(false);
+  const MODES_SAISIE = [
+    { id: 'coller' as const, label: 'Coller un passage' },
+    { id: 'decouper' as const, label: 'Découper un texte long' },
+  ];
+  let saisieMode = $state<'coller' | 'decouper'>('coller');
+  let verifying = $state(false);
+  /** Le sort de chaque extrait à la dernière relecture, par id d'extrait. */
+  let checks = $state<Record<string, ExcerptCheck>>({});
+  let verifyInfo = $state<string | null>(null);
 
   const editingSource = $derived(sources.find((s) => s.id === editingSourceId) ?? null);
 
@@ -383,7 +393,71 @@
     excerptError = null;
     suggestions = [];
     suggestInfo = null;
-    architectOpen = false;
+    saisieMode = 'coller';
+    // Une relecture porte sur une page précise : la garder d'une source à
+    // l'autre afficherait le verdict de la première sur les extraits de la
+    // seconde.
+    checks = {};
+    verifyInfo = null;
+  }
+
+  /**
+   * Relit la page de la source et cherche chaque extrait dans le texte
+   * d'aujourd'hui.
+   *
+   * Les quatre états restent distincts jusqu'à l'affichage. `unreadable` dit
+   * que la page n'a rendu aucun texte — on ne sait pas ; le replier sur
+   * « absent » ferait passer une source inaccessible pour une citation
+   * inventée, ce qui est précisément l'accusation que Philum ne doit jamais
+   * porter à tort.
+   */
+  async function verifyExcerpts() {
+    if (!editingSourceId) return;
+    excerptError = null;
+    verifyInfo = null;
+    verifying = true;
+    try {
+      const res = await api.excerpts.verify(editingSourceId);
+      checks = Object.fromEntries(res.checks.map((c) => [c.excerpt_id, c]));
+      if (res.page_text_length === 0) {
+        verifyInfo =
+          'Cette page ne rend aucun texte : la relecture ne dit rien sur ces citations, ni dans un sens ni dans l’autre.';
+      } else {
+        const retrouves = res.checks.filter((c) => c.status !== 'missing').length;
+        verifyInfo = `${retrouves} citation${retrouves > 1 ? 's' : ''} sur ${res.checks.length} retrouvée${retrouves > 1 ? 's' : ''} dans la page d’aujourd’hui.`;
+      }
+    } catch (err) {
+      excerptError = err instanceof Error ? err.message : 'Erreur lors de la relecture';
+    } finally {
+      verifying = false;
+    }
+  }
+
+  /** Ce qu'on affiche à côté d'une citation, une fois la page relue. */
+  function verdict(status: ExcerptCheckStatus): { texte: string; classe: string; titre: string } {
+    if (status === 'found')
+      return {
+        texte: '✓ retrouvée',
+        classe: 'text-success',
+        titre: 'Le passage est dans la page telle qu’elle est aujourd’hui.',
+      };
+    if (status === 'moved')
+      return {
+        texte: '≈ déplacée',
+        classe: 'text-warning',
+        titre: 'Le passage y est, mais la source ne porte plus tout à fait ces mots.',
+      };
+    if (status === 'unreadable')
+      return {
+        texte: '? illisible',
+        classe: 'text-ink-tertiary',
+        titre: 'La page n’a rendu aucun texte : on ne sait pas. Ce n’est pas « absente ».',
+      };
+    return {
+      texte: '✕ introuvable',
+      classe: 'text-danger',
+      titre: 'Le passage n’a pas été retrouvé dans la page d’aujourd’hui.',
+    };
   }
 
   function updateSourceExcerpts(sourceId: string, excerpts: SourceExcerpt[]) {
@@ -2069,16 +2143,28 @@
                 : extraits marquants de cette source (max 10)</span
               >
             </h3>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              loading={suggesting}
-              disabled={suggesting || excerptAdding}
-              onclick={suggestExcerpts}
-            >
-              {suggesting ? 'Analyse…' : 'Suggérer des citations (IA)'}
-            </Button>
+            <div class="flex items-center gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                loading={verifying}
+                disabled={verifying || editingSource.excerpts.length === 0}
+                onclick={verifyExcerpts}
+              >
+                {verifying ? 'Relecture…' : 'Relire la source'}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                loading={suggesting}
+                disabled={suggesting || excerptAdding}
+                onclick={suggestExcerpts}
+              >
+                {suggesting ? 'Analyse…' : 'Suggérer des citations (IA)'}
+              </Button>
+            </div>
           </div>
 
           {#if excerptError}
@@ -2086,6 +2172,13 @@
               class="rounded-lg bg-danger-bg border border-danger/30 px-3 py-2 text-xs text-danger"
             >
               {excerptError}
+            </div>
+          {/if}
+          {#if verifyInfo}
+            <div
+              class="rounded-lg bg-surface-secondary border border-border px-3 py-2 text-xs text-ink-secondary"
+            >
+              {verifyInfo}
             </div>
           {/if}
           {#if suggestInfo}
@@ -2104,6 +2197,10 @@
                     «&nbsp;{excerpt.text}&nbsp;»
                     {#if excerpt.suggested_by_ai}
                       <span class="text-xs text-ink-tertiary not-italic">(IA)</span>
+                    {/if}
+                    {#if checks[excerpt.id]}
+                      {@const v = verdict(checks[excerpt.id].status)}
+                      <span class="text-xs not-italic {v.classe}" title={v.titre}>{v.texte}</span>
                     {/if}
                   </p>
                   <button
@@ -2161,35 +2258,57 @@
             </div>
           {/if}
 
-          <div class="flex gap-2">
-            <input
-              type="text"
-              bind:value={excerptText}
-              maxlength={1000}
-              placeholder="Ajouter une citation manuellement…"
-              class="flex-1 px-3 py-1.5 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-hidden focus:ring-2 focus:ring-info placeholder:text-ink-placeholder"
-            />
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              loading={excerptAdding}
-              disabled={excerptAdding || !excerptText.trim()}
-              onclick={() => addExcerpt(excerptText)}
-            >
-              Ajouter
-            </Button>
+          <!--
+            Deux entrées, parce que ce sont deux gestes différents : coller un
+            passage qu'on a déjà isolé, ou verser un texte long et le découper.
+            Le second était caché derrière un lien souligné en bas d'écran alors
+            que c'est le geste principal quand on part d'un document entier.
+          -->
+          <div class="flex gap-1 border-b border-border">
+            {#each MODES_SAISIE as m (m.id)}
+              <button
+                type="button"
+                class="px-3 py-1.5 text-xs border-b-2 -mb-px transition-colors"
+                class:border-info={saisieMode === m.id}
+                class:text-ink-primary={saisieMode === m.id}
+                class:border-transparent={saisieMode !== m.id}
+                class:text-ink-tertiary={saisieMode !== m.id}
+                onclick={() => (saisieMode = m.id)}
+              >
+                {m.label}
+              </button>
+            {/each}
           </div>
 
-          <button
-            type="button"
-            class="text-xs text-ink-secondary underline"
-            onclick={() => (architectOpen = !architectOpen)}
-          >
-            {architectOpen ? 'Fermer le découpage' : 'Découper un texte en extraits…'}
-          </button>
-
-          {#if architectOpen}
+          {#if saisieMode === 'coller'}
+            <div class="space-y-2">
+              <textarea
+                bind:value={excerptText}
+                rows="3"
+                maxlength={1000}
+                placeholder="Collez ici le passage exact, tel qu'il est dans la source…"
+                class="w-full px-3 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-hidden focus:ring-2 focus:ring-info placeholder:text-ink-placeholder"
+              ></textarea>
+              <div class="flex items-center justify-between gap-2">
+                <p class="text-xs text-ink-tertiary">
+                  {excerptText.length}/1000 — « Relire la source » retrouvera ce passage tant qu'il
+                  est verbatim.
+                </p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  loading={excerptAdding}
+                  disabled={excerptAdding ||
+                    !excerptText.trim() ||
+                    editingSource.excerpts.length >= 10}
+                  onclick={() => addExcerpt(excerptText)}
+                >
+                  Ajouter
+                </Button>
+              </div>
+            </div>
+          {:else}
             <ChunkArchitect
               sourceId={editingSource.id}
               remaining={10 - editingSource.excerpts.length}
