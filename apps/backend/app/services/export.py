@@ -23,6 +23,10 @@ if TYPE_CHECKING:
     from app.models.biblio_card import BiblioCard
     from app.models.source import Source
 
+#: Les colonnes que toute source porte, quel que soit le perimetre demande.
+#: L'ordre historique est fige : des fichiers en circulation s'y adossent, et
+#: `annotation` y reste meme quand le perimetre l'exclut — la colonne est alors
+#: vide, ce qui se lit comme « rien a dire », pas comme « colonne disparue ».
 CSV_COLUMNS = [
     "position",
     "title",
@@ -43,9 +47,32 @@ CSV_COLUMNS = [
     "archive_timestamp",
 ]
 
+#: Ce que le tableur ne portait pas et que les autres formats disaient deja.
+#: Une fiche exportee en CSV ou en XLSX taisait la position declaree, la
+#: retractation et l'acces ouvert : trois choses qui changent ce qu'un lecteur
+#: ose affirmer d'une reference. Ajoutees en queue, apres les colonnes figees.
+CSV_STANCE_COLUMN = ["stance"]
+CSV_RELIABILITY_COLUMNS = [
+    "retraction_status",
+    "retraction_notice_doi",
+    "oa_status",
+    "oa_url",
+]
+CSV_EXCERPT_COLUMN = ["excerpts_count"]
 
-def _source_row(source: Source) -> list[str]:
-    return [
+
+def source_columns(scope: ExportScope = FULL) -> list[str]:
+    """L'en-tete d'un tableau de sources, selon ce qu'on emporte."""
+    columns = list(CSV_COLUMNS) + list(CSV_STANCE_COLUMN)
+    if scope.reliability:
+        columns += CSV_RELIABILITY_COLUMNS
+    if scope.excerpts:
+        columns += CSV_EXCERPT_COLUMN
+    return columns
+
+
+def _source_row(source: Source, scope: ExportScope = FULL) -> list[str]:
+    row = [
         str(source.position),
         source.title or "",
         source.authors or "",
@@ -55,15 +82,28 @@ def _source_row(source: Source) -> list[str]:
         source.category,
         source.author_kind,
         "oui" if source.is_pivot else "non",
-        source.annotation or "",
+        source.annotation or "" if scope.annotations else "",
         source.journal or "",
         source.volume or "",
         source.pages or "",
         source.publisher or "",
         source.doi or "",
-        source.archive_url or "",
-        source.archive_timestamp.isoformat() if source.archive_timestamp else "",
+        source.archive_url or "" if scope.archives else "",
+        (source.archive_timestamp.isoformat() if source.archive_timestamp else "")
+        if scope.archives
+        else "",
+        source.stance or "",
     ]
+    if scope.reliability:
+        row += [
+            source.retraction_status or "",
+            source.retraction_notice_doi or "",
+            source.oa_status or "",
+            source.oa_url or "",
+        ]
+    if scope.excerpts:
+        row.append(str(len(source.excerpts)))
+    return row
 
 
 def _excerpts(source: Source) -> list[dict]:
@@ -72,13 +112,24 @@ def _excerpts(source: Source) -> list[dict]:
     L'ancrage (`prefix`/`suffix`/`offset`) part avec le texte : sans lui, un
     extrait exporte n'est plus qu'une citation invérifiable, et retrouver le
     passage dans une page qui a bouge redevient impossible.
+
+    `context` voyage a cote du verbatim, jamais dedans : c'est ce qui situe le
+    passage pour qui le rencontre seul, et `annotated_by_ai` dit d'ou vient
+    cette prose. Les recoller ferait attribuer a la source des mots qu'elle n'a
+    pas ecrits. `verified_*` porte le verdict de relecture, et son absence est
+    un etat : jamais relu ne se confond pas avec relu et introuvable.
     """
     return [
         {
             "position": e.position,
             "title": e.title,
             "text": e.text,
+            "context": e.context,
             "suggested_by_ai": e.suggested_by_ai,
+            "annotated_by_ai": e.annotated_by_ai,
+            "verified_at": e.verified_at.isoformat() if e.verified_at else None,
+            "verified_status": e.verified_status,
+            "verified_text_source": e.verified_text_source,
             "anchor": {
                 "prefix": e.anchor_prefix,
                 "suffix": e.anchor_suffix,
@@ -268,12 +319,18 @@ def _philum_source(s: Source, scope: ExportScope) -> dict:
     return entry
 
 
-def export_csv(card: BiblioCard) -> str:
+def export_csv(card: BiblioCard, scope: ExportScope = FULL) -> str:
+    """Un tableau plat de sources.
+
+    Le CSV n'a qu'une table : les extraits et les fiches voisines n'y tiennent
+    pas. Qui les veut prend le XLSX, qui leur donne une feuille chacun, ou le
+    JSON. Ce que le CSV peut porter, il le porte desormais entierement.
+    """
     buf = io.StringIO()
     writer = csv.writer(buf, lineterminator="\r\n")
-    writer.writerow(CSV_COLUMNS)
+    writer.writerow(source_columns(scope))
     for source in card.sources:
-        writer.writerow(_source_row(source))
+        writer.writerow(_source_row(source, scope))
     return buf.getvalue()
 
 
@@ -529,6 +586,9 @@ def _excerpt_lines(source: Source) -> list[str]:
     Le titre de l'extrait precede le texte quand il existe. L'ancrage n'est pas
     rendu : il n'a de sens que pour une machine, et le Markdown est ici lu par
     un humain — le JSON le porte pour l'autre usage.
+
+    La mise en situation sort du bloc de citation : dans le bloc, elle se
+    lirait comme faisant partie du verbatim.
     """
     lines: list[str] = []
     for e in sorted(source.excerpts, key=lambda e: e.position):
@@ -536,7 +596,41 @@ def _excerpt_lines(source: Source) -> list[str]:
         marque = " *(proposé par IA)*" if e.suggested_by_ai else ""
         texte = " ".join(e.text.split())
         lines.append(f"  - > {intitule}« {texte} »{marque}")
+        if e.context:
+            origine = " *(mise en situation proposée par IA)*" if e.annotated_by_ai else ""
+            lines.append(f"    - *{' '.join(e.context.split())}*{origine}")
+        verdict = _excerpt_verdict(e)
+        if verdict:
+            lines.append(f"    - {verdict}")
     return lines
+
+
+def _excerpt_verdict(excerpt) -> str:  # noqa: ANN001 - SourceExcerpt, non importe (TYPE_CHECKING)
+    """Ce que la derniere relecture a trouve, en une ligne.
+
+    L'absence de relecture ne se dit pas : chaque extrait porterait « jamais
+    relu », ce qui noierait les quelques verdicts qui, eux, apprennent quelque
+    chose. Le JSON garde `verified_at: null` pour qui veut compter.
+    """
+    if not excerpt.verified_at:
+        return ""
+    quand = excerpt.verified_at.date().isoformat()
+    contre = (
+        " (contre un texte fourni par le créateur)"
+        if excerpt.verified_text_source == "provided"
+        else ""
+    )
+    return f"{_VERIFIED_LABELS.get(excerpt.verified_status, 'Relu')} le {quand}{contre}"
+
+
+#: Quatre verdicts, quatre phrases. « introuvable » et « illisible » ne disent
+#: pas la meme chose : l'un accuse la citation, l'autre la page.
+_VERIFIED_LABELS = {
+    "found": "✓ Retrouvé dans la source, relu",
+    "moved": "↪ Retrouvé ailleurs dans la source, relu",
+    "missing": "✗ Introuvable dans la source, relu",
+    "unreadable": "? Source illisible à la relecture",
+}
 
 
 def _source_lines(source: Source, scope: ExportScope) -> list[str]:
@@ -676,7 +770,116 @@ def _docx_p(*runs: str) -> str:
     return f"<w:p>{''.join(runs)}</w:p>"
 
 
-def export_docx(card: BiblioCard, public_url: str, scope: ExportScope = FULL) -> bytes:
+def _docx_source(s: Source, i: int, scope: ExportScope) -> list[str]:
+    """Une source, avec tout ce qui change ce qu'on ose en affirmer.
+
+    Le Word disait le titre, les auteurs et l'adresse — soit moins que le
+    Markdown, qui porte en plus le DOI, la position declaree et l'acces
+    ouvert. Un document lu hors ligne est pourtant le pire endroit ou taire
+    une retractation : personne n'ira verifier ailleurs.
+    """
+    title_runs = [_docx_run(f"{i}. "), _docx_run(s.title or s.url, bold=True)]
+    if s.is_pivot:
+        title_runs.append(_docx_run(" (source pivot)"))
+    paragraphs = [_docx_p(*title_runs)]
+
+    meta_parts = []
+    if s.authors:
+        meta_parts.append(s.authors)
+    if s.published_at:
+        meta_parts.append(s.published_at.date().isoformat())
+    meta_parts.append(s.category)
+    if s.journal:
+        meta_parts.append(s.journal)
+    paragraphs.append(_docx_p(_docx_run(" · ".join(meta_parts))))
+    paragraphs.append(_docx_p(_docx_run(s.url)))
+
+    if s.doi and s.doi.lower() not in (s.url or "").lower():
+        paragraphs.append(_docx_p(_docx_run(f"DOI : {s.doi}")))
+    stance = _STANCE_LABELS.get(s.stance or "")
+    if stance:
+        paragraphs.append(_docx_p(_docx_run(f"Position déclarée : {stance}")))
+    if scope.reliability and s.retraction_status == "retracted":
+        avis = f" — avis : {s.retraction_notice_doi}" if s.retraction_notice_doi else ""
+        paragraphs.append(_docx_p(_docx_run(f"⚠️ RÉTRACTÉE{avis}", bold=True)))
+    if scope.reliability and s.oa_url:
+        label = f"Accès ouvert ({s.oa_status})" if s.oa_status else "Accès ouvert"
+        paragraphs.append(_docx_p(_docx_run(f"{label} : {s.oa_url}")))
+    if scope.annotations and s.annotation:
+        paragraphs.append(_docx_p(_docx_run(f"Note du créateur — {s.annotation}", italic=True)))
+    if scope.excerpts:
+        for e in sorted(s.excerpts, key=lambda e: e.position):
+            intitule = f"{e.title} — " if e.title else ""
+            marque = " (proposé par IA)" if e.suggested_by_ai else ""
+            paragraphs.append(
+                _docx_p(
+                    _docx_run(intitule, bold=True),
+                    _docx_run(f"« {' '.join(e.text.split())} »{marque}", italic=True),
+                )
+            )
+            if e.context:
+                origine = " (mise en situation proposée par IA)" if e.annotated_by_ai else ""
+                paragraphs.append(
+                    _docx_p(_docx_run(f"{' '.join(e.context.split())}{origine}", size=18))
+                )
+            verdict = _excerpt_verdict(e)
+            if verdict:
+                paragraphs.append(_docx_p(_docx_run(verdict, size=18)))
+    if scope.archives and s.archive_url:
+        paragraphs.append(_docx_p(_docx_run(f"Archive : {s.archive_url}")))
+    paragraphs.append(_docx_p())
+    return paragraphs
+
+
+def _docx_neighbourhood(voisinage: Neighbourhood, base_url: str) -> list[str]:
+    """Les fiches voisines, groupees par sens puis par degre.
+
+    Le degre est ecrit en toutes lettres et non deduit de l'ordre : c'est la
+    seule chose qui distingue une fiche citee directement d'une fiche atteinte
+    par ricochet, et les aplatir reviendrait a leur donner le meme poids.
+    """
+    paragraphs: list[str] = []
+    for sens, voisines in (("cited", voisinage.cited), ("citing", voisinage.citing)):
+        if not voisines:
+            continue
+        paragraphs.append(_docx_p(_docx_run(_DIRECTION_TITRES[sens], bold=True, size=28)))
+        for degre in sorted({v.degree for v in voisines}):
+            paragraphs.append(_docx_p(_docx_run(f"Degré {degre}", bold=True)))
+            for v in [x for x in voisines if x.degree == degre]:
+                adresse = f"{base_url}/@{v.card.user.username}/{v.card.slug}"
+                paragraphs.append(
+                    _docx_p(
+                        _docx_run(v.card.title, bold=True),
+                        _docx_run(f" — par @{v.card.user.username}"),
+                    )
+                )
+                paragraphs.append(_docx_p(_docx_run(adresse)))
+                if v.scope.references_only:
+                    for s in v.card.sources:
+                        paragraphs.append(_docx_p(_docx_run(f"— {s.title or s.url}")))
+                else:
+                    for j, s in enumerate(v.card.sources, start=1):
+                        paragraphs += _docx_source(s, j, v.scope)
+                paragraphs.append(_docx_p())
+    if voisinage.truncated:
+        paragraphs.append(
+            _docx_p(
+                _docx_run(
+                    "Le voisinage a été tronqué : la fiche en compte plus que ce "
+                    "qu'un export peut porter.",
+                    italic=True,
+                )
+            )
+        )
+    return paragraphs
+
+
+def export_docx(
+    card: BiblioCard,
+    public_url: str,
+    scope: ExportScope = FULL,
+    neighbourhood: Neighbourhood | None = None,
+) -> bytes:
     """Document Word minimal : titre, méta, sources numérotées.
 
     Généré sans dépendance (zipfile + XML), comme le XLSX. Word/LibreOffice
@@ -698,30 +901,10 @@ def export_docx(card: BiblioCard, public_url: str, scope: ExportScope = FULL) ->
     paragraphs.append(_docx_p(_docx_run(f"Sources ({len(card.sources)})", bold=True, size=28)))
 
     for i, s in enumerate(card.sources, start=1):
-        title_runs = [_docx_run(f"{i}. "), _docx_run(s.title or s.url, bold=True)]
-        if s.is_pivot:
-            title_runs.append(_docx_run(" (source pivot)"))
-        paragraphs.append(_docx_p(*title_runs))
-        meta_parts = []
-        if s.authors:
-            meta_parts.append(s.authors)
-        if s.published_at:
-            meta_parts.append(s.published_at.date().isoformat())
-        meta_parts.append(s.category)
-        paragraphs.append(_docx_p(_docx_run(" · ".join(meta_parts))))
-        paragraphs.append(_docx_p(_docx_run(s.url)))
-        if scope.reliability and s.retraction_status == "retracted":
-            paragraphs.append(_docx_p(_docx_run("RÉTRACTÉE", bold=True)))
-        if scope.annotations and s.annotation:
-            paragraphs.append(_docx_p(_docx_run(s.annotation, italic=True)))
-        if scope.excerpts:
-            for e in sorted(s.excerpts, key=lambda e: e.position):
-                paragraphs.append(
-                    _docx_p(_docx_run(f"« {' '.join(e.text.split())} »", italic=True))
-                )
-        if scope.archives and s.archive_url:
-            paragraphs.append(_docx_p(_docx_run(f"Archive : {s.archive_url}")))
-        paragraphs.append(_docx_p())
+        paragraphs += _docx_source(s, i, scope)
+
+    if neighbourhood is not None:
+        paragraphs += _docx_neighbourhood(neighbourhood, public_url.rsplit("/@", 1)[0])
 
     paragraphs.append(_docx_p(_docx_run(f"Exporté depuis Philum — {public_url}", italic=True)))
 
@@ -781,8 +964,113 @@ def _xlsx_sheet_xml(rows: list[list[str]]) -> str:
     )
 
 
-def export_xlsx(card: BiblioCard) -> bytes:
-    rows = [CSV_COLUMNS] + [_source_row(s) for s in card.sources]
+#: En-tete de la feuille des extraits. `context` a sa propre colonne : recollee
+#: au texte, elle ferait passer pour du verbatim une phrase que personne n'a
+#: ecrite dans la source.
+EXCERPT_COLUMNS = [
+    "source_position",
+    "source_title",
+    "position",
+    "title",
+    "text",
+    "context",
+    "suggested_by_ai",
+    "annotated_by_ai",
+    "verified_at",
+    "verified_status",
+    "verified_text_source",
+    "anchor_prefix",
+    "anchor_suffix",
+    "anchor_offset",
+]
+
+#: En-tete de la feuille des fiches voisines. `degree` en est la raison d'etre :
+#: c'est la colonne qui manquait, et sans elle un voisinage a deux degres
+#: s'aplatit en une liste ou plus rien ne distingue le proche du lointain.
+NEIGHBOUR_COLUMNS = [
+    "direction",
+    "degree",
+    "title",
+    "creator",
+    "philum_url",
+    "content_url",
+    "sources_count",
+]
+
+_DIRECTION_XLSX = {"cited": "citée par celle-ci", "citing": "cite celle-ci"}
+
+
+def _excerpt_rows(card: BiblioCard) -> list[list[str]]:
+    rows: list[list[str]] = []
+    for s in card.sources:
+        for e in sorted(s.excerpts, key=lambda e: e.position):
+            rows.append(
+                [
+                    str(s.position),
+                    s.title or s.url,
+                    str(e.position),
+                    e.title or "",
+                    e.text,
+                    e.context or "",
+                    "oui" if e.suggested_by_ai else "non",
+                    "oui" if e.annotated_by_ai else "non",
+                    e.verified_at.isoformat() if e.verified_at else "",
+                    e.verified_status or "",
+                    e.verified_text_source or "",
+                    e.anchor_prefix or "",
+                    e.anchor_suffix or "",
+                    "" if e.anchor_offset is None else str(e.anchor_offset),
+                ]
+            )
+    return rows
+
+
+def _neighbour_rows(voisinage: Neighbourhood, base_url: str) -> list[list[str]]:
+    rows: list[list[str]] = []
+    for sens, voisines in (("cited", voisinage.cited), ("citing", voisinage.citing)):
+        for v in sorted(voisines, key=lambda v: (v.degree, v.card.title)):
+            rows.append(
+                [
+                    _DIRECTION_XLSX[sens],
+                    str(v.degree),
+                    v.card.title,
+                    v.card.user.username,
+                    f"{base_url}/@{v.card.user.username}/{v.card.slug}",
+                    v.card.content_url or "",
+                    str(len(v.card.sources)),
+                ]
+            )
+    return rows
+
+
+def export_xlsx(
+    card: BiblioCard,
+    scope: ExportScope = FULL,
+    neighbourhood: Neighbourhood | None = None,
+    base_url: str = "",
+) -> bytes:
+    """Le classeur : une feuille par nature d'information.
+
+    Un tableur n'a pas de place pour l'imbrication, et c'est pourquoi le XLSX
+    en disait moins que tous les autres formats — extraits et fiches voisines
+    n'ont simplement pas de colonne dans un tableau de sources. Ils ont chacun
+    leur feuille, reliees par `source_position` et par le degre.
+    """
+    feuilles: list[tuple[str, list[list[str]]]] = [
+        ("Sources", [source_columns(scope)] + [_source_row(s, scope) for s in card.sources])
+    ]
+    if scope.excerpts:
+        feuilles.append(("Extraits", [EXCERPT_COLUMNS] + _excerpt_rows(card)))
+    if neighbourhood is not None:
+        feuilles.append(
+            ("Fiches voisines", [NEIGHBOUR_COLUMNS] + _neighbour_rows(neighbourhood, base_url))
+        )
+
+    overrides = "".join(
+        f'<Override PartName="/xl/worksheets/sheet{i}.xml" ContentType="application/vnd.'
+        'openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+        for i in range(1, len(feuilles) + 1)
+    )
     content_types = (
         '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
@@ -791,9 +1079,7 @@ def export_xlsx(card: BiblioCard) -> bytes:
         '<Default Extension="xml" ContentType="application/xml"/>'
         '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.'
         'openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
-        '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.'
-        'openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
-        "</Types>"
+        f"{overrides}</Types>"
     )
     rels = (
         '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
@@ -802,18 +1088,25 @@ def export_xlsx(card: BiblioCard) -> bytes:
         '2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
         "</Relationships>"
     )
+    sheets = "".join(
+        f'<sheet name="{escape(nom)}" sheetId="{i}" r:id="rId{i}"/>'
+        for i, (nom, _) in enumerate(feuilles, start=1)
+    )
     workbook = (
         '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
         'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-        '<sheets><sheet name="Sources" sheetId="1" r:id="rId1"/></sheets></workbook>'
+        f"<sheets>{sheets}</sheets></workbook>"
     )
     workbook_rels = (
         '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-        '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/'
-        '2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
-        "</Relationships>"
+        + "".join(
+            f'<Relationship Id="rId{i}" Type="http://schemas.openxmlformats.org/officeDocument/'
+            f'2006/relationships/worksheet" Target="worksheets/sheet{i}.xml"/>'
+            for i in range(1, len(feuilles) + 1)
+        )
+        + "</Relationships>"
     )
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -821,5 +1114,6 @@ def export_xlsx(card: BiblioCard) -> bytes:
         zf.writestr("_rels/.rels", rels)
         zf.writestr("xl/workbook.xml", workbook)
         zf.writestr("xl/_rels/workbook.xml.rels", workbook_rels)
-        zf.writestr("xl/worksheets/sheet1.xml", _xlsx_sheet_xml(rows))
+        for i, (_, rows) in enumerate(feuilles, start=1):
+            zf.writestr(f"xl/worksheets/sheet{i}.xml", _xlsx_sheet_xml(rows))
     return buf.getvalue()

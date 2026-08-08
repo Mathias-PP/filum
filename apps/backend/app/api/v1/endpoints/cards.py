@@ -621,9 +621,11 @@ async def export_public_card(
         content = export_service.export_philum_json(card, public_url, scope, neighbourhood)
     elif format == "csv":
         # BOM UTF-8 : Excel n'interprete pas l'UTF-8 sans lui.
-        content = "\ufeff" + export_service.export_csv(card)
+        content = "\ufeff" + export_service.export_csv(card, scope)
     elif format == "xlsx":
-        content = export_service.export_xlsx(card)
+        content = export_service.export_xlsx(
+            card, scope, neighbourhood, public_url.rsplit("/@", 1)[0]
+        )
     elif format == "bibtex":
         content = export_service.export_bibtex(card)
     elif format == "ris":
@@ -633,7 +635,7 @@ async def export_public_card(
     elif format in citation_styles.STYLES:
         content = export_service.export_bibliography(card, public_url, format)
     elif format == "docx":
-        content = export_service.export_docx(card, public_url, scope)
+        content = export_service.export_docx(card, public_url, scope, neighbourhood)
     else:
         content = export_service.export_markdown(card, public_url, scope, neighbourhood)
 

@@ -207,6 +207,100 @@ async def test_search_cards_escapes_like_wildcards(db_session, published_card):
     assert await search_cards(db_session, query="_emoire") == []
 
 
+@pytest_asyncio.fixture
+async def source_complete(db_session, test_user):
+    """Une source qui a tout a dire : verbatim, position declaree, retractation.
+
+    C'est le cas ou le MCP se jugeait : un agent qui n'obtient ni les extraits
+    ni l'etat de retractation en sait moins que n'importe qui telechargeant le
+    CSV, et citera comme valide une reference retiree.
+    """
+    from app.models.biblio_card import BiblioCard
+    from app.models.source import Source
+    from app.models.source_excerpt import SourceExcerpt
+
+    card = BiblioCard(
+        id=uuid4(),
+        user_id=test_user.id,
+        slug="fiche-complete",
+        title="Fiche complete",
+        content_type="video",
+        platform="youtube",
+        status="published",
+    )
+    db_session.add(card)
+    await db_session.flush()
+    source = Source(
+        id=uuid4(),
+        biblio_card_id=card.id,
+        position=0,
+        url="https://example.org/etude",
+        title="Etude retiree",
+        format="texte",
+        category="article-scientifique",
+        author_kind="chercheur",
+        doi="10.1000/retiree",
+        journal="Revue Exemple",
+        stance="nuance-contredit",
+        retraction_status="retracted",
+        retraction_notice_doi="10.1000/avis",
+        oa_status="gold",
+        oa_url="https://example.org/pdf",
+    )
+    db_session.add(source)
+    await db_session.flush()
+    db_session.add(
+        SourceExcerpt(
+            id=uuid4(),
+            source_id=source.id,
+            position=0,
+            text="Ce que la source dit.",
+            title="Le point central",
+            context="Extrait de la discussion finale.",
+            annotated_by_ai=True,
+        )
+    )
+    await db_session.commit()
+    return source
+
+
+@pytest.mark.asyncio
+async def test_get_source_porte_le_verbatim(db_session, source_complete):
+    from app.mcp_server.tools import get_source
+
+    detail = await get_source(db_session, source_id=str(source_complete.id))
+    assert len(detail["excerpts"]) == 1
+    extrait = detail["excerpts"][0]
+    assert extrait["text"] == "Ce que la source dit."
+    assert extrait["title"] == "Le point central"
+    assert extrait["context"] == "Extrait de la discussion finale."
+    assert extrait["annotated_by_ai"] is True
+    #: `null` = jamais relu, pas « relu et introuvable ».
+    assert extrait["verified_at"] is None
+    assert extrait["verified_status"] is None
+
+
+@pytest.mark.asyncio
+async def test_get_source_dit_la_retractation(db_session, source_complete):
+    from app.mcp_server.tools import get_source
+
+    detail = await get_source(db_session, source_id=str(source_complete.id))
+    assert detail["retraction_status"] == "retracted"
+    assert detail["retraction_notice_doi"] == "10.1000/avis"
+
+
+@pytest.mark.asyncio
+async def test_get_source_porte_position_doi_et_acces_ouvert(db_session, source_complete):
+    from app.mcp_server.tools import get_source
+
+    detail = await get_source(db_session, source_id=str(source_complete.id))
+    assert detail["stance"] == "nuance-contredit"
+    assert detail["doi"] == "10.1000/retiree"
+    assert detail["journal"] == "Revue Exemple"
+    assert detail["oa_status"] == "gold"
+    assert detail["oa_url"] == "https://example.org/pdf"
+
+
 @pytest.mark.asyncio
 async def test_find_cards_citing_same_url(db_session, published_card, test_user):
     from app.mcp_server.tools import find_cards_citing

@@ -589,6 +589,4 @@ async def annotate_excerpt(
     annotation = await suggest_annotation(payload.text, entourage)
     if annotation is None:
         return AnnotationResponse(llm_enabled=True)
-    return AnnotationResponse(
-        title=annotation.title, context=annotation.context, llm_enabled=True
-    )
+    return AnnotationResponse(title=annotation.title, context=annotation.context, llm_enabled=True)

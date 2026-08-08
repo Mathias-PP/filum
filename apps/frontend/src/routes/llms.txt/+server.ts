@@ -57,9 +57,15 @@ complete dans \`citation[]\`.
 - Recherche JSON: \`GET ${o}/api/v1/discover?q=<termes>\` — sans authentification
 - Facettes: \`GET ${o}/api/v1/discover/facets\`
 - Fiche: \`GET ${o}/api/v1/@<createur>/<fiche>\`
-- Bibliographie exportable: \`GET ${o}/api/v1/@<createur>/<fiche>/export?format=<json|csv|bibtex|ris|csl|apa>\`
+- Bibliographie exportable: \`GET ${o}/api/v1/@<createur>/<fiche>/export?format=<json|philum|md|csv|xlsx|docx|bibtex|ris|csl|apa|mla|chicago>\`
+  — \`&include=\` choisit ce que l'export emporte (extraits, fiabilite, annotations,
+  archives), \`&cited=\`/\`&citing=\` y ajoutent les fiches voisines par degre. Aucun
+  format ne perd d'information qu'il pourrait porter : le tableur rend les extraits
+  et les voisines en feuilles separees, le document Word les rend en sections.
 - Schema complet: [OpenAPI](${o}/api/v1/openapi.json)
-- Serveur MCP (lecture seule, sans authentification): \`${MCP_URL}\`
+- Serveur MCP (lecture seule, sans authentification): \`${MCP_URL}\` — \`get_source\`
+  y rend le verbatim de chaque extrait avec sa mise en situation, le statut de
+  retractation, l'acces ouvert et la relation declaree a la source.
 
 ## Citer une fiche
 
