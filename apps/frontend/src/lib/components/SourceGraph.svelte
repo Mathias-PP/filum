@@ -18,6 +18,7 @@
     type ZoomTransform,
   } from 'd3';
   import { onDestroy, onMount } from 'svelte';
+  import { theme } from '$lib/stores';
 
   import { api } from '$lib/api';
   import type {
@@ -765,6 +766,24 @@
     return { fill: colors.stroke, stroke: pinned ? '#f59e0b' : colors.stroke };
   }
 
+  /**
+   * La couleur du fond du graphe, telle qu'elle est en ce moment.
+   *
+   * Onze halos et fonds de pastille etaient ecrits `#ffffff` : leur role n'est
+   * pas « blanc », c'est « la couleur du fond », pour detacher un libelle du
+   * trait qui passe derriere. En mode sombre ils restaient blancs sur un fond
+   * a #1A1A1E et devenaient des taches. On ne peut pas y mettre `var(--…)` :
+   * D3 ecrit un attribut de presentation SVG, ou `var()` n'est pas resolu — il
+   * faut donc lire la valeur calculee.
+   */
+  function couleurDuFond(): string {
+    if (typeof document === 'undefined') return '#ffffff';
+    const triplet = getComputedStyle(document.documentElement)
+      .getPropertyValue('--bg-primary')
+      .trim();
+    return triplet ? `rgb(${triplet})` : '#ffffff';
+  }
+
   function remount() {
     selectSource(null);
     hoveredId = null;
@@ -1192,7 +1211,7 @@
       .attr('height', CHRONO_HEADER_HEIGHT)
       // Opaque : sous un fond translucide, les nœuds qui passent derrière se
       // lisaient comme des fantômes au milieu des années.
-      .attr('fill', '#ffffff');
+      .attr('fill', couleurDuFond());
     g.append('line')
       .attr('x1', 0)
       .attr('x2', width)
@@ -1218,7 +1237,7 @@
         .attr('y', CHRONO_HEADER_HEIGHT - 5)
         .attr('width', 14)
         .attr('height', 10)
-        .attr('fill', '#ffffff');
+        .attr('fill', couleurDuFond());
       for (const dx of [-3, 2]) {
         b.append('line')
           .attr('x1', dx - 2)
@@ -1584,7 +1603,7 @@
       .attr('height', BADGE_HEIGHT)
       .attr('rx', BADGE_HEIGHT / 2)
       .attr('fill', '#6366f1')
-      .attr('stroke', '#ffffff')
+      .attr('stroke', couleurDuFond())
       .attr('stroke-width', 1.5)
       .on('click', (event, d) => {
         // Sans arrêt de propagation, le clic remonterait au nœud et ouvrirait
@@ -1601,7 +1620,7 @@
       .attr('dominant-baseline', 'central')
       .attr('font-size', BADGE_FONT_SIZE)
       .attr('font-weight', 700)
-      .attr('fill', '#ffffff')
+      .attr('fill', couleurDuFond())
       .style('pointer-events', 'none')
       .text(expandBadgeLabel);
 
@@ -1620,7 +1639,7 @@
       .attr('height', BADGE_HEIGHT)
       .attr('rx', BADGE_HEIGHT / 2)
       .attr('fill', '#94a3b8')
-      .attr('stroke', '#ffffff')
+      .attr('stroke', couleurDuFond())
       .attr('stroke-width', 1.5)
       .on('click', (event, d) => {
         event.stopPropagation();
@@ -1635,7 +1654,7 @@
       .attr('dominant-baseline', 'central')
       .attr('font-size', BADGE_FONT_SIZE + 1)
       .attr('font-weight', 700)
-      .attr('fill', '#ffffff')
+      .attr('fill', couleurDuFond())
       .style('pointer-events', 'none')
       .text('−');
 
@@ -1671,7 +1690,7 @@
       .attr('fill', '#0f172a')
       // Halo blanc permanent — cf. `title-label` pour le pourquoi.
       .style('paint-order', 'stroke')
-      .attr('stroke', '#ffffff')
+      .attr('stroke', couleurDuFond())
       .attr('stroke-width', 3)
       .attr('stroke-linejoin', 'round')
       .style('pointer-events', 'none')
@@ -1687,7 +1706,7 @@
       .attr('font-size', 10.5 * labelScale)
       .attr('fill', '#475569')
       .style('paint-order', 'stroke')
-      .attr('stroke', '#ffffff')
+      .attr('stroke', couleurDuFond())
       .attr('stroke-width', 3)
       .attr('stroke-linejoin', 'round')
       .style('pointer-events', 'none')
@@ -1715,7 +1734,7 @@
       .attr('font-weight', 500)
       .attr('fill', '#0f172a')
       .style('paint-order', 'stroke')
-      .attr('stroke', '#ffffff')
+      .attr('stroke', couleurDuFond())
       .attr('stroke-width', 3)
       .attr('stroke-linejoin', 'round')
       .style('pointer-events', 'none')
@@ -1736,7 +1755,7 @@
       // sans l'épaissir — et sans réordonner le DOM, ce que `ticked` interdit
       // (sa liaison de données se fait par index).
       .style('paint-order', 'stroke')
-      .attr('stroke', '#ffffff')
+      .attr('stroke', couleurDuFond())
       .attr('stroke-width', 3)
       .attr('stroke-linejoin', 'round')
       .style('pointer-events', 'none')
@@ -1755,7 +1774,7 @@
       .attr('font-size', 10 * labelScale)
       .attr('fill', (d) => (nodeYear(d) ? '#64748b' : '#cbd5e1'))
       .style('paint-order', 'stroke')
-      .attr('stroke', '#ffffff')
+      .attr('stroke', couleurDuFond())
       .attr('stroke-width', 3)
       .attr('stroke-linejoin', 'round')
       .style('pointer-events', 'none')
@@ -2039,6 +2058,15 @@
     remount();
   });
 
+  // Les halos du SVG sont peints une fois, avec la valeur lue au dessin. Sans
+  // ce redessin, basculer le thème laisserait des halos clairs sur fond sombre
+  // jusqu'au prochain remontage — c'est-à-dire, en pratique, jamais.
+  $effect(() => {
+    $theme;
+    if (!svgEl) return;
+    remount();
+  });
+
   // Opacité des nœuds. Survol et recherche agissent tous deux dessus : traités
   // dans deux effets séparés, le dernier exécuté écraserait l'autre.
   $effect(() => {
@@ -2153,7 +2181,7 @@
   });
 </script>
 
-<div bind:this={container} class="relative w-full h-full bg-white">
+<div bind:this={container} class="relative w-full h-full bg-surface-primary">
   <svg
     bind:this={svgEl}
     class="w-full h-full block"
@@ -2167,11 +2195,11 @@
     style="top: {overlayTop}px"
   >
     <div
-      class="flex items-center gap-1.5 rounded-md bg-white/95 border border-slate-200 shadow-xs px-2 py-1.5 text-xs"
+      class="flex items-center gap-1.5 rounded-md bg-surface-primary/95 border border-border shadow-xs px-2 py-1.5 text-xs"
     >
       <svg
         viewBox="0 0 24 24"
-        class="w-3.5 h-3.5 shrink-0 text-slate-400"
+        class="w-3.5 h-3.5 shrink-0 text-ink-tertiary"
         fill="none"
         stroke="currentColor"
         stroke-width="2"
@@ -2184,7 +2212,7 @@
         bind:value={query}
         onkeydown={(e) => e.key === 'Enter' && fitToMatches()}
         type="search"
-        class="w-40 sm:w-52 bg-transparent outline-hidden placeholder:text-slate-400 text-slate-800"
+        class="w-40 sm:w-52 bg-transparent outline-hidden placeholder:text-ink-tertiary text-ink-primary"
         placeholder="Titre, auteur, revue, DOI…"
         aria-label="Rechercher une référence dans le graphe"
       />
@@ -2192,7 +2220,7 @@
         <button
           type="button"
           onclick={clearQuery}
-          class="shrink-0 text-slate-400 hover:text-slate-700"
+          class="shrink-0 text-ink-tertiary hover:text-ink-primary"
           aria-label="Effacer la recherche"
           title="Effacer la recherche"
         >
@@ -2211,7 +2239,7 @@
 
     {#if matchedIds}
       <div
-        class="flex items-center gap-2 rounded-md bg-white/95 border border-slate-200 shadow-xs px-2 py-1 text-xs text-slate-600"
+        class="flex items-center gap-2 rounded-md bg-surface-primary/95 border border-border shadow-xs px-2 py-1 text-xs text-ink-secondary"
         aria-live="polite"
       >
         <span>
@@ -2240,28 +2268,28 @@
     <button
       type="button"
       onclick={() => (controlsOpen = !controlsOpen)}
-      class="flex items-center gap-1.5 rounded-md bg-white/95 border border-slate-200 shadow-xs px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-50 transition-colors"
+      class="flex items-center gap-1.5 rounded-md bg-surface-primary/95 border border-border shadow-xs px-2.5 py-1.5 text-xs text-ink-secondary hover:bg-surface-secondary transition-colors"
       aria-expanded={controlsOpen}
       aria-controls="graph-display-controls"
       title={controlsOpen ? 'Replier les options d’affichage' : 'Déplier les options d’affichage'}
     >
       <svg
         viewBox="0 0 24 24"
-        class="w-3.5 h-3.5 shrink-0 text-slate-400"
+        class="w-3.5 h-3.5 shrink-0 text-ink-tertiary"
         fill="none"
         stroke="currentColor"
         stroke-width="2"
         aria-hidden="true"
       >
         <path d="M4 7h16M4 12h16M4 17h16" stroke-linecap="round" />
-        <circle cx="9" cy="7" r="2" fill="white" />
-        <circle cx="15" cy="12" r="2" fill="white" />
-        <circle cx="8" cy="17" r="2" fill="white" />
+        <circle cx="9" cy="7" r="2" class="fill-surface-primary" />
+        <circle cx="15" cy="12" r="2" class="fill-surface-primary" />
+        <circle cx="8" cy="17" r="2" class="fill-surface-primary" />
       </svg>
       <span>Affichage</span>
       <svg
         viewBox="0 0 24 24"
-        class="w-3 h-3 shrink-0 text-slate-400 transition-transform {controlsOpen
+        class="w-3 h-3 shrink-0 text-ink-tertiary transition-transform {controlsOpen
           ? 'rotate-180'
           : ''}"
         fill="none"
@@ -2276,7 +2304,7 @@
     {#if controlsOpen}
       <div id="graph-display-controls" class="flex flex-col items-start gap-1.5">
         <div
-          class="flex items-center rounded-md bg-white/95 border border-slate-200 shadow-xs overflow-hidden text-xs"
+          class="flex items-center rounded-md bg-surface-primary/95 border border-border shadow-xs overflow-hidden text-xs"
           role="group"
           aria-label="Axe de couleur des nœuds"
         >
@@ -2285,10 +2313,10 @@
               type="button"
               onclick={() => (colorMode = opt.value)}
               class="px-2.5 py-1.5 transition-colors {i > 0
-                ? 'border-l border-slate-200'
+                ? 'border-l border-border'
                 : ''} {colorMode === opt.value
-                ? 'bg-slate-800 text-white font-medium'
-                : 'text-slate-600 hover:bg-slate-50'}"
+                ? 'bg-ink-primary text-white font-medium'
+                : 'text-ink-secondary hover:bg-surface-secondary'}"
               aria-pressed={colorMode === opt.value}
               title="Colorer par {opt.label.toLowerCase()}"
             >
@@ -2298,7 +2326,7 @@
         </div>
 
         <div
-          class="flex items-center rounded-md bg-white/95 border border-slate-200 shadow-xs overflow-hidden text-xs"
+          class="flex items-center rounded-md bg-surface-primary/95 border border-border shadow-xs overflow-hidden text-xs"
           role="group"
           aria-label="Disposition du graphe"
         >
@@ -2307,10 +2335,10 @@
               type="button"
               onclick={() => setLayoutMode(opt.value)}
               class="px-2.5 py-1.5 transition-colors {i > 0
-                ? 'border-l border-slate-200'
+                ? 'border-l border-border'
                 : ''} {layoutMode === opt.value
-                ? 'bg-slate-800 text-white font-medium'
-                : 'text-slate-600 hover:bg-slate-50'}"
+                ? 'bg-ink-primary text-white font-medium'
+                : 'text-ink-secondary hover:bg-surface-secondary'}"
               aria-pressed={layoutMode === opt.value}
               title={opt.help}
             >
@@ -2321,7 +2349,7 @@
 
         {#if neighborCards.size > 0}
           <div
-            class="flex items-center rounded-md bg-white/95 border border-slate-200 shadow-xs overflow-hidden text-xs"
+            class="flex items-center rounded-md bg-surface-primary/95 border border-border shadow-xs overflow-hidden text-xs"
             role="group"
             aria-label="Sens de citation affiché"
           >
@@ -2329,10 +2357,10 @@
               <button
                 type="button"
                 class="px-2.5 py-1.5 transition-colors {i > 0
-                  ? 'border-l border-slate-200'
+                  ? 'border-l border-border'
                   : ''} {direction === opt.v
-                  ? 'bg-slate-800 text-white font-medium'
-                  : 'text-slate-600 hover:bg-slate-50'}"
+                  ? 'bg-ink-primary text-white font-medium'
+                  : 'text-ink-secondary hover:bg-surface-secondary'}"
                 aria-pressed={direction === opt.v}
                 onclick={() => (direction = opt.v as GraphDirection)}
               >
@@ -2361,15 +2389,15 @@
             <button
               type="button"
               onclick={() => (capOpen = !capOpen)}
-              class="flex items-center gap-1.5 rounded-md bg-white/95 border border-slate-200 shadow-xs px-2.5 py-1.5 text-xs text-slate-600 hover:bg-slate-50 transition-colors"
+              class="flex items-center gap-1.5 rounded-md bg-surface-primary/95 border border-border shadow-xs px-2.5 py-1.5 text-xs text-ink-secondary hover:bg-surface-secondary transition-colors"
               aria-expanded={capOpen}
               aria-controls="graph-cap-panel"
               title="Régler le nombre de références affichées"
             >
               <span class="whitespace-nowrap">Nœuds</span>
-              <span class="font-medium text-slate-800">{capValue}</span>
+              <span class="font-medium text-ink-primary">{capValue}</span>
               {#if hiddenSourcesCount > 0}
-                <span class="whitespace-nowrap text-slate-400">/ {scopedTotal}</span>
+                <span class="whitespace-nowrap text-ink-tertiary">/ {scopedTotal}</span>
               {/if}
               {#if capValue > GRAPH_CAP_COMFORT}
                 <span
@@ -2381,7 +2409,7 @@
               {/if}
               <svg
                 viewBox="0 0 24 24"
-                class="w-3 h-3 shrink-0 text-slate-400 transition-transform {capOpen
+                class="w-3 h-3 shrink-0 text-ink-tertiary transition-transform {capOpen
                   ? 'rotate-180'
                   : ''}"
                 fill="none"
@@ -2396,7 +2424,7 @@
             {#if capOpen}
               <div
                 id="graph-cap-panel"
-                class="flex items-center gap-2 rounded-md bg-white/95 border border-slate-200 shadow-xs px-2.5 py-1.5 text-xs text-slate-600"
+                class="flex items-center gap-2 rounded-md bg-surface-primary/95 border border-border shadow-xs px-2.5 py-1.5 text-xs text-ink-secondary"
               >
                 <input
                   id="graph-cap-range"
@@ -2405,7 +2433,7 @@
                   max={scopedTotal}
                   value={capValue}
                   oninput={(e) => setSourceCap(Number(e.currentTarget.value))}
-                  class="w-24 accent-slate-700"
+                  class="w-24 accent-ink-primary"
                   aria-label="Nombre maximum de références affichées"
                 />
                 <input
@@ -2415,7 +2443,7 @@
                   max={scopedTotal}
                   value={capValue}
                   onchange={(e) => setSourceCap(Number(e.currentTarget.value))}
-                  class="w-14 rounded border border-slate-200 px-1 py-0.5 text-center font-medium text-slate-800 focus:outline-hidden focus:ring-1 focus:ring-slate-400"
+                  class="w-14 rounded border border-border px-1 py-0.5 text-center font-medium text-ink-primary focus:outline-hidden focus:ring-1 focus:ring-border-strong"
                   aria-label="Nombre exact de références affichées"
                   title="Nombre maximum de références affichées, les sources clés d'abord"
                 />
@@ -2423,12 +2451,12 @@
                   type="button"
                   onclick={() => setSourceCap(scopedTotal)}
                   disabled={capValue >= scopedTotal}
-                  class="whitespace-nowrap text-slate-500 hover:text-slate-800 disabled:text-slate-300 disabled:cursor-default transition-colors"
+                  class="whitespace-nowrap text-ink-tertiary hover:text-ink-primary disabled:text-ink-placeholder disabled:cursor-default transition-colors"
                 >
                   Toutes ({scopedTotal})
                 </button>
                 {#if hiddenSourcesCount > 0}
-                  <span class="whitespace-nowrap text-slate-400"
+                  <span class="whitespace-nowrap text-ink-tertiary"
                     >· {hiddenSourcesCount} en réserve</span
                   >
                 {/if}
@@ -2447,8 +2475,8 @@
             type="button"
             onclick={toggleKeyOnly}
             class="flex items-center gap-1.5 rounded-md border shadow-xs px-2.5 py-1.5 text-xs transition-colors {keyOnly
-              ? 'bg-slate-800 border-slate-800 text-white font-medium'
-              : 'bg-white/95 border-slate-200 text-slate-600 hover:bg-slate-50'}"
+              ? 'bg-ink-primary border-ink-primary text-surface-primary font-medium'
+              : 'bg-surface-primary/95 border-border text-ink-secondary hover:bg-surface-secondary'}"
             aria-pressed={keyOnly}
             title="N'afficher que les sources marquées comme clés par l'auteur·ice de la fiche"
           >
@@ -2472,17 +2500,17 @@
       liste entière, la seule option qui ne perd rien.
     -->
         <div
-          class="flex items-center rounded-md bg-white/95 border border-slate-200 shadow-xs overflow-hidden text-xs"
+          class="flex items-center rounded-md bg-surface-primary/95 border border-border shadow-xs overflow-hidden text-xs"
           role="group"
           aria-label="Noms d'auteurs affichés"
         >
-          <span class="px-2.5 py-1.5 text-slate-500">Auteurs</span>
+          <span class="px-2.5 py-1.5 text-ink-tertiary">Auteurs</span>
           <button
             type="button"
             onclick={() => (showFirstAuthor = !showFirstAuthor)}
-            class="px-2.5 py-1.5 border-l border-slate-200 transition-colors {showFirstAuthor
-              ? 'bg-slate-800 text-white font-medium'
-              : 'text-slate-600 hover:bg-slate-50'}"
+            class="px-2.5 py-1.5 border-l border-border transition-colors {showFirstAuthor
+              ? 'bg-ink-primary text-white font-medium'
+              : 'text-ink-secondary hover:bg-surface-secondary'}"
             aria-pressed={showFirstAuthor}
             title="N'afficher que le premier nom d'auteur"
           >
@@ -2491,9 +2519,9 @@
           <button
             type="button"
             onclick={() => (showLastAuthor = !showLastAuthor)}
-            class="px-2.5 py-1.5 border-l border-slate-200 transition-colors {showLastAuthor
-              ? 'bg-slate-800 text-white font-medium'
-              : 'text-slate-600 hover:bg-slate-50'}"
+            class="px-2.5 py-1.5 border-l border-border transition-colors {showLastAuthor
+              ? 'bg-ink-primary text-white font-medium'
+              : 'text-ink-secondary hover:bg-surface-secondary'}"
             aria-pressed={showLastAuthor}
             title="N'afficher que le dernier nom d'auteur"
           >
@@ -2511,7 +2539,7 @@
   >
     <button
       onclick={() => zoomBy(1.25)}
-      class="w-8 h-8 rounded-md bg-white/95 border border-slate-200 shadow-xs hover:bg-slate-50 flex items-center justify-center text-slate-700"
+      class="w-8 h-8 rounded-md bg-surface-primary/95 border border-border shadow-xs hover:bg-surface-secondary flex items-center justify-center text-ink-primary"
       aria-label="Zoom avant"
       title="Zoom avant"
     >
@@ -2522,7 +2550,7 @@
     </button>
     <button
       onclick={() => zoomBy(0.8)}
-      class="w-8 h-8 rounded-md bg-white/95 border border-slate-200 shadow-xs hover:bg-slate-50 flex items-center justify-center text-slate-700"
+      class="w-8 h-8 rounded-md bg-surface-primary/95 border border-border shadow-xs hover:bg-surface-secondary flex items-center justify-center text-ink-primary"
       aria-label="Zoom arrière"
       title="Zoom arrière"
     >
@@ -2532,7 +2560,7 @@
     </button>
     <button
       onclick={resetView}
-      class="w-8 h-8 rounded-md bg-white/95 border border-slate-200 shadow-xs hover:bg-slate-50 flex items-center justify-center text-slate-700"
+      class="w-8 h-8 rounded-md bg-surface-primary/95 border border-border shadow-xs hover:bg-surface-secondary flex items-center justify-center text-ink-primary"
       aria-label="Recentrer"
       title="Recentrer"
     >
@@ -2545,7 +2573,7 @@
     </button>
     <button
       onclick={toggleFullscreen}
-      class="w-8 h-8 rounded-md bg-white/95 border border-slate-200 shadow-xs hover:bg-slate-50 flex items-center justify-center text-slate-700"
+      class="w-8 h-8 rounded-md bg-surface-primary/95 border border-border shadow-xs hover:bg-surface-secondary flex items-center justify-center text-ink-primary"
       aria-label={isFullscreen ? 'Quitter le plein écran' : 'Plein écran'}
       title={isFullscreen ? 'Quitter le plein écran' : 'Plein écran'}
     >
@@ -2568,10 +2596,10 @@
   </div>
 
   <div
-    class="absolute bottom-3 left-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs bg-white/90 border border-slate-200 rounded-md px-2.5 py-1.5 backdrop-blur-xs"
+    class="absolute bottom-3 left-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs bg-surface-primary/90 border border-border rounded-md px-2.5 py-1.5 backdrop-blur-xs"
   >
     {#each legendEntries as c (c.label)}
-      <span class="inline-flex items-center gap-1.5 text-slate-700">
+      <span class="inline-flex items-center gap-1.5 text-ink-primary">
         <span
           class="inline-block w-2.5 h-2.5 rounded-full border"
           style:background-color={c.fill}
@@ -2581,9 +2609,9 @@
       </span>
     {/each}
     {#if stanceLegend.length > 0}
-      <span class="w-px h-3 bg-slate-200" aria-hidden="true"></span>
+      <span class="w-px h-3 bg-border" aria-hidden="true"></span>
       {#each stanceLegend as s (s.key)}
-        <span class="inline-flex items-center gap-1.5 text-slate-700" title={s.help}>
+        <span class="inline-flex items-center gap-1.5 text-ink-primary" title={s.help}>
           <span class="inline-block w-3.5 h-0.5 rounded-full" style:background-color={s.stroke}
           ></span>
           {s.label}
@@ -2591,8 +2619,8 @@
       {/each}
     {/if}
     {#if hiddenSourcesCount > 0}
-      <span class="w-px h-3 bg-slate-200" aria-hidden="true"></span>
-      <span class="text-slate-500">
+      <span class="w-px h-3 bg-border" aria-hidden="true"></span>
+      <span class="text-ink-tertiary">
         {visibleSources.length} sur {totalSources} références affichées
       </span>
     {/if}
@@ -2621,7 +2649,7 @@
           <button
             type="button"
             onclick={collapseAll}
-            class="rounded-full border border-slate-300 bg-white px-2 py-0.5 text-slate-600 hover:bg-slate-50"
+            class="rounded-full border border-border-strong bg-surface-primary px-2 py-0.5 text-ink-secondary hover:bg-surface-secondary"
           >
             Tout replier
           </button>
@@ -2650,7 +2678,9 @@
         </button>
       {/if}
       {#if neighborhoodTruncated}
-        <p class="text-slate-500">Voisinage partiel : trop de fiches reliées pour tout afficher.</p>
+        <p class="text-ink-tertiary">
+          Voisinage partiel : trop de fiches reliées pour tout afficher.
+        </p>
       {/if}
     </div>
   {/if}
