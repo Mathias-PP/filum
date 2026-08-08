@@ -132,6 +132,34 @@ describe('ChunkArchitect', () => {
     expect(normalise(morceaux.join(' '))).toBe(normalise(TEXTE));
   });
 
+  it('un morceau déjà ajouté ne peut pas l’être une seconde fois', async () => {
+    // Vérifié au navigateur : le morceau ajouté était fusionné avec son
+    // voisin, donc son texte restait affiché — et un second clic sur
+    // « Ajouter » produisait un extrait qui chevauchait le premier. Deux
+    // extraits qui se recouvrent se lisent sur la fiche comme deux passages
+    // distincts de la source.
+    const ajoutes: string[] = [];
+    const vue = render(ChunkArchitect, {
+      props: {
+        sourceId: 's1',
+        remaining: 10,
+        onadd: async (t: string) => {
+          ajoutes.push(t);
+        },
+      },
+    });
+    await fireEvent.click(screen.getByRole('button', { name: /Proposer un découpage/ }));
+    await vi.waitFor(() => expect(chunk).toHaveBeenCalled());
+
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Ajouter' })[0]);
+    await vi.waitFor(() => expect(ajoutes).toHaveLength(1));
+
+    expect(screen.getByText('✓ ajouté')).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'Ajouter' })).toHaveLength(1);
+    // Et le texte reste entier : marquer n'est pas retirer.
+    expect(normalise(morceauxAffiches(vue.container).join(' '))).toBe(normalise(TEXTE));
+  });
+
   it('le texte collé part au serveur sans passer par la lecture de la page', async () => {
     render(ChunkArchitect, {
       props: { sourceId: 's1', remaining: 10, onadd: async () => {} },
