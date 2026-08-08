@@ -48,6 +48,11 @@
   let loading = $state(false);
   let error = $state<string | null>(null);
   let adding = $state<number | null>(null);
+  // Les morceaux deja ajoutes, par bornes. Deplacer une borne change le
+  // passage : la marque tombe alors d'elle-meme, ce qui est le bon comportement.
+  let added = $state<Set<string>>(new Set());
+
+  const cle = (c: { start: number; end: number }) => `${c.start}-${c.end}`;
 
   // Les fins de phrase du texte, en offsets. Miroir volontaire de la règle du
   // serveur (`app/services/chunker.py`) : déplacer une borne doit répondre à
@@ -144,7 +149,13 @@
     adding = i;
     try {
       await onadd(chunks[i].text, chunks[i].title);
-      merge(i === chunks.length - 1 ? i - 1 : i);
+      // Le morceau reste à sa place, marqué. Il ne peut pas être retiré de la
+      // liste : les bornes partitionnent le texte, et en ôter un segment
+      // recollerait ses voisins — c'est ce que faisait `merge()` ici, si bien
+      // que le passage ajouté restait affiché dans le morceau voisin et
+      // pouvait être ajouté une seconde fois, les deux extraits se
+      // chevauchant sans que rien ne le signale.
+      added = new Set([...added, cle(chunks[i])]);
     } catch (err) {
       error = err instanceof Error ? err.message : "Erreur lors de l'ajout";
     } finally {
@@ -272,16 +283,20 @@
             {#if i < chunks.length - 1}
               <button type="button" class="underline" onclick={() => merge(i)}>fusionner</button>
             {/if}
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              loading={adding === i}
-              disabled={remaining <= 0 || adding !== null}
-              onclick={() => add(i)}
-            >
-              Ajouter
-            </Button>
+            {#if added.has(cle(chunk))}
+              <span class="text-success">✓ ajouté</span>
+            {:else}
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                loading={adding === i}
+                disabled={remaining <= 0 || adding !== null}
+                onclick={() => add(i)}
+              >
+                Ajouter
+              </Button>
+            {/if}
           </div>
         </li>
       {/each}
