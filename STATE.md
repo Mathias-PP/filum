@@ -258,6 +258,11 @@ Les correctifs, par PR :
   recursive qui pose le saut a la remontee. Et les `tail` XML sont du
   **contenu** : dans un ODT, la phrase qui suit un passage en gras est le
   `tail` du `<text:span>`, la perdre trouerait le texte au milieu d'une phrase.
+  Merge en #344, VM redeployee (image backend reconstruite : `pypdf` est une
+  dependance nouvelle) et **chaine verifiee en prod** le meme jour : un `.docx`
+  depose rend son texte accents et sauts de paragraphe compris, `text_source`
+  vaut `uploaded`, le decoupage suit ; un PDF illisible rend sa consigne
+  (`unreadable_document`) et non une erreur generique.
 - **2026-08-08, #331 — ce que sept tests verts ne voyaient pas.** L'ecran de
   decoupage (#328, #329) etait couvert par sept tests de composant tenant
   l'invariant « le texte affiche est celui de la source », et n'avait jamais
