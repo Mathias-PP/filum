@@ -57,7 +57,8 @@ complete dans \`citation[]\`.
 - Recherche JSON: \`GET ${o}/api/v1/discover?q=<termes>\` — sans authentification
 - Facettes: \`GET ${o}/api/v1/discover/facets\`
 - Fiche: \`GET ${o}/api/v1/@<createur>/<fiche>\`
-- Bibliographie exportable: \`GET ${o}/api/v1/@<createur>/<fiche>/export?format=<json|csv|bibtex|ris|csl|apa>\`
+- Bibliographie exportable: \`GET ${o}/api/v1/@<createur>/<fiche>/export?format=<json|philum|csv|xlsx|docx|bibtex|ris|csl|markdown|apa|harvard|mla|chicago|vancouver|ieee>\`
+- Export a la carte: ajouter \`&include=annotations,excerpts,archives,reliability\` (absent = tout, vide = les references seules), et \`&cited=…\` / \`&citing=…\` pour emporter les fiches voisines dans un sens ou dans l'autre (\`2\` = degres 1 et 2 ; \`1:excerpts|2:\` = un perimetre par degre). Les extraits partent avec leur ancrage, ce qui les rend verifiables dans la source.
 - Schema complet: [OpenAPI](${o}/api/v1/openapi.json)
 - Serveur MCP (lecture seule, sans authentification): \`${MCP_URL}\`
 

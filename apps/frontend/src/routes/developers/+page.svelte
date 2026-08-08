@@ -14,8 +14,14 @@
     {
       method: 'GET',
       path: '/@{createur}/{fiche}/export?format=…',
-      desc: 'Export de la bibliographie. Formats : json, csv, bibtex, ris, csl, apa, markdown (Obsidian), xlsx, docx.',
+      desc: 'Export de la bibliographie. Formats : json, philum (JSON-LD), csv, xlsx, docx, bibtex, ris, csl, markdown (Obsidian), et les styles de citation apa, harvard, mla, chicago, vancouver, ieee.',
       example: `${API_BASE}/@example/memoire-et-cerveau/export?format=bibtex`,
+    },
+    {
+      method: 'GET',
+      path: '/@{createur}/{fiche}/export?include=…&cited=…&citing=…',
+      desc: 'Export à la carte. « include » choisit ce qui accompagne les références (annotations, excerpts, archives, reliability) — absent : tout ; vide : les références seules. « cited » et « citing » emportent les fiches voisines, chacune dans son sens : « 2 » pour les deux premiers degrés, « 1:excerpts|2: » pour un périmètre par degré. Les formats bibliographiques les ignorent.',
+      example: `${API_BASE}/@example/memoire-et-cerveau/export?format=markdown&include=excerpts&cited=1:excerpts`,
     },
     {
       method: 'GET',
