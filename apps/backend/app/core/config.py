@@ -42,9 +42,19 @@ class Settings(BaseSettings):
 
     wayback_api_key: str = ""
 
-    # Proxy LiteLLM (cf. .docs/17-llm-strategy.md). Vide = couche LLM désactivée.
+    # Point d'entrée LLM, au format OpenAI `/v1/chat/completions` (cf.
+    # .docs/17-llm-strategy.md). Vide = couche LLM désactivée. Historiquement
+    # le proxy LiteLLM ; peut désormais viser un provider directement, par
+    # exemple `https://generativelanguage.googleapis.com/v1beta/openai`.
     litellm_base_url: str = ""
     litellm_master_key: str = ""
+
+    # Les sept appels LLM nomment des alias de tâche (`biblio-parse`,
+    # `excerpt-suggest`, `metadata-extract`) que seul LiteLLM sait résoudre.
+    # Sans proxy, il faut dire quel modèle réel les honore : renseigner ce
+    # champ court-circuite les alias (ADR-035). Vide = alias transmis tels
+    # quels, donc mode proxy.
+    llm_direct_model: str = ""
 
     # GROBID (parsing structuré des références d'un PDF). Le Space officiel
     # kermitt2/grobid est PAUSED (2026-07) ; zfhxi/grobid est un duplicate

@@ -27,6 +27,75 @@ _TIMEOUT = 45.0
 _MAX_INPUT_CHARS = 40_000
 
 
+def resoudre_modele(alias: str) -> str:
+    """Le modèle réel derrière un alias de tâche.
+
+    En mode proxy, LiteLLM résout `biblio-parse` lui-même et l'alias part tel
+    quel. En visant un provider directement, personne ne le résout : l'appel
+    échouerait en 404 sur un modèle inconnu. `llm_direct_model` tranche.
+    """
+    direct = get_settings().llm_direct_model.strip()
+    return direct or alias
+
+
+async def _appel_json(
+    alias: str,
+    system: str,
+    user: str,
+    schema_name: str,
+    schema: dict,
+) -> str | None:
+    """Un tour de chat qui doit rendre du JSON. Ne lève jamais, rend None.
+
+    Deux tentatives au plus. La première demande une sortie contrainte par le
+    schéma (`json_schema`), qui est la seule forme donnant une garantie. Les
+    schémas produits par Pydantic contiennent des `anyOf` et des `$defs` que
+    tous les providers n'acceptent pas ; un refus au niveau de la requête
+    n'est pas un refus de la tâche, d'où le repli sur `json_object` avec le
+    schéma recopié dans la consigne. Le parsing en aval valide dans les deux
+    cas : rien n'est accepté sur la foi du mode demandé.
+    """
+    settings = get_settings()
+    base = settings.litellm_base_url.rstrip("/")
+    modele = resoudre_modele(alias)
+
+    async def poste(response_format: dict, consigne: str) -> httpx.Response:
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+            return await client.post(
+                f"{base}/v1/chat/completions",
+                json={
+                    "model": modele,
+                    "messages": [
+                        {"role": "system", "content": consigne},
+                        {"role": "user", "content": user},
+                    ],
+                    "response_format": response_format,
+                    "temperature": 0,
+                },
+                headers={"Authorization": f"Bearer {settings.litellm_master_key}"},
+            )
+
+    try:
+        r = await poste(
+            {"type": "json_schema", "json_schema": {"name": schema_name, "schema": schema}},
+            system,
+        )
+        if r.status_code == 400:
+            logger.info("LLM %s: schéma refusé, repli json_object", alias)
+            r = await poste(
+                {"type": "json_object"},
+                f"{system}\n\nRends un objet JSON conforme à ce schéma :\n{json.dumps(schema)}",
+            )
+        if r.status_code != 200:
+            logger.warning("LLM %s HTTP %s: %s", alias, r.status_code, r.text[:200])
+            return None
+        content: str = r.json()["choices"][0]["message"]["content"]
+        return content
+    except Exception as e:
+        logger.warning("LLM %s failed: %s", alias, e)
+        return None
+
+
 class LlmSourceMetadata(BaseModel):
     """Sortie structurée de l'alias `metadata-extract`.
 
@@ -54,14 +123,6 @@ _SYSTEM_PROMPT = (
     "format/category/author_kind uniquement parmi les valeurs autorisées du schéma, "
     "null en cas de doute."
 )
-
-
-def _response_schema() -> dict:
-    schema = LlmSourceMetadata.model_json_schema()
-    return {
-        "type": "json_schema",
-        "json_schema": {"name": "source_metadata", "schema": schema},
-    }
 
 
 def parse_metadata_content(content: str) -> LlmSourceMetadata | None:
@@ -163,47 +224,30 @@ async def parse_reference_block(block_text: str) -> LlmBiblioRef | None:
     if not block:
         return None
 
-    payload = {
-        "model": "biblio-parse",
-        "messages": [
-            {"role": "system", "content": _REF_BLOCK_SYSTEM_PROMPT},
-            {"role": "user", "content": block},
-        ],
-        "response_format": {
-            "type": "json_schema",
-            "json_schema": {"name": "biblio_ref", "schema": LlmBiblioRef.model_json_schema()},
-        },
-        "temperature": 0,
-    }
-    try:
-        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-            r = await client.post(
-                f"{settings.litellm_base_url.rstrip('/')}/v1/chat/completions",
-                json=payload,
-                headers={"Authorization": f"Bearer {settings.litellm_master_key}"},
-            )
-        if r.status_code != 200:
-            logger.warning("LLM ref-block HTTP %s: %s", r.status_code, r.text[:200])
-            return None
-        content = r.json()["choices"][0]["message"]["content"]
-        try:
-            return LlmBiblioRef.model_validate_json(content)
-        except ValidationError:
-            # Categorie invalide → retire et retente
-            try:
-                data = json.loads(content)
-            except json.JSONDecodeError:
-                return None
-            if not isinstance(data, dict):
-                return None
-            data.pop("category", None)
-            try:
-                return LlmBiblioRef.model_validate(data)
-            except ValidationError:
-                return None
-    except Exception as e:
-        logger.warning("LLM ref-block failed: %s", e)
+    content = await _appel_json(
+        "biblio-parse",
+        _REF_BLOCK_SYSTEM_PROMPT,
+        block,
+        "biblio_ref",
+        LlmBiblioRef.model_json_schema(),
+    )
+    if content is None:
         return None
+    try:
+        return LlmBiblioRef.model_validate_json(content)
+    except ValidationError:
+        # Categorie invalide → retire et retente
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError:
+            return None
+        if not isinstance(data, dict):
+            return None
+        data.pop("category", None)
+        try:
+            return LlmBiblioRef.model_validate(data)
+        except ValidationError:
+            return None
 
 
 async def parse_bibliography(text: str) -> list[LlmBiblioRef] | None:
@@ -216,33 +260,14 @@ async def parse_bibliography(text: str) -> list[LlmBiblioRef] | None:
     if not settings.litellm_base_url:
         return None
 
-    payload = {
-        "model": "biblio-parse",
-        "messages": [
-            {"role": "system", "content": _BIBLIO_SYSTEM_PROMPT},
-            {"role": "user", "content": text[:_MAX_INPUT_CHARS]},
-        ],
-        "response_format": {
-            "type": "json_schema",
-            "json_schema": {"name": "biblio_refs", "schema": LlmBiblioRefs.model_json_schema()},
-        },
-        "temperature": 0,
-    }
-    try:
-        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-            r = await client.post(
-                f"{settings.litellm_base_url.rstrip('/')}/v1/chat/completions",
-                json=payload,
-                headers={"Authorization": f"Bearer {settings.litellm_master_key}"},
-            )
-        if r.status_code != 200:
-            logger.warning("LLM biblio-parse HTTP %s: %s", r.status_code, r.text[:200])
-            return None
-        content = r.json()["choices"][0]["message"]["content"]
-        return parse_biblio_content(content)
-    except Exception as e:
-        logger.warning("LLM biblio-parse failed: %s", e)
-        return None
+    content = await _appel_json(
+        "biblio-parse",
+        _BIBLIO_SYSTEM_PROMPT,
+        text[:_MAX_INPUT_CHARS],
+        "biblio_refs",
+        LlmBiblioRefs.model_json_schema(),
+    )
+    return parse_biblio_content(content) if content is not None else None
 
 
 _TRANSCRIPT_SYSTEM_PROMPT = (
@@ -305,33 +330,14 @@ async def extract_mentioned_works(transcript: str) -> list[LlmBiblioRef] | None:
 
 
 async def _extract_works_from_chunk(text: str) -> list[LlmBiblioRef] | None:
-    settings = get_settings()
-    payload = {
-        "model": "biblio-parse",
-        "messages": [
-            {"role": "system", "content": _TRANSCRIPT_SYSTEM_PROMPT},
-            {"role": "user", "content": text[:_MAX_INPUT_CHARS]},
-        ],
-        "response_format": {
-            "type": "json_schema",
-            "json_schema": {"name": "biblio_refs", "schema": LlmBiblioRefs.model_json_schema()},
-        },
-        "temperature": 0,
-    }
-    try:
-        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-            r = await client.post(
-                f"{settings.litellm_base_url.rstrip('/')}/v1/chat/completions",
-                json=payload,
-                headers={"Authorization": f"Bearer {settings.litellm_master_key}"},
-            )
-        if r.status_code != 200:
-            logger.warning("LLM transcript HTTP %s: %s", r.status_code, r.text[:200])
-            return None
-        return parse_biblio_content(r.json()["choices"][0]["message"]["content"])
-    except Exception as e:
-        logger.warning("LLM transcript failed: %s", e)
-        return None
+    content = await _appel_json(
+        "biblio-parse",
+        _TRANSCRIPT_SYSTEM_PROMPT,
+        text[:_MAX_INPUT_CHARS],
+        "biblio_refs",
+        LlmBiblioRefs.model_json_schema(),
+    )
+    return parse_biblio_content(content) if content is not None else None
 
 
 class LlmExcerpts(BaseModel):
@@ -371,33 +377,14 @@ async def suggest_excerpts(page_text: str, context: str | None = None) -> list[s
     if context:
         user_content = f"Contexte (fiche du créateur) : {context[:500]}\n\n{user_content}"
 
-    payload = {
-        "model": "excerpt-suggest",
-        "messages": [
-            {"role": "system", "content": _EXCERPT_SYSTEM_PROMPT},
-            {"role": "user", "content": user_content},
-        ],
-        "response_format": {
-            "type": "json_schema",
-            "json_schema": {"name": "excerpts", "schema": LlmExcerpts.model_json_schema()},
-        },
-        "temperature": 0,
-    }
-    try:
-        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-            r = await client.post(
-                f"{settings.litellm_base_url.rstrip('/')}/v1/chat/completions",
-                json=payload,
-                headers={"Authorization": f"Bearer {settings.litellm_master_key}"},
-            )
-        if r.status_code != 200:
-            logger.warning("LLM excerpt-suggest HTTP %s: %s", r.status_code, r.text[:200])
-            return None
-        content = r.json()["choices"][0]["message"]["content"]
-        return parse_excerpts_content(content)
-    except Exception as e:
-        logger.warning("LLM excerpt-suggest failed: %s", e)
-        return None
+    content = await _appel_json(
+        "excerpt-suggest",
+        _EXCERPT_SYSTEM_PROMPT,
+        user_content,
+        "excerpts",
+        LlmExcerpts.model_json_schema(),
+    )
+    return parse_excerpts_content(content) if content is not None else None
 
 
 # --- Intitules d'extraits -------------------------------------------------
@@ -436,32 +423,18 @@ async def suggest_chunk_titles(chunks: list[str]) -> list[str | None] | None:
         return None
 
     user_content = "\n\n".join(f"[{i + 1}] {c[:1500]}" for i, c in enumerate(chunks))
-    payload = {
-        "model": "excerpt-suggest",
-        "messages": [
-            {"role": "system", "content": _CHUNK_TITLE_SYSTEM_PROMPT},
-            {"role": "user", "content": user_content},
-        ],
-        "response_format": {
-            "type": "json_schema",
-            "json_schema": {"name": "titles", "schema": LlmChunkTitles.model_json_schema()},
-        },
-        "temperature": 0,
-    }
+    content = await _appel_json(
+        "excerpt-suggest",
+        _CHUNK_TITLE_SYSTEM_PROMPT,
+        user_content,
+        "titles",
+        LlmChunkTitles.model_json_schema(),
+    )
+    if content is None:
+        return None
     try:
-        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-            r = await client.post(
-                f"{settings.litellm_base_url.rstrip('/')}/v1/chat/completions",
-                json=payload,
-                headers={"Authorization": f"Bearer {settings.litellm_master_key}"},
-            )
-        if r.status_code != 200:
-            logger.warning("LLM chunk-titles HTTP %s: %s", r.status_code, r.text[:200])
-            return None
-        content = r.json()["choices"][0]["message"]["content"]
         return normalize_chunk_titles(LlmChunkTitles.model_validate_json(content).titles, chunks)
-    except Exception as e:
-        logger.warning("LLM chunk-titles failed: %s", e)
+    except ValidationError:
         return None
 
 
@@ -523,43 +496,21 @@ async def classify_url_type(url: str, context: str = "") -> str | None:
     if context:
         user_content += f"\n\nContexte adjacent :\n{context[:1500]}"
 
-    payload = {
-        "model": "biblio-parse",
-        "messages": [
-            {"role": "system", "content": _URL_CLASSIFY_SYSTEM_PROMPT},
-            {"role": "user", "content": user_content},
-        ],
-        "response_format": {
-            "type": "json_schema",
-            "json_schema": {
-                "name": "url_classification",
-                "schema": LlmUrlClassification.model_json_schema(),
-            },
-        },
-        "temperature": 0,
-    }
+    content = await _appel_json(
+        "biblio-parse",
+        _URL_CLASSIFY_SYSTEM_PROMPT,
+        user_content,
+        "url_classification",
+        LlmUrlClassification.model_json_schema(),
+    )
+    if content is None:
+        return None
     try:
-        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-            r = await client.post(
-                f"{settings.litellm_base_url.rstrip('/')}/v1/chat/completions",
-                json=payload,
-                headers={"Authorization": f"Bearer {settings.litellm_master_key}"},
-            )
-        if r.status_code != 200:
-            logger.warning("LLM classify-url HTTP %s: %s", r.status_code, r.text[:200])
-            return None
-        content = r.json()["choices"][0]["message"]["content"]
-        try:
-            parsed = LlmUrlClassification.model_validate_json(content)
-        except ValidationError:
-            return None
-        t = parsed.type.lower().strip()
-        if t in ("source", "promo", "social", "other"):
-            return t
+        parsed = LlmUrlClassification.model_validate_json(content)
+    except ValidationError:
         return None
-    except Exception as e:
-        logger.warning("LLM classify-url failed: %s", e)
-        return None
+    t = parsed.type.lower().strip()
+    return t if t in ("source", "promo", "social", "other") else None
 
 
 async def extract_metadata(page_text: str, url: str) -> LlmSourceMetadata | None:
@@ -572,30 +523,11 @@ async def extract_metadata(page_text: str, url: str) -> LlmSourceMetadata | None
     if not settings.litellm_base_url:
         return None
 
-    payload = {
-        "model": "metadata-extract",
-        "messages": [
-            {"role": "system", "content": _SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": f"URL : {url}\n\nContenu de la page :\n{page_text[:_MAX_INPUT_CHARS]}",
-            },
-        ],
-        "response_format": _response_schema(),
-        "temperature": 0,
-    }
-    try:
-        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
-            r = await client.post(
-                f"{settings.litellm_base_url.rstrip('/')}/v1/chat/completions",
-                json=payload,
-                headers={"Authorization": f"Bearer {settings.litellm_master_key}"},
-            )
-        if r.status_code != 200:
-            logger.warning("LLM metadata-extract HTTP %s: %s", r.status_code, r.text[:200])
-            return None
-        content = r.json()["choices"][0]["message"]["content"]
-        return parse_metadata_content(content)
-    except Exception as e:
-        logger.warning("LLM metadata-extract failed for url=%s: %s", url, e)
-        return None
+    content = await _appel_json(
+        "metadata-extract",
+        _SYSTEM_PROMPT,
+        f"URL : {url}\n\nContenu de la page :\n{page_text[:_MAX_INPUT_CHARS]}",
+        "source_metadata",
+        LlmSourceMetadata.model_json_schema(),
+    )
+    return parse_metadata_content(content) if content is not None else None

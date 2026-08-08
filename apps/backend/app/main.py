@@ -134,6 +134,57 @@ async def database_health():
         return {"status": "error", "database": str(e)}
 
 
+@app.get("/health/llm-diagnose")
+async def llm_diagnose():
+    """Dit si la couche LLM est vivante, en faisant vraiment un aller-retour.
+
+    Trois fonctionnalités dependent d'un modele et se degradent en silence
+    quand il n'y en a pas : suggestion de citations, suggestion d'intitules,
+    extraction de metadonnees. Rien dans l'interface ne distingue « le modele
+    n'a rien trouve » de « il n'y a pas de modele », d'ou cette sonde.
+
+    Accessible sans auth, donc elle ne rend ni la cle, ni de traceback : juste
+    de quoi savoir quoi corriger. Le cout d'un appel est negligeable et il est
+    declenche a la main.
+    """
+    from app.services.llm import resoudre_modele, suggest_excerpts
+
+    if not settings.litellm_base_url:
+        return {
+            "status": "off",
+            "raison": "litellm_base_url est vide : aucun appel LLM ne part.",
+            "a_faire": (
+                "Renseigner litellm_base_url (ex. "
+                "https://generativelanguage.googleapis.com/v1beta/openai), "
+                "litellm_master_key (la cle du provider) et llm_direct_model "
+                "(ex. gemini-3.6-flash) — cf. ADR-035."
+            ),
+        }
+
+    modele = resoudre_modele("excerpt-suggest")
+    alias_non_resolu = modele == "excerpt-suggest"
+    texte = (
+        "La memoire de travail retient une information le temps de s'en servir. "
+        "Baddeley en a propose un modele a trois composantes."
+    )
+    suggestions = await suggest_excerpts(texte)
+    return {
+        "status": "ok" if suggestions is not None else "erreur",
+        "base_url": settings.litellm_base_url,
+        "modele_resolu": modele,
+        # Un alias non resolu ne fonctionne que derriere un proxy LiteLLM. En
+        # visant un provider directement, c'est la cause la plus probable.
+        "alias_non_resolu": alias_non_resolu,
+        "suggestions": suggestions,
+        "a_faire": None
+        if suggestions is not None
+        else (
+            "L'appel n'a rien rendu. Verifier la cle, puis llm_direct_model "
+            "si l'alias n'est pas resolu. Le detail est dans les logs backend."
+        ),
+    }
+
+
 @app.get("/health/publish-diagnose")
 async def publish_diagnose():
     """Exercise the publish code path on the demo user's seeded card.
