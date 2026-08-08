@@ -156,11 +156,79 @@ async def test_suggest_llm_disabled(client, source, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_suggest_no_text_422(client, source, monkeypatch):
+async def test_suggest_une_page_illisible_est_un_etat_pas_une_erreur(client, source, monkeypatch):
+    """Mesure du 2026-08-08 : cinq URLs sur dix ne rendent aucun texte.
+
+    Le `422` d'origine arretait la fonctionnalite a la porte, alors que la
+    personne a le texte sous les yeux et peut le coller. Une reponse vide
+    laisse l'ecran basculer sur le mode de collage.
+    """
+
     async def fake_scrape(url):
         return None
 
     monkeypatch.setattr("app.extractors.url_extractor._html_scrape", fake_scrape)
     monkeypatch.setattr("app.api.v1.endpoints.excerpts.assert_url_is_safe", lambda url: None)
     resp = await client.post(f"/api/v1/sources/{source.id}/excerpts/suggest")
-    assert resp.status_code == 422
+    assert resp.status_code == 200
+    assert resp.json()["suggestions"] == []
+    assert resp.json()["page_text_length"] == 0
+
+
+@pytest.mark.asyncio
+async def test_chunk_du_texte_colle_ne_touche_pas_au_reseau(client, source, monkeypatch):
+    """Le collage est le seul chemin qui marche derriere un anti-crawler."""
+
+    async def fake_scrape(url):  # pragma: no cover - ne doit pas etre appele
+        raise AssertionError("le collage ne doit rien aller chercher")
+
+    monkeypatch.setattr("app.extractors.url_extractor._html_scrape", fake_scrape)
+    texte = (
+        "La memoire de travail retient une information brievement. "
+        "Elle ne dure que quelques secondes. Baddeley en a propose un modele."
+    )
+    resp = await client.post(
+        f"/api/v1/sources/{source.id}/excerpts/chunk",
+        json={"text": texte, "unit": "mots", "size": 8},
+    )
+    assert resp.status_code == 200
+    corps = resp.json()
+    assert corps["text_source"] == "pasted"
+    assert corps["chunks"]
+    for c in corps["chunks"]:
+        assert c["text"] in texte
+        assert corps["text"][c["start"] : c["end"]] == c["text"]
+
+
+@pytest.mark.asyncio
+async def test_chunk_sur_page_illisible_rend_un_decoupage_vide(client, source, monkeypatch):
+    async def fake_scrape(url):
+        return None
+
+    monkeypatch.setattr("app.extractors.url_extractor._html_scrape", fake_scrape)
+    monkeypatch.setattr("app.api.v1.endpoints.excerpts.assert_url_is_safe", lambda url: None)
+    resp = await client.post(f"/api/v1/sources/{source.id}/excerpts/chunk", json={})
+    assert resp.status_code == 200
+    assert resp.json()["text_source"] == "none"
+    assert resp.json()["chunks"] == []
+
+
+@pytest.mark.asyncio
+async def test_un_extrait_peut_porter_un_intitule(client, source):
+    resp = await client.post(
+        f"/api/v1/sources/{source.id}/excerpts",
+        json={"text": "Elle ne dure que quelques secondes.", "title": "Duree de retention"},
+    )
+    assert resp.status_code == 201
+    assert resp.json()["title"] == "Duree de retention"
+
+
+@pytest.mark.asyncio
+async def test_un_extrait_sans_intitule_reste_sans_intitule(client, source):
+    """Une chaine vide n'est pas un intitule : elle ne doit pas s'enregistrer."""
+    resp = await client.post(
+        f"/api/v1/sources/{source.id}/excerpts",
+        json={"text": "Elle ne dure que quelques secondes.", "title": "   "},
+    )
+    assert resp.status_code == 201
+    assert resp.json()["title"] is None

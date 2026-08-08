@@ -28,7 +28,8 @@ from app.models.source import Source
 from app.models.source_excerpt import SourceExcerpt
 from app.models.user import User
 from app.schemas.source import SourceExcerptResponse
-from app.services.llm import suggest_excerpts
+from app.services.chunker import Unite, chunk_text, compter, suggerer_taille
+from app.services.llm import suggest_chunk_titles, suggest_excerpts
 
 router = APIRouter(prefix="/sources/{source_id}/excerpts", tags=["excerpts"])
 
@@ -37,7 +38,72 @@ MAX_EXCERPTS_PER_SOURCE = 10
 
 class ExcerptCreate(BaseModel):
     text: str = Field(min_length=1, max_length=1000)
+    title: str | None = Field(default=None, max_length=200)
     suggested_by_ai: bool = False
+
+
+# --- Decoupage : le texte colle, quand le site ne se laisse pas lire --------
+#
+# Mesure du 2026-08-08 sur dix URLs, dont les quatre personas de l'audit :
+# cinq ne rendent aucun texte exploitable -- NYT, ScienceDirect, treasury.gov
+# et Cell rendent zero caractere, YouTube 313. `/suggest` y repondait
+# `422 no_text` : la fonctionnalite s'arretait a la porte alors que la personne
+# a le texte sous les yeux.
+#
+# D'ou ce second chemin, qui accepte le texte colle et ne depend d'aucun fetch.
+# Une page illisible n'y est pas une erreur mais un etat declare (`text_source`)
+# sur lequel l'interface bascule.
+
+# Un collage tient un long chapitre ; au-dela on refuse plutot que de tronquer
+# en silence, une troncature invisible faisant citer un texte que l'auteur·ice
+# croit avoir fourni en entier.
+MAX_PASTED_CHARS = 200_000
+
+
+class ChunkRequest(BaseModel):
+    text: str | None = Field(default=None, max_length=MAX_PASTED_CHARS)
+    unit: Unite = Unite.CARACTERES
+    size: int | None = Field(default=None, ge=1)
+    # La suggestion d'intitules coute un appel LLM : elle se demande.
+    suggest_titles: bool = False
+
+
+class ChunkOut(BaseModel):
+    text: str
+    start: int
+    end: int
+    size: int
+    title: str | None = None
+
+
+class ChunkResponse(BaseModel):
+    chunks: list[ChunkOut]
+    text: str
+    text_source: str  # "pasted" | "fetched" | "none"
+    unit: Unite
+    suggested_size: int
+
+
+def decouper_pour_reponse(texte: str, payload: ChunkRequest) -> ChunkResponse:
+    """Decoupe `texte` et decrit le resultat, sans jamais lever.
+
+    `payload.text` ne sert qu'a dire d'ou vient le texte : l'appelant a deja
+    tranche entre le collage et la recuperation.
+    """
+    provenance = "pasted" if payload.text else ("fetched" if texte.strip() else "none")
+    suggeree = suggerer_taille(texte, payload.unit)
+    taille = payload.size or suggeree
+    chunks = chunk_text(texte, taille=taille, unite=payload.unit)
+    return ChunkResponse(
+        chunks=[
+            ChunkOut(text=c.text, start=c.start, end=c.end, size=compter(c.text, payload.unit))
+            for c in chunks
+        ],
+        text=texte,
+        text_source=provenance,
+        unit=payload.unit,
+        suggested_size=suggeree,
+    )
 
 
 class SuggestedExcerpt(BaseModel):
@@ -116,6 +182,7 @@ async def create_excerpt(
         source_id=source.id,
         position=(max_pos or 0) + 1,
         text=payload.text.strip(),
+        title=(payload.title or "").strip() or None,
         suggested_by_ai=payload.suggested_by_ai,
     )
     db.add(excerpt)
@@ -146,6 +213,46 @@ async def delete_excerpt(
     await db.commit()
 
 
+@router.post("/chunk", response_model=ChunkResponse)
+@limiter.limit("60/hour")
+async def chunk_source_text(
+    request: Request,
+    source_id: UUID,
+    payload: ChunkRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Propose un decoupage du texte de la source, colle ou recupere.
+
+    Le collage prime : c'est le seul chemin qui marche sur les cinq sites de la
+    mesure ou la recuperation ne rend rien. Sans collage on tente le site, et
+    une page illisible rend un decoupage vide plutot qu'une erreur.
+    """
+    source = await _get_owned_source(source_id, current_user, db)
+
+    texte = (payload.text or "").strip()
+    if not texte:
+        try:
+            await asyncio.to_thread(assert_url_is_safe, source.url)
+        except UnsafeUrlError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"code": "unsafe_url", "message": str(e)},
+            ) from e
+        from app.extractors.url_extractor import _html_scrape
+
+        meta = await _html_scrape(source.url)
+        texte = (meta.page_text if meta else None) or ""
+
+    reponse = decouper_pour_reponse(texte, payload)
+    if payload.suggest_titles and reponse.chunks:
+        titres = await suggest_chunk_titles([c.text for c in reponse.chunks])
+        if titres:
+            for chunk, titre in zip(reponse.chunks, titres, strict=False):
+                chunk.title = titre
+    return reponse
+
+
 @router.post("/suggest", response_model=ExcerptSuggestResponse)
 @limiter.limit("10/hour")
 async def suggest_source_excerpts(
@@ -169,13 +276,10 @@ async def suggest_source_excerpts(
     meta = await _html_scrape(source.url)
     page_text = meta.page_text if meta else None
     if not page_text:
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "code": "no_text",
-                "message": "Could not retrieve readable text from the source URL",
-            },
-        )
+        # Cinq URLs sur dix ne rendent rien (mesure du 2026-08-08). Ce n'est
+        # pas un echec de l'appel : c'est l'etat qui fait basculer l'interface
+        # sur le collage. Un `422` y coupait court.
+        return ExcerptSuggestResponse(suggestions=[], page_text_length=0, llm_enabled=True)
 
     context = " — ".join(filter(None, [source.title, source.annotation])) or None
     quotes = await suggest_excerpts(page_text, context)
