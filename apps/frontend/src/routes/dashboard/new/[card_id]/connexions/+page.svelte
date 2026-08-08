@@ -68,19 +68,22 @@
 
 <section class="mx-auto max-w-3xl space-y-8 px-4 py-8">
   <header class="space-y-2">
-    <h1 class="text-2xl font-semibold text-slate-900">Connexions entre fiches</h1>
-    <p class="text-slate-600">
+    <h1 class="text-2xl font-semibold text-ink-primary">Connexions entre fiches</h1>
+    <p class="text-ink-secondary">
       Une connexion relie cette fiche a une autre fiche Philum. Certaines ont ete proposees
       automatiquement parce que la reference designe le meme contenu ; a vous de les confirmer.
     </p>
   </header>
 
   {#if loading}
-    <p class="text-slate-500">Chargement...</p>
+    <p class="text-ink-tertiary">Chargement...</p>
   {:else if error}
     <p class="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-800">{error}</p>
   {:else if data}
     {#if suggestions.length > 0}
+      <!-- Encart d'alerte : `amber-50` reste clair dans les deux themes, donc
+           tout ce qui est pose dessus garde ses nuances figees. Y mettre des
+           jetons rendrait le texte clair sur fond clair en mode sombre. -->
       <div class="rounded-lg border border-amber-300 bg-amber-50 p-4">
         <h2 class="mb-3 font-medium text-amber-900">
           {suggestions.length} connexion{suggestions.length > 1 ? 's' : ''} a verifier
@@ -115,11 +118,11 @@
     {/if}
 
     <div>
-      <h2 class="mb-3 font-medium text-slate-900">Fiches que vous citez</h2>
+      <h2 class="mb-3 font-medium text-ink-primary">Fiches que vous citez</h2>
       {#if confirmed.length === 0}
-        <p class="text-slate-500">Aucune connexion confirmee pour le moment.</p>
+        <p class="text-ink-tertiary">Aucune connexion confirmee pour le moment.</p>
       {:else}
-        <ul class="divide-y divide-slate-200 rounded-lg border border-slate-200">
+        <ul class="divide-y divide-border rounded-lg border border-border">
           {#each confirmed as c (c.source_id)}
             <li class="flex items-center gap-3 p-3">
               <a
@@ -130,7 +133,7 @@
               </a>
               <button
                 type="button"
-                class="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-slate-400"
+                class="rounded-md border border-border-strong px-3 py-1.5 text-sm text-ink-primary hover:bg-surface-secondary focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-border-strong"
                 onclick={() => remove(c)}
               >
                 Retirer
@@ -142,19 +145,19 @@
     </div>
 
     <div>
-      <h2 class="mb-1 font-medium text-slate-900">Fiches qui vous citent</h2>
-      <p class="mb-3 text-sm text-slate-600">
+      <h2 class="mb-1 font-medium text-ink-primary">Fiches qui vous citent</h2>
+      <p class="mb-3 text-sm text-ink-secondary">
         Ces connexions appartiennent a la bibliographie d'autres createurs. Vous les voyez, vous ne
         pouvez pas les modifier.
       </p>
       {#if data.incoming.length === 0}
-        <p class="text-slate-500">Personne ne cite encore cette fiche.</p>
+        <p class="text-ink-tertiary">Personne ne cite encore cette fiche.</p>
       {:else}
-        <ul class="divide-y divide-slate-200 rounded-lg border border-slate-200">
+        <ul class="divide-y divide-border rounded-lg border border-border">
           {#each data.incoming as c (c.source_id)}
             <li class="p-3">
-              <p class="font-medium text-slate-900">{c.card_title}</p>
-              <p class="text-sm text-slate-600">{c.source_title ?? c.source_url}</p>
+              <p class="font-medium text-ink-primary">{c.card_title}</p>
+              <p class="text-sm text-ink-secondary">{c.source_title ?? c.source_url}</p>
             </li>
           {/each}
         </ul>
@@ -164,7 +167,7 @@
 
   {#if undo}
     <div
-      class="fixed bottom-4 left-1/2 -translate-x-1/2 rounded-md bg-slate-900 px-4 py-2 text-sm text-white shadow-lg"
+      class="fixed bottom-4 left-1/2 -translate-x-1/2 rounded-md bg-ink-primary px-4 py-2 text-sm text-surface-primary shadow-lg"
       role="status"
     >
       Connexion retiree vers <strong>{undo.title}</strong>.
