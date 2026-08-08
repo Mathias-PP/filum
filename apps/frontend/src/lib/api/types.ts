@@ -126,7 +126,7 @@ export interface ChunkResponse {
   /** Le texte découpé, pour que les bornes déplaçables désignent quelque chose. */
   text: string;
   /** 'none' fait basculer l'écran sur le collage plutôt que d'afficher un échec. */
-  text_source: 'pasted' | 'fetched' | 'none';
+  text_source: 'pasted' | 'uploaded' | 'fetched' | 'none';
   unit: ChunkUnit;
   suggested_size: number;
   /** Faux quand aucun modèle n'est configuré : la suggestion d'intitulés ne rendrait rien. */
@@ -167,6 +167,13 @@ export interface ExcerptCheck {
 export interface ExcerptVerifyResponse {
   checks: ExcerptCheck[];
   page_text_length: number;
+  /**
+   * D'où vient le texte contre lequel on a relu. Une relecture contre un texte
+   * fourni par l'auteur·ice ne vaut pas la même chose qu'une relecture contre
+   * la page publique : l'écran doit pouvoir le dire plutôt que de laisser
+   * croire au second quand c'est le premier.
+   */
+  text_source: 'fetched' | 'provided';
 }
 
 export interface Source {

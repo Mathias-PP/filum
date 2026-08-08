@@ -33,6 +33,11 @@ dependencies = [
     # l'expansion d'entites (« billion laughs »). defusedxml est la reponse
     # standard, sans dependance transitive.
     "defusedxml>=0.7.1",
+    # Texte d'un PDF depose, quand la page ne rend rien (cinq URLs sur dix,
+    # mesure du 2026-08-08). Pur Python, sans dependance systeme : la VM est
+    # une e2-micro d'un gigaoctet, un binding compile n'y tient pas. Les
+    # .docx et .odt sont lus sans dependance (zipfile + defusedxml).
+    "pypdf>=6.0.0",
 ]
 
 [project.optional-dependencies]

@@ -53,10 +53,14 @@ class ApiError extends Error {
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  // Un envoi multipart porte une frontière générée par le navigateur ; imposer
+  // `application/json` la remplacerait et le serveur ne trouverait plus le
+  // fichier dans un corps qu'il ne sait plus découper.
+  const estMultipart = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      ...(estMultipart ? {} : { 'Content-Type': 'application/json' }),
       ...options.headers,
     },
     credentials: 'include',
@@ -316,15 +320,17 @@ export const api = {
      * que le passage n'y est pas. Les confondre ferait passer une source
      * inaccessible pour une citation inventée.
      */
-    verify: async (sourceId: string): Promise<ExcerptVerifyResponse> => {
+    verify: async (sourceId: string, text?: string): Promise<ExcerptVerifyResponse> => {
       return request<ExcerptVerifyResponse>(`/sources/${sourceId}/excerpts/verify`, {
         method: 'POST',
+        body: JSON.stringify({ text: text ?? null }),
       });
     },
 
-    suggest: async (sourceId: string): Promise<ExcerptSuggestResponse> => {
+    suggest: async (sourceId: string, text?: string): Promise<ExcerptSuggestResponse> => {
       return request<ExcerptSuggestResponse>(`/sources/${sourceId}/excerpts/suggest`, {
         method: 'POST',
+        body: JSON.stringify({ text: text ?? null }),
       });
     },
 
@@ -347,6 +353,30 @@ export const api = {
       return request<ChunkResponse>(`/sources/${sourceId}/excerpts/chunk`, {
         method: 'POST',
         body: JSON.stringify(data),
+      });
+    },
+
+    /**
+     * Le même découpage, à partir d'un document déposé (.pdf, .docx, .odt,
+     * .txt, .md).
+     *
+     * Un chapitre ne se colle pas : au-delà de quelques pages, le collage
+     * devient la corvée qui fait renoncer. Le fichier n'est pas conservé, seul
+     * son texte sert d'assise au découpage.
+     */
+    chunkFile: async (
+      sourceId: string,
+      file: File,
+      data: { unit?: ChunkUnit; size?: number; suggest_titles?: boolean } = {}
+    ): Promise<ChunkResponse> => {
+      const corps = new FormData();
+      corps.append('file', file);
+      if (data.unit) corps.append('unit', data.unit);
+      if (data.size) corps.append('size', String(data.size));
+      if (data.suggest_titles) corps.append('suggest_titles', 'true');
+      return request<ChunkResponse>(`/sources/${sourceId}/excerpts/chunk-file`, {
+        method: 'POST',
+        body: corps,
       });
     },
   },

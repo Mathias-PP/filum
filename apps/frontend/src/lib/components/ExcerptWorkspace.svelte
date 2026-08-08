@@ -58,6 +58,12 @@
   /** Le sort de chaque citation à la dernière relecture, par id. */
   let verdicts = $state<Record<string, ExcerptCheck>>({});
   let infoRelecture = $state<string | null>(null);
+  /**
+   * Le texte de la source, collé ou tiré d'un document déposé dans l'atelier
+   * de découpage. Sur les cinq sites de la mesure qui ne rendent rien, c'est
+   * la seule matière contre laquelle une relecture puisse conclure.
+   */
+  let texteSource = $state('');
 
   const complet = $derived(excerpts.length >= MAX);
 
@@ -108,7 +114,7 @@
     erreur = null;
     infoSuggestion = null;
     try {
-      const res = await api.excerpts.suggest(sourceId);
+      const res = await api.excerpts.suggest(sourceId, texteSource.trim() || undefined);
       suggestions = res.suggestions;
       if (!res.llm_enabled) {
         infoSuggestion = "La suggestion IA n'est pas configurée sur ce serveur.";
@@ -128,14 +134,18 @@
     infoRelecture = null;
     relecture = true;
     try {
-      const res = await api.excerpts.verify(sourceId);
+      const res = await api.excerpts.verify(sourceId, texteSource.trim() || undefined);
       verdicts = Object.fromEntries(res.checks.map((c) => [c.excerpt_id, c]));
       if (res.page_text_length === 0) {
         infoRelecture =
-          'Cette page ne rend aucun texte : la relecture ne dit rien sur ces citations, ni dans un sens ni dans l’autre.';
+          'Cette page ne rend aucun texte : la relecture ne dit rien sur ces citations, ni dans un sens ni dans l’autre. Passez par « Découper un texte long » et collez ou déposez le texte de la source : la relecture portera alors sur lui.';
       } else {
         const n = res.checks.filter((c) => c.status !== 'missing').length;
-        infoRelecture = `${n} citation${n > 1 ? 's' : ''} sur ${res.checks.length} retrouvée${n > 1 ? 's' : ''} dans la page d’aujourd’hui.`;
+        const contre =
+          res.text_source === 'provided'
+            ? 'dans le texte que vous avez fourni'
+            : 'dans la page d’aujourd’hui';
+        infoRelecture = `${n} citation${n > 1 ? 's' : ''} sur ${res.checks.length} retrouvée${n > 1 ? 's' : ''} ${contre}.`;
       }
     } catch (err) {
       erreur = err instanceof Error ? err.message : 'Erreur lors de la relecture';
@@ -346,6 +356,7 @@
     <ChunkArchitect
       {sourceId}
       remaining={MAX - excerpts.length}
+      bind:sourceText={texteSource}
       onadd={(t, titre, ancrage) => ajouter(t, false, ancrage, titre)}
     />
   {/if}

@@ -17,7 +17,7 @@ import asyncio
 import re
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,6 +33,7 @@ from app.models.source_excerpt import SourceExcerpt
 from app.models.user import User
 from app.schemas.source import SourceExcerptResponse
 from app.services.chunker import Unite, chunk_text, compter, suggerer_taille
+from app.services.document_text import MAX_BYTES, DocumentError, extract_text
 from app.services.excerpt_anchor import Selecteurs, ancrer
 from app.services.llm import suggest_chunk_titles, suggest_excerpts
 
@@ -90,7 +91,7 @@ class ChunkOut(BaseModel):
 class ChunkResponse(BaseModel):
     chunks: list[ChunkOut]
     text: str
-    text_source: str  # "pasted" | "fetched" | "none"
+    text_source: str  # "pasted" | "uploaded" | "fetched" | "none"
     unit: Unite
     suggested_size: int
     # Mesure du 2026-08-08 : la prod ne definit aucune variable LiteLLM, donc
@@ -273,6 +274,68 @@ async def chunk_source_text(
     return reponse
 
 
+@router.post("/chunk-file", response_model=ChunkResponse)
+@limiter.limit("30/hour")
+async def chunk_uploaded_document(
+    request: Request,
+    source_id: UUID,
+    file: UploadFile = File(...),
+    unit: Unite = Form(Unite.CARACTERES),
+    size: int | None = Form(None),
+    suggest_titles: bool = Form(False),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Le meme decoupage, a partir d'un document depose.
+
+    Un chapitre ne se colle pas : au-dela de quelques pages, le collage devient
+    la corvee qui fait renoncer. Le fichier est lu puis jete — rien n'en est
+    conserve, seul son texte sert d'assise au decoupage.
+    """
+    await _get_owned_source(source_id, current_user, db)
+
+    data = await file.read(MAX_BYTES + 1)
+    if len(data) > MAX_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail={
+                "code": "file_too_large",
+                "message": f"Fichier trop volumineux (maximum {MAX_BYTES // (1024 * 1024)} Mo).",
+            },
+        )
+
+    try:
+        texte = await asyncio.to_thread(extract_text, file.filename or "", data)
+    except DocumentError as e:
+        # 422 et non 400 : le depot est bien forme, c'est son contenu qui ne
+        # rend pas de texte. Le message porte deja la consigne a suivre.
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": "unreadable_document", "message": str(e)},
+        ) from e
+
+    payload = ChunkRequest(text=texte, unit=unit, size=size, suggest_titles=suggest_titles)
+    reponse = decouper_pour_reponse(texte, payload)
+    reponse.text_source = "uploaded"
+    if suggest_titles and reponse.chunks:
+        titres = await suggest_chunk_titles([c.text for c in reponse.chunks])
+        if titres:
+            for chunk, titre in zip(reponse.chunks, titres, strict=False):
+                chunk.title = titre
+    return reponse
+
+
+class ProvidedText(BaseModel):
+    """Le texte de la source, quand la page ne le rend pas.
+
+    Colle ou tire d'un document depose : dans les deux cas c'est l'auteur·ice
+    qui atteste que ce texte est celui de la source. Le serveur ne le stocke
+    pas, il s'en sert le temps de l'appel.
+    """
+
+    text: str | None = Field(default=None, max_length=MAX_PASTED_CHARS)
+
+
 class ExcerptCheck(BaseModel):
     excerpt_id: UUID
     #: `found` : le passage est dans la page. `moved` : il y est, mais plus tout
@@ -290,6 +353,10 @@ class ExcerptCheck(BaseModel):
 class ExcerptVerifyResponse(BaseModel):
     checks: list[ExcerptCheck]
     page_text_length: int
+    #: D'ou vient le texte contre lequel on a relu. Un « verifie » n'a pas le
+    #: meme poids selon qu'il vient de la page publique ou d'un texte fourni
+    #: par l'auteur·ice : l'ecran doit pouvoir le dire.
+    text_source: str = "fetched"
 
 
 @router.post("/verify", response_model=ExcerptVerifyResponse)
@@ -297,6 +364,7 @@ class ExcerptVerifyResponse(BaseModel):
 async def verify_source_excerpts(
     request: Request,
     source_id: UUID,
+    payload: ProvidedText | None = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -305,6 +373,10 @@ async def verify_source_excerpts(
     C'est ce qui fait passer un extrait de *declare* a *verifie* : sans cette
     passe, la fiche affirme qu'une source dit quelque chose sans que rien ne
     l'ait jamais confirme.
+
+    Sur les cinq sites de la mesure ou la page ne rend rien, cette passe ne
+    disait ni oui ni non. Un texte fourni la debloque : la relecture porte
+    alors sur ce que l'auteur·ice atteste etre la source.
     """
     source = await _get_owned_source(source_id, current_user, db)
     excerpts = list(
@@ -319,18 +391,22 @@ async def verify_source_excerpts(
     if not excerpts:
         return ExcerptVerifyResponse(checks=[], page_text_length=0)
 
-    try:
-        await asyncio.to_thread(assert_url_is_safe, source.url)
-    except UnsafeUrlError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "unsafe_url", "message": str(e)},
-        ) from e
+    page_text = (payload.text if payload else None) or ""
+    provenance = "provided" if page_text.strip() else "fetched"
+    if provenance == "fetched":
+        try:
+            await asyncio.to_thread(assert_url_is_safe, source.url)
+        except UnsafeUrlError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"code": "unsafe_url", "message": str(e)},
+            ) from e
 
-    from app.extractors.url_extractor import _html_scrape
+        from app.extractors.url_extractor import _html_scrape
 
-    meta = await _html_scrape(source.url)
-    page_text = (meta.page_text if meta else None) or ""
+        meta = await _html_scrape(source.url)
+        page_text = (meta.page_text if meta else None) or ""
+
     if not page_text.strip():
         # Cinq URLs sur dix ne rendent aucun texte (mesure du 2026-08-08). Dire
         # « introuvable » ici accuserait l'auteur·ice a la place du site.
@@ -365,7 +441,9 @@ async def verify_source_excerpts(
                 context_after=re.sub(r"\s+", " ", page_text[ancrage.end : ancrage.end + 120]),
             )
         )
-    return ExcerptVerifyResponse(checks=checks, page_text_length=len(page_text))
+    return ExcerptVerifyResponse(
+        checks=checks, page_text_length=len(page_text), text_source=provenance
+    )
 
 
 @router.post("/suggest", response_model=ExcerptSuggestResponse)
@@ -373,23 +451,27 @@ async def verify_source_excerpts(
 async def suggest_source_excerpts(
     request: Request,
     source_id: UUID,
+    payload: ProvidedText | None = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     source = await _get_owned_source(source_id, current_user, db)
-    try:
-        await asyncio.to_thread(assert_url_is_safe, source.url)
-    except UnsafeUrlError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "unsafe_url", "message": str(e)},
-        ) from e
 
-    # Import local : évite un cycle app.api ↔ app.extractors au démarrage.
-    from app.extractors.url_extractor import _html_scrape
+    page_text = (payload.text if payload else None) or ""
+    if not page_text.strip():
+        try:
+            await asyncio.to_thread(assert_url_is_safe, source.url)
+        except UnsafeUrlError as e:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"code": "unsafe_url", "message": str(e)},
+            ) from e
 
-    meta = await _html_scrape(source.url)
-    page_text = meta.page_text if meta else None
+        # Import local : évite un cycle app.api ↔ app.extractors au démarrage.
+        from app.extractors.url_extractor import _html_scrape
+
+        meta = await _html_scrape(source.url)
+        page_text = (meta.page_text if meta else None) or ""
     if not page_text:
         # Cinq URLs sur dix ne rendent rien (mesure du 2026-08-08). Ce n'est
         # pas un echec de l'appel : c'est l'etat qui fait basculer l'interface

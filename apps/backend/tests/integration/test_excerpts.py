@@ -345,3 +345,104 @@ async def test_une_page_illisible_n_accuse_personne(client, source, monkeypatch)
     (check,) = resp.json()["checks"]
     assert check["status"] == "unreadable"
     assert check["start"] is None
+
+
+# --- Le texte fourni : ce qui debloque les pages qui ne rendent rien --------
+#
+# Un extrait qui reste « on ne sait pas » a vie n'est pas verifiable. Quand la
+# page se derobe, c'est l'auteur·ice qui fournit le texte de la source ; la
+# reponse dit d'ou vient ce texte, parce qu'une relecture contre un texte
+# fourni ne vaut pas la meme chose qu'une relecture contre la page publique.
+
+
+@pytest.mark.asyncio
+async def test_un_texte_fourni_debloque_une_page_muette(client, source, monkeypatch):
+    await _ajouter(client, source, "le sommeil joue un rôle actif")
+    _page(monkeypatch, None)
+    resp = await client.post(
+        f"/api/v1/sources/{source.id}/excerpts/verify", json={"text": PAGE_TEXT}
+    )
+    assert resp.status_code == 200
+    corps = resp.json()
+    assert corps["text_source"] == "provided"
+    (check,) = corps["checks"]
+    assert check["status"] == "found"
+
+
+@pytest.mark.asyncio
+async def test_le_texte_fourni_ne_touche_pas_au_reseau(client, source, monkeypatch):
+    """Sinon on paierait un aller-retour pour un texte qu'on a deja."""
+    await _ajouter(client, source, "le sommeil joue un rôle actif")
+
+    async def interdit(url):  # pragma: no cover - ne doit pas etre appele
+        raise AssertionError("la page ne doit pas etre recuperee")
+
+    monkeypatch.setattr("app.extractors.url_extractor._html_scrape", interdit)
+    resp = await client.post(
+        f"/api/v1/sources/{source.id}/excerpts/verify", json={"text": PAGE_TEXT}
+    )
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_sans_texte_fourni_la_page_reste_la_reference(client, source, monkeypatch):
+    await _ajouter(client, source, "le sommeil joue un rôle actif")
+    _page(monkeypatch, PAGE_TEXT)
+    resp = await client.post(f"/api/v1/sources/{source.id}/excerpts/verify", json={"text": ""})
+    assert resp.json()["text_source"] == "fetched"
+
+
+# --- Le document depose ------------------------------------------------------
+#
+# Un chapitre ne se colle pas. Ce qui se joue ici n'est pas le confort : c'est
+# la difference entre un decoupage possible et une source dont on renonce a
+# tirer le moindre extrait.
+
+
+def _docx(paragraphes: list[str]) -> bytes:
+    import io
+    import zipfile
+
+    ns = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
+    corps = "".join(f"<w:p><w:r><w:t>{p}</w:t></w:r></w:p>" for p in paragraphes)
+    xml = f'<?xml version="1.0"?><w:document {ns}><w:body>{corps}</w:body></w:document>'
+    tampon = io.BytesIO()
+    with zipfile.ZipFile(tampon, "w") as archive:
+        archive.writestr("word/document.xml", xml)
+    return tampon.getvalue()
+
+
+@pytest.mark.asyncio
+async def test_un_docx_depose_donne_un_decoupage(client, source):
+    resp = await client.post(
+        f"/api/v1/sources/{source.id}/excerpts/chunk-file",
+        files={"file": ("chapitre.docx", _docx([PAGE_TEXT]), "application/octet-stream")},
+        data={"unit": "caracteres", "size": "80"},
+    )
+    assert resp.status_code == 200, resp.text
+    corps = resp.json()
+    assert corps["text_source"] == "uploaded"
+    assert corps["chunks"]
+    assert "sommeil" in corps["text"]
+
+
+@pytest.mark.asyncio
+async def test_un_document_illisible_dit_quoi_faire(client, source):
+    """Un « erreur 422 » nu laisserait l'auteur·ice sans prochaine action."""
+    resp = await client.post(
+        f"/api/v1/sources/{source.id}/excerpts/chunk-file",
+        files={"file": ("photo.png", b"\x89PNG...", "image/png")},
+    )
+    assert resp.status_code == 422, resp.text
+    corps = resp.json()["error"]
+    assert corps["code"] == "unreadable_document"
+    assert "Formats acceptés" in corps["message"]
+
+
+@pytest.mark.asyncio
+async def test_un_document_depose_sur_une_source_dautrui_est_refuse(client):
+    resp = await client.post(
+        f"/api/v1/sources/{uuid4()}/excerpts/chunk-file",
+        files={"file": ("n.txt", b"texte", "text/plain")},
+    )
+    assert resp.status_code == 404
