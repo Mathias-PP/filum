@@ -184,8 +184,32 @@ async def test_export_apa_text(client, published_card, test_user):
     )
     assert resp.status_code == 200
     body = resp.text
-    assert body.startswith("Bibliographie —")
+    # L'en-tete nomme le style : une bibliographie collee dans un document
+    # perd sinon la trace de la convention qui l'a produite.
+    assert body.startswith("Bibliographie (APA 7) —")
     assert "https://" in body
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("style", "libelle"),
+    [
+        ("harvard", "Harvard"),
+        ("mla", "MLA 9"),
+        ("chicago", "Chicago (auteur-date)"),
+        ("vancouver", "Vancouver"),
+        ("ieee", "IEEE"),
+    ],
+)
+async def test_export_chaque_style_de_citation(client, published_card, test_user, style, libelle):
+    resp = await client.get(
+        f"/api/v1/@{test_user.username}/{published_card.slug}/export",
+        params={"format": style},
+    )
+    assert resp.status_code == 200
+    assert resp.text.startswith(f"Bibliographie ({libelle}) —")
+    assert "https://" in resp.text
+    assert resp.headers["content-disposition"].endswith(f'.{style}.txt"')
 
 
 @pytest.mark.asyncio

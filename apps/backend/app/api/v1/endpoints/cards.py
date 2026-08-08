@@ -530,7 +530,15 @@ _EXPORT_FORMATS = {
     "bibtex": ("application/x-bibtex; charset=utf-8", "bib"),
     "ris": ("application/x-research-info-systems; charset=utf-8", "ris"),
     "csl": ("application/vnd.citationstyles.csl+json; charset=utf-8", "csl.json"),
+    # Bibliographies deja formatees. `apa` precede les autres et garde son nom
+    # historique : c'etait le seul style avant que le choix existe, et des liens
+    # d'export circulent deja avec.
     "apa": ("text/plain; charset=utf-8", "apa.txt"),
+    "harvard": ("text/plain; charset=utf-8", "harvard.txt"),
+    "mla": ("text/plain; charset=utf-8", "mla.txt"),
+    "chicago": ("text/plain; charset=utf-8", "chicago.txt"),
+    "vancouver": ("text/plain; charset=utf-8", "vancouver.txt"),
+    "ieee": ("text/plain; charset=utf-8", "ieee.txt"),
     "markdown": ("text/markdown; charset=utf-8", "md"),
     "docx": (
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -560,6 +568,7 @@ async def export_public_card(
     card = await _load_public_card(creator_slug, card_slug, request, card_service, auth_service)
 
     from app.core.config import get_settings
+    from app.services import citation_styles
     from app.services import export as export_service
 
     public_url = f"{get_settings().frontend_base_url}/@{creator_slug}/{card_slug}"
@@ -579,8 +588,8 @@ async def export_public_card(
         content = export_service.export_ris(card)
     elif format == "csl":
         content = export_service.export_csl_json(card)
-    elif format == "apa":
-        content = export_service.export_apa(card, public_url)
+    elif format in citation_styles.STYLES:
+        content = export_service.export_bibliography(card, public_url, format)
     elif format == "docx":
         content = export_service.export_docx(card, public_url)
     else:
