@@ -446,6 +446,12 @@
       const res = await api.excerpts.suggest(editingSourceId);
       if (!res.llm_enabled) {
         suggestInfo = "La suggestion IA n'est pas configurée sur ce serveur.";
+      } else if (res.page_text_length === 0) {
+        // Une page sur deux ne rend aucun texte (mesure du 2026-08-08). Dire
+        // « aucun passage repéré » ferait croire que la page a été lue et
+        // jugée pauvre, alors qu'elle n'a rien laissé lire du tout.
+        suggestInfo =
+          'Cette page ne laisse pas lire son texte. Utilisez le découpage ci-dessous en y collant le passage.';
       } else if (res.suggestions.length === 0) {
         suggestInfo = 'Aucun passage citable repéré dans le texte de cette source.';
       } else {

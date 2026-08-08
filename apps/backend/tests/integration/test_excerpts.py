@@ -173,6 +173,10 @@ async def test_suggest_une_page_illisible_est_un_etat_pas_une_erreur(client, sou
     assert resp.status_code == 200
     assert resp.json()["suggestions"] == []
     assert resp.json()["page_text_length"] == 0
+    # Et l'etat annonce est celui du serveur, pas un `True` de commodite :
+    # sans modele configure, dire l'inverse ferait afficher « aucun passage
+    # citable repere » pour une absence de modele.
+    assert resp.json()["llm_enabled"] is False
 
 
 @pytest.mark.asyncio

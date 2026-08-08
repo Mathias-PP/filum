@@ -286,7 +286,16 @@ async def suggest_source_excerpts(
         # Cinq URLs sur dix ne rendent rien (mesure du 2026-08-08). Ce n'est
         # pas un echec de l'appel : c'est l'etat qui fait basculer l'interface
         # sur le collage. Un `422` y coupait court.
-        return ExcerptSuggestResponse(suggestions=[], page_text_length=0, llm_enabled=True)
+        #
+        # `llm_enabled` dit ici l'etat reel du serveur et non un `True` de
+        # commodite : sans modele configure — cas de la prod, mesure le
+        # 2026-08-08 — l'ecran afficherait « aucun passage citable repere »
+        # pour une absence de modele, en donnant la mauvaise cause a lire.
+        return ExcerptSuggestResponse(
+            suggestions=[],
+            page_text_length=0,
+            llm_enabled=bool(get_settings().litellm_base_url),
+        )
 
     context = " — ".join(filter(None, [source.title, source.annotation])) or None
     quotes = await suggest_excerpts(page_text, context)
