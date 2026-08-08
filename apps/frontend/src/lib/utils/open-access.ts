@@ -62,13 +62,13 @@ const BADGES: Record<OpenAccessStatus, OpenAccessBadge> = {
   closed: {
     label: 'Accès payant',
     help: 'OpenAlex connaît cette référence et ne trouve aucune version gratuite.',
-    className: 'text-neutral-500',
+    className: 'text-ink-tertiary',
     isFree: false,
   },
   unverifiable: {
     label: 'Accès non vérifié',
     help: 'Sans DOI connu d’OpenAlex, l’existence d’une version gratuite ne peut pas être vérifiée.',
-    className: 'text-neutral-400',
+    className: 'text-ink-placeholder',
     isFree: false,
   },
 };
