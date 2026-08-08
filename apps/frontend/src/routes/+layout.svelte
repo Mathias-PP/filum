@@ -281,8 +281,12 @@
     left: 1rem;
     top: -3rem;
     z-index: 100;
+    /* La paire du theme, inversee. `color: white` tenait tant que le fond
+       etait sombre ; en mode sombre `--text-primary` passe a #F5F5F5 et le
+       lien devenait blanc sur blanc — 1,09:1, et invisible par construction
+       puisqu'il ne parait qu'au focus clavier. */
     background: rgb(var(--text-primary));
-    color: white;
+    color: rgb(var(--bg-primary));
     padding: 0.5rem 1rem;
     border-radius: 6px;
     font-size: 0.875rem;
