@@ -21,6 +21,7 @@
     SourceExcerpt,
     SuggestedExcerpt,
   } from '$lib/api/types';
+  import { CLASSES_VERDICT, lireVerdict } from '$lib/utils/excerpt-verdict';
   import Button from '$lib/components/Button.svelte';
   import ChunkArchitect from '$lib/components/ChunkArchitect.svelte';
 
@@ -250,6 +251,16 @@
             {#if verdicts[excerpt.id]}
               {@const v = verdict(verdicts[excerpt.id].status)}
               <span class="text-xs not-italic {v.classe}" title={v.titre}>{v.texte}</span>
+            {:else}
+              <!--
+                À défaut de relecture dans cette session, ce que le lecteur voit
+                sur la fiche publique — y compris « Jamais relu ». Sans cela
+                l'auteur·ice ignorerait ce que sa fiche affirme en son nom.
+              -->
+              {@const p = lireVerdict(excerpt)}
+              <span class="text-xs not-italic {CLASSES_VERDICT[p.ton]}" title={p.detail}
+                >{p.label}</span
+              >
             {/if}
           </p>
           <button

@@ -16,6 +16,9 @@
       title: null,
       position: 0,
       suggested_by_ai: false,
+      verified_at: '2026-08-08T09:30:00',
+      verified_status: 'found',
+      verified_text_source: 'fetched',
     },
     {
       id: 'b',
@@ -23,6 +26,9 @@
       title: null,
       position: 1,
       suggested_by_ai: true,
+      verified_at: null,
+      verified_status: null,
+      verified_text_source: null,
     },
   ]);
 </script>

@@ -446,3 +446,86 @@ async def test_un_document_depose_sur_une_source_dautrui_est_refuse(client):
         files={"file": ("n.txt", b"texte", "text/plain")},
     )
     assert resp.status_code == 404
+
+
+# --- Le verdict garde, pour que le lecteur puisse le lire -------------------
+#
+# Le verdict de relecture ne vivait que le temps de la reponse HTTP. La fiche
+# publique affichait ensuite la citation nue : rien n'y distinguait un passage
+# relu ce matin d'un passage jamais verifie. C'est pourtant cette distinction
+# que Philum existe pour rendre visible ; la garder pour soi revient a demander
+# au lecteur de croire sur parole.
+
+
+async def _relire(db_session, excerpt_id):
+    from app.models.source_excerpt import SourceExcerpt
+
+    return await db_session.get(SourceExcerpt, UUID(excerpt_id))
+
+
+@pytest.mark.asyncio
+async def test_un_extrait_neuf_n_est_pas_dit_verifie(client, source, db_session):
+    """`None` est un etat a afficher, pas un vide a combler."""
+    eid = await _ajouter(client, source, "le sommeil joue un rôle actif")
+    extrait = await _relire(db_session, eid)
+    assert extrait.verified_at is None
+    assert extrait.verified_status is None
+
+
+@pytest.mark.asyncio
+async def test_la_relecture_laisse_sa_trace(client, source, db_session, monkeypatch):
+    eid = await _ajouter(client, source, "le sommeil joue un rôle actif")
+    _page(monkeypatch, PAGE_TEXT)
+    await client.post(f"/api/v1/sources/{source.id}/excerpts/verify")
+    extrait = await _relire(db_session, eid)
+    assert extrait.verified_status == "found"
+    assert extrait.verified_at is not None
+    assert extrait.verified_text_source == "fetched"
+
+
+@pytest.mark.asyncio
+async def test_le_verdict_dit_contre_quoi_il_a_ete_rendu(client, source, db_session, monkeypatch):
+    """Relu contre un texte fourni n'engage pas ce qu'engage la page publique."""
+    eid = await _ajouter(client, source, "le sommeil joue un rôle actif")
+    _page(monkeypatch, None)
+    await client.post(
+        f"/api/v1/sources/{source.id}/excerpts/verify",
+        json={"text": PAGE_TEXT},
+    )
+    extrait = await _relire(db_session, eid)
+    assert extrait.verified_status == "found"
+    assert extrait.verified_text_source == "provided"
+
+
+@pytest.mark.asyncio
+async def test_une_source_illisible_se_garde_aussi(client, source, db_session, monkeypatch):
+    """« On ne sait pas » est une information : elle doit survivre a la reponse."""
+    eid = await _ajouter(client, source, "le sommeil joue un rôle actif")
+    _page(monkeypatch, None)
+    await client.post(f"/api/v1/sources/{source.id}/excerpts/verify")
+    extrait = await _relire(db_session, eid)
+    assert extrait.verified_status == "unreadable"
+    assert extrait.verified_at is not None
+
+
+@pytest.mark.asyncio
+async def test_un_extrait_disparu_reste_marque_disparu(client, source, db_session, monkeypatch):
+    eid = await _ajouter(client, source, "le sommeil joue un rôle actif")
+    _page(monkeypatch, "Les abeilles butinent selon un trajet optimisé par la colonie.")
+    await client.post(f"/api/v1/sources/{source.id}/excerpts/verify")
+    extrait = await _relire(db_session, eid)
+    assert extrait.verified_status == "missing"
+
+
+@pytest.mark.asyncio
+async def test_le_verdict_part_avec_la_fiche_publique(client, source, monkeypatch):
+    """Sans cela, tout ce travail resterait invisible du seul qui en a besoin."""
+    await _ajouter(client, source, "le sommeil joue un rôle actif")
+    _page(monkeypatch, PAGE_TEXT)
+    await client.post(f"/api/v1/sources/{source.id}/excerpts/verify")
+    resp = await client.get(f"/api/v1/sources?card_id={source.biblio_card_id}")
+    assert resp.status_code == 200
+    (extrait,) = resp.json()[0]["excerpts"]
+    assert extrait["verified_status"] == "found"
+    assert extrait["verified_text_source"] == "fetched"
+    assert extrait["verified_at"] is not None
