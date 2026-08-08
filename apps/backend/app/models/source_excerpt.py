@@ -38,6 +38,13 @@ class SourceExcerpt(Base):
     # la ou il n'y a rien a dire.
     title: Mapped[str | None] = mapped_column(String(200), nullable=True)
     suggested_by_ai: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Selecteurs d'ancrage (cf. `app/services/excerpt_anchor.py`) : de quoi
+    # retrouver le passage dans une page qui a bouge. Nullables et le restent —
+    # les extraits saisis sans que le texte de la source soit connu n'en ont
+    # pas, et un ancrage invente serait pire que pas d'ancrage.
+    anchor_prefix: Mapped[str | None] = mapped_column(Text, nullable=True)
+    anchor_suffix: Mapped[str | None] = mapped_column(Text, nullable=True)
+    anchor_offset: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow_naive, nullable=False)
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 

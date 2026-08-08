@@ -160,6 +160,32 @@ describe('ChunkArchitect', () => {
     expect(normalise(morceauxAffiches(vue.container).join(' '))).toBe(normalise(TEXTE));
   });
 
+  it('remonte de quoi retrouver le passage dans une page qui aura bougé', async () => {
+    // Un extrait qui ne porte que son texte cesse d'être retrouvable dès que
+    // la source corrige une coquille — et se lit alors comme une citation
+    // inventée. Le voisinage relevé ici est ce qui l'en préserve.
+    let ancrage: { prefix: string; suffix: string; offset: number } | null = null;
+    render(ChunkArchitect, {
+      props: {
+        sourceId: 's1',
+        remaining: 10,
+        onadd: async (_t: string, _ti: string | null, a: typeof ancrage) => {
+          ancrage = a;
+        },
+      },
+    });
+    await fireEvent.click(screen.getByRole('button', { name: /Proposer un découpage/ }));
+    await vi.waitFor(() => expect(chunk).toHaveBeenCalled());
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Ajouter' })[1]);
+    await vi.waitFor(() => expect(ancrage).not.toBeNull());
+
+    const a = ancrage as unknown as { prefix: string; suffix: string; offset: number };
+    expect(a.offset).toBe(TEXTE.indexOf('Baddeley'));
+    // Le voisinage doit être celui du texte réel, sinon il ne départage rien.
+    expect(TEXTE.slice(a.offset - a.prefix.length, a.offset)).toBe(a.prefix);
+    expect(a.prefix).toContain('secondes');
+  });
+
   it('le texte collé part au serveur sans passer par la lecture de la page', async () => {
     render(ChunkArchitect, {
       props: { sourceId: 's1', remaining: 10, onadd: async () => {} },

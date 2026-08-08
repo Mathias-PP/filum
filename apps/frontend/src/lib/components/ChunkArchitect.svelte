@@ -23,8 +23,20 @@
     sourceId: string;
     /** Places restantes : le serveur plafonne à 10 extraits par source. */
     remaining: number;
-    onadd: (text: string, title: string | null) => Promise<void>;
+    onadd: (text: string, title: string | null, ancrage: Ancrage) => Promise<void>;
   }
+
+  /** De quoi retrouver le passage dans une page qui aura bougé. */
+  interface Ancrage {
+    prefix: string;
+    suffix: string;
+    offset: number;
+  }
+
+  // Assez de voisinage pour départager deux occurrences d'une même phrase.
+  // Doit rester égal à `CONTEXTE` dans `app/services/excerpt_anchor.py` : le
+  // serveur compare ce qu'on lui envoie à ce qu'il relit lui-même.
+  const CONTEXTE = 48;
 
   let { sourceId, remaining, onadd }: Props = $props();
 
@@ -148,7 +160,12 @@
   async function add(i: number) {
     adding = i;
     try {
-      await onadd(chunks[i].text, chunks[i].title);
+      const { start, end } = chunks[i];
+      await onadd(chunks[i].text, chunks[i].title, {
+        prefix: text.slice(Math.max(0, start - CONTEXTE), start),
+        suffix: text.slice(end, end + CONTEXTE),
+        offset: start,
+      });
       // Le morceau reste à sa place, marqué. Il ne peut pas être retiré de la
       // liste : les bornes partitionnent le texte, et en ôter un segment
       // recollerait ses voisins — c'est ce que faisait `merge()` ici, si bien

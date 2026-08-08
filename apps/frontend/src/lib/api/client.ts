@@ -284,7 +284,17 @@ export const api = {
   excerpts: {
     create: async (
       sourceId: string,
-      data: { text: string; title?: string | null; suggested_by_ai?: boolean }
+      data: {
+        text: string;
+        title?: string | null;
+        suggested_by_ai?: boolean;
+        // Voisinage et position du passage dans le texte d'où il vient : c'est
+        // ce qui permet de le retrouver dans une page qui a bougé. Absents
+        // d'une saisie à la main, où le texte de la source n'est pas connu.
+        anchor_prefix?: string | null;
+        anchor_suffix?: string | null;
+        anchor_offset?: number | null;
+      }
     ): Promise<SourceExcerpt> => {
       return request<SourceExcerpt>(`/sources/${sourceId}/excerpts`, {
         method: 'POST',

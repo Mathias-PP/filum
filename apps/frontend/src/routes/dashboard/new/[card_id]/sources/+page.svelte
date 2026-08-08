@@ -390,7 +390,16 @@
     sources = sources.map((s) => (s.id === sourceId ? { ...s, excerpts } : s));
   }
 
-  async function addExcerpt(text: string, suggestedByAi = false) {
+  /**
+   * `ancrage` n'existe que pour un passage repéré dans le texte de la page.
+   * Une saisie à la main n'en a pas : le serveur enregistrera alors un extrait
+   * sans ancrage, ce qui se lit comme non vérifiable — et non comme faux.
+   */
+  async function addExcerpt(
+    text: string,
+    suggestedByAi = false,
+    ancrage?: { prefix: string; suffix: string; offset: number }
+  ) {
     if (!editingSourceId) return;
     const value = text.trim();
     if (!value) return;
@@ -400,6 +409,9 @@
       const created = await api.excerpts.create(editingSourceId, {
         text: value,
         suggested_by_ai: suggestedByAi,
+        anchor_prefix: ancrage?.prefix ?? null,
+        anchor_suffix: ancrage?.suffix ?? null,
+        anchor_offset: ancrage?.offset ?? null,
       });
       updateSourceExcerpts(editingSourceId, [...(editingSource?.excerpts ?? []), created]);
       if (!suggestedByAi) excerptText = '';
@@ -412,12 +424,19 @@
   }
 
   /** Ajoute un morceau découpé, avec son intitulé s'il en porte un. */
-  async function addExcerptFromChunk(text: string, title: string | null) {
+  async function addExcerptFromChunk(
+    text: string,
+    title: string | null,
+    ancrage: { prefix: string; suffix: string; offset: number }
+  ) {
     if (!editingSourceId) return;
     const created = await api.excerpts.create(editingSourceId, {
       text,
       title,
       suggested_by_ai: true,
+      anchor_prefix: ancrage.prefix,
+      anchor_suffix: ancrage.suffix,
+      anchor_offset: ancrage.offset,
     });
     updateSourceExcerpts(editingSourceId, [...(editingSource?.excerpts ?? []), created]);
   }
@@ -2127,7 +2146,12 @@
                       variant="secondary"
                       size="sm"
                       disabled={excerptAdding || editingSource.excerpts.length >= 10}
-                      onclick={() => addExcerpt(sug.text, true)}
+                      onclick={() =>
+                        addExcerpt(sug.text, true, {
+                          prefix: sug.context_before,
+                          suffix: sug.context_after,
+                          offset: sug.char_offset,
+                        })}
                     >
                       Ajouter
                     </Button>

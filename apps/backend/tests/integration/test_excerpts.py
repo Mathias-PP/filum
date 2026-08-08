@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 import pytest_asyncio
@@ -236,3 +236,112 @@ async def test_un_extrait_sans_intitule_reste_sans_intitule(client, source):
     )
     assert resp.status_code == 201
     assert resp.json()["title"] is None
+
+
+# --- Verification : l'extrait est-il encore dans la source ? ----------------
+#
+# Sans cette passe, une fiche affirme qu'une source dit quelque chose sans que
+# rien ne l'ait jamais confirme. Les quatre etats sont distincts a dessein :
+# confondre « la page ne se laisse pas lire » avec « le passage n'y est pas »
+# ferait passer une source inaccessible pour une citation inventee.
+
+
+async def _ajouter(client, source, texte: str) -> str:
+    debut = PAGE_TEXT.index(texte)
+    resp = await client.post(
+        f"/api/v1/sources/{source.id}/excerpts",
+        json={
+            "text": texte,
+            "anchor_prefix": PAGE_TEXT[max(0, debut - 48) : debut],
+            "anchor_suffix": PAGE_TEXT[debut + len(texte) : debut + len(texte) + 48],
+            "anchor_offset": debut,
+        },
+    )
+    assert resp.status_code == 201
+    return resp.json()["id"]
+
+
+def _page(monkeypatch, texte: str | None):
+    from app.extractors.url_extractor import ExtractedMetadata
+
+    async def fake_scrape(url):
+        return ExtractedMetadata(page_text=texte) if texte is not None else None
+
+    monkeypatch.setattr("app.extractors.url_extractor._html_scrape", fake_scrape)
+    monkeypatch.setattr("app.api.v1.endpoints.excerpts.assert_url_is_safe", lambda url: None)
+
+
+@pytest.mark.asyncio
+async def test_les_selecteurs_sont_persistes(client, source, db_session):
+    """Sans eux, un extrait ne se retrouve qu'au mot pres."""
+    from sqlalchemy import select
+
+    from app.models.source_excerpt import SourceExcerpt
+
+    eid = await _ajouter(client, source, "le sommeil joue un rôle actif")
+    stored = await db_session.scalar(select(SourceExcerpt).where(SourceExcerpt.id == UUID(eid)))
+    assert stored.anchor_offset == PAGE_TEXT.index("le sommeil joue un rôle actif")
+    assert stored.anchor_prefix.endswith("Par ailleurs, ")
+    assert stored.anchor_suffix.startswith(" dans la consolidation")
+
+
+@pytest.mark.asyncio
+async def test_un_extrait_sans_selecteurs_reste_acceptable(client, source):
+    """Une saisie a la main n'a pas de voisinage. C'est un fait, pas une erreur."""
+    resp = await client.post(
+        f"/api/v1/sources/{source.id}/excerpts",
+        json={"text": "Une citation saisie a la main."},
+    )
+    assert resp.status_code == 201
+
+
+@pytest.mark.asyncio
+async def test_un_extrait_intact_est_retrouve(client, source, monkeypatch):
+    eid = await _ajouter(client, source, "le sommeil joue un rôle actif")
+    _page(monkeypatch, PAGE_TEXT)
+    resp = await client.post(f"/api/v1/sources/{source.id}/excerpts/verify")
+    assert resp.status_code == 200
+    (check,) = resp.json()["checks"]
+    assert check["excerpt_id"] == eid
+    assert check["status"] == "found"
+    assert PAGE_TEXT[check["start"] : check["end"]] == "le sommeil joue un rôle actif"
+
+
+@pytest.mark.asyncio
+async def test_une_page_remaniee_retrouve_quand_meme_l_extrait(client, source, monkeypatch):
+    """Un paragraphe ajoute en tete rend l'offset faux, pas l'extrait absent."""
+    await _ajouter(client, source, "le sommeil joue un rôle actif")
+    _page(monkeypatch, "Mise à jour de la rédaction, mars 2026. " + PAGE_TEXT)
+    resp = await client.post(f"/api/v1/sources/{source.id}/excerpts/verify")
+    (check,) = resp.json()["checks"]
+    assert check["status"] == "found"
+
+
+@pytest.mark.asyncio
+async def test_un_extrait_dont_la_source_a_change_est_signale(client, source, monkeypatch):
+    """« Toujours la, mais plus dans ces mots » n'est ni « verifie » ni « absent »."""
+    await _ajouter(client, source, "le sommeil joue un rôle actif dans la consolidation")
+    _page(monkeypatch, PAGE_TEXT.replace("un rôle actif", "un rôle actif et central"))
+    resp = await client.post(f"/api/v1/sources/{source.id}/excerpts/verify")
+    (check,) = resp.json()["checks"]
+    assert check["status"] == "moved"
+
+
+@pytest.mark.asyncio
+async def test_un_extrait_absent_est_dit_absent(client, source, monkeypatch):
+    await _ajouter(client, source, "le sommeil joue un rôle actif")
+    _page(monkeypatch, "Les abeilles butinent selon un trajet optimisé par la colonie.")
+    resp = await client.post(f"/api/v1/sources/{source.id}/excerpts/verify")
+    (check,) = resp.json()["checks"]
+    assert check["status"] == "missing"
+
+
+@pytest.mark.asyncio
+async def test_une_page_illisible_n_accuse_personne(client, source, monkeypatch):
+    """Cinq URLs sur dix ne rendent aucun texte : « on ne sait pas » se dit."""
+    await _ajouter(client, source, "le sommeil joue un rôle actif")
+    _page(monkeypatch, None)
+    resp = await client.post(f"/api/v1/sources/{source.id}/excerpts/verify")
+    (check,) = resp.json()["checks"]
+    assert check["status"] == "unreadable"
+    assert check["start"] is None
