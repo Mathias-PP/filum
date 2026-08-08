@@ -19,9 +19,15 @@ const TEXTE =
   'Ce modèle distingue plusieurs sous-systèmes.';
 
 const chunk = vi.fn();
+const chunkFile = vi.fn();
 
 vi.mock('$lib/api/client', () => ({
-  api: { excerpts: { chunk: (...args: unknown[]) => chunk(...args) } },
+  api: {
+    excerpts: {
+      chunk: (...args: unknown[]) => chunk(...args),
+      chunkFile: (...args: unknown[]) => chunkFile(...args),
+    },
+  },
 }));
 
 import ChunkArchitect from '$lib/components/ChunkArchitect.svelte';
@@ -69,6 +75,8 @@ describe('ChunkArchitect', () => {
   beforeEach(() => {
     chunk.mockReset();
     chunk.mockResolvedValue(reponseEnDeuxMorceaux());
+    chunkFile.mockReset();
+    chunkFile.mockResolvedValue({ ...reponseEnDeuxMorceaux(), text_source: 'uploaded' });
   });
 
   it('affiche les morceaux proposés, tels qu’ils sont dans la source', async () => {
@@ -198,5 +206,57 @@ describe('ChunkArchitect', () => {
       's1',
       expect.objectContaining({ text: 'Une phrase collée.' })
     );
+  });
+
+  // --- Le document déposé --------------------------------------------------
+  //
+  // Un chapitre ne se colle pas. Le risque propre à ce chemin n'est pas
+  // l'erreur visible : c'est le texte extrait qui n'atterrirait pas dans le
+  // champ de collage. Tout l'aval — redécouper, changer d'unité, relire les
+  // extraits — travaille dessus ; sans lui, le premier réglage modifié
+  // redemanderait le fichier, sans que rien ne dise pourquoi.
+
+  function deposer(vue: { container: HTMLElement }, nom: string) {
+    const champ = vue.container.querySelector('#chunk-file') as HTMLInputElement;
+    const fichier = new File(['peu importe'], nom);
+    Object.defineProperty(champ, 'files', { value: [fichier], configurable: true });
+    return fireEvent.change(champ);
+  }
+
+  it('un document déposé donne un découpage', async () => {
+    const vue = render(ChunkArchitect, {
+      props: { sourceId: 's1', remaining: 10, onadd: async () => {} },
+    });
+    await deposer(vue, 'chapitre.docx');
+    await vi.waitFor(() => expect(chunkFile).toHaveBeenCalled());
+    expect(morceauxAffiches(vue.container)).toHaveLength(2);
+    expect(screen.getByText(/chapitre\.docx/)).toBeTruthy();
+  });
+
+  it('le texte extrait atterrit dans le champ de collage', async () => {
+    const vue = render(ChunkArchitect, {
+      props: { sourceId: 's1', remaining: 10, onadd: async () => {} },
+    });
+    await deposer(vue, 'chapitre.docx');
+    await vi.waitFor(() => expect(chunkFile).toHaveBeenCalled());
+    const zone = vue.container.querySelector('textarea') as HTMLTextAreaElement;
+    await vi.waitFor(() => expect(zone.value).toBe(TEXTE));
+
+    // Et le redécoupage part de ce texte, sans redemander le fichier.
+    await fireEvent.click(screen.getByRole('button', { name: /Redécouper/ }));
+    expect(chunk).toHaveBeenCalledWith('s1', expect.objectContaining({ text: TEXTE }));
+  });
+
+  it('un document illisible garde la consigne du serveur', async () => {
+    // « Ce PDF est une image scannée » dit quoi faire ensuite ; le remplacer
+    // par « une erreur est survenue » retirerait la seule action disponible.
+    chunkFile.mockRejectedValue(
+      new Error('Ce PDF ne contient pas de texte sélectionnable : c’est une image scannée.')
+    );
+    const vue = render(ChunkArchitect, {
+      props: { sourceId: 's1', remaining: 10, onadd: async () => {} },
+    });
+    await deposer(vue, 'scan.pdf');
+    await vi.waitFor(() => expect(screen.getByText(/image scannée/)).toBeTruthy());
   });
 });

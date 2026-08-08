@@ -24,6 +24,15 @@
     /** Places restantes : le serveur plafonne à 10 extraits par source. */
     remaining: number;
     onadd: (text: string, title: string | null, ancrage: Ancrage) => Promise<void>;
+    /**
+     * Le texte de la source, collé ici ou tiré d'un document déposé.
+     *
+     * Il remonte parce qu'il ne sert pas qu'au découpage : c'est aussi contre
+     * lui que la relecture peut se faire quand la page ne rend rien. Le garder
+     * enfermé ici laisserait « on ne sait pas » comme seul verdict possible sur
+     * les cinq sites de la mesure qui se dérobent.
+     */
+    sourceText?: string;
   }
 
   /** De quoi retrouver le passage dans une page qui aura bougé. */
@@ -38,7 +47,7 @@
   // serveur compare ce qu'on lui envoie à ce qu'il relit lui-même.
   const CONTEXTE = 48;
 
-  let { sourceId, remaining, onadd }: Props = $props();
+  let { sourceId, remaining, onadd, sourceText = $bindable('') }: Props = $props();
 
   const UNITS: { value: ChunkUnit; label: string }[] = [
     { value: 'caracteres', label: 'caractères' },
@@ -46,7 +55,6 @@
     { value: 'tokens', label: 'tokens' },
   ];
 
-  let pasted = $state('');
   let unit = $state<ChunkUnit>('caracteres');
   let size = $state<number | null>(null);
   let suggestTitles = $state(false);
@@ -54,7 +62,9 @@
   let text = $state('');
   let boundaries = $state<number[]>([]);
   let titles = $state<(string | null)[]>([]);
-  let textSource = $state<'pasted' | 'fetched' | 'none' | null>(null);
+  let textSource = $state<'pasted' | 'uploaded' | 'fetched' | 'none' | null>(null);
+  let fileName = $state<string | null>(null);
+  let survol = $state(false);
   // `null` tant qu'on n'a pas demandé : on ne préjuge pas de l'absence.
   let llmEnabled = $state<boolean | null>(null);
   let loading = $state(false);
@@ -107,7 +117,7 @@
     loading = true;
     try {
       const res = await api.excerpts.chunk(sourceId, {
-        text: pasted.trim() || undefined,
+        text: sourceText.trim() || undefined,
         unit,
         size: size ?? undefined,
         suggest_titles: suggestTitles,
@@ -119,6 +129,41 @@
       applyChunks(res.chunks, res.text);
     } catch (err) {
       error = err instanceof Error ? err.message : 'Erreur lors du découpage';
+    } finally {
+      loading = false;
+    }
+  }
+
+  /**
+   * Dépose d'un document : le serveur en tire le texte, qui atterrit dans le
+   * champ de collage.
+   *
+   * Y faire atterrir le texte n'est pas cosmétique : tout l'aval — redécouper,
+   * changer d'unité, relire les extraits — travaille sur `sourceText`. Sans cela,
+   * la première modification de réglage redemanderait le fichier.
+   */
+  async function deposer(file: File | null | undefined) {
+    if (!file) return;
+    error = null;
+    loading = true;
+    try {
+      const res = await api.excerpts.chunkFile(sourceId, file, {
+        unit,
+        size: size ?? undefined,
+        suggest_titles: suggestTitles,
+      });
+      fileName = file.name;
+      sourceText = res.text;
+      textSource = res.text_source;
+      llmEnabled = res.llm_enabled;
+      if (!res.llm_enabled) suggestTitles = false;
+      size = res.suggested_size;
+      applyChunks(res.chunks, res.text);
+    } catch (err) {
+      // Le serveur dit déjà quoi faire (« enregistrez en .docx », « ce PDF est
+      // une image scannée ») : le remplacer par un message générique retirerait
+      // la seule prochaine action disponible.
+      error = err instanceof Error ? err.message : 'Ce document n’a pas pu être lu';
     } finally {
       loading = false;
     }
@@ -191,12 +236,63 @@
   <label class="block text-xs text-ink-secondary">
     Texte du contenu original — laissez vide pour tenter de lire la page
     <textarea
-      bind:value={pasted}
+      bind:value={sourceText}
       rows="4"
       placeholder="Collez ici tout ou partie du texte de la source…"
       class="mt-1 w-full rounded-lg border border-border-strong bg-surface-primary px-3 py-2 text-sm text-ink-primary placeholder:text-ink-placeholder"
     ></textarea>
   </label>
+
+  <!--
+    Le dépôt de fichier, à côté du collage et non à sa place : un chapitre ne se
+    colle pas, mais un paragraphe ne se met pas dans un fichier. Les deux gestes
+    aboutissent au même endroit — le texte de la source, dans le champ ci-dessus.
+  -->
+  <div
+    role="button"
+    tabindex="0"
+    class="rounded-lg border border-dashed px-3 py-2 text-xs text-ink-secondary transition-colors"
+    class:border-border-strong={!survol}
+    class:border-accent={survol}
+    class:bg-surface-primary={survol}
+    ondragover={(e) => {
+      e.preventDefault();
+      survol = true;
+    }}
+    ondragleave={() => (survol = false)}
+    ondrop={(e) => {
+      e.preventDefault();
+      survol = false;
+      deposer(e.dataTransfer?.files?.[0]);
+    }}
+    onclick={() => document.getElementById('chunk-file')?.click()}
+    onkeydown={(e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        document.getElementById('chunk-file')?.click();
+      }
+    }}
+  >
+    <label for="chunk-file" class="cursor-pointer">
+      … ou déposez le document ici — <span class="underline">parcourir</span>
+      <span class="block text-ink-placeholder"
+        >PDF, Word (.docx), OpenDocument (.odt), .txt, .md</span
+      >
+    </label>
+    <input
+      id="chunk-file"
+      type="file"
+      accept=".pdf,.docx,.odt,.txt,.md,.markdown"
+      class="sr-only"
+      onchange={(e) => {
+        deposer(e.currentTarget.files?.[0]);
+        e.currentTarget.value = '';
+      }}
+    />
+    {#if fileName}
+      <p class="mt-1 text-ink-primary">Texte tiré de « {fileName} ».</p>
+    {/if}
+  </div>
 
   <div class="flex flex-wrap items-end gap-2">
     <label class="flex flex-col gap-1 text-xs text-ink-secondary">

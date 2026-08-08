@@ -219,6 +219,45 @@ Les correctifs, par PR :
   aller ne sert a rien. Ni les 774 tests, ni ruff, ni mypy ne pouvaient voir
   l'un ou l'autre. **Un defaut de rendu est invisible a l'outillage** — c'est
   la troisieme fois cette semaine (#331, #335, ici).
+- **2026-08-08 — le texte de la source, depose ou colle : ce qui debloque la
+  moitie du web.** La question posee etait « pourquoi la suggestion IA ne
+  marche pas ». La reponse tient en une ligne : `litellm_base_url` est vide en
+  prod, chaque fonction de `services/llm.py` rend `None` des sa premiere ligne,
+  et l'ecran l'annonce honnetement. Ce n'est pas un bug. **Mais ce n'etait pas
+  non plus le vrai blocage.**
+  Le decoupage est *algorithmique* — il ne lui manque jamais un modele, il lui
+  manque du **texte**. Mesure du 2026-08-08 sur dix URLs : cinq n'en rendent
+  aucun (NYT, ScienceDirect, treasury.gov et Cell a zero caractere, YouTube
+  313). Sur ces cinq-la, « Relire la source » rendait `unreadable` pour chaque
+  extrait — ni oui ni non, a vie. Un extrait qui ne peut jamais etre relu n'est
+  pas verifiable, et Philum ne repose sur rien d'autre.
+  Trois chemins ouverts, tous vers la meme matiere :
+  `app/services/document_text.py` (nouveau) lit `.pdf`, `.docx`, `.odt`,
+  `.txt`, `.md` ; `POST /excerpts/chunk-file` decoupe un document depose ;
+  `/verify` et `/suggest` acceptent desormais un texte fourni et disent
+  (`text_source`) contre quoi ils ont conclu.
+  Quatre refus assumes, tous du meme genre — **rendre le vide se lit comme une
+  reponse** : (1) aucune OCR, un PDF scanne le *dit* plutot que de rendre `""`,
+  qui ferait proposer zero extrait sur un document qui en contient cent, et
+  deviner le texte d'une image ferait citer a un auteur des mots produits par
+  une reconnaissance de caracteres — exactement ce qu'un extrait empeche ;
+  (2) aucune troncature silencieuse, un document coupe en son milieu donnerait
+  un decoupage qui se lit comme complet ; (3) le `.doc` binaire d'avant 2007
+  oriente vers `.docx` plutot que de tirer une dependance lourde ; (4) une
+  relecture contre un texte fourni ne se presente pas comme une relecture
+  contre la page publique.
+  Une seule dependance ajoutee (`pypdf`, pur Python — la VM est une e2-micro
+  d'un gigaoctet, un binding compile n'y tient pas). Les `.docx` et `.odt` n'en
+  demandent aucune : ce sont des archives ZIP contenant du XML, et l'export
+  Word du projet les *ecrit* deja a la main. `defusedxml` et non `xml.etree` :
+  le fichier vient de l'utilisateur, la stdlib reste vulnerable a l'expansion
+  d'entites.
+  Deux bugs trouves par les tests avant tout navigateur, tous deux du meme
+  genre : `ElementTree.iter()` est **pre-ordre**, si bien qu'un saut de ligne
+  pose en *voyant* un paragraphe atterrit avant son contenu — d'ou une descente
+  recursive qui pose le saut a la remontee. Et les `tail` XML sont du
+  **contenu** : dans un ODT, la phrase qui suit un passage en gras est le
+  `tail` du `<text:span>`, la perdre trouerait le texte au milieu d'une phrase.
 - **2026-08-08, #331 — ce que sept tests verts ne voyaient pas.** L'ecran de
   decoupage (#328, #329) etait couvert par sept tests de composant tenant
   l'invariant « le texte affiche est celui de la source », et n'avait jamais
