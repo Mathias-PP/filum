@@ -228,6 +228,21 @@ L'etage 7 (classification LLM source/promo/social/other) ne tourne pas sans
 cle API, donc l'etiquetage promo/social n'a pas pu etre mesure sur ces quatre
 personas. A refaire depuis le dashboard en prod.
 
+🔴 **Repondu le 2026-08-08, et la reponse est pire que prevu : la prod non plus
+n'a pas de modele.** `docker exec philum-backend env | grep -i llm` ne rend
+**rien**, et `infra/oracle/.env` ne definit ni `litellm_base_url` ni
+`litellm_master_key`. « A refaire en prod » etait donc sans objet : l'etage 7
+n'y tourne pas davantage qu'en local. Trois fonctionnalites sont silencieuses
+en prod depuis leur livraison — classification `source`/`promo`/`social`/
+`other`, suggestion d'extraits (`/suggest` repond `llm_enabled: false`), et
+suggestion d'intitules (#328). **Ce n'est pas un bug de code** : c'est une
+variable d'environnement absente, et provisionner un modele est un arbitrage
+de cout et de fournisseur qui revient au proprietaire du projet — consigne, pas
+tranche ici. Ce qui a ete corrige en attendant (#329) : la case « Suggerer les
+intitules » cochait dans le vide sans que rien ne le dise. `ChunkResponse`
+porte desormais `llm_enabled` et l'ecran grise la commande — une commande qui
+promet un service absent se lit comme une offre, meme faute qu'un titre faux.
+
 594 tests backend verts. PRs #306 → #309 toutes mergees sur `main`.
 
 ### Suite : le manque d'annee (PR #315)

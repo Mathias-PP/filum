@@ -43,6 +43,8 @@
   let boundaries = $state<number[]>([]);
   let titles = $state<(string | null)[]>([]);
   let textSource = $state<'pasted' | 'fetched' | 'none' | null>(null);
+  // `null` tant qu'on n'a pas demandé : on ne préjuge pas de l'absence.
+  let llmEnabled = $state<boolean | null>(null);
   let loading = $state(false);
   let error = $state<string | null>(null);
   let adding = $state<number | null>(null);
@@ -94,6 +96,8 @@
         suggest_titles: suggestTitles,
       });
       textSource = res.text_source;
+      llmEnabled = res.llm_enabled;
+      if (!res.llm_enabled) suggestTitles = false;
       size = res.suggested_size;
       applyChunks(res.chunks, res.text);
     } catch (err) {
@@ -174,8 +178,14 @@
       />
     </label>
 
-    <label class="flex items-center gap-1.5 text-xs text-ink-secondary">
-      <input type="checkbox" bind:checked={suggestTitles} />
+    <label
+      class="flex items-center gap-1.5 text-xs text-ink-secondary"
+      class:opacity-50={llmEnabled === false}
+      title={llmEnabled === false
+        ? "Aucun modèle n'est configuré sur ce serveur : les intitulés se saisissent à la main."
+        : undefined}
+    >
+      <input type="checkbox" bind:checked={suggestTitles} disabled={llmEnabled === false} />
       Suggérer les intitulés
     </label>
 
@@ -215,6 +225,13 @@
     <p class="text-xs text-ink-secondary">
       Cette page ne laisse pas lire son texte. Collez le passage ci-dessus : le découpage
       fonctionnera à l'identique.
+    </p>
+  {/if}
+
+  {#if llmEnabled === false}
+    <p class="text-xs text-ink-secondary">
+      Aucun modèle n'est configuré sur ce serveur : les intitulés se saisissent à la main, un champ
+      par morceau.
     </p>
   {/if}
 

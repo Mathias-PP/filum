@@ -129,6 +129,8 @@ export interface ChunkResponse {
   text_source: 'pasted' | 'fetched' | 'none';
   unit: ChunkUnit;
   suggested_size: number;
+  /** Faux quand aucun modèle n'est configuré : la suggestion d'intitulés ne rendrait rien. */
+  llm_enabled: boolean;
 }
 
 export interface SuggestedExcerpt {

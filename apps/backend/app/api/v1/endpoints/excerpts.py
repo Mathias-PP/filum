@@ -20,6 +20,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.endpoints.sources import get_current_user
+from app.core.config import get_settings
 from app.core.rate_limit import limiter
 from app.core.url_safety import UnsafeUrlError, assert_url_is_safe
 from app.db.database import get_db
@@ -82,6 +83,11 @@ class ChunkResponse(BaseModel):
     text_source: str  # "pasted" | "fetched" | "none"
     unit: Unite
     suggested_size: int
+    # Mesure du 2026-08-08 : la prod ne definit aucune variable LiteLLM, donc
+    # la suggestion d'intitules n'y rend rien. Une case a cocher qui promet un
+    # service absent est du meme genre qu'un titre faux — elle se lit comme une
+    # offre. L'ecran a besoin de le savoir pour le dire.
+    llm_enabled: bool
 
 
 def decouper_pour_reponse(texte: str, payload: ChunkRequest) -> ChunkResponse:
@@ -103,6 +109,7 @@ def decouper_pour_reponse(texte: str, payload: ChunkRequest) -> ChunkResponse:
         text_source=provenance,
         unit=payload.unit,
         suggested_size=suggeree,
+        llm_enabled=bool(get_settings().litellm_base_url),
     )
 
 
@@ -279,7 +286,16 @@ async def suggest_source_excerpts(
         # Cinq URLs sur dix ne rendent rien (mesure du 2026-08-08). Ce n'est
         # pas un echec de l'appel : c'est l'etat qui fait basculer l'interface
         # sur le collage. Un `422` y coupait court.
-        return ExcerptSuggestResponse(suggestions=[], page_text_length=0, llm_enabled=True)
+        #
+        # `llm_enabled` dit ici l'etat reel du serveur et non un `True` de
+        # commodite : sans modele configure — cas de la prod, mesure le
+        # 2026-08-08 — l'ecran afficherait « aucun passage citable repere »
+        # pour une absence de modele, en donnant la mauvaise cause a lire.
+        return ExcerptSuggestResponse(
+            suggestions=[],
+            page_text_length=0,
+            llm_enabled=bool(get_settings().litellm_base_url),
+        )
 
     context = " — ".join(filter(None, [source.title, source.annotation])) or None
     quotes = await suggest_excerpts(page_text, context)
