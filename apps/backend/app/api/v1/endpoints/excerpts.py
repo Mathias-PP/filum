@@ -3,9 +3,12 @@
 La suggestion IA repère des citations *verbatim* dans le texte de la source
 (alias LiteLLM `excerpt-suggest`). Anti-hallucination : chaque extrait
 proposé est vérifié par recherche exacte (espaces normalisés) dans le texte
-récupéré — un extrait introuvable est écarté, jamais exposé. L'emplacement
-exact (offset caractère + contexte) est retourné mais non persisté :
-`source_excerpts` ne stocke que le texte, retrouvable au mot près.
+récupéré — un extrait introuvable est écarté, jamais exposé.
+
+L'emplacement (voisinage + offset) est **persisté** depuis #333 : sans lui, un
+extrait ne se retrouvait qu'au mot près et devenait introuvable dès que la page
+corrigeait une coquille. `/verify` s'en sert pour ré-ancrer les extraits dans la
+page telle qu'elle est aujourd'hui — cf. `app/services/excerpt_anchor.py`.
 """
 
 from __future__ import annotations
@@ -30,6 +33,7 @@ from app.models.source_excerpt import SourceExcerpt
 from app.models.user import User
 from app.schemas.source import SourceExcerptResponse
 from app.services.chunker import Unite, chunk_text, compter, suggerer_taille
+from app.services.excerpt_anchor import Selecteurs, ancrer
 from app.services.llm import suggest_chunk_titles, suggest_excerpts
 
 router = APIRouter(prefix="/sources/{source_id}/excerpts", tags=["excerpts"])
@@ -41,6 +45,12 @@ class ExcerptCreate(BaseModel):
     text: str = Field(min_length=1, max_length=1000)
     title: str | None = Field(default=None, max_length=200)
     suggested_by_ai: bool = False
+    # Voisinage et position du passage dans le texte d'ou il vient. Facultatifs :
+    # un extrait saisi a la main, sans que le texte de la source soit connu, n'en
+    # a pas — et l'ecran doit alors le dire plutot que de faire semblant.
+    anchor_prefix: str | None = Field(default=None, max_length=500)
+    anchor_suffix: str | None = Field(default=None, max_length=500)
+    anchor_offset: int | None = Field(default=None, ge=0)
 
 
 # --- Decoupage : le texte colle, quand le site ne se laisse pas lire --------
@@ -191,6 +201,9 @@ async def create_excerpt(
         text=payload.text.strip(),
         title=(payload.title or "").strip() or None,
         suggested_by_ai=payload.suggested_by_ai,
+        anchor_prefix=payload.anchor_prefix,
+        anchor_suffix=payload.anchor_suffix,
+        anchor_offset=payload.anchor_offset,
     )
     db.add(excerpt)
     await db.commit()
@@ -258,6 +271,101 @@ async def chunk_source_text(
             for chunk, titre in zip(reponse.chunks, titres, strict=False):
                 chunk.title = titre
     return reponse
+
+
+class ExcerptCheck(BaseModel):
+    excerpt_id: UUID
+    #: `found` : le passage est dans la page. `moved` : il y est, mais plus tout
+    #: a fait dans ces mots. `missing` : il n'y est pas. `unreadable` : la page
+    #: n'a pas rendu de texte — **on ne sait pas**, ce qui n'est pas la meme
+    #: chose que « absent ». Confondre les deux ferait passer une source
+    #: inaccessible pour une citation inventee.
+    status: str
+    start: int | None = None
+    end: int | None = None
+    context_before: str | None = None
+    context_after: str | None = None
+
+
+class ExcerptVerifyResponse(BaseModel):
+    checks: list[ExcerptCheck]
+    page_text_length: int
+
+
+@router.post("/verify", response_model=ExcerptVerifyResponse)
+@limiter.limit("20/hour")
+async def verify_source_excerpts(
+    request: Request,
+    source_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Reancre chaque extrait dans la page telle qu'elle est aujourd'hui.
+
+    C'est ce qui fait passer un extrait de *declare* a *verifie* : sans cette
+    passe, la fiche affirme qu'une source dit quelque chose sans que rien ne
+    l'ait jamais confirme.
+    """
+    source = await _get_owned_source(source_id, current_user, db)
+    excerpts = list(
+        (
+            await db.scalars(
+                select(SourceExcerpt)
+                .where(SourceExcerpt.source_id == source.id)
+                .order_by(SourceExcerpt.position)
+            )
+        ).all()
+    )
+    if not excerpts:
+        return ExcerptVerifyResponse(checks=[], page_text_length=0)
+
+    try:
+        await asyncio.to_thread(assert_url_is_safe, source.url)
+    except UnsafeUrlError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "unsafe_url", "message": str(e)},
+        ) from e
+
+    from app.extractors.url_extractor import _html_scrape
+
+    meta = await _html_scrape(source.url)
+    page_text = (meta.page_text if meta else None) or ""
+    if not page_text.strip():
+        # Cinq URLs sur dix ne rendent aucun texte (mesure du 2026-08-08). Dire
+        # « introuvable » ici accuserait l'auteur·ice a la place du site.
+        return ExcerptVerifyResponse(
+            checks=[ExcerptCheck(excerpt_id=x.id, status="unreadable") for x in excerpts],
+            page_text_length=0,
+        )
+
+    checks: list[ExcerptCheck] = []
+    for extrait in excerpts:
+        ancrage = ancrer(
+            page_text,
+            Selecteurs(
+                quote=extrait.text,
+                prefix=extrait.anchor_prefix or "",
+                suffix=extrait.anchor_suffix or "",
+                offset=extrait.anchor_offset,
+            ),
+        )
+        if ancrage is None:
+            checks.append(ExcerptCheck(excerpt_id=extrait.id, status="missing"))
+            continue
+        checks.append(
+            ExcerptCheck(
+                excerpt_id=extrait.id,
+                status="found" if ancrage.exact else "moved",
+                start=ancrage.start,
+                end=ancrage.end,
+                context_before=re.sub(
+                    r"\s+", " ", page_text[max(0, ancrage.start - 120) : ancrage.start]
+                ),
+                context_after=re.sub(r"\s+", " ", page_text[ancrage.end : ancrage.end + 120]),
+            )
+        )
+    return ExcerptVerifyResponse(checks=checks, page_text_length=len(page_text))
 
 
 @router.post("/suggest", response_model=ExcerptSuggestResponse)
