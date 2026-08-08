@@ -130,9 +130,14 @@ layer(base);
     /* #757575, et non #888888. La nuance tertiaire porte des dates, des
      compteurs et des libellés de filtre, souvent en 12px : à 3,54:1 sur blanc
      elle échouait au seuil WCAG AA (4,5:1) partout où elle sert, soit une
-     centaine d'endroits. #757575 monte à 4,61:1 en restant nettement plus
-     discret que la nuance secondaire (7,13:1). */
-    --text-tertiary: 117 117 117;
+     centaine d'endroits. #757575 montait à 4,61:1, mais **sur blanc pur
+     seulement** : mesuré au navigateur, la même nuance tombe à 4,41:1 dès
+     qu'elle est posée sur `--bg-secondary` (250 250 247), c'est-à-dire sur la
+     surface la plus courante de l'application. Un seuil qui ne tient que sur
+     le fond le plus favorable ne tient pas. #707070 donne 4,74:1 sur la
+     surface secondaire et 4,83:1 sur blanc, en restant nettement plus discret
+     que la nuance secondaire (7,13:1). */
+    --text-tertiary: 112 112 112;
     /* Un exemple dans un champ vide n'est pas du texte : à la nuance du texte
      d'aide, il se lisait comme une valeur déjà saisie. */
     --text-placeholder: 176 176 176;
