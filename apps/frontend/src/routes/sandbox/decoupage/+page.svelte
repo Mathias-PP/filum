@@ -30,6 +30,8 @@
 
   let llmEnabled = $state(false);
   let pageLisible = $state(true);
+  /** Le PDF scanné : l'état qu'on ne peut pas produire à volonté sur un vrai serveur. */
+  let documentLisible = $state(true);
   let ajoutes = $state<{ text: string; title: string | null }[]>([]);
 
   /** Découpe naïve par phrases, à la seule fin de peupler l'écran. */
@@ -66,10 +68,48 @@
     return out;
   }
 
+  function json(corps: unknown, status = 200) {
+    return new Response(JSON.stringify(corps), {
+      status,
+      headers: { 'content-type': 'application/json' },
+    });
+  }
+
   const vraiFetch = globalThis.fetch;
   globalThis.fetch = (async (entree: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof entree === 'string' ? entree : entree.toString();
     if (!url.includes('/excerpts/chunk')) return vraiFetch(entree, init);
+
+    // Le dépôt de fichier passe par la même adresse, à un suffixe près, et son
+    // corps est un `FormData` : le lire comme du JSON planterait.
+    if (url.includes('/chunk-file')) {
+      const depose = (init?.body as FormData).get('file') as File;
+      if (documentLisible === false) {
+        return json(
+          {
+            error: {
+              code: 'unreadable_document',
+              message:
+                'Ce PDF ne contient pas de texte sélectionnable : c’est une image scannée. Copiez-collez le passage à la main.',
+            },
+          },
+          422
+        );
+      }
+      const taille = 90;
+      return json({
+        text: TEXTE,
+        text_source: 'uploaded',
+        unit: 'caracteres',
+        suggested_size: taille,
+        llm_enabled: llmEnabled,
+        chunks: decouper(TEXTE, taille),
+        // Le nom sert à l'œil dans l'atelier ; l'écran l'affiche depuis le
+        // fichier lui-même, pas depuis la réponse.
+        _nom: depose?.name,
+      });
+    }
+
     const corps = JSON.parse((init?.body as string) ?? '{}');
     const texte = pageLisible ? corps.text?.trim() || TEXTE : (corps.text?.trim() ?? '');
     const taille = corps.size ?? 90;
@@ -96,6 +136,9 @@
     </label>
     <label class="flex items-center gap-2">
       <input type="checkbox" bind:checked={pageLisible} /> la page se laisse lire
+    </label>
+    <label class="flex items-center gap-2">
+      <input type="checkbox" bind:checked={documentLisible} /> le document déposé rend du texte
     </label>
   </div>
 
