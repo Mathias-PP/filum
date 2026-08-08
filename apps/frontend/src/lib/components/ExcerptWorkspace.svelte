@@ -181,9 +181,14 @@
       >
     </h3>
     <div class="flex items-center gap-1">
+      <!--
+        `secondary` et non `ghost` : en ghost, ces deux actions se lisaient
+        comme du texte de navigation, pas comme des boutons — verifie au
+        navigateur.
+      -->
       <Button
         type="button"
-        variant="ghost"
+        variant="secondary"
         size="sm"
         loading={relecture}
         disabled={relecture || excerpts.length === 0}
@@ -193,7 +198,7 @@
       </Button>
       <Button
         type="button"
-        variant="ghost"
+        variant="secondary"
         size="sm"
         disabled={ajoutEnCours || complet}
         onclick={suggerer}
