@@ -6,7 +6,7 @@
   import { api } from '$lib/api';
   import { pendingImportFile } from '$lib/stores/import-file';
   import { Button, ConfirmDialog, ProgressSteps } from '$lib/components';
-  import ChunkArchitect from '$lib/components/ChunkArchitect.svelte';
+  import ExcerptWorkspace from '$lib/components/ExcerptWorkspace.svelte';
   import { AUTHOR_COLORS, authorLabel } from '$lib/utils/author-colors';
   import type {
     ArchiveOutcome,
@@ -187,7 +187,6 @@
     taxonomySuggested = false;
     editingSourceId = null;
     addError = null;
-    resetExcerptState();
   }
 
   function startEdit(source: Source, focusId: string = 'source-title') {
@@ -220,7 +219,6 @@
     lastExtractedUrl = source.url;
     taxonomySuggested = false;
     addError = null;
-    resetExcerptState();
     if (typeof document !== 'undefined') {
       document.getElementById(focusId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
@@ -369,193 +367,12 @@
     }
   }
 
-  // ── Citations (extraits) — mode édition uniquement (nécessite un id) ──────
-  let excerptText = $state('');
-  let excerptError = $state<string | null>(null);
-  let excerptAdding = $state(false);
-  let suggesting = $state(false);
-  let suggestions = $state<SuggestedExcerpt[]>([]);
-  let suggestInfo = $state<string | null>(null);
-  const MODES_SAISIE = [
-    { id: 'coller' as const, label: 'Coller un passage' },
-    { id: 'decouper' as const, label: 'Découper un texte long' },
-  ];
-  let saisieMode = $state<'coller' | 'decouper'>('coller');
-  let verifying = $state(false);
-  /** Le sort de chaque extrait à la dernière relecture, par id d'extrait. */
-  let checks = $state<Record<string, ExcerptCheck>>({});
-  let verifyInfo = $state<string | null>(null);
-
+  // Citations : tout l'espace d'edition vit dans `ExcerptWorkspace`. Ici on ne
+  // garde que la source en cours et la remontee de sa liste.
   const editingSource = $derived(sources.find((s) => s.id === editingSourceId) ?? null);
-
-  function resetExcerptState() {
-    excerptText = '';
-    excerptError = null;
-    suggestions = [];
-    suggestInfo = null;
-    saisieMode = 'coller';
-    // Une relecture porte sur une page précise : la garder d'une source à
-    // l'autre afficherait le verdict de la première sur les extraits de la
-    // seconde.
-    checks = {};
-    verifyInfo = null;
-  }
-
-  /**
-   * Relit la page de la source et cherche chaque extrait dans le texte
-   * d'aujourd'hui.
-   *
-   * Les quatre états restent distincts jusqu'à l'affichage. `unreadable` dit
-   * que la page n'a rendu aucun texte — on ne sait pas ; le replier sur
-   * « absent » ferait passer une source inaccessible pour une citation
-   * inventée, ce qui est précisément l'accusation que Philum ne doit jamais
-   * porter à tort.
-   */
-  async function verifyExcerpts() {
-    if (!editingSourceId) return;
-    excerptError = null;
-    verifyInfo = null;
-    verifying = true;
-    try {
-      const res = await api.excerpts.verify(editingSourceId);
-      checks = Object.fromEntries(res.checks.map((c) => [c.excerpt_id, c]));
-      if (res.page_text_length === 0) {
-        verifyInfo =
-          'Cette page ne rend aucun texte : la relecture ne dit rien sur ces citations, ni dans un sens ni dans l’autre.';
-      } else {
-        const retrouves = res.checks.filter((c) => c.status !== 'missing').length;
-        verifyInfo = `${retrouves} citation${retrouves > 1 ? 's' : ''} sur ${res.checks.length} retrouvée${retrouves > 1 ? 's' : ''} dans la page d’aujourd’hui.`;
-      }
-    } catch (err) {
-      excerptError = err instanceof Error ? err.message : 'Erreur lors de la relecture';
-    } finally {
-      verifying = false;
-    }
-  }
-
-  /** Ce qu'on affiche à côté d'une citation, une fois la page relue. */
-  function verdict(status: ExcerptCheckStatus): { texte: string; classe: string; titre: string } {
-    if (status === 'found')
-      return {
-        texte: '✓ retrouvée',
-        classe: 'text-success',
-        titre: 'Le passage est dans la page telle qu’elle est aujourd’hui.',
-      };
-    if (status === 'moved')
-      return {
-        texte: '≈ déplacée',
-        classe: 'text-warning',
-        titre: 'Le passage y est, mais la source ne porte plus tout à fait ces mots.',
-      };
-    if (status === 'unreadable')
-      return {
-        texte: '? illisible',
-        classe: 'text-ink-tertiary',
-        titre: 'La page n’a rendu aucun texte : on ne sait pas. Ce n’est pas « absente ».',
-      };
-    return {
-      texte: '✕ introuvable',
-      classe: 'text-danger',
-      titre: 'Le passage n’a pas été retrouvé dans la page d’aujourd’hui.',
-    };
-  }
 
   function updateSourceExcerpts(sourceId: string, excerpts: SourceExcerpt[]) {
     sources = sources.map((s) => (s.id === sourceId ? { ...s, excerpts } : s));
-  }
-
-  /**
-   * `ancrage` n'existe que pour un passage repéré dans le texte de la page.
-   * Une saisie à la main n'en a pas : le serveur enregistrera alors un extrait
-   * sans ancrage, ce qui se lit comme non vérifiable — et non comme faux.
-   */
-  async function addExcerpt(
-    text: string,
-    suggestedByAi = false,
-    ancrage?: { prefix: string; suffix: string; offset: number }
-  ) {
-    if (!editingSourceId) return;
-    const value = text.trim();
-    if (!value) return;
-    excerptError = null;
-    excerptAdding = true;
-    try {
-      const created = await api.excerpts.create(editingSourceId, {
-        text: value,
-        suggested_by_ai: suggestedByAi,
-        anchor_prefix: ancrage?.prefix ?? null,
-        anchor_suffix: ancrage?.suffix ?? null,
-        anchor_offset: ancrage?.offset ?? null,
-      });
-      updateSourceExcerpts(editingSourceId, [...(editingSource?.excerpts ?? []), created]);
-      if (!suggestedByAi) excerptText = '';
-      suggestions = suggestions.filter((sug) => sug.text !== value);
-    } catch (err) {
-      excerptError = err instanceof Error ? err.message : "Erreur lors de l'ajout de la citation";
-    } finally {
-      excerptAdding = false;
-    }
-  }
-
-  /** Ajoute un morceau découpé, avec son intitulé s'il en porte un. */
-  async function addExcerptFromChunk(
-    text: string,
-    title: string | null,
-    ancrage: { prefix: string; suffix: string; offset: number }
-  ) {
-    if (!editingSourceId) return;
-    const created = await api.excerpts.create(editingSourceId, {
-      text,
-      title,
-      suggested_by_ai: true,
-      anchor_prefix: ancrage.prefix,
-      anchor_suffix: ancrage.suffix,
-      anchor_offset: ancrage.offset,
-    });
-    updateSourceExcerpts(editingSourceId, [...(editingSource?.excerpts ?? []), created]);
-  }
-
-  async function removeExcerpt(excerptId: string) {
-    if (!editingSourceId) return;
-    excerptError = null;
-    try {
-      await api.excerpts.delete(editingSourceId, excerptId);
-      updateSourceExcerpts(
-        editingSourceId,
-        (editingSource?.excerpts ?? []).filter((x) => x.id !== excerptId)
-      );
-    } catch (err) {
-      excerptError = err instanceof Error ? err.message : 'Erreur lors de la suppression';
-    }
-  }
-
-  async function suggestExcerpts() {
-    if (!editingSourceId) return;
-    excerptError = null;
-    suggestInfo = null;
-    suggestions = [];
-    suggesting = true;
-    try {
-      const res = await api.excerpts.suggest(editingSourceId);
-      if (!res.llm_enabled) {
-        suggestInfo = "La suggestion IA n'est pas configurée sur ce serveur.";
-      } else if (res.page_text_length === 0) {
-        // Une page sur deux ne rend aucun texte (mesure du 2026-08-08). Dire
-        // « aucun passage repéré » ferait croire que la page a été lue et
-        // jugée pauvre, alors qu'elle n'a rien laissé lire du tout.
-        suggestInfo =
-          'Cette page ne laisse pas lire son texte. Utilisez le découpage ci-dessous en y collant le passage.';
-      } else if (res.suggestions.length === 0) {
-        suggestInfo = 'Aucun passage citable repéré dans le texte de cette source.';
-      } else {
-        suggestions = res.suggestions;
-      }
-    } catch (err) {
-      excerptError =
-        err instanceof Error ? err.message : 'Erreur lors de la suggestion de citations';
-    } finally {
-      suggesting = false;
-    }
   }
 
   // Archivage à la demande. L'archivage automatique est cadencé et peut prendre
@@ -2135,187 +1952,18 @@
       </div>
 
       {#if isEditing && editingSource}
-        <div class="border-t border-border pt-4 space-y-3">
-          <div class="flex items-center justify-between gap-2 flex-wrap">
-            <h3 class="text-sm font-semibold text-ink-primary">
-              Citations
-              <span class="text-xs text-ink-tertiary font-normal">
-                : extraits marquants de cette source (max 10)</span
-              >
-            </h3>
-            <div class="flex items-center gap-1">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                loading={verifying}
-                disabled={verifying || editingSource.excerpts.length === 0}
-                onclick={verifyExcerpts}
-              >
-                {verifying ? 'Relecture…' : 'Relire la source'}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                loading={suggesting}
-                disabled={suggesting || excerptAdding}
-                onclick={suggestExcerpts}
-              >
-                {suggesting ? 'Analyse…' : 'Suggérer des citations (IA)'}
-              </Button>
-            </div>
-          </div>
-
-          {#if excerptError}
-            <div
-              class="rounded-lg bg-danger-bg border border-danger/30 px-3 py-2 text-xs text-danger"
-            >
-              {excerptError}
-            </div>
-          {/if}
-          {#if verifyInfo}
-            <div
-              class="rounded-lg bg-surface-secondary border border-border px-3 py-2 text-xs text-ink-secondary"
-            >
-              {verifyInfo}
-            </div>
-          {/if}
-          {#if suggestInfo}
-            <div class="rounded-lg bg-info/10 border border-info/30 px-3 py-2 text-xs text-info">
-              {suggestInfo}
-            </div>
-          {/if}
-
-          {#if editingSource.excerpts.length > 0}
-            <ul class="space-y-2">
-              {#each editingSource.excerpts as excerpt (excerpt.id)}
-                <li
-                  class="flex items-start justify-between gap-2 rounded-lg border border-border bg-surface-secondary/50 px-3 py-2"
-                >
-                  <p class="text-sm text-ink-secondary italic min-w-0">
-                    «&nbsp;{excerpt.text}&nbsp;»
-                    {#if excerpt.suggested_by_ai}
-                      <span class="text-xs text-ink-tertiary not-italic">(IA)</span>
-                    {/if}
-                    {#if checks[excerpt.id]}
-                      {@const v = verdict(checks[excerpt.id].status)}
-                      <span class="text-xs not-italic {v.classe}" title={v.titre}>{v.texte}</span>
-                    {/if}
-                  </p>
-                  <button
-                    type="button"
-                    onclick={() => removeExcerpt(excerpt.id)}
-                    class="p-1 shrink-0 text-ink-tertiary hover:text-danger transition-colors"
-                    aria-label="Supprimer cette citation"
-                    title="Supprimer"
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      class="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                    >
-                      <line x1="6" y1="6" x2="18" y2="18" />
-                      <line x1="6" y1="18" x2="18" y2="6" />
-                    </svg>
-                  </button>
-                </li>
-              {/each}
-            </ul>
-          {/if}
-
-          {#if suggestions.length > 0}
-            <div class="space-y-2">
-              <p class="text-xs font-medium text-ink-secondary">
-                Suggestions repérées dans le texte (vérifiées mot pour mot) :
-              </p>
-              {#each suggestions as sug (sug.char_offset)}
-                <div class="rounded-lg border border-info/30 bg-info/5 px-3 py-2 space-y-1.5">
-                  <p class="text-xs text-ink-tertiary">
-                    …{sug.context_before}<span class="text-ink-primary font-medium">{sug.text}</span
-                    >{sug.context_after}…
-                  </p>
-                  <div class="flex justify-end">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      disabled={excerptAdding || editingSource.excerpts.length >= 10}
-                      onclick={() =>
-                        addExcerpt(sug.text, true, {
-                          prefix: sug.context_before,
-                          suffix: sug.context_after,
-                          offset: sug.char_offset,
-                        })}
-                    >
-                      Ajouter
-                    </Button>
-                  </div>
-                </div>
-              {/each}
-            </div>
-          {/if}
-
-          <!--
-            Deux entrées, parce que ce sont deux gestes différents : coller un
-            passage qu'on a déjà isolé, ou verser un texte long et le découper.
-            Le second était caché derrière un lien souligné en bas d'écran alors
-            que c'est le geste principal quand on part d'un document entier.
-          -->
-          <div class="flex gap-1 border-b border-border">
-            {#each MODES_SAISIE as m (m.id)}
-              <button
-                type="button"
-                class="px-3 py-1.5 text-xs border-b-2 -mb-px transition-colors"
-                class:border-info={saisieMode === m.id}
-                class:text-ink-primary={saisieMode === m.id}
-                class:border-transparent={saisieMode !== m.id}
-                class:text-ink-tertiary={saisieMode !== m.id}
-                onclick={() => (saisieMode = m.id)}
-              >
-                {m.label}
-              </button>
-            {/each}
-          </div>
-
-          {#if saisieMode === 'coller'}
-            <div class="space-y-2">
-              <textarea
-                bind:value={excerptText}
-                rows="3"
-                maxlength={1000}
-                placeholder="Collez ici le passage exact, tel qu'il est dans la source…"
-                class="w-full px-3 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary text-sm focus:outline-hidden focus:ring-2 focus:ring-info placeholder:text-ink-placeholder"
-              ></textarea>
-              <div class="flex items-center justify-between gap-2">
-                <p class="text-xs text-ink-tertiary">
-                  {excerptText.length}/1000 — « Relire la source » retrouvera ce passage tant qu'il
-                  est verbatim.
-                </p>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  loading={excerptAdding}
-                  disabled={excerptAdding ||
-                    !excerptText.trim() ||
-                    editingSource.excerpts.length >= 10}
-                  onclick={() => addExcerpt(excerptText)}
-                >
-                  Ajouter
-                </Button>
-              </div>
-            </div>
-          {:else}
-            <ChunkArchitect
-              sourceId={editingSource.id}
-              remaining={10 - editingSource.excerpts.length}
-              onadd={addExcerptFromChunk}
-            />
-          {/if}
-        </div>
+        <!--
+          Cle sur l'id : passer d'une source a l'autre remonte le composant.
+          Sans cela, le verdict de relecture de la premiere source resterait
+          affiche a cote des citations de la seconde.
+        -->
+        {#key editingSource.id}
+          <ExcerptWorkspace
+            sourceId={editingSource.id}
+            excerpts={editingSource.excerpts}
+            onchange={(list) => updateSourceExcerpts(editingSource.id, list)}
+          />
+        {/key}
       {/if}
 
       <div class="flex justify-end gap-2">
