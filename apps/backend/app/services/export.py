@@ -71,7 +71,18 @@ def source_columns(scope: ExportScope = FULL) -> list[str]:
     return columns
 
 
-def _source_row(source: Source, scope: ExportScope = FULL) -> list[str]:
+def _source_row(
+    source: Source, scope: ExportScope = FULL, shape: ExportScope | None = None
+) -> list[str]:
+    """Une ligne de source.
+
+    `shape` sert quand plusieurs perimetres se rangent sous un meme en-tete —
+    les degres d'un voisinage n'ont pas tous le meme. La forme vient alors du
+    plus large, et ce qu'un degre exclut se rend vide : une colonne absente se
+    lirait « ce format ne sait pas porter ca », une colonne vide « il n'y a
+    rien a en dire ».
+    """
+    shape = shape or scope
     row = [
         str(source.position),
         source.title or "",
@@ -94,15 +105,19 @@ def _source_row(source: Source, scope: ExportScope = FULL) -> list[str]:
         else "",
         source.stance or "",
     ]
-    if scope.reliability:
-        row += [
-            source.retraction_status or "",
-            source.retraction_notice_doi or "",
-            source.oa_status or "",
-            source.oa_url or "",
-        ]
-    if scope.excerpts:
-        row.append(str(len(source.excerpts)))
+    if shape.reliability:
+        row += (
+            [
+                source.retraction_status or "",
+                source.retraction_notice_doi or "",
+                source.oa_status or "",
+                source.oa_url or "",
+            ]
+            if scope.reliability
+            else ["", "", "", ""]
+        )
+    if shape.excerpts:
+        row.append(str(len(source.excerpts)) if scope.excerpts else "")
     return row
 
 
@@ -1025,6 +1040,40 @@ def _excerpt_rows(card: BiblioCard) -> list[list[str]]:
     return rows
 
 
+NEIGHBOUR_SOURCE_HEAD = ["direction", "degree", "card_title", "creator"]
+
+
+def _union_scope(voisinage: Neighbourhood) -> ExportScope:
+    """Le plus large des perimetres demandes, degre par degre.
+
+    Une feuille n'a qu'un en-tete : il doit tenir pour tous les degres qu'elle
+    range, sinon le degre le plus genereux perdrait ce qu'on lui a accorde.
+    """
+    voisines = list(voisinage.cited) + list(voisinage.citing)
+    return ExportScope(
+        annotations=any(v.scope.annotations for v in voisines),
+        excerpts=any(v.scope.excerpts for v in voisines),
+        archives=any(v.scope.archives for v in voisines),
+        reliability=any(v.scope.reliability for v in voisines),
+    )
+
+
+def _neighbour_source_rows(voisinage: Neighbourhood, shape: ExportScope) -> list[list[str]]:
+    """Les sources des fiches voisines.
+
+    Sans elles, demander un degre n'aurait rapporte au tableur que des titres —
+    or on ne va pas chercher une fiche voisine pour son titre, mais pour ce
+    qu'elle cite.
+    """
+    rows: list[list[str]] = []
+    for sens, voisines in (("cited", voisinage.cited), ("citing", voisinage.citing)):
+        for v in sorted(voisines, key=lambda v: (v.degree, v.card.title)):
+            tete = [_DIRECTION_XLSX[sens], str(v.degree), v.card.title, v.card.user.username]
+            for s in v.card.sources:
+                rows.append(tete + _source_row(s, v.scope, shape))
+    return rows
+
+
 def _neighbour_rows(voisinage: Neighbourhood, base_url: str) -> list[list[str]]:
     rows: list[list[str]] = []
     for sens, voisines in (("cited", voisinage.cited), ("citing", voisinage.citing)):
@@ -1064,6 +1113,14 @@ def export_xlsx(
     if neighbourhood is not None:
         feuilles.append(
             ("Fiches voisines", [NEIGHBOUR_COLUMNS] + _neighbour_rows(neighbourhood, base_url))
+        )
+        forme = _union_scope(neighbourhood)
+        feuilles.append(
+            (
+                "Sources des voisines",
+                [NEIGHBOUR_SOURCE_HEAD + source_columns(forme)]
+                + _neighbour_source_rows(neighbourhood, forme),
+            )
         )
 
     overrides = "".join(

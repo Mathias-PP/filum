@@ -214,7 +214,8 @@
         </div>
       {:else}
         <p class="text-xs text-ink-tertiary">
-          Ce format ne sait pas porter de fiches voisines. Markdown, JSON et Philum JSON-LD le font.
+          Ce format ne sait pas porter de fiches voisines. Markdown, Word, Excel, JSON et Philum
+          JSON-LD le font.
         </p>
       {/if}
     </div>

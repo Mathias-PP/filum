@@ -76,8 +76,19 @@ describe('buildExportUrl', () => {
   });
 
   it('nenvoie pas de voisinage a un format qui ne sait pas le porter', () => {
-    const url = new URL(buildExportUrl(BASE, { ...req, format: 'docx', cited: [fullScope()] }));
+    // BibTeX obeit a une convention fermee : ni perimetre, ni voisinage.
+    const url = new URL(buildExportUrl(BASE, { ...req, format: 'bibtex', cited: [fullScope()] }));
     expect(url.searchParams.has('cited')).toBe(false);
-    expect(url.searchParams.get('include')).toBe('excerpts');
+    expect(url.searchParams.has('include')).toBe(false);
+  });
+
+  it('le tableur et le Word emportent le voisinage', () => {
+    // Le tableur n'a pas a l'imbriquer : ce qui ne tient pas en colonne tient
+    // en feuille. Le Word le borne au degre demande, donc il a une fin.
+    for (const format of ['xlsx', 'docx']) {
+      const url = new URL(buildExportUrl(BASE, { ...req, format, cited: [fullScope()] }));
+      expect(url.searchParams.has('cited')).toBe(true);
+      expect(url.searchParams.get('include')).toBe('excerpts');
+    }
   });
 });
