@@ -28,6 +28,7 @@
     openAccessTitle,
   } from '$lib/utils/open-access';
   import { noticeUrl, retractionBadge, retractionTitle } from '$lib/utils/retraction';
+  import { CLASSES_VERDICT, lireVerdict } from '$lib/utils/excerpt-verdict';
   import { tick } from 'svelte';
   import { slide } from 'svelte/transition';
   import { page } from '$app/stores';
@@ -687,10 +688,22 @@
                       </p>
                       <ul class="space-y-2">
                         {#each source.excerpts as excerpt (excerpt.id)}
+                          {@const verdict = lireVerdict(excerpt)}
                           <li
-                            class="bg-surface-secondary border border-border rounded-md p-3 text-sm italic text-ink-secondary"
+                            class="bg-surface-secondary border border-border rounded-md p-3 text-sm"
                           >
-                            «&nbsp;{excerpt.text}&nbsp;»
+                            <p class="italic text-ink-secondary">«&nbsp;{excerpt.text}&nbsp;»</p>
+                            <!--
+                              Le verdict suit la citation plutôt qu'il ne la
+                              précède : c'est le passage qu'on vient lire, la
+                              relecture est ce qu'on en pense après.
+                            -->
+                            <p
+                              class="mt-2 text-xs {CLASSES_VERDICT[verdict.ton]}"
+                              title={verdict.detail}
+                            >
+                              {verdict.label}
+                            </p>
                           </li>
                         {/each}
                       </ul>

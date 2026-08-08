@@ -45,6 +45,13 @@ class SourceExcerpt(Base):
     anchor_prefix: Mapped[str | None] = mapped_column(Text, nullable=True)
     anchor_suffix: Mapped[str | None] = mapped_column(Text, nullable=True)
     anchor_offset: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Verdict de la derniere relecture. `None` veut dire « jamais relu » : un
+    # etat a afficher tel quel, pas a combler par un defaut qui ferait passer
+    # l'extrait pour verifie. `verified_text_source` distingue un verdict obtenu
+    # contre la page publique d'un verdict obtenu contre un texte fourni.
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    verified_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    verified_text_source: Mapped[str | None] = mapped_column(String(20), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow_naive, nullable=False)
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
@@ -407,9 +408,16 @@ async def verify_source_excerpts(
         meta = await _html_scrape(source.url)
         page_text = (meta.page_text if meta else None) or ""
 
+    releve_le = datetime.now(UTC).replace(tzinfo=None)
+
     if not page_text.strip():
         # Cinq URLs sur dix ne rendent aucun texte (mesure du 2026-08-08). Dire
         # « introuvable » ici accuserait l'auteur·ice a la place du site.
+        for extrait in excerpts:
+            extrait.verified_at = releve_le
+            extrait.verified_status = "unreadable"
+            extrait.verified_text_source = provenance
+        await db.commit()
         return ExcerptVerifyResponse(
             checks=[ExcerptCheck(excerpt_id=x.id, status="unreadable") for x in excerpts],
             page_text_length=0,
@@ -426,9 +434,13 @@ async def verify_source_excerpts(
                 offset=extrait.anchor_offset,
             ),
         )
+        extrait.verified_at = releve_le
+        extrait.verified_text_source = provenance
         if ancrage is None:
+            extrait.verified_status = "missing"
             checks.append(ExcerptCheck(excerpt_id=extrait.id, status="missing"))
             continue
+        extrait.verified_status = "found" if ancrage.exact else "moved"
         checks.append(
             ExcerptCheck(
                 excerpt_id=extrait.id,
@@ -441,6 +453,7 @@ async def verify_source_excerpts(
                 context_after=re.sub(r"\s+", " ", page_text[ancrage.end : ancrage.end + 120]),
             )
         )
+    await db.commit()
     return ExcerptVerifyResponse(
         checks=checks, page_text_length=len(page_text), text_source=provenance
     )

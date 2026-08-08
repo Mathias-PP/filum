@@ -177,6 +177,15 @@ class SourceExcerptResponse(BaseModel):
     text: str
     title: str | None = None
     suggested_by_ai: bool
+    #: Verdict de la derniere relecture, expose au lecteur. `None` = jamais
+    #: relu, et cet etat compte : sans lui, une citation jamais verifiee se
+    #: lirait exactement comme une citation verifiee.
+    verified_at: datetime | None = None
+    #: "found" | "moved" | "missing" | "unreadable"
+    verified_status: str | None = None
+    #: "fetched" (la page publique) | "provided" (un texte fourni par
+    #: l'auteur·ice). Les deux n'engagent pas la meme chose.
+    verified_text_source: str | None = None
 
 
 class SourceResponse(BaseModel):

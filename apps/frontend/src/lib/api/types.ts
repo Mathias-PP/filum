@@ -108,6 +108,15 @@ export interface SourceExcerpt {
   /** Intitulé de repérage, facultatif : dix extraits empilés ne se distinguent pas. */
   title: string | null;
   suggested_by_ai: boolean;
+  /**
+   * Verdict de la dernière relecture. `null` veut dire « jamais relu », et cet
+   * état doit s'afficher : sans lui, une citation jamais vérifiée se lit
+   * exactement comme une citation vérifiée.
+   */
+  verified_at: string | null;
+  verified_status: 'found' | 'moved' | 'missing' | 'unreadable' | null;
+  /** Contre quoi le verdict a été rendu — les deux n'engagent pas la même chose. */
+  verified_text_source: 'fetched' | 'provided' | null;
 }
 
 /** L'unité dans laquelle la taille cible d'un extrait est exprimée. */

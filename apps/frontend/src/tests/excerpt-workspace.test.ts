@@ -39,7 +39,16 @@ vi.mock('$lib/api/client', () => ({
 import ExcerptWorkspace from '$lib/components/ExcerptWorkspace.svelte';
 
 function extrait(id: string, text: string) {
-  return { id, text, title: null, position: 0, suggested_by_ai: false };
+  return {
+    id,
+    text,
+    title: null,
+    position: 0,
+    suggested_by_ai: false,
+    verified_at: null,
+    verified_status: null,
+    verified_text_source: null,
+  };
 }
 
 function monter(excerpts: ReturnType<typeof extrait>[] = []) {
