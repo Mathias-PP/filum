@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from urllib.parse import urlparse
 
 import httpx
 from pydantic import BaseModel, ValidationError
@@ -25,6 +26,20 @@ _TIMEOUT = 45.0
 # Le titre/auteur/date est presque toujours dans le début du document ;
 # tronquer borne le coût et reste sous les limites de contexte des free tiers.
 _MAX_INPUT_CHARS = 40_000
+
+
+def url_chat(base: str) -> str:
+    """L'adresse `chat/completions` derrière une racine configurée.
+
+    Un proxy LiteLLM s'annonce par son hôte nu (`http://litellm:4000`) et
+    attend qu'on préfixe `/v1`. Un provider visé directement s'annonce déjà
+    par un chemin complet — Gemini expose sa surface OpenAI sous
+    `/v1beta/openai` — et y ajouter `/v1` donne un 404 sans rien qui le dise.
+    La présence d'un chemin dans la racine tranche entre les deux cas.
+    """
+    base = base.rstrip("/")
+    chemin = urlparse(base).path
+    return f"{base}/chat/completions" if chemin else f"{base}/v1/chat/completions"
 
 
 def resoudre_modele(alias: str) -> str:
@@ -62,7 +77,7 @@ async def _appel_json(
     async def poste(response_format: dict, consigne: str) -> httpx.Response:
         async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
             return await client.post(
-                f"{base}/v1/chat/completions",
+                url_chat(base),
                 json={
                     "model": modele,
                     "messages": [
