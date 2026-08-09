@@ -171,6 +171,32 @@ class TestFormeDeLaRequete:
         assert transport.envois == []
 
 
+class TestMotifDeLaPanne:
+    """Un echec silencieux garde au moins son motif.
+
+    « Quota epuise », « cle refusee » et « modele inconnu » appellent trois
+    corrections sans rapport. La couche rendant None dans les trois cas, le
+    motif ne survit nulle part si on ne le retient pas ici.
+    """
+
+    @pytest.mark.asyncio
+    async def test_la_reponse_du_provider_est_retenue(self, transport):
+        transport.reponses = [_Reponse(429, text="prepayment credits are depleted")]
+        assert await llm.suggest_excerpts("Un texte.") is None
+        assert llm.derniere_panne is not None
+        assert llm.derniere_panne["http"] == 429
+        assert "depleted" in str(llm.derniere_panne["message"])
+
+    @pytest.mark.asyncio
+    async def test_la_cle_ne_ressort_jamais_dans_le_motif(self, transport):
+        # La sonde est accessible sans auth : un provider qui recopie la cle
+        # dans son message la publierait.
+        transport.reponses = [_Reponse(401, text="invalid key cle-de-test refused")]
+        await llm.suggest_excerpts("Un texte.")
+        assert "cle-de-test" not in str(llm.derniere_panne["message"])
+        assert "***" in str(llm.derniere_panne["message"])
+
+
 class TestIntitulesDeMorceaux:
     @pytest.mark.asyncio
     async def test_les_intitules_suivent_le_repli_comme_le_reste(self, transport):

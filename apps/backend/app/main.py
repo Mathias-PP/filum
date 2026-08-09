@@ -147,6 +147,8 @@ async def llm_diagnose():
     de quoi savoir quoi corriger. Le cout d'un appel est negligeable et il est
     declenche a la main.
     """
+    # Le module, pas le symbole : `derniere_panne` est reaffecte a chaque echec.
+    from app.services import llm
     from app.services.llm import resoudre_modele, suggest_excerpts
 
     if not settings.litellm_base_url:
@@ -176,11 +178,16 @@ async def llm_diagnose():
         # visant un provider directement, c'est la cause la plus probable.
         "alias_non_resolu": alias_non_resolu,
         "suggestions": suggestions,
+        # Ce que le provider a repondu, cle expurgee. Un « quota epuise » et
+        # une « cle invalide » demandent deux corrections sans rapport ;
+        # renvoyer a la lecture des logs faisait payer cette distinction
+        # d'un acces SSH.
+        "panne": None if suggestions is not None else llm.derniere_panne,
         "a_faire": None
         if suggestions is not None
         else (
-            "L'appel n'a rien rendu. Verifier la cle, puis llm_direct_model "
-            "si l'alias n'est pas resolu. Le detail est dans les logs backend."
+            "L'appel n'a rien rendu. Lire le champ panne : il porte la reponse "
+            "du provider. A defaut, verifier la cle puis llm_direct_model."
         ),
     }
 
