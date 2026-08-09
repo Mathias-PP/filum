@@ -28,6 +28,24 @@ _TIMEOUT = 45.0
 _MAX_INPUT_CHARS = 40_000
 
 
+#: Ce qu'a dit le provider au dernier echec, pour la sonde de diagnostic.
+#:
+#: La couche ne leve jamais et rend None : le motif d'un echec ne survit donc
+#: nulle part hors des logs, qu'il faut aller lire en SSH. Or ces motifs sont
+#: peu nombreux et se distinguent d'un mot — cle refusee, modele inconnu,
+#: quota epuise — et chacun appelle une correction differente.
+derniere_panne: dict[str, object] | None = None
+
+
+def _retenir_panne(alias: str, statut: int | None, message: str) -> None:
+    """Garde le motif du dernier echec, la cle expurgee."""
+    global derniere_panne
+    cle = get_settings().litellm_master_key
+    if cle:
+        message = message.replace(cle, "***")
+    derniere_panne = {"alias": alias, "http": statut, "message": message[:400]}
+
+
 def url_chat(base: str) -> str:
     """L'adresse `chat/completions` derrière une racine configurée.
 
@@ -103,11 +121,13 @@ async def _appel_json(
             )
         if r.status_code != 200:
             logger.warning("LLM %s HTTP %s: %s", alias, r.status_code, r.text[:200])
+            _retenir_panne(alias, r.status_code, r.text)
             return None
         content: str = r.json()["choices"][0]["message"]["content"]
         return content
     except Exception as e:
         logger.warning("LLM %s failed: %s", alias, e)
+        _retenir_panne(alias, None, f"{type(e).__name__}: {e}")
         return None
 
 
