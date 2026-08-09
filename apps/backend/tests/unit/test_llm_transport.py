@@ -72,6 +72,29 @@ def transport(monkeypatch):
     return _FauxClient
 
 
+class TestRacineConfiguree:
+    """Deux façons d'annoncer une racine, une seule adresse juste par cas.
+
+    L'erreur est muette des deux côtés : un `/v1` en trop rend un 404 que la
+    couche avale (elle ne lève jamais), un `/v1` manquant aussi. Rien dans
+    l'interface ne distinguerait « le modèle n'a rien trouvé » de « l'appel
+    n'est jamais arrivé ».
+    """
+
+    def test_un_hote_nu_recoit_le_prefixe_du_proxy(self):
+        assert llm.url_chat("http://litellm:4000") == "http://litellm:4000/v1/chat/completions"
+
+    def test_une_racine_qui_porte_deja_son_chemin_nest_pas_redoublee(self):
+        # Gemini expose sa surface OpenAI sous `/v1beta/openai`.
+        assert (
+            llm.url_chat("https://generativelanguage.googleapis.com/v1beta/openai")
+            == "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+        )
+
+    def test_une_barre_finale_ne_change_rien(self):
+        assert llm.url_chat("http://litellm:4000/") == "http://litellm:4000/v1/chat/completions"
+
+
 class TestResolutionAlias:
     def test_sans_modele_direct_l_alias_part_tel_quel(self, transport, monkeypatch):
         # Mode proxy : c'est LiteLLM qui traduit, le backend n'a rien à décider.
@@ -130,7 +153,7 @@ class TestFormeDeLaRequete:
         transport.reponses = [_Reponse(200, _contenu('{"excerpts": []}'))]
         await llm.suggest_excerpts("Un texte.")
         envoi = transport.envois[0]
-        assert envoi["url"] == "https://exemple.test/v1beta/openai/v1/chat/completions"
+        assert envoi["url"] == "https://exemple.test/v1beta/openai/chat/completions"
         assert envoi["headers"]["Authorization"] == "Bearer cle-de-test"
         assert envoi["json"]["temperature"] == 0
 
