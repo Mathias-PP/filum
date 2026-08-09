@@ -35,7 +35,16 @@ Avant : Phase 2 (identité visuelle Pulsar-graph + audit) et Phase 1 (MVP comple
 
 ## Session 2026-08-08/09 (autonome) — aucun format ne perd ce qu'il pourrait porter
 
-**PR #350 mergée** (sha `09bbacd`) — barre optionnelle d'intitulé et de mise en situation par morceau, repliée par défaut, avec suggestion LLM (`POST /excerpts/annotate`). Migration `035_excerpt_context` appliquée en prod. `/health/llm-diagnose` répond `status: off` : **il reste à créer une clé Gemini AI Studio et à la poser sur la VM** — c'est la seule action manuelle en attente.
+**PR #350 mergée** (sha `09bbacd`) — barre optionnelle d'intitulé et de mise en situation par morceau, repliée par défaut, avec suggestion LLM (`POST /excerpts/annotate`). Migration `035_excerpt_context` appliquée en prod.
+
+✅ **La couche LLM est vivante en production depuis le 2026-08-10** (`/health/llm-diagnose` → `status: ok`, suggestions réelles). Gemini est visé directement, sans proxy LiteLLM : `litellm_base_url=https://generativelanguage.googleapis.com/v1beta/openai`, `llm_direct_model=gemini-3.6-flash` (ADR-035). Deux obstacles ont été levés :
+
+- **PR #353** — le backend ajoutait `/v1` à toute racine configurée. Gemini expose sa surface OpenAI sous `/v1beta/openai` : le `/v1` en trop donnait un 404 que la couche avale en silence. **Aucune valeur d'environnement ne pouvait marcher sans ce correctif** — un test entérinait même l'URL fautive. La présence d'un chemin dans la racine tranche désormais entre proxy (hôte nu, on préfixe) et provider direct (chemin déjà là, on n'ajoute rien).
+- **Facturation** — la première clé pointait un projet Google en prépayé à crédits épuisés (`HTTP 429`). Un projet en prépayé ne bénéficie plus du free tier. Résolu par une clé sur un projet neuf sans facturation liée.
+
+**PR #354 mergée** (sha `472068f`) — leçon de ce déblocage : `/health/llm-diagnose` disait « l'appel n'a rien rendu, voir les logs » alors qu'il avait le message du provider en main. Un `429 quota épuisé`, un `401 clé refusée` et un `404 modèle inconnu` appellent trois corrections sans rapport, et la couche rend `None` dans les trois cas. La sonde porte désormais un champ `panne` avec la réponse du provider, **clé expurgée** — elle est accessible sans auth.
+
+⚠️ **Piège de vérification** : `curl` vers `philum-api.duckdns.org` **depuis la VM elle-même** rend une réponse vide (le trafic sort et rentre par l'IP publique). Toujours vérifier depuis une autre machine.
 
 **PR #351 mergée** (sha `02bd69e`) — les exports Excel et Word étaient les surfaces les plus pauvres du projet, et le MCP plus pauvre encore : un agent obtenait par `get_source` moins que quiconque téléchargeant le CSV.
 
