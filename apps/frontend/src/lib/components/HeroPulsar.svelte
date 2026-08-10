@@ -15,6 +15,35 @@
 
   import { onMount } from 'svelte';
 
+  // Position d'un nœud rendue en pixels CSS du wrapper, pour qu'un appelant
+  // puisse poser du DOM par-dessus le canvas. `depth` va de 0 (au fond) à 1
+  // (devant) : une étiquette qui ne s'atténue pas avec la profondeur flotte
+  // devant un nœud qui, lui, est passé derrière le pulsar.
+  type PulsarNodeFrame = {
+    colorIdx: number;
+    x: number;
+    y: number;
+    r: number;
+    depth: number;
+  };
+
+  interface Props {
+    /** Clic franc sur un nœud (pas un drag). `null` = clic sur le cœur. */
+    onselect?: (colorIdx: number | null) => void;
+    /** Appelé à chaque image rendue. Ne pas y écrire de `$state`. */
+    onframe?: (nodes: PulsarNodeFrame[]) => void;
+    /** Nœud maintenu allumé, en plus du survol. */
+    selected?: number | null;
+    /**
+     * Vitesse d'écoulement des orbites, 1 = nominal. Descendre vers 0 quand
+     * l'utilisateur vise un nœud : une cible qui dérive ne se clique pas.
+     * La transition est amortie ici, l'appelant peut basculer franchement.
+     */
+    timeScale?: number;
+  }
+
+  let { onselect, onframe, selected = null, timeScale = 1 }: Props = $props();
+
   let canvasEl: HTMLCanvasElement | undefined = $state();
   let wrapEl: HTMLDivElement | undefined = $state();
   let webglReady = $state(false);
@@ -744,9 +773,13 @@
 
         const mesh = new Mesh(gl, { geometry, program });
 
+        let rectW = 1;
+        let rectH = 1;
         function resize() {
           if (!wrapEl) return;
           const rect = wrapEl.getBoundingClientRect();
+          rectW = rect.width;
+          rectH = rect.height;
           renderer.setSize(rect.width, rect.height);
           program.uniforms.uResolution.value.set(rect.width, rect.height);
           const aa = 2 / Math.max(rect.height, 1);
@@ -774,8 +807,24 @@
           targetMouse.set(0, 0);
           draggingNodeKey = -1;
           draggingCore = false;
+          downKey = -1;
         }
+        // Un nœud se traîne *et* se clique. On ne peut donc pas décider à
+        // l'appui : on retient d'où le doigt est parti, et c'est le relâché
+        // qui tranche. Sans ce seuil, tout drag finirait par ouvrir un
+        // panneau que l'utilisateur n'a pas demandé.
+        const CLICK_SLOP_PX = 6;
+        const CLICK_MAX_MS = 500;
+        let downKey: number | null = -1;
+        let downX = 0;
+        let downY = 0;
+        let downT = 0;
+
         function onDown(e: PointerEvent) {
+          downKey = -1;
+          downX = e.clientX;
+          downY = e.clientY;
+          downT = e.timeStamp;
           let pickKey = -1;
           let bestD = Infinity;
           for (let i = 0; i < NODE_COUNT; i++) {
@@ -791,6 +840,7 @@
           }
           if (pickKey !== -1) {
             draggingNodeKey = pickKey;
+            downKey = pickKey;
             wrapEl?.setPointerCapture?.(e.pointerId);
             return;
           }
@@ -799,10 +849,15 @@
           const coreHitR = CORE_R * 1.2;
           if (dx * dx + dy * dy < coreHitR * coreHitR) {
             draggingCore = true;
+            downKey = null;
             wrapEl?.setPointerCapture?.(e.pointerId);
           }
         }
         function onUp(e: PointerEvent) {
+          const moved = Math.hypot(e.clientX - downX, e.clientY - downY);
+          const brief = e.timeStamp - downT < CLICK_MAX_MS;
+          if (downKey !== -1 && moved < CLICK_SLOP_PX && brief) onselect?.(downKey);
+          downKey = -1;
           draggingNodeKey = -1;
           draggingCore = false;
           wrapEl?.releasePointerCapture?.(e.pointerId);
@@ -913,7 +968,12 @@
         const hoverCurrent = program.uniforms.uHoverNode.value as number[];
         let hoverCoreTarget = 0;
 
-        const start = performance.now();
+        // Horloge virtuelle : elle avance à `timeScale` près, si bien qu'un
+        // ralenti ne fait pas sauter les orbites comme le ferait un simple
+        // facteur appliqué au temps mural.
+        let vTime = 0;
+        let lastT = -1;
+        let easedScale = 1;
         let lastTrailSample = -Infinity;
 
         function loop(t: number) {
@@ -921,7 +981,13 @@
           if (!visible) return;
           currentMouse.x += (targetMouse.x - currentMouse.x) * 0.1;
           currentMouse.y += (targetMouse.y - currentMouse.y) * 0.1;
-          const time = (t - start) / 1000;
+          // Un onglet revenu au premier plan livre un delta énorme : le
+          // plafond évite que les orbites fassent un bond.
+          const rawDt = lastT < 0 ? 0 : Math.min((t - lastT) / 1000, 0.05);
+          lastT = t;
+          easedScale += (timeScale - easedScale) * 0.08;
+          vTime += rawDt * easedScale;
+          const time = vTime;
 
           // PASSE A : orbites simples autour du pulsar
           for (let i = 0; i < NODE_COUNT; i++) {
@@ -1146,7 +1212,31 @@
           const coreHit =
             pickIdx === -1 && coreDx * coreDx + coreDy * coreDy < CORE_R * CORE_R * 1.5;
           hoverCoreTarget = coreHit ? 1 : 0;
-          for (let i = 0; i < 8; i++) hoverTarget[i] = i === pickIdx ? 1 : 0;
+          // `selected` allume le nœud dont le panneau est ouvert : sans ça, la
+          // lecture du panneau éteint le nœud dont il parle dès que le curseur
+          // s'en va, et plus rien ne dit lequel des sept on lit.
+          const lit = selected;
+          for (let i = 0; i < 8; i++) {
+            hoverTarget[i] = i === pickIdx || (lit !== null && slice[i]?.colorIdx === lit) ? 1 : 0;
+          }
+
+          if (onframe) {
+            const aspect = rectW / Math.max(rectH, 1);
+            const frame: PulsarNodeFrame[] = [];
+            for (let i = 0; i < NODE_COUNT; i++) {
+              const s = slice[i];
+              frame.push({
+                colorIdx: s.colorIdx,
+                x: (s.x / Math.max(aspect, 0.001) / 2 + 0.5) * rectW,
+                y: (0.5 - s.y / 2) * rectH,
+                r: (s.r / 2) * rectH,
+                // `i` est l'ordre de tri arrière→avant : il dit la profondeur
+                // sans avoir à exposer l'échelle de z du shader.
+                depth: NODE_COUNT > 1 ? i / (NODE_COUNT - 1) : 1,
+              });
+            }
+            onframe(frame);
+          }
           for (let i = 0; i < 8; i++) {
             hoverCurrent[i] += (hoverTarget[i] - hoverCurrent[i]) * 0.18;
           }
