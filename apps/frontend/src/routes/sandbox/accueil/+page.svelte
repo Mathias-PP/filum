@@ -6,7 +6,7 @@
    * nœuds en orbite portent chacun une fonctionnalité, et un clic ouvre ce
    * qu'elle fait. La topologie du pulsar disait déjà quelque chose de vrai
    * (un satellite tourne autour de la source qui le cite, deux jumeaux se
-   * répondent de part et d'autre d'une fourche) — on lui donne enfin ses mots.
+   * répondent de part et d'autre d'une fourche) : on lui donne enfin ses mots.
    *
    * Contraintes tenues :
    * - les repères sont de vrais `<button>`, donc atteignables au clavier ;
@@ -52,7 +52,7 @@
       idx: 1,
       label: 'Citations vérifiées',
       title: 'Le passage exact, retrouvé dans la page',
-      body: "Vous citez un passage, Philum le cherche mot pour mot dans la source telle qu'elle est aujourd'hui — et vous dit lequel a bougé.",
+      body: "Vous citez un passage, Philum le cherche mot pour mot dans la source telle qu'elle est aujourd'hui, et vous dit lequel a bougé.",
       color: '#73DB8C',
     },
     {
@@ -87,7 +87,7 @@
       idx: 6,
       label: 'Export',
       title: 'Repartez avec, dans le format de votre outil',
-      body: 'CSL-JSON, RIS, BibTeX, PDF, Word — et une page publique que votre audience peut ouvrir.',
+      body: 'CSL-JSON, RIS, BibTeX, PDF, Word, et une page publique que votre audience peut ouvrir.',
       color: '#FFDB6B',
     },
   ];
@@ -107,6 +107,9 @@
       floating = mq.matches;
       if (!mq.matches) {
         for (const el of markerEls) if (el) el.style.cssText = '';
+        // Sans cette remise à zéro, un retour au grand écran ferait glisser
+        // chaque repère depuis la place qu'il occupait avant le repli.
+        posesLissees.length = 0;
       }
     };
     sync();
@@ -125,7 +128,7 @@
 
   // Le pointeur entre dans la scène ⇒ les orbites se figent presque. Sans ça,
   // le repère qu'on vise a dérivé de vingt pixels au moment du clic, et on
-  // ouvre le panneau d'une autre fonctionnalité — constaté à l'écran. Le
+  // ouvre le panneau d'une autre fonctionnalité, constaté à l'écran. Le
   // ralenti tient aussi tant qu'un panneau est ouvert : la bague qui entoure
   // la planète décrite reste alors lisible.
   let survole = $state(false);
@@ -134,6 +137,11 @@
   // Hauteur d'un repère : sert d'unité pour les écarter quand deux planètes
   // se croisent. En dessous, deux étiquettes se recouvrent et aucune ne se lit.
   const MARKER_H = 26;
+  // Position affichée de chaque repère, distincte de sa cible. Écrire la cible
+  // directement faisait sauter les étiquettes d'un rang à l'autre d'une image
+  // sur l'autre, et la scène entière paraissait désordonnée. Elles glissent.
+  const posesLissees: { x: number; y: number; o: number }[] = [];
+  const LISSAGE = 0.14;
 
   function handleFrame(nodes: PulsarNodeFrame[]) {
     if (!positioned) positioned = true;
@@ -147,9 +155,11 @@
     const offX = canvasBoxEl?.offsetLeft ?? 0;
     const offY = canvasBoxEl?.offsetTop ?? 0;
 
-    // Placés du plus proche au plus lointain : quand deux repères se
-    // chevauchent, c'est celui du fond qui descend.
-    const ordre = [...nodes].sort((a, b) => b.depth - a.depth);
+    // L'ordre de résolution des chevauchements est figé sur l'identité du
+    // nœud, jamais sur sa profondeur : deux planètes qui se croisent
+    // échangeraient leur rang, et le repère qui perd sa place descendrait
+    // d'un cran d'un seul coup. C'est ce qui rendait la scène brouillonne.
+    const ordre = [...nodes].sort((a, b) => a.colorIdx - b.colorIdx);
     const poses: { x: number; y: number; w: number }[] = [];
 
     for (const n of ordre) {
@@ -167,22 +177,31 @@
       const cx = n.x + offX;
       const cy = n.y + offY;
 
-      let x = Math.max(half + 4, Math.min(stageW - half - 4, cx));
-      let y = cy + n.r + 10;
+      const cibleX = Math.max(half + 4, Math.min(stageW - half - 4, cx));
+      let cibleY = cy + n.r + 10;
 
+      // Le test de chevauchement porte sur les positions affichées, pas sur
+      // les cibles : sinon un repère s'écarterait d'un voisin qui n'est pas
+      // encore arrivé là.
       for (let essai = 0; essai < 6; essai++) {
         const heurte = poses.some(
-          (p) => Math.abs(p.y - y) < MARKER_H && Math.abs(p.x - x) < (p.w + w) / 2 + 8
+          (p) => Math.abs(p.y - cibleY) < MARKER_H && Math.abs(p.x - cibleX) < (p.w + w) / 2 + 8
         );
         if (!heurte) break;
-        y += MARKER_H + 2;
+        cibleY += MARKER_H + 2;
       }
-      poses.push({ x, y, w });
 
-      el.style.transform = `translate3d(${x}px, ${y}px, 0) translateX(-50%)`;
       // Un repère porté par un nœud passé derrière le pulsar doit reculer
       // avec lui, sinon l'étiquette flotte devant ce qu'elle désigne.
-      el.style.opacity = String(0.4 + 0.6 * n.depth);
+      const cibleO = 0.4 + 0.6 * n.depth;
+      const p = (posesLissees[n.colorIdx] ??= { x: cibleX, y: cibleY, o: cibleO });
+      p.x += (cibleX - p.x) * LISSAGE;
+      p.y += (cibleY - p.y) * LISSAGE;
+      p.o += (cibleO - p.o) * LISSAGE;
+      poses.push({ x: p.x, y: p.y, w });
+
+      el.style.transform = `translate3d(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px, 0) translateX(-50%)`;
+      el.style.opacity = p.o.toFixed(3);
       el.style.zIndex = String(10 + Math.round(n.depth * 10));
 
       if (ringEl && n.colorIdx === selected) {
@@ -247,7 +266,7 @@
 </script>
 
 <svelte:head>
-  <title>Atelier — accueil v2 | Philum</title>
+  <title>Atelier : accueil v2 | Philum</title>
 </svelte:head>
 
 <svelte:window onkeydown={onWindowKeydown} />
@@ -396,7 +415,7 @@
           <h3>Citer un passage</h3>
           <p>
             Le passage reste mot pour mot celui de la source. Vous lui ajoutez un intitulé et une
-            phrase qui le situe — écrits à côté du verbatim, jamais dedans.
+            phrase qui le situe, écrits à côté du verbatim, jamais dedans.
           </p>
         </div>
         <div class="demo demo-quote" aria-hidden="true">
@@ -1001,7 +1020,7 @@
   .verdict.deplacee .v-state {
     color: rgb(var(--warning));
   }
-  /* « Illisible » n'est pas « introuvable » : la nuance est grise, pas rouge —
+  /* « Illisible » n'est pas « introuvable » : la nuance est grise, pas rouge :
      la page n'a rien dit sur la citation, elle ne la dément pas. */
   .verdict.illisible .v-mark,
   .verdict.illisible .v-state {
