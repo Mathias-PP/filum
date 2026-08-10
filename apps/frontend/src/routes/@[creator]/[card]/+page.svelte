@@ -692,7 +692,29 @@
                           <li
                             class="bg-surface-secondary border border-border rounded-md p-3 text-sm"
                           >
+                            {#if excerpt.title}
+                              <p class="mb-1 text-xs font-medium text-ink-primary">
+                                {excerpt.title}
+                                {#if excerpt.annotated_by_ai}
+                                  <span
+                                    class="font-normal text-ink-tertiary"
+                                    title="Intitulé ou mise en situation proposés par un modèle"
+                                  >
+                                    ✨
+                                  </span>
+                                {/if}
+                              </p>
+                            {/if}
                             <p class="italic text-ink-secondary">«&nbsp;{excerpt.text}&nbsp;»</p>
+                            {#if excerpt.context}
+                              <!--
+                                Hors des guillemets et sans italique : cette phrase
+                                situe le passage, elle ne vient pas de la source.
+                                Les confondre attribuerait à l'auteur·ice citée des
+                                mots qu'iel n'a pas écrits.
+                              -->
+                              <p class="mt-1 text-xs text-ink-tertiary">{excerpt.context}</p>
+                            {/if}
                             <!--
                               Le verdict suit la citation plutôt qu'il ne la
                               précède : c'est le passage qu'on vient lire, la
