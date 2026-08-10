@@ -223,6 +223,20 @@
                   </p>
                 {/if}
                 «&nbsp;{excerpt.text}&nbsp;»
+                {#if excerpt.context}
+                  <!--
+                    Hors des guillemets et sans italique : cette phrase situe le
+                    passage, elle ne vient pas de la source. Un lecteur qui les
+                    confondrait attribuerait à l'auteur·ice cité·e des mots
+                    qu'iel n'a pas écrits.
+                  -->
+                  <p class="mt-1.5 text-xs not-italic text-ink-tertiary">
+                    {excerpt.context}
+                    {#if excerpt.annotated_by_ai}
+                      <span title="Mise en situation proposée par un modèle">✨</span>
+                    {/if}
+                  </p>
+                {/if}
               </div>
             {/each}
           </div>
