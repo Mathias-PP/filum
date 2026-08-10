@@ -72,6 +72,33 @@ describe('SourceDetailPanel', () => {
     expect(screen.getByText(/citations/)).toBeTruthy();
   });
 
+  it("situe l'extrait sans le fondre dans le verbatim", () => {
+    // Un extrait voyage seul : c'est ici qu'un lecteur le rencontre hors de sa
+    // page. La mise en situation ne vient pas de la source et ne doit jamais
+    // se lire entre les guillemets.
+    renderPanel(
+      makeSource({
+        excerpts: [
+          {
+            id: 'e1',
+            position: 0,
+            text: "Le cerveau consomme 20 % de l'oxygène.",
+            title: 'Coût énergétique',
+            context: 'Ordre de grandeur posé en introduction.',
+            suggested_by_ai: false,
+            annotated_by_ai: false,
+            verified_at: null,
+            verified_status: null,
+            verified_text_source: null,
+          },
+        ],
+      })
+    );
+    expect(screen.getByText('Coût énergétique')).toBeTruthy();
+    const situe = screen.getByText(/Ordre de grandeur/);
+    expect(situe.textContent).not.toContain('Le cerveau consomme');
+  });
+
   it("n'affiche aucun indicateur jamais mesuré", () => {
     renderPanel(
       makeSource({ impact_factor: 49.8, subscribers_count: 120000, views_count: 2100000 })

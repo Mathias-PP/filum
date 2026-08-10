@@ -5,7 +5,11 @@
   passage qu'on a déjà isolé, verser un texte long et le découper, ou laisser
   un modèle proposer. Les deux premiers ne dépendent d'aucun serveur tiers ni
   d'aucun modèle — mesure du 2026-08-08 : cinq URLs sur dix ne rendent aucun
-  texte exploitable, et la prod n'a aujourd'hui aucun modèle configuré.
+  texte exploitable, et un modèle peut toujours manquer sur un déploiement.
+
+  L'intitulé et la mise en situation se lisent hors des guillemets. Ils ne
+  viennent pas de la source, et le seul endroit où l'on puisse encore les
+  corriger est celui où on les relit.
 
   « Relire la source » relit la page telle qu'elle est aujourd'hui et cherche
   chaque citation. Les quatre verdicts restent distincts jusqu'à l'affichage :
@@ -31,6 +35,9 @@
     /** Remonte la liste à jour ; le parent reste seul propriétaire de l'état. */
     onchange: (excerpts: SourceExcerpt[]) => void;
   }
+
+  /** Dit d'où vient la prose qui entoure le verbatim, jamais d'où vient le verbatim. */
+  const TITRE_ANNOTE = 'Intitulé ou mise en situation proposés par un modèle';
 
   /** De quoi retrouver le passage dans une page qui aura bougé. */
   interface Ancrage {
@@ -247,26 +254,44 @@
         <li
           class="flex items-start justify-between gap-2 rounded-lg border border-border bg-surface-secondary/50 px-3 py-2"
         >
-          <p class="text-sm text-ink-secondary italic min-w-0">
-            «&nbsp;{excerpt.text}&nbsp;»
-            {#if excerpt.suggested_by_ai}
-              <span class="text-xs text-ink-tertiary not-italic">(IA)</span>
+          <div class="min-w-0">
+            {#if excerpt.title}
+              <p class="text-xs font-medium text-ink-primary">
+                {excerpt.title}
+                {#if excerpt.annotated_by_ai}
+                  <span class="font-normal text-ink-tertiary" title={TITRE_ANNOTE}>✨</span>
+                {/if}
+              </p>
             {/if}
-            {#if verdicts[excerpt.id]}
-              {@const v = verdict(verdicts[excerpt.id].status)}
-              <span class="text-xs not-italic {v.classe}" title={v.titre}>{v.texte}</span>
-            {:else}
-              <!--
+            <p class="text-sm text-ink-secondary italic">
+              «&nbsp;{excerpt.text}&nbsp;»
+              {#if excerpt.suggested_by_ai}
+                <span class="text-xs text-ink-tertiary not-italic">(IA)</span>
+              {/if}
+              {#if verdicts[excerpt.id]}
+                {@const v = verdict(verdicts[excerpt.id].status)}
+                <span class="text-xs not-italic {v.classe}" title={v.titre}>{v.texte}</span>
+              {:else}
+                <!--
                 À défaut de relecture dans cette session, ce que le lecteur voit
                 sur la fiche publique — y compris « Jamais relu ». Sans cela
                 l'auteur·ice ignorerait ce que sa fiche affirme en son nom.
               -->
-              {@const p = lireVerdict(excerpt)}
-              <span class="text-xs not-italic {CLASSES_VERDICT[p.ton]}" title={p.detail}
-                >{p.label}</span
-              >
+                {@const p = lireVerdict(excerpt)}
+                <span class="text-xs not-italic {CLASSES_VERDICT[p.ton]}" title={p.detail}
+                  >{p.label}</span
+                >
+              {/if}
+            </p>
+            {#if excerpt.context}
+              <!--
+                Hors des guillemets et sans italique : cette phrase n'est pas
+                de la source. Les recoller donnerait à lire comme verbatim des
+                mots que la source n'a jamais écrits.
+              -->
+              <p class="mt-0.5 text-xs text-ink-tertiary">{excerpt.context}</p>
             {/if}
-          </p>
+          </div>
           <button
             type="button"
             onclick={() => supprimer(excerpt.id)}

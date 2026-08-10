@@ -37,8 +37,9 @@ vi.mock('$lib/api/client', () => ({
 }));
 
 import ExcerptWorkspace from '$lib/components/ExcerptWorkspace.svelte';
+import type { SourceExcerpt } from '$lib/api/types';
 
-function extrait(id: string, text: string) {
+function extrait(id: string, text: string): SourceExcerpt {
   return {
     id,
     text,
@@ -147,6 +148,41 @@ describe('ExcerptWorkspace', () => {
     monter(dix);
     expect(screen.getByText(/Dix citations, c’est le maximum/)).toBeTruthy();
     expect(screen.queryByPlaceholderText(/Collez ici le passage exact/)).toBeNull();
+  });
+
+  it("rend l'intitulé et la mise en situation quand ils existent", () => {
+    // Saisis, stockés, exportés, servis par le MCP — et jamais affichés
+    // jusqu'ici. Une annotation qu'on ne relit pas est une annotation qu'on
+    // ne corrige pas.
+    monter([
+      {
+        ...extrait('e1', "Le cerveau consomme 20 % de l'oxygène."),
+        title: 'Coût énergétique',
+        context: "Passage de l'introduction, où l'auteur pose l'ordre de grandeur.",
+      },
+    ]);
+    expect(screen.getByText('Coût énergétique')).toBeTruthy();
+    expect(screen.getByText(/Passage de l’introduction|Passage de l'introduction/)).toBeTruthy();
+  });
+
+  it('ne recolle pas la mise en situation dans le verbatim', () => {
+    // Le texte cité doit rester exactement ce que la source dit : les deux
+    // vivent dans des éléments distincts, jamais dans la même phrase.
+    monter([
+      {
+        ...extrait('e1', "Le cerveau consomme 20 % de l'oxygène."),
+        context: "Une phrase qui n'est pas de la source.",
+      },
+    ]);
+    const cite = screen.getByText(/Le cerveau consomme/);
+    expect(cite.textContent).not.toContain("n'est pas de la source");
+  });
+
+  it("dit quand l'annotation vient d'un modèle", () => {
+    // De la prose générée côtoie du verbatim. Ne pas les distinguer laisserait
+    // attribuer à la source des mots qu'elle n'a jamais écrits.
+    monter([{ ...extrait('e1', 'Un passage.'), title: 'Un intitulé', annotated_by_ai: true }]);
+    expect(screen.getByTitle(/proposés par un modèle/)).toBeTruthy();
   });
 
   it('remonte la liste amputée quand on supprime une citation', async () => {
