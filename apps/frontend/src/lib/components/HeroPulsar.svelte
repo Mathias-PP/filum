@@ -27,11 +27,20 @@
     depth: number;
   };
 
+  // Le disque du pulsar, dans les mêmes pixels CSS que les nœuds. Il occulte
+  // ce qui passe derrière lui : sans sa géométrie, l'appelant ne peut pas
+  // savoir qu'une étiquette vient de disparaître sous le cœur.
+  type PulsarCoreFrame = {
+    x: number;
+    y: number;
+    r: number;
+  };
+
   interface Props {
     /** Clic franc sur un nœud (pas un drag). `null` = clic sur le cœur. */
     onselect?: (colorIdx: number | null) => void;
     /** Appelé à chaque image rendue. Ne pas y écrire de `$state`. */
-    onframe?: (nodes: PulsarNodeFrame[]) => void;
+    onframe?: (nodes: PulsarNodeFrame[], core: PulsarCoreFrame) => void;
     /** Nœud maintenu allumé, en plus du survol. */
     selected?: number | null;
     /**
@@ -1235,7 +1244,11 @@
                 depth: NODE_COUNT > 1 ? i / (NODE_COUNT - 1) : 1,
               });
             }
-            onframe(frame);
+            onframe(frame, {
+              x: (coreDisp.x / Math.max(aspect, 0.001) / 2 + 0.5) * rectW,
+              y: (0.5 - coreDisp.y / 2) * rectH,
+              r: (CORE_R / 2) * rectH,
+            });
           }
           for (let i = 0; i < 8; i++) {
             hoverCurrent[i] += (hoverTarget[i] - hoverCurrent[i]) * 0.18;
