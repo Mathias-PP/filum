@@ -2,7 +2,7 @@
 
 > Snapshot vivant, 1 page max. **Pour l'historique détaillé** : voir [`CHANGELOG.md`](./CHANGELOG.md). **Pour les items long terme** : voir [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md).
 
-**Dernière mise à jour : 2026-08-07**
+**Dernière mise à jour : 2026-08-11**
 
 ---
 
@@ -30,6 +30,20 @@ Livré (mergé) : exports multi-formats (JSON/CSV/BibTeX/Markdown/xlsx/**docx**)
 ✅ **VM GCP redéployée le 2026-07-21** sur `main` (464ba95) : endpoints d'import (#154, #179-#181), rate-limit `/mcp/` (#147) et extraction DOCX/HTML/PDF-GROBID effectifs en prod. Piège connu : toujours vérifier `git branch` avant un pull sur la VM. Note : les 502 juste après `docker compose up` sont normaux (alembic + seed avant uvicorn, e2-micro lente) ; et `docker compose exec backend` doit passer par `uv run python`.
 
 Avant : Phase 2 (identité visuelle Pulsar-graph + audit) et Phase 1 (MVP complet, flow login → création → signature → attestation → publication).
+
+---
+
+## Session 2026-08-10/11 (autonome) — le hero explique au lieu de décorer
+
+**PRs #358, #359, #365 mergées.** La page d'accueil est refaite autour du pulsar : les sept nœuds en orbite portent chacun une fonctionnalité de Philum et un clic ouvre un panneau qui la décrit. `HeroPulsar` gagne trois props optionnelles (`selected`, `onframe`, `timeScale`) et une horloge virtuelle, si bien que la page peut ralentir les orbites sans faire sauter le graphe. La route d'atelier `/sandbox/accueil` a été supprimée au moment du portage : elle ne répondait qu'en dev et un doublon de mille lignes n'aurait servi qu'à diverger.
+
+Le rendu des repères a demandé trois passes, chacune sur un défaut distinct constaté à l'écran :
+
+- **#358** — un clic ne visait jamais juste, la cible dérivant sous le pointeur. Les orbites se figent maintenant au survol de la scène.
+- **#359** — les étiquettes sautaient d'un rang à l'autre quand deux planètes se croisaient, parce que l'ordre de résolution suivait la profondeur. Il suit désormais l'identité du nœud, et les positions sont lissées.
+- **#365** — le vrai reproche était l'amplitude du mouvement, pas sa brusquerie. La poussée verticale anti-chevauchement a été retirée : les étiquettes tiennent à leur planète, le recouvrement est assumé, et un fondu progressif efface celle qui passe derrière une autre étiquette, une planète plus proche ou le disque du pulsar (`onframe` expose pour ça la géométrie du cœur). Orbites ralenties à 0.45 du rythme nominal.
+
+**VM redéployée le 2026-08-11** sur `main` (`d917981`), `/health` → 200. Le changement est purement frontend (Vercel), le redéploiement backend n'a fait que réaligner le dépôt de la VM.
 
 ---
 
