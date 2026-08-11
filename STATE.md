@@ -45,6 +45,8 @@ Le rendu des repères a demandé trois passes, chacune sur un défaut distinct c
 
 **VM redéployée le 2026-08-11** sur `main` (`d917981`), `/health` → 200. Le changement est purement frontend (Vercel), le redéploiement backend n'a fait que réaligner le dépôt de la VM.
 
+⛔ **Retiré le même jour (PR #367).** L'accueil de production est revenu à sa forme précédente, hero décoratif et trois sections. La version explicative n'est pas perdue : elle vit dans l'atelier sous `/sandbox/accueil` (route dev seulement), avec ses repères tenus et son fondu d'occultation. Les trois props ajoutées à `HeroPulsar` sont toutes optionnelles et restent en place, l'accueil restauré appelle le composant sans rien lui passer.
+
 ---
 
 ## Session 2026-08-08/09 (autonome) — aucun format ne perd ce qu'il pourrait porter
