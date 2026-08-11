@@ -337,8 +337,9 @@
       reponse: 'Une liste de liens en description, personne ne l’ouvre. Une fiche, oui.',
     },
     {
-      constat: 'Vérifier coûte trop cher.',
-      reponse: 'Un PDF de trente pages déplace le travail. Une fiche montre le passage exact.',
+      constat: 'Un lien ne prouve rien.',
+      reponse:
+        'Renvoyer vers un PDF de trente pages, c’est refiler la recherche. Une fiche pointe le passage.',
     },
     {
       constat: 'Le web bouge.',
@@ -350,16 +351,18 @@
   // de promesse sur la véracité de l'IA : on réduit ce sur quoi elle s'appuie.
   const LECTURE_IA = [
     {
-      titre: 'Un corpus choisi par vous',
-      texte: 'Douze sources que vous avez retenues, plutôt qu’une recherche à l’aveugle.',
+      titre: 'Il travaille sur vos sources',
+      texte:
+        'L’assistant part de ce que vous avez retenu et lu, au lieu de ratisser le web au hasard.',
     },
     {
-      titre: 'Des citations qui existent',
-      texte: 'Chaque passage a été retrouvé mot pour mot dans sa source avant publication.',
+      titre: 'Il cite au lieu d’inventer',
+      texte:
+        'Chaque passage a été retrouvé caractère pour caractère dans sa source. Rien à reformuler de mémoire.',
     },
     {
-      titre: 'Lisible sans deviner',
-      texte: 'La même fiche se sert en page, en Markdown, en JSON et via un serveur MCP.',
+      titre: 'Il n’a rien à scraper',
+      texte: 'La même fiche existe en page, en Markdown, en JSON et sur un serveur MCP.',
     },
   ];
 
@@ -404,9 +407,8 @@
           <span class="accent">partager vos références</span>
         </h1>
         <p class="lede">
-          Rassemblez les sources d’une vidéo, d’un article ou d’un podcast, dites ce que chacune
-          apporte à votre propos, et publiez une page que votre audience ouvre au lieu de vous
-          croire sur parole.
+          Rassemblez les sources d’une vidéo, d’un article ou d’un podcast, montrez le passage exact
+          derrière chaque affirmation, et publiez une page où votre audience va vérifier elle-même.
         </p>
         <div class="ctas">
           {#if isAuthenticated}
@@ -535,8 +537,8 @@
     <div class="wrap">
       <h2 class="section-title" use:reveal>Comment une fiche se fabrique</h2>
       <p class="section-lede" use:reveal>
-        Trois temps. Le premier est presque entièrement automatique, les deux autres vous
-        appartiennent.
+        Trois temps. À chacun, Philum fait le travail mécanique et vous propose ; ce qui est publié
+        reste votre décision.
       </p>
 
       <div class="geste" use:reveal>
@@ -613,8 +615,8 @@
     <div class="wrap">
       <h2 class="section-title" use:reveal>Et quand c’est une IA qui lit</h2>
       <p class="section-lede" use:reveal>
-        De plus en plus, la question n’est pas posée à vous mais à un assistant. Une fiche se donne
-        à lire aux deux.
+        De plus en plus, la question n’est pas posée à vous mais à un assistant. Une fiche se lit
+        aussi bien par lui que par votre audience.
       </p>
 
       <div class="constats-grid">
