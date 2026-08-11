@@ -153,6 +153,12 @@
   const VITESSE_ORBITE = 0.45;
   const timeScale = $derived(survole || selected !== null ? 0.06 : VITESSE_ORBITE);
 
+  // Repère sous le pointeur. Il reprend sa pleine opacité même s'il était
+  // atténué par la profondeur ou par ce qui passe devant : viser une étiquette
+  // suffit à la rendre lisible, sans avoir à attendre que son orbite la ramène
+  // au premier plan.
+  let survoleRepere = $state<number | null>(null);
+
   // Hauteur d'un repère, en pixels. Sert de boîte de collision pour calculer
   // ce qui en recouvre quelle part.
   const MARKER_H = 26;
@@ -162,6 +168,10 @@
   const posesLissees: { x: number; y: number; o: number }[] = [];
   const LISSAGE_POS = 0.35;
   const LISSAGE_OPACITE = 0.1;
+  // Le fondu de retour est lent, à dessein. Celui qui répond au pointeur ne
+  // peut pas l'être : une étiquette qui met une seconde à s'allumer sous la
+  // souris passe pour cassée.
+  const LISSAGE_OPACITE_VISEE = 0.3;
   // Un repère entièrement masqué ne descend pas à zéro : on doit comprendre
   // qu'il est passé derrière quelque chose, pas qu'il a disparu.
   const OPACITE_MASQUEE = 0.08;
@@ -257,25 +267,25 @@
         masque = Math.max(masque, recouvrementDisque(cibleX, cibleY, w, coreX, coreY, core.r));
       }
 
-      // Le repère décrit par le panneau ouvert ne se masque jamais : c'est le
-      // seul lien visible entre la planète et le texte qu'on est en train de
-      // lire.
-      const cibleO =
-        n.colorIdx === selected
-          ? 1
-          : (0.55 + 0.45 * n.depth) * (1 - (1 - OPACITE_MASQUEE) * masque);
+      // Deux façons pour un repère de reprendre sa pleine visibilité : le
+      // pointeur le vise, ou le panneau ouvert le décrit. Sinon il suit sa
+      // planète, d'autant plus pâle qu'elle est loin derrière.
+      const vise = n.colorIdx === selected || n.colorIdx === survoleRepere;
+      const cibleO = vise ? 1 : (0.34 + 0.66 * n.depth) * (1 - (1 - OPACITE_MASQUEE) * masque);
       const p = (posesLissees[n.colorIdx] ??= { x: cibleX, y: cibleY, o: cibleO });
       p.x += (cibleX - p.x) * LISSAGE_POS;
       p.y += (cibleY - p.y) * LISSAGE_POS;
-      p.o += (cibleO - p.o) * LISSAGE_OPACITE;
+      p.o += (cibleO - p.o) * (vise ? LISSAGE_OPACITE_VISEE : LISSAGE_OPACITE);
       devant.push({ x: p.x, y: p.y, w });
 
       el.style.transform = `translate3d(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px, 0) translateX(-50%)`;
       el.style.opacity = p.o.toFixed(3);
       // Un repère presque effacé ne doit pas intercepter le clic : on viserait
       // la planète du dessus et on ouvrirait la mauvaise fonctionnalité.
-      el.style.pointerEvents = p.o < 0.3 ? 'none' : 'auto';
-      el.style.zIndex = String(10 + Math.round(n.depth * 10));
+      el.style.pointerEvents = p.o < 0.25 ? 'none' : 'auto';
+      // Un repère visé passe devant tout le reste, sinon l'étiquette qu'on
+      // vient d'allumer resterait lue à travers celle qui la recouvre.
+      el.style.zIndex = vise ? '30' : String(10 + Math.round(n.depth * 10));
 
       if (ringEl && n.colorIdx === selected) {
         ringEl.style.transform = `translate3d(${cx}px, ${cy}px, 0) translate(-50%, -50%)`;
@@ -427,6 +437,14 @@
               bind:this={markerEls[f.idx]}
               aria-pressed={selected === f.idx}
               onclick={() => toggle(f.idx)}
+              onpointerenter={() => (survoleRepere = f.idx)}
+              onpointerleave={() => {
+                if (survoleRepere === f.idx) survoleRepere = null;
+              }}
+              onfocus={() => (survoleRepere = f.idx)}
+              onblur={() => {
+                if (survoleRepere === f.idx) survoleRepere = null;
+              }}
             >
               <span class="dot" aria-hidden="true"></span>
               {f.label}
