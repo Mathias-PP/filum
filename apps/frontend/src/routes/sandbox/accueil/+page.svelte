@@ -58,8 +58,8 @@
     {
       idx: 0,
       label: 'Extraction',
-      title: 'Vous collez une URL, la source se remplit',
-      body: "Titre, auteur·ices, date, DOI, revue : Philum va les chercher chez l'éditeur. Vous relisez au lieu de recopier.",
+      title: 'Les références se remplissent toutes seules',
+      body: "URL, BibTeX, RIS, PDF ou bibliographie collée : Philum reconnaît les références, puis va chercher titre, auteur·ices, date, DOI et revue chez l'éditeur. Vous relisez au lieu de recopier.",
       color: '#528FFF',
     },
     {
@@ -146,12 +146,14 @@
   // ralenti tient aussi tant qu'un panneau est ouvert : la bague qui entoure
   // la planète décrite reste alors lisible.
   let survole = $state(false);
-  // Les orbites tournent au ralenti en permanence : une étiquette collée à sa
-  // planète traverse l'écran à la vitesse de celle-ci, et au rythme nominal
-  // elle défilait plus vite qu'on ne la lit. Le survol, lui, fige presque tout,
-  // sinon le repère qu'on vise a dérivé au moment du clic.
-  const VITESSE_ORBITE = 0.45;
-  const timeScale = $derived(survole || selected !== null ? 0.06 : VITESSE_ORBITE);
+  // Les orbites tournent un peu sous le rythme nominal : une étiquette collée à
+  // sa planète traverse l'écran à la vitesse de celle-ci, et à 1 elle défilait
+  // plus vite qu'on ne la lit. Approcher le pointeur ralentit sans figer : une
+  // scène arrêtée passe pour cassée, et depuis qu'un nœud se dépose là où on le
+  // lâche, viser n'est plus le seul recours contre la dérive.
+  const VITESSE_ORBITE = 0.8;
+  const VITESSE_VISEE = 0.22;
+  const timeScale = $derived(selected !== null ? 0.12 : survole ? VITESSE_VISEE : VITESSE_ORBITE);
 
   // Repère sous le pointeur. Il reprend sa pleine opacité même s'il était
   // atténué par la profondeur ou par ce qui passe devant : viser une étiquette
@@ -327,6 +329,40 @@
     { texte: '« Les canaux gliaux se dilatent à l’endormissement. »', etat: 'illisible' },
   ];
 
+  // Trois constats, une phrase chacun. Une page d'accueil n'a pas à démontrer :
+  // elle pose le problème, la fiche de démo fait le reste.
+  const CONSTATS = [
+    {
+      constat: 'Votre travail de sourçage ne se voit pas.',
+      reponse: 'Une liste de liens en description, personne ne l’ouvre. Une fiche, oui.',
+    },
+    {
+      constat: 'Vérifier coûte trop cher.',
+      reponse: 'Un PDF de trente pages déplace le travail. Une fiche montre le passage exact.',
+    },
+    {
+      constat: 'Le web bouge.',
+      reponse: 'Capture datée de chaque source, passages relus : ce qui a changé est écrit.',
+    },
+  ];
+
+  // Ce que Philum apporte quand le lecteur est une machine. Trois phrases, pas
+  // de promesse sur la véracité de l'IA : on réduit ce sur quoi elle s'appuie.
+  const LECTURE_IA = [
+    {
+      titre: 'Un corpus choisi par vous',
+      texte: 'Douze sources que vous avez retenues, plutôt qu’une recherche à l’aveugle.',
+    },
+    {
+      titre: 'Des citations qui existent',
+      texte: 'Chaque passage a été retrouvé mot pour mot dans sa source avant publication.',
+    },
+    {
+      titre: 'Lisible sans deviner',
+      texte: 'La même fiche se sert en page, en Markdown, en JSON et via un serveur MCP.',
+    },
+  ];
+
   const PUBLICS = [
     {
       titre: 'Vulgarisateur·ices',
@@ -368,9 +404,9 @@
           <span class="accent">partager vos références</span>
         </h1>
         <p class="lede">
-          Philum prend l’URL de votre contenu, en extrait les références, retrouve les passages que
-          vous citez dans les pages d’origine, et publie tout ça en une fiche que votre audience
-          peut parcourir.
+          Rassemblez les sources d’une vidéo, d’un article ou d’un podcast, dites ce que chacune
+          apporte à votre propos, et publiez une page que votre audience ouvre au lieu de vous
+          croire sur parole.
         </p>
         <div class="ctas">
           {#if isAuthenticated}
@@ -402,7 +438,8 @@
         </div>
         <p class="hint">
           <span class="hint-dot" aria-hidden="true"></span>
-          Cliquez une planète : elle dit ce que Philum sait faire.
+          Cliquez une planète : elle dit ce que Philum sait faire. Attrapez-la, elle reste où vous la
+          posez.
         </p>
       </div>
 
@@ -474,27 +511,48 @@
     </div>
   </section>
 
-  <!-- ===================== TROIS GESTES ===================== -->
+  <!-- ===================== POURQUOI ===================== -->
+  <section class="constats">
+    <div class="wrap">
+      <h2 class="section-title" use:reveal>Pourquoi une fiche ?</h2>
+      <p class="section-lede" use:reveal>
+        Publier ses sources est possible partout. Encore faut-il qu’on les lise.
+      </p>
+
+      <div class="constats-grid">
+        {#each CONSTATS as c, i (c.constat)}
+          <div class="constat" use:reveal style="transition-delay: {i * 80}ms">
+            <h3>{c.constat}</h3>
+            <p>{c.reponse}</p>
+          </div>
+        {/each}
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== COMMENT SE FAIT UNE FICHE ===================== -->
   <section class="gestes">
     <div class="wrap">
-      <h2 class="section-title" use:reveal>Trois gestes, et la fiche existe</h2>
+      <h2 class="section-title" use:reveal>Comment une fiche se fabrique</h2>
       <p class="section-lede" use:reveal>
-        Rien à saisir deux fois. Ce que la page d’origine contient déjà, Philum le lit.
+        Trois temps. Le premier est presque entièrement automatique, les deux autres vous
+        appartiennent.
       </p>
 
       <div class="geste" use:reveal>
         <div class="geste-copy">
           <span class="geste-n">01</span>
-          <h3>Coller une URL</h3>
+          <h3>Rassembler les sources</h3>
           <p>
-            La page de votre vidéo, de votre article ou de votre étude. Philum en sort les
-            références citées, puis remplit chaque source à la ligne : titre, auteur·ices, date,
-            identifiant, archive.
+            L’URL de votre contenu, un export de votre gestionnaire, un PDF, ou une bibliographie
+            collée telle quelle. Philum reconnaît les références et complète chaque source : titre,
+            auteur·ices, date, identifiant, revue.
           </p>
         </div>
         <div class="demo demo-fields" aria-hidden="true">
           <div class="demo-bar"><span></span><span></span><span></span></div>
           <div class="demo-url">https://youtu.be/…</div>
+          <p class="demo-alt">ou BibTeX · RIS · CSL-JSON · PDF · biblio collée</p>
           {#each CHAMPS as champ, i (champ.cle)}
             <div class="field" style="--d: {i * 220}ms">
               <span class="field-key">{champ.cle}</span>
@@ -507,10 +565,10 @@
       <div class="geste reverse" use:reveal>
         <div class="geste-copy">
           <span class="geste-n">02</span>
-          <h3>Citer un passage</h3>
+          <h3>Dire ce que chaque source apporte</h3>
           <p>
-            Le passage reste mot pour mot celui de la source. Vous lui ajoutez un intitulé et une
-            phrase qui le situe, écrits à côté du verbatim, jamais dedans.
+            Le passage cité est recopié mot pour mot de la source. Vous l’intitulez, vous le situez,
+            et vous dites ce qu’il fait à votre propos : il appuie, il nuance, il contredit.
           </p>
         </div>
         <div class="demo demo-quote" aria-hidden="true">
@@ -523,10 +581,10 @@
       <div class="geste" use:reveal>
         <div class="geste-copy">
           <span class="geste-n">03</span>
-          <h3>Relire la source</h3>
+          <h3>Publier, et que ça tienne</h3>
           <p>
-            Un an plus tard, la page a bougé. Philum relit et rend un verdict par citation. Une page
-            illisible se dit illisible : elle n’accuse pas la citation d’être fausse.
+            La fiche devient une page publique où chaque source s’ouvre. Philum en garde une capture
+            datée et relit les passages cités : quand une page a bougé, c’est écrit sur la fiche.
           </p>
         </div>
         <div class="demo demo-verdicts" aria-hidden="true">
@@ -550,6 +608,31 @@
     </div>
   </section>
 
+  <!-- ===================== QUAND C'EST UNE IA QUI LIT ===================== -->
+  <section class="ia">
+    <div class="wrap">
+      <h2 class="section-title" use:reveal>Et quand c’est une IA qui lit</h2>
+      <p class="section-lede" use:reveal>
+        De plus en plus, la question n’est pas posée à vous mais à un assistant. Une fiche se donne
+        à lire aux deux.
+      </p>
+
+      <div class="constats-grid">
+        {#each LECTURE_IA as l, i (l.titre)}
+          <div class="constat" use:reveal style="transition-delay: {i * 80}ms">
+            <h3>{l.titre}</h3>
+            <p>{l.texte}</p>
+          </div>
+        {/each}
+      </div>
+
+      <p class="ia-limite" use:reveal>
+        Ça ne rend pas l’assistant véridique. Ça réduit ce sur quoi il s’appuie à ce que vous avez
+        choisi.
+      </p>
+    </div>
+  </section>
+
   <!-- ===================== POUR QUI ===================== -->
   <section class="publics">
     <div class="wrap">
@@ -568,8 +651,8 @@
   <!-- ===================== CTA ===================== -->
   <section class="final">
     <div class="wrap narrow" use:reveal>
-      <h2>Vos sources méritent d’être ouvertes.</h2>
-      <p>Créez votre première fiche en quelques minutes. C’est gratuit.</p>
+      <h2>Une liste de liens ne vaut pas une fiche.</h2>
+      <p>La vôtre prend quelques minutes à faire. C’est gratuit.</p>
       {#if isAuthenticated}
         <a class="cta-light" href="/dashboard">Accéder au tableau de bord</a>
       {:else}
@@ -953,6 +1036,38 @@
     max-width: 34rem;
     line-height: 1.6;
   }
+  .constats {
+    background: rgb(var(--bg-primary));
+    padding: 5.5rem 0;
+  }
+  .constats-grid {
+    display: grid;
+    gap: 1.25rem;
+  }
+  @media (min-width: 900px) {
+    .constats-grid {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2.25rem;
+    }
+  }
+  .constat {
+    border-top: 2px solid rgb(var(--info));
+    padding-top: 1.1rem;
+  }
+  .constat h3 {
+    font-family: var(--font-serif);
+    font-size: 1.25rem;
+    font-weight: 500;
+    color: rgb(var(--text-primary));
+    margin-bottom: 0.6rem;
+    line-height: 1.35;
+  }
+  .constat p {
+    color: rgb(var(--text-secondary));
+    line-height: 1.68;
+    font-size: 0.94rem;
+  }
+
   .gestes {
     background: rgb(var(--bg-secondary));
     padding: 5.5rem 0;
@@ -1016,6 +1131,11 @@
     padding: 0.45rem 0.6rem;
     border: 1px dashed rgb(var(--border));
     border-radius: 8px;
+    margin-bottom: 0.5rem;
+  }
+  .demo-alt {
+    font-size: 0.72rem;
+    color: rgb(var(--text-tertiary));
     margin-bottom: 0.9rem;
   }
   .field {
@@ -1126,8 +1246,23 @@
     color: rgb(var(--text-tertiary));
   }
 
-  .publics {
+  .ia {
     background: rgb(var(--bg-primary));
+    padding: 5.5rem 0;
+  }
+  .ia-limite {
+    margin-top: 2.5rem;
+    text-align: center;
+    font-size: 0.88rem;
+    color: rgb(var(--text-tertiary));
+    max-width: 34rem;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.6;
+  }
+
+  .publics {
+    background: rgb(var(--bg-secondary));
     padding: 5.5rem 0;
   }
   .publics-grid {
@@ -1172,13 +1307,29 @@
     color: rgb(var(--text-secondary));
   }
 
+  /* La page se referme sur le noir du hero plutôt que sur un bleu à elle : ce
+     bleu ardoise ne se raccordait ni à la scène, ni aux sections claires. */
   .final {
-    background: #101a30;
+    position: relative;
+    background: var(--hero-void);
     color: white;
     padding: 5.5rem 0;
+    overflow: hidden;
   }
-  :global(.dark) .final {
-    background: #0b1220;
+  .final::before {
+    content: '';
+    position: absolute;
+    inset: -40% 0 auto;
+    height: 200%;
+    background: radial-gradient(
+      ellipse 60% 50% at 50% 0%,
+      rgba(82, 143, 255, 0.16),
+      transparent 70%
+    );
+    pointer-events: none;
+  }
+  .final .wrap {
+    position: relative;
   }
   .final h2 {
     font-family: var(--font-serif);
