@@ -973,6 +973,40 @@
           anchorR: CORE_R,
         }));
         const displacement = Array.from({ length: 8 }, () => ({ x: 0, y: 0 }));
+
+        // Un nœud lâché reste où on l'a posé et continue d'y tourner : son
+        // déplacement n'est plus ramené à zéro. Il faut donc le borner, sinon
+        // on peut pousser une planète dans le pulsar ou hors du cadre, et elle
+        // n'en revient jamais.
+        const RAYON_MIN = CORE_R + 0.09;
+        const RAYON_MAX = 0.94;
+
+        /**
+         * Ramène un déplacement dans la couronne autorisée autour du cœur.
+         * `ease` dose la correction : franche pendant le drag pour que le doigt
+         * sente le mur, très douce ensuite pour que l'orbite qui sort du cadre
+         * rentre sans à-coup.
+         */
+        function contenirDansCouronne(
+          d: { x: number; y: number },
+          bx: number,
+          by: number,
+          ease: number
+        ) {
+          // Un nœud qu'on n'a jamais touché garde son orbite telle quelle. Sans
+          // cette sortie, la couronne repousserait aussi les planètes qui
+          // frôlent le cœur naturellement, et la scène au repos changerait.
+          if (d.x === 0 && d.y === 0) return;
+          const px = bx + d.x - coreDisp.x;
+          const py = by + d.y - coreDisp.y;
+          const dist = Math.hypot(px, py);
+          if (dist < 1e-4) return;
+          const borne = Math.min(RAYON_MAX, Math.max(RAYON_MIN, dist));
+          if (borne === dist) return;
+          const k = borne / dist;
+          d.x += (px * k + coreDisp.x - bx - d.x) * ease;
+          d.y += (py * k + coreDisp.y - by - d.y) * ease;
+        }
         const hoverTarget = new Array(8).fill(0) as number[];
         const hoverCurrent = program.uniforms.uHoverNode.value as number[];
         let hoverCoreTarget = 0;
@@ -1016,11 +1050,11 @@
             // dérivée y est recalculée, le drag s'applique par-dessus).
             if (p.role !== 'moon' && p.role !== 'forkTwin') {
               const isDragging = p.colorIdx === draggingNodeKey;
-              const dispTargetX = isDragging ? currentMouse.x - lx : 0;
-              const dispTargetY = isDragging ? currentMouse.y - ly : 0;
-              const ease = isDragging ? 0.28 : 0.08;
-              displacement[i].x += (dispTargetX - displacement[i].x) * ease;
-              displacement[i].y += (dispTargetY - displacement[i].y) * ease;
+              if (isDragging) {
+                displacement[i].x += (currentMouse.x - lx - displacement[i].x) * 0.28;
+                displacement[i].y += (currentMouse.y - ly - displacement[i].y) * 0.28;
+              }
+              contenirDansCouronne(displacement[i], lx, ly, isDragging ? 0.5 : 0.05);
             }
             computed[i].x = lx + displacement[i].x;
             computed[i].y = ly + displacement[i].y;
@@ -1040,14 +1074,15 @@
             return -1;
           };
           // Drag pour nœuds dérivés (moon / twins) : le déplacement s'applique
-          // par-dessus la position dérivée, retour easé à la libération.
+          // par-dessus la position dérivée et se garde après le lâcher, comme
+          // pour les nœuds réguliers.
           const applyDerivedDrag = (idx: number, bx: number, by: number) => {
             const isDragging = NODES[idx].colorIdx === draggingNodeKey;
-            const dtx = isDragging ? currentMouse.x - bx : 0;
-            const dty = isDragging ? currentMouse.y - by : 0;
-            const ease = isDragging ? 0.28 : 0.08;
-            displacement[idx].x += (dtx - displacement[idx].x) * ease;
-            displacement[idx].y += (dty - displacement[idx].y) * ease;
+            if (isDragging) {
+              displacement[idx].x += (currentMouse.x - bx - displacement[idx].x) * 0.28;
+              displacement[idx].y += (currentMouse.y - by - displacement[idx].y) * 0.28;
+            }
+            contenirDansCouronne(displacement[idx], bx, by, isDragging ? 0.5 : 0.05);
             computed[idx].x = bx + displacement[idx].x;
             computed[idx].y = by + displacement[idx].y;
           };
