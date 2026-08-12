@@ -12,6 +12,11 @@ de la memoire a la construction. L'index sera une migration a lui seul, le
 jour ou le volume le demande : `CREATE INDEX CONCURRENTLY` ne reecrit pas la
 table.
 
+Le type est qualifie par le schema ou l'extension se trouve reellement. A
+l'execution en revanche, l'operateur de distance `<=>` est resolu par le
+search_path de la session : si pgvector vit hors de `public`, la requete de
+similarite devra le verifier le jour ou elle sera ecrite.
+
 Revision ID: 036_excerpt_embeddings
 Revises: 035_excerpt_context
 """
@@ -44,27 +49,20 @@ def _schema_du_type_vector(conn) -> str | None:
 
 def upgrade() -> None:
     conn = op.get_bind()
-    # Sans `WITH SCHEMA`, l'extension atterrit dans le premier schema du
-    # search_path, qui n'est pas garanti. Le type doit etre joignable non
-    # qualifie : les casts `::vector` emis a l'execution ne portent pas de
-    # schema.
-    op.execute("CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public")
+    op.execute("CREATE EXTENSION IF NOT EXISTS vector")
 
+    # Ou l'extension a atterri n'est pas notre affaire. Sur une base nue elle
+    # va dans `public` ; sur Supabase elle est souvent deja la, dans le schema
+    # `extensions`, et `CREATE EXTENSION IF NOT EXISTS` est alors un no-op qui
+    # ignore tout `WITH SCHEMA`. Imposer `public` reviendrait a faire echouer
+    # la migration au demarrage du backend, donc a le mettre en boucle de
+    # redemarrage, pour une contrainte qu'on peut simplement lever en
+    # qualifiant le type.
     schema = _schema_du_type_vector(conn)
     if schema is None:
         raise RuntimeError(
             "pgvector n'est pas disponible sur cette base. "
             "Sur Supabase : Database > Extensions > activer `vector`."
-        )
-    if schema != "public":
-        # `CREATE EXTENSION IF NOT EXISTS` est un no-op quand l'extension
-        # existe deja ailleurs : le `WITH SCHEMA` ci-dessus a ete ignore. On
-        # s'arrete plutot que de creer une table dont les requetes echoueront
-        # a l'execution, loin d'ici et sans rapport apparent.
-        raise RuntimeError(
-            f"pgvector est installe dans le schema `{schema}`, or les casts "
-            "`::vector` emis par l'application ne sont pas qualifies. "
-            "Corriger avec : ALTER EXTENSION vector SET SCHEMA public;"
         )
 
     op.create_table(
@@ -88,7 +86,8 @@ def upgrade() -> None:
         sa.UniqueConstraint("excerpt_id", "model", name="uq_excerpt_embedding_model"),
     )
     op.execute(
-        f"ALTER TABLE excerpt_embeddings ALTER COLUMN embedding TYPE vector({EMBEDDING_DIM})"
+        f"ALTER TABLE excerpt_embeddings "
+        f"ALTER COLUMN embedding TYPE {schema}.vector({EMBEDDING_DIM})"
     )
 
     # Meme verrou que la migration 030 : Supabase expose `public` en REST et la
