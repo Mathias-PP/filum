@@ -36,6 +36,7 @@ from app.schemas.source import SourceExcerptResponse
 from app.services.chunker import Unite, chunk_text, compter, suggerer_taille
 from app.services.document_text import MAX_BYTES, DocumentError, extract_text
 from app.services.excerpt_anchor import Selecteurs, ancrer
+from app.services.excerpt_indexing import indexer_sans_bruit
 from app.services.llm import suggest_annotation, suggest_chunk_titles, suggest_excerpts
 
 router = APIRouter(prefix="/sources/{source_id}/excerpts", tags=["excerpts"])
@@ -217,6 +218,7 @@ async def create_excerpt(
     db.add(excerpt)
     await db.commit()
     await db.refresh(excerpt)
+    await indexer_sans_bruit(db, [excerpt])
     return excerpt
 
 
