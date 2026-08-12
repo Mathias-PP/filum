@@ -66,6 +66,59 @@ jobs:
           # n'est perdu, et le scan cesse de punir des noms de tests explicites.
           extra_args: --exclude-paths=.trufflehogignore --exclude-detectors=Lob
 
+  # Les tests tournent sous SQLite via `Base.metadata.create_all` : aucune
+  # migration Alembic n'y est jamais executee. Une migration cassee n'etait
+  # donc decouverte qu'au demarrage du backend en production, ou l'echec fait
+  # rollback de la transaction DDL et boucle au redemarrage. Ce job la joue sur
+  # un vrai Postgres, avec pgvector, avant qu'elle n'y arrive.
+  migrations-backend:
+    name: Migrations Postgres
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: filum
+          POSTGRES_PASSWORD: filum
+          POSTGRES_DB: filum_migrations
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # Minuscules : `case_sensitive=True` dans pydantic-settings (ADR-010).
+      database_url: postgresql+asyncpg://filum:filum@localhost:5432/filum_migrations
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+        working-directory: apps/backend
+
+      - name: Upgrade head
+        run: uv run alembic upgrade head
+        working-directory: apps/backend
+        timeout-minutes: 5
+
+      # Une migration qui monte mais ne redescend pas condamne tout retour en
+      # arriere. Le cycle complet verifie que le `downgrade` est ecrit.
+      - name: Downgrade puis re-upgrade
+        run: uv run alembic downgrade -1 && uv run alembic upgrade head
+        working-directory: apps/backend
+        timeout-minutes: 5
+
   lint-backend:
     name: Lint Backend
     runs-on: ubuntu-latest

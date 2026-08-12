@@ -38,6 +38,11 @@ dependencies = [
     # une e2-micro d'un gigaoctet, un binding compile n'y tient pas. Les
     # .docx et .odt sont lus sans dependance (zipfile + defusedxml).
     "pypdf>=6.0.0",
+    # Type SQLAlchemy `vector` et operateurs de distance de pgvector. Pur
+    # Python, aucune extension compilee : ce sont les bindings officiels, et
+    # les ecrire a la main reviendrait a recopier un UserDefinedType et les
+    # trois operateurs de distance sans rien y gagner.
+    "pgvector>=0.3.6",
 ]
 
 [project.optional-dependencies]
