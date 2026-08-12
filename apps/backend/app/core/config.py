@@ -56,6 +56,13 @@ class Settings(BaseSettings):
     # quels, donc mode proxy.
     llm_direct_model: str = ""
 
+    # Modèle d'embedding, appelé sur la même racine que le chat, au format
+    # OpenAI `/embeddings`. Les vecteurs sont tronqués à 768 dimensions côté
+    # backend (cf. `services/embeddings.py`). Changer ce nom périme les
+    # vecteurs déjà calculés : la table les garde côte à côte, la bascule se
+    # fait quand la nouvelle série est complète.
+    embedding_model: str = "gemini-embedding-001"
+
     # GROBID (parsing structuré des références d'un PDF). Le Space officiel
     # kermitt2/grobid est PAUSED (2026-07) ; zfhxi/grobid est un duplicate
     # public réveillable. Les Spaces HF gratuits dorment (cold start ~2 min) :
