@@ -342,8 +342,9 @@
         'Renvoyer vers un PDF de trente pages, c’est refiler la recherche. Une fiche pointe le passage.',
     },
     {
-      constat: 'Le web bouge.',
-      reponse: 'Capture datée de chaque source, passages relus : ce qui a changé est écrit.',
+      constat: 'Les pages finissent par disparaître.',
+      reponse:
+        'Chaque source est archivée à la date où vous l’avez lue, et Philum vous prévient quand un passage cité n’y est plus.',
     },
   ];
 
