@@ -2,7 +2,21 @@
 
 > Snapshot vivant, 1 page max. **Pour l'historique détaillé** : voir [`CHANGELOG.md`](./CHANGELOG.md). **Pour les items long terme** : voir [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md).
 
-**Dernière mise à jour : 2026-08-11**
+**Dernière mise à jour : 2026-08-15**
+
+---
+
+## Session 2026-08-14/15 (autonome) — l'accueil explicatif revient en prod, réécrit
+
+La page d'accueil de production est désormais la version explicative (hero pulsar dont les sept planètes portent chacune une fonctionnalité), avec **tout son texte réécrit**. Le doublon d'atelier `/sandbox/accueil` est supprimé : la page vit en prod, il n'y a plus de raison de la maintenir en double.
+
+Ce qui change dans le discours, après une dizaine de passes de relecture :
+
+- l'accroche ne promet plus « des bibliographies vérifiables » mais **un espace de travail pour vos sources**, et la lede annonce les trois usages réels : publier pour son audience, retrouver une référence par son contenu, donner un corpus choisi à lire à une IA ;
+- une section **« Et pour votre propre travail »** est ajoutée : recherche par le sens dans ses propres extraits, liens entre ses lectures, bibliographie gardée privée jusqu'à la sortie du contenu ;
+- chaque phrase nomme les choses (« un article », « la phrase citée », « un paragraphe ») au lieu de « la source » ou « le contenu », et aucun chiffre non adossé au code ne subsiste.
+
+⚠️ La recherche par le sens est annoncée alors que l'endpoint n'est pas encore branché (fondations posées PRs #373-#375). Décision assumée : personne ne visite encore le site.
 
 ---
 
@@ -45,7 +59,7 @@ Le rendu des repères a demandé trois passes, chacune sur un défaut distinct c
 
 **VM redéployée le 2026-08-11** sur `main` (`d917981`), `/health` → 200. Le changement est purement frontend (Vercel), le redéploiement backend n'a fait que réaligner le dépôt de la VM.
 
-⛔ **Retiré le même jour (PR #367).** L'accueil de production est revenu à sa forme précédente, hero décoratif et trois sections. La version explicative n'est pas perdue : elle vit dans l'atelier sous `/sandbox/accueil` (route dev seulement), avec ses repères tenus et son fondu d'occultation. Les trois props ajoutées à `HeroPulsar` sont toutes optionnelles et restent en place, l'accueil restauré appelle le composant sans rien lui passer.
+⛔ **Retiré le même jour (PR #367)**, faute d'un texte à la hauteur : l'accueil est revenu à sa forme précédente et la version explicative a attendu dans l'atelier. ✅ **Remise en prod le 2026-08-15** une fois le texte entièrement réécrit (cf. session du 14/15 août en haut de ce fichier).
 
 ---
 
