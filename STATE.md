@@ -2,7 +2,23 @@
 
 > Snapshot vivant, 1 page max. **Pour l'historique détaillé** : voir [`CHANGELOG.md`](./CHANGELOG.md). **Pour les items long terme** : voir [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md).
 
-**Dernière mise à jour : 2026-08-15**
+**Dernière mise à jour : 2026-08-16**
+
+---
+
+## Session 2026-08-16 (autonome) — la recherche par le sens existe, et elle marche
+
+Les extraits sont désormais cherchables par le sens depuis `/dashboard/recherche`. Le chantier a démarré sur un constat : Philum calculait un vecteur pour chaque extrait et n'en lisait jamais aucun. Deux issues cohérentes, brancher la recherche ou retirer l'indexation ; c'est la première qui est faite.
+
+**PR #388 — la recherche.** `services/excerpt_search.py` (requête pgvector qualifiée par le schéma lu dans `pg_catalog`, jamais par le `search_path`), route `GET /api/v1/excerpts/search`, composant `ExcerptSearchResults`, écran `/dashboard/recherche`, bac à sable `/sandbox/recherche` pour voir les cinq états sans session. Le service rend `None` quand il ne peut pas répondre, et l'écran le dit : « la recherche n'a pas pu avoir lieu » ne se confond pas avec « aucun extrait ne s'approche ». Script `app.scripts.reindex_excerpts` pour rattraper les extraits saisis avant l'indexation.
+
+**PR #389 — l'indexation était morte en silence.** Le rattrapage lancé en production a rendu `0 vecteurs écrits sur 51 extraits`. Cause : Gemini sérialise en protobuf et élide toute valeur égale au défaut du type, donc le premier élément de chaque lot `/embeddings` n'a pas de champ `index`. Le tri levait une `KeyError`, capturée par le contrat « ne lève jamais » du service. Aucun extrait n'avait jamais eu de vecteur. La position dans le tableau tient désormais lieu d'index absent. 51 vecteurs écrits ensuite.
+
+**PR #390 — le seuil se cale sur des mesures.** Le plancher de 0.30 ne coupait rien : une recherche de tarte tatin rendait cinq extraits sur les phases du sommeil. Mesure sur le corpus réel, six questions étrangères entre 0.473 et 0.560, cinq questions du domaine entre 0.651 et 0.828. `SIMILARITE_MINIMALE` passe à 0.60, et les paliers de proximité découpent la plage utile au lieu de l'intervalle 0..1.
+
+Vérifié en production après déploiement : « recette de la tarte tatin » et « la reproduction des méduses » rendent zéro résultat, « sommeil et mémoire » en rend trois entre 0.71 et 0.73. pgvector est dans `public` sur cette base.
+
+Leçon : une CI verte ne prouve rien d'une fonctionnalité adossée à un service externe. Les tests tournent sur SQLite, qui n'a pas de type `vector`, et le seul journal de la panne était un `Embeddings failed: 'index'` anodin. C'est l'exercice du code path réel sur la VM qui a tout révélé.
 
 ---
 
