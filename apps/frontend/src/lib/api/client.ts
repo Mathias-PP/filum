@@ -15,6 +15,7 @@ import type {
   CardSearchResult,
   ChunkResponse,
   ChunkUnit,
+  ExcerptSearchResponse,
   ExcerptSuggestResponse,
   ExcerptVerifyResponse,
   ImportFromUrlResponse,
@@ -313,6 +314,18 @@ export const api = {
 
     delete: async (sourceId: string, excerptId: string): Promise<void> => {
       await request(`/sources/${sourceId}/excerpts/${excerptId}`, { method: 'DELETE' });
+    },
+
+    /**
+     * Cherche par le sens dans ses propres extraits, toutes fiches confondues.
+     *
+     * La comparaison porte sur des vecteurs : la question n'a pas besoin de
+     * reprendre les mots du passage. `available: false` dit que la recherche
+     * n'a pas pu avoir lieu, ce qui ne se confond pas avec zéro résultat.
+     */
+    search: async (query: string, limit = 20): Promise<ExcerptSearchResponse> => {
+      const params = new URLSearchParams({ q: query, limit: String(limit) });
+      return request<ExcerptSearchResponse>(`/excerpts/search?${params}`);
     },
 
     /**

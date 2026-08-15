@@ -6,6 +6,7 @@ from app.api.v1.endpoints import (
     card_connections,
     cards,
     discover,
+    excerpt_search,
     excerpts,
     feed,
     imports,
@@ -21,6 +22,7 @@ v1_router.include_router(auth.router)
 v1_router.include_router(card_connections.router)
 v1_router.include_router(cards.router)
 v1_router.include_router(discover.router)
+v1_router.include_router(excerpt_search.router)
 v1_router.include_router(excerpts.router)
 v1_router.include_router(feed.router)
 v1_router.include_router(imports.router)
