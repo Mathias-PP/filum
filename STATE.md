@@ -24,13 +24,22 @@ Ce qui change dans le discours, après une dizaine de passes de relecture :
 - **rythme** : les trois sections « D'où vient l'information », « Et pour votre propre travail » et « Interroger une IA » étaient trois grilles de cartes identiques. Elles deviennent respectivement un fil de questions sur rail tracé, un panneau unique à filets et glyphes, et une chaîne de maillons raccordés. La page alterne désormais nuit / jour / nuit ;
 - **environnement** : grain SVG sur les fonds sombres (contre les bandes de quantification), halos animés, apparitions décalées au défilement.
 
-**Reprises sur retour utilisateur (2026-08-15, PR #378 puis suivante)** :
+**Reprises de forme sur retour utilisateur (2026-08-15, PR #378 puis #379)** :
 
 - une planète traînée hors du cadre rogné passait sous le texte voisin et n'était plus rattrapable : `HeroPulsar` lit désormais les marges négatives de son hôte au `resize()` et borne le déplacement à la zone réellement cliquable ;
 - le hero et le fil de questions posaient chacun leur fond : la couture restait visible même à couleurs proches. Ils partagent maintenant un bloc `.nuit-haut` unique qui porte le dégradé, le voile et le grain ;
-- le rail du fil de questions démarrait au-dessus du premier point et se terminait en fondu. Chaque question porte à présent le segment qui la relie à la suivante, du centre d'un point au centre du suivant ; la dernière n'en porte aucun ;
-- les traits de raccord fondus entre les maillons de la section IA sont retirés ;
-- première retouche du texte depuis son gel : « retrouvez-les par leur contenu » devient « retrouvez une idée dans vos extraits sans rouvrir les sources ».
+- le rail du fil de questions démarrait au-dessus du premier point et se terminait en fondu. Chaque question porte à présent le segment qui la relie à la suivante, du centre d'un point au centre du suivant ; la dernière n'en porte aucun. Le tracé est branché sur l'action `reveal` : sans JavaScript le rail s'affiche entier plutôt qu'invisible ;
+- les traits de raccord fondus entre les maillons de la section IA sont retirés.
+
+**Reprises de texte (2026-08-15, PR #380 puis #381)**, relecture ligne à ligne avec l'utilisateur. Le texte n'était donc pas gelé : deux passes de plus ont été nécessaires.
+
+- **deux affirmations fausses retirées**, l'une et l'autre vérifiées dans le code avant décision :
+  - « Philum retourne régulièrement lire ces citations sur les sites d'origine » : `needs_recheck()` (`services/source_enrichment.py`) ne couvre que `retraction_checked_at` et `oa_checked_at`. **Aucune revérification périodique des extraits n'existe.** Le passage décrit maintenant ce que la fiche publiée affiche pour chaque citation, ce qui est vrai (`lireVerdict` sur la fiche publique) ;
+  - l'accès libre était présenté comme une version gratuite coexistant avec un article payant, ce qui sonne illégal. Formulation refaite sur ce que fait réellement `extractors/open_access.py` : interrogation d'OpenAlex, dépôt en archive ouverte (HAL, arXiv, PubMed Central) ou revue en accès libre ;
+- **aucun nom d'entreprise** dans le discours : ChatGPT, Claude, Gemini et Word sortent. Crossref, OpenAlex et Zotero restent, en tant que mécanisme interrogé ou format d'export visé, pas en tant que marque ;
+- **registre** : « quand ça sort », « à votre main », « trois gestes », « en bas de votre article », « dossier de PDF » sont remplacés ; les titres de section deviennent des questions (« D'où vient l'information ? », « Comment se construit une fiche bibliographique ? ») ;
+- les formulations creuses sont remplacées par ce qu'elles voulaient dire : « chaque référence est cliquable » disparaît, l'extrait de démonstration est allongé pour être parlant, et les suggestions automatiques d'intitulé et de contexte sont mentionnées ;
+- la lede a fini par « publiez-les pour votre audience, cherchez dans vos extraits par le sens, ou interrogez une IA sur ces sources et rien d'autre » après deux versions rejetées (trop longue, valeur pas claire).
 
 ---
 
