@@ -122,7 +122,13 @@ async def embed(textes: list[str]) -> list[list[float]] | None:
                 # L'ordre de `data` n'est pas garanti par la specification,
                 # seul `index` l'est. Trier coute une comparaison et evite
                 # d'attribuer un vecteur au mauvais passage.
-                for element in sorted(donnees, key=lambda d: d["index"]):
+                #
+                # `index` peut manquer : Gemini serialise en protobuf, ou une
+                # valeur egale au defaut du type est elidee, si bien que le
+                # premier element d'un lot n'a jamais de champ `index`. Exiger
+                # la cle faisait echouer tout appel, et l'indexation entiere
+                # avec. Sa position dans le tableau en tient lieu.
+                for _, element in sorted(enumerate(donnees), key=lambda p: p[1].get("index", p[0])):
                     vecteurs.append(tronquer_et_normaliser(element["embedding"]))
     except Exception as e:
         logger.warning("Embeddings failed: %s", e)
