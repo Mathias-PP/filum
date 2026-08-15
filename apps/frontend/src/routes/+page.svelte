@@ -352,10 +352,10 @@
   // plate ne permet.
   const USAGE_PRIVE = [
     {
-      glyphe: 'loupe',
-      titre: 'Retrouver une citation par ce qu’elle dit',
+      glyphe: 'passages',
+      titre: 'Réduire un article aux passages qui comptent',
       texte:
-        'Vous savez qu’un article avançait ce chiffre, mais lequel ? Décrivez l’idée : Philum cherche dans vos extraits et vous rend le passage avec sa référence.',
+        'Collez le texte ou déposez le document : Philum le découpe en passages et propose un intitulé pour chacun. Vous gardez ceux qui servent votre propos, vous laissez le reste.',
     },
     {
       glyphe: 'liens',
@@ -405,7 +405,7 @@
     {
       titre: 'Chercheur·ses',
       texte:
-        'Votre veille arrête de se perdre dans des PDF. Vous retrouvez une citation par ce qu’elle dit, et la bibliographie ressort en BibTeX, RIS ou CSL-JSON, prête à réimporter dans votre gestionnaire de références.',
+        'Votre veille arrête de se perdre dans des PDF : chaque lecture garde ses passages utiles et sa référence. La bibliographie ressort en BibTeX, RIS ou CSL-JSON, prête à réimporter dans votre gestionnaire de références.',
     },
     {
       titre: 'Enseignants et étudiants',
@@ -419,7 +419,7 @@
   <title>Philum | Un espace de travail pour vos sources</title>
   <meta
     name="description"
-    content="Rassemblez les articles, études, vidéos et podcasts sur lesquels vous travaillez. Chaque référence est accompagnée des citations exactes qui vous intéressent. Publiez-les pour votre audience, retrouvez une citation sans vous rappeler ses mots exacts, ou interrogez une IA sur ces sources et rien d’autre."
+    content="Rassemblez les articles, études, vidéos et podcasts sur lesquels vous travaillez. Chaque référence est accompagnée des citations exactes qui vous intéressent. Publiez-les pour votre audience, ou interrogez une IA sur ces sources et rien d’autre."
   />
 </svelte:head>
 
@@ -451,8 +451,7 @@
           <p class="lede">
             Rassemblez les articles, études, vidéos et podcasts sur lesquels vous travaillez. Chaque
             référence est accompagnée des citations exactes qui vous intéressent. Publiez-les pour
-            votre audience, retrouvez une citation sans vous rappeler ses mots exacts, ou interrogez
-            une IA sur ces sources et rien d’autre.
+            votre audience, ou interrogez une IA sur ces sources et rien d’autre.
           </p>
           <div class="ctas">
             {#if isAuthenticated}
@@ -699,11 +698,17 @@
         {#each USAGE_PRIVE as u (u.titre)}
           <article class="usage">
             <span class="glyphe" aria-hidden="true">
-              {#if u.glyphe === 'loupe'}
+              {#if u.glyphe === 'passages'}
+                <!-- Deux passages retenus dans un texte qui reste en arriere-plan. -->
                 <svg viewBox="0 0 40 40" fill="none">
-                  <path d="M6 11h13M6 18h9M6 25h6" stroke="currentColor" stroke-width="1.4" />
-                  <circle cx="26" cy="23" r="8.5" stroke="currentColor" stroke-width="1.6" />
-                  <path d="M32.5 29.5 37 34" stroke="currentColor" stroke-width="1.8" />
+                  <path
+                    d="M7 8h26M7 13h26M7 30h26M7 35h16"
+                    stroke="currentColor"
+                    stroke-width="1.2"
+                    opacity="0.4"
+                  />
+                  <rect x="6" y="17" width="28" height="4.5" rx="2.2" fill="currentColor" />
+                  <rect x="6" y="23.5" width="20" height="4.5" rx="2.2" fill="currentColor" />
                 </svg>
               {:else if u.glyphe === 'liens'}
                 <svg viewBox="0 0 40 40" fill="none">
