@@ -18,6 +18,12 @@ Ce qui change dans le discours, après une dizaine de passes de relecture :
 
 ⚠️ La recherche par le sens est annoncée alors que l'endpoint n'est pas encore branché (fondations posées PRs #373-#375). Décision assumée : personne ne visite encore le site.
 
+**Passe de mise en forme (2026-08-15, PR suivante)**, à texte constant, sur retour utilisateur :
+
+- **mobile** : la page débordait de 60 px sur la droite (une valeur en `nowrap` élargissait sa colonne de grille, corrigé par `min-width: 0`), la scène du hero réservait un carré plein écran de vide (rognée par marges négatives sous 1024 px), et un glissement vertical sur le canvas traînait une planète au lieu de faire défiler (`touch-action: pan-y` au pointeur grossier) ;
+- **rythme** : les trois sections « D'où vient l'information », « Et pour votre propre travail » et « Interroger une IA » étaient trois grilles de cartes identiques. Elles deviennent respectivement un fil de questions sur rail tracé, un panneau unique à filets et glyphes, et une chaîne de maillons raccordés. La page alterne désormais nuit / jour / nuit ;
+- **environnement** : grain SVG sur les fonds sombres (contre les bandes de quantification), halos animés, apparitions décalées au défilement.
+
 ---
 
 ## ✅ État production vérifié (2026-07-21)
