@@ -62,7 +62,7 @@
       idx: 1,
       label: 'Citations vérifiées',
       title: 'La citation est comparée à l’article d’origine',
-      body: 'Vous citez une phrase tirée d’un article. Philum retourne la lire sur le site de l’article et vous prévient si elle n’y figure plus telle quelle.',
+      body: 'Vous citez une phrase tirée d’un article. Philum va la lire sur le site d’origine et vous dit si elle y figure, caractère pour caractère.',
       color: '#73DB8C',
     },
     {
@@ -333,7 +333,7 @@
     {
       question: 'La source dit-elle vraiment ce qu’on lui fait dire ?',
       reponse:
-        'Vous récupérez les extraits cités, tels qu’ils sont écrits dans l’article, et le lien vous y emmène.',
+        'Vous lisez les extraits cités mot pour mot, à côté de la référence dont ils viennent.',
     },
     {
       question: 'Cette information est-elle toujours valable ?',
@@ -365,9 +365,9 @@
     },
     {
       glyphe: 'volet',
-      titre: 'Décider quand ça sort',
+      titre: 'Rester privé jusqu’à la publication',
       texte:
-        'Une bibliographie peut être gardée privée. Vous la rendez publique le jour où votre contenu sort, ou jamais.',
+        'Une bibliographie peut rester privée aussi longtemps que vous le voulez. Vous la rendez publique le jour où votre contenu paraît, ou jamais.',
     },
   ];
 
@@ -382,7 +382,7 @@
     {
       titre: 'Elle cite, elle ne résume pas',
       texte:
-        'Les réponses renvoient aux extraits d’origine, ceux que vous avez recopiés depuis les articles. Vous pouvez remonter à chacun et le lire.',
+        'Les réponses renvoient aux extraits que vous avez recopiés depuis les articles. Chaque extrait cité peut être ouvert et relu dans le texte dont il vient.',
     },
     {
       titre: 'Accessible depuis vos outils',
@@ -395,7 +395,7 @@
     {
       titre: 'Vulgarisateur·ices',
       texte:
-        'Un lien en description de la vidéo, et ceux qui doutent peuvent vérifier eux-mêmes. Vos heures de recherche cessent d’être invisibles.',
+        'Un lien en description de la vidéo, et ceux qui doutent peuvent vérifier par eux-mêmes. Vos heures de recherche cessent d’être invisibles.',
     },
     {
       titre: 'Journalistes',
@@ -405,12 +405,12 @@
     {
       titre: 'Chercheur·ses',
       texte:
-        'Votre veille arrête de se perdre dans un dossier de PDF. Vous retrouvez une citation par ce qu’elle dit, et la biblio repart dans Zotero.',
+        'Votre veille arrête de se perdre dans des PDF. Vous retrouvez une citation par ce qu’elle dit, et la bibliographie ressort en BibTeX, RIS ou CSL-JSON, prête à réimporter dans votre gestionnaire de références.',
     },
     {
       titre: 'Enseignants et étudiants',
       texte:
-        'Distribuez un dossier de lecture où chaque texte est réduit au paragraphe qui compte, référence complète incluse.',
+        'Distribuez un dossier de lecture où chaque texte est réduit aux paragraphes qui comptent, références complètes incluses.',
     },
   ];
 </script>
@@ -419,7 +419,7 @@
   <title>Philum | Un espace de travail pour vos sources</title>
   <meta
     name="description"
-    content="Rassemblez les articles, études, vidéos et podcasts sur lesquels vous travaillez. Chaque référence est accompagnée de la citation exacte que vous utilisez. Publiez-les pour votre audience, retrouvez une idée dans vos extraits sans rouvrir les sources, ou donnez-les à lire à une IA."
+    content="Rassemblez les articles, études, vidéos et podcasts sur lesquels vous travaillez. Chaque référence est accompagnée des citations exactes qui vous intéressent. Publiez-les pour votre audience, cherchez dans vos extraits par le sens, ou interrogez une IA sur ces sources et rien d’autre."
   />
 </svelte:head>
 
@@ -450,9 +450,9 @@
           </h1>
           <p class="lede">
             Rassemblez les articles, études, vidéos et podcasts sur lesquels vous travaillez. Chaque
-            référence est accompagnée de la citation exacte que vous utilisez. Publiez-les pour
-            votre audience, retrouvez une idée dans vos extraits sans rouvrir les sources, ou
-            donnez-les à lire à une IA.
+            référence est accompagnée des citations exactes qui vous intéressent. Publiez-les pour
+            votre audience, cherchez dans vos extraits par le sens, ou interrogez une IA sur ces
+            sources et rien d’autre.
           </p>
           <div class="ctas">
             {#if isAuthenticated}
@@ -596,8 +596,8 @@
         Comment se construit une fiche bibliographique&nbsp;?
       </h2>
       <p class="section-lede" use:reveal>
-        Trois gestes. Philum lit les pages, complète les références et vérifie les citations. Vous
-        gardez la main sur ce qui est dit et sur le jour où ça sort.
+        En trois étapes. Philum lit les pages, complète les références et vérifie les citations ;
+        vous décidez de ce qui est retenu.
       </p>
 
       <div class="geste" use:reveal>
@@ -606,10 +606,10 @@
           <h3>Rassembler les sources</h3>
           <p>
             Collez l’adresse de votre vidéo, de votre podcast ou de votre article. Philum en lit la
-            page ou la transcription, y repère les références et complète chacune. Un fichier
-            BibTeX, un PDF ou une bibliographie collée marchent aussi. Quand une étude est payante,
-            Philum interroge OpenAlex pour savoir s’il en existe une version en accès libre, déposée
-            en archive ouverte ou parue dans une revue gratuite, et donne le lien.
+            page ou la transcription, y repère les références et récupère pour chacune le titre, les
+            auteur·ices, la date, le DOI et la revue. Un fichier BibTeX, un PDF ou une bibliographie
+            collée marchent aussi. Pour les études, Philum signale celles qui sont en accès libre,
+            en archive ouverte comme HAL ou arXiv ou dans une revue ouverte, et mène droit au texte.
           </p>
         </div>
         <div class="demo demo-fields" aria-hidden="true">
@@ -632,8 +632,8 @@
           <p>
             Recopiez les passages qui vous intéressent. Philum vérifie qu’ils figurent bien dans
             l’article, caractère pour caractère. Vous dites ensuite ce que chacun fait à votre
-            propos : il l’appuie, il le nuance, il le contredit. Un intitulé et une phrase de mise
-            en situation peuvent s’y ajouter, à votre main ou depuis les suggestions que Philum vous
+            propos : il l’appuie, il le nuance, il le contredit. Un intitulé et une phrase de
+            contexte peuvent s’y ajouter, écrits par vous ou repris des suggestions que Philum
             propose.
           </p>
         </div>
@@ -644,7 +644,7 @@
             20 % de l’oxygène et du glucose de l’organisme. Cette dépense varie peu selon l’activité
             mentale : l’essentiel part dans le maintien de l’activité de base des neurones.&nbsp;»
           </p>
-          <p class="q-ctx">Ordre de grandeur posé en introduction.</p>
+          <p class="q-ctx">Introduction de l’article, avant l’argument sur le rôle du sommeil.</p>
         </div>
       </div>
 
@@ -653,11 +653,10 @@
           <span class="geste-n">03</span>
           <h3>Publier</h3>
           <p>
-            Votre bibliographie est en ligne, à mettre en description de votre vidéo ou en bas de
-            votre article. Chaque référence est cliquable, avec la citation que vous utilisez.
-            Philum retourne régulièrement lire ces citations sur les sites d’origine et signale
-            celles qui n’y figurent plus. Export en BibTeX, RIS, CSL, Markdown, JSON, tableur ou
-            traitement de texte.
+            Votre bibliographie est en ligne, à mettre en description de votre vidéo ou en fin
+            d’article. Chaque référence mène à l’article d’origine et montre les citations que vous
+            en avez tirées, avec le résultat de leur vérification. Export en BibTeX, RIS, CSL,
+            Markdown, JSON, tableur ou traitement de texte.
           </p>
         </div>
         <div class="demo demo-verdicts" aria-hidden="true">
@@ -689,8 +688,8 @@
     <div class="wrap">
       <h2 class="section-title" use:reveal>Et pour votre propre travail</h2>
       <p class="section-lede" use:reveal>
-        Publier n’est qu’un des usages. Une bibliographie peut rester privée aussi longtemps que
-        vous le voulez.
+        Une bibliographie sert d’abord à celle ou celui qui la tient, bien avant d’être lue par
+        quelqu’un d’autre.
       </p>
 
       <div class="etabli" use:reveal>
