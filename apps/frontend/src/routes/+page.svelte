@@ -333,7 +333,7 @@
     {
       question: 'La source dit-elle vraiment ce qu’on lui fait dire ?',
       reponse:
-        'Vous lisez les extraits cités mot pour mot, à côté de la référence dont ils viennent.',
+        'Vous lisez les extraits cités mot pour mot, à côté de la référence d’où ils viennent.',
     },
     {
       question: 'Cette information est-elle toujours valable ?',
@@ -365,7 +365,7 @@
     },
     {
       glyphe: 'volet',
-      titre: 'Rester privé jusqu’à la publication',
+      titre: 'Restez en mode privé si vous le souhaitez',
       texte:
         'Une bibliographie peut rester privée aussi longtemps que vous le voulez. Vous la rendez publique le jour où votre contenu paraît, ou jamais.',
     },
@@ -382,7 +382,7 @@
     {
       titre: 'Elle cite, elle ne résume pas',
       texte:
-        'Les réponses renvoient aux extraits que vous avez recopiés depuis les articles. Chaque extrait cité peut être ouvert et relu dans le texte dont il vient.',
+        'Les réponses renvoient aux extraits que vous avez sélectionnés dans les articles. Chaque extrait cité peut être ouvert et relu dans le texte d’où il vient.',
     },
     {
       titre: 'Accessible depuis vos outils',
@@ -419,7 +419,7 @@
   <title>Philum | Un espace de travail pour vos sources</title>
   <meta
     name="description"
-    content="Rassemblez les articles, études, vidéos et podcasts sur lesquels vous travaillez. Chaque référence est accompagnée des citations exactes qui vous intéressent. Publiez-les pour votre audience, cherchez dans vos extraits par le sens, ou interrogez une IA sur ces sources et rien d’autre."
+    content="Rassemblez les articles, études, vidéos et podcasts sur lesquels vous travaillez. Chaque référence est accompagnée des citations exactes qui vous intéressent. Publiez-les pour votre audience, retrouvez une citation sans vous rappeler ses mots exacts, ou interrogez une IA sur ces sources et rien d’autre."
   />
 </svelte:head>
 
@@ -451,8 +451,8 @@
           <p class="lede">
             Rassemblez les articles, études, vidéos et podcasts sur lesquels vous travaillez. Chaque
             référence est accompagnée des citations exactes qui vous intéressent. Publiez-les pour
-            votre audience, cherchez dans vos extraits par le sens, ou interrogez une IA sur ces
-            sources et rien d’autre.
+            votre audience, retrouvez une citation sans vous rappeler ses mots exacts, ou interrogez
+            une IA sur ces sources et rien d’autre.
           </p>
           <div class="ctas">
             {#if isAuthenticated}
@@ -631,10 +631,10 @@
           <h3>Citer les passages utilisés</h3>
           <p>
             Recopiez les passages qui vous intéressent. Philum vérifie qu’ils figurent bien dans
-            l’article, caractère pour caractère. Vous dites ensuite ce que chacun fait à votre
-            propos : il l’appuie, il le nuance, il le contredit. Un intitulé et une phrase de
-            contexte peuvent s’y ajouter, écrits par vous ou repris des suggestions que Philum
-            propose.
+            l’article, caractère pour caractère. Vous indiquez ensuite le rôle de chaque passage
+            dans votre démonstration : il l’appuie, il la nuance, il la contredit. Un intitulé et
+            une phrase de contexte peuvent s’y ajouter, écrits par vous ou repris des suggestions
+            que Philum propose.
           </p>
         </div>
         <div class="demo demo-quote" aria-hidden="true">
@@ -644,7 +644,10 @@
             20 % de l’oxygène et du glucose de l’organisme. Cette dépense varie peu selon l’activité
             mentale : l’essentiel part dans le maintien de l’activité de base des neurones.&nbsp;»
           </p>
-          <p class="q-ctx">Introduction de l’article, avant l’argument sur le rôle du sommeil.</p>
+          <p class="q-ctx">
+            Chiffre de départ de l’article : la dépense ne bougeant pas avec l’activité mentale, le
+            sommeil ne peut pas être une simple mise en veille énergétique.
+          </p>
         </div>
       </div>
 
@@ -752,8 +755,8 @@
       </h2>
       <p class="section-lede" use:reveal>
         Les questions sont de plus en plus posées à un assistant IA plutôt qu’à un moteur de
-        recherche. Ces outils ne citent pas les sources sur lesquelles ils s’appuient, et il leur
-        arrive d’inventer.
+        recherche. Les sources qu’ils citent sont ramassées au fil de la réponse : rien ne dit
+        qu’elles font autorité, ni qu’elles disent ce qu’on leur fait dire.
       </p>
 
       <div class="chaine">
