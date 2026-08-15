@@ -39,7 +39,19 @@ Ce qui change dans le discours, après une dizaine de passes de relecture :
 - **aucun nom d'entreprise** dans le discours : ChatGPT, Claude, Gemini et Word sortent. Crossref, OpenAlex et Zotero restent, en tant que mécanisme interrogé ou format d'export visé, pas en tant que marque ;
 - **registre** : « quand ça sort », « à votre main », « trois gestes », « en bas de votre article », « dossier de PDF » sont remplacés ; les titres de section deviennent des questions (« D'où vient l'information ? », « Comment se construit une fiche bibliographique ? ») ;
 - les formulations creuses sont remplacées par ce qu'elles voulaient dire : « chaque référence est cliquable » disparaît, l'extrait de démonstration est allongé pour être parlant, et les suggestions automatiques d'intitulé et de contexte sont mentionnées ;
-- la lede a fini par « publiez-les pour votre audience, cherchez dans vos extraits par le sens, ou interrogez une IA sur ces sources et rien d'autre » après deux versions rejetées (trop longue, valeur pas claire).
+- la lede a fini par « publiez-les pour votre audience, retrouvez une citation sans vous rappeler ses mots exacts, ou interrogez une IA sur ces sources et rien d'autre » (PR #383 ; « chercher par le sens » ne voulait rien dire pour un lecteur).
+
+**Troisième passe de texte (2026-08-15, PR #383)** : neuf corrections de plus, dont une correction de fond. La section IA affirmait que les assistants ne citent pas leurs sources, ce qui est faux : la plupart les citent. Le problème réel est ailleurs, et c'est celui que Philum traite : rien ne garantit que ces sources font autorité ni qu'elles disent ce qu'on leur fait dire.
+
+**Cohérence visuelle sur tout le front (2026-08-15)**. Six recettes de verre divergentes coexistaient, chacune inventée sur place (`/85 blur-md`, `/90 blur-xs`, `slate-900/80` codé en dur et donc cassé en thème clair). Une seule recette les remplace.
+
+- `app.css` porte `.glass` (fond translucide, flou, saturation, reflet spéculaire haut) et `.glass-panel` (arête, élévation), pilotées par des jetons `--glass-*` déclinés en clair et en sombre. **Règle d'usage écrite dans le fichier : le verre ne va que sur les surfaces qui flottent au-dessus du contenu** (en-tête collant, menus, fenêtres modales, notifications, surimpressions de graphe) ; toute surface qui porte de la prose reste opaque ;
+- deux replis d'accessibilité : `@supports not (backdrop-filter)` et `prefers-reduced-transparency: reduce`. Ce second repli est actif sur la machine de l'utilisateur (réglage Windows « Effets de transparence » désactivé) : **le verre y rend opaque, c'est voulu.** Le reflet, l'arête, l'élévation, l'aura et les micro-interactions survivent toutes au repli, donc la cohérence tient sans le flou ;
+- `+layout.svelte` est le vecteur de cohérence, présent sur chaque page : en-tête en verre dont l'arête et l'ombre n'apparaissent qu'au défilement, souligné de navigation détaché du flux qui se déploie depuis le centre, `.page-aura` posée sur toute route sauf `/` (qui a son aurore), et transition de page de 180 ms à la navigation ;
+- dix classes désignaient des jetons de thème inexistants (`border-border-subtle`, `bg-surface-elevated`). Elles retombaient silencieusement sur le gris de Tailwind, donc fausses en sombre ;
+- relief au survol étendu aux grilles restantes (`discover`, `discover/creators`) et aux rangées du tableau de bord, avec un décalage volontairement plus court sur ces dernières : trois pixels y feraient onduler la liste entière.
+
+Deux pièges de couche de cascade, notés parce qu'ils reviendront : le CSS non calqué en fin d'`app.css` bat les utilitaires Tailwind (d'où la barre d'accent des notifications repositionnée en absolu, le raccourci `border` de `.glass-panel` tuant un `border-l-4`), et une règle scopée par Svelte gagne en spécificité sur `.glass`, ce qui est exactement ce qui permet à `.site-header.is-scrolled` de fonctionner.
 
 ---
 

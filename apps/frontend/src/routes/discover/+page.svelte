@@ -265,7 +265,7 @@
         <li>
           <a
             href="/@{r.creator_slug}/{r.slug}"
-            class="block h-full bg-surface-primary border border-border rounded-xl p-5 hover:border-border-strong transition-colors"
+            class="hover-lift block h-full bg-surface-primary border border-border rounded-xl p-5"
           >
             <div class="flex items-center gap-2 text-xs text-ink-tertiary mb-2">
               <span>{PLATFORM_LABELS[r.platform] ?? r.platform}</span>

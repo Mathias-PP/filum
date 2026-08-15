@@ -63,7 +63,7 @@
       {#each groups as [day, entries] (day)}
         <li>
           <h2
-            class="text-sm font-medium text-ink-tertiary uppercase tracking-wide mb-3 pb-1 border-b border-border-subtle"
+            class="text-sm font-medium text-ink-tertiary uppercase tracking-wide mb-3 pb-1 border-b border-border"
           >
             {fmtDate(day)}
           </h2>

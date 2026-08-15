@@ -624,10 +624,18 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    transition: border-color 150ms ease;
+    transition:
+      border-color 150ms ease,
+      transform 150ms cubic-bezier(0.2, 0.7, 0.3, 1),
+      box-shadow 150ms ease;
   }
+  /* Relief volontairement plus court que `.hover-lift` : ces rangees sont
+     empilees a quelques pixels d'intervalle, un decalage de trois pixels y
+     ferait onduler la liste entiere sous le curseur. */
   .card-row:hover {
     border-color: rgb(var(--border-strong));
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px -10px rgb(var(--text-primary) / 0.22);
   }
   .card-row-actions {
     display: flex;

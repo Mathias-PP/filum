@@ -312,7 +312,7 @@
   }
 </script>
 
-<div class="space-y-3 rounded-lg border border-border-subtle bg-surface-secondary p-3">
+<div class="space-y-3 rounded-lg border border-border bg-surface-secondary p-3">
   <!--
     Le champ de collage vient en premier : c'est le geste d'entree. Il etait
     sous les reglages et sous le bouton « Proposer un decoupage », si bien que
@@ -460,7 +460,7 @@
 
     <ul class="space-y-2">
       {#each chunks as chunk, i (chunk.start)}
-        <li class="rounded-lg border border-border-subtle bg-surface-primary p-2">
+        <li class="rounded-lg border border-border bg-surface-primary p-2">
           {#if chunk.title}
             <p class="mb-1 text-xs font-medium text-ink-primary">{chunk.title}</p>
           {/if}
@@ -478,16 +478,14 @@
           {/if}
 
           {#if ouvertes.has(cle(chunk))}
-            <div
-              class="mt-2 space-y-1.5 rounded border border-border-subtle bg-surface-secondary p-2"
-            >
+            <div class="mt-2 space-y-1.5 rounded border border-border bg-surface-secondary p-2">
               <input
                 type="text"
                 value={chunk.title ?? ''}
                 maxlength={200}
                 placeholder="Intitulé — 2 à 6 mots pour retrouver ce passage"
                 oninput={(e) => setTitle(i, e.currentTarget.value)}
-                class="w-full rounded border border-border-subtle bg-surface-primary px-2 py-1 text-xs font-medium text-ink-primary placeholder:text-ink-placeholder"
+                class="w-full rounded border border-border bg-surface-primary px-2 py-1 text-xs font-medium text-ink-primary placeholder:text-ink-placeholder"
               />
               <textarea
                 value={chunk.context ?? ''}
@@ -495,7 +493,7 @@
                 maxlength={500}
                 placeholder="Une phrase qui situe ce passage pour qui le lit hors de son document…"
                 oninput={(e) => setContext(i, e.currentTarget.value)}
-                class="w-full rounded border border-border-subtle bg-surface-primary px-2 py-1 text-xs text-ink-primary placeholder:text-ink-placeholder"
+                class="w-full rounded border border-border bg-surface-primary px-2 py-1 text-xs text-ink-primary placeholder:text-ink-placeholder"
               ></textarea>
               <div class="flex flex-wrap items-center gap-2">
                 <Button
