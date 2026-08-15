@@ -418,7 +418,7 @@
   <title>Philum | Un espace de travail pour vos sources</title>
   <meta
     name="description"
-    content="Rassemblez les articles, études, vidéos et podcasts sur lesquels vous travaillez. Chaque référence est accompagnée de la citation exacte que vous utilisez. Publiez-les pour votre audience, retrouvez-les par leur contenu, ou donnez-les à lire à une IA."
+    content="Rassemblez les articles, études, vidéos et podcasts sur lesquels vous travaillez. Chaque référence est accompagnée de la citation exacte que vous utilisez. Publiez-les pour votre audience, retrouvez une idée dans vos extraits sans rouvrir les sources, ou donnez-les à lire à une IA."
   />
 </svelte:head>
 
@@ -450,7 +450,8 @@
           <p class="lede">
             Rassemblez les articles, études, vidéos et podcasts sur lesquels vous travaillez. Chaque
             référence est accompagnée de la citation exacte que vous utilisez. Publiez-les pour
-            votre audience, retrouvez-les par leur contenu, ou donnez-les à lire à une IA.
+            votre audience, retrouvez une idée dans vos extraits sans rouvrir les sources, ou
+            donnez-les à lire à une IA.
           </p>
           <div class="ctas">
             {#if isAuthenticated}
@@ -1229,33 +1230,6 @@
     padding-left: 1.75rem;
     list-style: none;
   }
-  /* Le rail se trace au défilement, il n'est pas juste posé. */
-  .fil-list::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0.55rem;
-    bottom: 2.5rem;
-    width: 1px;
-    background: linear-gradient(
-      to bottom,
-      rgba(159, 227, 208, 0.5),
-      rgba(120, 160, 240, 0.35) 55%,
-      transparent
-    );
-    transform-origin: top;
-    animation: railIn 1.4s cubic-bezier(0.2, 0.7, 0.3, 1) both;
-  }
-  @keyframes railIn {
-    from {
-      transform: scaleY(0);
-      opacity: 0;
-    }
-    to {
-      transform: scaleY(1);
-      opacity: 1;
-    }
-  }
   .fil-item {
     position: relative;
     padding: 1.6rem 0;
@@ -1263,6 +1237,34 @@
   }
   .fil-item:last-child {
     border-bottom: 0;
+  }
+  /* Le rail n'est pas un trait unique posé derrière la liste : chaque question
+     porte le segment qui la relie à la suivante. Il part donc du centre de son
+     point et s'arrête au centre du point d'après, sans amorce en l'air ni
+     fondu dans le vide. La dernière question n'en porte aucun : le fil finit
+     sur elle. */
+  .fil-item::before {
+    content: '';
+    position: absolute;
+    left: -1.75rem;
+    top: calc(2.1rem + 4.5px);
+    bottom: calc(-2.1rem - 4.5px);
+    width: 1px;
+    background: linear-gradient(to bottom, rgba(159, 227, 208, 0.42), rgba(120, 160, 240, 0.32));
+    transform-origin: top;
+  }
+  .fil-item:last-child::before {
+    content: none;
+  }
+  /* Le segment se trace quand sa question arrive à l'écran. L'état de repos
+     est porté par l'attribut que pose l'action reveal : sans JavaScript le
+     rail reste entier plutôt qu'invisible. */
+  .fil-item:global([data-reveal])::before {
+    transform: scaleY(0);
+    transition: transform 900ms cubic-bezier(0.2, 0.7, 0.3, 1);
+  }
+  .fil-item:global([data-reveal].is-revealed)::before {
+    transform: scaleY(1);
   }
   .fil-node {
     position: absolute;
@@ -1611,30 +1613,10 @@
     background: #9fe3d0;
     box-shadow: 0 0 14px rgba(159, 227, 208, 0.8);
   }
-  /* Le raccord entre deux maillons : vertical en colonne, horizontal en
-     ligne. C'est lui qui dit que les trois moments s'enchaînent. */
-  .maillon:not(:last-child)::after {
-    content: '';
-    position: absolute;
-    left: calc(1.5rem + 4px);
-    bottom: -1rem;
-    width: 1px;
-    height: 1rem;
-    background: linear-gradient(to bottom, rgba(159, 227, 208, 0.5), rgba(159, 227, 208, 0.12));
-  }
   @media (min-width: 900px) {
     .chaine {
       grid-template-columns: repeat(3, 1fr);
       gap: 1.75rem;
-    }
-    .maillon:not(:last-child)::after {
-      left: auto;
-      bottom: auto;
-      top: -1px;
-      right: -1.75rem;
-      width: 1.75rem;
-      height: 1px;
-      background: linear-gradient(to right, rgba(159, 227, 208, 0.5), rgba(159, 227, 208, 0.12));
     }
   }
   .maillon h3 {
@@ -1845,8 +1827,8 @@
     .ring.on {
       animation: none;
     }
-    .fil-list::before {
-      animation: none;
+    .fil-item:global([data-reveal])::before {
+      transition: none;
     }
     :global([data-reveal].is-revealed) .field,
     :global([data-reveal].is-revealed) .verdict {

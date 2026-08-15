@@ -24,6 +24,14 @@ Ce qui change dans le discours, après une dizaine de passes de relecture :
 - **rythme** : les trois sections « D'où vient l'information », « Et pour votre propre travail » et « Interroger une IA » étaient trois grilles de cartes identiques. Elles deviennent respectivement un fil de questions sur rail tracé, un panneau unique à filets et glyphes, et une chaîne de maillons raccordés. La page alterne désormais nuit / jour / nuit ;
 - **environnement** : grain SVG sur les fonds sombres (contre les bandes de quantification), halos animés, apparitions décalées au défilement.
 
+**Reprises sur retour utilisateur (2026-08-15, PR #378 puis suivante)** :
+
+- une planète traînée hors du cadre rogné passait sous le texte voisin et n'était plus rattrapable : `HeroPulsar` lit désormais les marges négatives de son hôte au `resize()` et borne le déplacement à la zone réellement cliquable ;
+- le hero et le fil de questions posaient chacun leur fond : la couture restait visible même à couleurs proches. Ils partagent maintenant un bloc `.nuit-haut` unique qui porte le dégradé, le voile et le grain ;
+- le rail du fil de questions démarrait au-dessus du premier point et se terminait en fondu. Chaque question porte à présent le segment qui la relie à la suivante, du centre d'un point au centre du suivant ; la dernière n'en porte aucun ;
+- les traits de raccord fondus entre les maillons de la section IA sont retirés ;
+- première retouche du texte depuis son gel : « retrouvez-les par leur contenu » devient « retrouvez une idée dans vos extraits sans rouvrir les sources ».
+
 ---
 
 ## ✅ État production vérifié (2026-07-21)
