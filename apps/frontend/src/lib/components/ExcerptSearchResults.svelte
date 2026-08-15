@@ -14,10 +14,17 @@
 
   let { resultats, question, cherche = false, indisponible = false, erreur = '' }: Props = $props();
 
-  /** Le degré de proximité, en mots plutôt qu'en nombre. */
+  /**
+   * Le degré de proximité, en mots plutôt qu'en nombre.
+   *
+   * Les paliers suivent la plage réellement utile du modèle : le backend ne
+   * renvoie rien sous 0.60, et le corpus de production plafonne vers 0.83.
+   * Découper cette plage-là, et non l'intervalle 0..1, évite que tout soit
+   * « très proche » ou que rien ne le soit.
+   */
   function proximite(similarite: number): string {
-    if (similarite >= 0.7) return 'très proche';
-    if (similarite >= 0.5) return 'proche';
+    if (similarite >= 0.78) return 'très proche';
+    if (similarite >= 0.68) return 'proche';
     return 'de loin';
   }
 </script>
