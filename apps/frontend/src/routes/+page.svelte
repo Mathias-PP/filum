@@ -97,7 +97,7 @@
       idx: 6,
       label: 'Export',
       title: 'La bibliographie sort dans le format de votre outil',
-      body: 'BibTeX, RIS, CSL, Word, tableur, Markdown, JSON. Votre bibliographie seule, ou avec celle des sources qu’elle cite.',
+      body: 'BibTeX, RIS, CSL, Markdown, JSON, tableur, traitement de texte. Votre bibliographie seule, ou avec celle des sources qu’elle cite.',
       color: '#FFDB6B',
     },
   ];
@@ -333,16 +333,17 @@
     {
       question: 'La source dit-elle vraiment ce qu’on lui fait dire ?',
       reponse:
-        'Vous lisez la phrase telle qu’elle est écrite dans l’article, et le lien vous y emmène.',
+        'Vous récupérez les extraits cités, tels qu’ils sont écrits dans l’article, et le lien vous y emmène.',
     },
     {
-      question: 'Est-ce que ça tient toujours ?',
+      question: 'Cette information est-elle toujours valable ?',
       reponse:
         'Une étude peut être rétractée des années après. Philum le vérifie auprès de Crossref et l’affiche.',
     },
     {
-      question: 'Et si le site a fermé ?',
-      reponse: 'La page a été copiée le jour où elle a été lue. Cette copie reste consultable.',
+      question: 'Et si le site n’est plus accessible ?',
+      reponse:
+        'Chaque page est archivée le jour où elle est citée. Si elle change ou disparaît, l’archive reste lisible.',
     },
   ];
 
@@ -386,7 +387,7 @@
     {
       titre: 'Accessible depuis vos outils',
       texte:
-        'Un serveur MCP permet d’interroger vos pages depuis Claude ou ChatGPT. Le reste s’exporte en JSON, JSON-LD, Markdown, CSV, BibTeX, RIS et CSL.',
+        'Un serveur MCP permet d’interroger vos pages depuis un assistant IA compatible. Le reste s’exporte en JSON, JSON-LD, Markdown, CSV, BibTeX, RIS et CSL.',
     },
   ];
 
@@ -569,7 +570,7 @@
        agit. Les questions sont un fil, pas trois cartes côte à côte. -->
     <section class="fil night">
       <div class="wrap">
-        <h2 class="section-title" use:reveal>D’où vient l’information</h2>
+        <h2 class="section-title" use:reveal>D’où vient l’information&nbsp;?</h2>
         <p class="section-lede" use:reveal>
           Une émission cite un chiffre. Une vidéo recommande une pratique. La source existe quelque
           part, mais presque personne n’ira la chercher.
@@ -591,9 +592,12 @@
   <!-- ===================== COMMENT SE FAIT UNE FICHE ===================== -->
   <section class="gestes">
     <div class="wrap">
-      <h2 class="section-title" use:reveal>Comment se fabrique une bibliographie</h2>
+      <h2 class="section-title" use:reveal>
+        Comment se construit une fiche bibliographique&nbsp;?
+      </h2>
       <p class="section-lede" use:reveal>
-        Philum fait le travail mécanique. Vous décidez de ce qui est publié.
+        Trois gestes. Philum lit les pages, complète les références et vérifie les citations. Vous
+        gardez la main sur ce qui est dit et sur le jour où ça sort.
       </p>
 
       <div class="geste" use:reveal>
@@ -603,9 +607,9 @@
           <p>
             Collez l’adresse de votre vidéo, de votre podcast ou de votre article. Philum en lit la
             page ou la transcription, y repère les références et complète chacune. Un fichier
-            BibTeX, un PDF ou une bibliographie collée marchent aussi. Quand une étude est derrière
-            un péage, Philum regarde s’il en existe une version déposée en accès libre par ses
-            auteurs et donne le lien.
+            BibTeX, un PDF ou une bibliographie collée marchent aussi. Quand une étude est payante,
+            Philum interroge OpenAlex pour savoir s’il en existe une version en accès libre, déposée
+            en archive ouverte ou parue dans une revue gratuite, et donne le lien.
           </p>
         </div>
         <div class="demo demo-fields" aria-hidden="true">
@@ -624,17 +628,22 @@
       <div class="geste reverse" use:reveal>
         <div class="geste-copy">
           <span class="geste-n">02</span>
-          <h3>Citer la phrase utilisée</h3>
+          <h3>Citer les passages utilisés</h3>
           <p>
-            Recopiez la phrase ou le paragraphe qui vous a servi. Philum vérifie qu’il figure bien
-            dans l’article, caractère pour caractère. Vous lui donnez un titre, et vous dites ce
-            qu’il fait à votre propos : il l’appuie, il le nuance, il le contredit. C’est vous qui
-            le dites, rien n’est déduit à votre place.
+            Recopiez les passages qui vous intéressent. Philum vérifie qu’ils figurent bien dans
+            l’article, caractère pour caractère. Vous dites ensuite ce que chacun fait à votre
+            propos : il l’appuie, il le nuance, il le contredit. Un intitulé et une phrase de mise
+            en situation peuvent s’y ajouter, à votre main ou depuis les suggestions que Philum vous
+            propose.
           </p>
         </div>
         <div class="demo demo-quote" aria-hidden="true">
-          <p class="q-title">Coût énergétique</p>
-          <p class="q-text">«&nbsp;Le cerveau consomme 20 % de l’oxygène au repos.&nbsp;»</p>
+          <p class="q-title">Coût énergétique du cerveau</p>
+          <p class="q-text">
+            «&nbsp;Le cerveau représente environ 2 % de la masse corporelle, mais consomme près de
+            20 % de l’oxygène et du glucose de l’organisme. Cette dépense varie peu selon l’activité
+            mentale : l’essentiel part dans le maintien de l’activité de base des neurones.&nbsp;»
+          </p>
           <p class="q-ctx">Ordre de grandeur posé en introduction.</p>
         </div>
       </div>
@@ -647,8 +656,8 @@
             Votre bibliographie est en ligne, à mettre en description de votre vidéo ou en bas de
             votre article. Chaque référence est cliquable, avec la citation que vous utilisez.
             Philum retourne régulièrement lire ces citations sur les sites d’origine et signale
-            celles qui n’y figurent plus. Export en BibTeX, RIS, CSL, Word, tableur, Markdown ou
-            JSON.
+            celles qui n’y figurent plus. Export en BibTeX, RIS, CSL, Markdown, JSON, tableur ou
+            traitement de texte.
           </p>
         </div>
         <div class="demo demo-verdicts" aria-hidden="true">
@@ -743,8 +752,8 @@
         Interroger une IA sur des sources que vous avez choisies
       </h2>
       <p class="section-lede" use:reveal>
-        Les questions sont de plus en plus posées à ChatGPT, Claude ou Gemini plutôt qu’à un moteur
-        de recherche. Ces outils ne citent pas les sources sur lesquelles ils s’appuient, et il leur
+        Les questions sont de plus en plus posées à un assistant IA plutôt qu’à un moteur de
+        recherche. Ces outils ne citent pas les sources sur lesquelles ils s’appuient, et il leur
         arrive d’inventer.
       </p>
 
