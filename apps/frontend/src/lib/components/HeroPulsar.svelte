@@ -784,6 +784,14 @@
 
         let rectW = 1;
         let rectH = 1;
+        // Bords de la zone où une planète reste attrapable. La page rogne la
+        // scène par marges négatives (elle est carrée alors que le pulsar
+        // n'occupe que son centre) : une planète traînée dans la partie rognée
+        // passe sous le texte voisin et devient impossible à reprendre. On lit
+        // donc les marges du conteneur plutôt que de les recopier ici, sans
+        // quoi la borne mentirait dès qu'une media query change le rognage.
+        let bordX = 1;
+        let bordY = 1;
         function resize() {
           if (!wrapEl) return;
           const rect = wrapEl.getBoundingClientRect();
@@ -793,6 +801,17 @@
           program.uniforms.uResolution.value.set(rect.width, rect.height);
           const aa = 2 / Math.max(rect.height, 1);
           program.uniforms.uAaPixel.value.set(aa, aa);
+          const hote = wrapEl.parentElement;
+          const cs = hote ? getComputedStyle(hote) : null;
+          const rogne = (v: string | undefined) => Math.max(0, -(parseFloat(v ?? '0') || 0));
+          const hautRogne = (rogne(cs?.marginTop) + rogne(cs?.marginBottom)) / 2;
+          const cotesRogne = (rogne(cs?.marginLeft) + rogne(cs?.marginRight)) / 2;
+          const aspect = rect.width / Math.max(rect.height, 1);
+          bordY = Math.max(0.3, 1 - (hautRogne / Math.max(rect.height, 1)) * 2 - 0.08);
+          bordX = Math.max(
+            0.3,
+            aspect - (cotesRogne / Math.max(rect.width, 1)) * 2 * aspect - 0.08
+          );
         }
         resize();
         const ro = new ResizeObserver(resize);
@@ -1002,10 +1021,14 @@
           const dist = Math.hypot(px, py);
           if (dist < 1e-4) return;
           const borne = Math.min(RAYON_MAX, Math.max(RAYON_MIN, dist));
-          if (borne === dist) return;
-          const k = borne / dist;
-          d.x += (px * k + coreDisp.x - bx - d.x) * ease;
-          d.y += (py * k + coreDisp.y - by - d.y) * ease;
+          const k = borne === dist ? 1 : borne / dist;
+          // Après la couronne, la boîte : elle seule garantit que la planète
+          // reste dans la partie de la scène qui n'est pas rognée, donc
+          // qu'elle reste cliquable.
+          const cibleX = Math.min(bordX, Math.max(-bordX, px * k + coreDisp.x));
+          const cibleY = Math.min(bordY, Math.max(-bordY, py * k + coreDisp.y));
+          d.x += (cibleX - bx - d.x) * ease;
+          d.y += (cibleY - by - d.y) * ease;
         }
         const hoverTarget = new Array(8).fill(0) as number[];
         const hoverCurrent = program.uniforms.uHoverNode.value as number[];

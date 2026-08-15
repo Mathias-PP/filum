@@ -331,17 +331,17 @@
   // capture Wayback pour la disparition.
   const QUESTIONS = [
     {
-      question: 'La source dit-elle vraiment ce qu’on lui fait dire ?',
+      question: 'La source dit-elle vraiment ce qu’on lui fait dire ?',
       reponse:
         'Vous lisez la phrase telle qu’elle est écrite dans l’article, et le lien vous y emmène.',
     },
     {
-      question: 'Est-ce que ça tient toujours ?',
+      question: 'Est-ce que ça tient toujours ?',
       reponse:
         'Une étude peut être rétractée des années après. Philum le vérifie auprès de Crossref et l’affiche.',
     },
     {
-      question: 'Et si le site a fermé ?',
+      question: 'Et si le site a fermé ?',
       reponse: 'La page a été copiée le jour où elle a été lue. Cette copie reste consultable.',
     },
   ];
@@ -354,7 +354,7 @@
       glyphe: 'loupe',
       titre: 'Retrouver une citation par ce qu’elle dit',
       texte:
-        'Vous savez qu’un article avançait ce chiffre, mais lequel ? Décrivez l’idée : Philum cherche dans vos extraits et vous rend le passage avec sa référence.',
+        'Vous savez qu’un article avançait ce chiffre, mais lequel ? Décrivez l’idée : Philum cherche dans vos extraits et vous rend le passage avec sa référence.',
     },
     {
       glyphe: 'liens',
@@ -425,158 +425,167 @@
 <svelte:window onkeydown={onWindowKeydown} />
 
 <div class="page">
-  <!-- ===================== HERO ===================== -->
-  <section class="hero">
-    <div class="hero-stars" aria-hidden="true"></div>
-    <div class="hero-aurora" aria-hidden="true"></div>
-
-    <div class="hero-inner">
-      <div class="hero-copy">
-        <p class="eyebrow">Un espace de travail pour vos sources</p>
-        <h1>
-          Vous allez adorer<br />
-          <span class="accent">partager vos références</span>
-        </h1>
-        <p class="lede">
-          Rassemblez les articles, études, vidéos et podcasts sur lesquels vous travaillez. Chaque
-          référence est accompagnée de la citation exacte que vous utilisez. Publiez-les pour votre
-          audience, retrouvez-les par leur contenu, ou donnez-les à lire à une IA.
-        </p>
-        <div class="ctas">
-          {#if isAuthenticated}
-            <a class="cta-primary" href="/dashboard">Tableau de bord</a>
-          {:else}
-            <a class="cta-primary" href={googleLoginUrl}>
-              <svg class="g" viewBox="0 0 24 24" aria-hidden="true">
-                <path
-                  fill="currentColor"
-                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
-                />
-                <path
-                  fill="currentColor"
-                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                />
-                <path
-                  fill="currentColor"
-                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                />
-                <path
-                  fill="currentColor"
-                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                />
-              </svg>
-              Continuer avec Google
-            </a>
-          {/if}
-          <a class="cta-ghost" href="/@example/memoire-et-cerveau">Voir une fiche →</a>
-        </div>
-        <!-- Au doigt, on ne traîne pas une planète : le geste sert à faire
-             défiler la page. La seconde phrase ne s'affiche donc qu'au
-             pointeur fin. -->
-        <p class="hint">
-          <span class="hint-dot" aria-hidden="true"></span>
-          <span>
-            <span class="hint-clic">Cliquez</span><span class="hint-touche">Touchez</span> une
-            planète, elle dit ce que Philum sait faire.<span class="hint-plus"
-              >&#32;Attrapez-la, elle reste où vous la posez.</span
-            >
-          </span>
-        </p>
-      </div>
-
-      <!-- La scène : canvas + repères DOM par-dessus. -->
-      <div
-        class="stage"
-        class:is-open={selected !== null}
-        bind:this={stageEl}
-        role="group"
-        aria-label="Fonctionnalités de Philum, en orbite"
-        onpointerenter={() => (survole = true)}
-        onpointerleave={() => (survole = false)}
-      >
-        <div class="stage-canvas" bind:this={canvasBoxEl}>
-          <HeroPulsar {selected} {timeScale} onselect={toggle} onframe={handleFrame} />
-        </div>
-
-        <div
-          class="ring"
-          class:on={selected !== null && floating}
-          bind:this={ringEl}
-          aria-hidden="true"
-        ></div>
-
-        <div class="markers" class:floating={positioned && floating}>
-          {#each FEATURES as f (f.idx)}
-            <button
-              type="button"
-              class="marker"
-              class:active={selected === f.idx}
-              style:--dot={f.color}
-              bind:this={markerEls[f.idx]}
-              aria-pressed={selected === f.idx}
-              onclick={() => toggle(f.idx)}
-              onpointerenter={() => (survoleRepere = f.idx)}
-              onpointerleave={() => {
-                if (survoleRepere === f.idx) survoleRepere = null;
-              }}
-              onfocus={() => (survoleRepere = f.idx)}
-              onblur={() => {
-                if (survoleRepere === f.idx) survoleRepere = null;
-              }}
-            >
-              <span class="dot" aria-hidden="true"></span>
-              {f.label}
-            </button>
-          {/each}
-        </div>
-      </div>
-    </div>
-
-    <!-- Le panneau vit sous la grille : il ne recouvre jamais la scène, et sa
-         place est réservée pour que l'ouverture ne pousse pas la page. -->
-    <div class="panel-slot" aria-live="polite">
-      {#if openFeature}
-        {#key openFeature.idx}
-          <div class="panel" style:--dot={openFeature.color}>
-            <span class="panel-dot" aria-hidden="true"></span>
-            <div>
-              <h2>{openFeature.title}</h2>
-              <p>{openFeature.body}</p>
-            </div>
-            <button type="button" class="panel-close" onclick={() => (selected = null)}>
-              Fermer
-            </button>
-          </div>
-        {/key}
-      {/if}
-    </div>
-  </section>
-
-  <!-- ===================== POURQUOI ===================== -->
-  <!-- Prolonge la nuit du hero : le doute appartient encore au monde d'avant
-       Philum. La page ne s'éclaire qu'à la section suivante, quand l'outil
-       agit. Les questions sont un fil, pas trois cartes côte à côte. -->
-  <section class="fil night">
+  <!-- Le hero et la section qui suit sont deux moments d'une même nuit. Le
+       dégradé est porté par ce bloc, pas par chaque section : deux fonds
+       voisins, même proches, laissent toujours voir la ligne qui les
+       sépare. -->
+  <div class="nuit-haut">
+    <!-- Halos et grain couvrent les deux sections d'un seul tenant. Portés par
+         chacune, ils s'arrêtaient net à la frontière et dessinaient la couture
+         que le fond continu venait justement d'effacer. -->
     <div class="veil" aria-hidden="true"></div>
     <div class="grain" aria-hidden="true"></div>
-    <div class="wrap">
-      <h2 class="section-title" use:reveal>D’où vient l’information</h2>
-      <p class="section-lede" use:reveal>
-        Une émission cite un chiffre. Une vidéo recommande une pratique. La source existe quelque
-        part, mais presque personne n’ira la chercher.
-      </p>
+    <!-- ===================== HERO ===================== -->
+    <section class="hero">
+      <div class="hero-stars" aria-hidden="true"></div>
+      <div class="hero-aurora" aria-hidden="true"></div>
 
-      <ol class="fil-list">
-        {#each QUESTIONS as q (q.question)}
-          <li class="fil-item" use:reveal>
-            <span class="fil-node" aria-hidden="true"></span>
-            <h3>{q.question}</h3>
-            <p>{q.reponse}</p>
-          </li>
-        {/each}
-      </ol>
-    </div>
-  </section>
+      <div class="hero-inner">
+        <div class="hero-copy">
+          <p class="eyebrow">Un espace de travail pour vos sources</p>
+          <h1>
+            Vous allez adorer<br />
+            <span class="accent">partager vos références</span>
+          </h1>
+          <p class="lede">
+            Rassemblez les articles, études, vidéos et podcasts sur lesquels vous travaillez. Chaque
+            référence est accompagnée de la citation exacte que vous utilisez. Publiez-les pour
+            votre audience, retrouvez-les par leur contenu, ou donnez-les à lire à une IA.
+          </p>
+          <div class="ctas">
+            {#if isAuthenticated}
+              <a class="cta-primary" href="/dashboard">Tableau de bord</a>
+            {:else}
+              <a class="cta-primary" href={googleLoginUrl}>
+                <svg class="g" viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    fill="currentColor"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
+                  />
+                  <path
+                    fill="currentColor"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="currentColor"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                  />
+                  <path
+                    fill="currentColor"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                  />
+                </svg>
+                Continuer avec Google
+              </a>
+            {/if}
+            <a class="cta-ghost" href="/@example/memoire-et-cerveau">Voir une fiche →</a>
+          </div>
+          <!-- Au doigt, on ne traîne pas une planète : le geste sert à faire
+             défiler la page. La seconde phrase ne s'affiche donc qu'au
+             pointeur fin. -->
+          <p class="hint">
+            <span class="hint-dot" aria-hidden="true"></span>
+            <span>
+              <span class="hint-clic">Cliquez</span><span class="hint-touche">Touchez</span> une
+              planète, elle dit ce que Philum sait faire.<span class="hint-plus"
+                >&nbsp;Attrapez-la, elle reste où vous la posez.</span
+              >
+            </span>
+          </p>
+        </div>
+
+        <!-- La scène : canvas + repères DOM par-dessus. -->
+        <div
+          class="stage"
+          class:is-open={selected !== null}
+          bind:this={stageEl}
+          role="group"
+          aria-label="Fonctionnalités de Philum, en orbite"
+          onpointerenter={() => (survole = true)}
+          onpointerleave={() => (survole = false)}
+        >
+          <div class="stage-canvas" bind:this={canvasBoxEl}>
+            <HeroPulsar {selected} {timeScale} onselect={toggle} onframe={handleFrame} />
+          </div>
+
+          <div
+            class="ring"
+            class:on={selected !== null && floating}
+            bind:this={ringEl}
+            aria-hidden="true"
+          ></div>
+
+          <div class="markers" class:floating={positioned && floating}>
+            {#each FEATURES as f (f.idx)}
+              <button
+                type="button"
+                class="marker"
+                class:active={selected === f.idx}
+                style:--dot={f.color}
+                bind:this={markerEls[f.idx]}
+                aria-pressed={selected === f.idx}
+                onclick={() => toggle(f.idx)}
+                onpointerenter={() => (survoleRepere = f.idx)}
+                onpointerleave={() => {
+                  if (survoleRepere === f.idx) survoleRepere = null;
+                }}
+                onfocus={() => (survoleRepere = f.idx)}
+                onblur={() => {
+                  if (survoleRepere === f.idx) survoleRepere = null;
+                }}
+              >
+                <span class="dot" aria-hidden="true"></span>
+                {f.label}
+              </button>
+            {/each}
+          </div>
+        </div>
+      </div>
+
+      <!-- Le panneau vit sous la grille : il ne recouvre jamais la scène, et sa
+         place est réservée pour que l'ouverture ne pousse pas la page. -->
+      <div class="panel-slot" aria-live="polite">
+        {#if openFeature}
+          {#key openFeature.idx}
+            <div class="panel" style:--dot={openFeature.color}>
+              <span class="panel-dot" aria-hidden="true"></span>
+              <div>
+                <h2>{openFeature.title}</h2>
+                <p>{openFeature.body}</p>
+              </div>
+              <button type="button" class="panel-close" onclick={() => (selected = null)}>
+                Fermer
+              </button>
+            </div>
+          {/key}
+        {/if}
+      </div>
+    </section>
+
+    <!-- ===================== POURQUOI ===================== -->
+    <!-- Prolonge la nuit du hero : le doute appartient encore au monde d'avant
+       Philum. La page ne s'éclaire qu'à la section suivante, quand l'outil
+       agit. Les questions sont un fil, pas trois cartes côte à côte. -->
+    <section class="fil night">
+      <div class="wrap">
+        <h2 class="section-title" use:reveal>D’où vient l’information</h2>
+        <p class="section-lede" use:reveal>
+          Une émission cite un chiffre. Une vidéo recommande une pratique. La source existe quelque
+          part, mais presque personne n’ira la chercher.
+        </p>
+
+        <ol class="fil-list">
+          {#each QUESTIONS as q (q.question)}
+            <li class="fil-item" use:reveal>
+              <span class="fil-node" aria-hidden="true"></span>
+              <h3>{q.question}</h3>
+              <p>{q.reponse}</p>
+            </li>
+          {/each}
+        </ol>
+      </div>
+    </section>
+  </div>
 
   <!-- ===================== COMMENT SE FAIT UNE FICHE ===================== -->
   <section class="gestes">
@@ -798,13 +807,18 @@
   }
 
   /* ===================== HERO ===================== */
-  .hero {
+  /* Un seul dégradé pour le hero et le fil de questions : la couleur descend
+     sans marche, donc sans ligne de séparation. */
+  .nuit-haut {
     position: relative;
     overflow: hidden;
+    isolation: isolate;
+    background: linear-gradient(180deg, #02020a 0%, #07091a 38%, #050614 72%, #02020a 100%);
+  }
+  .hero {
+    position: relative;
     color: white;
-    background:
-      radial-gradient(ellipse at 50% 45%, rgba(70, 90, 180, 0.1) 0%, transparent 60%),
-      linear-gradient(165deg, #02020a 0%, #07091a 52%, #03030d 100%);
+    background: radial-gradient(ellipse at 50% 45%, rgba(70, 90, 180, 0.1) 0%, transparent 60%);
     padding-bottom: 3rem;
   }
   .hero-stars {
@@ -1202,17 +1216,11 @@
   }
 
   /* ---- le fil des questions ---- */
+  /* Le fond vient du bloc parent : la section ne pose rien par-dessus, sinon
+     la couture réapparaît. */
   .fil {
     padding: 5.5rem 0 6rem;
-  }
-  /* Raccord avec le hero : les deux nuits doivent se toucher sans couture. */
-  .fil::before {
-    content: '';
-    position: absolute;
-    inset: 0 0 auto;
-    height: 10rem;
-    background: linear-gradient(to bottom, #03030d, transparent);
-    pointer-events: none;
+    background: transparent;
   }
   .fil-list {
     position: relative;
@@ -1297,8 +1305,11 @@
   }
 
   /* ---- l'établi : un seul panneau, trois faces ---- */
+  /* La section précédente est d'un blanc à peine plus chaud. Passer de l'un à
+     l'autre d'un coup dessine une ligne horizontale nette en travers de la
+     page, alors que rien ne s'y termine : le fond monte donc en dégradé. */
   .usages {
-    background: rgb(var(--bg-primary));
+    background: linear-gradient(180deg, rgb(var(--bg-secondary)) 0%, rgb(var(--bg-primary)) 14rem);
     padding: 5.5rem 0;
     position: relative;
     overflow: hidden;
