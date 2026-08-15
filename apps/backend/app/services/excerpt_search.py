@@ -36,12 +36,20 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-#: En dessous, ce n'est plus une reponse mais du remplissage. Le seuil coupe le
-#: bruit franc -- la requete qui ne rencontre rien dans le corpus doit rendre
-#: une liste vide, pas les vingt extraits les moins eloignes. Il ne pretend pas
-#: trancher la pertinence : c'est un plancher, pas un jugement, et il se
-#: recalibrera sur des mesures le jour ou un corpus reel le permettra.
-SIMILARITE_MINIMALE = 0.30
+#: En dessous, ce n'est plus une reponse mais du remplissage. La requete qui ne
+#: rencontre rien dans le corpus doit rendre une liste vide, pas les vingt
+#: extraits les moins eloignes.
+#:
+#: Mesure sur le corpus de production (51 extraits portant sur le sommeil,
+#: `gemini-embedding-001` tronque a 768) : six questions etrangeres au corpus
+#: -- meduses, cuivre, tarte tatin, guitare, fiscalite, hors-jeu -- plafonnent
+#: entre 0.473 et 0.560, tandis que cinq questions du domaine s'echelonnent de
+#: 0.651 a 0.828. Le plancher initial de 0.30 ne coupait donc rien : la tarte
+#: tatin rendait cinq extraits sur les phases du sommeil.
+#:
+#: Ce seuil vaut pour ce modele. En changer decale toute l'echelle, y compris
+#: les paliers de `proximite()` cote frontend, et demande de refaire la mesure.
+SIMILARITE_MINIMALE = 0.60
 
 #: Un nom de schema Postgres, tel que `pg_catalog` le rend. Verifie malgre tout
 #: avant interpolation : cette valeur entre dans du SQL textuel, et une regle

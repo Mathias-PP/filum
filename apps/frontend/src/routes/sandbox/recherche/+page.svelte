@@ -35,7 +35,7 @@
       card_id: 'c1',
       card_slug: 'memoire-et-cerveau',
       card_title: 'Mémoire et cerveau',
-      similarity: 0.54,
+      similarity: 0.71,
     },
     {
       excerpt_id: 'c',
@@ -48,7 +48,7 @@
       card_id: 'c2',
       card_slug: 'apprentissage',
       card_title: 'Apprentissage',
-      similarity: 0.37,
+      similarity: 0.62,
     },
   ];
 </script>
