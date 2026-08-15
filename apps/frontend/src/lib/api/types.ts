@@ -204,6 +204,37 @@ export interface ExcerptVerifyResponse {
   text_source: 'fetched' | 'provided';
 }
 
+export interface ExcerptSearchHit {
+  excerpt_id: string;
+  text: string;
+  title: string | null;
+  context: string | null;
+  source_id: string;
+  source_title: string | null;
+  source_url: string;
+  card_id: string;
+  card_slug: string;
+  card_title: string;
+  /**
+   * Cosinus entre la question et l'extrait, de 0 à 1. Exposé pour que l'écran
+   * puisse dire « de loin » : une liste ordonnée sans score présente le
+   * dernier résultat avec le même aplomb que le premier.
+   */
+  similarity: number;
+}
+
+export interface ExcerptSearchResponse {
+  query: string;
+  results: ExcerptSearchHit[];
+  /**
+   * Faux quand la recherche n'a pas pu avoir lieu (service d'embeddings
+   * absent, pgvector absent de la base). À ne pas confondre avec `results`
+   * vide, qui veut dire que la recherche a eu lieu et n'a rien trouvé : une
+   * panne se lirait sinon comme un corpus muet.
+   */
+  available: boolean;
+}
+
 export interface Source {
   id: string;
   url: string;

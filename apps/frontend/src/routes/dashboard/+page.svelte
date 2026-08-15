@@ -213,6 +213,7 @@
       </p>
     </div>
     <div class="flex flex-wrap gap-2">
+      <Button href="/dashboard/recherche" variant="secondary">Chercher dans mes extraits</Button>
       <Button href="/dashboard/new" variant="primary">+ Nouvelle fiche</Button>
     </div>
   </div>
