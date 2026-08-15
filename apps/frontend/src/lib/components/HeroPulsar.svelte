@@ -1,8 +1,13 @@
 <script lang="ts">
-  // Hero pulsar — WebGL render (OGL) with SVG fallback for LCP and a11y.
+  // Hero pulsar : rendu WebGL (OGL), avec un repli SVG pour l'accessibilite.
   //
   // Design contract:
-  // - The SVG fallback renders synchronously on first paint so LCP is preserved.
+  // - Le repli SVG est rendu par le serveur mais n'est peint que si le rendu 3D
+  //   ne viendra pas : sans JavaScript, en mouvement reduit, ou si le module
+  //   echoue au chargement. La decision est prise par un script en tete de
+  //   document (`html.hero-webgl`, cf. `app.html`), donc avant la premiere
+  //   peinture. Le masquer a l'hydratation laissait voir une illustration 2D
+  //   une fraction de seconde avant qu'elle cede la place a la 3D.
   // - The WebGL module is lazy-loaded (dynamic import) on mount.
   // - IntersectionObserver pauses the RAF loop when the canvas is off-screen.
   // - prefers-reduced-motion → never load WebGL; stay on the SVG fallback.
@@ -56,6 +61,7 @@
   let canvasEl: HTMLCanvasElement | undefined = $state();
   let wrapEl: HTMLDivElement | undefined = $state();
   let webglReady = $state(false);
+  let fallbackForced = $state(false);
 
   // Tuned defaults — validated in the sandbox.
   const BLOOM_STRENGTH = 0.3;
@@ -704,7 +710,10 @@
   `;
 
   onMount(() => {
-    if (!canvasEl || !wrapEl) return;
+    if (!canvasEl || !wrapEl) {
+      fallbackForced = true;
+      return;
+    }
 
     // Respect reduced-motion: never load WebGL, stay on the SVG fallback.
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
@@ -1349,7 +1358,8 @@
         };
       })
       .catch(() => {
-        // Module failed to load — stay on the SVG fallback silently.
+        // Le module n'a pas pu etre charge : le repli redevient le rendu final.
+        fallbackForced = true;
       });
 
     return () => {
@@ -1367,7 +1377,7 @@
     viewBox="0 0 480 420"
     preserveAspectRatio="xMidYMid slice"
     class="fallback"
-    class:hidden={webglReady}
+    class:forced={fallbackForced}
     role="img"
     aria-label="Illustration : étoile bleue centrale entourée de planètes en orbite, représentant les sources reliées au nœud central Philum"
   >
@@ -1415,7 +1425,7 @@
     <circle cx="260" cy="370" r="12" fill="#D9B97A" />
   </svg>
 
-  <canvas bind:this={canvasEl} class="canvas" aria-hidden="true"></canvas>
+  <canvas bind:this={canvasEl} class="canvas" class:ready={webglReady} aria-hidden="true"></canvas>
 </div>
 
 <style>
@@ -1436,13 +1446,30 @@
     height: 100%;
     display: block;
   }
+  /* Le repli n'est jamais interactif : le canvas seul repond au pointeur. */
   .fallback {
-    transition: opacity 400ms ease;
     opacity: 1;
-  }
-  .fallback.hidden {
-    opacity: 0;
     pointer-events: none;
+  }
+  /* `hero-webgl` est posee sur <html> par un script en tete de document, donc
+     avant la premiere peinture : le repli ne s'affiche pas une fraction de
+     seconde avant de ceder la place au rendu 3D. La classe est absente sans
+     JavaScript et en mouvement reduit, cas ou le repli est le rendu final. */
+  :global(html.hero-webgl) .fallback {
+    opacity: 0;
+  }
+  /* Le module WebGL n'a pas pu etre charge : le repli reprend la main, en
+     fondu pour ne pas surgir. */
+  :global(html.hero-webgl) .fallback.forced {
+    opacity: 1;
+    transition: opacity 400ms ease;
+  }
+  .canvas {
+    opacity: 0;
+    transition: opacity 500ms ease;
+  }
+  .canvas.ready {
+    opacity: 1;
   }
   /* .canvas cursor is set imperatively in JS ('' or 'pointer') based on hit-test. */
 </style>

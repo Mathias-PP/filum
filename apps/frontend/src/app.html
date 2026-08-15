@@ -18,6 +18,19 @@
           document.documentElement.style.colorScheme = t;
         } catch (e) {}
       })();
+      // Le hero a un repli SVG, servi par le rendu serveur pour le sans-JavaScript,
+      // le mouvement reduit et l'echec de chargement du module WebGL. Hors de ces
+      // cas il ne doit jamais etre peint : le voir s'afficher puis ceder la place
+      // au rendu 3D revenait a montrer deux illustrations differentes a la suite.
+      // Pose avant la premiere peinture, donc sans le clignotement qu'aurait eu
+      // un masquage decide a l'hydratation.
+      (function () {
+        try {
+          if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            document.documentElement.classList.add('hero-webgl');
+          }
+        } catch (e) {}
+      })();
     </script>
     %sveltekit.head%
   </head>
