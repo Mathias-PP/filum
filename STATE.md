@@ -43,7 +43,7 @@ Ce qui change dans le discours, après une dizaine de passes de relecture :
 
 **Troisième passe de texte (2026-08-15, PR #383)** : neuf corrections de plus, dont une correction de fond. La section IA affirmait que les assistants ne citent pas leurs sources, ce qui est faux : la plupart les citent. Le problème réel est ailleurs, et c'est celui que Philum traite : rien ne garantit que ces sources font autorité ni qu'elles disent ce qu'on leur fait dire.
 
-**Cohérence visuelle sur tout le front (2026-08-15)**. Six recettes de verre divergentes coexistaient, chacune inventée sur place (`/85 blur-md`, `/90 blur-xs`, `slate-900/80` codé en dur et donc cassé en thème clair). Une seule recette les remplace.
+**Cohérence visuelle sur tout le front (2026-08-15, PR #384)**. Six recettes de verre divergentes coexistaient, chacune inventée sur place (`/85 blur-md`, `/90 blur-xs`, `slate-900/80` codé en dur et donc cassé en thème clair). Une seule recette les remplace.
 
 - `app.css` porte `.glass` (fond translucide, flou, saturation, reflet spéculaire haut) et `.glass-panel` (arête, élévation), pilotées par des jetons `--glass-*` déclinés en clair et en sombre. **Règle d'usage écrite dans le fichier : le verre ne va que sur les surfaces qui flottent au-dessus du contenu** (en-tête collant, menus, fenêtres modales, notifications, surimpressions de graphe) ; toute surface qui porte de la prose reste opaque ;
 - deux replis d'accessibilité : `@supports not (backdrop-filter)` et `prefers-reduced-transparency: reduce`. Ce second repli est actif sur la machine de l'utilisateur (réglage Windows « Effets de transparence » désactivé) : **le verre y rend opaque, c'est voulu.** Le reflet, l'arête, l'élévation, l'aura et les micro-interactions survivent toutes au repli, donc la cohérence tient sans le flou ;
@@ -52,6 +52,10 @@ Ce qui change dans le discours, après une dizaine de passes de relecture :
 - relief au survol étendu aux grilles restantes (`discover`, `discover/creators`) et aux rangées du tableau de bord, avec un décalage volontairement plus court sur ces dernières : trois pixels y feraient onduler la liste entière.
 
 Deux pièges de couche de cascade, notés parce qu'ils reviendront : le CSS non calqué en fin d'`app.css` bat les utilitaires Tailwind (d'où la barre d'accent des notifications repositionnée en absolu, le raccourci `border` de `.glass-panel` tuant un `border-l-4`), et une règle scopée par Svelte gagne en spécificité sur `.glass`, ce qui est exactement ce qui permet à `.site-header.is-scrolled` de fonctionner.
+
+**Repli 2D du hero rendu invisible (2026-08-15, PR #385)**, signalé par l'utilisateur : l'illustration SVG de repli était peinte à chaque chargement, puis cédait la place au rendu WebGL en fondu. Deux illustrations différentes se succédaient à l'écran.
+
+Le repli n'est pas supprimé : il reste le rendu final sans JavaScript, en `prefers-reduced-motion`, et si l'import du module OGL échoue ; il porte aussi la description accessible du hero, le canvas étant `aria-hidden`. Il est désormais masqué par `html.hero-webgl`, classe posée par un script en tête de document, donc **avant la première peinture**. Le décider à l'hydratation ne suffisait pas : le clignotement se produit avant l'exécution du bundle. Même mécanisme que la résolution du thème juste au-dessus, dans `app.html`. Le canvas entre en fondu à sa première image, et `fallbackForced` redonne la main au repli si l'import échoue.
 
 ---
 
