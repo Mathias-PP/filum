@@ -351,16 +351,19 @@
   // plate ne permet.
   const USAGE_PRIVE = [
     {
+      glyphe: 'loupe',
       titre: 'Retrouver une citation par ce qu’elle dit',
       texte:
         'Vous savez qu’un article avançait ce chiffre, mais lequel ? Décrivez l’idée : Philum cherche dans vos extraits et vous rend le passage avec sa référence.',
     },
     {
+      glyphe: 'liens',
       titre: 'Voir ce qui relie vos lectures',
       texte:
         'Deux de vos bibliographies citent la même étude, ou une étude en cite une autre : le lien apparaît. Vous voyez aussi qui d’autre, sur Philum, s’appuie sur le même travail.',
     },
     {
+      glyphe: 'volet',
       titre: 'Décider quand ça sort',
       texte:
         'Une bibliographie peut être gardée privée. Vous la rendez publique le jour où votre contenu sort, ou jamais.',
@@ -467,9 +470,17 @@
           {/if}
           <a class="cta-ghost" href="/@example/memoire-et-cerveau">Voir une fiche →</a>
         </div>
+        <!-- Au doigt, on ne traîne pas une planète : le geste sert à faire
+             défiler la page. La seconde phrase ne s'affiche donc qu'au
+             pointeur fin. -->
         <p class="hint">
           <span class="hint-dot" aria-hidden="true"></span>
-          Cliquez une planète, elle dit ce que Philum sait faire. Attrapez-la, elle reste où vous la posez.
+          <span>
+            <span class="hint-clic">Cliquez</span><span class="hint-touche">Touchez</span> une
+            planète, elle dit ce que Philum sait faire.<span class="hint-plus"
+              >&#32;Attrapez-la, elle reste où vous la posez.</span
+            >
+          </span>
         </p>
       </div>
 
@@ -542,7 +553,12 @@
   </section>
 
   <!-- ===================== POURQUOI ===================== -->
-  <section class="constats">
+  <!-- Prolonge la nuit du hero : le doute appartient encore au monde d'avant
+       Philum. La page ne s'éclaire qu'à la section suivante, quand l'outil
+       agit. Les questions sont un fil, pas trois cartes côte à côte. -->
+  <section class="fil night">
+    <div class="veil" aria-hidden="true"></div>
+    <div class="grain" aria-hidden="true"></div>
     <div class="wrap">
       <h2 class="section-title" use:reveal>D’où vient l’information</h2>
       <p class="section-lede" use:reveal>
@@ -550,14 +566,15 @@
         part, mais presque personne n’ira la chercher.
       </p>
 
-      <div class="constats-grid">
-        {#each QUESTIONS as q, i (q.question)}
-          <div class="constat" use:reveal style="transition-delay: {i * 80}ms">
+      <ol class="fil-list">
+        {#each QUESTIONS as q (q.question)}
+          <li class="fil-item" use:reveal>
+            <span class="fil-node" aria-hidden="true"></span>
             <h3>{q.question}</h3>
             <p>{q.reponse}</p>
-          </div>
+          </li>
         {/each}
-      </div>
+      </ol>
     </div>
   </section>
 
@@ -646,7 +663,10 @@
   </section>
 
   <!-- ===================== L'USAGE PRIVE ===================== -->
-  <section class="constats">
+  <!-- Un seul panneau tenu par des filets verticaux, pas trois cartes : ces
+       trois usages sont les faces d'un même établi. Le glyphe porte à lui
+       seul de quoi il s'agit, ce qui allège la lecture du titre. -->
+  <section class="usages">
     <div class="wrap">
       <h2 class="section-title" use:reveal>Et pour votre propre travail</h2>
       <p class="section-lede" use:reveal>
@@ -654,19 +674,60 @@
         vous le voulez.
       </p>
 
-      <div class="constats-grid">
-        {#each USAGE_PRIVE as u, i (u.titre)}
-          <div class="constat" use:reveal style="transition-delay: {i * 80}ms">
+      <div class="etabli" use:reveal>
+        {#each USAGE_PRIVE as u (u.titre)}
+          <article class="usage">
+            <span class="glyphe" aria-hidden="true">
+              {#if u.glyphe === 'loupe'}
+                <svg viewBox="0 0 40 40" fill="none">
+                  <path d="M6 11h13M6 18h9M6 25h6" stroke="currentColor" stroke-width="1.4" />
+                  <circle cx="26" cy="23" r="8.5" stroke="currentColor" stroke-width="1.6" />
+                  <path d="M32.5 29.5 37 34" stroke="currentColor" stroke-width="1.8" />
+                </svg>
+              {:else if u.glyphe === 'liens'}
+                <svg viewBox="0 0 40 40" fill="none">
+                  <path
+                    d="M20 20 9 10M20 20l12-7M20 20l-8 13M20 20l11 10"
+                    stroke="currentColor"
+                    stroke-width="1.2"
+                  />
+                  <circle cx="20" cy="20" r="4" fill="currentColor" />
+                  <circle cx="9" cy="10" r="2.6" fill="currentColor" />
+                  <circle cx="32" cy="13" r="2.2" fill="currentColor" />
+                  <circle cx="12" cy="33" r="2.2" fill="currentColor" />
+                  <circle cx="31" cy="30" r="2.6" fill="currentColor" />
+                </svg>
+              {:else}
+                <svg viewBox="0 0 40 40" fill="none">
+                  <rect
+                    x="7"
+                    y="18"
+                    width="26"
+                    height="16"
+                    rx="3"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                  />
+                  <path d="M14 18v-4a6 6 0 0 1 12 0v4" stroke="currentColor" stroke-width="1.6" />
+                  <path d="M20 24v4" stroke="currentColor" stroke-width="1.8" />
+                </svg>
+              {/if}
+            </span>
             <h3>{u.titre}</h3>
             <p>{u.texte}</p>
-          </div>
+          </article>
         {/each}
       </div>
     </div>
   </section>
 
   <!-- ===================== QUAND C'EST UNE IA QUI LIT ===================== -->
-  <section class="ia">
+  <!-- Sombre à son tour, mais d'un noir qui vire au bleu : ce n'est plus le
+       doute du début, c'est une machine qui travaille. Les trois moments
+       s'enchaînent au lieu de se juxtaposer, d'où les raccords. -->
+  <section class="ia night">
+    <div class="veil ia-veil" aria-hidden="true"></div>
+    <div class="grain" aria-hidden="true"></div>
     <div class="wrap">
       <h2 class="section-title" use:reveal>
         Interroger une IA sur des sources que vous avez choisies
@@ -677,9 +738,10 @@
         arrive d’inventer.
       </p>
 
-      <div class="constats-grid">
+      <div class="chaine">
         {#each LECTURE_IA as l, i (l.titre)}
-          <div class="constat" use:reveal style="transition-delay: {i * 80}ms">
+          <div class="maillon" use:reveal style="transition-delay: {i * 110}ms">
+            <span class="maillon-noeud" aria-hidden="true"></span>
             <h3>{l.titre}</h3>
             <p>{l.texte}</p>
           </div>
@@ -878,8 +940,12 @@
     font-size: 0.85rem;
     color: rgba(203, 213, 225, 0.7);
   }
+  .hint-touche {
+    display: none;
+  }
   .hint-dot {
     width: 7px;
+    flex: none;
     height: 7px;
     border-radius: 50%;
     background: #9fe3d0;
@@ -1079,7 +1145,7 @@
     background: rgba(255, 255, 255, 0.08);
   }
 
-  /* ===================== SECTIONS CLAIRES ===================== */
+  /* ===================== SECTIONS ===================== */
   .section-title {
     font-family: var(--font-serif);
     font-size: clamp(1.8rem, 3.4vw, 2.6rem);
@@ -1087,6 +1153,7 @@
     color: rgb(var(--text-primary));
     letter-spacing: -0.015em;
     text-align: center;
+    text-wrap: balance;
   }
   .section-lede {
     text-align: center;
@@ -1094,37 +1161,225 @@
     margin: 0.75rem auto 3.5rem;
     max-width: 34rem;
     line-height: 1.6;
+    text-wrap: pretty;
   }
-  .constats {
-    background: rgb(var(--bg-primary));
-    padding: 5.5rem 0;
+
+  /* ---- fonds de nuit, partagés ---- */
+  .night {
+    position: relative;
+    overflow: hidden;
+    background: var(--hero-void);
+    isolation: isolate;
   }
-  .constats-grid {
-    display: grid;
-    gap: 1.25rem;
+  .night .section-title {
+    color: rgba(255, 255, 255, 0.94);
   }
-  @media (min-width: 900px) {
-    .constats-grid {
-      grid-template-columns: repeat(3, 1fr);
-      gap: 2.25rem;
+  .night .section-lede {
+    color: rgba(226, 232, 240, 0.72);
+  }
+  .night .wrap {
+    position: relative;
+    z-index: 2;
+  }
+  .veil {
+    position: absolute;
+    inset: -25%;
+    pointer-events: none;
+    background:
+      radial-gradient(38% 30% at 18% 22%, rgba(90, 80, 200, 0.16), transparent 70%),
+      radial-gradient(42% 34% at 82% 74%, rgba(40, 110, 190, 0.14), transparent 70%);
+    animation: aurora 34s ease-in-out infinite alternate;
+  }
+  /* Le grain casse le dégradé : sans lui, les grands aplats sombres montrent
+     leurs bandes de quantification sur un écran 8 bits. */
+  .grain {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.5;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.22'/%3E%3C/svg%3E");
+  }
+
+  /* ---- le fil des questions ---- */
+  .fil {
+    padding: 5.5rem 0 6rem;
+  }
+  /* Raccord avec le hero : les deux nuits doivent se toucher sans couture. */
+  .fil::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: 10rem;
+    background: linear-gradient(to bottom, #03030d, transparent);
+    pointer-events: none;
+  }
+  .fil-list {
+    position: relative;
+    max-width: 58rem;
+    margin: 0 auto;
+    padding-left: 1.75rem;
+    list-style: none;
+  }
+  /* Le rail se trace au défilement, il n'est pas juste posé. */
+  .fil-list::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.55rem;
+    bottom: 2.5rem;
+    width: 1px;
+    background: linear-gradient(
+      to bottom,
+      rgba(159, 227, 208, 0.5),
+      rgba(120, 160, 240, 0.35) 55%,
+      transparent
+    );
+    transform-origin: top;
+    animation: railIn 1.4s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  }
+  @keyframes railIn {
+    from {
+      transform: scaleY(0);
+      opacity: 0;
+    }
+    to {
+      transform: scaleY(1);
+      opacity: 1;
     }
   }
-  .constat {
-    border-top: 2px solid rgb(var(--info));
-    padding-top: 1.1rem;
+  .fil-item {
+    position: relative;
+    padding: 1.6rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
   }
-  .constat h3 {
+  .fil-item:last-child {
+    border-bottom: 0;
+  }
+  .fil-node {
+    position: absolute;
+    left: calc(-1.75rem - 4px);
+    top: 2.1rem;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #9fe3d0;
+    box-shadow: 0 0 14px rgba(159, 227, 208, 0.85);
+  }
+  .fil-item h3 {
     font-family: var(--font-serif);
-    font-size: 1.25rem;
+    font-size: clamp(1.3rem, 2.6vw, 1.75rem);
     font-weight: 500;
-    color: rgb(var(--text-primary));
-    margin-bottom: 0.6rem;
-    line-height: 1.35;
+    line-height: 1.25;
+    color: rgba(255, 255, 255, 0.94);
+    text-wrap: balance;
   }
-  .constat p {
+  .fil-item p {
+    margin-top: 0.6rem;
+    color: rgba(226, 232, 240, 0.7);
+    line-height: 1.7;
+    max-width: 34rem;
+  }
+  /* Au large, la réponse se pose en regard de la question plutôt qu'en
+     dessous : l'œil lit une paire, pas un empilement. */
+  @media (min-width: 900px) {
+    .fil-item {
+      display: grid;
+      grid-template-columns: 1.05fr 1fr;
+      gap: 2.5rem;
+      align-items: baseline;
+      padding: 2rem 0;
+    }
+    .fil-item p {
+      margin-top: 0;
+      font-size: 0.98rem;
+    }
+  }
+
+  /* ---- l'établi : un seul panneau, trois faces ---- */
+  .usages {
+    background: rgb(var(--bg-primary));
+    padding: 5.5rem 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .usages::before {
+    content: '';
+    position: absolute;
+    inset: -30% -10% auto;
+    height: 70%;
+    background: radial-gradient(50% 60% at 50% 0%, rgb(var(--info) / 0.07), transparent 70%);
+    pointer-events: none;
+  }
+  .usages .wrap {
+    position: relative;
+  }
+  .etabli {
+    display: grid;
+    gap: 0;
+    border: 1px solid rgb(var(--border));
+    border-radius: 18px;
+    background: rgb(var(--bg-secondary));
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgb(15 23 42 / 0.05);
+  }
+  @media (min-width: 900px) {
+    .etabli {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  .usage {
+    padding: 2rem 1.75rem;
+    border-bottom: 1px solid rgb(var(--border));
+    transition: background-color 220ms ease;
+  }
+  .usage:last-child {
+    border-bottom: 0;
+  }
+  @media (min-width: 900px) {
+    .usage {
+      border-bottom: 0;
+      border-right: 1px solid rgb(var(--border));
+    }
+    .usage:last-child {
+      border-right: 0;
+    }
+  }
+  .usage:hover {
+    background: rgb(var(--bg-primary));
+  }
+  .glyphe {
+    display: block;
+    width: 2.6rem;
+    height: 2.6rem;
+    margin-bottom: 1.1rem;
+    color: rgb(var(--info));
+    opacity: 0.9;
+    transition:
+      transform 320ms cubic-bezier(0.2, 0.7, 0.3, 1),
+      opacity 320ms ease;
+  }
+  .glyphe svg {
+    width: 100%;
+    height: 100%;
+  }
+  .usage:hover .glyphe {
+    transform: translateY(-3px) scale(1.04);
+    opacity: 1;
+  }
+  .usage h3 {
+    font-family: var(--font-serif);
+    font-size: 1.2rem;
+    font-weight: 500;
+    line-height: 1.35;
+    color: rgb(var(--text-primary));
+    margin-bottom: 0.55rem;
+    text-wrap: balance;
+  }
+  .usage p {
     color: rgb(var(--text-secondary));
     line-height: 1.68;
-    font-size: 0.94rem;
+    font-size: 0.92rem;
   }
 
   .gestes {
@@ -1305,18 +1560,92 @@
     color: rgb(var(--text-tertiary));
   }
 
+  /* ---- la chaîne : trois moments raccordés ---- */
   .ia {
-    background: rgb(var(--bg-primary));
     padding: 5.5rem 0;
   }
+  .ia-veil {
+    background:
+      radial-gradient(40% 34% at 26% 24%, rgba(82, 143, 255, 0.2), transparent 70%),
+      radial-gradient(38% 30% at 74% 78%, rgba(199, 128, 255, 0.14), transparent 70%);
+  }
+  .chaine {
+    display: grid;
+    gap: 1rem;
+  }
+  .maillon {
+    position: relative;
+    padding: 1.6rem 1.5rem 1.5rem;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.035);
+    backdrop-filter: blur(10px);
+    transition:
+      border-color 240ms ease,
+      background-color 240ms ease,
+      transform 240ms cubic-bezier(0.2, 0.7, 0.3, 1);
+  }
+  .maillon:hover {
+    transform: translateY(-3px);
+    border-color: rgba(159, 227, 208, 0.4);
+    background: rgba(255, 255, 255, 0.06);
+  }
+  .maillon-noeud {
+    position: absolute;
+    top: -5px;
+    left: 1.5rem;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #9fe3d0;
+    box-shadow: 0 0 14px rgba(159, 227, 208, 0.8);
+  }
+  /* Le raccord entre deux maillons : vertical en colonne, horizontal en
+     ligne. C'est lui qui dit que les trois moments s'enchaînent. */
+  .maillon:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: calc(1.5rem + 4px);
+    bottom: -1rem;
+    width: 1px;
+    height: 1rem;
+    background: linear-gradient(to bottom, rgba(159, 227, 208, 0.5), rgba(159, 227, 208, 0.12));
+  }
+  @media (min-width: 900px) {
+    .chaine {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.75rem;
+    }
+    .maillon:not(:last-child)::after {
+      left: auto;
+      bottom: auto;
+      top: -1px;
+      right: -1.75rem;
+      width: 1.75rem;
+      height: 1px;
+      background: linear-gradient(to right, rgba(159, 227, 208, 0.5), rgba(159, 227, 208, 0.12));
+    }
+  }
+  .maillon h3 {
+    font-family: var(--font-serif);
+    font-size: 1.18rem;
+    font-weight: 500;
+    line-height: 1.35;
+    color: rgba(255, 255, 255, 0.94);
+    margin-bottom: 0.55rem;
+    text-wrap: balance;
+  }
+  .maillon p {
+    color: rgba(226, 232, 240, 0.72);
+    line-height: 1.68;
+    font-size: 0.92rem;
+  }
   .ia-limite {
-    margin-top: 2.5rem;
+    margin: 2.75rem auto 0;
     text-align: center;
     font-size: 0.88rem;
-    color: rgb(var(--text-tertiary));
+    color: rgba(203, 213, 225, 0.6);
     max-width: 34rem;
-    margin-left: auto;
-    margin-right: auto;
     line-height: 1.6;
   }
 
@@ -1408,10 +1737,104 @@
     transform: translateY(-2px);
   }
 
+  /* ===================== ÉTROIT ===================== */
+  /* Deux défauts corrigés ici, tous deux visibles seulement au téléphone :
+     la page débordait de 60 px sur la droite (une valeur de champ en
+     `nowrap` élargissait sa colonne de grille, qui ne peut pas se réduire
+     sans `min-width: 0`), et la scène du hero réservait un carré plein
+     écran suivi d'un emplacement de panneau vide. */
+  .geste-copy,
+  .demo,
+  .field-val,
+  .v-text {
+    min-width: 0;
+  }
+  @media (max-width: 639px) {
+    .field {
+      flex-wrap: wrap;
+      gap: 0.15rem 0.75rem;
+    }
+    .field-key {
+      width: auto;
+      font-size: 0.74rem;
+    }
+    .field-val,
+    .v-text {
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+    }
+    .verdict {
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+    .v-state {
+      margin-left: 1.8rem;
+    }
+  }
+  @media (max-width: 1023px) {
+    .hero {
+      padding-bottom: 1.5rem;
+    }
+    .hero-inner {
+      padding-top: 2.5rem;
+    }
+    /* La scène est rognée haut et bas : le carré du canvas contient beaucoup
+       de vide autour du pulsar, et ce vide poussait les repères hors de vue. */
+    .stage-canvas {
+      margin: -5rem -1.5rem -7rem;
+      width: calc(100% + 3rem);
+    }
+    .panel-slot {
+      min-height: 0;
+    }
+    .panel {
+      margin-top: 1rem;
+    }
+    .fil,
+    .usages,
+    .gestes,
+    .ia,
+    .publics,
+    .final {
+      padding-top: 3.75rem;
+      padding-bottom: 3.75rem;
+    }
+    .section-lede {
+      margin-bottom: 2.5rem;
+    }
+    .geste {
+      padding: 1.5rem 0;
+    }
+  }
+  /* Au doigt, la cible d'un repère doit tenir les 44 px recommandés, et un
+     glissement vertical doit toujours faire défiler la page plutôt que
+     traîner une planète. */
+  @media (pointer: coarse) {
+    .stage-canvas {
+      touch-action: pan-y;
+    }
+    .marker {
+      padding: 0.55rem 0.85rem;
+      font-size: 0.8rem;
+    }
+    .hint-plus,
+    .hint-clic {
+      display: none;
+    }
+    .hint-touche {
+      display: inline;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .hero-aurora,
+    .veil,
     .hint-dot,
     .ring.on {
+      animation: none;
+    }
+    .fil-list::before {
       animation: none;
     }
     :global([data-reveal].is-revealed) .field,
