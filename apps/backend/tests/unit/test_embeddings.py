@@ -6,7 +6,9 @@ import pytest
 
 from app.models.excerpt_embedding import EMBEDDING_DIM
 from app.models.source_excerpt import SourceExcerpt
+from app.services import embeddings as module_embeddings
 from app.services.embeddings import (
+    embed,
     empreinte,
     texte_a_embedder,
     tronquer_et_normaliser,
@@ -83,3 +85,79 @@ class TestTronquerEtNormaliser:
         # jetees et le vecteur rendu ne serait pas unitaire.
         v = tronquer_et_normaliser([3.0, 4.0, 100.0], dim=2)
         assert v == pytest.approx([0.6, 0.8])
+
+
+class _ReponseFactice:
+    def __init__(self, charge: dict):
+        self.status_code = 200
+        self.text = ""
+        self._charge = charge
+
+    def json(self) -> dict:
+        return self._charge
+
+
+class _ClientFactice:
+    def __init__(self, charge: dict):
+        self._charge = charge
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_):
+        return False
+
+    async def post(self, *_args, **_kwargs):
+        return _ReponseFactice(self._charge)
+
+
+def _brancher(monkeypatch, charge: dict) -> None:
+    monkeypatch.setattr(
+        module_embeddings.httpx,
+        "AsyncClient",
+        lambda **_: _ClientFactice(charge),
+    )
+
+    class _Settings:
+        litellm_base_url = "https://exemple.test/v1beta/openai"
+        litellm_master_key = "cle"
+        embedding_model = "modele"
+
+    monkeypatch.setattr(module_embeddings, "get_settings", lambda: _Settings())
+
+
+class TestEmbed:
+    @pytest.mark.asyncio
+    async def test_index_absent_traite_comme_la_position(self, monkeypatch):
+        # Gemini serialise en protobuf et elide les valeurs egales au defaut :
+        # le premier element d'un lot n'a jamais de champ `index`. Exiger la
+        # cle faisait echouer tout appel, donc toute l'indexation.
+        _brancher(
+            monkeypatch,
+            {
+                "data": [
+                    {"object": "embedding", "embedding": [1.0, 0.0]},
+                    {"object": "embedding", "index": 1, "embedding": [0.0, 2.0]},
+                ]
+            },
+        )
+        vecteurs = await embed(["premier", "second"])
+        assert vecteurs == [[1.0, 0.0], [0.0, 1.0]]
+
+    @pytest.mark.asyncio
+    async def test_ordre_retabli_par_index(self, monkeypatch):
+        _brancher(
+            monkeypatch,
+            {
+                "data": [
+                    {"index": 1, "embedding": [0.0, 2.0]},
+                    {"index": 0, "embedding": [3.0, 0.0]},
+                ]
+            },
+        )
+        assert await embed(["premier", "second"]) == [[1.0, 0.0], [0.0, 1.0]]
+
+    @pytest.mark.asyncio
+    async def test_lot_incomplet_rend_none(self, monkeypatch):
+        _brancher(monkeypatch, {"data": [{"embedding": [1.0, 0.0]}]})
+        assert await embed(["premier", "second"]) is None
