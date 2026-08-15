@@ -57,7 +57,7 @@
         <li>
           <a
             href={creator.url}
-            class="flex items-start gap-4 p-4 rounded-lg border border-border-subtle hover:border-border-strong hover:bg-surface-elevated transition-colors"
+            class="hover-lift flex items-start gap-4 p-4 rounded-lg border border-border hover:bg-surface-tertiary"
           >
             {#if creator.avatar_url}
               <img
@@ -67,7 +67,7 @@
               />
             {:else}
               <div
-                class="w-12 h-12 rounded-full bg-surface-elevated flex items-center justify-center text-ink-secondary text-lg font-medium shrink-0"
+                class="w-12 h-12 rounded-full bg-surface-tertiary flex items-center justify-center text-ink-secondary text-lg font-medium shrink-0"
               >
                 {(creator.display_name ?? creator.slug).charAt(0).toUpperCase()}
               </div>

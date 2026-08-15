@@ -157,6 +157,20 @@ layer(base);
     --danger-bg: 252 235 235;
     --info: 24 95 165;
     --info-bg: 230 241 251;
+
+    /* Verre. Une seule recette pour toute l'application : six variantes
+       divergentes coexistaient (`/85 blur-md`, `/90 blur-xs`, `slate-900/80`),
+       chacune inventée sur place. Le reflet spéculaire du haut compte autant
+       que le flou : sans lui, une surface translucide se lit comme un calque
+       sale plutôt que comme une plaque. */
+    --glass-bg: 255 255 255;
+    --glass-bg-alpha: 0.66;
+    --glass-edge: 26 26 26;
+    --glass-edge-alpha: 0.09;
+    --glass-sheen: 255 255 255;
+    --glass-sheen-alpha: 0.72;
+    --glass-shadow: 26 26 26;
+    --glass-shadow-alpha: 0.16;
   }
 
   .dark {
@@ -178,6 +192,18 @@ layer(base);
     --danger-bg: 60 22 22;
     --info: 96 165 250; /* #60A5FA saturated +15% */
     --info-bg: 17 39 70;
+
+    /* Sur fond sombre, le verre s'assombrit au lieu de s'éclaircir, et le
+       reflet du haut tombe très bas : au-delà de 0,10 il dessine un liseré
+       blanc franc au lieu d'une arête. */
+    --glass-bg: 24 24 29;
+    --glass-bg-alpha: 0.6;
+    --glass-edge: 255 255 255;
+    --glass-edge-alpha: 0.1;
+    --glass-sheen: 255 255 255;
+    --glass-sheen-alpha: 0.08;
+    --glass-shadow: 0 0 0;
+    --glass-shadow-alpha: 0.5;
   }
 }
 
@@ -316,11 +342,104 @@ layer(base);
   border-color: rgba(255, 255, 255, 0.25);
 }
 
+/* ============================================================
+   Verre
+   ============================================================
+   Règle d'emploi, valable partout : le verre est réservé aux surfaces qui
+   flottent au-dessus du contenu (en-tête collant, menus, fenêtres modales,
+   notifications, incrustations de graphe). Une surface qui porte du texte à
+   lire de bout en bout reste opaque : le flou ne coûte rien à un badge, il
+   coûte la lecture à un paragraphe.
+
+   `.glass` ne pose que la matière. Le contour, le rayon et l'ombre viennent de
+   `.glass-panel` ou du composant, pour qu'une arête unique (le bas de
+   l'en-tête) n'ait pas à défaire un contour complet. */
+.glass {
+  background: rgb(var(--glass-bg) / var(--glass-bg-alpha));
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  backdrop-filter: blur(18px) saturate(180%);
+  /* Le reflet : une arête claire d'un pixel sur le bord haut, là où une plaque
+     réelle capte la lumière. C'est ce trait, pas le flou, qui donne l'épaisseur. */
+  box-shadow: inset 0 1px 0 rgb(var(--glass-sheen) / var(--glass-sheen-alpha));
+}
+
+.glass-panel {
+  border: 1px solid rgb(var(--glass-edge) / var(--glass-edge-alpha));
+  box-shadow:
+    inset 0 1px 0 rgb(var(--glass-sheen) / var(--glass-sheen-alpha)),
+    0 16px 40px -14px rgb(var(--glass-shadow) / var(--glass-shadow-alpha)),
+    0 4px 10px -6px rgb(var(--glass-shadow) / calc(var(--glass-shadow-alpha) * 0.7));
+}
+
+/* Deux replis, pour la même raison : un fond translucide qui ne floute pas
+   laisse passer le texte de dessous. Sans repli, la barre de navigation
+   devient illisible dès qu'un titre défile derrière elle. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background: rgb(var(--glass-bg) / 0.97);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass {
+    background: rgb(var(--glass-bg) / 0.98);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* ============================================================
+   Halo d'en-tête de page
+   ============================================================
+   L'accueil vit sous une aurore ; les autres pages ouvraient sur du blanc
+   plat. Ce halo reprend les deux teintes du hero (menthe et bleu) à une
+   intensité qui reste sous le seuil de conscience, pour que la parenté se
+   sente sans que la page devienne décorative. Purement visuel, donc
+   `aria-hidden` côté markup et `pointer-events: none` ici. */
+.page-aura {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 22rem;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(60% 100% at 18% 0%, rgb(159 227 208 / 0.16), transparent 70%),
+    radial-gradient(55% 100% at 82% 6%, rgb(120 160 240 / 0.14), transparent 72%);
+  -webkit-mask-image: linear-gradient(to bottom, #000, transparent);
+  mask-image: linear-gradient(to bottom, #000, transparent);
+}
+.dark .page-aura {
+  background:
+    radial-gradient(60% 100% at 18% 0%, rgb(159 227 208 / 0.07), transparent 70%),
+    radial-gradient(55% 100% at 82% 6%, rgb(120 160 240 / 0.09), transparent 72%);
+}
+
+/* Réponse au pointeur, commune à tous les boutons de l'application.
+   Ils ne faisaient varier que leur opacité : rien ne distinguait le survol du
+   clic. Le relèvement d'un pixel se lit sans se remarquer, et l'écrasement au
+   clic donne la réponse tactile qui manquait. */
+.btn-lift {
+  transition:
+    transform 150ms cubic-bezier(0.2, 0.7, 0.3, 1),
+    box-shadow 150ms ease,
+    opacity 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+.btn-lift:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+.btn-lift:active:not(:disabled) {
+  transform: translateY(0.5px);
+  /* Le retour doit être plus vif que l'aller, sinon le clic paraît mou. */
+  transition-duration: 60ms;
+}
+
 /* Hover lift for cards */
 .hover-lift {
   transition:
     transform 180ms cubic-bezier(0.2, 0.7, 0.3, 1),
     border-color 180ms ease,
+    background-color 180ms ease,
     box-shadow 180ms ease;
 }
 .hover-lift:hover {

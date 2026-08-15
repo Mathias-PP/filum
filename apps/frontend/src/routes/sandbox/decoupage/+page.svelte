@@ -170,7 +170,7 @@
       <h2 class="text-sm font-medium text-ink-primary">Extraits ajoutés</h2>
       <ul class="space-y-1 text-sm text-ink-secondary">
         {#each ajoutes as extrait, i (i)}
-          <li class="rounded border border-border-subtle p-2">
+          <li class="rounded border border-border p-2">
             {#if extrait.title}<strong>{extrait.title}</strong> —{/if}
             {extrait.text}
             {#if extrait.context}

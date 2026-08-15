@@ -56,13 +56,13 @@
   >
     <button
       type="button"
-      class="absolute inset-0 bg-ink-primary/40 backdrop-blur-xs"
+      class="absolute inset-0 bg-ink-primary/45 backdrop-blur-sm"
       aria-label="Fermer"
       onclick={onBackdropClick}
       transition:fade={{ duration: 150 }}
     ></button>
     <div
-      class="relative bg-surface-primary rounded-t-xl sm:rounded-lg border border-border w-full {sizeClasses[
+      class="glass glass-panel relative rounded-t-xl sm:rounded-xl w-full {sizeClasses[
         size
       ]} max-h-[calc(100dvh-2rem)] overflow-hidden flex flex-col"
       transition:scale={{ duration: 180, start: 0.96, opacity: 0 }}
@@ -95,7 +95,7 @@
       </div>
       {#if footer}
         <footer
-          class="px-5 py-3 border-t border-border bg-surface-secondary flex justify-end gap-2"
+          class="px-5 py-3 border-t border-border bg-surface-secondary/45 flex justify-end gap-2"
         >
           {@render footer()}
         </footer>

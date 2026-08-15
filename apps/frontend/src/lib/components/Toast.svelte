@@ -56,11 +56,22 @@
 <script lang="ts">
   import { fly } from 'svelte/transition';
 
-  const variantClasses: Record<ToastVariant, string> = {
-    info: 'bg-info-bg border-info text-info',
-    success: 'bg-success-bg border-success text-success',
-    warning: 'bg-warning-bg border-warning text-warning',
-    danger: 'bg-danger-bg border-danger text-danger',
+  // La teinte de variante ne peut plus passer par `bg-*` ni par `border-l-4` :
+  // `.glass` pose le fond et `.glass-panel` un contour d'un pixel sur les
+  // quatre côtés, tous deux hors couche Tailwind, donc prioritaires. L'accent
+  // devient une barre posée dans la plaque, et la teinte un voile par-dessus.
+  const accentClasses: Record<ToastVariant, string> = {
+    info: 'bg-info',
+    success: 'bg-success',
+    warning: 'bg-warning',
+    danger: 'bg-danger',
+  };
+
+  const titleClasses: Record<ToastVariant, string> = {
+    info: 'text-info',
+    success: 'text-success',
+    warning: 'text-warning',
+    danger: 'text-danger',
   };
 </script>
 
@@ -71,15 +82,15 @@
 >
   {#each $store as item (item.id)}
     <div
-      class="pointer-events-auto rounded border-l-4 bg-surface-primary border border-border shadow-xs overflow-hidden flex items-start gap-3 p-3 {variantClasses[
-        item.variant
-      ]}"
+      class="glass glass-panel pointer-events-auto relative rounded-lg overflow-hidden flex items-start gap-3 p-3 pl-4"
       role="alert"
       transition:fly={{ x: 320, duration: 200 }}
     >
+      <span class="absolute inset-y-0 left-0 w-1 {accentClasses[item.variant]}" aria-hidden="true"
+      ></span>
       <div class="flex-1 min-w-0">
         {#if item.title}
-          <p class="text-sm font-medium">{item.title}</p>
+          <p class="text-sm font-medium {titleClasses[item.variant]}">{item.title}</p>
         {/if}
         <p class="text-sm text-ink-primary/90">{item.message}</p>
       </div>

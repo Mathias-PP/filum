@@ -2622,7 +2622,7 @@
   </div>
 
   <div
-    class="absolute bottom-3 left-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs bg-surface-primary/90 border border-border rounded-md px-2.5 py-1.5 backdrop-blur-xs"
+    class="glass glass-panel absolute bottom-3 left-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs rounded-md px-2.5 py-1.5"
   >
     {#each legendEntries as c (c.label)}
       <span class="inline-flex items-center gap-1.5 text-ink-primary">
@@ -2664,7 +2664,7 @@
               <button
                 type="button"
                 onclick={() => collapseCard(id)}
-                class="inline-flex items-center gap-1 rounded-full border border-indigo-300 bg-indigo-50 px-2 py-0.5 text-indigo-800 hover:bg-indigo-100"
+                class="inline-flex items-center gap-1 rounded-full border border-info/40 bg-info/10 px-2 py-0.5 text-info hover:bg-info/20"
                 title="Replier « {meta.title} »"
               >
                 <span class="truncate max-w-40">{meta.title}</span>
@@ -2682,12 +2682,12 @@
         </div>
       {:else if legendOpen}
         <div
-          class="flex items-start gap-2 rounded-md border border-indigo-200 bg-indigo-50/95 px-2.5 py-1.5 text-indigo-900 backdrop-blur-xs"
+          class="glass glass-panel flex items-start gap-2 rounded-md px-2.5 py-1.5 text-ink-primary"
         >
           <p class="flex-1">{legendLabel(neighborCards.size)}</p>
           <button
             type="button"
-            class="shrink-0 rounded px-1 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-900 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-indigo-500"
+            class="shrink-0 rounded px-1 text-ink-tertiary hover:text-ink-primary focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-info"
             aria-label="Masquer l'aide du graphe"
             onclick={() => (legendOpen = false)}
           >
@@ -2697,7 +2697,7 @@
       {:else}
         <button
           type="button"
-          class="rounded-md border border-indigo-200 bg-indigo-50/95 px-2.5 py-1.5 text-indigo-900 backdrop-blur-xs hover:bg-indigo-100 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-indigo-500"
+          class="glass glass-panel rounded-md px-2.5 py-1.5 text-ink-secondary hover:text-ink-primary focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-info"
           onclick={() => (legendOpen = true)}
         >
           ? Aide du graphe

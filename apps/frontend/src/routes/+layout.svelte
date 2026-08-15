@@ -20,6 +20,21 @@
 
   let showUserMenu = $state(false);
   let mobileNavOpen = $state(false);
+  // L'en-tête ne porte son arête et son ombre qu'une fois du contenu passé
+  // dessous. En haut de page il n'y a rien à séparer : le trait y soulignait
+  // le vide, et sur l'accueil il coupait le hero en deux.
+  let scrolled = $state(false);
+
+  function onScroll() {
+    scrolled = window.scrollY > 8;
+  }
+
+  // Une page ouverte déjà défilée (retour arrière, ancre, position restaurée)
+  // n'émet aucun évènement de défilement : sans cette lecture au montage,
+  // l'en-tête resterait sans arête au-dessus du contenu qui passe dessous.
+  $effect(() => {
+    onScroll();
+  });
 
   $effect(() => {
     auth.setUser(data.user);
@@ -72,12 +87,12 @@
   ];
 </script>
 
-<svelte:window onclick={closeUserMenu} onkeydown={onGlobalKeydown} />
+<svelte:window onclick={closeUserMenu} onkeydown={onGlobalKeydown} onscroll={onScroll} />
 
 <a href="#main-content" class="skip-link">Aller au contenu principal</a>
 
 <div class="min-h-screen flex flex-col">
-  <header class="sticky top-0 z-40 bg-surface-primary/85 backdrop-blur-md border-b border-border">
+  <header class="site-header glass sticky top-0 z-40" class:is-scrolled={scrolled}>
     <nav class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between h-14 gap-3">
         <div class="flex items-center gap-2">
@@ -145,7 +160,7 @@
                 <!-- svelte-ignore a11y_click_events_have_key_events -->
                 <!-- svelte-ignore a11y_no_static_element_interactions -->
                 <div
-                  class="absolute right-0 mt-2 w-52 bg-surface-primary rounded-lg shadow-md border border-border py-1 z-50"
+                  class="glass glass-panel absolute right-0 mt-2 w-52 rounded-lg py-1 z-50 overflow-hidden"
                   onclick={(e) => e.stopPropagation()}
                   transition:fly={{ y: -4, duration: 120 }}
                 >
@@ -213,9 +228,17 @@
     </nav>
   </header>
 
-  <main id="main-content" class="flex-1">
+  <main id="main-content" class="relative flex-1">
+    <!-- Le halo est posé ici plutôt que dans chaque page : sept en-têtes de
+         contenu avaient sept conteneurs différents, et les pages applicatives
+         n'en avaient aucun. Posé au niveau du layout, il couvre aussi le
+         tableau de bord, le feed et les profils. L'accueil en est exclu : il a
+         son aurore et sa nuit, un lavis clair par-dessus les brouillerait. -->
+    {#if $page.url.pathname !== '/'}
+      <div class="page-aura" aria-hidden="true"></div>
+    {/if}
     {#key $page.url.pathname}
-      <div in:fly|global={{ y: 8, duration: 180 }}>
+      <div class="relative" in:fly|global={{ y: 8, duration: 180 }}>
         {@render children()}
       </div>
     {/key}
@@ -298,13 +321,29 @@
     outline-offset: 2px;
   }
 
+  .site-header {
+    border-bottom: 1px solid transparent;
+    transition:
+      border-color 220ms ease,
+      box-shadow 220ms ease;
+  }
+  .site-header.is-scrolled {
+    border-bottom-color: rgb(var(--border));
+    box-shadow:
+      inset 0 1px 0 rgb(var(--glass-sheen) / var(--glass-sheen-alpha)),
+      0 8px 24px -18px rgb(var(--glass-shadow) / var(--glass-shadow-alpha));
+  }
+
   .nav-link {
+    position: relative;
     padding: 0.375rem 0.75rem;
     font-size: 0.875rem;
     font-weight: 500;
     color: rgb(var(--text-secondary));
     border-radius: 6px;
-    transition: all 150ms ease;
+    transition:
+      color 150ms ease,
+      background-color 150ms ease;
     text-decoration: none;
   }
   .nav-link:hover {
@@ -314,13 +353,28 @@
   .nav-link.is-active {
     color: rgb(var(--text-primary));
   }
-  .nav-link.is-active::after {
+  /* Le soulignement était posé dans le flux et poussait le libellé vers le
+     haut : l'onglet actif ne s'alignait plus sur ses voisins. Détaché, il se
+     déploie depuis le centre au survol comme à l'état actif. */
+  .nav-link::after {
     content: '';
-    display: block;
+    position: absolute;
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: 0.05rem;
     height: 2px;
-    background: rgb(var(--info));
-    margin-top: 0.25rem;
     border-radius: 1px;
+    background: rgb(var(--info));
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform 220ms cubic-bezier(0.2, 0.7, 0.3, 1);
+  }
+  .nav-link.is-active::after,
+  .nav-link:hover::after {
+    transform: scaleX(1);
+  }
+  .nav-link:hover:not(.is-active)::after {
+    background: rgb(var(--info) / 0.45);
   }
 
   /* Animated hamburger -> X */
