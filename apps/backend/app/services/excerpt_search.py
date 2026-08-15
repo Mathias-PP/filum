@@ -115,6 +115,34 @@ async def schema_du_type_vector(db: AsyncSession) -> str | None:
     return schema
 
 
+#: Le seul trou du modele est `{distance}`, l'expression de distance cosinus.
+#: Toutes les valeurs venant de l'appelant sont des parametres lies.
+_MODELE_REQUETE = """
+    SELECT
+        e.id AS excerpt_id,
+        e.text AS text,
+        e.title AS title,
+        e.context AS context,
+        s.id AS source_id,
+        s.title AS source_title,
+        s.url AS source_url,
+        c.id AS card_id,
+        c.slug AS card_slug,
+        c.title AS card_title,
+        1 - ({distance}) AS similarite
+    FROM excerpt_embeddings em
+    JOIN source_excerpts e ON e.id = em.excerpt_id
+    JOIN sources s ON s.id = e.source_id
+    JOIN biblio_cards c ON c.id = s.biblio_card_id
+    WHERE em.model = :modele
+      AND c.user_id = :user_id
+      AND c.deleted_at IS NULL
+      AND s.deleted_at IS NULL
+    ORDER BY {distance}
+    LIMIT :limite
+"""
+
+
 def requete_sql(schema: str) -> str:
     """La requete de similarite, qualifiee par le schema de pgvector.
 
@@ -124,30 +152,10 @@ def requete_sql(schema: str) -> str:
     exact et rapide en dessous de quelques dizaines de milliers de vecteurs.
     """
     distance = f"em.embedding OPERATOR({schema}.<=>) CAST(:vecteur AS {schema}.vector)"
-    return f"""
-        SELECT
-            e.id AS excerpt_id,
-            e.text AS text,
-            e.title AS title,
-            e.context AS context,
-            s.id AS source_id,
-            s.title AS source_title,
-            s.url AS source_url,
-            c.id AS card_id,
-            c.slug AS card_slug,
-            c.title AS card_title,
-            1 - ({distance}) AS similarite
-        FROM excerpt_embeddings em
-        JOIN source_excerpts e ON e.id = em.excerpt_id
-        JOIN sources s ON s.id = e.source_id
-        JOIN biblio_cards c ON c.id = s.biblio_card_id
-        WHERE em.model = :modele
-          AND c.user_id = :user_id
-          AND c.deleted_at IS NULL
-          AND s.deleted_at IS NULL
-        ORDER BY {distance}
-        LIMIT :limite
-    """
+    # La seule valeur assemblee est un nom de schema lu dans `pg_catalog` puis
+    # confronte a `_SCHEMA_VALIDE`. Rien de ce que fournit l'appelant n'entre
+    # ici : :vecteur, :modele, :user_id et :limite sont des parametres lies.
+    return _MODELE_REQUETE.format(distance=distance)  # nosec B608
 
 
 async def rechercher(
