@@ -25,7 +25,7 @@ from app.schemas.source import SourceCreate, SourceResponse, SourceUpdate
 from app.services.auth import AuthService
 from app.services.card_link import effective_linked_card_id
 from app.services.source_enrichment import schedule_source_enrichment
-from app.services.wayback import WaybackService, schedule_archiving
+from app.services.wayback import WaybackService, horodatage_wayback, schedule_archiving
 
 logger = logging.getLogger(__name__)
 
@@ -285,7 +285,7 @@ async def create_source(
         doi=source_data.doi,
         archive_url=manual_archive,
         archive_status="archived" if manual_archive else "pending",
-        archive_timestamp=datetime.now().replace(tzinfo=None) if manual_archive else None,
+        archive_timestamp=horodatage_wayback(manual_archive),
     )
 
     db.add(source)
@@ -440,7 +440,7 @@ async def create_sources_batch(
                 doi=sd.doi,
                 archive_url=manual_archive,
                 archive_status="archived" if manual_archive else "pending",
-                archive_timestamp=datetime.now().replace(tzinfo=None) if manual_archive else None,
+                archive_timestamp=horodatage_wayback(manual_archive),
             )
             db.add(source)
             await db.flush()  # attribue l'ID sans commit
@@ -604,16 +604,15 @@ async def update_source(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={"code": "invalid_linked_card", "message": str(e)},
             ) from e
-    # Special-case archive_url: when the user provides one explicitly we mark
-    # the source ARCHIVED with the current timestamp. When they explicitly
-    # clear it we revert to PENDING and let the next save (or a re-add) handle
-    # auto-archiving.
+    # Une URL d'archive fournie a la main marque la source ARCHIVED, datee de
+    # la capture elle-meme et non de l'instant de la saisie. L'effacer explici-
+    # tement ramene a PENDING : la prochaine sauvegarde relancera l'archivage.
     if "archive_url" in update_data:
         new_archive = (update_data["archive_url"] or "").strip() or None
         update_data["archive_url"] = new_archive
         if new_archive:
             update_data["archive_status"] = "archived"
-            update_data["archive_timestamp"] = datetime.now().replace(tzinfo=None)
+            update_data["archive_timestamp"] = horodatage_wayback(new_archive)
         else:
             update_data["archive_status"] = "pending"
             update_data["archive_timestamp"] = None
