@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { noticeUrl, retractionBadge, retractionTitle } from '$lib/utils/retraction';
+import {
+  montrerAvisRetractation,
+  noticeUrl,
+  retractionBadge,
+  retractionTitle,
+} from '$lib/utils/retraction';
 
 describe('retractionBadge', () => {
   it('n’affiche rien tant que rien n’a été vérifié', () => {
@@ -27,6 +32,36 @@ describe('retractionBadge', () => {
 
   it('encaisse un état inconnu du backend sans casser le rendu', () => {
     expect(retractionBadge('withdrawn_2030')).toBeNull();
+  });
+});
+
+describe('montrerAvisRetractation', () => {
+  it('se tait sur ce qui ne peut pas être rétracté', () => {
+    // Un podcast, un livre ou une page de laboratoire n'ont pas d'avis de
+    // rétractation possible. « Non vérifiable » y répond à une question que
+    // personne ne pose, et le visiteur le lit comme un doute sur la source.
+    for (const c of ['page-web', 'podcast', 'livre', 'documentaire', 'post-social', 'notes']) {
+      expect(montrerAvisRetractation('unverifiable', c)).toBe(false);
+    }
+  });
+
+  it('parle quand la rétractation a un sens', () => {
+    for (const c of ['article-scientifique', 'preprint']) {
+      expect(montrerAvisRetractation('unverifiable', c)).toBe(true);
+      expect(montrerAvisRetractation('none', c)).toBe(true);
+    }
+  });
+
+  it('montre toujours un avis existant, quelle que soit la catégorie', () => {
+    // Un avis publié est une information, même sur un billet de blog qui
+    // relaie un article rétracté.
+    for (const s of ['retracted', 'concern', 'corrected']) {
+      expect(montrerAvisRetractation(s, 'blog')).toBe(true);
+    }
+  });
+
+  it('ne montre rien quand rien n’a été vérifié', () => {
+    expect(montrerAvisRetractation(null, 'article-scientifique')).toBe(false);
   });
 });
 

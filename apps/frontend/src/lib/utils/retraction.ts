@@ -60,6 +60,30 @@ const BADGES: Record<RetractionStatus, RetractionBadge> = {
   },
 };
 
+/**
+ * Categories ou la retractation existe comme fait editorial.
+ *
+ * Une revue retracte un article, elle ne retracte pas un podcast ni la page
+ * d'un laboratoire. Sur la fiche vitrine, douze sources sur dix-huit portaient
+ * « Non verifiable » alors que la question ne se posait pas : le mot dominait
+ * la page et le visiteur le lisait comme un doute sur les sources, sur la
+ * page meme qui vend leur verifiabilite.
+ */
+const CATEGORIES_RETRACTABLES = new Set(['article-scientifique', 'preprint']);
+
+/** Faut-il afficher l'etat de retractation de cette source ? */
+export function montrerAvisRetractation(
+  status: string | null | undefined,
+  category: string | null | undefined
+): boolean {
+  const badge = retractionBadge(status);
+  if (!badge) return false;
+  // Un avis publie reste une information partout : un billet qui relaie un
+  // article retracte doit pouvoir le dire.
+  if (badge.isNotice) return true;
+  return CATEGORIES_RETRACTABLES.has(category ?? '');
+}
+
 export function retractionBadge(status: string | null | undefined): RetractionBadge | null {
   if (!status) return null;
   return BADGES[status as RetractionStatus] ?? null;
