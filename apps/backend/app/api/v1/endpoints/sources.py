@@ -17,6 +17,7 @@ from app.core.rate_limit import limiter
 from app.core.url_safety import UnsafeUrlError, assert_url_is_safe
 from app.db.database import async_session_maker, get_db
 from app.extractors import url_extractor
+from app.extractors.ref_dedup import norm_url
 from app.models.biblio_card import BiblioCard
 from app.models.source import Source
 from app.models.user import User
@@ -42,6 +43,34 @@ def _spawn(coro) -> None:
     task = asyncio.create_task(coro)
     _background_tasks.add(task)
     task.add_done_callback(_background_tasks.discard)
+
+
+def _identite(url: str | None, doi: str | None) -> str | None:
+    """Ce qui identifie une source dans une fiche, ou None si rien ne l'identifie.
+
+    Le DOI d'abord, l'URL normalisee ensuite. Jamais le titre : deux chapitres
+    homonymes d'ouvrages differents sont deux sources. Un livre saisi sans
+    adresse n'a donc pas d'identite comparable, et reste toujours acceptable.
+    """
+    if doi and doi.strip():
+        return f"doi:{doi.strip().lower()}"
+    return norm_url(url) or None
+
+
+async def _identites_de_la_fiche(db: AsyncSession, card_id: UUID) -> dict[str, UUID]:
+    #: Les sources mises a la corbeille ne comptent pas : sinon supprimer une
+    #: source puis la rajouter deviendrait impossible, sans rien pour l'expliquer.
+    rows = await db.execute(
+        select(Source.id, Source.url, Source.doi).where(
+            Source.biblio_card_id == card_id, Source.deleted_at.is_(None)
+        )
+    )
+    connues: dict[str, UUID] = {}
+    for source_id, url, doi in rows.all():
+        cle = _identite(url, doi)
+        if cle:
+            connues.setdefault(cle, source_id)
+    return connues
 
 
 class ArchiveRequest(BaseModel):
@@ -193,6 +222,22 @@ async def create_source(
     # remains valid for its timestamped version; re-attestation policy is left
     # to a future ADR-021 if needed.
 
+    #: Ajouter deux fois la meme reference la fait compter double, archiver
+    #: deux fois chez Wayback, enrichir deux fois, et apparaitre deux fois dans
+    #: le graphe. Le dire vaut mieux que l'accepter en silence.
+    cle = _identite(source_data.url, source_data.doi)
+    if cle:
+        deja = (await _identites_de_la_fiche(db, card_id)).get(cle)
+        if deja:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "duplicate_source",
+                    "message": "Cette source figure déjà dans cette fiche.",
+                    "existing_source_id": str(deja),
+                },
+            )
+
     max_position = await db.execute(
         select(func.max(Source.position)).where(Source.biblio_card_id == card_id)
     )
@@ -296,9 +341,20 @@ class SourceBatchError(BaseModel):
     error: str
 
 
+class SourceBatchDuplicate(BaseModel):
+    """Reference deja presente dans la fiche, ecartee sans etre une erreur."""
+
+    index: int
+    url: str
+    existing_source_id: UUID | None = None
+
+
 class SourceBatchResponse(BaseModel):
     created: list[SourceResponse]
     failed: list[SourceBatchError]
+    #: Ce que le lot n'a pas cree parce que la fiche le portait deja. Sans ce
+    #: compte, le total annonce ne correspondrait pas a ce que la fiche montre.
+    duplicates: list[SourceBatchDuplicate] = []
 
 
 @router.post("/batch", response_model=SourceBatchResponse, status_code=status.HTTP_201_CREATED)
@@ -338,9 +394,21 @@ async def create_sources_batch(
 
     created: list[Source] = []
     failed: list[SourceBatchError] = []
+    duplicates: list[SourceBatchDuplicate] = []
+    #: Sert les deux cas : la reference deja en base, et la reference repetee a
+    #: l'interieur du meme lot. Un import qui liste deux fois le meme article
+    #: n'a pas de raison de le creer deux fois.
+    connues = await _identites_de_la_fiche(db, card_id)
 
     for i, sd in enumerate(body.sources):
         try:
+            cle = _identite(sd.url, sd.doi)
+            if cle and cle in connues:
+                duplicates.append(
+                    SourceBatchDuplicate(index=i, url=sd.url, existing_source_id=connues[cle])
+                )
+                continue
+
             manual_archive = (sd.archive_url or "").strip() or None
             linked_card_id = await effective_linked_card_id(
                 db,
@@ -377,6 +445,8 @@ async def create_sources_batch(
             db.add(source)
             await db.flush()  # attribue l'ID sans commit
             created.append(source)
+            if cle:
+                connues[cle] = source.id
             next_pos += 1
         except Exception as exc:
             logger.warning(
@@ -418,6 +488,7 @@ async def create_sources_batch(
     return SourceBatchResponse(
         created=[SourceResponse.model_validate(s) for s in created_full],
         failed=failed,
+        duplicates=duplicates,
     )
 
 
