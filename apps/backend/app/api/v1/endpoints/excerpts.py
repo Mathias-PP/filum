@@ -174,6 +174,25 @@ async def _get_owned_source(source_id: UUID, user: User, db: AsyncSession) -> So
     return source
 
 
+async def _texte_de_la_source(url: str | None) -> tuple[str, bool]:
+    """Texte de la page d'une source, et si le site a refusé de la rendre.
+
+    PubMed et PMC opposent un reCAPTCHA aux IP de datacenter : leur page HTML
+    ne rend rien, alors que leur API rend le texte plein des articles en accès
+    libre. Sans cette voie, la moitié des sources d'une fiche scientifique sont
+    déclarées illisibles à tort, ce qui accuse l'auteur·ice à la place du site.
+    """
+    # Import local : évite un cycle app.api ↔ app.extractors au démarrage.
+    from app.extractors.pmc_oracle import texte_plein_ncbi
+    from app.extractors.url_extractor import _html_scrape
+
+    texte = (await texte_plein_ncbi(url)) or ""
+    if texte:
+        return texte, False
+    meta = await _html_scrape(url)
+    return (meta.page_text if meta else None) or "", bool(meta and meta.access_blocked)
+
+
 def verify_quote(page_text: str, quote: str) -> re.Match[str] | None:
     """Recherche exacte du passage, tolérante aux espaces/retours à la ligne."""
     quote = quote.strip()
@@ -272,10 +291,7 @@ async def chunk_source_text(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={"code": "unsafe_url", "message": str(e)},
             ) from e
-        from app.extractors.url_extractor import _html_scrape
-
-        meta = await _html_scrape(source.url)
-        texte = (meta.page_text if meta else None) or ""
+        texte, _ = await _texte_de_la_source(source.url)
 
     reponse = decouper_pour_reponse(texte, payload)
     if payload.suggest_titles and reponse.chunks:
@@ -419,11 +435,7 @@ async def verify_source_excerpts(
                 detail={"code": "unsafe_url", "message": str(e)},
             ) from e
 
-        from app.extractors.url_extractor import _html_scrape
-
-        meta = await _html_scrape(source.url)
-        page_text = (meta.page_text if meta else None) or ""
-        refuse = bool(meta and meta.access_blocked)
+        page_text, refuse = await _texte_de_la_source(source.url)
 
     releve_le = datetime.now(UTC).replace(tzinfo=None)
 
@@ -499,12 +511,7 @@ async def suggest_source_excerpts(
                 detail={"code": "unsafe_url", "message": str(e)},
             ) from e
 
-        # Import local : évite un cycle app.api ↔ app.extractors au démarrage.
-        from app.extractors.url_extractor import _html_scrape
-
-        meta = await _html_scrape(source.url)
-        page_text = (meta.page_text if meta else None) or ""
-        refuse = bool(meta and meta.access_blocked)
+        page_text, refuse = await _texte_de_la_source(source.url)
     if not page_text:
         # Cinq URLs sur dix ne rendent rien (mesure du 2026-08-08). Ce n'est
         # pas un echec de l'appel : c'est l'etat qui fait basculer l'interface
