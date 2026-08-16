@@ -42,9 +42,8 @@ def est_url_ncbi(url: str | None) -> bool:
 
 def identifiant_depuis_url(url: str | None) -> str | None:
     """PMCID ou PMID porté par l'URL, sinon None."""
-    if not est_url_ncbi(url):
+    if not url or not est_url_ncbi(url):
         return None
-    assert url is not None
     m = re.search(r"/(PMC\d+)", url, re.IGNORECASE)
     if m:
         return m.group(1).upper()

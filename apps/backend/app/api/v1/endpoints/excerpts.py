@@ -186,6 +186,8 @@ async def _texte_de_la_source(url: str | None) -> tuple[str, bool]:
     from app.extractors.pmc_oracle import texte_plein_ncbi
     from app.extractors.url_extractor import _html_scrape
 
+    if not url:
+        return "", False
     texte = (await texte_plein_ncbi(url)) or ""
     if texte:
         return texte, False
