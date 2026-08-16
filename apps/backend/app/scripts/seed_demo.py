@@ -548,6 +548,18 @@ class VerdictReporte(NamedTuple):
     provenance: str | None
 
 
+def _date_de_publication(deja_publiee_le: datetime | None) -> datetime:
+    """Date de premiere publication de la fiche vitrine.
+
+    Le seed rejoue a chaque demarrage du conteneur. Reposer cette date a
+    chaque passage faisait rajeunir la fiche d'un deploiement a l'autre :
+    elle s'affichait « Publiee le » a l'instant meme, et le JSON-LD servait
+    la meme date mouvante aux moteurs et aux agents. Une date de publication
+    qui change sans que rien ne soit publie est une date fausse.
+    """
+    return deja_publiee_le or _utcnow_naive()
+
+
 def _verdicts_par_extrait(sources: Sequence[Source]) -> dict[tuple[str, str], VerdictReporte]:
     """Relectures deja faites, indexees par (url de la source, texte).
 
@@ -676,7 +688,7 @@ async def _get_or_create_demo_card(
             continue
         created_sources[index].parent_source_id = created_sources[parent_pos].id
 
-    card.published_at = _utcnow_naive()
+    card.published_at = _date_de_publication(card.published_at)
     card.status = CardStatus.PUBLISHED.value
 
     await db.commit()

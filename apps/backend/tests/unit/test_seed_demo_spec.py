@@ -18,7 +18,11 @@ from datetime import date, datetime
 
 from app.models.source import Source, SourceStance
 from app.models.source_excerpt import SourceExcerpt
-from app.scripts.seed_demo import _demo_sources, _verdicts_par_extrait
+from app.scripts.seed_demo import (
+    _date_de_publication,
+    _demo_sources,
+    _verdicts_par_extrait,
+)
 
 SPEC = _demo_sources()
 RELU_LE = datetime(2026, 8, 16, 12, 0, 0)
@@ -137,6 +141,22 @@ class TestVerdictsSurvivants:
         reporte = _verdicts_par_extrait(sources)[("https://a.example/x", "un extrait")]
         assert reporte.date == RELU_LE
         assert reporte.provenance == "fetched"
+
+
+class TestDatePublicationStable:
+    """Le seed rejoue a chaque demarrage du conteneur.
+
+    Une date de publication reposee a chaque passage fait rajeunir la fiche
+    d'un deploiement a l'autre, a l'ecran comme dans le JSON-LD servi aux
+    moteurs et aux agents.
+    """
+
+    def test_une_fiche_deja_publiee_garde_sa_date(self):
+        publiee_le = datetime(2026, 7, 18, 23, 28, 15)
+        assert _date_de_publication(publiee_le) == publiee_le
+
+    def test_une_fiche_jamais_publiee_recoit_une_date(self):
+        assert _date_de_publication(None) is not None
 
 
 class TestChargeable:
