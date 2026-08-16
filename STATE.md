@@ -6,6 +6,28 @@
 
 ---
 
+## Session 2026-08-16 (autonome, suite) : une fiche scientifique de bout en bout, et cinq défauts qu'elle a révélés
+
+Fiche construite en se comportant en utilisateur sur un article grand public de 2026 : Nature Communications, « Real-world data and clinical experience from over 100,000 multi-cancer early detection tests » (`10.1038/s41467-025-64094-7`), publiée sur [`/@mathias-pinault/real-world-data-and-clinical-experience-from-over-100-000-mu`](https://filum-eight.vercel.app/@mathias-pinault/real-world-data-and-clinical-experience-from-over-100-000-mu). 50 sources extraites par l'oracle Crossref, 10 qualifiées « source clé », 19 extraits verbatim relevés dans les sources elles-mêmes puis vérifiés par « Relire la source ».
+
+La méthode change tout : au lieu de lister une bibliographie, on va lire les sources citées et on en rapporte les passages qui portent réellement l'affirmation. C'est ce parcours qui a produit les cinq défauts ci-dessous, tous corrigés, déployés et revérifiés en production.
+
+**PR #401 : annoncer une langue rend Springer et Nature lisibles.** Le scraper n'envoyait pas d'en-tête `Accept-Language`. Plusieurs éditeurs répondent alors une page de sélection régionale au lieu de l'article, et Philum concluait que la source était inaccessible.
+
+**PR #402 : un 429 passager ne condamne plus une source.** NCBI répond `429 Too Many Requests` quand on enchaîne les lectures, ce qui est transitoire par définition. Une seule tentative suffisait à marquer l'extrait invérifiable. Un réessai espacé rattrape la plupart des cas.
+
+**PR #403 : un mur de lecture se distingue d'une page vide.** Après plusieurs lectures, NCBI passe du 429 à une page d'interstitiel : `203` avec « Cookies must be enabled » sur PubMed, puis un reCAPTCHA en `200` sur PMC. La page a un corps court mais non vide, donc elle passait pour un contenu légitime où l'extrait était absent. Un extrait bien réel se voyait alors imputer une citation inventée. Trois paliers de détection (signal fort seul, signal faible sous 2000 caractères, signal générique sous 200) rendent désormais le verdict `unreadable`, qui dit « je n'ai pas pu lire » et non « ce n'est pas là ».
+
+**PR #404 : une source citée se voit sans être ouverte.** Sur cette fiche, 14 des 50 sources portent des extraits verbatim, et rien ne les distinguait des 36 seulement listées tant qu'on ne dépliait pas les lignes une par une. Les extraits ne s'affichaient qu'une fois la source ouverte. Un badge de comptage figure maintenant sur la ligne repliée.
+
+**PR #405 : le DOI déposé par l'éditeur n'arrivait pas en base.** Les 50 sources venaient de l'oracle Crossref, où chaque référence porte son DOI et sa revue ; en base, les 50 avaient `doi = null` et `journal = null`. Or les deux vérifications les plus concrètes de Philum sont indexées sur le DOI : la rétractation (Crossref) et l'accès libre (Unpaywall). **Toute fiche scientifique affichait donc « Non vérifiable » sur chacune de ses références.** Point de perte unique : `_s2_ref_to_imported_ref` recopiait titre, auteurs, année et texte brut, et laissait tomber `doi` et `journal`.
+
+Effet mesuré après reprise des 50 sources publiées : 45 DOI posés (les 5 restants n'en ont pas, page produit, rapport, registre), accès libre renseigné sur les 45, et **2 références portent un correctif publié** que la fiche annonçait jusque-là comme non vérifiable. C'est exactement le signal que le produit existe pour rendre.
+
+**Piège de déploiement à retenir.** Le fichier compose de la VM est sous `infra/oracle/docker-compose.micro.yml`, pas à la racine du dépôt. Enchaîner `git pull && docker compose up --build` avec `&&` dans un seul `ssh` rend **exit 0** même quand le rebuild échoue sur `no such file or directory` : le pull a réussi, la VM affiche le bon SHA, et le conteneur tourne toujours l'ancien code. Deux correctifs ont été crus déployés pendant des heures. Toujours vérifier le code réellement embarqué dans le conteneur, jamais le SHA du dépôt.
+
+---
+
 ## Session 2026-08-16 (autonome, suite) — une fiche construite en se comportant en utilisateur
 
 Une fiche a été créée de bout en bout depuis l'interface, sans raccourci d'API, sur le rapport GRAM 2022 du Lancet (`10.1016/S0140-6736(21)02724-0`, lu via le miroir ouvert PMC) : [`/@mathias-pinault/global-burden-of-bacterial-antimicrobial-resistance-in-2019-`](https://filum-eight.vercel.app/@mathias-pinault/global-burden-of-bacterial-antimicrobial-resistance-in-2019-). 62 sources, dont 60 extraites par l'oracle Crossref en confiance élevée et 2 ajoutées à la main par DOI, 43 mises en file d'archivage Wayback, 2 sources qualifiées (posture, annotation, source clé), 1 extrait verbatim suggéré par le modèle puis vérifié mot à mot par « Relire la source ».
