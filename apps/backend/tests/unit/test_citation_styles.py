@@ -123,6 +123,30 @@ def test_initiales_composees_gardent_le_trait_d_union():
     assert "Dupont, J.-M." in rendu
 
 
+@pytest.mark.parametrize("style", sorted(STYLES))
+def test_une_liste_abregee_le_reste_dans_tous_les_styles(style):
+    """« et al. » n'est pas un nom, mais c'est une information.
+
+    La retirer sans la remplacer ferait citer « Wiltgen, B. J. » d'un article
+    ecrit a plusieurs : une reference bien formee et fausse, exactement ce que
+    ces tests existent pour empecher.
+    """
+    rendu = format_reference(_source(authors="Brian J. Wiltgen et al."), style)
+    assert "et al." in rendu
+    assert "Wiltgen" in rendu
+
+
+def test_une_liste_complete_ne_recoit_pas_d_et_al():
+    assert "et al." not in format_reference(_source(authors="Adleman N., Menon V."), "apa")
+
+
+def test_chicago_ne_double_pas_le_point_apres_une_initiale():
+    # « Loftus, Elizabeth F.. 2005. » etait servi en production.
+    rendu = format_reference(_source(authors="Elizabeth F. Loftus"), "chicago")
+    assert "Loftus, Elizabeth F. " in rendu
+    assert ".." not in rendu
+
+
 def test_style_inconnu_leve():
     with pytest.raises(KeyError):
         format_reference(_source(), "zotero-maison")

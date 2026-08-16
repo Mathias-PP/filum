@@ -119,3 +119,16 @@ class TestPivotPartage:
         # « and » est le seul separateur que LaTeX comprend.
         bib = export_bibtex(make_card(make_source(authors="Adleman N., Menon V.")))
         assert "author = {Adleman, N. and Menon, V.}" in bib
+
+    def test_bibtex_ecrit_l_abreviation_dans_sa_forme_canonique(self):
+        # `and others` est ce que BibTeX et biblatex savent abreger eux-memes
+        # selon le style. « and et al. » ferait naitre un auteur de ce nom.
+        bib = export_bibtex(make_card(make_source(authors="Brian J. Wiltgen et al.")))
+        assert "author = {Wiltgen, Brian J. and others}" in bib
+
+    def test_le_ris_dit_que_la_liste_est_abregee(self):
+        # Sans cette ligne, l'entree importee attribuerait a une personne un
+        # article ecrit a plusieurs.
+        ris = export_ris(make_card(make_source(authors="Brian J. Wiltgen et al.")))
+        assert "AU  - Wiltgen, Brian J." in ris
+        assert "AU  - et al." in ris

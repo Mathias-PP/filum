@@ -10,6 +10,8 @@ import pytest
 from app.services.csl import (
     author_display,
     csl_key,
+    est_abrege,
+    noms_propres,
     parse_authors,
     parse_name,
     to_csl,
@@ -139,20 +141,35 @@ class TestParseAuthors:
         # `@article{al2010n2}` et le RIS `AU  - al., Brian J. Wiltgen et`.
         # La regle « dernier jeton = famille » prenait l'abreviation pour
         # un nom, et l'auteur reel disparaissait dans le prenom.
-        assert parse_authors("Brian J. Wiltgen et al.") == [
+        assert noms_propres(parse_authors("Brian J. Wiltgen et al.")) == [
             {"family": "Wiltgen", "given": "Brian J."}
         ]
 
+    def test_et_al_reste_lisible_comme_abreviation(self):
+        # La supprimer ferait passer un article collectif pour un article a
+        # auteur unique : la reference attribuerait a une personne ce que
+        # plusieurs ont ecrit.
+        names = parse_authors("Brian J. Wiltgen et al.")
+        assert est_abrege(names)
+        assert names[-1] == {"literal": "et al."}
+
+    def test_une_liste_complete_ne_se_dit_pas_abregee(self):
+        assert not est_abrege(parse_authors("Dupont, J., Martin, A."))
+
     def test_et_al_en_queue_de_liste_ne_cree_pas_d_auteur_fantome(self):
-        names = parse_authors("Xu Liu, Steve Ramirez, Susumu Tonegawa et al.")
+        names = noms_propres(parse_authors("Xu Liu, Steve Ramirez, Susumu Tonegawa et al."))
         assert [n["family"] for n in names] == ["Liu", "Ramirez", "Tonegawa"]
 
     def test_et_al_detache_par_une_virgule(self):
-        assert parse_authors("Nader K., et al.") == [{"family": "Nader", "given": "K."}]
+        assert noms_propres(parse_authors("Nader K., et al.")) == [
+            {"family": "Nader", "given": "K."}
+        ]
 
     def test_les_variantes_francaises_sont_reconnues(self):
-        assert parse_authors("Dupont et coll.") == [{"family": "Dupont"}]
-        assert parse_authors("Dupont et autres") == [{"family": "Dupont"}]
+        for chaine in ("Dupont et coll.", "Dupont et autres"):
+            names = parse_authors(chaine)
+            assert noms_propres(names) == [{"family": "Dupont"}]
+            assert est_abrege(names)
 
     def test_un_nom_qui_commence_par_al_reste_intact(self):
         # « Al » est une particule frequente. La couper produirait un auteur
