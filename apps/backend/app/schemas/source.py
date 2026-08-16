@@ -148,6 +148,10 @@ class SourceCreate(SourceBase):
 
 
 class SourceUpdate(BaseModel):
+    #: Tous les champs etant facultatifs, un corps entierement faux vaudrait un
+    #: corps vide : la requete « reussirait » sans rien ecrire ni rien dire.
+    model_config = ConfigDict(extra="forbid")
+
     title: str | None = None
     authors: str | None = None
     published_at: datetime | None = None

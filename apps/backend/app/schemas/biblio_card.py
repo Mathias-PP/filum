@@ -77,6 +77,10 @@ class CardCreate(CardBase):
 
 
 class CardUpdate(BaseModel):
+    #: Voir SourceUpdate : sur un schema tout-facultatif, ignorer un champ
+    #: inconnu rend un corps errone indiscernable d'un corps vide.
+    model_config = ConfigDict(extra="forbid")
+
     title: str | None = Field(default=None, min_length=1, max_length=500)
     description: str | None = None
     content_url: str | None = None
