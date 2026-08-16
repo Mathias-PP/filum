@@ -24,6 +24,8 @@ Deuxième fiche construite selon la même méthode, sur une revue qui **cite** l
 
 **PR #414 : la fiche vitrine cite ses sources mot à mot.** Les huit extraits de `/@example/memoire-et-cerveau` étaient des paraphrases françaises de sources anglaises. « Relire la source » ne pouvait donc que conclure à l'absence ou à l'illisibilité : la vitrine démontrait l'inverse de la promesse du produit. Les cinq sources qu'un serveur ne peut pas lire n'ont plus d'extrait, les quatre lisibles portent du verbatim dans la langue de l'article. Sept extraits, sept `found` en production. Une traduction, même fidèle, ne se retrouve jamais dans le texte source : c'est une contrainte de conception, pas un détail éditorial.
 
+**PR #416 : un déploiement n'efface plus la relecture de la vitrine.** Le seed supprime et recrée les sources de la fiche de démonstration à chaque démarrage du conteneur, et les extraits renaissaient sans verdict : les sept `found` de la PR #414 auraient disparu au déploiement suivant. Les verdicts sont désormais relevés avant la suppression et reportés, indexés par le couple (URL de la source, texte de l'extrait). Un extrait réécrit repart sans verdict, car lui reporter l'ancien afficherait « retrouvé dans la source » pour une phrase jamais cherchée. Vérifié en production après redéploiement : le seed rejoue, les sept `found` sont toujours là.
+
 ---
 
 ## Session 2026-08-16 (autonome, suite) : une fiche scientifique de bout en bout, et cinq défauts qu'elle a révélés
