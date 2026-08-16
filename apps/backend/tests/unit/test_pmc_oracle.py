@@ -18,7 +18,12 @@ from __future__ import annotations
 
 import json
 
-from app.extractors.pmc_oracle import est_url_ncbi, identifiant_depuis_url, texte_des_passages
+from app.extractors.pmc_oracle import (
+    est_url_ncbi,
+    identifiant_depuis_url,
+    texte_du_resume,
+    texte_des_passages,
+)
 
 
 def test_une_url_pmc_est_reconnue():
@@ -100,3 +105,25 @@ def test_un_article_hors_acces_libre_ne_rend_rien():
 def test_une_reponse_vide_ne_rend_rien():
     assert texte_des_passages("[]") is None
     assert texte_des_passages('[{"documents": []}]') is None
+
+
+def test_le_resume_est_du_texte_lisible():
+    #: Cinq des huit extraits illisibles portent sur des articles absents du
+    #: sous-ensemble Open Access. NCBI en publie le resume par efetch, sans
+    #: captcha, et c'est la que ces extraits ont ete lus.
+    corps = (
+        "1. Lancet Oncol. 2023 Jul;24(7):733-743. doi: 10.1016/S1470-2045(23)00277-2.\n\n"
+        "Multi-cancer early detection test in symptomatic patients referred for cancer\n"
+        "investigation in England and Wales (SYMPLIFY).\n\n"
+        "Nicholson BD, Oke J, Virdee PS.\n\n"
+        "BACKGROUND: Tests are needed to help triage patients. " + "x" * 300
+    )
+    assert texte_du_resume(corps) == corps
+
+
+def test_un_corps_trop_court_n_est_pas_un_resume():
+    #: efetch rend une page d'erreur courte pour un identifiant inconnu. La
+    #: prendre pour un resume ferait declarer l'extrait absent d'un texte qui
+    #: n'est pas celui de la source.
+    assert texte_du_resume("Error occurred: cannot get document summary") is None
+    assert texte_du_resume("") is None
