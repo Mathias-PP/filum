@@ -18,6 +18,7 @@ import asyncio
 import logging
 from collections.abc import Sequence
 from datetime import UTC, date, datetime
+from typing import NamedTuple
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -532,8 +533,23 @@ def _demo_sources() -> list[dict]:
     ]
 
 
-def _verdicts_par_extrait(sources: Sequence[Source]) -> dict[tuple[str, str], str]:
-    """Verdicts de relecture deja rendus, indexes par (url de la source, texte).
+class VerdictReporte(NamedTuple):
+    """Ce qu'une relecture a etabli : son verdict, sa date, et contre quoi.
+
+    Les trois voyagent ensemble parce qu'ils ne veulent rien dire separement.
+    « Relu dans la source » sans date est une affirmation qu'on ne peut pas
+    situer dans le temps ; sans provenance, l'interface ne sait pas distinguer
+    une relecture contre la page publique, que quiconque peut refaire, d'une
+    relecture contre un texte fourni, qui n'engage que l'auteur.
+    """
+
+    statut: str
+    date: datetime | None
+    provenance: str | None
+
+
+def _verdicts_par_extrait(sources: Sequence[Source]) -> dict[tuple[str, str], VerdictReporte]:
+    """Relectures deja faites, indexees par (url de la source, texte).
 
     Le seed efface et recree les sources a chaque demarrage du conteneur : sans
     ce report, la fiche vitrine repart a « jamais verifie » a chaque
@@ -544,11 +560,15 @@ def _verdicts_par_extrait(sources: Sequence[Source]) -> dict[tuple[str, str], st
     doit etre relue, sinon on affirmerait « retrouve dans la source » d'un
     texte qu'on n'y a jamais cherche.
     """
-    verdicts: dict[tuple[str, str], str] = {}
+    verdicts: dict[tuple[str, str], VerdictReporte] = {}
     for source in sources:
         for extrait in source.excerpts:
             if extrait.verified_status:
-                verdicts[(source.url, extrait.text)] = extrait.verified_status
+                verdicts[(source.url, extrait.text)] = VerdictReporte(
+                    statut=extrait.verified_status,
+                    date=extrait.verified_at,
+                    provenance=extrait.verified_text_source,
+                )
     return verdicts
 
 
@@ -633,13 +653,16 @@ async def _get_or_create_demo_card(
 
     for source, src in zip(created_sources, sources_spec, strict=True):
         for excerpt_position, text in enumerate(src.get("excerpts", []) or []):
+            verdict = verdicts.get((source.url, text))
             db.add(
                 SourceExcerpt(
                     source_id=source.id,
                     position=excerpt_position,
                     text=text,
                     suggested_by_ai=False,
-                    verified_status=verdicts.get((source.url, text)),
+                    verified_status=verdict.statut if verdict else None,
+                    verified_at=verdict.date if verdict else None,
+                    verified_text_source=verdict.provenance if verdict else None,
                 )
             )
     await db.flush()
