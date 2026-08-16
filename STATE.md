@@ -16,7 +16,7 @@ Deuxième fiche construite selon la même méthode, sur une revue qui **cite** l
 
 **PR #407 : un champ inconnu dans un PATCH cessait de répondre 200.** Six requêtes envoyant `is_key_source` au lieu de `is_pivot` ont toutes réussi, sans rien écrire ni rien dire ; c'est en relisant la fiche publiée qu'on voyait zéro source clé. Pydantic ignore les champs surnuméraires par défaut, et sur un schéma de mise à jour où tout est facultatif, un corps entièrement faux vaut un corps vide. `extra="forbid"` sur `SourceUpdate` et `CardUpdate`. L'enjeu dépasse la coquille de frappe : Philum expose un serveur MCP, et un agent qui devine un nom de champ doit s'entendre dire qu'il se trompe.
 
-**Reste ouvert.** Relancer un import sur une fiche déjà peuplée recrée les sources en double sans le signaler : trois doublons ont été produits ainsi, détectés seulement en comparant les DOI.
+**PR #409 : une même source ajoutée deux fois cessait de passer.** La fiche comptait 80 sources pour 77 références distinctes, sans que rien ne le signale ; les trois doublons se faisaient archiver, enrichir et afficher deux fois. Une source est désormais identifiée dans sa fiche par son DOI ou son URL normalisée, jamais par son titre, et une source mise à la corbeille ne bloque pas sa recréation. Le POST individuel répond 409 en désignant la source déjà présente, le lot les écarte dans un champ `duplicates`. Au passage, le gestionnaire d'erreurs ne conservait que `code` et `message` : les clés qui désignent la ressource en cause passent maintenant, ce qui rend un refus actionnable plutôt qu'à deviner.
 
 ---
 
