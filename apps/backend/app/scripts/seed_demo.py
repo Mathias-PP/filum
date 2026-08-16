@@ -41,6 +41,7 @@ from app.models.source import (
 )
 from app.models.source_excerpt import SourceExcerpt
 from app.models.user import User
+from app.services.wayback import horodatage_wayback
 
 
 def _utcnow_naive() -> datetime:
@@ -703,7 +704,7 @@ async def _get_or_create_demo_card(
             archive_status=(
                 ArchiveStatus.ARCHIVED.value if manual_archive else ArchiveStatus.PENDING.value
             ),
-            archive_timestamp=(datetime.now(UTC).replace(tzinfo=None) if manual_archive else None),
+            archive_timestamp=horodatage_wayback(manual_archive),
             conflict_of_interest=src.get("conflict_of_interest"),
             citations_count=src.get("citations_count"),
             **(enrichi._asdict() if enrichi else {}),

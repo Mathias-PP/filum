@@ -91,6 +91,32 @@ def strip_tracking_params(url: str) -> str:
     return urlunsplit(parts._replace(query="&".join(kept)))
 
 
+#: L'horodatage que Wayback place dans ses URLs : 14 chiffres, parfois suivis
+#: d'un drapeau de rendu (`id_`, `im_`).
+_HORODATAGE_WAYBACK = re.compile(r"^https?://web\.archive\.org/web/(\d{14})")
+
+
+def horodatage_wayback(archive_url: str | None) -> datetime | None:
+    """La date de capture que porte l'URL d'archive, ou None.
+
+    Une archive a une date, et c'est celle de l'instantane -- pas celle du jour
+    ou on a enregistre le lien. Repondre `datetime.now()` faisait affirmer a la
+    fiche vitrine qu'une capture de juin 2024 datait du dernier deploiement.
+
+    Rien n'est complete : un horodatage partiel (`/web/2024/`) ou une archive
+    hebergee ailleurs ne donnent pas de date, et l'absence est la reponse juste.
+    """
+    if not archive_url:
+        return None
+    found = _HORODATAGE_WAYBACK.match(archive_url.strip())
+    if not found:
+        return None
+    try:
+        return datetime.strptime(found.group(1), "%Y%m%d%H%M%S")
+    except ValueError:
+        return None
+
+
 class ThrottledError(Exception):
     """Le service a refuse de repondre et demande qu'on ralentisse.
 

@@ -25,6 +25,7 @@ from app.scripts.seed_demo import (
     _enrichissements_par_source,
     _verdicts_par_extrait,
 )
+from app.services.wayback import horodatage_wayback
 
 SPEC = _demo_sources()
 RELU_LE = datetime(2026, 8, 16, 12, 0, 0)
@@ -217,6 +218,24 @@ class TestDatePublicationStable:
 
     def test_une_fiche_jamais_publiee_recoit_une_date(self):
         assert _date_de_publication(None) is not None
+
+
+class TestArchiveDatee:
+    """L'archive de la vitrine annoncait la date du dernier deploiement.
+
+    Chaque source pointe un instantane Wayback de juin 2024, et le seed lui
+    collait `datetime.now()` : le meme enregistrement portait deux dates de
+    capture, dont l'une changeait a chaque redemarrage du conteneur.
+    """
+
+    def test_chaque_archive_porte_sa_propre_date(self):
+        for s in SPEC:
+            if url := s.get("archive_url"):
+                assert horodatage_wayback(url) is not None, url
+
+    def test_la_date_lue_est_celle_de_l_instantane(self):
+        url = next(s["archive_url"] for s in SPEC if s.get("archive_url"))
+        assert horodatage_wayback(url) == datetime(2024, 6, 1)
 
 
 class TestChargeable:
