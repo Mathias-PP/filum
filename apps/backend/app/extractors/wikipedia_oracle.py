@@ -65,6 +65,94 @@ def _first_year_in(text: str) -> int | None:
     return int(m.group(0)) if m else None
 
 
+#: Ce que Wikipedia met en toutes lettres au bout d'un modele de citation.
+#:
+#: Les modeles `cite book` / `cite journal` rendent leurs identifiants sous la
+#: forme d'un lien dont le libelle est le nom de l'identifiant : `ISBN` pointe
+#: vers Special:BookSources, `doi` vers doi.org. Quand la reference n'a pas
+#: d'URL de titre, ce lien est le premier du `<cite>`, et le prendre pour titre
+#: donne des references intitulees « ISBN » ou « doi ». Mesure en production
+#: sur `Working_memory` : cinq references sur 186 dans ce cas.
+_ETIQUETTES_IDENTIFIANT = frozenset(
+    {
+        "arxiv",
+        "asin",
+        "bibcode",
+        "citeseerx",
+        "doi",
+        "hdl",
+        "isbn",
+        "issn",
+        "jstor",
+        "lccn",
+        "oclc",
+        "ol",
+        "orcid",
+        "osti",
+        "pmc",
+        "pmid",
+        "proquest",
+        "s2cid",
+        "ssrn",
+        "zbl",
+    }
+)
+
+#: Ce que Wikipedia ajoute autour d'un lien, qui n'est jamais un titre.
+_LIBELLES_DE_SERVICE = frozenset(
+    {
+        "archived",
+        "archived from the original",
+        "the original",
+        "original",
+        "retrieved",
+        "pdf",
+        "full text",
+        "free full text",
+        "abstract",
+        "link",
+    }
+)
+
+
+#: Un titre porte au moins un mot. Selon les modeles, Wikipedia met le lien
+#: soit sur le nom de l'identifiant soit sur sa valeur : `ISBN` ou
+#: `978-0-521-58325-1`, `doi` ou `10.1038/nrn1201`, `PMID` ou `14523382`.
+#: Aucune de ces valeurs ne comporte de mot, la ou tout titre en comporte un.
+_MOT = re.compile(r"[^\W\d_]{3,}", re.UNICODE)
+
+
+def _libelle_utilisable(libelle: str) -> bool:
+    """Un libelle de lien peut-il tenir lieu de titre ?
+
+    Deux refus : le nom d'un identifiant, et sa valeur. Le second se reconnait
+    a l'absence de tout mot. Un ouvrage reellement intitule « 1984 » y perd
+    son intitule de lien et retombe sur la prose du modele, ou il figure aussi.
+    """
+    nettoye = libelle.strip().strip('"“”').strip().lower()
+    if not nettoye or not _MOT.search(nettoye):
+        return False
+    # Un DOI porte des lettres dans son suffixe (`10.1038/nrn1201`) et passe
+    # donc le filtre du mot ; son prefixe le trahit.
+    if re.match(r"^10\.\d{4,}/", nettoye):
+        return False
+    return nettoye not in _ETIQUETTES_IDENTIFIANT and nettoye not in _LIBELLES_DE_SERVICE
+
+
+def _titre_depuis_texte(texte: str) -> str | None:
+    """Le titre lu dans la phrase de la reference, faute de lien pour le porter.
+
+    Un `cite book` sans URL n'a aucun lien vers son titre : il n'existe que
+    dans la prose du modele, apres les auteurs et l'annee. Le rendre approche
+    vaut mieux que rendre « ISBN », et mieux que ne rien rendre du tout, une
+    reference sans titre n'etant pas reconnaissable par son lecteur.
+    """
+    reste = re.sub(r"^[^()]{0,160}\((?:19|20)\d{2}[a-z]?\)[.,]?\s*", "", texte).strip()
+    coupe = re.match(r"^(.{8,300}?)(?:\.\s|\.$)", reste)
+    candidat = (coupe.group(1) if coupe else reste[:300]).strip(' "“”.,')
+    return candidat if candidat and _libelle_utilisable(candidat) else None
+
+
 def _parse_reference_li(li: Tag) -> ImportedRef | None:
     """Convertit un <li> de reference Wikipedia en ImportedRef.
 
@@ -100,17 +188,22 @@ def _parse_reference_li(li: Tag) -> ImportedRef | None:
                 url = href
                 break
 
-    # 2. Titre : premier <cite> ou premier lien avec du texte utile
+    # 2. Titre : le lien qui le porte dans le <cite>, sinon la prose du <cite>,
+    #    sinon un lien externe du <li>.
     title = None
     cite = li.find("cite")
     if cite and isinstance(cite, Tag):
-        # Wikipedia met souvent le titre dans un <a> a l'interieur du <cite>
-        title_a = cite.find("a")
-        title = title_a.get_text(" ", strip=True) if title_a else cite.get_text(" ", strip=True)
+        for a in cite.find_all("a"):
+            libelle = a.get_text(" ", strip=True)
+            if _libelle_utilisable(libelle):
+                title = libelle
+                break
+        if not title:
+            title = _titre_depuis_texte(cite.get_text(" ", strip=True))
     if not title:
         for a in li.select("a.external"):
             text_a = a.get_text(" ", strip=True)
-            if len(text_a) >= 8 and not text_a.startswith("10."):
+            if len(text_a) >= 8 and _libelle_utilisable(text_a):
                 title = text_a
                 break
 
