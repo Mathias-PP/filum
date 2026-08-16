@@ -28,7 +28,12 @@
     openAccessBadge,
     openAccessTitle,
   } from '$lib/utils/open-access';
-  import { noticeUrl, retractionBadge, retractionTitle } from '$lib/utils/retraction';
+  import {
+    montrerAvisRetractation,
+    noticeUrl,
+    retractionBadge,
+    retractionTitle,
+  } from '$lib/utils/retraction';
   import { CLASSES_VERDICT, lireVerdict } from '$lib/utils/excerpt-verdict';
   import { tick } from 'svelte';
   import { slide } from 'svelte/transition';
@@ -585,7 +590,7 @@
                           {st.label}
                         </span>
                       {/if}
-                      {#if retractionBadge(source.retraction_status)}
+                      {#if montrerAvisRetractation(source.retraction_status, source.category)}
                         {@const rb = retractionBadge(source.retraction_status)!}
                         <span
                           class="px-2 py-0.5 text-xs rounded-full {rb.className}"

@@ -63,6 +63,22 @@ describe('compareCell — une cellule sans valeur dit pourquoi', () => {
     expect(none.sortKey).not.toBeNull();
   });
 
+  it('dit « sans objet » là où rien ne peut être rétracté', () => {
+    // Une revue rétracte un article, pas un podcast. « Non vérifiable » y
+    // laisse croire à un contrôle qui aurait échoué, sur une question que
+    // personne ne pose.
+    const podcast = compareCell(
+      makeSource({ category: 'podcast', retraction_status: 'unverifiable' }),
+      'retraction'
+    );
+    const article = compareCell(
+      makeSource({ category: 'article-scientifique', retraction_status: 'unverifiable' }),
+      'retraction'
+    );
+    expect(podcast.label).toBe('sans objet');
+    expect(article.label).toBe('non vérifiable');
+  });
+
   it('dit « sans objet » là où la notion de revue n’existe pas', () => {
     const video = compareCell(makeSource({ category: 'podcast' }), 'venue');
     const article = compareCell(makeSource({ category: 'article-scientifique' }), 'venue');

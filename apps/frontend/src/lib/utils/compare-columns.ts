@@ -21,7 +21,7 @@
 import type { Source, SourceCategory } from '$lib/api/types';
 import { categoryLabel } from '$lib/utils/author-colors';
 import { openAccessBadge, openAccessTitle } from '$lib/utils/open-access';
-import { retractionBadge, retractionTitle } from '$lib/utils/retraction';
+import { montrerAvisRetractation, retractionBadge, retractionTitle } from '$lib/utils/retraction';
 import { stanceStyle } from '$lib/utils/stance';
 
 export type CellTone =
@@ -182,6 +182,12 @@ function retractionCell(source: Source): CompareCell {
   }
   const help = retractionTitle(source.retraction_status, source.retraction_checked_at);
   if (source.retraction_status === 'unverifiable') {
+    // Une revue rétracte un article, pas un podcast ni une page de
+    // laboratoire. Dire « non vérifiable » là où rien n'est rétractable
+    // laisse croire à un contrôle qui aurait échoué.
+    if (!montrerAvisRetractation(source.retraction_status, source.category)) {
+      return absent('sans objet', 'La rétractation ne concerne que la littérature scientifique.');
+    }
     return absent('non vérifiable', help);
   }
   const tone: CellTone =
