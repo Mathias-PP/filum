@@ -174,25 +174,29 @@ async def _get_owned_source(source_id: UUID, user: User, db: AsyncSession) -> So
     return source
 
 
-async def _texte_de_la_source(url: str | None) -> tuple[str, bool]:
-    """Texte de la page d'une source, et si le site a refusé de la rendre.
+async def _texte_de_la_source(url: str | None) -> tuple[str, bool, bool]:
+    """Texte d'une source : le contenu, si le site a refusé, si le texte est entier.
 
     PubMed et PMC opposent un reCAPTCHA aux IP de datacenter : leur page HTML
     ne rend rien, alors que leur API rend le texte plein des articles en accès
     libre. Sans cette voie, la moitié des sources d'une fiche scientifique sont
     déclarées illisibles à tort, ce qui accuse l'auteur·ice à la place du site.
+
+    Hors accès libre, NCBI ne publie que le résumé. Il est lisible, mais
+    partiel : l'appelant doit le savoir pour ne pas conclure qu'un extrait est
+    absent alors qu'il vit dans un corps de texte qu'on n'a jamais eu.
     """
     # Import local : évite un cycle app.api ↔ app.extractors au démarrage.
-    from app.extractors.pmc_oracle import texte_plein_ncbi
+    from app.extractors.pmc_oracle import texte_ncbi
     from app.extractors.url_extractor import _html_scrape
 
     if not url:
-        return "", False
-    texte = (await texte_plein_ncbi(url)) or ""
-    if texte:
-        return texte, False
+        return "", False, True
+    ncbi = await texte_ncbi(url)
+    if ncbi:
+        return ncbi.texte, False, ncbi.complet
     meta = await _html_scrape(url)
-    return (meta.page_text if meta else None) or "", bool(meta and meta.access_blocked)
+    return (meta.page_text if meta else None) or "", bool(meta and meta.access_blocked), True
 
 
 def verify_quote(page_text: str, quote: str) -> re.Match[str] | None:
@@ -293,7 +297,7 @@ async def chunk_source_text(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={"code": "unsafe_url", "message": str(e)},
             ) from e
-        texte, _ = await _texte_de_la_source(source.url)
+        texte, _, _ = await _texte_de_la_source(source.url)
 
     reponse = decouper_pour_reponse(texte, payload)
     if payload.suggest_titles and reponse.chunks:
@@ -428,6 +432,9 @@ async def verify_source_excerpts(
     page_text = (payload.text if payload else None) or ""
     provenance = "provided" if page_text.strip() else "fetched"
     refuse = False
+    #: Un texte colle par la personne est tenu pour entier : c'est elle qui a
+    #: choisi ce qu'elle donnait a relire.
+    complet = True
     if provenance == "fetched":
         try:
             await asyncio.to_thread(assert_url_is_safe, source.url)
@@ -437,7 +444,7 @@ async def verify_source_excerpts(
                 detail={"code": "unsafe_url", "message": str(e)},
             ) from e
 
-        page_text, refuse = await _texte_de_la_source(source.url)
+        page_text, refuse, complet = await _texte_de_la_source(source.url)
 
     releve_le = datetime.now(UTC).replace(tzinfo=None)
 
@@ -469,8 +476,13 @@ async def verify_source_excerpts(
         extrait.verified_at = releve_le
         extrait.verified_text_source = provenance
         if ancrage is None:
-            extrait.verified_status = "missing"
-            checks.append(ExcerptCheck(excerpt_id=extrait.id, status="missing"))
+            # Sur un texte partiel (resume NCBI d'un article hors acces libre),
+            # ne rien retrouver ne prouve rien : l'extrait vit peut-etre dans le
+            # corps qu'on n'a jamais eu. Dire « absent » y accuserait
+            # l'auteur·ice d'une citation inventee.
+            verdict = "missing" if complet else "unreadable"
+            extrait.verified_status = verdict
+            checks.append(ExcerptCheck(excerpt_id=extrait.id, status=verdict))
             continue
         extrait.verified_status = "found" if ancrage.exact else "moved"
         checks.append(
@@ -513,7 +525,7 @@ async def suggest_source_excerpts(
                 detail={"code": "unsafe_url", "message": str(e)},
             ) from e
 
-        page_text, refuse = await _texte_de_la_source(source.url)
+        page_text, refuse, _ = await _texte_de_la_source(source.url)
     if not page_text:
         # Cinq URLs sur dix ne rendent rien (mesure du 2026-08-08). Ce n'est
         # pas un echec de l'appel : c'est l'etat qui fait basculer l'interface
