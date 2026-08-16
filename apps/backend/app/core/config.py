@@ -56,6 +56,13 @@ class Settings(BaseSettings):
     # quels, donc mode proxy.
     llm_direct_model: str = ""
 
+    # Modèles de repli, séparés par des virgules, essayés dans l'ordre quand le
+    # précédent répond 429. Le quota gratuit de Gemini se compte par modèle et
+    # par jour (`GenerateRequestsPerDayPerProjectPerModel-FreeTier`, 20 appels) :
+    # une fois épuisé sur un modèle, les autres répondent encore. Sans cette
+    # liste, toute la couche LLM s'éteint pour la journée au vingtième appel.
+    llm_direct_model_fallbacks: str = ""
+
     # Modèle d'embedding, appelé sur la même racine que le chat, au format
     # OpenAI `/embeddings`. Les vecteurs sont tronqués à 768 dimensions côté
     # backend (cf. `services/embeddings.py`). Changer ce nom périme les
