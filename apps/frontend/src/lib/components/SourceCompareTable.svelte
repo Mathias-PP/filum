@@ -60,8 +60,22 @@
     </caption>
     <thead>
       <tr class="border-b border-border bg-surface-secondary">
-        <th scope="col" class="px-3 py-2 text-left font-medium text-ink-tertiary w-8">#</th>
-        <th scope="col" class="px-3 py-2 text-left font-medium text-ink-secondary min-w-[16rem]">
+        <th
+          scope="col"
+          class="sticky left-0 z-10 bg-surface-secondary px-3 py-2 text-left font-medium text-ink-tertiary w-12"
+        >
+          #
+        </th>
+        <!--
+          Le titre reste visible pendant le defilement horizontal. Sans cela,
+          des que le tableau depasse la largeur de l'ecran, on lit « Acces
+          payant » sans savoir de quelle source il s'agit : un tableau
+          comparatif dont la colonne d'identite s'en va ne compare plus rien.
+        -->
+        <th
+          scope="col"
+          class="sticky left-12 z-10 bg-surface-secondary px-3 py-2 text-left font-medium text-ink-secondary min-w-[16rem]"
+        >
           Source
         </th>
         {#each COMPARE_COLUMNS as column (column.id)}
@@ -91,9 +105,15 @@
     </thead>
     <tbody>
       {#each rows as source, i (source.id)}
-        <tr class="border-b border-border last:border-0 hover:bg-surface-secondary">
-          <td class="px-3 py-2 text-ink-tertiary tabular-nums align-top">{i + 1}</td>
-          <td class="px-3 py-2 align-top">
+        <tr class="group border-b border-border last:border-0 hover:bg-surface-secondary">
+          <td
+            class="sticky left-0 z-10 w-12 bg-surface-primary group-hover:bg-surface-secondary px-3 py-2 text-ink-tertiary tabular-nums align-top"
+          >
+            {i + 1}
+          </td>
+          <td
+            class="sticky left-12 z-10 bg-surface-primary group-hover:bg-surface-secondary px-3 py-2 align-top"
+          >
             <button
               type="button"
               class="text-left text-ink-primary hover:text-info transition-colors"
