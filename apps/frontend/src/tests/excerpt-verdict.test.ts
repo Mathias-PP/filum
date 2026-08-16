@@ -83,6 +83,15 @@ describe('lireVerdict', () => {
     expect(bouge.label).not.toBe(absent.label);
   });
 
+  it("ne promet pas une relecture reproductible quand on ignore contre quoi elle s'est faite", () => {
+    // Une provenance absente n'est pas une provenance publique : affirmer
+    // « quiconque peut la refaire » serait promettre une reproductibilité que
+    // rien n'établit.
+    const v = lireVerdict(extrait({ verified_status: 'found', verified_text_source: null }));
+    expect(v.detail).not.toMatch(/quiconque peut la refaire/);
+    expect(v.detail).toMatch(/n'est pas enregistré/);
+  });
+
   it('supporte une date absente sans afficher « Invalid Date »', () => {
     const v = lireVerdict(extrait({ verified_status: 'found', verified_at: null }));
     expect(v.label).toBe('Relu dans la source');

@@ -40,9 +40,14 @@ export function lireVerdict(extrait: SourceExcerpt): VerdictLu {
   const fourni = extrait.verified_text_source === 'provided';
   const date = laDate(extrait.verified_at);
   const le = date ? ` le ${date}` : '';
+  // Une provenance absente n'est pas une provenance publique. L'affirmer par
+  // défaut promettait « quiconque peut la refaire » d'une relecture dont on ne
+  // sait pas contre quoi elle a été faite.
   const contre = fourni
     ? "Relecture faite contre un texte fourni par l'auteur·ice, la page ne rendant rien d'exploitable : elle n'engage que sa parole."
-    : 'Relecture faite contre la page publique : quiconque peut la refaire.';
+    : extrait.verified_text_source === 'fetched'
+      ? 'Relecture faite contre la page publique : quiconque peut la refaire.'
+      : "Ce contre quoi la relecture a été faite n'est pas enregistré.";
 
   switch (extrait.verified_status) {
     case 'found':
