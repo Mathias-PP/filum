@@ -75,6 +75,18 @@ class TestVeracite:
                 assert isinstance(pub, date), s["title"]
                 assert 1800 <= pub.year <= 2100, pub
 
+    def test_une_source_citee_mot_a_mot_est_une_source_cle(self):
+        """Citer un passage, c'est declarer qu'on s'y appuie.
+
+        La fiche affichait quatre sources porteuses d'extraits verbatim sans
+        le badge « source cle », et deux sources clees dont on ne citait rien :
+        le lecteur voyait la marque de l'appui a cote de ce qui ne l'appuie
+        pas.
+        """
+        for s in SPEC:
+            if s.get("excerpts"):
+                assert s["is_pivot"], s["title"]
+
 
 class TestVerdictsSurvivants:
     """Le seed efface et recree les sources a chaque demarrage du conteneur.
