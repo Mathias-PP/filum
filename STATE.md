@@ -36,6 +36,8 @@ Deuxième fiche construite selon la même méthode, sur une revue qui **cite** l
 
 **PR #424 : une provenance inconnue cesse d'être présentée comme publique.** `lireVerdict` dérivait la provenance d'un seul test : tout ce qui n'était pas « texte fourni » devenait « Relecture faite contre la page publique : quiconque peut la refaire ». Une provenance absente tombait donc du bon côté par défaut, et l'interface promettait une reproductibilité que rien n'établit. C'était précisément le cas des sept extraits de la vitrine avant #423. Trois cas distincts désormais, dont « ce contre quoi la relecture a été faite n'est pas enregistré ».
 
+**PR #426 : la fiche vitrine cesse de rajeunir à chaque déploiement.** L'API de production portait `created_at: 2026-07-18` et `published_at` égal à l'heure exacte du dernier redémarrage du conteneur : le seed reposait la date à chaque passage. La fiche affichait donc « Publiée le » à l'instant même, et le JSON-LD servait ce `datePublished` mouvant aux moteurs et aux agents. Une date de publication qui change sans que rien ne soit publié est une date fausse, sur la page qui sert de vitrine à un produit dont la datation est l'argument. La date n'est plus posée que la première fois. Mesuré en production : identique avant et après un redémarrage.
+
 ---
 
 ## Session 2026-08-16 (autonome, suite) : une fiche scientifique de bout en bout, et cinq défauts qu'elle a révélés
