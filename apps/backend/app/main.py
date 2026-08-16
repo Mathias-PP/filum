@@ -315,19 +315,18 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
-            "error": {
-                "code": exc.detail.get("code", "error")
-                if isinstance(exc.detail, dict)
-                else "error",
-                "message": exc.detail.get("message", str(exc.detail))
-                if isinstance(exc.detail, dict)
-                else str(exc.detail),
-            }
-        },
-    )
+    if isinstance(exc.detail, dict):
+        # Les clefs au-dela de code/message sont conservees : un refus qui
+        # designe la ressource en cause (id deja existant, champ fautif) est
+        # actionnable, la ou un message seul oblige a deviner.
+        erreur = {
+            "code": exc.detail.get("code", "error"),
+            "message": exc.detail.get("message", str(exc.detail)),
+            **{k: v for k, v in exc.detail.items() if k not in ("code", "message")},
+        }
+    else:
+        erreur = {"code": "error", "message": str(exc.detail)}
+    return JSONResponse(status_code=exc.status_code, content={"error": erreur})
 
 
 @app.exception_handler(Exception)
