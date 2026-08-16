@@ -26,6 +26,8 @@ Deuxième fiche construite selon la même méthode, sur une revue qui **cite** l
 
 **PR #416 : un déploiement n'efface plus la relecture de la vitrine.** Le seed supprime et recrée les sources de la fiche de démonstration à chaque démarrage du conteneur, et les extraits renaissaient sans verdict : les sept `found` de la PR #414 auraient disparu au déploiement suivant. Les verdicts sont désormais relevés avant la suppression et reportés, indexés par le couple (URL de la source, texte de l'extrait). Un extrait réécrit repart sans verdict, car lui reporter l'ancien afficherait « retrouvé dans la source » pour une phrase jamais cherchée. Vérifié en production après redéploiement : le seed rejoue, les sept `found` sont toujours là.
 
+**PR #418 : « non vérifiable » ne se dit plus d'un podcast.** Sur la fiche vitrine, douze sources sur dix-huit portaient ce badge, c'est-à-dire toutes celles sans DOI : un dossier Inserm, un article de TIME, un podcast, un livre, des pages de laboratoire. L'infobulle précisait qu'il s'agissait de l'avis de rétractation, mais le badge se lit de loin, à côté de « Accès libre », et le message qui restait était « rien n'est vérifiable ici », sur la page qui vend exactement le contraire. Une revue rétracte un article, pas un podcast : le non-avis n'est affiché que sur un article ou un préprint, et le tableau comparatif y dit « sans objet ». Un avis réellement publié reste affiché partout. Mesuré sur la page déployée : zéro « Non vérifiable », cinq « Aucun avis » sur les cinq articles à DOI.
+
 ---
 
 ## Session 2026-08-16 (autonome, suite) : une fiche scientifique de bout en bout, et cinq défauts qu'elle a révélés
