@@ -194,7 +194,7 @@ def _demo_sources() -> list[dict]:
                 "Première preuve causale d'un engramme dans l'hippocampe par optogénétique. "
                 "S'appuie sur Wiltgen 2010 pour le rôle de l'hippocampe."
             ),
-            "is_pivot": False,
+            "is_pivot": True,
             "parent_index": 2,
             "citations_count": 2890,
             "archive_url": (
@@ -284,7 +284,7 @@ def _demo_sources() -> list[dict]:
             "category": SourceCategory.PAGE_WEB.value,
             "author_kind": AuthorKind.LABORATOIRE.value,
             "annotation": "Dossier de synthèse Inserm sur la mémoire, en français, à destination grand public.",
-            "is_pivot": False,
+            "is_pivot": True,
             "parent_index": None,
             "archive_url": (
                 "https://web.archive.org/web/20240601000000/https://www.inserm.fr/dossier/memoire/"
@@ -363,7 +363,7 @@ def _demo_sources() -> list[dict]:
                 "Synthèse 2022 sur l'oubli comme processus actif et adaptatif, "
                 "de l'évolution du mécanisme jusqu'à ses dérèglements dans le TSPT."
             ),
-            "is_pivot": False,
+            "is_pivot": True,
             "parent_index": 5,
             "archive_url": (
                 "https://web.archive.org/web/20240601000000/"
@@ -425,7 +425,7 @@ def _demo_sources() -> list[dict]:
                 "Livre 2021 d'une neuroscientifique pour le grand public. "
                 "Référence narrative pour la structure de la vidéo."
             ),
-            "is_pivot": False,
+            "is_pivot": True,
             "parent_index": None,
             "archive_url": (
                 "https://web.archive.org/web/20240601000000/"
