@@ -21,7 +21,7 @@ reference bien formee et fausse — exactement ce que Philum existe pour eviter.
 from __future__ import annotations
 
 from app.models.source import Source
-from app.services.csl import parse_authors
+from app.services.csl import est_abrege, noms_propres, parse_authors
 
 #: Styles proposes. La cle est ce que l'API accepte, la valeur ce qu'on montre.
 STYLES: dict[str, str] = {
@@ -82,55 +82,74 @@ def _point(segment: str) -> str:
     return segment if segment.endswith(".") else f"{segment}."
 
 
+def _et_al(rendu: str, noms: list[dict[str, str]]) -> str:
+    """Rend la marque d'abreviation portee par la liste d'auteurs.
+
+    Sans elle, « Wiltgen, B. J. et al. » se citerait « Wiltgen, B. J. » : la
+    reference attribuerait a une personne un article ecrit a plusieurs. Tous
+    les styles rendus ici emploient la meme abreviation.
+    """
+    if not rendu or not est_abrege(noms):
+        return rendu
+    return f"{rendu}, et al."
+
+
 def _auteurs_apa(noms: list[dict[str, str]]) -> str:
-    rendus = [f"{n.get('family', '')}, {_initials(n.get('given', ''))}".strip(", ") for n in noms]
+    rendus = [
+        f"{n.get('family', '')}, {_initials(n.get('given', ''))}".strip(", ")
+        for n in noms_propres(noms)
+    ]
     # APA 7 garde la virgule avant l'esperluette (« A, B, & C »).
-    return _joindre(rendus, ", & ")
+    return _et_al(_joindre(rendus, ", & "), noms)
 
 
 def _auteurs_harvard(noms: list[dict[str, str]]) -> str:
     rendus = [
         f"{n.get('family', '')}, {_initials(n.get('given', ''), espace=False)}".strip(", ")
-        for n in noms
+        for n in noms_propres(noms)
     ]
-    return _joindre(rendus, " and ")
+    return _et_al(_joindre(rendus, " and "), noms)
 
 
 def _auteurs_mla(noms: list[dict[str, str]]) -> str:
     """MLA inverse le premier nom seulement, et abrege des trois auteurs."""
-    if not noms:
+    propres = noms_propres(noms)
+    if not propres:
         return ""
-    premier = ", ".join(p for p in (noms[0].get("family"), noms[0].get("given")) if p)
-    if len(noms) == 1:
-        return premier
-    if len(noms) > 2:
+    premier = ", ".join(p for p in (propres[0].get("family"), propres[0].get("given")) if p)
+    if est_abrege(noms) or len(propres) > 2:
         return f"{premier}, et al."
-    second = " ".join(p for p in (noms[1].get("given"), noms[1].get("family")) if p)
+    if len(propres) == 1:
+        return premier
+    second = " ".join(p for p in (propres[1].get("given"), propres[1].get("family")) if p)
     return f"{premier}, and {second}"
 
 
 def _auteurs_chicago(noms: list[dict[str, str]]) -> str:
-    if not noms:
+    propres = noms_propres(noms)
+    if not propres:
         return ""
-    rendus = [", ".join(p for p in (noms[0].get("family"), noms[0].get("given")) if p)]
-    rendus += [" ".join(p for p in (n.get("given"), n.get("family")) if p) for n in noms[1:]]
-    return _joindre(rendus, ", and ")
+    rendus = [", ".join(p for p in (propres[0].get("family"), propres[0].get("given")) if p)]
+    rendus += [" ".join(p for p in (n.get("given"), n.get("family")) if p) for n in propres[1:]]
+    return _et_al(_joindre(rendus, ", and "), noms)
 
 
 def _auteurs_vancouver(noms: list[dict[str, str]]) -> str:
     """Vancouver n'abrege qu'au-dela de six auteurs, sans ponctuation d'initiales."""
     rendus = [
         f"{n.get('family', '')} {_initials(n.get('given', ''), point=False, espace=False)}".strip()
-        for n in noms
+        for n in noms_propres(noms)
     ]
     if len(rendus) > 6:
         return ", ".join(rendus[:6]) + ", et al."
-    return ", ".join(rendus)
+    return _et_al(", ".join(rendus), noms)
 
 
 def _auteurs_ieee(noms: list[dict[str, str]]) -> str:
-    rendus = [f"{_initials(n.get('given', ''))} {n.get('family', '')}".strip() for n in noms]
-    return _joindre(rendus, " and ")
+    rendus = [
+        f"{_initials(n.get('given', ''))} {n.get('family', '')}".strip() for n in noms_propres(noms)
+    ]
+    return _et_al(_joindre(rendus, " and "), noms)
 
 
 # --- Un rendu de reference par style -----------------------------------------
@@ -213,7 +232,9 @@ def _chicago(source: Source) -> str:
     parts: list[str] = []
     tete = _auteurs_chicago(noms)
     if tete:
-        parts.append(f"{tete}.")
+        # « Loftus, Elizabeth F. » se terminait deja par un point : le style
+        # servait « Loftus, Elizabeth F.. 2005. »
+        parts.append(_point(tete))
     parts.append(f"{an}." if an else "n.d.")
     parts.append(f'"{_titre(source)}."')
     if source.journal:
@@ -234,7 +255,7 @@ def _vancouver(source: Source) -> str:
     parts: list[str] = []
     tete = _auteurs_vancouver(noms)
     if tete:
-        parts.append(f"{tete}.")
+        parts.append(_point(tete))
     parts.append(f"{_titre(source)}.")
     if source.journal:
         parts.append(f"{source.journal}.")

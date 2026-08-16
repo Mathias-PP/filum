@@ -375,8 +375,13 @@ def export_bibtex(card: BiblioCard) -> str:
         if item.get("author"):
             # BibTeX veut « Famille, Prenom and Famille, Prenom » : c'est ce
             # decoupage qui permet a LaTeX d'abreger et de trier les noms.
+            # BibTeX a sa forme pour « et al. » : `and others`, que BibTeX et
+            # biblatex abregent eux-memes selon le style demande. Ecrire
+            # « and et al. » ferait naitre un auteur de ce nom.
             fields["author"] = " and ".join(
-                author_display([a]) for a in item["author"] if author_display([a])
+                "others" if "literal" in a else author_display([a])
+                for a in item["author"]
+                if "literal" in a or author_display([a])
             )
         if source.published_at:
             fields["year"] = str(source.published_at.year)

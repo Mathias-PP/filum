@@ -55,6 +55,24 @@ _ET_AL = re.compile(
 )
 
 
+#: L'abreviation, rendue en entree CSL. `literal` est la facon prevue par CSL
+#: de porter ce qui n'est pas un nom decoupable ; les consommateurs qui ne
+#: savent pas l'interpreter affichent la chaine telle quelle, ce qui reste
+#: juste. La supprimer ferait passer un article collectif pour un article a
+#: auteur unique : une attribution fausse, plus couteuse qu'une entree laide.
+ET_AL: dict[str, str] = {"literal": "et al."}
+
+
+def est_abrege(names: list[dict[str, str]]) -> bool:
+    """La liste d'auteurs annonce-t-elle qu'elle est incomplete ?"""
+    return any("literal" in n for n in names)
+
+
+def noms_propres(names: list[dict[str, str]]) -> list[dict[str, str]]:
+    """Les auteurs reellement nommes, sans la marque d'abreviation."""
+    return [n for n in names if "literal" not in n]
+
+
 def _split_entries(authors: str) -> list[str]:
     """Decoupe la chaine en auteurs, sans casser un « Famille, Prenom ».
 
@@ -133,16 +151,24 @@ def parse_name(entry: str) -> dict[str, str]:
 
 
 def parse_authors(authors: str | None) -> list[dict[str, str]]:
-    """La chaine libre d'auteurs en liste CSL. Liste vide si rien a lire."""
+    """La chaine libre d'auteurs en liste CSL. Liste vide si rien a lire.
+
+    Quand la chaine s'acheve sur « et al. », la liste se termine par `ET_AL` :
+    l'abreviation n'est pas un nom, mais elle dit que d'autres auteurs
+    existent, et cette information doit survivre a l'export.
+    """
     cleaned = (authors or "").strip()
     if not cleaned:
         return []
-    return [name for name in (parse_name(e) for e in _split_entries(cleaned)) if name]
+    names = [name for name in (parse_name(e) for e in _split_entries(cleaned)) if name]
+    if names and _ET_AL.search(cleaned):
+        names.append(dict(ET_AL))
+    return names
 
 
 def csl_key(source: Source, index: int) -> str:
     """Cle de citation stable (« adleman2012n3 »), partagee par CSL et BibTeX."""
-    names = parse_authors(source.authors)
+    names = noms_propres(parse_authors(source.authors))
     if names:
         base = names[0].get("family") or names[0].get("given") or ""
     else:
@@ -202,6 +228,9 @@ def author_display(names: list[dict[str, str]]) -> str:
     """Rend une liste CSL en « Famille, Prenom; Famille, Prenom »."""
     out = []
     for n in names:
+        if "literal" in n:
+            out.append(n["literal"])
+            continue
         family, given = n.get("family", ""), n.get("given", "")
         out.append(f"{family}, {given}" if family and given else family or given)
     return "; ".join(p for p in out if p)
