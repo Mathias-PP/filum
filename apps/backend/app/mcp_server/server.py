@@ -41,14 +41,23 @@ async def search_cards(query: str, limit: int = 10) -> list[dict[str, Any]]:
 
 @mcp.tool()
 async def get_card(creator: str, slug: str) -> dict[str, Any] | None:
-    """Detail d'une fiche : description, sources compactes (id, titre, url, categorie)."""
+    """Detail d'une fiche : description et sources compactes.
+
+    Chaque source porte `linked_card` : l'adresse `{creator, slug}` de la fiche
+    Philum qui documente ce travail cite, ou `null`. C'est l'arete de fiche a
+    fiche, a suivre par get_card pour lire ses extraits verifies.
+    """
     async with _session() as db:
         return await tools.get_card(db, creator=creator, slug=slug)
 
 
 @mcp.tool()
 async def get_source(source_id: str) -> dict[str, Any] | None:
-    """Detail complet d'une source : auteurs, annotation, archive horodatee."""
+    """Detail complet d'une source : extraits verbatim, retractation, archive horodatee.
+
+    Porte aussi `linked_card`, la fiche Philum qui documente ce travail cite,
+    ou `null`.
+    """
     async with _session() as db:
         return await tools.get_source(db, source_id=source_id)
 

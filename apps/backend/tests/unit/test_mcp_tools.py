@@ -506,3 +506,117 @@ async def test_find_cards_citing_url_vide_ne_ramene_rien(db_session, fiche_citan
 
     assert await find_cards_citing(db_session, url="   ") == []
     assert await find_cards_citing(db_session, url="pas une url") == []
+
+
+@pytest_asyncio.fixture
+async def fiche_citant_une_fiche(db_session, test_user):
+    """Une fiche dont une source designe une autre fiche Philum.
+
+    C'est l'unique arete fiche -> fiche, celle qui porte le meta-graphe. Mesure
+    en production le 2026-08-17 : la fiche « Synaptic tagging during memory
+    allocation » cite 103 sources, dont deux sont elles-memes documentees sur
+    Philum. Le REST et la vue graphe le disent, le MCP rendait une liste plate
+    ou rien ne distinguait ces deux-la.
+
+    Retourne (fiche citante, source porteuse du lien, fiche citee).
+    """
+    from app.models.biblio_card import BiblioCard
+    from app.models.source import Source
+
+    citee = BiblioCard(
+        id=uuid4(),
+        user_id=test_user.id,
+        slug="fiche-citee",
+        title="Fiche citee",
+        content_type="article",
+        platform="web",
+        status="published",
+    )
+    citante = BiblioCard(
+        id=uuid4(),
+        user_id=test_user.id,
+        slug="fiche-citante",
+        title="Fiche citante",
+        content_type="video",
+        platform="youtube",
+        status="published",
+    )
+    db_session.add_all([citee, citante])
+    await db_session.flush()
+    source = Source(
+        id=uuid4(),
+        biblio_card_id=citante.id,
+        position=0,
+        url="https://example.org/travail-cite",
+        title="Travail cite",
+        format="texte",
+        category="article-scientifique",
+        author_kind="chercheur",
+        linked_card_id=citee.id,
+    )
+    db_session.add(source)
+    await db_session.commit()
+    return citante, source, citee
+
+
+@pytest.mark.asyncio
+async def test_get_card_dit_qu_une_source_mene_a_une_fiche(
+    db_session, fiche_citant_une_fiche, test_user
+):
+    from app.mcp_server.tools import get_card
+
+    card = await get_card(db_session, creator=test_user.username, slug="fiche-citante")
+    lien = card["sources"][0]["linked_card"]
+    assert lien == {"creator": test_user.username, "slug": "fiche-citee"}
+
+
+@pytest.mark.asyncio
+async def test_get_card_ne_ment_pas_sur_une_source_sans_lien(db_session, published_card, test_user):
+    """L'absence de lien se dit, pour qu'un agent sache que la question a ete posee."""
+    from app.mcp_server.tools import get_card
+
+    card = await get_card(db_session, creator=test_user.username, slug="memoire-cerveau")
+    assert card["sources"][0]["linked_card"] is None
+
+
+@pytest.mark.asyncio
+async def test_get_source_dit_la_fiche_qu_elle_mene(db_session, fiche_citant_une_fiche):
+    from app.mcp_server.tools import get_source
+
+    _, source, _ = fiche_citant_une_fiche
+    detail = await get_source(db_session, source_id=str(source.id))
+    assert detail["linked_card"]["slug"] == "fiche-citee"
+
+
+@pytest.mark.asyncio
+async def test_le_lien_ne_revele_pas_une_fiche_non_publique(
+    db_session, fiche_citant_une_fiche, test_user
+):
+    """Une arete est une adresse : elle ne peut pas designer ce qui est ferme.
+
+    Le lien peut avoir ete pose quand la fiche citee etait publique. La rendre
+    privee doit fermer l'arete, sinon le MCP publierait le slug d'un travail
+    que son auteur a retire du monde, et l'agent y enverrait ses lecteurs.
+    """
+    from app.mcp_server.tools import get_card, get_source
+
+    _, source, citee = fiche_citant_une_fiche
+    citee.visibility = "private"
+    await db_session.commit()
+
+    card = await get_card(db_session, creator=test_user.username, slug="fiche-citante")
+    assert card["sources"][0]["linked_card"] is None
+    detail = await get_source(db_session, source_id=str(source.id))
+    assert detail["linked_card"] is None
+
+
+@pytest.mark.asyncio
+async def test_le_lien_ne_revele_pas_un_brouillon(db_session, fiche_citant_une_fiche, test_user):
+    from app.mcp_server.tools import get_card
+
+    _, _, citee = fiche_citant_une_fiche
+    citee.status = "draft"
+    await db_session.commit()
+
+    card = await get_card(db_session, creator=test_user.username, slug="fiche-citante")
+    assert card["sources"][0]["linked_card"] is None

@@ -35,6 +35,25 @@ _PUBLIC = (
 )
 
 
+def _arete_vers_une_fiche(source: Source) -> dict[str, str] | None:
+    """L'adresse de la fiche Philum que cette source designe, si elle est ouverte.
+
+    C'est l'unique arete fiche -> fiche, celle qui fait du corpus un graphe
+    plutot qu'une collection de listes. Sans elle, un agent lisant une
+    bibliographie de cent references ignore que deux d'entre elles sont
+    elles-memes documentees ici, avec leurs propres extraits verifies.
+
+    Le lien a pu etre pose quand la fiche citee etait publique : on reverifie
+    a la lecture, sinon le MCP publierait le slug d'un travail retire du monde.
+    """
+    citee = source.linked_card
+    if citee is None or citee.deleted_at is not None:
+        return None
+    if citee.status != "published" or citee.visibility != "public":
+        return None
+    return {"creator": citee.user.username, "slug": citee.slug}
+
+
 async def search_cards(db: AsyncSession, query: str, limit: int = 10) -> list[dict[str, Any]]:
     stmt = (
         select(BiblioCard)
@@ -65,7 +84,12 @@ async def get_card(db: AsyncSession, creator: str, slug: str) -> dict[str, Any] 
         select(BiblioCard)
         .join(User, BiblioCard.user_id == User.id)
         .where(_PUBLIC, User.username == creator, BiblioCard.slug == slug)
-        .options(selectinload(BiblioCard.user), selectinload(BiblioCard.sources))
+        .options(
+            selectinload(BiblioCard.user),
+            selectinload(BiblioCard.sources)
+            .selectinload(Source.linked_card)
+            .selectinload(BiblioCard.user),
+        )
     )
     card = await db.scalar(stmt)
     if card is None:
@@ -84,6 +108,9 @@ async def get_card(db: AsyncSession, creator: str, slug: str) -> dict[str, Any] 
                 "url": s.url,
                 "category": s.category,
                 "author_kind": s.author_kind,
+                #: `null` se dit, pour qu'un agent sache que la question a ete
+                #: posee et non omise.
+                "linked_card": _arete_vers_une_fiche(s),
             }
             for s in card.sources
             if s.deleted_at is None
@@ -100,7 +127,10 @@ async def get_source(db: AsyncSession, source_id: str) -> dict[str, Any] | None:
         select(Source)
         .join(BiblioCard, Source.biblio_card_id == BiblioCard.id)
         .where(_PUBLIC, Source.id == sid, Source.deleted_at.is_(None))
-        .options(selectinload(Source.excerpts))
+        .options(
+            selectinload(Source.excerpts),
+            selectinload(Source.linked_card).selectinload(BiblioCard.user),
+        )
     )
     if source is None:
         return None
@@ -125,6 +155,7 @@ async def get_source(db: AsyncSession, source_id: str) -> dict[str, Any] | None:
         "retraction_notice_doi": source.retraction_notice_doi,
         "oa_status": source.oa_status,
         "oa_url": source.oa_url,
+        "linked_card": _arete_vers_une_fiche(source),
         "archive_url": source.archive_url,
         "archive_timestamp": (
             source.archive_timestamp.isoformat() if source.archive_timestamp else None
