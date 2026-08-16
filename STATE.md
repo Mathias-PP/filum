@@ -6,6 +6,20 @@
 
 ---
 
+## Session 2026-08-16 (autonome, suite) — une fiche construite en se comportant en utilisateur
+
+Une fiche a été créée de bout en bout depuis l'interface, sans raccourci d'API, sur le rapport GRAM 2022 du Lancet (`10.1016/S0140-6736(21)02724-0`, lu via le miroir ouvert PMC) : [`/@mathias-pinault/global-burden-of-bacterial-antimicrobial-resistance-in-2019-`](https://filum-eight.vercel.app/@mathias-pinault/global-burden-of-bacterial-antimicrobial-resistance-in-2019-). 62 sources, dont 60 extraites par l'oracle Crossref en confiance élevée et 2 ajoutées à la main par DOI, 43 mises en file d'archivage Wayback, 2 sources qualifiées (posture, annotation, source clé), 1 extrait verbatim suggéré par le modèle puis vérifié mot à mot par « Relire la source ».
+
+Le parcours a produit deux défauts que la lecture de code n'avait pas donnés, corrigés dans la **PR #399**, déployés et revérifiés en production.
+
+**Une fiche non revendiquée se disait revendiquée.** Le pied de page affirmait « Contenu revendiqué par son créateur·ice » et « attestée par signature Ed25519 » sur toute fiche publiée. Sur une fiche seed, la même page portait donc deux phrases contraires : le bandeau du haut annonçait qu'elle n'était pas validée par l'auteur·rice du contenu. C'est la promesse centrale du produit qui se contredisait à l'écran. La mention est désormais conditionnée à `!card.is_seed`. Vérifié en prod : absente sur la fiche GRAM (seed), toujours présente sur `/@example/memoire-et-cerveau` (revendiquée).
+
+**Le référencement saisi à la création disparaissait.** Le formulaire demande format, catégorie et type d'auteur ; le type TypeScript les déclarait, mais le payload ne les envoyait pas, `CardCreate` ne les acceptait pas et `CardService.create_card` ne les écrivait pas. Trois champs remplis, aucun message, et une fiche qui affiche « Non déclaré » jusqu'à une édition ultérieure. Les trois étages les portent maintenant, et les gardent facultatifs.
+
+Comportement honnête relevé au passage, sans correctif à faire : le suggéreur d'extraits a répondu « Aucun passage n'a été retenu dans cette page » sur une source hébergée chez Elsevier plutôt que d'inventer une citation.
+
+---
+
 ## Session 2026-08-16 (autonome, suite) — audit fonctionnel de la production
 
 Toutes les surfaces ont été exercées contre la production réelle, API puis navigateur, et non par lecture de code. Quatre défauts trouvés, quatre corrigés, déployés, revérifiés en prod.
