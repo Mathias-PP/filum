@@ -10,10 +10,11 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.db.text_search import contient
 from app.models.biblio_card import BiblioCard
 from app.models.source import Source
 from app.models.user import User
@@ -39,8 +40,9 @@ async def search_cards(db: AsyncSession, query: str, limit: int = 10) -> list[di
         .join(User, BiblioCard.user_id == User.id)
         .where(
             _PUBLIC,
-            func.lower(BiblioCard.title).contains(query.lower(), autoescape=True)
-            | func.lower(User.username).contains(query.lower(), autoescape=True),
+            # Un agent redemande souvent un titre qu'il a lu translittere :
+            # « memoire » doit atteindre « Mémoire et cerveau ».
+            contient(BiblioCard.title, query) | contient(User.username, query),
         )
         .options(selectinload(BiblioCard.user))
         .order_by(BiblioCard.published_at.desc())
