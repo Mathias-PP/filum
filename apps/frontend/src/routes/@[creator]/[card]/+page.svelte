@@ -21,6 +21,7 @@
   import { cardHighwireTags, sourceCoins } from '$lib/utils/citation-meta';
   import { coinsTitle } from '$lib/utils/coins';
   import { STANCE_STYLES } from '$lib/utils/stance';
+  import { libelleExtraits } from '$lib/utils/extraits';
   import {
     freeReadUrl,
     licenseLabel,
@@ -614,6 +615,18 @@
                           title="Source structurante du raisonnement"
                         >
                           ★ Source clé
+                        </span>
+                      {/if}
+                      {#if libelleExtraits(source.excerpts?.length)}
+                        <!-- Les passages cités mot pour mot ne s'affichent qu'une
+                             fois la source dépliée. Sans ce compte sur la ligne
+                             fermée, rien ne distingue les quelques sources
+                             réellement citées des dizaines seulement listées. -->
+                        <span
+                          class="px-2 py-0.5 text-xs bg-sky-50 text-sky-700 border border-sky-200 rounded-full"
+                          title="Passages cités mot pour mot, dépliez la source pour les lire"
+                        >
+                          {libelleExtraits(source.excerpts?.length)}
                         </span>
                       {/if}
                       {#if source.linked_card_id}
