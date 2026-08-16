@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.db.database import get_db
+from app.db.text_search import contient
 from app.models.biblio_card import BiblioCard
 from app.models.source import Source
 from app.models.user import User
@@ -89,26 +90,19 @@ def _apply_filters(
     stmt = stmt.where(_PUBLIC)
     term = q.strip().lower()
     if term:
-        # `autoescape` : sans lui, « % » et « _ » sont des jokers SQL et une
-        # recherche sur « % » ramene tout le corpus.
-        like = lambda col: func.lower(col).contains(term, autoescape=True)  # noqa: E731
         stmt = stmt.where(
             or_(
-                like(BiblioCard.title),
-                like(BiblioCard.description),
-                like(BiblioCard.content_authors),
-                like(User.username),
-                like(User.display_name),
+                contient(BiblioCard.title, term),
+                contient(BiblioCard.description, term),
+                contient(BiblioCard.content_authors, term),
+                contient(User.username, term),
+                contient(User.display_name, term),
             )
         )
     if creator:
         stmt = stmt.where(func.lower(User.username) == creator.strip().lower())
     if content_author:
-        stmt = stmt.where(
-            func.lower(BiblioCard.content_authors).contains(
-                content_author.strip().lower(), autoescape=True
-            )
-        )
+        stmt = stmt.where(contient(BiblioCard.content_authors, content_author))
     if platform:
         stmt = stmt.where(BiblioCard.platform == platform)
     if content_type:
@@ -233,8 +227,13 @@ async def discover_creators(
 
     term = q.strip().lower()
     if term:
-        like = lambda col: func.lower(col).contains(term, autoescape=True)  # noqa: E731
-        base = base.where(or_(like(User.username), like(User.display_name), like(User.bio)))
+        base = base.where(
+            or_(
+                contient(User.username, term),
+                contient(User.display_name, term),
+                contient(User.bio, term),
+            )
+        )
 
     total_stmt = select(func.count()).select_from(base.subquery())
     total = (await db.scalar(total_stmt)) or 0

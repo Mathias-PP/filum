@@ -11,6 +11,7 @@ from starlette.status import HTTP_401_UNAUTHORIZED
 
 from app.core.rate_limit import limiter
 from app.db.database import get_db
+from app.db.text_search import contient
 from app.models.biblio_card import BiblioCard
 from app.models.claim_request import ClaimRequest
 from app.models.source import Source
@@ -144,7 +145,9 @@ async def search_cards(
         .where(BiblioCard.deleted_at.is_(None), visible)
     )
     if term:
-        stmt = stmt.where(BiblioCard.title.ilike(f"%{term}%"))
+        # `contient` echappe aussi « % » et « _ », qui sans cela sont des
+        # jokers SQL : chercher « % » ramenait tout le corps de la table.
+        stmt = stmt.where(contient(BiblioCard.title, term))
     # Les fiches de l'utilisateur d'abord : c'est le cas d'usage dominant.
     stmt = stmt.order_by(
         (BiblioCard.user_id == current_user.id).desc(),
