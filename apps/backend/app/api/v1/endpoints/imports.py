@@ -482,8 +482,15 @@ def _s2_ref_to_imported_ref(s2_ref: SemanticScholarRef) -> ImportedRef | None:
                 year=s2_ref.year,
                 category="article-scientifique",
                 raw_text=s2_ref.raw_text,
+                journal=s2_ref.journal,
+                doi=s2_ref.doi,
             )
         return None
+    # Le DOI et la revue viennent du depot de l'editeur et ne sont retrouvables
+    # nulle part ailleurs. Les laisser tomber ici eteint deux verifications de
+    # la fiche, toutes deux indexees sur le DOI : la retractation (Crossref) et
+    # l'acces libre (Unpaywall). Une fiche scientifique entiere affichait alors
+    # « Non verifiable » sur chacune de ses references.
     return ImportedRef(
         url=s2_ref.url,
         title=s2_ref.title,
@@ -491,6 +498,8 @@ def _s2_ref_to_imported_ref(s2_ref: SemanticScholarRef) -> ImportedRef | None:
         year=s2_ref.year,
         category="article-scientifique",
         raw_text=s2_ref.raw_text,
+        journal=s2_ref.journal,
+        doi=s2_ref.doi,
     )
 
 
@@ -526,6 +535,10 @@ def _merge_s2_refs(base: ParseResult, s2_refs: list[SemanticScholarRef]) -> Pars
                 existing.authors = imported.authors
             if not existing.year:
                 existing.year = imported.year
+            if not existing.doi:
+                existing.doi = imported.doi
+            if not existing.journal:
+                existing.journal = imported.journal
             if existing.category == "page-web":
                 existing.category = "article-scientifique"
     # 2e passe : dedup par titre normalise. Frontiers etc. peuvent citer un
