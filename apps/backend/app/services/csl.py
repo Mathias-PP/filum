@@ -45,6 +45,15 @@ _INITIALS = re.compile(r"^(?:[A-Z]\.?[\s-]*){1,4}$")
 #: Un jeton d'initiales isole, pour reconnaitre « N. » dans « Adleman N. ».
 _INITIAL_TOKEN = re.compile(r"^[A-Z]\.?(?:-[A-Z]\.?)*$")
 
+#: La marque d'abreviation d'une liste d'auteurs. Ce n'est pas un nom : la
+#: regle « dernier jeton = famille » en tirait « al. » comme nom de famille et
+#: « Brian J. Wiltgen et » comme prenom, une entree fausse dans tout ce qui
+#: s'exporte (cle BibTeX `al2010n2`, champ RIS `AU  - al., Brian J. Wiltgen et`).
+_ET_AL = re.compile(
+    r"(?:^|[\s,]+)(?:et|and|&)[\s]+(?:al|coll|col|autres)\.?$",
+    re.IGNORECASE,
+)
+
 
 def _split_entries(authors: str) -> list[str]:
     """Decoupe la chaine en auteurs, sans casser un « Famille, Prenom ».
@@ -90,7 +99,7 @@ def parse_name(entry: str) -> dict[str, str]:
     la convention occidentale (dernier jeton = famille). Un nom d'un seul mot
     reste un nom de famille seul, plutot que d'inventer un prenom vide.
     """
-    entry = entry.strip()
+    entry = _ET_AL.sub("", entry.strip()).strip()
     if not entry:
         return {}
 

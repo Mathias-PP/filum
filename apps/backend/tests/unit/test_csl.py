@@ -134,6 +134,31 @@ class TestParseAuthors:
         assert parse_authors("") == []
         assert parse_authors("  ,  ; ") == []
 
+    def test_et_al_n_est_pas_un_auteur(self):
+        # Constate en prod sur la fiche vitrine : l'export BibTeX portait
+        # `@article{al2010n2}` et le RIS `AU  - al., Brian J. Wiltgen et`.
+        # La regle « dernier jeton = famille » prenait l'abreviation pour
+        # un nom, et l'auteur reel disparaissait dans le prenom.
+        assert parse_authors("Brian J. Wiltgen et al.") == [
+            {"family": "Wiltgen", "given": "Brian J."}
+        ]
+
+    def test_et_al_en_queue_de_liste_ne_cree_pas_d_auteur_fantome(self):
+        names = parse_authors("Xu Liu, Steve Ramirez, Susumu Tonegawa et al.")
+        assert [n["family"] for n in names] == ["Liu", "Ramirez", "Tonegawa"]
+
+    def test_et_al_detache_par_une_virgule(self):
+        assert parse_authors("Nader K., et al.") == [{"family": "Nader", "given": "K."}]
+
+    def test_les_variantes_francaises_sont_reconnues(self):
+        assert parse_authors("Dupont et coll.") == [{"family": "Dupont"}]
+        assert parse_authors("Dupont et autres") == [{"family": "Dupont"}]
+
+    def test_un_nom_qui_commence_par_al_reste_intact(self):
+        # « Al » est une particule frequente. La couper produirait un auteur
+        # tronque a chaque export.
+        assert parse_authors("Mohammed Al Fayed") == [{"family": "Fayed", "given": "Mohammed Al"}]
+
     def test_espaces_superflus_absorbes(self):
         assert parse_authors("  Adleman   N.  ,  Menon V. ") == [
             {"family": "Adleman", "given": "N."},
@@ -150,6 +175,12 @@ class TestCslKey:
         # « nd » (no date) plutot qu'une annee inventee.
         s = make_source(authors="Aron")
         assert csl_key(s, 1) == "aron ndn1".replace(" ", "")
+
+    def test_la_cle_ne_cite_pas_une_abreviation(self):
+        # `al2010n2` etait la cle servie en production : elle designait
+        # « et al. » comme auteur cite.
+        s = make_source(authors="Brian J. Wiltgen et al.", published_at=datetime(2010, 1, 1))
+        assert csl_key(s, 2) == "wiltgen2010n2"
 
     def test_sans_auteur_retombe_sur_le_titre(self):
         s = make_source(authors=None, title="Memoire et cerveau")
