@@ -208,6 +208,59 @@ async def test_search_cards_escapes_like_wildcards(db_session, published_card):
 
 
 @pytest_asyncio.fixture
+async def fiche_decrite(db_session, test_user):
+    """Une fiche dont le sujet ne figure que hors du titre.
+
+    C'est le cas qui separait l'agent de l'humain : sur ce corpus, une requete
+    « hippocampe » ne rendait rien au MCP alors que /discover trouvait la fiche.
+    """
+    from app.models.biblio_card import BiblioCard
+
+    card = BiblioCard(
+        id=uuid4(),
+        user_id=test_user.id,
+        slug="episode-42",
+        title="Episode 42",
+        description="Une plongee dans l'hippocampe et la consolidation des souvenirs.",
+        content_authors="Bruce Benamran",
+        content_type="video",
+        platform="youtube",
+        status="published",
+    )
+    db_session.add(card)
+    await db_session.commit()
+    return card
+
+
+@pytest.mark.asyncio
+async def test_search_cards_cherche_dans_la_description(db_session, fiche_decrite):
+    from app.mcp_server.tools import search_cards
+
+    results = await search_cards(db_session, query="hippocampe")
+    assert [r["slug"] for r in results] == ["episode-42"]
+
+
+@pytest.mark.asyncio
+async def test_search_cards_cherche_l_auteur_du_contenu(db_session, fiche_decrite):
+    from app.mcp_server.tools import search_cards
+
+    results = await search_cards(db_session, query="benamran")
+    assert [r["slug"] for r in results] == ["episode-42"]
+
+
+@pytest.mark.asyncio
+async def test_search_cards_cherche_le_nom_affiche_du_createur(
+    db_session, fiche_decrite, test_user
+):
+    from app.mcp_server.tools import search_cards
+
+    test_user.display_name = "Lea Marchand"
+    await db_session.commit()
+    results = await search_cards(db_session, query="marchand")
+    assert [r["slug"] for r in results] == ["episode-42"]
+
+
+@pytest_asyncio.fixture
 async def source_complete(db_session, test_user):
     """Une source qui a tout a dire : verbatim, position declaree, retractation.
 

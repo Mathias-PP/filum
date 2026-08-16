@@ -40,9 +40,20 @@ async def search_cards(db: AsyncSession, query: str, limit: int = 10) -> list[di
         .join(User, BiblioCard.user_id == User.id)
         .where(
             _PUBLIC,
-            # Un agent redemande souvent un titre qu'il a lu translittere :
-            # « memoire » doit atteindre « Mémoire et cerveau ».
-            contient(BiblioCard.title, query) | contient(User.username, query),
+            # Les memes colonnes que /discover. Un agent formule une intention
+            # (« consolidation du sommeil »), pas un titre exact : chercher le
+            # seul titre lui faisait conclure a un corpus vide la ou un humain,
+            # sur la meme requete et le meme corpus, trouvait la fiche par sa
+            # description ou par l'auteur du contenu.
+            #
+            # `contient` replie aussi les accents : un agent redemande souvent
+            # un titre qu'il a lu translittere, et « memoire » doit atteindre
+            # « Mémoire et cerveau ».
+            contient(BiblioCard.title, query)
+            | contient(BiblioCard.description, query)
+            | contient(BiblioCard.content_authors, query)
+            | contient(User.username, query)
+            | contient(User.display_name, query),
         )
         .options(selectinload(BiblioCard.user))
         .order_by(BiblioCard.published_at.desc())
