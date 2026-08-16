@@ -14,13 +14,14 @@ Ces tests verrouillent le contenu de la demo, pas le code qui la charge.
 from __future__ import annotations
 
 import re
-from datetime import date
+from datetime import date, datetime
 
 from app.models.source import Source, SourceStance
 from app.models.source_excerpt import SourceExcerpt
 from app.scripts.seed_demo import _demo_sources, _verdicts_par_extrait
 
 SPEC = _demo_sources()
+RELU_LE = datetime(2026, 8, 16, 12, 0, 0)
 
 
 class TestDemontrabilite:
@@ -98,14 +99,21 @@ class TestVerdictsSurvivants:
     def _source(self, url: str, extraits: list[tuple[str, str | None]]) -> Source:
         source = Source(url=url)
         source.excerpts = [
-            SourceExcerpt(position=i, text=texte, verified_status=statut)
+            SourceExcerpt(
+                position=i,
+                text=texte,
+                verified_status=statut,
+                verified_at=RELU_LE if statut else None,
+                verified_text_source="fetched" if statut else None,
+            )
             for i, (texte, statut) in enumerate(extraits)
         ]
         return source
 
     def test_un_verdict_rendu_est_retrouve_par_son_texte(self):
         sources = [self._source("https://a.example/x", [("un extrait", "found")])]
-        assert _verdicts_par_extrait(sources) == {("https://a.example/x", "un extrait"): "found"}
+        verdicts = _verdicts_par_extrait(sources)
+        assert verdicts[("https://a.example/x", "un extrait")].statut == "found"
 
     def test_un_extrait_jamais_relu_n_est_pas_reporte(self):
         sources = [self._source("https://a.example/x", [("un extrait", None)])]
@@ -120,7 +128,15 @@ class TestVerdictsSurvivants:
         ]
         verdicts = _verdicts_par_extrait(sources)
         assert verdicts.get(("https://a.example/x", "texte reecrit")) is None
-        assert verdicts[("https://b.example/y", "ancien texte")] == "missing"
+        assert verdicts[("https://b.example/y", "ancien texte")].statut == "missing"
+
+    def test_la_date_et_la_provenance_voyagent_avec_le_verdict(self):
+        """Un verdict seul se lit « Relu dans la source » sans date, et
+        l'interface ne peut plus dire contre quoi la relecture a ete faite."""
+        sources = [self._source("https://a.example/x", [("un extrait", "found")])]
+        reporte = _verdicts_par_extrait(sources)[("https://a.example/x", "un extrait")]
+        assert reporte.date == RELU_LE
+        assert reporte.provenance == "fetched"
 
 
 class TestChargeable:
