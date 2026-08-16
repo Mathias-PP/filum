@@ -55,7 +55,13 @@ async def get_source(source_id: str) -> dict[str, Any] | None:
 
 @mcp.tool()
 async def find_cards_citing(url: str, limit: int = 10) -> list[dict[str, Any]]:
-    """Fiches publiees citant cette URL — les aretes du graphe de citations."""
+    """Fiches publiees citant cette reference : les aretes du graphe de citations.
+
+    L'ecriture de l'URL est indifferente (schema, `www.`, barre finale,
+    parametres de campagne). Un DOI est reconnu comme l'URL de l'editeur, et
+    reciproquement : passer `https://doi.org/10.1038/nature11028` ramene les
+    fiches qui citent l'article sous son adresse Nature.
+    """
     async with _session() as db:
         return await tools.find_cards_citing(db, url=url, limit=limit)
 

@@ -411,3 +411,98 @@ async def test_find_cards_citing_same_url(db_session, published_card, test_user)
     results = await find_cards_citing(db_session, url="https://doi.org/10.1000/exemple")
     assert len(results) == 1
     assert results[0]["slug"] == "memoire-cerveau"
+
+
+@pytest_asyncio.fixture
+async def fiche_citant_nature(db_session, test_user):
+    """Une fiche qui cite un article, dans une seule des ecritures de son URL.
+
+    Mesure en production le 2026-08-16 : `find_cards_citing` comparait l'URL
+    caractere par caractere. La meme reference ecrite en `http://`, sans
+    `www.`, avec une barre finale ou un parametre de campagne ne ramenait plus
+    rien, alors que le reste du produit sait depuis `content_identity` que ces
+    ecritures designent le meme contenu.
+    """
+    from app.models.biblio_card import BiblioCard
+    from app.models.source import Source
+
+    card = BiblioCard(
+        id=uuid4(),
+        user_id=test_user.id,
+        slug="engrammes",
+        title="Engrammes",
+        content_type="video",
+        platform="youtube",
+        status="published",
+    )
+    db_session.add(card)
+    await db_session.flush()
+    db_session.add(
+        Source(
+            id=uuid4(),
+            biblio_card_id=card.id,
+            position=0,
+            url="https://www.nature.com/articles/nature11028",
+            doi="10.1038/nature11028",
+            title="Optogenetic stimulation of a hippocampal engram",
+            format="texte",
+            category="article-scientifique",
+            author_kind="chercheur",
+        )
+    )
+    await db_session.commit()
+    return card
+
+
+@pytest.mark.parametrize(
+    "ecriture",
+    [
+        "https://www.nature.com/articles/nature11028",
+        "http://www.nature.com/articles/nature11028",
+        "https://nature.com/articles/nature11028",
+        "https://www.nature.com/articles/nature11028/",
+        "https://www.nature.com/articles/nature11028?utm_source=x",
+        "https://www.nature.com/articles/nature11028#abstract",
+        "  https://www.nature.com/articles/nature11028  ",
+    ],
+    ids=["canonique", "http", "sans-www", "barre-finale", "tracking", "fragment", "espaces"],
+)
+@pytest.mark.asyncio
+async def test_find_cards_citing_ignore_l_ecriture_de_l_url(
+    db_session, fiche_citant_nature, ecriture
+):
+    from app.mcp_server.tools import find_cards_citing
+
+    results = await find_cards_citing(db_session, url=ecriture)
+    assert [r["slug"] for r in results] == ["engrammes"], ecriture
+
+
+@pytest.mark.asyncio
+async def test_find_cards_citing_reconnait_le_doi(db_session, fiche_citant_nature):
+    """Un agent tient le DOI, la fiche tient l'URL de l'editeur.
+
+    Sans cette branche, le graphe se romprait entre deux facons d'ecrire la
+    meme reference que le reste du produit tient deja pour identiques.
+    """
+    from app.mcp_server.tools import find_cards_citing
+
+    results = await find_cards_citing(db_session, url="https://doi.org/10.1038/nature11028")
+    assert [r["slug"] for r in results] == ["engrammes"]
+
+
+@pytest.mark.asyncio
+async def test_find_cards_citing_ne_confond_pas_deux_articles(db_session, fiche_citant_nature):
+    from app.mcp_server.tools import find_cards_citing
+
+    assert (
+        await find_cards_citing(db_session, url="https://www.nature.com/articles/nature11029") == []
+    )
+
+
+@pytest.mark.asyncio
+async def test_find_cards_citing_url_vide_ne_ramene_rien(db_session, fiche_citant_nature):
+    """Une URL illisible ne vaut pas « toutes les fiches »."""
+    from app.mcp_server.tools import find_cards_citing
+
+    assert await find_cards_citing(db_session, url="   ") == []
+    assert await find_cards_citing(db_session, url="pas une url") == []
