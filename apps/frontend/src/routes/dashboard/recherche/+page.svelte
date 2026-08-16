@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
   import { api, ApiError } from '$lib/api';
   import { Button, ExcerptSearchResults } from '$lib/components';
   import type { ExcerptSearchHit } from '$lib/api';
@@ -12,11 +14,12 @@
   let indisponible = $state(false);
   let erreur = $state('');
 
-  async function chercher(event: SubmitEvent) {
-    event.preventDefault();
-    const q = question.trim();
-    if (!q || cherche) return;
+  // Dernière question envoyée au serveur. Volontairement hors `$state` : elle
+  // ne sert qu'à empêcher l'effet ci-dessous de relancer une recherche qu'on
+  // vient de lancer soi-même, et la rendre réactive rappellerait l'effet.
+  let derniereLancee = '';
 
+  async function lancer(q: string) {
     cherche = true;
     erreur = '';
     indisponible = false;
@@ -34,6 +37,38 @@
     } finally {
       cherche = false;
     }
+  }
+
+  // L'URL porte la question, comme sur /discover : un résultat se recharge, se
+  // partage et se retrouve par le bouton Retour. Sans cela, une recherche
+  // coûteuse à formuler disparaissait au premier rafraîchissement.
+  $effect(() => {
+    const q = $page.url.searchParams.get('q')?.trim() ?? '';
+    if (q === derniereLancee) return;
+    derniereLancee = q;
+    question = q;
+    if (!q) {
+      resultats = null;
+      questionPosee = '';
+      return;
+    }
+    void lancer(q);
+  });
+
+  async function chercher(event: SubmitEvent) {
+    event.preventDefault();
+    const q = question.trim();
+    if (!q || cherche) return;
+
+    // Reposer la même question ne change pas l'URL, donc ne réveille pas
+    // l'effet : on relance ici, sinon le bouton resterait sans effet.
+    if (q === derniereLancee) {
+      await lancer(q);
+      return;
+    }
+    derniereLancee = q;
+    await goto(`?q=${encodeURIComponent(q)}`, { keepFocus: true });
+    await lancer(q);
   }
 </script>
 
