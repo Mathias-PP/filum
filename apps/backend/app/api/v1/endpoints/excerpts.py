@@ -142,6 +142,8 @@ class ExcerptSuggestResponse(BaseModel):
     suggestions: list[SuggestedExcerpt]
     page_text_length: int
     llm_enabled: bool
+    #: Voir ``ExcerptVerifyResponse.access_blocked``.
+    access_blocked: bool = False
 
 
 async def _get_owned_source(source_id: UUID, user: User, db: AsyncSession) -> Source:
@@ -363,6 +365,10 @@ class ExcerptCheck(BaseModel):
 class ExcerptVerifyResponse(BaseModel):
     checks: list[ExcerptCheck]
     page_text_length: int
+    #: Le site a refuse de nous laisser lire (403, 429, interstitiel anti-bot).
+    #: Distinct d'une page qui ne rend rien : « je n'ai pas eu le droit » et
+    #: « il n'y avait rien » n'appellent pas le meme geste de l'auteur·ice.
+    access_blocked: bool = False
     #: D'ou vient le texte contre lequel on a relu. Un « verifie » n'a pas le
     #: meme poids selon qu'il vient de la page publique ou d'un texte fourni
     #: par l'auteur·ice : l'ecran doit pouvoir le dire.
@@ -403,6 +409,7 @@ async def verify_source_excerpts(
 
     page_text = (payload.text if payload else None) or ""
     provenance = "provided" if page_text.strip() else "fetched"
+    refuse = False
     if provenance == "fetched":
         try:
             await asyncio.to_thread(assert_url_is_safe, source.url)
@@ -416,6 +423,7 @@ async def verify_source_excerpts(
 
         meta = await _html_scrape(source.url)
         page_text = (meta.page_text if meta else None) or ""
+        refuse = bool(meta and meta.access_blocked)
 
     releve_le = datetime.now(UTC).replace(tzinfo=None)
 
@@ -430,6 +438,7 @@ async def verify_source_excerpts(
         return ExcerptVerifyResponse(
             checks=[ExcerptCheck(excerpt_id=x.id, status="unreadable") for x in excerpts],
             page_text_length=0,
+            access_blocked=refuse,
         )
 
     checks: list[ExcerptCheck] = []
@@ -480,6 +489,7 @@ async def suggest_source_excerpts(
     source = await _get_owned_source(source_id, current_user, db)
 
     page_text = (payload.text if payload else None) or ""
+    refuse = False
     if not page_text.strip():
         try:
             await asyncio.to_thread(assert_url_is_safe, source.url)
@@ -494,6 +504,7 @@ async def suggest_source_excerpts(
 
         meta = await _html_scrape(source.url)
         page_text = (meta.page_text if meta else None) or ""
+        refuse = bool(meta and meta.access_blocked)
     if not page_text:
         # Cinq URLs sur dix ne rendent rien (mesure du 2026-08-08). Ce n'est
         # pas un echec de l'appel : c'est l'etat qui fait basculer l'interface
@@ -507,6 +518,7 @@ async def suggest_source_excerpts(
             suggestions=[],
             page_text_length=0,
             llm_enabled=bool(get_settings().litellm_base_url),
+            access_blocked=refuse,
         )
 
     context = " — ".join(filter(None, [source.title, source.annotation])) or None

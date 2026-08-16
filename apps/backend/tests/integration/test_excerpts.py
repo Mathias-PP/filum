@@ -152,6 +152,7 @@ async def test_suggest_llm_disabled(client, source, monkeypatch):
         "suggestions": [],
         "page_text_length": len(PAGE_TEXT),
         "llm_enabled": False,
+        "access_blocked": False,
     }
 
 

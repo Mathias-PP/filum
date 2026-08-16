@@ -131,8 +131,9 @@
       if (!res.llm_enabled) {
         infoSuggestion = "La suggestion IA n'est pas configurée sur ce serveur.";
       } else if (res.page_text_length === 0) {
-        infoSuggestion =
-          'Cette page ne laisse pas lire son texte. Passez par « Découper un texte long » : collez ce que vous avez sous les yeux, rien ne dépendra plus du site.';
+        infoSuggestion = res.access_blocked
+          ? 'Le site a refusé de nous laisser lire cette page. Passez par « Découper un texte long » : collez ce que vous avez sous les yeux, rien ne dépendra plus du site.'
+          : 'Cette page ne laisse pas lire son texte. Passez par « Découper un texte long » : collez ce que vous avez sous les yeux, rien ne dépendra plus du site.';
       } else if (!res.suggestions.length) {
         infoSuggestion = 'Aucun passage n’a été retenu dans cette page.';
       }
@@ -149,8 +150,10 @@
       const res = await api.excerpts.verify(sourceId, texteSource.trim() || undefined);
       verdicts = Object.fromEntries(res.checks.map((c) => [c.excerpt_id, c]));
       if (res.page_text_length === 0) {
-        infoRelecture =
-          'Cette page ne rend aucun texte : la relecture ne dit rien sur ces citations, ni dans un sens ni dans l’autre. Passez par « Découper un texte long » et collez ou déposez le texte de la source : la relecture portera alors sur lui.';
+        const cause = res.access_blocked
+          ? 'Le site a refusé de nous laisser lire cette page'
+          : 'Cette page ne rend aucun texte';
+        infoRelecture = `${cause} : la relecture ne dit rien sur ces citations, ni dans un sens ni dans l’autre. Passez par « Découper un texte long » et collez ou déposez le texte de la source : la relecture portera alors sur lui.`;
       } else {
         const n = res.checks.filter((c) => c.status !== 'missing').length;
         const contre =
