@@ -20,7 +20,7 @@ Toutes les surfaces ont été exercées contre la production réelle, API puis n
 
 **Inventaire vérifié en production** : 14 fiches publiques publiées, 2 créateurs. La fiche Frontiers 651547 affiche **exactement 152 sources**, la cible chiffrée du plan d'extraction agnostique. Aucune erreur console sur l'accueil, la fiche publique, `/discover`, `/discover/creators`, `/feed`, `/features`, `/roadmap`, `/security`, `/about`, `/developers`, `/privacy`, le tableau de bord, l'écran sources et l'écran connexions.
 
-**Constat non corrigé, à trancher plus tard** : l'outil MCP `search_cards` cherche dans le titre et le pseudo du créateur, là où `/discover` cherche aussi dans la description et les auteurs du contenu. Un agent trouve donc moins qu'un humain sur le même corpus.
+**PR #397 — un agent cherche aussi large qu'un humain.** L'outil MCP `search_cards` ne comparait la requête qu'au titre et au pseudo du créateur, là où `/discover` compare aussi la description, les auteurs du contenu et le nom affiché. Or un agent formule une intention, pas un titre exact : l'écart tombait précisément là où il compte, et zéro résultat se lit comme un corpus vide. Mêmes colonnes des deux côtés désormais. Vérifié en production : « sommeil » et « Bruce Benamran » rendaient chacun zéro fiche avant, une fiche juste après.
 
 ---
 
