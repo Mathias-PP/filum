@@ -391,6 +391,8 @@ _CHALLENGE_WEAK = (
     "bot detection",
     "human verification",
     "press and hold",
+    # Le défi de NCBI (PubMed, PMC), servi en 203 depuis août 2026.
+    "cookies must be enabled",
     # Noms des fournisseurs : sur une page longue c'est un sujet d'article, sur
     # une page courte c'est la bannière de l'obstacle.
     "incapsula",
@@ -403,6 +405,10 @@ _CHALLENGE_WEAK = (
 # qu'une bannière d'obstacle.
 _CHALLENGE_GENERIC = (
     "challenge",
+    # Le sas JavaScript d'un résolveur de DOI (linkinghub chez Elsevier) rend
+    # onze caractères. Comptée pour lue, cette page fait déclarer chacun de ses
+    # extraits « absent de la source » alors que la source n'a pas été ouverte.
+    "redirecting",
     "security check",
     "cloudflare",
     "enable javascript",
@@ -904,7 +910,10 @@ async def _html_scrape(url: str) -> ExtractedMetadata | None:
         if r.status_code in (403, 429, 503):
             logger.info("access_blocked url=%s status=%s", url, r.status_code)
             return ExtractedMetadata(access_blocked=True)
-        if r.status_code != 200 or "text/html" not in r.headers.get("content-type", ""):
+        # Tout 2xx, pas seulement 200 : PubMed sert son defi anti-robot en 203.
+        # Sortir ici privait le detecteur d'obstacle de la page, et l'auteur·ice
+        # n'obtenait ni « lu » ni « refuse » mais rien du tout.
+        if not (200 <= r.status_code < 300) or "text/html" not in r.headers.get("content-type", ""):
             return None
         soup = BeautifulSoup(r.text, "lxml")
 
