@@ -14,10 +14,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.text_search import contient
 from app.models.biblio_card import BiblioCard
 from app.models.source import Source
 from app.models.user import User
+from app.services.card_search import correspond
 
 # Le seul filtre qui vaille pour une surface publique et anonyme.
 #
@@ -40,20 +40,16 @@ async def search_cards(db: AsyncSession, query: str, limit: int = 10) -> list[di
         .join(User, BiblioCard.user_id == User.id)
         .where(
             _PUBLIC,
-            # Les memes colonnes que /discover. Un agent formule une intention
-            # (« consolidation du sommeil »), pas un titre exact : chercher le
-            # seul titre lui faisait conclure a un corpus vide la ou un humain,
-            # sur la meme requete et le meme corpus, trouvait la fiche par sa
-            # description ou par l'auteur du contenu.
+            # Le meme predicat que /discover, bibliographie comprise. Un agent
+            # formule une intention (« consolidation du sommeil »), pas un
+            # titre exact, et il cherche le plus souvent un travail cite : sans
+            # les sources, « engram » ne ramenait rien d'un corpus qui en porte
+            # un extrait verifie.
             #
             # `contient` replie aussi les accents : un agent redemande souvent
             # un titre qu'il a lu translittere, et « memoire » doit atteindre
             # « Mémoire et cerveau ».
-            contient(BiblioCard.title, query)
-            | contient(BiblioCard.description, query)
-            | contient(BiblioCard.content_authors, query)
-            | contient(User.username, query)
-            | contient(User.display_name, query),
+            correspond(query),
         )
         .options(selectinload(BiblioCard.user))
         .order_by(BiblioCard.published_at.desc())

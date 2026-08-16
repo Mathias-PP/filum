@@ -27,6 +27,7 @@ from app.db.text_search import contient
 from app.models.biblio_card import BiblioCard
 from app.models.source import Source
 from app.models.user import User
+from app.services.card_search import correspond
 
 router = APIRouter(prefix="/discover", tags=["discover"])
 
@@ -90,15 +91,7 @@ def _apply_filters(
     stmt = stmt.where(_PUBLIC)
     term = q.strip().lower()
     if term:
-        stmt = stmt.where(
-            or_(
-                contient(BiblioCard.title, term),
-                contient(BiblioCard.description, term),
-                contient(BiblioCard.content_authors, term),
-                contient(User.username, term),
-                contient(User.display_name, term),
-            )
-        )
+        stmt = stmt.where(correspond(term))
     if creator:
         stmt = stmt.where(func.lower(User.username) == creator.strip().lower())
     if content_author:

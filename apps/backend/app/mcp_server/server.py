@@ -27,7 +27,14 @@ def _session() -> AsyncSession:
 
 @mcp.tool()
 async def search_cards(query: str, limit: int = 10) -> list[dict[str, Any]]:
-    """Recherche des fiches publiees par titre ou nom de createur (resultats compacts)."""
+    """Cherche des fiches publiees par sujet, par createur, ou par un travail cite.
+
+    Le terme est confronte au titre et a la description de la fiche, a l'auteur
+    du contenu, au createur, et au titre comme aux auteurs des sources citees.
+    Chercher le nom d'un chercheur ou le titre d'un article ramene donc les
+    fiches qui s'y appuient. Accents indifferents. Resultats compacts :
+    enchainer sur get_card pour le detail.
+    """
     async with _session() as db:
         return await tools.search_cards(db, query=query, limit=limit)
 
