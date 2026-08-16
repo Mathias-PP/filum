@@ -69,6 +69,7 @@ def transport(monkeypatch):
     monkeypatch.setattr(settings, "litellm_base_url", "https://exemple.test/v1beta/openai")
     monkeypatch.setattr(settings, "litellm_master_key", "cle-de-test")
     monkeypatch.setattr(settings, "llm_direct_model", "")
+    monkeypatch.setattr(settings, "llm_direct_model_fallbacks", "")
     return _FauxClient
 
 
@@ -169,6 +170,75 @@ class TestFormeDeLaRequete:
         monkeypatch.setattr(get_settings(), "litellm_base_url", "")
         assert await llm.suggest_excerpts("Un texte.") is None
         assert transport.envois == []
+
+
+class TestRepliSurQuotaEpuise:
+    """Un quota se compte par modèle, pas par fournisseur.
+
+    Le palier gratuit de Gemini autorise vingt appels par jour et par modèle.
+    Sans liste de repli, le vingtième appel éteint l'annotation, la suggestion
+    d'extraits, l'extraction de métadonnées et le parsing de bibliographie
+    jusqu'au lendemain, alors que le même compte répond encore sur un modèle
+    voisin.
+    """
+
+    def test_la_liste_part_du_modele_prefere(self, transport, monkeypatch):
+        monkeypatch.setattr(get_settings(), "llm_direct_model", "gemini-3.6-flash")
+        monkeypatch.setattr(
+            get_settings(), "llm_direct_model_fallbacks", "gemini-3.5-flash, gemini-3.1-flash-lite"
+        )
+        assert llm.modeles_candidats("biblio-parse") == [
+            "gemini-3.6-flash",
+            "gemini-3.5-flash",
+            "gemini-3.1-flash-lite",
+        ]
+
+    def test_un_doublon_ne_coute_pas_un_appel_de_plus(self, transport, monkeypatch):
+        monkeypatch.setattr(get_settings(), "llm_direct_model", "gemini-3.6-flash")
+        monkeypatch.setattr(get_settings(), "llm_direct_model_fallbacks", "gemini-3.6-flash,,")
+        assert llm.modeles_candidats("biblio-parse") == ["gemini-3.6-flash"]
+
+    @pytest.mark.asyncio
+    async def test_un_429_passe_au_modele_suivant(self, transport, monkeypatch):
+        monkeypatch.setattr(get_settings(), "llm_direct_model", "gemini-3.6-flash")
+        monkeypatch.setattr(get_settings(), "llm_direct_model_fallbacks", "gemini-3.5-flash")
+        transport.reponses = [
+            _Reponse(429, text="quota exceeded"),
+            _Reponse(200, _contenu('{"excerpts": ["Un passage."]}')),
+        ]
+        assert await llm.suggest_excerpts("Un texte.") == ["Un passage."]
+        assert transport.envois[0]["json"]["model"] == "gemini-3.6-flash"
+        assert transport.envois[1]["json"]["model"] == "gemini-3.5-flash"
+
+    @pytest.mark.asyncio
+    async def test_un_modele_inconnu_passe_aussi_au_suivant(self, transport, monkeypatch):
+        # 404 : le nom mis dans la liste de repli n'existe pas chez ce
+        # fournisseur. Une entrée périmée ne doit pas condamner les suivantes.
+        monkeypatch.setattr(get_settings(), "llm_direct_model", "gemini-2.5-flash")
+        monkeypatch.setattr(get_settings(), "llm_direct_model_fallbacks", "gemini-3.5-flash")
+        transport.reponses = [
+            _Reponse(404, text="model not found"),
+            _Reponse(200, _contenu('{"excerpts": []}')),
+        ]
+        assert await llm.suggest_excerpts("Un texte.") == []
+
+    @pytest.mark.asyncio
+    async def test_une_cle_refusee_ne_fait_pas_le_tour_de_la_liste(self, transport, monkeypatch):
+        # 401 vaut pour le compte entier : réessayer sur chaque modèle ne
+        # ferait que multiplier l'attente avant le même échec.
+        monkeypatch.setattr(get_settings(), "llm_direct_model", "gemini-3.6-flash")
+        monkeypatch.setattr(get_settings(), "llm_direct_model_fallbacks", "gemini-3.5-flash")
+        transport.reponses = [_Reponse(401, text="invalid key")]
+        assert await llm.suggest_excerpts("Un texte.") is None
+        assert len(transport.envois) == 1
+
+    @pytest.mark.asyncio
+    async def test_toute_la_liste_epuisee_rend_none(self, transport, monkeypatch):
+        monkeypatch.setattr(get_settings(), "llm_direct_model", "gemini-3.6-flash")
+        monkeypatch.setattr(get_settings(), "llm_direct_model_fallbacks", "gemini-3.5-flash")
+        transport.reponses = [_Reponse(429, text="quota"), _Reponse(429, text="quota")]
+        assert await llm.suggest_excerpts("Un texte.") is None
+        assert len(transport.envois) == 2
 
 
 class TestMotifDeLaPanne:

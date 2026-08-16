@@ -71,6 +71,23 @@ def resoudre_modele(alias: str) -> str:
     return direct or alias
 
 
+def modeles_candidats(alias: str) -> list[str]:
+    """Les modèles à essayer pour cet alias, du préféré au dernier recours.
+
+    Le quota gratuit de Gemini se compte par modèle et par jour : le vingtième
+    appel de la journée éteint un modèle, pas le fournisseur. Garder une liste
+    ordonnée fait qu'un quota épuisé coûte un appel perdu, non la journée.
+
+    En mode proxy la liste se réduit à l'alias : c'est LiteLLM qui arbitre.
+    """
+    candidats = [resoudre_modele(alias)]
+    for nom in get_settings().llm_direct_model_fallbacks.split(","):
+        nom = nom.strip()
+        if nom and nom not in candidats:
+            candidats.append(nom)
+    return candidats
+
+
 async def _appel_json(
     alias: str,
     system: str,
@@ -80,19 +97,23 @@ async def _appel_json(
 ) -> str | None:
     """Un tour de chat qui doit rendre du JSON. Ne lève jamais, rend None.
 
-    Deux tentatives au plus. La première demande une sortie contrainte par le
-    schéma (`json_schema`), qui est la seule forme donnant une garantie. Les
-    schémas produits par Pydantic contiennent des `anyOf` et des `$defs` que
-    tous les providers n'acceptent pas ; un refus au niveau de la requête
-    n'est pas un refus de la tâche, d'où le repli sur `json_object` avec le
-    schéma recopié dans la consigne. Le parsing en aval valide dans les deux
-    cas : rien n'est accepté sur la foi du mode demandé.
+    Deux tentatives au plus par modèle. La première demande une sortie
+    contrainte par le schéma (`json_schema`), qui est la seule forme donnant
+    une garantie. Les schémas produits par Pydantic contiennent des `anyOf` et
+    des `$defs` que tous les providers n'acceptent pas ; un refus au niveau de
+    la requête n'est pas un refus de la tâche, d'où le repli sur `json_object`
+    avec le schéma recopié dans la consigne. Le parsing en aval valide dans les
+    deux cas : rien n'est accepté sur la foi du mode demandé.
+
+    Un 429 ou un 404 ne condamnent que le modèle visé, pas la tâche : on passe
+    au suivant de `modeles_candidats`. Les autres statuts sont terminaux, il
+    n'y a rien à espérer d'un second modèle pour une clé refusée ou une requête
+    malformée.
     """
     settings = get_settings()
     base = settings.litellm_base_url.rstrip("/")
-    modele = resoudre_modele(alias)
 
-    async def poste(response_format: dict, consigne: str) -> httpx.Response:
+    async def poste(modele: str, response_format: dict, consigne: str) -> httpx.Response:
         async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
             return await client.post(
                 url_chat(base),
@@ -108,27 +129,35 @@ async def _appel_json(
                 headers={"Authorization": f"Bearer {settings.litellm_master_key}"},
             )
 
-    try:
-        r = await poste(
-            {"type": "json_schema", "json_schema": {"name": schema_name, "schema": schema}},
-            system,
-        )
-        if r.status_code == 400:
-            logger.info("LLM %s: schéma refusé, repli json_object", alias)
+    for modele in modeles_candidats(alias):
+        try:
             r = await poste(
-                {"type": "json_object"},
-                f"{system}\n\nRends un objet JSON conforme à ce schéma :\n{json.dumps(schema)}",
+                modele,
+                {"type": "json_schema", "json_schema": {"name": schema_name, "schema": schema}},
+                system,
             )
-        if r.status_code != 200:
-            logger.warning("LLM %s HTTP %s: %s", alias, r.status_code, r.text[:200])
-            _retenir_panne(alias, r.status_code, r.text)
+            if r.status_code == 400:
+                logger.info("LLM %s: schéma refusé, repli json_object", alias)
+                r = await poste(
+                    modele,
+                    {"type": "json_object"},
+                    f"{system}\n\nRends un objet JSON conforme à ce schéma :\n{json.dumps(schema)}",
+                )
+            if r.status_code in (404, 429):
+                logger.warning("LLM %s: %s indisponible (HTTP %s)", alias, modele, r.status_code)
+                _retenir_panne(alias, r.status_code, r.text)
+                continue
+            if r.status_code != 200:
+                logger.warning("LLM %s HTTP %s: %s", alias, r.status_code, r.text[:200])
+                _retenir_panne(alias, r.status_code, r.text)
+                return None
+            content: str = r.json()["choices"][0]["message"]["content"]
+            return content
+        except Exception as e:
+            logger.warning("LLM %s failed: %s", alias, e)
+            _retenir_panne(alias, None, f"{type(e).__name__}: {e}")
             return None
-        content: str = r.json()["choices"][0]["message"]["content"]
-        return content
-    except Exception as e:
-        logger.warning("LLM %s failed: %s", alias, e)
-        _retenir_panne(alias, None, f"{type(e).__name__}: {e}")
-        return None
+    return None
 
 
 class LlmSourceMetadata(BaseModel):
