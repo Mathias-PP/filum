@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -18,6 +18,7 @@ from app.models.biblio_card import BiblioCard
 from app.models.source import Source
 from app.models.user import User
 from app.services.card_search import correspond
+from app.services.content_identity import escape_like, extract_doi, url_variants
 
 # Le seul filtre qui vaille pour une surface publique et anonyme.
 #
@@ -153,11 +154,30 @@ async def get_source(db: AsyncSession, source_id: str) -> dict[str, Any] | None:
 
 
 async def find_cards_citing(db: AsyncSession, url: str, limit: int = 10) -> list[dict[str, Any]]:
+    # Le meme critere d'identite que le reste du produit (`content_identity`) :
+    # une arete du graphe ne peut pas dependre de l'ecriture de l'URL. Un agent
+    # recopie ce qu'il a lu, avec ou sans `www.`, en `http`, avec la barre
+    # finale ou le parametre de campagne colle par la page qui l'a mene la.
+    # Comparer caractere par caractere rendait le graphe muet sur toutes ces
+    # ecritures, et l'agent en concluait que personne ne citait la reference.
+    clauses = []
+    if variants := url_variants(url):
+        clauses.append(Source.url.in_(variants))
+    # L'agent tient souvent le DOI quand la fiche tient l'URL de l'editeur, et
+    # l'inverse. Les deux designent le meme travail.
+    if key_doi := extract_doi(url):
+        motif = f"%{escape_like(key_doi)}%"
+        clauses.append(Source.doi.ilike(motif, escape="\\"))
+        clauses.append(Source.url.ilike(motif, escape="\\"))
+    # Une URL illisible ne vaut pas « toutes les fiches ».
+    if not clauses:
+        return []
+
     stmt = (
         select(BiblioCard)
         .join(Source, Source.biblio_card_id == BiblioCard.id)
         .join(User, BiblioCard.user_id == User.id)
-        .where(_PUBLIC, Source.deleted_at.is_(None), Source.url == url.strip())
+        .where(_PUBLIC, Source.deleted_at.is_(None), or_(*clauses))
         .options(selectinload(BiblioCard.user))
         .distinct()
         .limit(min(max(limit, 1), 25))
