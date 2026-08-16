@@ -17,7 +17,8 @@ import re
 from datetime import date
 
 from app.models.source import Source, SourceStance
-from app.scripts.seed_demo import _demo_sources
+from app.models.source_excerpt import SourceExcerpt
+from app.scripts.seed_demo import _demo_sources, _verdicts_par_extrait
 
 SPEC = _demo_sources()
 
@@ -73,6 +74,41 @@ class TestVeracite:
             if pub is not None:
                 assert isinstance(pub, date), s["title"]
                 assert 1800 <= pub.year <= 2100, pub
+
+
+class TestVerdictsSurvivants:
+    """Le seed efface et recree les sources a chaque demarrage du conteneur.
+
+    Sans report, la vitrine repart a « jamais verifie » a chaque deploiement :
+    la page qui vend la relecture des sources n'en montre alors aucune preuve.
+    """
+
+    def _source(self, url: str, extraits: list[tuple[str, str | None]]) -> Source:
+        source = Source(url=url)
+        source.excerpts = [
+            SourceExcerpt(position=i, text=texte, verified_status=statut)
+            for i, (texte, statut) in enumerate(extraits)
+        ]
+        return source
+
+    def test_un_verdict_rendu_est_retrouve_par_son_texte(self):
+        sources = [self._source("https://a.example/x", [("un extrait", "found")])]
+        assert _verdicts_par_extrait(sources) == {("https://a.example/x", "un extrait"): "found"}
+
+    def test_un_extrait_jamais_relu_n_est_pas_reporte(self):
+        sources = [self._source("https://a.example/x", [("un extrait", None)])]
+        assert _verdicts_par_extrait(sources) == {}
+
+    def test_le_verdict_est_lie_au_couple_source_texte(self):
+        """Un texte reecrit doit etre relu : lui reporter l'ancien verdict
+        affirmerait « retrouve dans la source » d'une phrase jamais cherchee."""
+        sources = [
+            self._source("https://a.example/x", [("ancien texte", "found")]),
+            self._source("https://b.example/y", [("ancien texte", "missing")]),
+        ]
+        verdicts = _verdicts_par_extrait(sources)
+        assert verdicts.get(("https://a.example/x", "texte reecrit")) is None
+        assert verdicts[("https://b.example/y", "ancien texte")] == "missing"
 
 
 class TestChargeable:

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Sequence
 from datetime import UTC, date, datetime
 
 from sqlalchemy import delete, select
@@ -531,12 +532,32 @@ def _demo_sources() -> list[dict]:
     ]
 
 
+def _verdicts_par_extrait(sources: Sequence[Source]) -> dict[tuple[str, str], str]:
+    """Verdicts de relecture deja rendus, indexes par (url de la source, texte).
+
+    Le seed efface et recree les sources a chaque demarrage du conteneur : sans
+    ce report, la fiche vitrine repart a « jamais verifie » a chaque
+    deploiement, et la page qui vend la relecture des sources n'en montre plus
+    aucune preuve.
+
+    La cle porte le texte de l'extrait, pas sa position : une phrase reecrite
+    doit etre relue, sinon on affirmerait « retrouve dans la source » d'un
+    texte qu'on n'y a jamais cherche.
+    """
+    verdicts: dict[tuple[str, str], str] = {}
+    for source in sources:
+        for extrait in source.excerpts:
+            if extrait.verified_status:
+                verdicts[(source.url, extrait.text)] = extrait.verified_status
+    return verdicts
+
+
 async def _get_or_create_demo_card(
     db: AsyncSession, user: User, key_manager: KeyManager
 ) -> tuple[BiblioCard, ContentAttestation | None]:
     result = await db.execute(
         select(BiblioCard)
-        .options(selectinload(BiblioCard.sources))
+        .options(selectinload(BiblioCard.sources).selectinload(Source.excerpts))
         .options(selectinload(BiblioCard.user))
         .where(
             BiblioCard.user_id == user.id,
@@ -546,6 +567,7 @@ async def _get_or_create_demo_card(
     card = result.scalar_one_or_none()
 
     sources_spec = _demo_sources()
+    verdicts = _verdicts_par_extrait(card.sources) if card else {}
 
     if card is None:
         card = BiblioCard(
@@ -617,6 +639,7 @@ async def _get_or_create_demo_card(
                     position=excerpt_position,
                     text=text,
                     suggested_by_ai=False,
+                    verified_status=verdicts.get((source.url, text)),
                 )
             )
     await db.flush()
