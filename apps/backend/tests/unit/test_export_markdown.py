@@ -107,6 +107,40 @@ class TestBilanDeFiabilite:
         body = _md(oa_status="gold", oa_url="https://example.org/pdf")
         assert "1 en accès ouvert" in body
 
+    def test_un_podcast_n_est_pas_compte_comme_non_verifiable(self):
+        """Une revue retracte un article, pas un podcast.
+
+        La fiche vitrine annoncait « 13 non vérifiable(s) » sur 18 sources : le
+        chiffre se lisait comme un doute sur les sources alors que la question
+        ne se posait pas. Meme regle que l'interface depuis la PR #418.
+        """
+        body = _md(category="podcast", retraction_status="unverifiable")
+        assert "non vérifiable(s)" not in body
+
+    def test_le_bilan_de_retractation_dit_sur_quoi_il_porte(self):
+        from app.services.export import export_markdown
+
+        card = _card(
+            [
+                _source(category="article-scientifique", retraction_status="none"),
+                _source(category="podcast", retraction_status="unverifiable"),
+            ]
+        )
+        body = export_markdown(card, URL)
+        assert "Sur 2 source(s)" in body
+        assert "Rétractation (1 source(s) de littérature scientifique)" in body
+        assert "1 vérifiée(s) sans rétractation" in body
+
+    def test_un_avis_publie_compte_meme_hors_litterature(self):
+        """Un billet qui relaie un article retracte doit pouvoir le dire."""
+        body = _md(category="article-presse", retraction_status="retracted")
+        assert "1 rétractée(s)" in body
+
+    def test_une_fiche_sans_aucune_source_retractable_omet_la_ligne(self):
+        body = _md(category="podcast", retraction_status="unverifiable")
+        assert "- Rétractation" not in body
+        assert "- Accès" in body
+
     def test_une_fiche_sans_source_n_affiche_pas_de_bilan(self):
         from app.services.export import export_markdown
 
