@@ -131,16 +131,9 @@ def _demo_sources() -> list[dict]:
                 "https://web.archive.org/web/20240601000000/"
                 "https://www.science.org/doi/10.1126/science.1067020"
             ),
-            "excerpts": [
-                (
-                    "La mémoire à long terme requiert la synthèse de nouvelles protéines "
-                    "et un remodelage durable des connexions synaptiques."
-                ),
-                (
-                    "CREB agit comme un commutateur génétique reliant l'activité neuronale "
-                    "à l'expression de gènes de stabilisation synaptique."
-                ),
-            ],
+            #: Sans extrait : science.org oppose un mur de lecture, et un extrait
+            #: qu'aucune relecture ne peut confirmer ne vaut pas mieux qu'une
+            #: absence sur la fiche qui sert de vitrine au produit.
         },
         {
             "url": "https://www.cell.com/current-biology/fulltext/S0960-9822(10)01007-0",
@@ -207,11 +200,20 @@ def _demo_sources() -> list[dict]:
                 "https://web.archive.org/web/20240601000000/"
                 "https://www.nature.com/articles/nature11028"
             ),
+            #: Verbatim du résumé publié, dans la langue de l'article : c'est ce
+            #: que « Relire la source » retrouve mot à mot. Une traduction, même
+            #: fidèle, ne s'y retrouve jamais.
             "excerpts": [
                 (
-                    "L'activation optogénétique d'un sous-ensemble de neurones du gyrus denté "
-                    "suffit à déclencher le rappel d'une mémoire de peur."
-                )
+                    "Here we show in mice that optogenetic reactivation of hippocampal "
+                    "neurons activated during fear conditioning is sufficient to induce "
+                    "freezing behaviour."
+                ),
+                (
+                    "Together, our findings indicate that activating a sparse but specific "
+                    "ensemble of hippocampal neurons that contribute to a memory engram is "
+                    "sufficient for the recall of that memory."
+                ),
             ],
         },
         {
@@ -238,12 +240,7 @@ def _demo_sources() -> list[dict]:
                 "(défense, identification oculaire). Cette activité est documentée "
                 "publiquement et fait partie de son parcours académique."
             ),
-            "excerpts": [
-                (
-                    "De simples mots après l'événement suffisent à introduire des détails "
-                    "qui n'existaient pas, sans que le témoin perçoive la moindre altération."
-                )
-            ],
+            #: Sans extrait : learnmem.cshlp.org ne rend rien depuis un serveur.
         },
         # --- Tier 2 — Institutional ---
         {
@@ -261,12 +258,7 @@ def _demo_sources() -> list[dict]:
                 "https://www.ninds.nih.gov/health-information/public-education/"
                 "brain-basics/brain-basics-understanding-sleep"
             ),
-            "excerpts": [
-                (
-                    "Le sommeil, en particulier les phases lentes profondes et le REM, "
-                    "joue un rôle actif dans la consolidation des apprentissages récents."
-                )
-            ],
+            #: Sans extrait : ninds.nih.gov refuse la lecture automatisée.
         },
         {
             "url": "https://memorylab.stanford.edu/",
@@ -296,6 +288,18 @@ def _demo_sources() -> list[dict]:
             "archive_url": (
                 "https://web.archive.org/web/20240601000000/https://www.inserm.fr/dossier/memoire/"
             ),
+            "excerpts": [
+                (
+                    "Cette mémoire est sollicitée en permanence : par exemple, c’est elle "
+                    "qui permet de retenir un numéro de téléphone le temps de le noter, ou "
+                    "le début d’une phrase le temps de la terminer."
+                ),
+                (
+                    "Enfin, la mémoire autobiographique renvoie à nos souvenirs personnels "
+                    "et à nos connaissances sur nous-même, en interaction avec le monde qui "
+                    "nous entoure."
+                ),
+            ],
         },
         # --- Tier 3 — Press ---
         {
@@ -321,12 +325,7 @@ def _demo_sources() -> list[dict]:
                 "https://www.quantamagazine.org/"
                 "light-triggered-genes-reveal-the-hidden-workings-of-memory-20171214/"
             ),
-            "excerpts": [
-                (
-                    "Un souvenir peut exister sans être accessible : l'engramme est là, "
-                    "silencieux, et il faut la bonne clé pour le rallumer."
-                )
-            ],
+            #: Sans extrait : quantamagazine.org ne rend rien depuis un serveur.
         },
         {
             "url": (
@@ -369,6 +368,12 @@ def _demo_sources() -> list[dict]:
                 "https://web.archive.org/web/20240601000000/"
                 "https://time.com/6171190/new-science-of-forgetting/"
             ),
+            "excerpts": [
+                (
+                    "It’s the first known look at how a living vertebrate’s brain "
+                    "restructures itself as the animal forms a memory."
+                )
+            ],
         },
         # --- Tier 4 — Original ---
         {
@@ -429,11 +434,19 @@ def _demo_sources() -> list[dict]:
                 "Auteure également romancière à succès ; le livre est commercialisé "
                 "par un éditeur grand public, ce qui peut orienter le ton vulgarisateur."
             ),
+            #: Verbatim de la présentation de l'ouvrage, seul texte que la page
+            #: publie. Une page de libraire ne porte pas le livre.
             "excerpts": [
                 (
-                    "Oublier n'est pas un défaut du cerveau — c'est une fonction qui "
-                    "préserve l'essentiel en éliminant le bruit du quotidien."
-                )
+                    "You’ll learn whether forgotten memories are temporarily inaccessible "
+                    "or erased forever and why some memories are built to exist for only a "
+                    "few seconds (like a passcode) while others can last a lifetime (your "
+                    "wedding day)."
+                ),
+                (
+                    "And you’ll see how memory is profoundly impacted by meaning, emotion, "
+                    "sleep, stress, and context."
+                ),
             ],
         },
         # --- Tier 5 — Non-academic (video, documentary, image) ---
@@ -455,13 +468,8 @@ def _demo_sources() -> list[dict]:
                 "https://web.archive.org/web/20240601000000/"
                 "https://www.pbs.org/wgbh/nova/video/memory-hackers/"
             ),
-            "excerpts": [
-                (
-                    "Chez certains individus, la mémoire n'est pas une histoire figée : "
-                    "chaque rappel la réécrit, et cette malléabilité est la clé "
-                    "de notre capacité à apprendre."
-                )
-            ],
+            #: Sans extrait : la page du documentaire ne porte pas son contenu,
+            #: seulement une notice. Un extrait de la vidéo ne s'y retrouve pas.
         },
         {
             "url": "https://www.youtube.com/watch?v=X5trRLX7PQY",
