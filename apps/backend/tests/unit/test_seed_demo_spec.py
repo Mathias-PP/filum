@@ -19,8 +19,10 @@ from datetime import date, datetime
 from app.models.source import Source, SourceStance
 from app.models.source_excerpt import SourceExcerpt
 from app.scripts.seed_demo import (
+    EnrichissementReporte,
     _date_de_publication,
     _demo_sources,
+    _enrichissements_par_source,
     _verdicts_par_extrait,
 )
 
@@ -141,6 +143,64 @@ class TestVerdictsSurvivants:
         reporte = _verdicts_par_extrait(sources)[("https://a.example/x", "un extrait")]
         assert reporte.date == RELU_LE
         assert reporte.provenance == "fetched"
+
+
+class TestEnrichissementSurvivant:
+    """Mesure apres un deploiement : l'export markdown de la vitrine annoncait
+    « 18 accès jamais vérifié » et « 5 jamais vérifiée(s) » alors que les
+    verdicts Crossref et OpenAlex avaient bien ete obtenus. Le seed les
+    effacait avec les sources, et l'enrichissement paresseux ne les recalcule
+    qu'a la premiere visite.
+    """
+
+    def _source(self, url: str, doi: str | None = None, **kw) -> Source:
+        source = Source(url=url, doi=doi)
+        for champ, valeur in kw.items():
+            setattr(source, champ, valeur)
+        return source
+
+    def test_un_verdict_de_retractation_est_reporte(self):
+        sources = [
+            self._source(
+                "https://a.example/x",
+                doi="10.1/a",
+                retraction_status="none",
+                retraction_checked_at=RELU_LE,
+            )
+        ]
+        reporte = _enrichissements_par_source(sources)[("https://a.example/x", "10.1/a")]
+        assert reporte.retraction_status == "none"
+        assert reporte.retraction_checked_at == RELU_LE
+
+    def test_l_acces_ouvert_voyage_avec_son_url(self):
+        sources = [
+            self._source(
+                "https://a.example/x",
+                oa_status="gold",
+                oa_url="https://a.example/pdf",
+                oa_checked_at=RELU_LE,
+            )
+        ]
+        reporte = _enrichissements_par_source(sources)[("https://a.example/x", None)]
+        assert reporte.oa_url == "https://a.example/pdf"
+        assert reporte.oa_checked_at == RELU_LE
+
+    def test_une_source_jamais_enrichie_n_est_pas_reportee(self):
+        assert _enrichissements_par_source([self._source("https://a.example/x")]) == {}
+
+    def test_le_verdict_est_lie_au_doi_interroge(self):
+        """Un DOI corrige invalide le verdict : c'est lui qu'on avait
+        interroge, et la reponse ne vaut plus pour un autre identifiant."""
+        sources = [self._source("https://a.example/x", doi="10.1/a", retraction_status="none")]
+        enrichissements = _enrichissements_par_source(sources)
+        assert enrichissements.get(("https://a.example/x", "10.1/corrige")) is None
+
+    def test_le_report_couvre_tous_les_champs_du_modele(self):
+        """Un champ ajoute au modele mais oublie ici disparaitrait a chaque
+        redemarrage, sans que rien ne le signale."""
+        champs = set(EnrichissementReporte._fields)
+        attendus = {c for c in dir(Source) if c.startswith(("retraction_", "oa_"))}
+        assert champs == attendus
 
 
 class TestDatePublicationStable:

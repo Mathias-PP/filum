@@ -548,6 +548,52 @@ class VerdictReporte(NamedTuple):
     provenance: str | None
 
 
+class EnrichissementReporte(NamedTuple):
+    """Ce que les services externes ont deja etabli d'une source.
+
+    Crossref repond sur la retractation, OpenAlex sur l'acces libre. Les deux
+    verdicts portent leur date : « verifiee sans retractation » sans date
+    n'affirme rien de situable.
+    """
+
+    retraction_status: str | None
+    retraction_notice_doi: str | None
+    retraction_checked_at: datetime | None
+    oa_status: str | None
+    oa_url: str | None
+    oa_license: str | None
+    oa_checked_at: datetime | None
+
+
+def _enrichissements_par_source(
+    sources: Sequence[Source],
+) -> dict[tuple[str, str | None], EnrichissementReporte]:
+    """Verdicts Crossref et OpenAlex deja obtenus, indexes par (url, DOI).
+
+    Meme piege que les relectures d'extraits : le seed efface et recree les
+    sources a chaque demarrage du conteneur. Sans ce report, l'export markdown
+    de la fiche vitrine repartait a « 18 accès jamais vérifié » a chaque
+    deploiement, et l'enrichissement paresseux ne les recalcule qu'a la
+    premiere visite.
+
+    Le DOI fait partie de la cle : c'est lui qu'on interroge. Un DOI corrige
+    invalide le verdict, qui doit alors etre redemande plutot que reporte.
+    """
+    return {
+        (source.url, source.doi): EnrichissementReporte(
+            retraction_status=source.retraction_status,
+            retraction_notice_doi=source.retraction_notice_doi,
+            retraction_checked_at=source.retraction_checked_at,
+            oa_status=source.oa_status,
+            oa_url=source.oa_url,
+            oa_license=source.oa_license,
+            oa_checked_at=source.oa_checked_at,
+        )
+        for source in sources
+        if source.retraction_status or source.oa_status
+    }
+
+
 def _date_de_publication(deja_publiee_le: datetime | None) -> datetime:
     """Date de premiere publication de la fiche vitrine.
 
@@ -600,6 +646,7 @@ async def _get_or_create_demo_card(
 
     sources_spec = _demo_sources()
     verdicts = _verdicts_par_extrait(card.sources) if card else {}
+    enrichissements = _enrichissements_par_source(card.sources) if card else {}
 
     if card is None:
         card = BiblioCard(
@@ -630,6 +677,7 @@ async def _get_or_create_demo_card(
     created_sources: list[Source] = []
     for position, src in enumerate(sources_spec):
         manual_archive = src.get("archive_url")
+        enrichi = enrichissements.get((src["url"], src.get("doi")))
         source = Source(
             biblio_card_id=card.id,
             position=position,
@@ -658,6 +706,7 @@ async def _get_or_create_demo_card(
             archive_timestamp=(datetime.now(UTC).replace(tzinfo=None) if manual_archive else None),
             conflict_of_interest=src.get("conflict_of_interest"),
             citations_count=src.get("citations_count"),
+            **(enrichi._asdict() if enrichi else {}),
         )
         db.add(source)
         created_sources.append(source)
