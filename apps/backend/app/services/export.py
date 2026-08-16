@@ -534,10 +534,27 @@ def _tally(values: list[str | None], labels: dict[str | None, str]) -> str:
     return ", ".join(f"{counts[v]} {labels.get(v, v)}" for v in ordered if counts.get(v))
 
 
+#: Categories ou la retractation existe comme fait editorial. Une revue
+#: retracte un article, elle ne retracte ni un podcast ni la page d'un
+#: laboratoire. Meme regle que l'interface (cf. `retraction.ts`, PR #418) :
+#: le bilan de la fiche vitrine annoncait « 13 non vérifiable(s) » sur 18
+#: sources, alors que la question ne se posait pas pour la plupart.
+_CATEGORIES_RETRACTABLES = {"article-scientifique", "preprint"}
+
+#: Avis reellement publies. Ils restent comptes quelle que soit la categorie :
+#: un billet qui relaie un article retracte doit pouvoir le dire.
+_AVIS_PUBLIES = {"retracted", "concern", "corrected"}
+
+
+def _concerne_par_la_retractation(source: Source) -> bool:
+    return source.retraction_status in _AVIS_PUBLIES or source.category in _CATEGORIES_RETRACTABLES
+
+
 def _reliability_summary(sources: list[Source]) -> list[str]:
     if not sources:
         return []
-    retraction = _tally([s.retraction_status for s in sources], _RETRACTION_TALLY)
+    retractables = [s for s in sources if _concerne_par_la_retractation(s)]
+    retraction = _tally([s.retraction_status for s in retractables], _RETRACTION_TALLY)
     # Ce qui compte pour un lecteur est le texte gratuit *effectivement*
     # atteignable, pas le statut declare par OpenAlex : un « gold » sans URL ne
     # lui ouvre aucune porte.
@@ -545,17 +562,27 @@ def _reliability_summary(sources: list[Source]) -> list[str]:
         ["en accès ouvert" if s.oa_url else s.oa_status for s in sources],
         _OA_TALLY,
     )
-    return [
+    lines = [
         "## Fiabilité des sources",
         "",
         f"Sur {len(sources)} source(s) :",
-        f"- Rétractation : {retraction}",
+    ]
+    if retractables:
+        # Le denominateur est dit : sans lui, « 5 vérifiée(s) sans rétractation »
+        # sur une fiche de 18 sources laisserait croire que les 13 autres sont
+        # en attente d'un verdict qui ne viendra jamais.
+        lines.append(
+            f"- Rétractation ({len(retractables)} source(s) "
+            f"de littérature scientifique) : {retraction}"
+        )
+    lines += [
         f"- Accès : {access}",
         "",
         "Le détail sous chaque source ne signale que les faits établis : une "
         "rétractation, un texte intégral gratuit, une archive.",
         "",
     ]
+    return lines
 
 
 def _source_details(source: Source, scope: ExportScope = FULL) -> list[str]:
