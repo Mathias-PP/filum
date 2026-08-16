@@ -260,6 +260,56 @@ async def test_search_cards_cherche_le_nom_affiche_du_createur(
     assert [r["slug"] for r in results] == ["episode-42"]
 
 
+@pytest.mark.asyncio
+async def test_search_cards_cherche_dans_la_bibliographie(db_session, published_card, test_user):
+    """Un agent cherche un travail cite, pas un titre de fiche.
+
+    La fiche s'appelle « Memoire et cerveau » et cite « Etude exemple » :
+    chercher « etude » ne ramenait rien, alors que c'est exactement la question
+    que le corpus existe pour repondre.
+    """
+    from app.mcp_server.tools import search_cards
+
+    results = await search_cards(db_session, query="etude exemple")
+    assert [r["slug"] for r in results] == ["memoire-cerveau"]
+
+
+@pytest.mark.asyncio
+async def test_search_cards_cherche_l_auteur_d_une_source(db_session, published_card):
+    from app.mcp_server.tools import search_cards
+
+    _, source = published_card
+    source.authors = "Elizabeth F. Loftus"
+    await db_session.commit()
+    results = await search_cards(db_session, query="loftus")
+    assert [r["slug"] for r in results] == ["memoire-cerveau"]
+
+
+@pytest.mark.asyncio
+async def test_une_fiche_qui_cite_deux_fois_reste_une_fiche(db_session, published_card, test_user):
+    """Une jointure la dedoublerait, et l'agent croirait a deux fiches."""
+    from uuid import uuid4 as _uuid4
+
+    from app.mcp_server.tools import search_cards
+    from app.models.source import Source
+
+    card, _ = published_card
+    db_session.add(
+        Source(
+            id=_uuid4(),
+            biblio_card_id=card.id,
+            position=1,
+            url="https://doi.org/10.1000/second",
+            title="Etude exemple, seconde partie",
+            format="texte",
+            category="article-scientifique",
+            author_kind="chercheur",
+        )
+    )
+    await db_session.commit()
+    assert len(await search_cards(db_session, query="etude exemple")) == 1
+
+
 @pytest_asyncio.fixture
 async def source_complete(db_session, test_user):
     """Une source qui a tout a dire : verbatim, position declaree, retractation.

@@ -158,6 +158,73 @@ async def test_discover_q_matches_creator(client, corpus, test_user):
     assert resp.json()["total"] == 3
 
 
+async def _cite(db_session, card, *, title=None, authors=None, position=9, deleted_at=None):
+    from app.models.source import Source
+
+    db_session.add(
+        Source(
+            id=uuid4(),
+            biblio_card_id=card.id,
+            position=position,
+            url=f"https://example.org/{uuid4().hex[:8]}",
+            title=title,
+            authors=authors,
+            format="texte",
+            category="article-scientifique",
+            author_kind="chercheur",
+            deleted_at=deleted_at,
+        )
+    )
+    await db_session.commit()
+
+
+class TestRechercheDansLaBibliographie:
+    """Chercher dans le corpus, c'est chercher dans ce qu'il cite.
+
+    Mesure en production : la fiche vitrine cite « Optogenetic Stimulation of a
+    Hippocampal Engram Activates Fear Memory Recall », et « engram » ne
+    ramenait rien. L'annuaire ne lisait que les cinq colonnes de la fiche.
+    """
+
+    @pytest.mark.asyncio
+    async def test_le_titre_d_une_source_est_atteint(self, client, corpus, db_session):
+        await _cite(db_session, corpus, title="Optogenetic Stimulation of a Hippocampal Engram")
+        resp = await client.get("/api/v1/discover?q=engram")
+        assert [c["slug"] for c in resp.json()["results"]] == ["memoire-et-cerveau"]
+
+    @pytest.mark.asyncio
+    async def test_l_auteur_d_une_source_est_atteint(self, client, corpus, db_session):
+        # Chercher un chercheur cite est la question la plus courante d'un
+        # lecteur qui remonte une bibliographie.
+        await _cite(db_session, corpus, title="Planting Misinformation", authors="Elizabeth Loftus")
+        resp = await client.get("/api/v1/discover?q=loftus")
+        assert [c["slug"] for c in resp.json()["results"]] == ["memoire-et-cerveau"]
+
+    @pytest.mark.asyncio
+    async def test_une_fiche_citant_deux_fois_reste_une_fiche(self, client, corpus, db_session):
+        # Une jointure la ferait apparaitre deux fois, et le total mentirait.
+        await _cite(db_session, corpus, title="Engram et memoire", position=10)
+        await _cite(db_session, corpus, title="Engram et sommeil", position=11)
+        body = (await client.get("/api/v1/discover?q=engram")).json()
+        assert body["total"] == 1
+        assert len(body["results"]) == 1
+
+    @pytest.mark.asyncio
+    async def test_une_source_supprimee_ne_ramene_plus_la_fiche(self, client, corpus, db_session):
+        await _cite(db_session, corpus, title="Engram retire", deleted_at=datetime(2026, 8, 1))
+        assert (await client.get("/api/v1/discover?q=engram")).json()["total"] == 0
+
+    @pytest.mark.asyncio
+    async def test_une_fiche_privee_ne_fuit_pas_par_sa_bibliographie(
+        self, client, db_session, test_user
+    ):
+        privee = await _make_card(
+            db_session, test_user, slug="prive-biblio", title="Prive", visibility="private"
+        )
+        await _cite(db_session, privee, title="Engram confidentiel")
+        assert (await client.get("/api/v1/discover?q=engram")).json()["total"] == 0
+
+
 @pytest.mark.asyncio
 async def test_discover_q_escapes_wildcards(client, corpus):
     """« % » est un caractere, pas un joker : sinon la recherche ramene tout."""
@@ -220,6 +287,7 @@ async def test_discover_creators_returns_only_creators_with_public_cards(client,
     )
     client.app if False else None  # keep test_user in fixture; silent won't have cards
     from app.db.database import get_db  # noqa: F401
+
     async for db in _yield_db_from_client(client):
         db.add(silent)
         await db.commit()
