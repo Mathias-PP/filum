@@ -8,6 +8,7 @@ Tries, in order:
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import json
 import logging
@@ -34,6 +35,22 @@ _HEADERS = {
     "Accept-Language": "en-US,en;q=0.9,fr;q=0.8",
 }
 _TIMEOUT = 8.0
+#: NCBI (PubMed, PMC) repond 429 des deux requetes rapprochees, et la meme URL
+#: rend son texte quelques secondes plus tard. Comme la moitie des sources d'une
+#: fiche scientifique y sont hebergees, relire une fiche entiere en declarait
+#: systematiquement une partie « refusee par le site ». Une seule reprise suffit
+#: a les recuperer ; au-dela on ferait attendre l'auteur·ice pour rien.
+_ATTENTE_REPRISE = 2.0
+_ATTENTE_REPRISE_MAX = 5.0
+
+
+def _attente_avant_reprise(reponse: httpx.Response) -> float:
+    """Respecte `Retry-After` sans jamais suspendre la requete plus de 5 s."""
+    brut = reponse.headers.get("retry-after", "")
+    try:
+        return min(float(brut), _ATTENTE_REPRISE_MAX)
+    except ValueError:
+        return _ATTENTE_REPRISE
 
 
 @dataclass
@@ -876,6 +893,11 @@ async def _html_scrape(url: str) -> ExtractedMetadata | None:
             headers=_HEADERS, timeout=_TIMEOUT, follow_redirects=True
         ) as client:
             r = await client.get(url)
+            # 429 et 503 disent « pas maintenant », pas « pas vous » : une
+            # seconde tentative sépare la file d'attente du refus.
+            if r.status_code in (429, 503):
+                await asyncio.sleep(_attente_avant_reprise(r))
+                r = await client.get(url)
         # 403/429 : le serveur a compris la demande et l'a refusée. 503 est
         # ambigu (panne ou obstacle) mais les protections anti-bot s'en servent
         # massivement, et « le site n'a pas voulu répondre » reste vrai des deux.
