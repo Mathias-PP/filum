@@ -6,6 +6,24 @@
 
 ---
 
+## Session 2026-08-16 (autonome, suite) — audit fonctionnel de la production
+
+Toutes les surfaces ont été exercées contre la production réelle, API puis navigateur, et non par lecture de code. Quatre défauts trouvés, quatre corrigés, déployés, revérifiés en prod.
+
+**PR #392 — un quota épuisé n'éteint plus la couche LLM.** Le quota gratuit de Gemini se compte **par modèle et par jour** (`GenerateRequestsPerDayPerProjectPerModel-FreeTier`, 20 appels), pas par clé. Au vingtième appel, annotation d'extraits, suggestion d'intitulés, extraction de métadonnées et parsing de bibliographie s'arrêtaient tous ensemble jusqu'au lendemain, alors que la même clé répondait encore sur d'autres modèles. Nouveau réglage `llm_direct_model_fallbacks` : une liste ordonnée de modèles essayés à chaque 429 ou 404. Un 429 ne condamne plus que le modèle visé ; les autres statuts restent terminaux, il n'y a rien à espérer d'un second modèle pour une clé refusée. Capacité quotidienne en production : **20 → 100 appels**. Modèles vérifiés vivants sur cette clé : `gemini-3.6-flash` (primaire), `gemini-3.5-flash`, `gemini-3.5-flash-lite`, `gemini-3.1-flash-lite`, `gemini-flash-lite-latest`. `gemini-2.5-flash` et `gemini-2.5-flash-lite` rendent 404.
+
+**PR #393 — une référence Wikipedia ne s'intitule plus `ISBN` ni `doi`.** Les modèles `{{cite book}}` et `{{cite journal}}` posent le lien tantôt sur le **nom** de l'identifiant (`ISBN`, `PMID`), tantôt sur sa **valeur** (`978-0-521-58325-1`, `10.1038/nrn1201`, `14523382`). L'oracle prenait le premier lien venu pour un titre. Un libellé doit désormais porter au moins un mot de trois lettres, et les préfixes DOI sont écartés explicitement (leur suffixe contient des lettres et passait le filtre). Vérifié sur l'API MediaWiki en direct : `Working_memory` 186 références, 0 douteuse, 0 sans titre ; `Mémoire_de_travail` 11 références, 0 douteuse.
+
+**PR #394 — chercher sans accent trouve les fiches qui en portent.** Le corpus est francophone, les motifs tapés ne le sont pas : « memoire » ne trouvait pas « Mémoire et cerveau », et une recherche qui répond « rien » se lit comme un corpus vide plutôt que comme une comparaison trop littérale. Migration `037_unaccent` (extension Postgres) et module `db/text_search.py` : `contient()` compare en `OR` le motif littéral et le motif replié, de sorte qu'aucune recherche qui aboutissait ne cesse d'aboutir. `sans_accent()` se compile en `unaccent()` sur Postgres et en identité ailleurs, donc les tests sur SQLite ne mentent pas. Branché sur `/discover`, `/discover/creators`, la liste de fiches du tableau de bord et l'outil MCP `search_cards`. Effet de bord corrigé au passage : `%` et `_` n'étaient pas échappés, chercher « % » ramenait toute la table.
+
+**PR #395 — une recherche d'extraits se recharge et se partage.** `/dashboard/recherche` gardait sa question en mémoire seulement : un rafraîchissement l'effaçait, le bouton Retour ne ramenait rien, un résultat n'était pas partageable. Or la question y est une phrase entière, pas un mot-clé. L'URL la porte désormais, comme sur `/discover`.
+
+**Inventaire vérifié en production** : 14 fiches publiques publiées, 2 créateurs. La fiche Frontiers 651547 affiche **exactement 152 sources**, la cible chiffrée du plan d'extraction agnostique. Aucune erreur console sur l'accueil, la fiche publique, `/discover`, `/discover/creators`, `/feed`, `/features`, `/roadmap`, `/security`, `/about`, `/developers`, `/privacy`, le tableau de bord, l'écran sources et l'écran connexions.
+
+**Constat non corrigé, à trancher plus tard** : l'outil MCP `search_cards` cherche dans le titre et le pseudo du créateur, là où `/discover` cherche aussi dans la description et les auteurs du contenu. Un agent trouve donc moins qu'un humain sur le même corpus.
+
+---
+
 ## Session 2026-08-16 (autonome) — la recherche par le sens existe, et elle marche
 
 Les extraits sont désormais cherchables par le sens depuis `/dashboard/recherche`. Le chantier a démarré sur un constat : Philum calculait un vecteur pour chaque extrait et n'en lisait jamais aucun. Deux issues cohérentes, brancher la recherche ou retirer l'indexation ; c'est la première qui est faite.
