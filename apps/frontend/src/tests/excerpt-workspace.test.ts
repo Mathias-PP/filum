@@ -102,6 +102,21 @@ describe('ExcerptWorkspace', () => {
     expect(screen.getByText(/ne dit rien sur ces citations/)).toBeTruthy();
   });
 
+  it('dit que le site a refusé plutôt que d’imputer le silence à la page', async () => {
+    // Deux causes distinctes finissaient sur la même phrase. Un refus du site
+    // appelle une réclamation d'accès, une page vide appelle un autre chemin.
+    suggest.mockResolvedValue({
+      suggestions: [],
+      page_text_length: 0,
+      llm_enabled: true,
+      access_blocked: true,
+    });
+    monter();
+    await fireEvent.click(screen.getByRole('button', { name: /Suggérer des citations/ }));
+    await vi.waitFor(() => expect(screen.getByText(/site a refusé/)).toBeTruthy());
+    expect(screen.queryByText(/ne laisse pas lire son texte/)).toBeNull();
+  });
+
   it('distingue une citation retrouvée d’une citation dont les mots ont changé', async () => {
     verify.mockResolvedValue({
       checks: [

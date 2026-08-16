@@ -24,7 +24,14 @@ from app.extractors.semantic_scholar import SemanticScholarRef
 logger = logging.getLogger(__name__)
 
 _HEADERS = {
-    "User-Agent": "Philum/0.1 (https://github.com/Mathias-PP/filum; mailto:contact@philum.app)"
+    "User-Agent": "Philum/0.1 (https://github.com/Mathias-PP/filum; mailto:contact@philum.app)",
+    # Springer Nature (link.springer.com, nature.com) sert un interstitiel de
+    # 3 Ko a tout client qui n'annonce pas de langue, et la page reelle des
+    # qu'il en annonce une : 3 036 octets contre 992 744 sur le meme article,
+    # mesure du 2026-08-16 depuis la VM. Sans ces deux en-tetes, aucune source
+    # hebergee la ne rend son texte, donc ni citation suggeree ni relecture.
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9,fr;q=0.8",
 }
 _TIMEOUT = 8.0
 

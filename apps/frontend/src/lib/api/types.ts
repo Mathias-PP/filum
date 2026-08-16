@@ -172,6 +172,12 @@ export interface ExcerptSuggestResponse {
   suggestions: SuggestedExcerpt[];
   page_text_length: number;
   llm_enabled: boolean;
+  /**
+   * Le site a refusé la lecture (403, 429, interstitiel anti-bot). Distinct
+   * d'une page qui ne rend rien : « je n'ai pas eu le droit de lire » et « il
+   * n'y avait rien à lire » n'appellent pas le même geste de l'auteur·ice.
+   */
+  access_blocked?: boolean;
 }
 
 /**
@@ -202,6 +208,8 @@ export interface ExcerptVerifyResponse {
    * croire au second quand c'est le premier.
    */
   text_source: 'fetched' | 'provided';
+  /** Voir `ExcerptSuggestResponse.access_blocked`. */
+  access_blocked?: boolean;
 }
 
 export interface ExcerptSearchHit {
