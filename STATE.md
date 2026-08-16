@@ -6,6 +6,20 @@
 
 ---
 
+## Session 2026-08-16 (autonome, suite) : une seconde fiche qui cite la première, et le défaut qu'elle a révélé
+
+Deuxième fiche construite selon la même méthode, sur une revue qui **cite** la première : « Early detection of multiple cancers: methylation-based liquid biopsy » (`10.3389/fonc.2025.1657418`), publiée sur [`/@mathias-pinault/early-detection-of-multiple-cancers-methylation-liquid-biopsy`](https://filum-eight.vercel.app/@mathias-pinault/early-detection-of-multiple-cancers-methylation-liquid-biopsy). Le lien entre les deux fiches est matérialisé dans la base par `linked_card_id`, pas seulement dans le texte.
+
+**PR #405 validée en production.** 77 sources importées, `extraction_confidence: high`, `refs_from_oracle: 77`, et surtout **77/77 portent leur DOI et leur revue**, contre 0/50 sur la première fiche avant correctif. Résultat visible sur la page publique : 62 badges d'accès libre, 3 mentions de rétractation ou de correctif, et **zéro « Non vérifiable »** là où la première fiche en affichait 50. Les badges de comptage d'extraits de la PR #404 sont visibles sur les lignes repliées.
+
+**Ce que la lecture des sources a produit.** 8 extraits verbatim, tous vérifiés `found`, sur 6 sources clés. Deux d'entre eux contredisent la revue qui les cite, et sont enregistrés en posture `nuance-contredit` : la revue annonce « 9024 asymptomatic individuals » là où l'étude K-DETEK elle-même écrit 9057 ; et la sensibilité de 82,8 % mise en avant pour GUIDE vaut à 95,8 % de spécificité, le même article rapportant 64 à 66 % dès que la spécificité dépasse 99 %. C'est le genre d'écart qu'une bibliographie listée ne montre jamais.
+
+**PR #407 : un champ inconnu dans un PATCH cessait de répondre 200.** Six requêtes envoyant `is_key_source` au lieu de `is_pivot` ont toutes réussi, sans rien écrire ni rien dire ; c'est en relisant la fiche publiée qu'on voyait zéro source clé. Pydantic ignore les champs surnuméraires par défaut, et sur un schéma de mise à jour où tout est facultatif, un corps entièrement faux vaut un corps vide. `extra="forbid"` sur `SourceUpdate` et `CardUpdate`. L'enjeu dépasse la coquille de frappe : Philum expose un serveur MCP, et un agent qui devine un nom de champ doit s'entendre dire qu'il se trompe.
+
+**Reste ouvert.** Relancer un import sur une fiche déjà peuplée recrée les sources en double sans le signaler : trois doublons ont été produits ainsi, détectés seulement en comparant les DOI.
+
+---
+
 ## Session 2026-08-16 (autonome, suite) : une fiche scientifique de bout en bout, et cinq défauts qu'elle a révélés
 
 Fiche construite en se comportant en utilisateur sur un article grand public de 2026 : Nature Communications, « Real-world data and clinical experience from over 100,000 multi-cancer early detection tests » (`10.1038/s41467-025-64094-7`), publiée sur [`/@mathias-pinault/real-world-data-and-clinical-experience-from-over-100-000-mu`](https://filum-eight.vercel.app/@mathias-pinault/real-world-data-and-clinical-experience-from-over-100-000-mu). 50 sources extraites par l'oracle Crossref, 10 qualifiées « source clé », 19 extraits verbatim relevés dans les sources elles-mêmes puis vérifiés par « Relire la source ».
