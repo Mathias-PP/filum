@@ -33,6 +33,9 @@ class CardService:
             content_type=card_data.content_type.value,
             is_seed=card_data.is_seed,
             visibility=card_data.visibility.value,
+            format=card_data.format.value if card_data.format else None,
+            category=card_data.category.value if card_data.category else None,
+            author_kind=card_data.author_kind.value if card_data.author_kind else None,
         )
         self._db.add(card)
         await self._db.commit()

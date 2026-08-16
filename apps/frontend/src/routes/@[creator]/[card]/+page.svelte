@@ -804,15 +804,25 @@
       <div
         class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-wrap items-center justify-between gap-4"
       >
-        <div class="text-sm text-ink-tertiary">
-          <p class="text-ink-secondary font-medium mb-1">Contenu revendiqué par son créateur·ice</p>
-          <p class="text-xs">
-            L'URL du contenu original est attestée par signature Ed25519. <a
-              href="/security"
-              class="text-info hover:opacity-80 underline">En savoir plus</a
-            >
-          </p>
-        </div>
+        <!-- Rien à dire sur une fiche non revendiquée : le bandeau plus haut
+             l'annonce déjà. Ce pied affirmait la revendication et l'attestation
+             sur toutes les fiches, y compris celles dont la même page disait
+             qu'elles n'étaient pas validées par l'auteur·rice du contenu. -->
+        {#if !card.is_seed}
+          <div class="text-sm text-ink-tertiary">
+            <p class="text-ink-secondary font-medium mb-1">
+              Contenu revendiqué par son créateur·ice
+            </p>
+            <p class="text-xs">
+              L'URL du contenu original est attestée par signature Ed25519. <a
+                href="/security"
+                class="text-info hover:opacity-80 underline">En savoir plus</a
+              >
+            </p>
+          </div>
+        {:else}
+          <div></div>
+        {/if}
         <div class="text-sm text-ink-tertiary text-right">
           {#if card.published_at}
             <p>
