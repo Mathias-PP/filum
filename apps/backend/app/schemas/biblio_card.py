@@ -68,6 +68,12 @@ class CardCreate(CardBase):
     # cryptographiquement attestee par son creator (cette regle vit dans
     # AttestationService, hors scope de ce schema).
     is_seed: bool = False
+    # Meme vocabulaire que CardUpdate. Le formulaire de creation demande deja
+    # ces trois champs : ne pas les accepter ici les faisait disparaitre entre
+    # la saisie et la fiche, sans message, jusqu'a une edition ulterieure.
+    format: SourceFormat | None = None
+    category: SourceCategory | None = None
+    author_kind: AuthorKind | None = None
 
 
 class CardUpdate(BaseModel):

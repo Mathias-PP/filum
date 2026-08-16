@@ -214,6 +214,9 @@
           content_type: contentType,
           is_seed: !isAuthor,
           visibility,
+          format: cardFormat || null,
+          category: cardCategory || null,
+          author_kind: cardAuthorKind || null,
         });
         cardId = card.id;
       }
