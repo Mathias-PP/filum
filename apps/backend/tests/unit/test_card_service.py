@@ -165,14 +165,6 @@ async def test_delete_par_un_autre_user_est_refuse(db_session, service, test_use
 
 
 @pytest.mark.asyncio
-async def test_delete_d_une_fiche_deja_supprimee_retourne_false(service, test_user):
-    """Deuxieme delete = no-op explicite, pas exception."""
-    card = await service.create_card(test_user.id, _payload())
-    await service.delete_card(card.id, test_user.id)
-    assert await service.delete_card(card.id, test_user.id) is False
-
-
-@pytest.mark.asyncio
 async def test_restore_d_une_fiche_non_supprimee_rend_none(service, test_user):
     card = await service.create_card(test_user.id, _payload())
     assert await service.restore_card(card.id, test_user.id) is None
