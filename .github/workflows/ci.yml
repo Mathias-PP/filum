@@ -326,6 +326,14 @@ jobs:
         run: dbt compile --target ci
         working-directory: apps/analytics
 
+      # Le cron 6h (analytics.yml) faisait tourner `dbt test`, mais une PR
+      # cassant un test ne le voyait qu'apres merge. Un modele avec une
+      # assertion `not_null` violee arrivait sur main et n'etait remarque qu'a
+      # la prochaine execution planifiee. La CI PR l'attrape maintenant.
+      - name: Run dbt tests
+        run: dbt test --target ci
+        working-directory: apps/analytics
+
   # Le contrat API vit dans deux fichiers commités : `apps/backend/openapi.json`
   # (sortie de FastAPI, source de vérité) et `apps/frontend/src/lib/api/
   # generated.ts` (types TypeScript dérivés). Un endpoint modifié dans le code
