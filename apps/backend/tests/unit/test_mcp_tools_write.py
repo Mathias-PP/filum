@@ -189,6 +189,63 @@ async def test_un_extrait_vide_est_refuse(db_session, test_user, fiche_brouillon
 
 
 @pytest.mark.asyncio
+async def test_extrait_court_referentiel_sans_contexte_est_refuse(
+    db_session, test_user, fiche_brouillon
+):
+    """« Cela ameliore la memoire » cite seul est un contresens : ce que
+    « cela » nomme n'apparait nulle part. Le tool refuse pour forcer soit
+    l'elargissement, soit une mise en situation."""
+    source = await add_source(
+        db_session, test_user, card_slug="fiche-en-cours", url="https://example.org/x"
+    )
+    with pytest.raises(ToolError, match="referentiel"):
+        await add_excerpt(
+            db_session,
+            test_user,
+            source_id=source["id"],
+            text="Cela ameliore la memoire de 12 %.",
+        )
+
+
+@pytest.mark.asyncio
+async def test_extrait_court_referentiel_avec_contexte_passe(
+    db_session, test_user, fiche_brouillon
+):
+    """La mise en situation nomme le referent en clair : le meme extrait
+    devient utilisable pour un lecteur qui le rencontre isole."""
+    source = await add_source(
+        db_session, test_user, card_slug="fiche-en-cours", url="https://example.org/y"
+    )
+    result = await add_excerpt(
+        db_session,
+        test_user,
+        source_id=source["id"],
+        text="Cela ameliore la memoire de 12 %.",
+        context="Le protocole de re-consolidation apres apprentissage etudie ici, "
+        "compare a un groupe temoin qui ne relit pas les mots.",
+    )
+    assert result["position"] == 1
+
+
+@pytest.mark.asyncio
+async def test_extrait_long_autonome_passe_sans_contexte(db_session, test_user, fiche_brouillon):
+    """Au-dela de 15 mots, le passage porte son propre contexte lexical :
+    le garde-fou ne mord plus, meme sans mise en situation."""
+    source = await add_source(
+        db_session, test_user, card_slug="fiche-en-cours", url="https://example.org/z"
+    )
+    result = await add_excerpt(
+        db_session,
+        test_user,
+        source_id=source["id"],
+        text="Cela ameliore la memoire declarative chez les participants ayant "
+        "beneficie d'une re-consolidation nocturne, comparativement au groupe "
+        "temoin sans re-consolidation.",
+    )
+    assert result["position"] == 1
+
+
+@pytest.mark.asyncio
 async def test_ajouter_un_extrait_a_une_source_d_autrui_est_refuse(db_session, test_user):
     from app.models.user import User
 
@@ -279,6 +336,7 @@ async def test_le_parcours_complet_produit_une_fiche_qu_un_agent_peut_relire(db_
         test_user,
         source_id=s1["id"],
         text="Ce que la premiere source dit exactement.",
+        context="Le passage decisif du papier, chapitre resultats.",
     )
     await publish_card(db_session, test_user, slug="parcours-complet")
 

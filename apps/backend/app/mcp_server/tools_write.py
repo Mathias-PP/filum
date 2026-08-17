@@ -32,6 +32,7 @@ from app.schemas.biblio_card import CardCreate, ContentType, Platform, Visibilit
 from app.services.card import CardService
 from app.services.card_link import effective_linked_card_id
 from app.services.content_identity import extract_doi, normalize_url
+from app.services.excerpt_guards import LONGUEUR_MIN_AUTONOME_MOTS, passage_a_besoin_de_contexte
 from app.services.excerpt_indexing import indexer_sans_bruit
 from app.services.wayback import horodatage_wayback
 
@@ -229,6 +230,26 @@ async def add_excerpt(
     corps = (text or "").strip()
     if not corps:
         raise ToolError("Un extrait vide ne cite rien.")
+
+    # Garde-fou anti extrait hors-contexte : un extrait court qui commence
+    # par un pronom ou un demonstratif sans referent visible devient un
+    # contresens cite seul (« cela ameliore la memoire » sans « cela »
+    # nomme). L'agent doit alors soit elargir le passage pour inclure
+    # l'antecedent, soit fournir une mise en situation explicite via
+    # `context` (qui nomme le referent en clair).
+    contexte_donne = (context or "").strip()
+    if (
+        len(corps.split()) < LONGUEUR_MIN_AUTONOME_MOTS
+        and passage_a_besoin_de_contexte(corps)
+        and not contexte_donne
+    ):
+        raise ToolError(
+            "Extrait trop court et referentiel (commence par « cela »/« ces »/etc. "
+            "sans antecedent visible). Soit elargir l'extrait pour inclure la "
+            "phrase qui donne le sens, soit fournir un `context` qui nomme en "
+            "clair ce a quoi renvoient les pronoms et les demonstratifs. Cite "
+            "seul, un tel extrait pousse au contresens."
+        )
 
     count = await db.scalar(
         select(func.count()).select_from(SourceExcerpt).where(SourceExcerpt.source_id == source.id)

@@ -411,11 +411,22 @@ class LlmExcerpts(BaseModel):
 _EXCERPT_SYSTEM_PROMPT = (
     "Tu repères dans le texte d'une source les passages les plus cités ou "
     "citables : les phrases qui portent les affirmations clés du document. "
-    "Réponds UNIQUEMENT avec le JSON demandé. Règles strictes : chaque extrait "
-    "doit être recopié VERBATIM, mot pour mot, tel qu'il apparaît dans le "
-    "texte — aucune reformulation, aucune traduction, aucune coupe interne ; "
-    "2 à 5 extraits maximum, chacun de 1 à 3 phrases ; si un contexte est "
-    "fourni, privilégie les passages qui s'y rapportent."
+    "Réponds UNIQUEMENT avec le JSON demandé. Règles strictes :\n"
+    "1. Chaque extrait est recopié VERBATIM, mot pour mot, tel qu'il "
+    "apparaît dans le texte — aucune reformulation, aucune traduction, "
+    "aucune coupe interne.\n"
+    "2. 2 à 5 extraits maximum.\n"
+    "3. **Un extrait ne se comprend jamais seul.** Refuse une phrase trop "
+    "courte, une phrase qui commence par un pronom sans référent visible, "
+    "une phrase qui contient un « cela », « ce résultat », « il », « elle » "
+    "renvoyant à ce qui précède. Dans ce cas, ÉTENDS le passage vers "
+    "l'amont ou vers l'aval pour inclure la phrase qui donne le sens : un "
+    "extrait doit rester intelligible détaché de son document.\n"
+    "4. Chaque extrait pèse au moins 15 mots. En-dessous, tu élargis. Un "
+    "extrait fait 2 à 5 phrases quand la première est courte, 1 à 3 quand "
+    "elle est déjà autonome.\n"
+    "5. Si un contexte est fourni, privilégie les passages qui s'y "
+    "rapportent, sans jamais les tordre pour coller au thème."
 )
 
 
@@ -563,7 +574,11 @@ _ANNOTATION_SYSTEM_PROMPT = (
     "mots du passage pour les paraphraser, apporte ce qu'il ne dit pas ; "
     "n'affirme rien que l'entourage ne permette d'établir ; si l'entourage ne "
     "suffit pas à situer honnêtement le passage, rends null plutôt qu'une "
-    "approximation."
+    "approximation. Cas particulier : si le passage est court (< 15 mots) ou "
+    "contient un pronom ou un démonstratif dont l'antécédent est hors du "
+    "passage, la `context` DOIT nommer cet antécédent en clair — sans quoi "
+    "l'extrait cité seul devient un contresens (« cela améliore la mémoire » "
+    "sans « cela » explicite est un piège plus qu'une aide)."
 )
 
 
