@@ -6,7 +6,7 @@
 
 ## Le projet en une phrase
 
-Filum transforme la bibliographie — l'angle mort du contenu numérique — en un objet visuel, navigable, vérifiable, et partageable.
+Philum transforme la bibliographie — l'angle mort du contenu numérique — en un objet visuel, navigable, vérifiable, et partageable.
 
 ---
 
@@ -20,7 +20,7 @@ L'IA générative démultiplie la production de contenu et brouille les pistes d
 
 3. Les **intelligences artificielles** qui synthétisent et reformulent les sources hallucinent ou citent mal, faute d'infrastructure publique de provenance vérifiée à laquelle elles puissent se référer.
 
-Filum vise à résoudre simultanément ces trois manques en rendant la bibliographie aussi visible et désirable que le contenu lui-même.
+Philum vise à résoudre simultanément ces trois manques en rendant la bibliographie aussi visible et désirable que le contenu lui-même.
 
 ---
 
@@ -28,7 +28,7 @@ Filum vise à résoudre simultanément ces trois manques en rendant la bibliogra
 
 Sept principes non négociables. En cas de conflit avec une opportunité commerciale ou technique, ces principes l'emportent.
 
-1. **Citation positive avant détection négative.** Filum valorise les bons sourceurs, ne stigmatise pas les autres.
+1. **Citation positive avant détection négative.** Philum valorise les bons sourceurs, ne stigmatise pas les autres.
 2. **Ouverture et compatibilité.** Format ouvert, compatible C2PA, librement implémentable.
 3. **Neutralité éditoriale.** Pas de publicité, pas de tracking intrusif, pas de classement subjectif.
 4. **Souveraineté européenne.** Hébergement souverain, conformité native eIDAS/AI Act/DSA/RGPD.
@@ -38,10 +38,10 @@ Sept principes non négociables. En cas de conflit avec une opportunité commerc
 
 ---
 
-## Ce que Filum n'est pas
+## Ce que Philum n'est pas
 
 - **Pas un produit anti-deepfake.** L'absence de cachet ne prouve rien.
-- **Pas une autorité de vérité.** Filum documente la chaîne, ne juge pas la véracité.
+- **Pas une autorité de vérité.** Philum documente la chaîne, ne juge pas la véracité.
 - **Pas une plateforme de contenu.** Aucune publication, aucune modération éditoriale.
 - **Pas un projet crypto.** Pas de token, pas de NFT, pas de blockchain comme produit.
 - **Pas un projet à financement publicitaire.** Pas de pub, pas de tracking.
@@ -56,7 +56,7 @@ Le MVP active simultanément trois moments wow :
 
 2. **La page-identité du créateur (phase 2).** Le créateur obtient une URL canonique qu'il contrôle, à mi-chemin entre ORCID, Wikipedia et Linktree, mais sans dépendre des plateformes.
 
-3. **Le partage augmenté.** Une fiche Filum partagée sur X, Bluesky, Slack affiche une preview riche (graphe + stats) plutôt qu'un thumbnail générique. Le format se diffuse.
+3. **Le partage augmenté.** Une fiche Philum partagée sur X, Bluesky, Slack affiche une preview riche (graphe + stats) plutôt qu'un thumbnail générique. Le format se diffuse.
 
 ---
 
@@ -72,7 +72,7 @@ Moteurs de recherche IA, plateformes sociales sous obligations DSA, médias éta
 
 ## L'ambition longue
 
-Devenir, à horizon 5-10 ans, la couche standard de citation du web. Ce que HTTPS est à la confidentialité, Filum doit l'être à la provenance.
+Devenir, à horizon 5-10 ans, la couche standard de citation du web. Ce que HTTPS est à la confidentialité, Philum doit l'être à la provenance.
 
 Modèle organisationnel cible : une **fondation à but non lucratif** détient le protocole et le registre, une **société commerciale** opère les services premium et finance la fondation. Modèle Mozilla.
 
@@ -83,7 +83,7 @@ Modèle organisationnel cible : une **fondation à but non lucratif** détient l
 Le MVP vise à valider deux hypothèses simples :
 
 1. **Les vulgarisateurs scientifiques** trouvent suffisamment de valeur dans une bibliographie augmentée pour l'utiliser activement et la partager.
-2. **Leur audience** clique sur les liens Filum et passe du temps à explorer la carte.
+2. **Leur audience** clique sur les liens Philum et passe du temps à explorer la carte.
 
 Si ces deux hypothèses sont validées, le projet a sa trajectoire. Sinon, il faut pivoter avant d'investir davantage.
 

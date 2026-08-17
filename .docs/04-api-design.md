@@ -183,7 +183,7 @@ Génère dynamiquement une image OpenGraph (1200x630) pour le partage social.
 - Nom du créateur + avatar
 - Statistiques principales (4 chiffres)
 - Mini-visualisation du graphe en arrière-plan
-- Logo Filum
+- Logo Philum
 
 **Headers** : `Cache-Control: public, max-age=86400` (1 jour)
 
@@ -274,7 +274,7 @@ Calcule le hash, signe, et passe le status à `published`.
   "signature": "base64...",
   "signed_at": "2026-03-14T18:42:00Z",
   "published_at": "2026-03-14T18:42:00Z",
-  "public_url": "https://filum.app/@lea-c/arctique-2026"
+  "public_url": "https://philum.app/@lea-c/arctique-2026"
 }
 ```
 
@@ -309,7 +309,7 @@ Génère un PDF imprimable. Accessible publiquement (pas d'auth requise).
 
 ## Endpoints d'analytics (admin / phase 2)
 
-Réservés à l'admin Filum en phase 2 (à protéger par scope).
+Réservés à l'admin Philum en phase 2 (à protéger par scope).
 
 - `GET /api/v1/admin/stats` — statistiques globales (utilisateurs, fiches, sources)
 - `GET /api/v1/admin/cards` — liste paginée de toutes les fiches publiées

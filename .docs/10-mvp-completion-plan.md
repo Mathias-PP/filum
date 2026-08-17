@@ -17,7 +17,7 @@ Un MVP est **complet** quand chacune de ces six affirmations est vraie :
 5. Les routes `/dashboard*` redirigent vers le login si l'utilisateur n'est pas authentifié (auth guard).
 6. Une démonstration de 5 minutes (login → création fiche → publication → consultation publique) est reproductible sans bug bloquant ni intervention dans la BDD.
 
-**Hors MVP** (assumé pour plus tard) : export PDF, OpenGraph image dynamique, page-identité enrichie, OAuth multi-provider, intégrations Zotero/Obsidian/Notion, MCP server, domaine `filum.app`.
+**Hors MVP** (assumé pour plus tard) : export PDF, OpenGraph image dynamique, page-identité enrichie, OAuth multi-provider, intégrations Zotero/Obsidian/Notion, MCP server, domaine `philum.app`.
 
 ---
 
@@ -138,7 +138,7 @@ Le projet doit tourner **gratuitement** jusqu'à validation produit. Limites à 
 | Vercel (frontend) | 100 GB BW/mois, builds illimités | OK pour < 100k pageviews | Mettre des `Cache-Control: public, max-age=60` sur les pages publiques. |
 | Wayback Machine API | ~10-15 req/min | Si un utilisateur ajoute 20 sources d'un coup, on dépasse | Queue asynchrone (déjà en place via `asyncio.create_task`) + retry exponentiel. |
 | Google OAuth | Pratiquement illimité gratuit | — | — |
-| Crossref API | Pas de limite stricte, mais courtoisie (`mailto:` requis dans User-Agent) | Faible | Bien renseigner le User-Agent (`Filum/0.1 (mailto:mathias@...)`). |
+| Crossref API | Pas de limite stricte, mais courtoisie (`mailto:` requis dans User-Agent) | Faible | Bien renseigner le User-Agent (`Philum/0.1 (mailto:mathias@...)`). |
 | GitHub Actions | 2000 min/mois pour le compte gratuit | OK avec CI actuelle (~5 min/run × ~50 runs/mois) | Si on monte, exclure les chemins doc-only via `paths-ignore`. |
 | Dependabot | Gratuit | — | — |
 
@@ -159,7 +159,7 @@ L'agent doit refuser d'implémenter ces features tant que les 3 jalons ne sont p
 - Extraction IA depuis du texte collé
 - Embed widget
 - MCP server
-- Domaine `filum.app` (acheter quand on a 5 utilisateurs réels — pas avant)
+- Domaine `philum.app` (acheter quand on a 5 utilisateurs réels — pas avant)
 - dbt models en runtime (le `dbt compile` en CI suffit pour le portfolio)
 - Sentry / Plausible (attendre signal utilisateur)
 
@@ -188,7 +188,7 @@ L'agent doit refuser d'implémenter ces features tant que les 3 jalons ne sont p
 Une fois M1+M2+M3 mergés et un premier créateur ambassadeur onboardé :
 
 - **Mesurer** : ajouter un compteur de vues simple sur les fiches publiques (incrément côté backend, pas de tracking externe).
-- **Documenter** : 1 page utilisateur sur `filum.app` (ou Notion public) « Comment créer ta première fiche ».
+- **Documenter** : 1 page utilisateur sur `philum.app` (ou Notion public) « Comment créer ta première fiche ».
 - **Réévaluer** : confronter le retour des 3-5 premiers créateurs aux hypothèses du `.docs/00-vision.md` section « La phase MVP ». Si désalignement, pivoter avant d'ajouter des features.
 
 C'est uniquement à ce stade que les features de phase 2 (OAuth YouTube, extraction IA, OpenGraph dynamique) ont du sens.

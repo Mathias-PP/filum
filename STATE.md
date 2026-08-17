@@ -314,7 +314,7 @@ de fleche, selecteur de sens a trois positions, imbrication au depliage,
 epinglage, acces a la fiche depuis une source absorbee), C1-C3 (migration 026,
 API, formulaire et coloration des noeuds fiche par mode de lecture), D1-D4
 (migration 027, provenance des liens, `card_connections.py`, ecran
-`/dashboard/new/[card_id]/connexions`), F1-F3 (`.docs/19-preuve-autorat.md`,
+`/dashboard/new/[card_id]/connexions`), F1-F3 (`.docs/ADR-019-bis-preuve-autorat.md`,
 `.docs/20-profils-et-feed.md`, perimetre de la garantie dans `DECISIONS.md`).
 Le selecteur de sens et les marqueurs de fleche sont confirmes en prod.
 
@@ -732,7 +732,7 @@ Chantiers restant du plan :
 - **Lot C** (C1-C3) : migration `026_card_ref` (columns `format`/`category`/`author_kind` sur `biblio_cards`), PATCH API + schéma, sélecteur UI dans le formulaire de fiche, coloration des nœuds fiche selon le mode de couleur actif.
 - **Lot D** (D1-D4) : migration `027_link_prov` (`link_origin`/`link_confirmed_at` sur `sources`), `LinkResolution` + `resolve_link()` dans `card_link.py`, endpoints REST de gestion des connexions (`GET/POST/DELETE /api/v1/cards/{id}/connections`), page `/dashboard/new/[card_id]/connexions` avec encart ambre pour les suggestions, liste des citations entrantes en lecture seule, bande d'annulation 8 s.
 - **Lot E** (E1-E3) : `coinsTitle()` dans `$lib/utils/coins.ts` + `<span class="Z3988">` sur la fiche publique, balises Highwire déjà en place (#239) ; alertes de citation déjà sur le dashboard (#248) ; décision `llms.txt` → MCP consignée dans `DECISIONS.md`.
-- **Lot F** (F1-F3) : `.docs/19-preuve-autorat.md` (périmètre honnête de la garantie, anti-usurpation, formulations interdites, ORCID, faux) ; `.docs/20-profils-et-feed.md` (feed chronologique, recherche créateurs) ; question feed rétroactivité dans `.docs/07-open-questions.md`.
+- **Lot F** (F1-F3) : `.docs/ADR-019-bis-preuve-autorat.md` (périmètre honnête de la garantie, anti-usurpation, formulations interdites, ORCID, faux) ; `.docs/20-profils-et-feed.md` (feed chronologique, recherche créateurs) ; question feed rétroactivité dans `.docs/07-open-questions.md`.
 - **731 tests backend, 131 tests frontend, 0 erreur lint.**
 - **Non encore déployé** : les migrations 026 et 027 doivent être appliquées sur la VM après le merge.
 
@@ -1010,7 +1010,7 @@ Vercel : `BACKEND_URL=https://philum-api.duckdns.org` (env var serverless, jamai
 
 ## Prochaines étapes (par ordre d'impact/coût)
 
-> **Roadmap consolidée et priorisée** : [`.docs/19-roadmap-2026-07.md`](./.docs/19-roadmap-2026-07.md). Plan d'audit détaillé : [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md). Comptes plateformes liés : [`.docs/18-linked-accounts.md`](./.docs/18-linked-accounts.md).
+> **Roadmap consolidée et priorisée** : [`.docs/21-roadmap-2026-07.md`](./.docs/21-roadmap-2026-07.md). Plan d'audit détaillé : [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md). Comptes plateformes liés : [`.docs/18-linked-accounts.md`](./.docs/18-linked-accounts.md).
 
 **Immédiat**
 - ✅ **Dates manquantes et voie « sans date » en chronologie** (signalé le 2026-08-04) — **les deux défauts sont traités**, vérifié le 2026-08-07.

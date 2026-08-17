@@ -141,7 +141,7 @@ Ces points ont été vérifiés et sont corrects :
 
 ---
 
-## 5. État du rename Filum → Philum
+## 5. État du rename Philum → Philum
 
 Voir `.docs/14-philum-rename-migration.md` pour le plan complet.
 
@@ -150,7 +150,7 @@ Voir `.docs/14-philum-rename-migration.md` pour le plan complet.
 - Phases 2-4 (docs, identifiants, backend, infra) : 📝 Documentées, non exécutées
 - Cette PR (`feat/audit-improvements`) : ne touche PAS au rename
 
-**Point d'attention** : Le `User-Agent` dans `url_extractor.py` a été mis à jour de `"Filum/0.1"` vers `"Philum/0.1"` dans cette PR — c'est cohérent avec le rename mais mineur.
+**Point d'attention** : Le `User-Agent` dans `url_extractor.py` a été mis à jour de `"Philum/0.1"` vers `"Philum/0.1"` dans cette PR — c'est cohérent avec le rename mais mineur.
 
 ---
 

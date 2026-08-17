@@ -14,7 +14,7 @@
 - [ ] Installer Postgres 16 localement (ou utiliser Docker)
 - [ ] Créer le repo GitHub privé `filum`, cloner localement
 - [ ] Importer les specs dans `/.docs` et les fichiers racine (`CLAUDE.md`, `AGENTS.md`, etc.)
-- [ ] Acheter le domaine `filum.app` (Cloudflare Registrar recommandé)
+- [ ] Acheter le domaine `philum.app` (Cloudflare Registrar recommandé)
 - [ ] Créer un projet OAuth Google dans la Console Google Cloud (client ID + secret)
 - [ ] Créer un compte Railway, lier au GitHub
 - [ ] Créer un compte Vercel ou Netlify, lier au GitHub
@@ -154,7 +154,7 @@
 - Configuration Railway pour le backend
 - Déploiement automatique sur push GitHub
 - Configuration Vercel ou Netlify pour le frontend
-- Configuration domaine `filum.app`
+- Configuration domaine `philum.app`
 - Test end-to-end en production
 - Création d'une fiche de démonstration
 

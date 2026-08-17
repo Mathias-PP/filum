@@ -243,4 +243,4 @@ Effort : 0.5 j.
 - Abonnements entre créateurs
 - Modération du feed
 - Cloud Run worker Playwright (attendre premier retour utilisateur qui justifie le coût)
-- Types de compte organisation (spec dans `.docs/19-preuve-autorat.md` §3)
+- Types de compte organisation (spec dans `.docs/ADR-019-bis-preuve-autorat.md` §3)

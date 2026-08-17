@@ -10,12 +10,12 @@
 
 | Force | Pourquoi c'est précieux |
 |---|---|
-| **Vision claire et différenciante** | Filum se positionne comme un *label qualité positif*, pas un détecteur anti-deepfake. C'est rare et défendable. À ne pas diluer. |
+| **Vision claire et différenciante** | Philum se positionne comme un *label qualité positif*, pas un détecteur anti-deepfake. C'est rare et défendable. À ne pas diluer. |
 | **Discipline documentaire** | 10 documents `.docs/`, 17 ADRs, `STATE.md` vivant, `DECISIONS.md` historique. C'est ce qui rend possible un dev solo + IA assistante sans perdre le fil. |
 | **Crypto réelle, pas simulée** | Ed25519 + AES-GCM + SHA-256 dès le MVP. Permet une démo crédible auprès d'institutions sans refonte ultérieure. |
 | **Stack cohérente et moderne** | FastAPI async + SvelteKit + DuckDB/dbt forment un signal Data Engineer fort. Pas de tech debt en démarrage. |
 | **CI verte enforced** | 8 jobs verts, aucun `\|\| true`, dependabot actif. Le projet ne se dégrade pas silencieusement. |
-| **MVP backend + frontend déjà déployés** | La plupart des projets meurent avant le déploiement. Filum a passé ce cap. |
+| **MVP backend + frontend déjà déployés** | La plupart des projets meurent avant le déploiement. Philum a passé ce cap. |
 | **Effet wow visuel** | Le graphe D3 sur `/@example/memoire-et-cerveau` justifie à lui seul la démo de 5 min. C'est le hook narratif. |
 | **Sécurité prise au sérieux** | Trivy + TruffleHog + secrets baseline + dependency review. Au-dessus de la moyenne pour un MVP solo. |
 
@@ -61,7 +61,7 @@
 
 1. **Compteur de vues basique** : un `INSERT` sur une table `card_views` à chaque hit SSR de `/@slug/card-slug`. Pas de cookie, pas de tracking, juste un compteur global par fiche. Donne un signal mesurable pour valider l'hypothèse 2 de la vision (« le lecteur clique »).
 2. **Page d'accueil orientée action** : remplacer la home actuelle par « Voir un exemple → [fiche démo] » + « Demander un accès créateur → [formulaire Tally/typeform gratuit] ». Pas de promesse vide.
-3. **Documentation utilisateur** : 1 page Notion ou GitHub Pages « Comment Filum marche, comment créer ta première fiche, pourquoi c'est gratuit ». Texte humain, pas marketing.
+3. **Documentation utilisateur** : 1 page Notion ou GitHub Pages « Comment Philum marche, comment créer ta première fiche, pourquoi c'est gratuit ». Texte humain, pas marketing.
 4. **Health page publique** : `/status` ou un Statuspage.io gratuit. Crédibilité auprès d'institutions.
 
 ### Moyen terme (phase 2, après 3-5 utilisateurs actifs)
@@ -74,7 +74,7 @@
 ### Long terme (phase 3+)
 
 9. **MCP server** pour exposer les fiches aux agents IA (Claude, Perplexity) comme source de vérité citable.
-10. **C2PA en lecture** : pouvoir vérifier qu'une fiche Filum porte un cachet C2PA valide, sans nécessairement adhérer au consortium.
+10. **C2PA en lecture** : pouvoir vérifier qu'une fiche Philum porte un cachet C2PA valide, sans nécessairement adhérer au consortium.
 11. **API publique de vérification** : `GET /api/v1/verify?card_url=...` → retourne signature + hash + horodatage.
 12. **Lineage descendant** : permettre à un créateur B de déclarer son contenu dérivé d'un contenu A (avec opt-out de A).
 
