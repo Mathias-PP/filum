@@ -696,7 +696,7 @@ remesurer si l'anti-bot se contourne.
 Branche `feat/extraction-pipeline-v2`. Le pipeline d'extraction v2 (ADR-030,
 389a291, 2026-07-23) etait deja en prod avec ses 7 etages, ses tests unitaires
 et son integration frontend (`extraction_confidence`, `refs_from_oracle`,
-`refs_dropped_validation`). Le plan `agent/plans/2026-08-07-chantiers-conception.md`
+`refs_dropped_validation`). Le plan `agent/plans/_archive/2026-08-07-chantiers-conception.md`
 listait « chantier 2 pending » a tort.
 
 Ce qui reste vraiment ajoute cette session :
@@ -709,7 +709,7 @@ Ce qui reste vraiment ajoute cette session :
 
 ## Session 2026-08-07 (soir) — chantiers de conception
 
-Branche `feat/chantiers-p0-p3-ia-feed-search`, 5 chantiers du plan `agent/plans/2026-08-07-chantiers-conception.md` :
+Branche `feat/chantiers-p0-p3-ia-feed-search`, 5 chantiers du plan `agent/plans/_archive/2026-08-07-chantiers-conception.md` :
 
 - **3a** — message anti-scraping oriente maintenant vers l'import fichier (`.ris`/`.bib`) quand Nature/Elsevier/IEEE bloquent. Meme logique pour « aucune section References ».
 - **1B** — content negotiation : `hooks.server.ts` reecrit l'URL canonique vers `.md` ou `.philum.json` selon `Accept`. Une seule URL, plusieurs representations.
