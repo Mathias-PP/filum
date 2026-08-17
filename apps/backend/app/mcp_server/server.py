@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import async_session_maker
 from app.mcp_server import tools
+from app.mcp_server.auth import utilisateur_courant
 
 mcp = FastMCP(
     "philum",
@@ -73,6 +74,20 @@ async def find_cards_citing(url: str, limit: int = 10) -> list[dict[str, Any]]:
     """
     async with _session() as db:
         return await tools.find_cards_citing(db, url=url, limit=limit)
+
+
+@mcp.tool()
+async def whoami() -> dict[str, Any] | None:
+    """L'utilisateur identifie par le token, ou `null` si personne.
+
+    A appeler en premier apres avoir configure son token : verifie que
+    l'authentification passe avant de tenter une action d'ecriture.
+    """
+    async with _session() as db:
+        user = await utilisateur_courant(db)
+        if user is None:
+            return None
+        return {"creator": user.username, "display_name": user.display_name}
 
 
 mcp_http_app = mcp.http_app(path="/")
