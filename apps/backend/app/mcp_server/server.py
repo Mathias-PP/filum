@@ -18,7 +18,8 @@ mcp = FastMCP(
         "Naviguer comme un graphe : search_cards pour trouver, get_card pour le detail "
         "compact d'une fiche, get_source pour une source precise, find_cards_citing "
         "pour decouvrir qui d'autre cite une URL. "
-        "Pour ecrire (create_card, add_source, add_excerpt, publish_card), obtenir "
+        "Pour ecrire (create_card, add_source, add_excerpt, set_content_text, "
+        "publish_card), obtenir "
         "un token via POST /api/v1/auth/mcp-token depuis un navigateur connecte, "
         "puis le passer en en-tete Authorization: Bearer. whoami verifie l'identite."
     ),
@@ -197,6 +198,35 @@ async def add_excerpt(
         user = await exiger_utilisateur(db)
         return await tools_write.add_excerpt(
             db, user, source_id=source_id, text=text, title=title, context=context
+        )
+
+
+@mcp.tool()
+async def set_content_text(
+    card_slug: str,
+    text: str,
+    confirm_publication_rights: bool = False,
+) -> dict[str, Any]:
+    """Pose le texte integral du contenu documente sur la fiche `card_slug`.
+
+    Le texte est rendu tel quel sur la fiche publique et indexable par les
+    outils de recherche par le sens.
+
+    `confirm_publication_rights` doit valoir `true` : l'agent porte la meme
+    responsabilite que l'utilisateur, il doit savoir que le contenu est
+    publiable (contenu propre, libre de droit, ou droit de citation dans les
+    limites). Passer `false` refuse la pose avec un message explicite.
+
+    Chaine vide = retire le texte precedemment pose.
+    """
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.set_content_text(
+            db,
+            user,
+            card_slug=card_slug,
+            text=text,
+            confirm_publication_rights=confirm_publication_rights,
         )
 
 
