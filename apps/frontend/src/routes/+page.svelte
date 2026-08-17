@@ -419,7 +419,7 @@
   <title>Philum | Un espace de travail pour vos sources</title>
   <meta
     name="description"
-    content="Rassemblez les articles, études, vidéos et podcasts sur lesquels vous travaillez. Chaque référence est accompagnée des citations exactes qui vous intéressent. Publiez-les pour votre audience, ou interrogez une IA sur ces sources et rien d’autre."
+    content="Rassemblez les articles, études, vidéos et podcasts sur lesquels vous travaillez. Chaque référence est accompagnée des citations exactes qui vous intéressent. Publiez-les pour votre audience, ou interrogez une IA sur les sources que vous avez choisies."
   />
 </svelte:head>
 
@@ -451,7 +451,7 @@
           <p class="lede">
             Rassemblez les articles, études, vidéos et podcasts sur lesquels vous travaillez. Chaque
             référence est accompagnée des citations exactes qui vous intéressent. Publiez-les pour
-            votre audience, ou interrogez une IA sur ces sources et rien d’autre.
+            votre audience, ou interrogez une IA sur les sources que vous avez choisies.
           </p>
           <div class="ctas">
             {#if isAuthenticated}
