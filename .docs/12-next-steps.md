@@ -12,15 +12,15 @@
 
 ### Axe A — Réduire la dépendance aux plateformes (souveraineté du contenu)
 
-**Constat.** Aujourd'hui Filum suppose que le contenu original (vidéo, article, podcast) vit sur une plateforme tierce (YouTube, Substack, Spotify, etc.). Le créateur cite son URL et Filum atteste la paternité via signature. **Problème** : si la plateforme supprime, censure ou perd le contenu, l'attestation pointe vers un trou.
+**Constat.** Aujourd'hui Philum suppose que le contenu original (vidéo, article, podcast) vit sur une plateforme tierce (YouTube, Substack, Spotify, etc.). Le créateur cite son URL et Philum atteste la paternité via signature. **Problème** : si la plateforme supprime, censure ou perd le contenu, l'attestation pointe vers un trou.
 
-**Vision.** Filum doit pouvoir héberger directement les contenus originaux, sans devenir une plateforme de distribution. Le créateur garde le contrôle, Filum stocke + sert les fichiers, et l'attestation de contenu (ADR-019) pointe vers l'URL Filum (ou un mix Filum + URL externe).
+**Vision.** Philum doit pouvoir héberger directement les contenus originaux, sans devenir une plateforme de distribution. Le créateur garde le contrôle, Philum stocke + sert les fichiers, et l'attestation de contenu (ADR-019) pointe vers l'URL Philum (ou un mix Philum + URL externe).
 
 ### Axe B — Archivage proactif et redondant des sources
 
-**Constat.** Wayback Machine est branché sur `POST /sources` mais (1) c'est best-effort (~10 req/min), (2) Wayback peut rater (page dynamique, JS lourd, paywall), (3) pas de fallback. La promesse Filum « les sources sont pérennes » repose actuellement sur un service tiers gratuit unique.
+**Constat.** Wayback Machine est branché sur `POST /sources` mais (1) c'est best-effort (~10 req/min), (2) Wayback peut rater (page dynamique, JS lourd, paywall), (3) pas de fallback. La promesse Philum « les sources sont pérennes » repose actuellement sur un service tiers gratuit unique.
 
-**Vision.** Pipeline d'archivage multi-cible : Wayback Machine en priorité, Archive.today en backup, snapshot HTML+screenshot stocké en propre chez Filum pour les URLs sensibles. Statut visible côté fiche.
+**Vision.** Pipeline d'archivage multi-cible : Wayback Machine en priorité, Archive.today en backup, snapshot HTML+screenshot stocké en propre chez Philum pour les URLs sensibles. Statut visible côté fiche.
 
 ### Axe C — Refonte backend post-pivot ADR-019
 
@@ -34,20 +34,20 @@
 
 ### 2.1 Hypothèses produit à valider
 
-- Les créateurs (en priorité vulgarisateurs scientifiques) **veulent-ils** héberger leur contenu chez Filum, ou bien Filum doit-il rester un index/pointeur ?
+- Les créateurs (en priorité vulgarisateurs scientifiques) **veulent-ils** héberger leur contenu chez Philum, ou bien Philum doit-il rester un index/pointeur ?
 - À quel volume parle-t-on ? Une vidéo YouTube fait 50-500 Mo. Un article 1-10 Mo. Un podcast 30-100 Mo.
-- Filum doit-il servir la lecture/streaming, ou juste stocker un fichier téléchargeable ?
+- Philum doit-il servir la lecture/streaming, ou juste stocker un fichier téléchargeable ?
 
 Avant de coder, **interview 3 créateurs cibles** sur ces points. Sans validation, on risque de construire du stockage coûteux pour personne.
 
 ### 2.2 Comparatif fournisseurs (free-tier first, ADR-style)
 
-| Fournisseur | Free tier | Egress | Decentralisé | Verdict pour Filum |
+| Fournisseur | Free tier | Egress | Decentralisé | Verdict pour Philum |
 |---|---|---|---|---|
 | **Cloudflare R2** | 10 GB stockage + 1M ops/mois | **0$ egress** | non | ⭐ recommandé. S3-compatible, zero egress = critique pour servir du contenu. Pas de vendor lock-in. |
 | **Backblaze B2** | 10 GB stockage | 1 GB/jour gratuit puis 0.01$/GB | non | Bon backup secondaire. Plus mature que R2 pour la durabilité. |
-| **AWS S3** | 5 GB 12 mois | 0.09$/GB (cher) | non | À éviter en MVP : payant rapidement, egress prohibitif si Filum prend. |
-| **IPFS public + Pinata/web3.storage** | 1 GB pinning | gratuit | oui | Aligné avec mission Filum (décentralisation), mais latence + complexité opérationnelle élevées. À évaluer en phase 2 comme couche additionnelle, pas remplacement. |
+| **AWS S3** | 5 GB 12 mois | 0.09$/GB (cher) | non | À éviter en MVP : payant rapidement, egress prohibitif si Philum prend. |
+| **IPFS public + Pinata/web3.storage** | 1 GB pinning | gratuit | oui | Aligné avec mission Philum (décentralisation), mais latence + complexité opérationnelle élevées. À évaluer en phase 2 comme couche additionnelle, pas remplacement. |
 | **Internet Archive** | illimité | gratuit | partiellement | API d'upload existe (`internetarchive` lib Python). Excellent pour archivage long terme mais pas pour streaming live. À combiner avec R2. |
 
 **Reco MVP** : **R2 comme stockage principal**, **Internet Archive comme miroir d'archivage long terme**. Implémentation découplée pour ajouter B2 ou IPFS plus tard sans refonte.
@@ -63,7 +63,7 @@ Avant de coder, **interview 3 créateurs cibles** sur ces points. Sans validatio
 4. **Frontend** : composant `<ContentUploader>` qui upload directement sur R2 (URL pré-signée), affiche progress, gère gros fichiers
 5. **Service `MirrorService` (background task)** : après upload R2, miroir asynchrone vers Internet Archive via la lib `internetarchive`. Statut visible côté fiche.
 
-**Coût estimé** : 10 GB R2 free tier = ~20 vidéos courtes ou ~1000 articles. Zero egress = on peut servir le contenu directement depuis Filum sans surcoût. Au-delà du free tier : ~0.015$/GB stockage, toujours zero egress.
+**Coût estimé** : 10 GB R2 free tier = ~20 vidéos courtes ou ~1000 articles. Zero egress = on peut servir le contenu directement depuis Philum sans surcoût. Au-delà du free tier : ~0.015$/GB stockage, toujours zero egress.
 
 ### 2.4 Sécurité
 
@@ -89,7 +89,7 @@ Avant de coder, **interview 3 créateurs cibles** sur ces points. Sans validatio
 |---|---|---|
 | Wayback Machine | Source primaire (réseau de confiance, déjà branché) | `GET /save/{url}` |
 | Archive.today (archive.ph) | Backup, capture les JS-heavy pages que Wayback rate | `POST /submit/?url={url}` (rate-limité, headless OK) |
-| Snapshot HTML + screenshot Filum | Dernier recours pour les pages que ni Wayback ni Archive.today ne capturent (paywall, intranet sensible) | Playwright headless dans worker, stocké sur R2 |
+| Snapshot HTML + screenshot Philum | Dernier recours pour les pages que ni Wayback ni Archive.today ne capturent (paywall, intranet sensible) | Playwright headless dans worker, stocké sur R2 |
 
 ### 3.3 Découpage
 
@@ -103,7 +103,7 @@ Avant de coder, **interview 3 créateurs cibles** sur ces points. Sans validatio
 
 - Wayback Machine n'aime pas le bruit : respecter `Retry-After`, headers `User-Agent` propres
 - Archive.today rate-limite agressivement : pas plus de 1 req/30s/IP, et certaines IPs Cloud Provider sont bannies. Test avant prod.
-- Playwright pour snapshot Filum-hosted = +500 Mo Docker image. À isoler dans un worker dédié, pas dans le container principal.
+- Playwright pour snapshot Philum-hosted = +500 Mo Docker image. À isoler dans un worker dédié, pas dans le container principal.
 
 ---
 
@@ -146,14 +146,14 @@ Avant de coder, **interview 3 créateurs cibles** sur ces points. Sans validatio
 - **Sentry** : à brancher quand on aura un vrai trafic. Avant ça, `/health/publish-diagnose` et les logs Railway suffisent.
 - **Import Zotero / BibTeX / Obsidian** : grosse valeur d'usage mais bloqué tant que `content_attestations` n'est pas en place (sinon on importe sans pouvoir attester).
 - **Plugin navigateur** : utile mais second ordre. À faire après que 3-5 créateurs actifs aient demandé.
-- **Domain `filum.app`** : à acheter dès qu'on a un premier ambassadeur prêt à publier. Pas avant.
+- **Domain `philum.app`** : à acheter dès qu'on a un premier ambassadeur prêt à publier. Pas avant.
 
 ---
 
 ## 6. Ordre d'exécution recommandé
 
 1. **Axe C (1-2 semaines)** : refonte backend post-ADR-019. Indispensable car bloque tout le reste (import, attestation par URL, etc.). Bonne nouvelle : c'est local, pas de prod-risk au-delà de la migration.
-2. **Axe B (1 semaine)** : multi-target archive. Le snapshot Filum-hosted (Playwright) peut être reporté ; Wayback + Archive.today couvrent déjà 95 % des cas.
+2. **Axe B (1 semaine)** : multi-target archive. Le snapshot Philum-hosted (Playwright) peut être reporté ; Wayback + Archive.today couvrent déjà 95 % des cas.
 3. **Validation produit (1 semaine)** : interviewer 3 créateurs cibles sur l'hypothèse Axe A (auto-hébergement contenu). Si OUI → axe A. Si NON → re-prioriser sur import Zotero / plugin navigateur.
 4. **Axe A (2-3 semaines si validé)** : R2 + Internet Archive + endpoint upload.
 
@@ -166,7 +166,7 @@ Avant de coder, **interview 3 créateurs cibles** sur ces points. Sans validatio
 Inchangé depuis `10-mvp-completion-plan.md` §5 : pas de Sentry/Plausible avant signal utilisateur, pas de domaine custom avant 5 créateurs actifs, pas de C2PA avant phase 3, pas de MCP server avant API publique stable.
 
 S'ajoute :
-- **Pas d'IA générative pour produire des bibliographies** : Filum n'est pas Perplexity. La valeur produit = sourçage humain + traçabilité, pas génération automatique.
+- **Pas d'IA générative pour produire des bibliographies** : Philum n'est pas Perplexity. La valeur produit = sourçage humain + traçabilité, pas génération automatique.
 - **Pas de social features** (commentaires, follows, like) : ce n'est pas un réseau social, c'est une infrastructure.
 
 ---

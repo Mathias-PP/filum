@@ -48,7 +48,7 @@
 
 ## Table : `users`
 
-Représente un créateur Filum.
+Représente un créateur Philum.
 
 | Colonne | Type | Description |
 |---|---|---|
@@ -101,7 +101,7 @@ Représente une fiche bibliographique pour un contenu.
 - Une fiche publiée doit avoir `content_hash`, `signature`, `signed_at`, `published_at` tous renseignés (vérifié au niveau application + check constraint)
 - `status` IN (`draft`, `published`, `archived`)
 
-**URL publique** : `https://filum.app/@<users.slug>/<biblio_cards.slug>`
+**URL publique** : `https://philum.app/@<users.slug>/<biblio_cards.slug>`
 
 ---
 

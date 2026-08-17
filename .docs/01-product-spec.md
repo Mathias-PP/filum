@@ -4,7 +4,7 @@
 
 > ⚠️ **Refonte taxonomie ADR-020 (2026-05-14)** : toute mention de `source_type` (`peer-reviewed`, `institutionnel`, `presse`, `matériel original`, `vidéo`, `image`) dans ce document est **obsolète**. La taxonomie est désormais sur 3 axes orthogonaux : `format` (texte/video/image/audio/data), `category` (12 valeurs : article-scientifique, preprint, article-presse, communique, documentaire, interview, podcast, blog, post-social, livre, page-web, notes) et `author_kind` (9 valeurs : chercheur, media, institution-publique, gouvernement, ecole, laboratoire, entreprise, asso, individu). Le graphe est coloré par `author_kind`. Voir `DECISIONS.md` ADR-020.
 
-> Ce document décrit les fonctionnalités du MVP de Filum, les scénarios utilisateurs, et les écrans. Il est la référence produit pendant toute la phase 1.
+> Ce document décrit les fonctionnalités du MVP de Philum, les scénarios utilisateurs, et les écrans. Il est la référence produit pendant toute la phase 1.
 
 ---
 
@@ -40,19 +40,19 @@ Léa, 31 ans, fait des vidéos YouTube et des posts X de vulgarisation climat. 1
 
 **Sa douleur** : son travail de sourçage est invisible, donc non récompensé. Quand on l'attaque sur les réseaux pour une affirmation, elle n'a pas de moyen rapide de pointer vers la pile de sources qui la fondent. Elle redoute la prochaine vidéo polémique.
 
-**Ce qu'elle espère de Filum** : que son sérieux soit enfin visible. Que ses sources soient archivées pour que personne ne puisse contester qu'elle les a bien utilisées. Que son audience trouve la consultation des sources désirable, pas fastidieuse.
+**Ce qu'elle espère de Philum** : que son sérieux soit enfin visible. Que ses sources soient archivées pour que personne ne puisse contester qu'elle les a bien utilisées. Que son audience trouve la consultation des sources désirable, pas fastidieuse.
 
 ### Persona secondaire — Marc, lecteur sérieux
 
 Marc, 38 ans, ingénieur, abonné à Léa. Il aime ses vidéos mais a parfois des doutes — est-ce que les chiffres avancés sont solides ? Il clique rarement sur les liens en description, par flemme.
 
-**Ce qu'il espère de Filum** : un moyen rapide et visuel de juger de la solidité du contenu, sans devoir cliquer sur 11 liens.
+**Ce qu'il espère de Philum** : un moyen rapide et visuel de juger de la solidité du contenu, sans devoir cliquer sur 11 liens.
 
 ### Persona tertiaire — Sami, fact-checker professionnel
 
 Sami travaille pour CheckNews. Il enquête sur la viralité d'un contenu, doit remonter à ses sources, vérifier qu'elles n'ont pas été déformées.
 
-**Ce qu'il espère de Filum** : un moyen de remonter aux sources, de comparer la version archivée à la version vivante d'un article, de tracer la filiation entre les contenus.
+**Ce qu'il espère de Philum** : un moyen de remonter aux sources, de comparer la version archivée à la version vivante d'un article, de tracer la filiation entre les contenus.
 
 ---
 
@@ -61,7 +61,7 @@ Sami travaille pour CheckNews. Il enquête sur la viralité d'un contenu, doit r
 ### Parcours du créateur (Léa)
 
 **Étape 1 — Inscription**
-Léa visite `filum.app`. Page d'accueil simple. Bouton "Créer ma première fiche". Elle est invitée à se connecter avec Google. Premier consentement OAuth. Elle saisit son pseudonyme (`@lea-c`), son rôle (vulgarisatrice climat), accepte les CGU.
+Léa visite `philum.app`. Page d'accueil simple. Bouton "Créer ma première fiche". Elle est invitée à se connecter avec Google. Premier consentement OAuth. Elle saisit son pseudonyme (`@lea-c`), son rôle (vulgarisatrice climat), accepte les CGU.
 
 **Étape 2 — Création de fiche, vide**
 Elle arrive sur son tableau de bord, vide. Bouton "Nouvelle fiche". Formulaire en deux étapes :
@@ -69,14 +69,14 @@ Elle arrive sur son tableau de bord, vide. Bouton "Nouvelle fiche". Formulaire e
 - Étape B : ajout des sources, une par une, via un formulaire (titre, URL, type [peer-reviewed, institutionnel, presse, matériel original], date, annotation contextuelle, indicateur "source pivot" oui/non)
 
 **Étape 3 — Archivage des sources**
-À mesure qu'elle ajoute des URLs, Filum lance en arrière-plan une requête vers Wayback Machine pour archiver chaque URL. Indicateur de progression visible. En moins d'une minute, toutes les sources sont archivées.
+À mesure qu'elle ajoute des URLs, Philum lance en arrière-plan une requête vers Wayback Machine pour archiver chaque URL. Indicateur de progression visible. En moins d'une minute, toutes les sources sont archivées.
 
 **Étape 4 — Génération de la fiche**
-Elle clique "Publier la fiche". Filum génère :
+Elle clique "Publier la fiche". Philum génère :
 - Hash SHA-256 du contenu de la fiche (sources + métadonnées)
 - Signature Ed25519 avec la clé associée à son compte
 - Horodatage simple en MVP (pas d'horodatage qualifié eIDAS en phase 1)
-- URL publique stable : `filum.app/@lea-c/arctique-2026`
+- URL publique stable : `philum.app/@lea-c/arctique-2026`
 
 **Étape 5 — Partage**
 Sur la page de confirmation, Léa voit :
@@ -89,7 +89,7 @@ Elle copie le lien et le colle dans la description de sa vidéo YouTube.
 ### Parcours du lecteur (Marc)
 
 **Étape 1 — Arrivée**
-Marc clique sur le lien Filum dans la description de la vidéo. La page publique s'ouvre.
+Marc clique sur le lien Philum dans la description de la vidéo. La page publique s'ouvre.
 
 **Étape 2 — Découverte de la fiche**
 Au-dessus de la fold :
@@ -118,7 +118,7 @@ Sami fait la même chose que Marc, mais en mode plus systématique. Il compare l
 ### E1 — Page d'accueil publique (`/`)
 
 **Contenu**
-- Bandeau haut : logo Filum, lien "Découvrir", lien "Se connecter", bouton "Créer une fiche"
+- Bandeau haut : logo Philum, lien "Découvrir", lien "Se connecter", bouton "Créer une fiche"
 - Hero : pitch en une phrase + sous-pitch en deux lignes + bouton "Voir un exemple"
 - Section "Comment ça marche" : 3 étapes illustrées (sourcer, signer, partager)
 - Section "Exemples de fiches publiques" : 3-4 fiches en avant (créateurs initiaux)
@@ -189,7 +189,7 @@ Sami fait la même chose que Marc, mais en mode plus systématique. Il compare l
 C'est l'écran le plus important. Voir la maquette visuelle validée précédemment.
 
 **Contenu (de haut en bas)**
-- Bandeau supérieur discret : `fiche bibliographique · filum.app/@lea-c/arctique-2026`
+- Bandeau supérieur discret : `fiche bibliographique · philum.app/@lea-c/arctique-2026`
 - Titre du contenu en serif, élégant
 - Identité du créateur (avatar, nom, badge "vérifié Google", description courte, date)
 - Bandeau de statistiques (4 chiffres clés)

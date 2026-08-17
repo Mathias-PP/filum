@@ -85,7 +85,7 @@ Chaque item a un **trigger** : la condition concrète qui doit faire passer l'it
 
 ### F7. Rate limit plus strict sur `/sources/extract` ou auth requise
 
-**Constat code** : `endpoints/sources.py:43` rate-limite à `10/minute`. L'endpoint est no-auth (volontaire — l'extraction d'URL est utilisée pour pré-remplir le formulaire d'ajout, avant que l'user ne soit logué). Avec le SSRF guard ajouté en PR #80, le risque sécurité est neutralisé, mais le coût en bande passante (httpx vers des sites externes) est porté par Filum à chaque appel. Un attaquant peut scrape le web à 600 URLs/heure via Filum.
+**Constat code** : `endpoints/sources.py:43` rate-limite à `10/minute`. L'endpoint est no-auth (volontaire — l'extraction d'URL est utilisée pour pré-remplir le formulaire d'ajout, avant que l'user ne soit logué). Avec le SSRF guard ajouté en PR #80, le risque sécurité est neutralisé, mais le coût en bande passante (httpx vers des sites externes) est porté par Philum à chaque appel. Un attaquant peut scrape le web à 600 URLs/heure via Philum.
 
 **Trigger** : si on voit des spikes anormaux dans les logs Railway, ou si la facture sortante augmente. Pas urgent aujourd'hui.
 
@@ -102,7 +102,7 @@ Chaque item a un **trigger** : la condition concrète qui doit faire passer l'it
 
 ### F8. Multi-tenancy / workspace
 
-**Constat code** : tables `users`, `biblio_cards`, `sources` partagent une séquence UUID flat. Pas de `workspace_id` ni de `org_id`. Si Filum pivot vers du SaaS B2B (équipes de rédaction, agences de presse), le refactor coûtera des migrations en plusieurs étapes.
+**Constat code** : tables `users`, `biblio_cards`, `sources` partagent une séquence UUID flat. Pas de `workspace_id` ni de `org_id`. Si Philum pivot vers du SaaS B2B (équipes de rédaction, agences de presse), le refactor coûtera des migrations en plusieurs étapes.
 
 **Trigger** : décision produit B2B/B2B2C confirmée par signaux marché (au moins 3 prospects formulent le besoin "comptes équipe").
 

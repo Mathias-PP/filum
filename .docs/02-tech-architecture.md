@@ -178,7 +178,7 @@ En phase 2, ajouter :
 
 - **Backend** : Railway. Tier gratuit ou Hobby ($5/mois). Postgres inclus. CI/CD automatique sur push GitHub.
 - **Frontend** : Vercel (recommandé pour SvelteKit, gratuit). Netlify est une alternative équivalente.
-- **Domaine** : `filum.app` à acheter (~$15/an chez Cloudflare Registrar)
+- **Domaine** : `philum.app` à acheter (~$15/an chez Cloudflare Registrar)
 
 ### Phase 3 — production souveraine
 

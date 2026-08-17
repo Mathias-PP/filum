@@ -32,7 +32,7 @@ Quatre principes de référence :
 | **Stratechery / Aeon** | Typographie éditoriale, serif sur les titres, hiérarchie classique |
 | **Linear** | Sobriété de l'UI, minimalisme assumé (pour les écrans applicatifs) |
 | **Notion** | Densité agréable, dépliage in-place pour la liste de sources |
-| **Perma.cc** | Référence académique pour la pérennité des liens, mais Filum est plus contemporain visuellement |
+| **Perma.cc** | Référence académique pour la pérennité des liens, mais Philum est plus contemporain visuellement |
 | **Reuters Institute / journalism.org** | Esthétique sérieuse et institutionnelle pour le badge "vérifié" |
 
 ---

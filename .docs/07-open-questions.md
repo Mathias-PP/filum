@@ -8,7 +8,7 @@
 
 **Statut** : non tranché.
 
-**Options** : Filum (provisoire), Stemma, Colophon, Upstream, Tracé, Provenance.
+**Options** : Philum (provisoire), Stemma, Colophon, Upstream, Tracé, Provenance.
 
 **Décision à prendre avant** : lancement public (fin de phase 2).
 
@@ -77,9 +77,9 @@
 
 ## Q7 — Politique d'archivage et conformité juridique
 
-**Statut** : niveau 2 (snapshots Wayback) en MVP, sans implication juridique pour Filum.
+**Statut** : niveau 2 (snapshots Wayback) en MVP, sans implication juridique pour Philum.
 
-**Question** : quand on offrira l'option de stocker des fichiers source en propre (phase 3+), Filum devient hébergeur au sens LCEN/DSA. Procédures de retrait à formaliser, RGPD à appliquer.
+**Question** : quand on offrira l'option de stocker des fichiers source en propre (phase 3+), Philum devient hébergeur au sens LCEN/DSA. Procédures de retrait à formaliser, RGPD à appliquer.
 
 **À trancher en** : avant le lancement du tier "archivage premium". Consultation juridique nécessaire.
 
@@ -117,7 +117,7 @@
 
 **Statut** : utilisation à clarifier.
 
-**Question** : qu'apporte Anara précisément à Filum ? Référence à creuser dans la conception.
+**Question** : qu'apporte Anara précisément à Philum ? Référence à creuser dans la conception.
 
 ---
 
@@ -155,7 +155,7 @@
 
 **Statut** : non formalisée.
 
-**Question** : protection de la marque "Filum" (INPI, EUIPO) ? Licences open-source précises pour chaque composant ? Stratégie en cas de fork ou de concurrent malveillant ?
+**Question** : protection de la marque "Philum" (INPI, EUIPO) ? Licences open-source précises pour chaque composant ? Stratégie en cas de fork ou de concurrent malveillant ?
 
 **À trancher en** : phase 2-3 avec un conseil juridique.
 
@@ -167,7 +167,7 @@
 
 **Question** : quel design exact pour le MCP server ? Quels endpoints exposer ?
 
-**À explorer** : un MCP server qui expose les fiches Filum aux agents IA pour qu'ils puissent les interroger comme une source de vérité.
+**À explorer** : un MCP server qui expose les fiches Philum aux agents IA pour qu'ils puissent les interroger comme une source de vérité.
 
 ---
 

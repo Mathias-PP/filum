@@ -2423,7 +2423,7 @@ git commit -m "docs: ecarter llms.txt au profit de MCP"
 ### Tâche F1 : ADR sur la preuve d'autorat et l'anti-usurpation
 
 **Fichiers :**
-- Créer : `.docs/19-preuve-autorat.md`
+- Créer : `.docs/ADR-019-bis-preuve-autorat.md`
 - Modifier : `agent/DECISIONS.md`
 
 - [ ] **Étape 1 : lire l'existant avant d'écrire**
@@ -2436,7 +2436,7 @@ Le document spécifie déjà v0 / v1 / v2 des comptes liés, avec un tableau de 
 
 - [ ] **Étape 2 : écrire l'ADR**
 
-Créer `.docs/19-preuve-autorat.md` avec la structure suivante, en développant chaque point.
+Créer `.docs/ADR-019-bis-preuve-autorat.md` avec la structure suivante, en développant chaque point.
 
 **Section 1 : ce que Philum peut prouver, et ce qu'il ne peut pas.**
 
@@ -2476,12 +2476,12 @@ L'utilisateur demande de rouvrir le sujet. Lister les options, avec leur coût r
 
 - [ ] **Étape 3 : consigner dans DECISIONS.md**
 
-Ajouter une entrée renvoyant à `.docs/19-preuve-autorat.md` et rappelant la règle de formulation autorisée.
+Ajouter une entrée renvoyant à `.docs/ADR-019-bis-preuve-autorat.md` et rappelant la règle de formulation autorisée.
 
 - [ ] **Étape 4 : commit**
 
 ```bash
-git add .docs/19-preuve-autorat.md agent/DECISIONS.md
+git add .docs/ADR-019-bis-preuve-autorat.md agent/DECISIONS.md
 git commit -m "docs: ADR preuve d'autorat et anti-usurpation"
 ```
 
@@ -2535,13 +2535,13 @@ git commit -m "docs: spec des profils publics et du feed"
 ### Tâche F3 : la garantie d'authenticité face aux faux et à l'ingérence
 
 **Fichiers :**
-- Modifier : `.docs/19-preuve-autorat.md` (section supplémentaire)
+- Modifier : `.docs/ADR-019-bis-preuve-autorat.md` (section supplémentaire)
 
 **Constat utilisateur :** un faux reportage attribué à un média (l'exemple donné est une fausse vidéo Blast) doit pouvoir être démenti ; un média doit pouvoir partager sa fiche certifiée, revendiquée avec vérification d'identité ; les générateurs de faux ne doivent pas pouvoir revendiquer un contenu dont ils ne sont pas les auteurs.
 
 - [ ] **Étape 1 : écrire la chaîne de raisonnement honnête**
 
-Ajouter une section à `.docs/19-preuve-autorat.md` établissant, dans cet ordre :
+Ajouter une section à `.docs/ADR-019-bis-preuve-autorat.md` établissant, dans cet ordre :
 
 1. **Philum ne détecte pas les faux.** Aucune analyse de contenu, aucune détection de génération. Toute promesse en ce sens serait fausse.
 2. **Ce qui fonctionne réellement est l'argument par l'absence**, et il ne fonctionne que sous une condition stricte : si un média attesté **systématiquement** toutes ses publications, alors l'absence d'attestation devient un signal. Sans systématicité, l'absence ne prouve rien.
@@ -2565,7 +2565,7 @@ Rappeler l'invariant ADR-019 : le payload signé d'une attestation de contenu es
 - [ ] **Étape 4 : commit**
 
 ```bash
-git add .docs/19-preuve-autorat.md
+git add .docs/ADR-019-bis-preuve-autorat.md
 git commit -m "docs: perimetre honnete de la garantie Philum"
 ```
 
