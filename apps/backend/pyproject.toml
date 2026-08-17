@@ -89,6 +89,38 @@ plugins = ["pydantic.mypy"]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 
+# Config `coverage.py` (via pytest-cov, deja dans les dev deps).
+# `--cov` n'est PAS ajoute a `addopts` : instrumenter le code ralentit chaque
+# run local (~+15 %). On l'active a la demande (`pytest --cov=app`) ou par la
+# CI, jamais par defaut en dev.
+[tool.coverage.run]
+source = ["app"]
+branch = true
+omit = [
+    # Scripts one-shot (seed, reindex ponctuel) : le code y vit mais n'est
+    # pas cense etre exerce par les tests. Les inclure fait mecaniquement
+    # chuter le chiffre global sans dire quoi que ce soit sur la sante du
+    # produit.
+    "app/scripts/*",
+    # Entry point FastAPI : la couverture y est faite indirectement par les
+    # tests d'integration ; l'y compter explicitement double-compte.
+    "app/main.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+precision = 0
+# `if TYPE_CHECKING:` ou `if __name__ == "__main__":` ne sont pas du code a
+# tester ; les exclure evite les faux « missing ».
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+    "\\.\\.\\.",
+]
+
 [dependency-groups]
 dev = [
     "aiosqlite>=0.22.1",

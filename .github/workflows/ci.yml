@@ -226,8 +226,13 @@ jobs:
         run: uv sync --all-extras
         working-directory: apps/backend
 
-      - name: Run tests
-        run: uv run pytest tests/ -v --tb=short
+      - name: Run tests with coverage
+        run: |
+          uv run pytest tests/ -v --tb=short \
+            --cov=app \
+            --cov-report=term \
+            --cov-report=xml:coverage.xml \
+            --cov-report=html:htmlcov
         working-directory: apps/backend
 
       - name: Upload test results
@@ -237,6 +242,37 @@ jobs:
           name: backend-test-results
           path: apps/backend/.pytest_cache
           retention-days: 7
+
+      - name: Upload coverage report (HTML)
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: backend-coverage-html
+          path: apps/backend/htmlcov
+          retention-days: 14
+
+      - name: Upload coverage report (XML)
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: backend-coverage-xml
+          path: apps/backend/coverage.xml
+          retention-days: 14
+
+      # Extrait le pourcentage global pour l'afficher dans le resume CI.
+      # Aucun seuil (--cov-fail-under) pour l'instant : la mesure est publiee,
+      # pas gatee. Un seuil pourra etre ajoute dans une PR ulterieure quand
+      # le chiffre sera etabli et stabilise.
+      - name: Coverage summary
+        if: always()
+        run: |
+          if [ -f coverage.xml ]; then
+            pct=$(python3 -c "import xml.etree.ElementTree as ET; \
+              root = ET.parse('coverage.xml').getroot(); \
+              print(f'{float(root.attrib[\"line-rate\"]) * 100:.1f}')")
+            echo "## Backend coverage : ${pct}%" >> "$GITHUB_STEP_SUMMARY"
+          fi
+        working-directory: apps/backend
 
   test-frontend:
     name: Test Frontend
