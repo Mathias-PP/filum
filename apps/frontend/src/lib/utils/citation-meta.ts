@@ -100,15 +100,20 @@ export function year(iso: string | null | undefined): string | null {
  *
  * Les auteurs sont ceux du **contenu**, pas ceux de la fiche : publier une
  * fiche n'est pas signer ce qu'elle documente. À défaut d'auteurs déclarés, on
- * retombe sur le créateur Philum, sans quoi Scholar ignore la page entière
- * (titre + premier auteur + année sont son minimum requis).
+ * ne retombe sur le créateur QUE quand il documente son propre contenu
+ * (`is_seed === false`) : autrement, le créateur d'une fiche seed apparaîtrait
+ * comme auteur d'un article qu'il n'a pas écrit, aussi bien dans Zotero que
+ * dans Google Scholar. Mieux vaut une page invisible de Scholar qu'une page
+ * qui lui ment sur l'auteur.
  */
 export function cardHighwireTags(card: CardDetail, publicUrl: string): MetaTag[] {
   const tags: MetaTag[] = [{ name: 'citation_title', content: card.title }];
 
   const authors = splitAuthors(card.content_authors);
-  const fallback = card.creator.display_name ?? card.creator.slug;
-  for (const author of authors.length > 0 ? authors : [fallback]) {
+  if (authors.length === 0 && !card.is_seed) {
+    authors.push(card.creator.display_name ?? card.creator.slug);
+  }
+  for (const author of authors) {
     tags.push({ name: 'citation_author', content: author });
   }
 
