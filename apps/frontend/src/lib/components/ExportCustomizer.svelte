@@ -18,10 +18,12 @@
 <script lang="ts">
   import Modal from './Modal.svelte';
   import {
+    CITATION_STYLES,
     MAX_DEGREE,
     NEIGHBOUR_FORMATS,
     SCOPED_FORMATS,
     SECTIONS,
+    STYLED_FORMATS,
     buildExportUrl,
     emptyScope,
     fullScope,
@@ -35,12 +37,17 @@
 
   let { open = $bindable(false), exportBase }: Props = $props();
 
+  // Formats de fichier seulement. Le style de biblio (APA, Harvard, ...) est
+  // un axe SEPARE (menu ci-dessous), pas un format a part : melanger les deux
+  // dans un seul menu laissait croire que « Harvard » et « Excel » etaient
+  // deux choix du meme rang.
   const FORMAT_GROUPS = [
     {
       label: 'Documents',
       formats: [
         { value: 'markdown', label: 'Markdown / Obsidian' },
         { value: 'docx', label: 'Word (.docx)' },
+        { value: 'txt', label: 'Texte (bibliographie stylée)' },
       ],
     },
     {
@@ -60,20 +67,10 @@
         { value: 'csl', label: 'CSL-JSON (Zotero)' },
       ],
     },
-    {
-      label: 'Styles de citation (texte)',
-      formats: [
-        { value: 'apa', label: 'APA 7' },
-        { value: 'harvard', label: 'Harvard' },
-        { value: 'mla', label: 'MLA 9' },
-        { value: 'chicago', label: 'Chicago (auteur-date)' },
-        { value: 'vancouver', label: 'Vancouver' },
-        { value: 'ieee', label: 'IEEE' },
-      ],
-    },
   ];
 
   let format = $state('markdown');
+  let style = $state<string>('apa');
   let scope = $state<Scope>(fullScope());
 
   // Un périmètre par degré, préparé jusqu'au plafond : changer la profondeur
@@ -85,10 +82,12 @@
 
   const honoreLePerimetre = $derived(SCOPED_FORMATS.has(format));
   const porteLeVoisinage = $derived(NEIGHBOUR_FORMATS.has(format));
+  const porteUnStyle = $derived(STYLED_FORMATS.has(format));
 
   const url = $derived(
     buildExportUrl(exportBase, {
       format,
+      style: porteUnStyle ? style : undefined,
       scope,
       cited: citedScopes.slice(0, citedDepth),
       citing: citingScopes.slice(0, citingDepth),
@@ -140,23 +139,43 @@
 
 <Modal bind:open title="Export personnalisé" size="lg">
   <div class="space-y-5">
-    <div>
-      <label for="export-format" class="block text-xs font-medium text-ink-primary mb-1.5"
-        >Format</label
-      >
-      <select
-        id="export-format"
-        bind:value={format}
-        class="w-full text-xs rounded-md border border-border bg-surface-primary text-ink-primary px-2.5 py-1.5"
-      >
-        {#each FORMAT_GROUPS as groupe (groupe.label)}
-          <optgroup label={groupe.label}>
-            {#each groupe.formats as f (f.value)}
-              <option value={f.value}>{f.label}</option>
-            {/each}
-          </optgroup>
-        {/each}
-      </select>
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div>
+        <label for="export-format" class="block text-xs font-medium text-ink-primary mb-1.5"
+          >Format de fichier</label
+        >
+        <select
+          id="export-format"
+          bind:value={format}
+          class="w-full text-xs rounded-md border border-border bg-surface-primary text-ink-primary px-2.5 py-1.5"
+        >
+          {#each FORMAT_GROUPS as groupe (groupe.label)}
+            <optgroup label={groupe.label}>
+              {#each groupe.formats as f (f.value)}
+                <option value={f.value}>{f.label}</option>
+              {/each}
+            </optgroup>
+          {/each}
+        </select>
+      </div>
+      <div>
+        <label for="export-style" class="block text-xs font-medium text-ink-primary mb-1.5">
+          Style de citation
+          {#if !porteUnStyle}
+            <span class="text-ink-tertiary font-normal">(inutilisé pour ce format)</span>
+          {/if}
+        </label>
+        <select
+          id="export-style"
+          bind:value={style}
+          disabled={!porteUnStyle}
+          class="w-full text-xs rounded-md border border-border bg-surface-primary text-ink-primary px-2.5 py-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {#each CITATION_STYLES as s (s.value)}
+            <option value={s.value}>{s.label}</option>
+          {/each}
+        </select>
+      </div>
     </div>
 
     <div>

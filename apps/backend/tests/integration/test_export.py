@@ -227,6 +227,69 @@ async def test_export_chaque_style_de_citation(client, published_card, test_user
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("style", "libelle"),
+    [
+        ("apa", "APA 7"),
+        ("harvard", "Harvard"),
+        ("mla", "MLA 9"),
+        ("chicago", "Chicago (auteur-date)"),
+        ("vancouver", "Vancouver"),
+        ("ieee", "IEEE"),
+    ],
+)
+async def test_export_txt_avec_style_explicite(client, published_card, test_user, style, libelle):
+    """Le nouveau contrat : `format=txt&style=X`. L'utilisateur choisit d'abord
+    le format de fichier (texte), puis le style de citation. C'est deux axes
+    distincts, pas une soupe unique."""
+    resp = await client.get(
+        f"/api/v1/@{test_user.username}/{published_card.slug}/export",
+        params={"format": "txt", "style": style},
+    )
+    assert resp.status_code == 200
+    assert resp.text.startswith(f"Bibliographie ({libelle}) —")
+    assert resp.headers["content-disposition"].endswith(f'.{style}.txt"')
+
+
+@pytest.mark.asyncio
+async def test_export_txt_sans_style_prend_apa_par_defaut(client, published_card, test_user):
+    resp = await client.get(
+        f"/api/v1/@{test_user.username}/{published_card.slug}/export",
+        params={"format": "txt"},
+    )
+    assert resp.status_code == 200
+    assert resp.text.startswith("Bibliographie (APA 7) —")
+    assert resp.headers["content-disposition"].endswith('.apa.txt"')
+
+
+@pytest.mark.asyncio
+async def test_export_style_inconnu_est_refuse_clairement(client, published_card, test_user):
+    resp = await client.get(
+        f"/api/v1/@{test_user.username}/{published_card.slug}/export",
+        params={"format": "txt", "style": "papyrus"},
+    )
+    assert resp.status_code == 422
+    body = resp.json()
+    detail = body.get("detail") or body.get("error") or {}
+    assert detail.get("code") == "validation_error"
+    assert "papyrus" in detail.get("message", "")
+
+
+@pytest.mark.asyncio
+async def test_export_style_ignore_par_les_formats_de_donnees(client, published_card, test_user):
+    """Passer `style=harvard` sur `format=json` n'est pas une erreur : les
+    formats structures ont leur propre grammaire (ils portent les donnees
+    brutes), le style n'a rien a y faire. L'ignorer silencieusement evite
+    de casser des liens qui melangeraient les deux."""
+    resp = await client.get(
+        f"/api/v1/@{test_user.username}/{published_card.slug}/export",
+        params={"format": "json", "style": "harvard"},
+    )
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("application/json")
+
+
+@pytest.mark.asyncio
 async def test_export_complet_par_defaut_porte_les_extraits(client, published_card, test_user):
     """Sans `include`, l'export est complet — extraits compris.
 
@@ -437,9 +500,7 @@ async def test_sans_demande_aucune_cle_de_voisinage(client, published_card, test
 
 
 @pytest.mark.asyncio
-async def test_le_markdown_nomme_les_deux_sens(
-    client, published_card, test_user, chaine_de_fiches
-):
+async def test_le_markdown_nomme_les_deux_sens(client, published_card, test_user, chaine_de_fiches):
     resp = await client.get(
         f"/api/v1/@{test_user.username}/{published_card.slug}/export",
         params={"format": "markdown", "cited": "1", "citing": "1"},

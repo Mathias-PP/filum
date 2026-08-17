@@ -535,6 +535,10 @@ async def get_public_card_graph(
     )
 
 
+#: Formats de fichier. Le style de citation (APA, Harvard, etc.) est un axe
+#: separe : passer par la query `?style=harvard`, applique par `format=txt`.
+#: Les six anciens formats-styles (`apa`, `harvard`, ...) restent supportes
+#: comme alias retrocompatibles vers `format=txt&style=<name>`.
 _EXPORT_FORMATS = {
     "json": ("application/json; charset=utf-8", "json"),
     # Cible primaire des agents IA : JSON-LD schema.org + champs Philum
@@ -550,21 +554,20 @@ _EXPORT_FORMATS = {
     "bibtex": ("application/x-bibtex; charset=utf-8", "bib"),
     "ris": ("application/x-research-info-systems; charset=utf-8", "ris"),
     "csl": ("application/vnd.citationstyles.csl+json; charset=utf-8", "csl.json"),
-    # Bibliographies deja formatees. `apa` precede les autres et garde son nom
-    # historique : c'etait le seul style avant que le choix existe, et des liens
-    # d'export circulent deja avec.
-    "apa": ("text/plain; charset=utf-8", "apa.txt"),
-    "harvard": ("text/plain; charset=utf-8", "harvard.txt"),
-    "mla": ("text/plain; charset=utf-8", "mla.txt"),
-    "chicago": ("text/plain; charset=utf-8", "chicago.txt"),
-    "vancouver": ("text/plain; charset=utf-8", "vancouver.txt"),
-    "ieee": ("text/plain; charset=utf-8", "ieee.txt"),
+    # Plain text : la bibliographie rendue dans le style choisi (`?style=`).
+    # Par defaut APA (le premier style historiquement offert).
+    "txt": ("text/plain; charset=utf-8", "txt"),
     "markdown": ("text/markdown; charset=utf-8", "md"),
     "docx": (
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "docx",
     ),
 }
+
+#: Alias historiques : chaque style de citation etait un format a part. On
+#: garde ces alias pour les liens qui circulent deja et pour l'API publique
+#: qui les documente. Un alias est traite comme `format=txt&style=<name>`.
+_STYLE_ALIASES = {"apa", "harvard", "mla", "chicago", "vancouver", "ieee"}
 
 
 @router.get("/@{creator_slug}/{card_slug}/export")
@@ -573,6 +576,15 @@ async def export_public_card(
     card_slug: str,
     request: Request,
     format: str = Query("json"),
+    style: str | None = Query(
+        None,
+        description=(
+            "Style de citation quand le format le porte. Valeurs : apa, harvard, "
+            "mla, chicago, vancouver, ieee. Applique uniquement a `format=txt` "
+            "(les autres formats ont leur propre grammaire et l'ignorent). Par "
+            "defaut : apa quand `format=txt`."
+        ),
+    ),
     include: str | None = Query(
         None,
         description=(
@@ -597,6 +609,15 @@ async def export_public_card(
     auth_service: AuthService = Depends(get_auth_service),
     db: AsyncSession = Depends(get_db),
 ):
+    from app.services import citation_styles
+
+    # Retrocompat : `?format=harvard` reste supporte en alias de
+    # `?format=txt&style=harvard`. Les liens deja emis (partages, exports
+    # sauves) continuent de repondre le meme contenu.
+    if format in _STYLE_ALIASES:
+        style = style or format
+        format = "txt"
+
     if format not in _EXPORT_FORMATS:
         raise HTTPException(
             status_code=422,
@@ -606,8 +627,17 @@ async def export_public_card(
                 f"Supported: {', '.join(sorted(_EXPORT_FORMATS))}",
             },
         )
+    if style is not None and style not in citation_styles.STYLES:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "validation_error",
+                "message": f"Unknown style '{style}'. "
+                f"Supported: {', '.join(sorted(citation_styles.STYLES))}",
+            },
+        )
+
     from app.core.config import get_settings
-    from app.services import citation_styles
     from app.services import export as export_service
     from app.services.export_neighbourhood import collect_neighbourhood, parse_degrees
     from app.services.export_scope import parse_scope
@@ -652,14 +682,21 @@ async def export_public_card(
         content = export_service.export_ris(card)
     elif format == "csl":
         content = export_service.export_csl_json(card)
-    elif format in citation_styles.STYLES:
-        content = export_service.export_bibliography(card, public_url, format)
+    elif format == "txt":
+        # Style APA par defaut quand rien n'est demande : c'etait la seule
+        # option historiquement offerte et beaucoup d'utilisateurs attendent
+        # ce style par convention.
+        content = export_service.export_bibliography(card, public_url, style or "apa")
     elif format == "docx":
         content = export_service.export_docx(card, public_url, scope, neighbourhood)
     else:
         content = export_service.export_markdown(card, public_url, scope, neighbourhood)
 
     media_type, ext = _EXPORT_FORMATS[format]
+    # Extension enrichie du style quand c'est txt : `card-slug.harvard.txt` dit
+    # au lecteur ce qu'il vient de telecharger, `card-slug.txt` ne dit rien.
+    if format == "txt":
+        ext = f"{style or 'apa'}.txt"
     return Response(
         content=content,
         media_type=media_type,
