@@ -324,7 +324,33 @@
         Suggestions repérées dans le texte (vérifiées mot pour mot) :
       </p>
       {#each suggestions as sug (sug.char_offset)}
-        <div class="rounded-lg border border-info/30 bg-info/5 px-3 py-2 space-y-1.5">
+        <div class="relative rounded-lg border border-info/30 bg-info/5 px-3 py-2 pr-8 space-y-1.5">
+          <!--
+            Petite croix pour retirer une suggestion sans l'ajouter. Non persistée :
+            un nouvel appel à « Suggérer » repose la même liste. C'est le geste
+            « laissez-moi voir les autres sans que celle-ci m'encombre ».
+          -->
+          <button
+            type="button"
+            aria-label="Retirer cette suggestion"
+            title="Retirer cette suggestion"
+            class="absolute top-1.5 right-1.5 w-6 h-6 flex items-center justify-center rounded-full text-ink-tertiary hover:text-ink-primary hover:bg-info/10 transition-colors"
+            onclick={() =>
+              (suggestions = suggestions.filter((s) => s.char_offset !== sug.char_offset))}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              class="w-3.5 h-3.5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              aria-hidden="true"
+            >
+              <line x1="6" y1="6" x2="18" y2="18" />
+              <line x1="18" y1="6" x2="6" y2="18" />
+            </svg>
+          </button>
           <p class="text-xs text-ink-tertiary">
             …{sug.context_before}<span class="text-ink-primary font-medium">{sug.text}</span
             >{sug.context_after}…
