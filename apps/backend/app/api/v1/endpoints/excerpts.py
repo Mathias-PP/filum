@@ -36,6 +36,7 @@ from app.schemas.source import SourceExcerptResponse
 from app.services.chunker import Unite, chunk_text, compter, suggerer_taille
 from app.services.document_text import MAX_BYTES, DocumentError, extract_text
 from app.services.excerpt_anchor import Selecteurs, ancrer
+from app.services.excerpt_guards import LONGUEUR_MIN_AUTONOME_MOTS, passage_a_besoin_de_contexte
 from app.services.excerpt_indexing import indexer_sans_bruit
 from app.services.llm import suggest_annotation, suggest_chunk_titles, suggest_excerpts
 
@@ -556,6 +557,15 @@ async def suggest_source_excerpts(
         if not m:
             continue
         text = m.group(0)
+        # Garde-fou anti extrait hors-contexte : sous 15 mots, on regarde ce
+        # que l'entourage exige. Le prompt LLM demande déjà d'étendre, mais
+        # un modèle qui coupe trop court malgré la consigne ne doit pas
+        # produire un extrait « cela améliore la mémoire » cité seul, dont
+        # personne ne peut retrouver le référent. On rejette : mieux vaut
+        # une suggestion en moins qu'une phrase orpheline qui pousse au
+        # contresens.
+        if len(text.split()) < LONGUEUR_MIN_AUTONOME_MOTS and passage_a_besoin_de_contexte(text):
+            continue
         key = re.sub(r"\s+", " ", text).lower()
         if key in seen:
             continue
