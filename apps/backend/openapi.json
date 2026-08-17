@@ -1,0 +1,7196 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Filum API",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/attestations/content": {
+      "post": {
+        "tags": [
+          "attestations"
+        ],
+        "summary": "Create Attestation",
+        "operationId": "create_attestation_api_v1_attestations_content_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AttestationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttestationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/attestations/{attestation_id}": {
+      "get": {
+        "tags": [
+          "attestations"
+        ],
+        "summary": "Get Attestation",
+        "operationId": "get_attestation_api_v1_attestations__attestation_id__get",
+        "parameters": [
+          {
+            "name": "attestation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Attestation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttestationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/attestations/{attestation_id}/verify": {
+      "get": {
+        "tags": [
+          "attestations"
+        ],
+        "summary": "Verify Attestation",
+        "operationId": "verify_attestation_api_v1_attestations__attestation_id__verify_get",
+        "parameters": [
+          {
+            "name": "attestation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Attestation Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttestationVerifyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/google/login": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Google Login",
+        "operationId": "google_login_api_v1_auth_google_login_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/google/callback": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Google Callback",
+        "operationId": "google_callback_api_v1_auth_google_callback_get",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Code"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Logout",
+        "operationId": "logout_api_v1_auth_logout_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Get Me",
+        "operationId": "get_me_api_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/mcp-token": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Create Mcp Token",
+        "description": "Un jeton porteur pour parler au MCP au nom de l'utilisateur connecte.\n\nLe meme mecanisme que la session web : JWT signe par le meme secret, meme\nduree de vie (sept jours). L'agent le copie une fois dans son client MCP\net le passe en en-tete Authorization. Aucun droit particulier n'est\naccorde : le jeton porte l'identite du createur, rien de plus.",
+        "operationId": "create_mcp_token_api_v1_auth_mcp_token_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Create Mcp Token Api V1 Auth Mcp Token Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cards/{card_id}/connections": {
+      "get": {
+        "tags": [
+          "connections"
+        ],
+        "summary": "List Connections",
+        "operationId": "list_connections_api_v1_cards__card_id__connections_get",
+        "parameters": [
+          {
+            "name": "card_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Card Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardConnections"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cards/{card_id}/connections/{source_id}/confirm": {
+      "post": {
+        "tags": [
+          "connections"
+        ],
+        "summary": "Confirm Connection",
+        "operationId": "confirm_connection_api_v1_cards__card_id__connections__source_id__confirm_post",
+        "parameters": [
+          {
+            "name": "card_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Card Id"
+            }
+          },
+          {
+            "name": "source_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Source Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardConnection"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cards/{card_id}/connections/{source_id}": {
+      "delete": {
+        "tags": [
+          "connections"
+        ],
+        "summary": "Remove Connection",
+        "operationId": "remove_connection_api_v1_cards__card_id__connections__source_id__delete",
+        "parameters": [
+          {
+            "name": "card_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Card Id"
+            }
+          },
+          {
+            "name": "source_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Source Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cards/citations": {
+      "get": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "List Incoming Citations Endpoint",
+        "description": "Qui s'appuie sur mes fiches.\n\nComme /cards/deleted, cette route DOIT preceder /cards/{card_id} : sinon\nFastAPI lirait 'citations' comme un UUID et repondrait 422.",
+        "operationId": "list_incoming_citations_endpoint_api_v1_cards_citations_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncomingCitationsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cards/citations/seen": {
+      "post": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Mark Incoming Citations Seen",
+        "description": "Marque les citations entrantes comme vues et renvoie la liste a jour.\n\nOn renvoie la liste plutot qu'un 204 : le frontend doit pouvoir afficher\nd'un seul coup ce qui vient d'etre marque, sans re-interroger et sans\nreconstruire l'etat de son cote.",
+        "operationId": "mark_incoming_citations_seen_api_v1_cards_citations_seen_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncomingCitationsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cards/deleted": {
+      "get": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "List My Deleted Cards",
+        "description": "Liste les fiches soft-deletees de l'utilisateur (corbeille).\n\nChaque fiche est restaurable via POST /cards/{id}/restore. IMPORTANT :\ncette route DOIT etre declaree AVANT /cards/{card_id} pour que FastAPI\nne matche pas 'deleted' comme un UUID (retournerait 422 sinon).",
+        "operationId": "list_my_deleted_cards_api_v1_cards_deleted_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CardResponse"
+                  },
+                  "title": "Response List My Deleted Cards Api V1 Cards Deleted Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cards/search": {
+      "get": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Search Cards",
+        "description": "Fiches selectionnables comme parent : celles de l'user + les publiques.\n\nSert le picker de meta-fiches. Comme /cards/deleted, DOIT etre declaree\navant /cards/{card_id} sinon FastAPI matche 'search' comme un UUID.",
+        "operationId": "search_cards_api_v1_cards_search_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "default": "",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CardSearchResult"
+                  },
+                  "title": "Response Search Cards Api V1 Cards Search Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cards": {
+      "get": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "List My Cards",
+        "operationId": "list_my_cards_api_v1_cards_get",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CardResponse"
+                  },
+                  "title": "Response List My Cards Api V1 Cards Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Create Card",
+        "operationId": "create_card_api_v1_cards_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CardCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cards/{card_id}": {
+      "get": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Get Card",
+        "operationId": "get_card_api_v1_cards__card_id__get",
+        "parameters": [
+          {
+            "name": "card_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Card Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Update Card",
+        "operationId": "update_card_api_v1_cards__card_id__patch",
+        "parameters": [
+          {
+            "name": "card_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Card Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CardUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Delete Card",
+        "operationId": "delete_card_api_v1_cards__card_id__delete",
+        "parameters": [
+          {
+            "name": "card_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Card Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cards/{card_id}/publish": {
+      "post": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Publish Card",
+        "operationId": "publish_card_api_v1_cards__card_id__publish_post",
+        "parameters": [
+          {
+            "name": "card_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Card Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Publish Card Api V1 Cards  Card Id  Publish Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cards/{card_id}/restore": {
+      "post": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Restore Card",
+        "operationId": "restore_card_api_v1_cards__card_id__restore_post",
+        "parameters": [
+          {
+            "name": "card_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Card Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/@{creator_slug}/{card_slug}": {
+      "get": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Get Public Card",
+        "operationId": "get_public_card_api_v1___creator_slug___card_slug__get",
+        "parameters": [
+          {
+            "name": "creator_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Creator Slug"
+            }
+          },
+          {
+            "name": "card_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Card Slug"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/@{creator_slug}/{card_slug}/graph": {
+      "get": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Get Public Card Graph",
+        "description": "Meta-graphe autour d'une fiche : ses sources et les fiches qu'elles citent.\n\n``include_sources=false`` renvoie le graphe fiches-seules (constellation).\nLe parcours ne traverse que des fiches publiees et publiques.",
+        "operationId": "get_public_card_graph_api_v1___creator_slug___card_slug__graph_get",
+        "parameters": [
+          {
+            "name": "creator_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Creator Slug"
+            }
+          },
+          {
+            "name": "card_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Card Slug"
+            }
+          },
+          {
+            "name": "depth",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 3,
+              "minimum": 0,
+              "default": 1,
+              "title": "Depth"
+            }
+          },
+          {
+            "name": "include_sources",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Include Sources"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardGraphResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/@{creator_slug}/{card_slug}/export": {
+      "get": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Export Public Card",
+        "operationId": "export_public_card_api_v1___creator_slug___card_slug__export_get",
+        "parameters": [
+          {
+            "name": "creator_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Creator Slug"
+            }
+          },
+          {
+            "name": "card_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Card Slug"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "json",
+              "title": "Format"
+            }
+          },
+          {
+            "name": "include",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Sections a emporter, separees par des virgules. Absent : tout. Vide : les references seules. Ignore par les formats bibliographiques (BibTeX, RIS, CSL, styles de citation).",
+              "title": "Include"
+            },
+            "description": "Sections a emporter, separees par des virgules. Absent : tout. Vide : les references seules. Ignore par les formats bibliographiques (BibTeX, RIS, CSL, styles de citation)."
+          },
+          {
+            "name": "cited",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Fiches citees par celle-ci. « 2 » : degres 1 et 2, complets. « 1:excerpts|2: » : un perimetre par degre, meme grammaire qu'`include`. Absent : aucune.",
+              "title": "Cited"
+            },
+            "description": "Fiches citees par celle-ci. « 2 » : degres 1 et 2, complets. « 1:excerpts|2: » : un perimetre par degre, meme grammaire qu'`include`. Absent : aucune."
+          },
+          {
+            "name": "citing",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Fiches qui citent celle-ci. Meme grammaire que `cited`.",
+              "title": "Citing"
+            },
+            "description": "Fiches qui citent celle-ci. Meme grammaire que `cited`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cards/{card_id}/claim-requests": {
+      "post": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Create Claim Request",
+        "operationId": "create_claim_request_api_v1_cards__card_id__claim_requests_post",
+        "parameters": [
+          {
+            "name": "card_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Card Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClaimRequestCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimRequestResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/discover": {
+      "get": {
+        "tags": [
+          "discover"
+        ],
+        "summary": "Discover Cards",
+        "operationId": "discover_cards_api_v1_discover_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "default": "",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "creator",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Creator"
+            }
+          },
+          {
+            "name": "content_author",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Content Author"
+            }
+          },
+          {
+            "name": "platform",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 50
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Platform"
+            }
+          },
+          {
+            "name": "content_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 50
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Content Type"
+            }
+          },
+          {
+            "name": "published_after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Published After"
+            }
+          },
+          {
+            "name": "published_before",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Published Before"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(recent|sources|title)$",
+              "default": "recent",
+              "title": "Sort"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscoverResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/discover/creators": {
+      "get": {
+        "tags": [
+          "discover"
+        ],
+        "summary": "Discover Creators",
+        "description": "Recherche de createurs qui ont au moins une fiche publique publiee.\n\nIndexe uniquement ce que le createur a rendu public : `username`,\n`display_name`, `bio`. Ne remonte jamais un compte qui n'a publie\naucune fiche : sans corpus, un profil n'a rien a offrir a la recherche.",
+        "operationId": "discover_creators_api_v1_discover_creators_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "default": "",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatorSearchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/discover/facets": {
+      "get": {
+        "tags": [
+          "discover"
+        ],
+        "summary": "Discover Facets",
+        "description": "Ce qui existe reellement dans le corpus public.\n\nL'interface n'invente pas ses filtres a partir des enums du modele : une\ncase a cocher qui ne ramene jamais rien est une promesse non tenue.",
+        "operationId": "discover_facets_api_v1_discover_facets_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscoverFacets"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/excerpts/search": {
+      "get": {
+        "tags": [
+          "excerpts"
+        ],
+        "summary": "Search Excerpts",
+        "description": "Les extraits de la personne connectee les plus proches de `q`.",
+        "operationId": "search_excerpts_api_v1_excerpts_search_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "title": "Q"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExcerptSearchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sources/{source_id}/excerpts": {
+      "post": {
+        "tags": [
+          "excerpts"
+        ],
+        "summary": "Create Excerpt",
+        "operationId": "create_excerpt_api_v1_sources__source_id__excerpts_post",
+        "parameters": [
+          {
+            "name": "source_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Source Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExcerptCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceExcerptResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sources/{source_id}/excerpts/{excerpt_id}": {
+      "delete": {
+        "tags": [
+          "excerpts"
+        ],
+        "summary": "Delete Excerpt",
+        "operationId": "delete_excerpt_api_v1_sources__source_id__excerpts__excerpt_id__delete",
+        "parameters": [
+          {
+            "name": "source_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Source Id"
+            }
+          },
+          {
+            "name": "excerpt_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Excerpt Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sources/{source_id}/excerpts/chunk": {
+      "post": {
+        "tags": [
+          "excerpts"
+        ],
+        "summary": "Chunk Source Text",
+        "description": "Propose un decoupage du texte de la source, colle ou recupere.\n\nLe collage prime : c'est le seul chemin qui marche sur les cinq sites de la\nmesure ou la recuperation ne rend rien. Sans collage on tente le site, et\nune page illisible rend un decoupage vide plutot qu'une erreur.",
+        "operationId": "chunk_source_text_api_v1_sources__source_id__excerpts_chunk_post",
+        "parameters": [
+          {
+            "name": "source_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Source Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChunkRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChunkResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sources/{source_id}/excerpts/chunk-file": {
+      "post": {
+        "tags": [
+          "excerpts"
+        ],
+        "summary": "Chunk Uploaded Document",
+        "description": "Le meme decoupage, a partir d'un document depose.\n\nUn chapitre ne se colle pas : au-dela de quelques pages, le collage devient\nla corvee qui fait renoncer. Le fichier est lu puis jete — rien n'en est\nconserve, seul son texte sert d'assise au decoupage.",
+        "operationId": "chunk_uploaded_document_api_v1_sources__source_id__excerpts_chunk_file_post",
+        "parameters": [
+          {
+            "name": "source_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Source Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_chunk_uploaded_document_api_v1_sources__source_id__excerpts_chunk_file_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChunkResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sources/{source_id}/excerpts/verify": {
+      "post": {
+        "tags": [
+          "excerpts"
+        ],
+        "summary": "Verify Source Excerpts",
+        "description": "Reancre chaque extrait dans la page telle qu'elle est aujourd'hui.\n\nC'est ce qui fait passer un extrait de *declare* a *verifie* : sans cette\npasse, la fiche affirme qu'une source dit quelque chose sans que rien ne\nl'ait jamais confirme.\n\nSur les cinq sites de la mesure ou la page ne rend rien, cette passe ne\ndisait ni oui ni non. Un texte fourni la debloque : la relecture porte\nalors sur ce que l'auteur·ice atteste etre la source.",
+        "operationId": "verify_source_excerpts_api_v1_sources__source_id__excerpts_verify_post",
+        "parameters": [
+          {
+            "name": "source_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Source Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ProvidedText"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExcerptVerifyResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sources/{source_id}/excerpts/suggest": {
+      "post": {
+        "tags": [
+          "excerpts"
+        ],
+        "summary": "Suggest Source Excerpts",
+        "operationId": "suggest_source_excerpts_api_v1_sources__source_id__excerpts_suggest_post",
+        "parameters": [
+          {
+            "name": "source_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Source Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ProvidedText"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExcerptSuggestResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sources/{source_id}/excerpts/annotate": {
+      "post": {
+        "tags": [
+          "excerpts"
+        ],
+        "summary": "Annotate Excerpt",
+        "description": "Propose un intitule et une phrase de mise en situation pour un passage.\n\nNe persiste rien et n'engage a rien : la reponse remplit des champs que\nl'auteur·ice relit, corrige ou vide avant d'ajouter le passage.",
+        "operationId": "annotate_excerpt_api_v1_sources__source_id__excerpts_annotate_post",
+        "parameters": [
+          {
+            "name": "source_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Source Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnnotationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnotationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/feed": {
+      "get": {
+        "tags": [
+          "feed"
+        ],
+        "summary": "Read Feed",
+        "operationId": "read_feed_api_v1_feed_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Curseur : ne renvoyer que les entrees strictement anterieures. Cursor-based, jamais offset : un feed grandit constamment et l'offset sauterait des entrees quand une nouvelle apparait entre deux appels.",
+              "title": "Before"
+            },
+            "description": "Curseur : ne renvoyer que les entrees strictement anterieures. Cursor-based, jamais offset : un feed grandit constamment et l'offset sauterait des entrees quand une nouvelle apparait entre deux appels."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/import/parse": {
+      "post": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "Parse Import File",
+        "operationId": "parse_import_file_api_v1_import_parse_post",
+        "parameters": [
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Format"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_parse_import_file_api_v1_import_parse_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportParseResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/import/paste": {
+      "post": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "Parse Pasted Bibliography",
+        "operationId": "parse_pasted_bibliography_api_v1_import_paste_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportPasteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportParseResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/import/youtube-transcript": {
+      "post": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "Suggest From Youtube Transcript",
+        "operationId": "suggest_from_youtube_transcript_api_v1_import_youtube_transcript_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/YoutubeTranscriptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/YoutubeTranscriptResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/import/from-content-url": {
+      "post": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "Parse Content Url",
+        "description": "URL d'un contenu -> draft de fiche complet (titre + sources citees).\n\nRate-limit 5/heure (extraction LLM + fetch reseau). Auth requise.\nSSRF-safe via assert_url_is_safe.",
+        "operationId": "parse_content_url_api_v1_import_from_content_url_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportFromUrlRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportFromUrlResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/import/url-metadata": {
+      "post": {
+        "tags": [
+          "imports"
+        ],
+        "summary": "Url Metadata",
+        "description": "Metadata legere (titre, description) d'une URL de contenu.\n\nVersion rapide de /import/from-content-url : un seul fetch de page,\npas d'extraction de references ni de LLM. Sert a pre-remplir le\nformulaire « Nouvelle fiche » pendant la saisie.",
+        "operationId": "url_metadata_api_v1_import_url_metadata_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UrlMetadataRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UrlMetadataResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/og": {
+      "get": {
+        "tags": [
+          "og"
+        ],
+        "summary": "Og Image",
+        "operationId": "og_image_api_v1_og_get",
+        "parameters": [
+          {
+            "name": "title",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Card title to show in the image",
+              "title": "Title"
+            },
+            "description": "Card title to show in the image"
+          },
+          {
+            "name": "creator",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Creator name",
+              "title": "Creator"
+            },
+            "description": "Creator name"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sources/extract": {
+      "get": {
+        "tags": [
+          "sources"
+        ],
+        "summary": "Extract Url Metadata",
+        "description": "Extract title, authors, date, citations from a URL (best-effort, no auth required).\n\nProtected against SSRF: the URL is resolved and any non-public IP\n(loopback, private RFC1918, link-local, cloud-metadata 169.254.169.254,\netc.) is rejected up-front. See `app.core.url_safety`.",
+        "operationId": "extract_url_metadata_api_v1_sources_extract_get",
+        "parameters": [
+          {
+            "name": "url",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uri",
+              "minLength": 1,
+              "maxLength": 2083,
+              "description": "URL to extract metadata from",
+              "title": "Url"
+            },
+            "description": "URL to extract metadata from"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sources": {
+      "get": {
+        "tags": [
+          "sources"
+        ],
+        "summary": "List Sources",
+        "operationId": "list_sources_api_v1_sources_get",
+        "parameters": [
+          {
+            "name": "card_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Card ID to list sources for",
+              "title": "Card Id"
+            },
+            "description": "Card ID to list sources for"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SourceResponse"
+                  },
+                  "title": "Response List Sources Api V1 Sources Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "sources"
+        ],
+        "summary": "Create Source",
+        "operationId": "create_source_api_v1_sources_post",
+        "parameters": [
+          {
+            "name": "card_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Card Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sources/batch": {
+      "post": {
+        "tags": [
+          "sources"
+        ],
+        "summary": "Create Sources Batch",
+        "description": "Cree N sources en une transaction. Ce qui echoue est retourne dans\n``failed`` avec la raison, ce qui reussit dans ``created``.\n\nImpact archives Wayback : chaque source non-manuellement-archivee\ndeclenche une tache de fond apres commit (idem POST individuel).",
+        "operationId": "create_sources_batch_api_v1_sources_batch_post",
+        "parameters": [
+          {
+            "name": "card_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Card ID to attach the sources to",
+              "title": "Card Id"
+            },
+            "description": "Card ID to attach the sources to"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceBatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceBatchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sources/archive": {
+      "post": {
+        "tags": [
+          "sources"
+        ],
+        "summary": "Archive Sources",
+        "description": "Relance l'archivage des sources demandees, une ou plusieurs.\n\nL'archivage automatique est cadence et peut prendre des heures sur une\ngrosse fiche. Cette route permet de designer ce qui presse, sans attendre\nle tour de role.",
+        "operationId": "archive_sources_api_v1_sources_archive_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArchiveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchiveResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/sources/{source_id}": {
+      "patch": {
+        "tags": [
+          "sources"
+        ],
+        "summary": "Update Source",
+        "operationId": "update_source_api_v1_sources__source_id__patch",
+        "parameters": [
+          {
+            "name": "source_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Source Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "sources"
+        ],
+        "summary": "Delete Source",
+        "operationId": "delete_source_api_v1_sources__source_id__delete",
+        "parameters": [
+          {
+            "name": "source_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Source Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/me/linked-accounts": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Get My Linked Accounts",
+        "operationId": "get_my_linked_accounts_api_v1_users_me_linked_accounts_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LinkedAccountOut"
+                  },
+                  "type": "array",
+                  "title": "Response Get My Linked Accounts Api V1 Users Me Linked Accounts Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Replace My Linked Accounts",
+        "description": "Remplace la liste complète (sémantique PUT — simple pour la v0).",
+        "operationId": "replace_my_linked_accounts_api_v1_users_me_linked_accounts_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkedAccountsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/LinkedAccountOut"
+                  },
+                  "type": "array",
+                  "title": "Response Replace My Linked Accounts Api V1 Users Me Linked Accounts Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/users/@{slug}": {
+      "get": {
+        "tags": [
+          "users"
+        ],
+        "summary": "Get User Profile",
+        "operationId": "get_user_profile_api_v1_users___slug__get",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Slug"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get User Profile Api V1 Users   Slug  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health Check",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/database": {
+      "get": {
+        "summary": "Database Health",
+        "operationId": "database_health_health_database_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/llm-diagnose": {
+      "get": {
+        "summary": "Llm Diagnose",
+        "description": "Dit si la couche LLM est vivante, en faisant vraiment un aller-retour.\n\nTrois fonctionnalités dependent d'un modele et se degradent en silence\nquand il n'y en a pas : suggestion de citations, suggestion d'intitules,\nextraction de metadonnees. Rien dans l'interface ne distingue « le modele\nn'a rien trouve » de « il n'y a pas de modele », d'ou cette sonde.\n\nAccessible sans auth, donc elle ne rend ni la cle, ni de traceback : juste\nde quoi savoir quoi corriger. Le cout d'un appel est negligeable et il est\ndeclenche a la main.",
+        "operationId": "llm_diagnose_health_llm_diagnose_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/publish-diagnose": {
+      "get": {
+        "summary": "Publish Diagnose",
+        "description": "Exercise the publish code path on the demo user's seeded card.\n\nDebug-only: returns tracebacks and internal paths, so it must not be\nreachable on a production deployment (debug=false). Dry-run: the UPDATE\nis flushed (exercising the exact DB write path) then rolled back.",
+        "operationId": "publish_diagnose_health_publish_diagnose_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/seed": {
+      "get": {
+        "summary": "Seed Health",
+        "description": "Diagnose: does the demo user + card exist? Debug-only.\n\nEnumerates every username and card slug, so it must not be reachable\non a production deployment (debug=false).",
+        "operationId": "seed_health_health_seed_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AnnotationRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "surrounding": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Surrounding"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "AnnotationRequest"
+      },
+      "AnnotationResponse": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "context": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context"
+          },
+          "llm_enabled": {
+            "type": "boolean",
+            "title": "Llm Enabled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "llm_enabled"
+        ],
+        "title": "AnnotationResponse"
+      },
+      "ArchiveRequest": {
+        "properties": {
+          "source_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "title": "Source Ids"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_ids"
+        ],
+        "title": "ArchiveRequest"
+      },
+      "ArchiveResponse": {
+        "properties": {
+          "scheduled": {
+            "type": "integer",
+            "title": "Scheduled"
+          },
+          "already_archived": {
+            "type": "integer",
+            "title": "Already Archived"
+          },
+          "nothing_to_archive": {
+            "type": "integer",
+            "title": "Nothing To Archive"
+          },
+          "already_running": {
+            "type": "integer",
+            "title": "Already Running"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scheduled",
+          "already_archived",
+          "nothing_to_archive",
+          "already_running"
+        ],
+        "title": "ArchiveResponse",
+        "description": "Ce que la demande a reellement declenche, poste par poste.\n\nUn seul compteur global mentirait : « 40 » ne dirait pas si les 40 partent\na l'archivage ou si la moitie etait deja archivee. Chaque sort a sa case."
+      },
+      "ArchiveStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "archived",
+          "failed",
+          "not_applicable"
+        ],
+        "title": "ArchiveStatus"
+      },
+      "AttestationCreate": {
+        "properties": {
+          "content_url": {
+            "type": "string",
+            "title": "Content Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "content_url"
+        ],
+        "title": "AttestationCreate"
+      },
+      "AttestationResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "User Id"
+          },
+          "content_url": {
+            "type": "string",
+            "title": "Content Url"
+          },
+          "attested_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Attested At"
+          },
+          "canonical_hash": {
+            "type": "string",
+            "title": "Canonical Hash"
+          },
+          "signature": {
+            "type": "string",
+            "title": "Signature"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "content_url",
+          "attested_at",
+          "canonical_hash",
+          "signature",
+          "created_at"
+        ],
+        "title": "AttestationResponse"
+      },
+      "AttestationVerifyResponse": {
+        "properties": {
+          "valid": {
+            "type": "boolean",
+            "title": "Valid"
+          },
+          "attestation_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attestation Id"
+          },
+          "content_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Url"
+          },
+          "creator_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Creator Slug"
+          },
+          "public_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Public Key"
+          },
+          "hash_algorithm": {
+            "type": "string",
+            "title": "Hash Algorithm",
+            "default": "SHA-256"
+          },
+          "signature_algorithm": {
+            "type": "string",
+            "title": "Signature Algorithm",
+            "default": "Ed25519"
+          },
+          "canonicalization": {
+            "type": "string",
+            "title": "Canonicalization",
+            "default": "RFC 8785 JSON Canonicalization Scheme"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "valid"
+        ],
+        "title": "AttestationVerifyResponse"
+      },
+      "AuthorKind": {
+        "type": "string",
+        "enum": [
+          "chercheur",
+          "media",
+          "institution-publique",
+          "gouvernement",
+          "ecole",
+          "laboratoire",
+          "entreprise",
+          "asso",
+          "individu"
+        ],
+        "title": "AuthorKind"
+      },
+      "Body_chunk_uploaded_document_api_v1_sources__source_id__excerpts_chunk_file_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/Unite",
+            "default": "caracteres"
+          },
+          "size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size"
+          },
+          "suggest_titles": {
+            "type": "boolean",
+            "title": "Suggest Titles",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_chunk_uploaded_document_api_v1_sources__source_id__excerpts_chunk_file_post"
+      },
+      "Body_parse_import_file_api_v1_import_parse_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_parse_import_file_api_v1_import_parse_post"
+      },
+      "CardConnection": {
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Source Id"
+          },
+          "source_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Title"
+          },
+          "source_url": {
+            "type": "string",
+            "title": "Source Url"
+          },
+          "card_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Card Id"
+          },
+          "card_title": {
+            "type": "string",
+            "title": "Card Title"
+          },
+          "card_slug": {
+            "type": "string",
+            "title": "Card Slug"
+          },
+          "card_creator_slug": {
+            "type": "string",
+            "title": "Card Creator Slug"
+          },
+          "stance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/app__models__source__SourceStance"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "origin": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LinkOrigin"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "confirmed": {
+            "type": "boolean",
+            "title": "Confirmed"
+          },
+          "editable": {
+            "type": "boolean",
+            "title": "Editable"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_id",
+          "source_title",
+          "source_url",
+          "card_id",
+          "card_title",
+          "card_slug",
+          "card_creator_slug",
+          "stance",
+          "origin",
+          "confirmed",
+          "editable"
+        ],
+        "title": "CardConnection"
+      },
+      "CardConnections": {
+        "properties": {
+          "outgoing": {
+            "items": {
+              "$ref": "#/components/schemas/CardConnection"
+            },
+            "type": "array",
+            "title": "Outgoing"
+          },
+          "incoming": {
+            "items": {
+              "$ref": "#/components/schemas/CardConnection"
+            },
+            "type": "array",
+            "title": "Incoming"
+          }
+        },
+        "type": "object",
+        "required": [
+          "outgoing",
+          "incoming"
+        ],
+        "title": "CardConnections"
+      },
+      "CardCreate": {
+        "properties": {
+          "slug": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 3,
+            "pattern": "^[a-z0-9][a-z0-9-]{2,80}$",
+            "title": "Slug"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "content_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Url"
+          },
+          "content_authors": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Authors"
+          },
+          "platform": {
+            "$ref": "#/components/schemas/Platform",
+            "default": "other"
+          },
+          "content_type": {
+            "$ref": "#/components/schemas/ContentType",
+            "default": "video"
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/Visibility",
+            "default": "public"
+          },
+          "is_seed": {
+            "type": "boolean",
+            "title": "Is Seed",
+            "default": false
+          },
+          "format": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceFormat"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "author_kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthorKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "slug",
+          "title"
+        ],
+        "title": "CardCreate"
+      },
+      "CardDetail": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "content_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Url"
+          },
+          "content_authors": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Authors"
+          },
+          "platform": {
+            "$ref": "#/components/schemas/Platform"
+          },
+          "content_type": {
+            "$ref": "#/components/schemas/ContentType"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CardStatus"
+          },
+          "is_seed": {
+            "type": "boolean",
+            "title": "Is Seed",
+            "default": false
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/Visibility",
+            "default": "public"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "format": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceFormat"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "author_kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthorKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "creator": {
+            "$ref": "#/components/schemas/CreatorInfo"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourceResponse"
+            },
+            "type": "array",
+            "title": "Sources"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/CardStats"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "slug",
+          "title",
+          "description",
+          "content_url",
+          "platform",
+          "content_type",
+          "status",
+          "published_at",
+          "created_at",
+          "updated_at",
+          "creator",
+          "sources",
+          "stats"
+        ],
+        "title": "CardDetail"
+      },
+      "CardGraphResponse": {
+        "properties": {
+          "root_id": {
+            "type": "string",
+            "title": "Root Id"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/GraphNodeResponse"
+            },
+            "type": "array",
+            "title": "Nodes"
+          },
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/GraphEdgeResponse"
+            },
+            "type": "array",
+            "title": "Edges"
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "root_id",
+          "nodes",
+          "edges"
+        ],
+        "title": "CardGraphResponse"
+      },
+      "CardResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "content_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Url"
+          },
+          "content_authors": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Authors"
+          },
+          "platform": {
+            "$ref": "#/components/schemas/Platform"
+          },
+          "content_type": {
+            "$ref": "#/components/schemas/ContentType"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CardStatus"
+          },
+          "is_seed": {
+            "type": "boolean",
+            "title": "Is Seed",
+            "default": false
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/Visibility",
+            "default": "public"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "format": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceFormat"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "author_kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthorKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "slug",
+          "title",
+          "description",
+          "content_url",
+          "platform",
+          "content_type",
+          "status",
+          "published_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "CardResponse"
+      },
+      "CardSearchResult": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "creator_slug": {
+            "type": "string",
+            "title": "Creator Slug"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "is_own": {
+            "type": "boolean",
+            "title": "Is Own"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "slug",
+          "creator_slug",
+          "status",
+          "is_own"
+        ],
+        "title": "CardSearchResult",
+        "description": "Fiche selectionnable comme parent (meta-fiches).\n\nVolontairement minimal : le picker n'a besoin que de quoi identifier une\nfiche et construire son URL publique."
+      },
+      "CardStats": {
+        "properties": {
+          "total_sources": {
+            "type": "integer",
+            "title": "Total Sources",
+            "default": 0
+          },
+          "chercheur": {
+            "type": "integer",
+            "title": "Chercheur",
+            "default": 0
+          },
+          "media": {
+            "type": "integer",
+            "title": "Media",
+            "default": 0
+          },
+          "institution_publique": {
+            "type": "integer",
+            "title": "Institution Publique",
+            "default": 0
+          },
+          "individu": {
+            "type": "integer",
+            "title": "Individu",
+            "default": 0
+          },
+          "archived_count": {
+            "type": "integer",
+            "title": "Archived Count",
+            "default": 0
+          },
+          "archivable_count": {
+            "type": "integer",
+            "title": "Archivable Count",
+            "default": 0
+          },
+          "all_archived": {
+            "type": "boolean",
+            "title": "All Archived",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "CardStats"
+      },
+      "CardStatus": {
+        "type": "string",
+        "enum": [
+          "draft",
+          "published",
+          "archived"
+        ],
+        "title": "CardStatus"
+      },
+      "CardUpdate": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "content_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Url"
+          },
+          "content_authors": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Authors"
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Platform"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "content_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContentType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "is_seed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Seed"
+          },
+          "visibility": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Visibility"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "format": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceFormat"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "author_kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthorKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CardUpdate"
+      },
+      "ChunkOut": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "start": {
+            "type": "integer",
+            "title": "Start"
+          },
+          "end": {
+            "type": "integer",
+            "title": "End"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "start",
+          "end",
+          "size"
+        ],
+        "title": "ChunkOut"
+      },
+      "ChunkRequest": {
+        "properties": {
+          "text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/Unite",
+            "default": "caracteres"
+          },
+          "size": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size"
+          },
+          "suggest_titles": {
+            "type": "boolean",
+            "title": "Suggest Titles",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "ChunkRequest"
+      },
+      "ChunkResponse": {
+        "properties": {
+          "chunks": {
+            "items": {
+              "$ref": "#/components/schemas/ChunkOut"
+            },
+            "type": "array",
+            "title": "Chunks"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "text_source": {
+            "type": "string",
+            "title": "Text Source"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/Unite"
+          },
+          "suggested_size": {
+            "type": "integer",
+            "title": "Suggested Size"
+          },
+          "llm_enabled": {
+            "type": "boolean",
+            "title": "Llm Enabled"
+          }
+        },
+        "type": "object",
+        "required": [
+          "chunks",
+          "text",
+          "text_source",
+          "unit",
+          "suggested_size",
+          "llm_enabled"
+        ],
+        "title": "ChunkResponse"
+      },
+      "ClaimRequestCreate": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "channel_url": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 8,
+            "title": "Channel Url"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "channel_url"
+        ],
+        "title": "ClaimRequestCreate"
+      },
+      "ClaimRequestResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok",
+            "default": true
+          }
+        },
+        "type": "object",
+        "title": "ClaimRequestResponse"
+      },
+      "ContentType": {
+        "type": "string",
+        "enum": [
+          "video",
+          "article",
+          "post",
+          "podcast",
+          "other"
+        ],
+        "title": "ContentType"
+      },
+      "CreatorInfo": {
+        "properties": {
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "bio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bio"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "public_key": {
+            "type": "string",
+            "title": "Public Key"
+          }
+        },
+        "type": "object",
+        "required": [
+          "slug",
+          "display_name",
+          "bio",
+          "avatar_url",
+          "public_key"
+        ],
+        "title": "CreatorInfo"
+      },
+      "CreatorResult": {
+        "properties": {
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "bio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bio"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "is_verified": {
+            "type": "boolean",
+            "title": "Is Verified"
+          },
+          "published_cards_count": {
+            "type": "integer",
+            "title": "Published Cards Count"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "slug",
+          "display_name",
+          "bio",
+          "avatar_url",
+          "is_verified",
+          "published_cards_count",
+          "url"
+        ],
+        "title": "CreatorResult"
+      },
+      "CreatorSearchResponse": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/CreatorResult"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "limit",
+          "offset",
+          "results"
+        ],
+        "title": "CreatorSearchResponse"
+      },
+      "DiscoverFacets": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "platforms": {
+            "items": {
+              "$ref": "#/components/schemas/Facet"
+            },
+            "type": "array",
+            "title": "Platforms"
+          },
+          "content_types": {
+            "items": {
+              "$ref": "#/components/schemas/Facet"
+            },
+            "type": "array",
+            "title": "Content Types"
+          },
+          "creators": {
+            "items": {
+              "$ref": "#/components/schemas/Facet"
+            },
+            "type": "array",
+            "title": "Creators"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "platforms",
+          "content_types",
+          "creators"
+        ],
+        "title": "DiscoverFacets"
+      },
+      "DiscoverResponse": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/DiscoverResult"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "limit",
+          "offset",
+          "results"
+        ],
+        "title": "DiscoverResponse"
+      },
+      "DiscoverResult": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "creator_slug": {
+            "type": "string",
+            "title": "Creator Slug"
+          },
+          "creator_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Creator Name"
+          },
+          "content_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Url"
+          },
+          "content_authors": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Authors"
+          },
+          "content_type": {
+            "type": "string",
+            "title": "Content Type"
+          },
+          "platform": {
+            "type": "string",
+            "title": "Platform"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "source_count": {
+            "type": "integer",
+            "title": "Source Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "slug",
+          "title",
+          "description",
+          "url",
+          "creator_slug",
+          "creator_name",
+          "content_url",
+          "content_authors",
+          "content_type",
+          "platform",
+          "published_at",
+          "source_count"
+        ],
+        "title": "DiscoverResult"
+      },
+      "ExcerptCheck": {
+        "properties": {
+          "excerpt_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Excerpt Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "context_before": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Before"
+          },
+          "context_after": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context After"
+          }
+        },
+        "type": "object",
+        "required": [
+          "excerpt_id",
+          "status"
+        ],
+        "title": "ExcerptCheck"
+      },
+      "ExcerptCreate": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Text"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "context": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context"
+          },
+          "suggested_by_ai": {
+            "type": "boolean",
+            "title": "Suggested By Ai",
+            "default": false
+          },
+          "annotated_by_ai": {
+            "type": "boolean",
+            "title": "Annotated By Ai",
+            "default": false
+          },
+          "anchor_prefix": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anchor Prefix"
+          },
+          "anchor_suffix": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anchor Suffix"
+          },
+          "anchor_offset": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anchor Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "ExcerptCreate"
+      },
+      "ExcerptSearchHit": {
+        "properties": {
+          "excerpt_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Excerpt Id"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "context": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context"
+          },
+          "source_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Source Id"
+          },
+          "source_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Title"
+          },
+          "source_url": {
+            "type": "string",
+            "title": "Source Url"
+          },
+          "card_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Card Id"
+          },
+          "card_slug": {
+            "type": "string",
+            "title": "Card Slug"
+          },
+          "card_title": {
+            "type": "string",
+            "title": "Card Title"
+          },
+          "similarity": {
+            "type": "number",
+            "title": "Similarity"
+          }
+        },
+        "type": "object",
+        "required": [
+          "excerpt_id",
+          "text",
+          "title",
+          "context",
+          "source_id",
+          "source_title",
+          "source_url",
+          "card_id",
+          "card_slug",
+          "card_title",
+          "similarity"
+        ],
+        "title": "ExcerptSearchHit"
+      },
+      "ExcerptSearchResponse": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/ExcerptSearchHit"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query",
+          "results",
+          "available"
+        ],
+        "title": "ExcerptSearchResponse"
+      },
+      "ExcerptSuggestResponse": {
+        "properties": {
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestedExcerpt"
+            },
+            "type": "array",
+            "title": "Suggestions"
+          },
+          "page_text_length": {
+            "type": "integer",
+            "title": "Page Text Length"
+          },
+          "llm_enabled": {
+            "type": "boolean",
+            "title": "Llm Enabled"
+          },
+          "access_blocked": {
+            "type": "boolean",
+            "title": "Access Blocked",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "suggestions",
+          "page_text_length",
+          "llm_enabled"
+        ],
+        "title": "ExcerptSuggestResponse"
+      },
+      "ExcerptVerifyResponse": {
+        "properties": {
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/ExcerptCheck"
+            },
+            "type": "array",
+            "title": "Checks"
+          },
+          "page_text_length": {
+            "type": "integer",
+            "title": "Page Text Length"
+          },
+          "access_blocked": {
+            "type": "boolean",
+            "title": "Access Blocked",
+            "default": false
+          },
+          "text_source": {
+            "type": "string",
+            "title": "Text Source",
+            "default": "fetched"
+          }
+        },
+        "type": "object",
+        "required": [
+          "checks",
+          "page_text_length"
+        ],
+        "title": "ExcerptVerifyResponse"
+      },
+      "ExtractResponse": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "authors": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authors"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "citations_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Citations Count"
+          },
+          "format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "author_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Kind"
+          },
+          "journal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Journal"
+          },
+          "volume": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volume"
+          },
+          "pages": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pages"
+          },
+          "publisher": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publisher"
+          },
+          "doi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doi"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "authors",
+          "published_at",
+          "description",
+          "citations_count"
+        ],
+        "title": "ExtractResponse"
+      },
+      "Facet": {
+        "properties": {
+          "value": {
+            "type": "string",
+            "title": "Value"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "count"
+        ],
+        "title": "Facet"
+      },
+      "FeedEntry": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Occurred At"
+          },
+          "unpublished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unpublished At"
+          },
+          "creator_slug": {
+            "type": "string",
+            "title": "Creator Slug"
+          },
+          "creator_display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Creator Display Name"
+          },
+          "card_title": {
+            "type": "string",
+            "title": "Card Title"
+          },
+          "card_url": {
+            "type": "string",
+            "title": "Card Url"
+          },
+          "card_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Card Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "occurred_at",
+          "unpublished_at",
+          "creator_slug",
+          "creator_display_name",
+          "card_title",
+          "card_url",
+          "card_description"
+        ],
+        "title": "FeedEntry"
+      },
+      "FeedResponse": {
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Before"
+          },
+          "next_before": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Before"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/FeedEntry"
+            },
+            "type": "array",
+            "title": "Entries"
+          }
+        },
+        "type": "object",
+        "required": [
+          "limit",
+          "before",
+          "next_before",
+          "entries"
+        ],
+        "title": "FeedResponse"
+      },
+      "GraphEdgeResponse": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "target": {
+            "type": "string",
+            "title": "Target"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "stance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stance"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "target",
+          "kind"
+        ],
+        "title": "GraphEdgeResponse"
+      },
+      "GraphNodeResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "depth": {
+            "type": "integer",
+            "title": "Depth"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "authors": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authors"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format"
+          },
+          "author_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Kind"
+          },
+          "stance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stance"
+          },
+          "is_pivot": {
+            "type": "boolean",
+            "title": "Is Pivot",
+            "default": false
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "journal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Journal"
+          },
+          "publisher": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publisher"
+          },
+          "doi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doi"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          },
+          "creator_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Creator Slug"
+          },
+          "creator_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Creator Name"
+          },
+          "sources_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sources Count"
+          },
+          "linked_card_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linked Card Id"
+          },
+          "linked_card_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linked Card Slug"
+          },
+          "linked_card_creator_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linked Card Creator Slug"
+          },
+          "is_seed": {
+            "type": "boolean",
+            "title": "Is Seed",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "depth"
+        ],
+        "title": "GraphNodeResponse",
+        "description": "Noeud du meta-graphe : soit une fiche, soit une de ses sources."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ImportFromUrlRequest": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 8,
+            "title": "Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "ImportFromUrlRequest"
+      },
+      "ImportFromUrlResponse": {
+        "properties": {
+          "card": {
+            "$ref": "#/components/schemas/ImportedCardDraft"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/ImportedSourceDraft"
+            },
+            "type": "array",
+            "title": "Sources"
+          },
+          "skipped": {
+            "type": "integer",
+            "title": "Skipped"
+          },
+          "references_section_found": {
+            "type": "boolean",
+            "title": "References Section Found"
+          },
+          "fetch_status": {
+            "type": "string",
+            "title": "Fetch Status"
+          },
+          "wayback_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wayback Url"
+          },
+          "extraction_confidence": {
+            "type": "string",
+            "title": "Extraction Confidence",
+            "default": "medium"
+          },
+          "refs_from_oracle": {
+            "type": "integer",
+            "title": "Refs From Oracle",
+            "default": 0
+          },
+          "refs_from_enrichment": {
+            "type": "integer",
+            "title": "Refs From Enrichment",
+            "default": 0
+          },
+          "refs_dropped_validation": {
+            "type": "integer",
+            "title": "Refs Dropped Validation",
+            "default": 0
+          },
+          "refs_dropped_scoring": {
+            "type": "integer",
+            "title": "Refs Dropped Scoring",
+            "default": 0
+          },
+          "refs_dropped_s2_hallucination": {
+            "type": "integer",
+            "title": "Refs Dropped S2 Hallucination",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "card",
+          "sources",
+          "skipped",
+          "references_section_found",
+          "fetch_status"
+        ],
+        "title": "ImportFromUrlResponse"
+      },
+      "ImportParseResponse": {
+        "properties": {
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/ImportedSourceDraft"
+            },
+            "type": "array",
+            "title": "Sources"
+          },
+          "skipped": {
+            "type": "integer",
+            "title": "Skipped"
+          },
+          "format_detected": {
+            "type": "string",
+            "title": "Format Detected"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sources",
+          "skipped",
+          "format_detected"
+        ],
+        "title": "ImportParseResponse"
+      },
+      "ImportPasteRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 100000,
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "ImportPasteRequest"
+      },
+      "ImportedCardDraft": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "authors": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authors"
+          },
+          "content_url": {
+            "type": "string",
+            "title": "Content Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "content_url"
+        ],
+        "title": "ImportedCardDraft"
+      },
+      "ImportedSourceDraft": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "authors": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authors"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "format": {
+            "type": "string",
+            "title": "Format",
+            "default": "texte"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category",
+            "default": "page-web"
+          },
+          "author_kind": {
+            "type": "string",
+            "title": "Author Kind",
+            "default": "individu"
+          },
+          "journal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Journal"
+          },
+          "volume": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volume"
+          },
+          "pages": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pages"
+          },
+          "publisher": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publisher"
+          },
+          "doi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doi"
+          },
+          "classification": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classification"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "ImportedSourceDraft"
+      },
+      "IncomingCitationResponse": {
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Source Id"
+          },
+          "cited_card_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Cited Card Id"
+          },
+          "cited_card_title": {
+            "type": "string",
+            "title": "Cited Card Title"
+          },
+          "cited_card_slug": {
+            "type": "string",
+            "title": "Cited Card Slug"
+          },
+          "citing_card_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Citing Card Id"
+          },
+          "citing_card_title": {
+            "type": "string",
+            "title": "Citing Card Title"
+          },
+          "citing_card_slug": {
+            "type": "string",
+            "title": "Citing Card Slug"
+          },
+          "citing_creator_slug": {
+            "type": "string",
+            "title": "Citing Creator Slug"
+          },
+          "citing_creator_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Citing Creator Name"
+          },
+          "stance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stance"
+          },
+          "cited_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Cited At"
+          },
+          "is_new": {
+            "type": "boolean",
+            "title": "Is New"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_id",
+          "cited_card_id",
+          "cited_card_title",
+          "cited_card_slug",
+          "citing_card_id",
+          "citing_card_title",
+          "citing_card_slug",
+          "citing_creator_slug",
+          "cited_at",
+          "is_new"
+        ],
+        "title": "IncomingCitationResponse",
+        "description": "Une fiche publique tierce cite une fiche de l'utilisateur."
+      },
+      "IncomingCitationsResponse": {
+        "properties": {
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/IncomingCitationResponse"
+            },
+            "type": "array",
+            "title": "Citations"
+          },
+          "new_count": {
+            "type": "integer",
+            "title": "New Count"
+          },
+          "seen_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seen At"
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "citations",
+          "new_count"
+        ],
+        "title": "IncomingCitationsResponse"
+      },
+      "LinkOrigin": {
+        "type": "string",
+        "enum": [
+          "manuel",
+          "url",
+          "contenu"
+        ],
+        "title": "LinkOrigin",
+        "description": "D'ou vient le lien d'une source vers une fiche Philum.\n\nMANUEL et URL sont des gestes du createur : ils valent confirmation.\nCONTENU est une hypothese de la machine (meme DOI, meme URL normalisee) :\nelle vaut proposition, pas declaration. Les confondre ferait porter au\ncreateur une affirmation qu'il n'a pas faite."
+      },
+      "LinkedAccountIn": {
+        "properties": {
+          "platform": {
+            "$ref": "#/components/schemas/LinkedPlatform"
+          },
+          "url": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 8,
+            "title": "Url"
+          },
+          "handle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Handle"
+          }
+        },
+        "type": "object",
+        "required": [
+          "platform",
+          "url"
+        ],
+        "title": "LinkedAccountIn"
+      },
+      "LinkedAccountOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "platform": {
+            "$ref": "#/components/schemas/LinkedPlatform"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "handle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Handle"
+          },
+          "verified": {
+            "type": "boolean",
+            "title": "Verified",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "platform",
+          "url",
+          "handle"
+        ],
+        "title": "LinkedAccountOut"
+      },
+      "LinkedAccountsUpdate": {
+        "properties": {
+          "accounts": {
+            "items": {
+              "$ref": "#/components/schemas/LinkedAccountIn"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Accounts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "accounts"
+        ],
+        "title": "LinkedAccountsUpdate"
+      },
+      "LinkedPlatform": {
+        "type": "string",
+        "enum": [
+          "youtube",
+          "instagram",
+          "x",
+          "tiktok",
+          "twitch",
+          "site"
+        ],
+        "title": "LinkedPlatform"
+      },
+      "OpenAccessStatus": {
+        "type": "string",
+        "enum": [
+          "diamond",
+          "gold",
+          "green",
+          "hybrid",
+          "bronze",
+          "open",
+          "closed",
+          "unverifiable"
+        ],
+        "title": "OpenAccessStatus",
+        "description": "Route d'acces libre a la reference, selon OpenAlex.\n\n`CLOSED` (verifie, rien de gratuit) et `UNVERIFIABLE` (verification\nimpossible) sont deux affirmations differentes : les confondre pourrait\ndetourner le lecteur d'une version libre qui existe."
+      },
+      "Platform": {
+        "type": "string",
+        "enum": [
+          "youtube",
+          "podcast",
+          "blog",
+          "x",
+          "bluesky",
+          "revue-scientifique",
+          "other"
+        ],
+        "title": "Platform"
+      },
+      "ProvidedText": {
+        "properties": {
+          "text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "title": "ProvidedText",
+        "description": "Le texte de la source, quand la page ne le rend pas.\n\nColle ou tire d'un document depose : dans les deux cas c'est l'auteur·ice\nqui atteste que ce texte est celui de la source. Le serveur ne le stocke\npas, il s'en sert le temps de l'appel."
+      },
+      "RetractionStatus": {
+        "type": "string",
+        "enum": [
+          "none",
+          "retracted",
+          "concern",
+          "corrected",
+          "unverifiable"
+        ],
+        "title": "RetractionStatus",
+        "description": "Etat de l'article aux yeux de Crossref / Retraction Watch.\n\n`NONE` (aucun avis, verifie) et `UNVERIFIABLE` (verification impossible)\nsont deux affirmations differentes ; les confondre reviendrait a rassurer\nle lecteur sans avoir rien verifie."
+      },
+      "SourceBatchDuplicate": {
+        "properties": {
+          "index": {
+            "type": "integer",
+            "title": "Index"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "existing_source_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Existing Source Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "index",
+          "url"
+        ],
+        "title": "SourceBatchDuplicate",
+        "description": "Reference deja presente dans la fiche, ecartee sans etre une erreur."
+      },
+      "SourceBatchError": {
+        "properties": {
+          "index": {
+            "type": "integer",
+            "title": "Index"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "error": {
+            "type": "string",
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "index",
+          "url",
+          "error"
+        ],
+        "title": "SourceBatchError"
+      },
+      "SourceBatchRequest": {
+        "properties": {
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourceCreate"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Sources"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sources"
+        ],
+        "title": "SourceBatchRequest"
+      },
+      "SourceBatchResponse": {
+        "properties": {
+          "created": {
+            "items": {
+              "$ref": "#/components/schemas/SourceResponse"
+            },
+            "type": "array",
+            "title": "Created"
+          },
+          "failed": {
+            "items": {
+              "$ref": "#/components/schemas/SourceBatchError"
+            },
+            "type": "array",
+            "title": "Failed"
+          },
+          "duplicates": {
+            "items": {
+              "$ref": "#/components/schemas/SourceBatchDuplicate"
+            },
+            "type": "array",
+            "title": "Duplicates",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "created",
+          "failed"
+        ],
+        "title": "SourceBatchResponse"
+      },
+      "SourceCategory": {
+        "type": "string",
+        "enum": [
+          "article-scientifique",
+          "preprint",
+          "article-presse",
+          "communique",
+          "documentaire",
+          "interview",
+          "podcast",
+          "blog",
+          "post-social",
+          "livre",
+          "page-web",
+          "notes"
+        ],
+        "title": "SourceCategory"
+      },
+      "SourceCreate": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Url",
+            "default": ""
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "authors": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authors"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "format": {
+            "$ref": "#/components/schemas/SourceFormat"
+          },
+          "category": {
+            "$ref": "#/components/schemas/SourceCategory"
+          },
+          "author_kind": {
+            "$ref": "#/components/schemas/AuthorKind"
+          },
+          "annotation": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annotation"
+          },
+          "stance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceStance-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "is_pivot": {
+            "type": "boolean",
+            "title": "Is Pivot",
+            "default": false
+          },
+          "parent_source_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Source Id"
+          },
+          "linked_card_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linked Card Id"
+          },
+          "journal": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Journal"
+          },
+          "volume": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volume"
+          },
+          "pages": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pages"
+          },
+          "publisher": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publisher"
+          },
+          "doi": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doi"
+          },
+          "archive_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archive Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "format",
+          "category",
+          "author_kind"
+        ],
+        "title": "SourceCreate"
+      },
+      "SourceExcerptResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "position": {
+            "type": "integer",
+            "title": "Position"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "context": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context"
+          },
+          "suggested_by_ai": {
+            "type": "boolean",
+            "title": "Suggested By Ai"
+          },
+          "annotated_by_ai": {
+            "type": "boolean",
+            "title": "Annotated By Ai",
+            "default": false
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified At"
+          },
+          "verified_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified Status"
+          },
+          "verified_text_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified Text Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "position",
+          "text",
+          "suggested_by_ai"
+        ],
+        "title": "SourceExcerptResponse"
+      },
+      "SourceFormat": {
+        "type": "string",
+        "enum": [
+          "texte",
+          "video",
+          "image",
+          "audio",
+          "data"
+        ],
+        "title": "SourceFormat"
+      },
+      "SourceResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "authors": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authors"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "format": {
+            "$ref": "#/components/schemas/SourceFormat"
+          },
+          "category": {
+            "$ref": "#/components/schemas/SourceCategory"
+          },
+          "author_kind": {
+            "$ref": "#/components/schemas/AuthorKind"
+          },
+          "annotation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annotation"
+          },
+          "stance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/app__schemas__source__SourceStance"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "is_pivot": {
+            "type": "boolean",
+            "title": "Is Pivot"
+          },
+          "archive_status": {
+            "$ref": "#/components/schemas/ArchiveStatus"
+          },
+          "archive_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archive Url"
+          },
+          "archive_timestamp": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archive Timestamp"
+          },
+          "parent_source_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Source Id"
+          },
+          "linked_card_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linked Card Id"
+          },
+          "linked_card_sources_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linked Card Sources Count"
+          },
+          "conflict_of_interest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conflict Of Interest"
+          },
+          "retraction_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RetractionStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "retraction_notice_doi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retraction Notice Doi"
+          },
+          "retraction_checked_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retraction Checked At"
+          },
+          "oa_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OpenAccessStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "oa_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oa Url"
+          },
+          "oa_license": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oa License"
+          },
+          "in_doaj": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "In Doaj"
+          },
+          "oa_checked_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oa Checked At"
+          },
+          "journal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Journal"
+          },
+          "volume": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volume"
+          },
+          "pages": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pages"
+          },
+          "publisher": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publisher"
+          },
+          "doi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doi"
+          },
+          "citations_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Citations Count"
+          },
+          "subscribers_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subscribers Count"
+          },
+          "views_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views Count"
+          },
+          "impact_factor": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Impact Factor"
+          },
+          "excerpts": {
+            "items": {
+              "$ref": "#/components/schemas/SourceExcerptResponse"
+            },
+            "type": "array",
+            "title": "Excerpts"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "url",
+          "title",
+          "authors",
+          "published_at",
+          "format",
+          "category",
+          "author_kind",
+          "annotation",
+          "is_pivot",
+          "archive_status",
+          "archive_url",
+          "archive_timestamp",
+          "parent_source_id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SourceResponse"
+      },
+      "SourceStance-Input": {
+        "type": "string",
+        "enum": [
+          "appuie",
+          "nuance-contredit",
+          "mentionne",
+          "contexte"
+        ],
+        "title": "SourceStance",
+        "description": "Rapport declare entre le propos du contenu et ce que dit la source.\n\nDeclaratif, jamais infere. `None` (non declare) n'est pas `MENTIONNE` :\nl'un est un silence, l'autre une reponse."
+      },
+      "SourceUpdate": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "authors": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authors"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "format": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceFormat"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "author_kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthorKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "annotation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annotation"
+          },
+          "stance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceStance-Input"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "is_pivot": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Pivot"
+          },
+          "parent_source_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Source Id"
+          },
+          "linked_card_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linked Card Id"
+          },
+          "journal": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Journal"
+          },
+          "volume": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volume"
+          },
+          "pages": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pages"
+          },
+          "publisher": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publisher"
+          },
+          "doi": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doi"
+          },
+          "archive_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 2000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archive Url"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SourceUpdate"
+      },
+      "SuggestedExcerpt": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "char_offset": {
+            "type": "integer",
+            "title": "Char Offset"
+          },
+          "context_before": {
+            "type": "string",
+            "title": "Context Before"
+          },
+          "context_after": {
+            "type": "string",
+            "title": "Context After"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "char_offset",
+          "context_before",
+          "context_after"
+        ],
+        "title": "SuggestedExcerpt"
+      },
+      "Unite": {
+        "type": "string",
+        "enum": [
+          "caracteres",
+          "mots",
+          "tokens"
+        ],
+        "title": "Unite",
+        "description": "L'unite dans laquelle la taille cible est exprimee."
+      },
+      "UrlMetadataRequest": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "UrlMetadataRequest"
+      },
+      "UrlMetadataResponse": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "authors": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authors"
+          },
+          "access_blocked": {
+            "type": "boolean",
+            "title": "Access Blocked",
+            "default": false
+          }
+        },
+        "type": "object",
+        "title": "UrlMetadataResponse"
+      },
+      "UserResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "title": "Email"
+          },
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "bio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bio"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "is_verified": {
+            "type": "boolean",
+            "title": "Is Verified"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "username",
+          "display_name",
+          "bio",
+          "avatar_url",
+          "is_verified",
+          "created_at"
+        ],
+        "title": "UserResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "Visibility": {
+        "type": "string",
+        "enum": [
+          "public",
+          "private"
+        ],
+        "title": "Visibility"
+      },
+      "YoutubeTranscriptRequest": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "title": "YoutubeTranscriptRequest"
+      },
+      "YoutubeTranscriptResponse": {
+        "properties": {
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          },
+          "transcript_chars": {
+            "type": "integer",
+            "title": "Transcript Chars",
+            "default": 0
+          },
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/ImportedSourceDraft"
+            },
+            "type": "array",
+            "title": "Suggestions",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "available"
+        ],
+        "title": "YoutubeTranscriptResponse"
+      },
+      "app__models__source__SourceStance": {
+        "type": "string",
+        "enum": [
+          "appuie",
+          "nuance-contredit",
+          "mentionne",
+          "contexte"
+        ],
+        "title": "SourceStance",
+        "description": "Rapport declare entre le propos du contenu et ce que dit la source.\n\nDeclaratif, jamais infere : c'est l'auteur de la fiche qui l'affirme et en\nrepond. NULL reste la valeur normale -- une bibliographie non annotee vaut\nmieux qu'une bibliographie annotee au hasard."
+      },
+      "app__schemas__source__SourceStance": {
+        "type": "string",
+        "enum": [
+          "appuie",
+          "nuance-contredit",
+          "mentionne",
+          "contexte"
+        ],
+        "title": "SourceStance",
+        "description": "Rapport declare entre le propos du contenu et ce que dit la source.\n\nDeclaratif, jamais infere. `None` (non declare) n'est pas `MENTIONNE` :\nl'un est un silence, l'autre une reponse."
+      }
+    }
+  }
+}

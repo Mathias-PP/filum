@@ -96,8 +96,12 @@ uploads/
 railway_dump.sql
 infra/oracle/backups/
 
-# === Schéma OpenAPI exporté (artefact de build, cf. generate:api) ===
-apps/backend/openapi.json
+# Schéma OpenAPI : commité délibérément comme contrat public versionné
+# (comme un lockfile). Régénéré par
+# `uv run python -m app.scripts.export_openapi`. La CI (job Contract API
+# Sync) refuse tout drift entre le code Python, ce fichier et
+# `apps/frontend/src/lib/api/generated.ts`.
+# (Ancienne ligne `apps/backend/openapi.json` retirée le 2026-08-17.)
 
 # === Documentation générée ===
 docs/_build/
