@@ -6025,11 +6025,26 @@
               }
             ],
             "title": "Text"
+          },
+          "include_source_annotation": {
+            "type": "boolean",
+            "title": "Include Source Annotation",
+            "default": true
+          },
+          "include_existing_excerpts": {
+            "type": "boolean",
+            "title": "Include Existing Excerpts",
+            "default": true
+          },
+          "include_card_context": {
+            "type": "boolean",
+            "title": "Include Card Context",
+            "default": true
           }
         },
         "type": "object",
         "title": "ProvidedText",
-        "description": "Le texte de la source, quand la page ne le rend pas.\n\nColle ou tire d'un document depose : dans les deux cas c'est l'auteur·ice\nqui atteste que ce texte est celui de la source. Le serveur ne le stocke\npas, il s'en sert le temps de l'appel."
+        "description": "Le texte de la source, quand la page ne le rend pas.\n\nColle ou tire d'un document depose : dans les deux cas c'est l'auteur·ice\nqui atteste que ce texte est celui de la source. Le serveur ne le stocke\npas, il s'en sert le temps de l'appel.\n\nLes trois `include_*` (par defaut True) disent ce qu'on autorise le modele\na voir en plus du texte de la source. Une case decochee est une case\nd'auteur·ice qui prefere n'orienter le modele sur rien : la fiche\ngeneraliste dont l'annotation elargit trop, la source dont les extraits\ndeja poses induiraient un doublonnage stylistique, le cas ou l'ecart\nentre le theme de la fiche et le contenu ponctuel de cette source ne\ndoit pas biaiser la selection."
       },
       "RetractionStatus": {
         "type": "string",

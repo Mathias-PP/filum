@@ -73,6 +73,19 @@
    */
   let texteSource = $state('');
 
+  /**
+   * Ce que l'auteur·ice autorise le modèle à voir en plus du texte de la
+   * source. Défaut cochés : le cas courant est celui où titre, annotation
+   * et extraits déjà pris orientent la suggestion vers ce qui manque encore.
+   * Décocher sert le cas contraire : une fiche généraliste dont l'annotation
+   * biaiserait trop, ou une source dont on veut couvrir un autre pan que ce
+   * qu'on a déjà cité.
+   */
+  let optionsOuvertes = $state(false);
+  let inclureAnnotation = $state(true);
+  let inclureExtraits = $state(true);
+  let inclureFiche = $state(true);
+
   const complet = $derived(excerpts.length >= MAX);
 
   /**
@@ -126,7 +139,11 @@
     erreur = null;
     infoSuggestion = null;
     try {
-      const res = await api.excerpts.suggest(sourceId, texteSource.trim() || undefined);
+      const res = await api.excerpts.suggest(sourceId, texteSource.trim() || undefined, {
+        includeAnnotation: inclureAnnotation,
+        includeExistingExcerpts: inclureExtraits,
+        includeCardContext: inclureFiche,
+      });
       suggestions = res.suggestions;
       if (!res.llm_enabled) {
         infoSuggestion = "La suggestion IA n'est pas configurée sur ce serveur.";
@@ -230,8 +247,54 @@
       >
         Suggérer des citations (IA)
       </Button>
+      <button
+        type="button"
+        onclick={() => (optionsOuvertes = !optionsOuvertes)}
+        class="text-xs text-ink-tertiary hover:text-ink-secondary underline decoration-dotted underline-offset-2"
+        aria-expanded={optionsOuvertes}
+      >
+        {optionsOuvertes ? 'Cacher les options' : 'Options'}
+      </button>
     </div>
   </div>
+
+  {#if optionsOuvertes}
+    <!--
+      Ce que l'utilisateur autorise l'IA à voir en plus du texte de la source.
+      Les cases décochées orientent moins le modèle : utile quand l'annotation
+      de la source est trop large, ou quand on veut couvrir des affirmations
+      absentes des extraits déjà pris.
+    -->
+    <div
+      class="rounded-lg border border-border bg-surface-secondary/50 px-3 py-2 space-y-1.5 text-xs"
+    >
+      <p class="text-ink-tertiary">Ce que l'IA voit en plus du texte de la source :</p>
+      <label class="flex items-center gap-2 text-ink-secondary cursor-pointer">
+        <input
+          type="checkbox"
+          bind:checked={inclureFiche}
+          class="rounded border-border accent-info"
+        />
+        Titre et description de la fiche
+      </label>
+      <label class="flex items-center gap-2 text-ink-secondary cursor-pointer">
+        <input
+          type="checkbox"
+          bind:checked={inclureAnnotation}
+          class="rounded border-border accent-info"
+        />
+        Note de mise en situation de cette source
+      </label>
+      <label class="flex items-center gap-2 text-ink-secondary cursor-pointer">
+        <input
+          type="checkbox"
+          bind:checked={inclureExtraits}
+          class="rounded border-border accent-info"
+        />
+        Citations déjà retenues sur cette source (pour ne pas les redonner)
+      </label>
+    </div>
+  {/if}
 
   {#if erreur}
     <div class="rounded-lg bg-danger-bg border border-danger/30 px-3 py-2 text-xs text-danger">

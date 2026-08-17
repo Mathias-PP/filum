@@ -366,9 +366,20 @@ class ProvidedText(BaseModel):
     Colle ou tire d'un document depose : dans les deux cas c'est l'auteur·ice
     qui atteste que ce texte est celui de la source. Le serveur ne le stocke
     pas, il s'en sert le temps de l'appel.
+
+    Les trois `include_*` (par defaut True) disent ce qu'on autorise le modele
+    a voir en plus du texte de la source. Une case decochee est une case
+    d'auteur·ice qui prefere n'orienter le modele sur rien : la fiche
+    generaliste dont l'annotation elargit trop, la source dont les extraits
+    deja poses induiraient un doublonnage stylistique, le cas ou l'ecart
+    entre le theme de la fiche et le contenu ponctuel de cette source ne
+    doit pas biaiser la selection.
     """
 
     text: str | None = Field(default=None, max_length=MAX_PASTED_CHARS)
+    include_source_annotation: bool = True
+    include_existing_excerpts: bool = True
+    include_card_context: bool = True
 
 
 class ExcerptCheck(BaseModel):
@@ -516,6 +527,9 @@ async def suggest_source_excerpts(
     source = await _get_owned_source(source_id, current_user, db)
 
     page_text = (payload.text if payload else None) or ""
+    include_annotation = payload.include_source_annotation if payload else True
+    include_existing = payload.include_existing_excerpts if payload else True
+    include_card = payload.include_card_context if payload else True
     refuse = False
     if not page_text.strip():
         try:
@@ -543,8 +557,29 @@ async def suggest_source_excerpts(
             access_blocked=refuse,
         )
 
-    context = " — ".join(filter(None, [source.title, source.annotation])) or None
-    quotes = await suggest_excerpts(page_text, context)
+    morceaux_contexte: list[str] = []
+    if source.title:
+        morceaux_contexte.append(source.title)
+    if include_annotation and source.annotation:
+        morceaux_contexte.append(source.annotation)
+    if include_card:
+        card = await db.scalar(select(BiblioCard).where(BiblioCard.id == source.biblio_card_id))
+        if card:
+            entete_fiche = " — ".join(filter(None, [card.title, card.description]))
+            if entete_fiche:
+                morceaux_contexte.append(f"Fiche du createur : {entete_fiche}")
+    context = " — ".join(morceaux_contexte) or None
+
+    deja_cites: list[str] | None = None
+    if include_existing:
+        existants = await db.scalars(
+            select(SourceExcerpt).where(SourceExcerpt.source_id == source.id)
+        )
+        textes = [e.text for e in existants if e.text]
+        if textes:
+            deja_cites = textes
+
+    quotes = await suggest_excerpts(page_text, context, existing_excerpts=deja_cites)
     if quotes is None:
         return ExcerptSuggestResponse(
             suggestions=[], page_text_length=len(page_text), llm_enabled=False

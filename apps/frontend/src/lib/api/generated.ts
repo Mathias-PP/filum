@@ -2152,10 +2152,33 @@ export interface components {
      *     Colle ou tire d'un document depose : dans les deux cas c'est l'auteur·ice
      *     qui atteste que ce texte est celui de la source. Le serveur ne le stocke
      *     pas, il s'en sert le temps de l'appel.
+     *
+     *     Les trois `include_*` (par defaut True) disent ce qu'on autorise le modele
+     *     a voir en plus du texte de la source. Une case decochee est une case
+     *     d'auteur·ice qui prefere n'orienter le modele sur rien : la fiche
+     *     generaliste dont l'annotation elargit trop, la source dont les extraits
+     *     deja poses induiraient un doublonnage stylistique, le cas ou l'ecart
+     *     entre le theme de la fiche et le contenu ponctuel de cette source ne
+     *     doit pas biaiser la selection.
      */
     ProvidedText: {
       /** Text */
       text?: string | null;
+      /**
+       * Include Source Annotation
+       * @default true
+       */
+      include_source_annotation: boolean;
+      /**
+       * Include Existing Excerpts
+       * @default true
+       */
+      include_existing_excerpts: boolean;
+      /**
+       * Include Card Context
+       * @default true
+       */
+      include_card_context: boolean;
     };
     /**
      * RetractionStatus

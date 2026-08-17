@@ -373,10 +373,23 @@ export const api = {
       });
     },
 
-    suggest: async (sourceId: string, text?: string): Promise<ExcerptSuggestResponse> => {
+    suggest: async (
+      sourceId: string,
+      text?: string,
+      options?: {
+        includeAnnotation?: boolean;
+        includeExistingExcerpts?: boolean;
+        includeCardContext?: boolean;
+      }
+    ): Promise<ExcerptSuggestResponse> => {
       return request<ExcerptSuggestResponse>(`/sources/${sourceId}/excerpts/suggest`, {
         method: 'POST',
-        body: JSON.stringify({ text: text ?? null }),
+        body: JSON.stringify({
+          text: text ?? null,
+          include_source_annotation: options?.includeAnnotation ?? true,
+          include_existing_excerpts: options?.includeExistingExcerpts ?? true,
+          include_card_context: options?.includeCardContext ?? true,
+        }),
       });
     },
 
