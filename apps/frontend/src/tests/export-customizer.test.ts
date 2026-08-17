@@ -75,7 +75,7 @@ describe('ExportCustomizer', () => {
 
   it('un format bibliographique dit pourquoi les cases sont grisees', async () => {
     monter();
-    await fireEvent.change(screen.getByLabelText('Format'), {
+    await fireEvent.change(screen.getByLabelText('Format de fichier'), {
       target: { value: 'bibtex' },
     });
     const params = new URL(lienTelechargement().href).searchParams;

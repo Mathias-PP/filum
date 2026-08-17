@@ -1095,6 +1095,24 @@
             }
           },
           {
+            "name": "style",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Style de citation quand le format le porte. Valeurs : apa, harvard, mla, chicago, vancouver, ieee. Applique uniquement a `format=txt` (les autres formats ont leur propre grammaire et l'ignorent). Par defaut : apa quand `format=txt`.",
+              "title": "Style"
+            },
+            "description": "Style de citation quand le format le porte. Valeurs : apa, harvard, mla, chicago, vancouver, ieee. Applique uniquement a `format=txt` (les autres formats ont leur propre grammaire et l'ignorent). Par defaut : apa quand `format=txt`."
+          },
+          {
             "name": "include",
             "in": "query",
             "required": false,

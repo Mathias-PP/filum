@@ -91,4 +91,22 @@ describe('buildExportUrl', () => {
       expect(url.searchParams.get('include')).toBe('excerpts');
     }
   });
+
+  it('emet un style de biblio uniquement quand le format le porte', () => {
+    // txt le porte : la bibliographie est rendue dans le style choisi.
+    let url = new URL(buildExportUrl(BASE, { ...req, format: 'txt', style: 'harvard' }));
+    expect(url.searchParams.get('format')).toBe('txt');
+    expect(url.searchParams.get('style')).toBe('harvard');
+
+    // JSON ne le porte pas : donner un style est ignore, pas relaye. Sinon on
+    // fait croire au serveur qu'il fait quelque chose alors qu'il n'en fait rien.
+    url = new URL(buildExportUrl(BASE, { ...req, format: 'json', style: 'harvard' }));
+    expect(url.searchParams.has('style')).toBe(false);
+  });
+
+  it('n emet pas de style pour txt quand aucun n est demande', () => {
+    // Le backend choisit APA par defaut : le frontend n'a pas a l'imposer.
+    const url = new URL(buildExportUrl(BASE, { ...req, format: 'txt' }));
+    expect(url.searchParams.has('style')).toBe(false);
+  });
 });

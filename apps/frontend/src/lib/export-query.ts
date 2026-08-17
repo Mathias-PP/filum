@@ -60,8 +60,31 @@ export function serialiseDegrees(degrees: Scope[]): string {
   return degrees.map((scope, i) => `${i + 1}:${serialiseScope(scope)}`).join('|');
 }
 
+/** Les six styles de citation. Le style est un axe séparé du format : on choisit
+ * d'abord un format de fichier (Markdown, Word, texte brut, JSON, etc.), puis
+ * un style de biblio quand le format le porte. Le mélanger dans un seul menu
+ * (l'ancien comportement) laissait croire qu'un style était un format à part,
+ * et forçait à retélécharger la même fiche six fois pour comparer les styles. */
+export const CITATION_STYLES = [
+  { value: 'apa', label: 'APA 7' },
+  { value: 'harvard', label: 'Harvard' },
+  { value: 'mla', label: 'MLA 9' },
+  { value: 'chicago', label: 'Chicago (auteur-date)' },
+  { value: 'vancouver', label: 'Vancouver' },
+  { value: 'ieee', label: 'IEEE' },
+] as const;
+
+/** Seul le texte brut porte un style de citation aujourd'hui : les autres
+ * formats ont leur propre grammaire (BibTeX cite ses entrées avec sa syntaxe,
+ * JSON porte les champs bruts, Markdown/Word suivent la mise en forme Philum).
+ * La liste est cette porte de sortie : elle grandira quand on ajoutera par
+ * exemple un rendu PDF, à qui appliquer un style de biblio ferait sens. */
+export const STYLED_FORMATS = new Set(['txt']);
+
 export interface ExportRequest {
   format: string;
+  /** Style de citation (APA, Harvard, ...). Ignoré par les formats qui ne le portent pas. */
+  style?: string;
   scope: Scope;
   /** Les fiches que celle-ci cite — un périmètre par degré, dans l'ordre. */
   cited: Scope[];
@@ -71,6 +94,9 @@ export interface ExportRequest {
 
 export function buildExportUrl(base: string, req: ExportRequest): string {
   const params = new URLSearchParams({ format: req.format });
+  if (req.style && STYLED_FORMATS.has(req.format)) {
+    params.set('style', req.style);
+  }
   if (SCOPED_FORMATS.has(req.format)) {
     params.set('include', serialiseScope(req.scope));
   }

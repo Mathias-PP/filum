@@ -3209,6 +3209,8 @@ export interface operations {
     parameters: {
       query?: {
         format?: string;
+        /** @description Style de citation quand le format le porte. Valeurs : apa, harvard, mla, chicago, vancouver, ieee. Applique uniquement a `format=txt` (les autres formats ont leur propre grammaire et l'ignorent). Par defaut : apa quand `format=txt`. */
+        style?: string | null;
         /** @description Sections a emporter, separees par des virgules. Absent : tout. Vide : les references seules. Ignore par les formats bibliographiques (BibTeX, RIS, CSL, styles de citation). */
         include?: string | null;
         /** @description Fiches citees par celle-ci. « 2 » : degres 1 et 2, complets. « 1:excerpts|2: » : un perimetre par degre, meme grammaire qu'`include`. Absent : aucune. */
