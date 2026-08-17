@@ -59,19 +59,15 @@ class TestSlugCard:
         with pytest.raises(ValidationError):
             CardCreate(**_card_payload(slug="mon slug"))
 
-    def test_slug_avec_majuscule_est_refuse(self):
-        with pytest.raises(ValidationError):
-            CardCreate(**_card_payload(slug="MonSlug"))
+    # Duplique deliberement pas ici : `test_schemas.py::test_invalid_slug_uppercase`
+    # et `test_invalid_slug_too_short` couvrent deja majuscule et longueur.
+    # Les cas listes ci-dessous nomment un vecteur d'attaque specifique.
 
     def test_slug_qui_commence_par_tiret_est_refuse(self):
         """`^[a-z0-9]` en tete : un slug qui commence par '-' donne des URLs
         difficiles a partager oralement (« tiret ... »)."""
         with pytest.raises(ValidationError):
             CardCreate(**_card_payload(slug="-ma-fiche"))
-
-    def test_slug_trop_court_est_refuse(self):
-        with pytest.raises(ValidationError):
-            CardCreate(**_card_payload(slug="ab"))
 
     def test_slug_avec_html_est_refuse(self):
         """Une balise script dans un slug passerait a travers l'URL du browser
@@ -105,11 +101,8 @@ class TestChampsTexteCard:
 
 
 class TestChampsSourceCreate:
-    def test_url_tres_longue_est_refusee(self):
-        """max_length=2000 : au-dela ce n'est plus une URL utilisable, et
-        stocker 10 MB de "URL" par ligne cassait la base."""
-        with pytest.raises(ValidationError):
-            SourceCreate(**_source_payload(url="https://x.org/" + "a" * 3000))
+    # `test_schemas.py::test_url_max_length_enforced` couvre deja la borne URL
+    # a 2000 caracteres. Les cas ci-dessous portent sur d'autres champs.
 
     def test_title_source_tres_long_est_refuse(self):
         with pytest.raises(ValidationError):
@@ -142,9 +135,8 @@ class TestChampsSourceCreate:
         with pytest.raises(ValidationError):
             SourceCreate(**_source_payload(format="hologramme"))
 
-    def test_stance_hors_enum_est_refusee(self):
-        with pytest.raises(ValidationError):
-            SourceCreate(**_source_payload(stance="chelou"))
+    # `test_schemas.py::test_stance_rejects_an_invented_relation` couvre deja
+    # le cas d'un `stance` inconnu.
 
     def test_champ_inconnu_est_ignore_par_defaut(self):
         """Pydantic tolere par defaut les champs supplementaires. On documente
