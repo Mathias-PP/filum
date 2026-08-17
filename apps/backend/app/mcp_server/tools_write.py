@@ -260,6 +260,53 @@ async def add_excerpt(
     }
 
 
+#: Meme borne que le schema CardBase.content_text. 500 000 caracteres = un
+#: roman entier ; au-dela, c'est un corpus, sa voie est le decoupage en fiches.
+_MAX_CONTENT_TEXT = 500_000
+
+
+async def set_content_text(
+    db: AsyncSession,
+    user: User,
+    *,
+    card_slug: str,
+    text: str,
+    confirm_publication_rights: bool,
+) -> dict[str, Any]:
+    """Pose le texte integral du contenu documente sur la fiche `card_slug`.
+
+    Le texte est rendu tel quel sur la fiche publique. Un agent qui l'appelle
+    a la place de l'utilisateur porte la meme responsabilite que lui : il doit
+    savoir avoir le droit de publier ce texte (contenu propre, libre de droit,
+    ou extrait sous droit de citation). Le drapeau `confirm_publication_rights`
+    exige que ce choix soit explicite -- passer `False` refuse la pose, passer
+    `True` engage la responsabilite du compte qui appelle.
+
+    Chaine vide = retire le texte precedemment pose (l'affichage sur la fiche
+    publique disparait).
+    """
+    if not confirm_publication_rights:
+        raise ToolError(
+            "Passer confirm_publication_rights=true pour publier ce texte. "
+            "L'agent doit avoir constate que le contenu est publiable (contenu "
+            "propre, libre de droit, ou droit de citation dans les limites)."
+        )
+    if len(text) > _MAX_CONTENT_TEXT:
+        raise ToolError(
+            f"Texte trop long ({len(text)} caracteres, maximum {_MAX_CONTENT_TEXT:_}). "
+            "Decoupez le contenu en plusieurs fiches (une par chapitre / episode)."
+        )
+    card = await _fiche_du_createur(db, user, card_slug)
+    card.content_text = text or None
+    await db.commit()
+    return {
+        "creator": user.username,
+        "slug": card.slug,
+        "content_text_length": len(text),
+        "content_text_cleared": not bool(text),
+    }
+
+
 async def publish_card(db: AsyncSession, user: User, *, slug: str) -> dict[str, Any]:
     """Rend la fiche visible sur le web. Republier une fiche deja publique est
     un no-op cote feed : le registre du premier passage au public reste unique."""

@@ -22,6 +22,7 @@ from app.mcp_server.tools_write import (
     add_source,
     create_card,
     publish_card,
+    set_content_text,
 )
 
 
@@ -286,3 +287,103 @@ async def test_le_parcours_complet_produit_une_fiche_qu_un_agent_peut_relire(db_
     detail = await get_card(db_session, creator=test_user.username, slug="parcours-complet")
     assert detail is not None
     assert len(detail["sources"]) == 2
+
+
+@pytest.mark.asyncio
+async def test_set_content_text_sans_confirmation_est_refuse(
+    db_session, test_user, fiche_brouillon
+):
+    """L'agent doit engager sa responsabilite : passer False refuse la pose
+    avec un message qui dit ce qu'il faut faire."""
+    with pytest.raises(ToolError, match="confirm_publication_rights"):
+        await set_content_text(
+            db_session,
+            test_user,
+            card_slug="fiche-en-cours",
+            text="Texte a publier.",
+            confirm_publication_rights=False,
+        )
+
+
+@pytest.mark.asyncio
+async def test_set_content_text_pose_le_texte_sur_la_fiche(db_session, test_user, fiche_brouillon):
+    from app.mcp_server.tools import get_card
+
+    result = await set_content_text(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        text="Le texte integral du contenu.",
+        confirm_publication_rights=True,
+    )
+    assert result["content_text_length"] == len("Le texte integral du contenu.")
+    assert result["content_text_cleared"] is False
+    # Publier pour verifier que le texte remonte sur la vue publique.
+    await publish_card(db_session, test_user, slug="fiche-en-cours")
+    detail = await get_card(db_session, creator=test_user.username, slug="fiche-en-cours")
+    # get_card MCP renvoie une vue compacte : content_text est expose au meme
+    # niveau que description quand il existe. Verifions plutot en BDD :
+    from sqlalchemy import select as _select
+
+    from app.models.biblio_card import BiblioCard
+
+    card = await db_session.scalar(_select(BiblioCard).where(BiblioCard.slug == "fiche-en-cours"))
+    assert card.content_text == "Le texte integral du contenu."
+    # `detail` disponible pour un futur test si on ajoute content_text a get_card.
+    assert detail is not None
+
+
+@pytest.mark.asyncio
+async def test_set_content_text_chaine_vide_efface_le_texte(db_session, test_user, fiche_brouillon):
+    await set_content_text(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        text="Un texte.",
+        confirm_publication_rights=True,
+    )
+    result = await set_content_text(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        text="",
+        confirm_publication_rights=True,
+    )
+    assert result["content_text_cleared"] is True
+
+
+@pytest.mark.asyncio
+async def test_set_content_text_trop_long_est_refuse(db_session, test_user, fiche_brouillon):
+    with pytest.raises(ToolError, match="Texte trop long"):
+        await set_content_text(
+            db_session,
+            test_user,
+            card_slug="fiche-en-cours",
+            text="x" * 500_001,
+            confirm_publication_rights=True,
+        )
+
+
+@pytest.mark.asyncio
+async def test_set_content_text_fiche_d_autrui_est_refuse(db_session, test_user, fiche_brouillon):
+    from app.models.user import User
+
+    autre = User(
+        id=uuid4(),
+        google_id="autre-google-ct",
+        email="autrect@example.org",
+        username="autrect",
+        display_name="Autre CT",
+        public_key="d" * 64,
+        encrypted_private_key="k",
+    )
+    db_session.add(autre)
+    await db_session.commit()
+    with pytest.raises(ToolError, match="Aucune fiche"):
+        await set_content_text(
+            db_session,
+            autre,
+            card_slug="fiche-en-cours",
+            text="Tentative.",
+            confirm_publication_rights=True,
+        )
