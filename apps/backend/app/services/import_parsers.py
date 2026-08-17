@@ -150,7 +150,56 @@ def _dedupe_key(url: str) -> str:
     return url.rstrip("/").lower()
 
 
+def promouvoir_lien_du_titre(ref: ImportedRef) -> None:
+    """Extrait vers `url` / `doi` un lien laisse en clair dans le titre.
+
+    Un parseur libre (freetext, markdown colle, description YouTube) recopie
+    la citation telle qu'ecrite : « Titre. https://... (2024). ». Sans cette
+    passe, `url` reste vide, le bouton « Version live » cache un lien mort,
+    et l'URL n'est visible que comme fragment de texte dans le titre affiche.
+
+    Ne promeut que ce qui manque : une URL ou un DOI deja portes ne sont
+    jamais ecrases. Si le titre n'etait qu'une URL, on la promeut mais on la
+    laisse dans le titre : mieux vaut un titre = URL qu'un titre vide.
+    """
+    if ref.title:
+        found_doi = _DOI_RE.search(ref.title)
+        if found_doi and not ref.doi:
+            ref.doi = found_doi.group(1).rstrip(".,;)")
+            if not ref.url:
+                ref.url = _doi_to_url(ref.doi)
+            titre_sans_doi = ref.title.replace(found_doi.group(0), "").strip()
+            if titre_sans_doi:
+                ref.title = _nettoyer_ponctuation_orpheline(titre_sans_doi)
+        if not ref.url:
+            found_url = _URL_RE.search(ref.title)
+            if found_url:
+                ref.url = found_url.group(0).rstrip(".,;)")
+                titre_sans_url = ref.title.replace(found_url.group(0), "").strip()
+                if titre_sans_url:
+                    ref.title = _nettoyer_ponctuation_orpheline(titre_sans_url)
+                if not ref.doi:
+                    doi_dans_url = _doi_from_url(ref.url)
+                    if doi_dans_url:
+                        ref.doi = doi_dans_url
+
+
+_PONCTUATION_ORPHELINE = re.compile(r"\s+([.,;:])")
+_ESPACES_MULTIPLES = re.compile(r"\s{2,}")
+
+
+def _nettoyer_ponctuation_orpheline(titre: str) -> str:
+    """Recolle la ponctuation restee suspendue apres retrait du lien."""
+    nettoye = _PONCTUATION_ORPHELINE.sub(r"\1", titre)
+    nettoye = _ESPACES_MULTIPLES.sub(" ", nettoye).strip()
+    return nettoye.rstrip(" ,;:")
+
+
 def _dedupe(refs: list[ImportedRef]) -> list[ImportedRef]:
+    # La promotion du lien change la cle de dedup : deux refs qui portaient la
+    # meme URL dans le titre convergent enfin sur la meme entree.
+    for ref in refs:
+        promouvoir_lien_du_titre(ref)
     seen: set[str] = set()
     out: list[ImportedRef] = []
     for ref in refs:
