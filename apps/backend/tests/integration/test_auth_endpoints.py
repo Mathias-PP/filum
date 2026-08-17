@@ -38,6 +38,36 @@ async def test_me_with_valid_cookie_returns_user(client, session_token, test_use
 
 
 @pytest.mark.asyncio
+async def test_mcp_token_sans_session_est_refuse(client):
+    """L'endpoint refuse un anonyme : seul un utilisateur connecte peut
+    obtenir un jeton pour parler au MCP en son nom."""
+    response = await client.post("/api/v1/auth/mcp-token")
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_mcp_token_avec_session_livre_un_jwt_utilisable(
+    client, session_token, test_user, db_session
+):
+    """Le jeton retourne doit identifier l'utilisateur cote MCP.
+
+    On boucle sur `_user_depuis_token` pour verifier que le token n'est pas un
+    identifiant opaque mais bien le format que le MCP sait relire.
+    """
+    from app.mcp_server.auth import _user_depuis_token
+
+    client.cookies.set("filum_session", session_token)
+    response = await client.post("/api/v1/auth/mcp-token")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["token"]
+    assert body["expires_at"]
+    identifie = await _user_depuis_token(db_session, body["token"])
+    assert identifie is not None
+    assert identifie.id == test_user.id
+
+
+@pytest.mark.asyncio
 async def test_logout_clears_session_cookie(client, session_token):
     client.cookies.set("filum_session", session_token)
     response = await client.post("/api/v1/auth/logout", follow_redirects=False)

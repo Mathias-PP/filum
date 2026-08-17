@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import secrets
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import jwt
@@ -312,3 +313,20 @@ async def logout(request: Request, current_user: User = Depends(get_current_user
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+@router.post("/mcp-token")
+async def create_mcp_token(
+    current_user: User = Depends(get_current_user),
+    auth_service: AuthService = Depends(get_auth_service),
+) -> dict:
+    """Un jeton porteur pour parler au MCP au nom de l'utilisateur connecte.
+
+    Le meme mecanisme que la session web : JWT signe par le meme secret, meme
+    duree de vie (sept jours). L'agent le copie une fois dans son client MCP
+    et le passe en en-tete Authorization. Aucun droit particulier n'est
+    accorde : le jeton porte l'identite du createur, rien de plus.
+    """
+    token = auth_service.create_session(current_user.id)
+    expiration = datetime.now(UTC) + timedelta(hours=SESSION_EXPIRE_HOURS)
+    return {"token": token, "expires_at": expiration.isoformat()}
