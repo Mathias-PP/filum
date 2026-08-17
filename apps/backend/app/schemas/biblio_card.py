@@ -47,11 +47,21 @@ class Visibility(str, Enum):
 SlugPattern = re.compile(r"^[a-z0-9][a-z0-9-]{2,80}$")
 
 
+#: Longueur pratique du texte integral du contenu. 500 000 caracteres = un
+#: roman entier ; au-dela, ce n'est plus un contenu, c'est un corpus, qui a sa
+#: propre voie (une fiche par chapitre / episode / article).
+_MAX_CONTENT_TEXT = 500_000
+
+
 class CardBase(BaseModel):
     slug: str = Field(min_length=3, max_length=100, pattern=SlugPattern)
     title: str = Field(min_length=1, max_length=500)
     description: str | None = None
     content_url: str | None = None
+    #: Texte integral du contenu documente. L'utilisateur declare avoir le
+    #: droit de le publier (contenu propre, libre de droit, ou droit de
+    #: citation) : l'UI l'en avertit, le backend fait confiance.
+    content_text: str | None = Field(default=None, max_length=_MAX_CONTENT_TEXT)
     # Auteurs du contenu documente, distincts du createur de la fiche : publier
     # une fiche n'est pas signer ce qu'elle documente.
     content_authors: str | None = Field(default=None, max_length=500)
@@ -84,6 +94,10 @@ class CardUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=500)
     description: str | None = None
     content_url: str | None = None
+    #: Voir CardBase.content_text. Chaine vide autorisee : elle efface le
+    #: texte precedemment stocke, ce qui est l'operation utile face a un
+    #: warning « ce texte est publie publiquement, l'effacer maintenant ».
+    content_text: str | None = Field(default=None, max_length=_MAX_CONTENT_TEXT)
     content_authors: str | None = Field(default=None, max_length=500)
     platform: Platform | None = None
     content_type: ContentType | None = None
@@ -141,6 +155,7 @@ class CardResponse(BaseModel):
     title: str
     description: str | None
     content_url: str | None
+    content_text: str | None = None
     content_authors: str | None = None
     platform: Platform
     content_type: ContentType

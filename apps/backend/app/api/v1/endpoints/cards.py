@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -272,6 +272,12 @@ async def update_card(
         card.description = card_data.description
     if card_data.content_url is not None:
         card.content_url = card_data.content_url
+    if card_data.content_text is not None:
+        # Chaine vide = l'utilisateur retire le texte (l'affichage sur la
+        # fiche publique disparaitra). C'est le geste que l'UI propose
+        # explicitement apres un warning « publier ce texte engage ta
+        # responsabilite de droit ».
+        card.content_text = card_data.content_text or None
     if card_data.content_authors is not None:
         # Chaine vide = l'utilisateur efface les auteurs, ce qui rend la main a
         # la reconstitution depuis les fiches citantes.
@@ -294,6 +300,78 @@ async def update_card(
     # The card is already attached to the request session (via CardService);
     # opening a second session here raised InvalidRequestError. Commit in place.
     return await card_service.save_card(card)
+
+
+@router.post("/cards/{card_id}/content-text/upload", response_model=CardResponse)
+@limiter.limit("30/hour")
+async def upload_content_text(
+    request: Request,
+    card_id: UUID,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    card_service: CardService = Depends(get_card_service),
+):
+    """Depose un document (PDF, DOCX, ODT, TXT, MD) et remplit content_text.
+
+    Le fichier est lu, son texte extrait, puis jete : rien du fichier lui-meme
+    n'est conserve. Seul le texte l'est. Meme borne de taille et memes formats
+    que /excerpts/chunk-file.
+
+    L'utilisateur est cense avoir le droit de publier ce texte (contenu propre,
+    libre de droit, ou extrait sous droit de citation) ; l'UI l'en avertit
+    explicitement avant l'upload, le backend fait confiance.
+    """
+    import asyncio
+
+    from app.services.document_text import MAX_BYTES, DocumentError, extract_text
+
+    card = await card_service.get_card_by_id(card_id)
+    if not card:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": "Card not found"},
+        )
+    if card.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": "forbidden", "message": "Access denied"},
+        )
+
+    data = await file.read(MAX_BYTES + 1)
+    if len(data) > MAX_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail={
+                "code": "file_too_large",
+                "message": f"Fichier trop volumineux (maximum {MAX_BYTES // (1024 * 1024)} Mo).",
+            },
+        )
+
+    try:
+        texte = await asyncio.to_thread(extract_text, file.filename or "", data)
+    except DocumentError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"code": "unreadable_document", "message": str(e)},
+        ) from e
+
+    # Meme borne que le schema : au-dela d'un demi-million de caracteres, une
+    # fiche unique n'est plus la bonne granularite.
+    if len(texte) > 500_000:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": "text_too_long",
+                "message": (
+                    "Texte trop long apres extraction (limite 500 000 caracteres). "
+                    "Decoupez le contenu en plusieurs fiches (une par chapitre / episode)."
+                ),
+            },
+        )
+
+    card.content_text = texte
+    await card_service.save_card(card)
+    return card
 
 
 @router.post("/cards/{card_id}/publish", response_model=dict)
@@ -487,6 +565,7 @@ async def get_public_card(
         title=card.title,
         description=card.description,
         content_url=card.content_url,
+        content_text=card.content_text,
         content_authors=card.content_authors,
         platform=card.platform,
         content_type=card.content_type,
