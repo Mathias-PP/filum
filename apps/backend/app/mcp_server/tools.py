@@ -10,13 +10,14 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import or_, select
+from sqlalchemy import ColumnElement, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.biblio_card import BiblioCard
 from app.models.source import Source
 from app.models.user import User
+from app.services.card_link import resolve_card_by_content
 from app.services.card_search import correspond
 from app.services.content_identity import escape_like, extract_doi, url_variants
 
@@ -191,7 +192,7 @@ async def find_cards_citing(db: AsyncSession, url: str, limit: int = 10) -> list
     # finale ou le parametre de campagne colle par la page qui l'a mene la.
     # Comparer caractere par caractere rendait le graphe muet sur toutes ces
     # ecritures, et l'agent en concluait que personne ne citait la reference.
-    clauses = []
+    clauses: list[ColumnElement[bool]] = []
     if variants := url_variants(url):
         clauses.append(Source.url.in_(variants))
     # L'agent tient souvent le DOI quand la fiche tient l'URL de l'editeur, et
@@ -200,6 +201,14 @@ async def find_cards_citing(db: AsyncSession, url: str, limit: int = 10) -> list
         motif = f"%{escape_like(key_doi)}%"
         clauses.append(Source.doi.ilike(motif, escape="\\"))
         clauses.append(Source.url.ilike(motif, escape="\\"))
+    # Le lien resolu porte l'identite du contenu au dela de l'ecriture. Deux
+    # fiches peuvent citer le meme travail sous deux adresses sans rien de
+    # commun (l'une par l'URL de l'editeur, l'autre par le DOI), et le produit
+    # les a deja rapprochees en resolvant chacune vers la meme `linked_card`.
+    # `resolve_card_by_content` refuse deja une fiche pivot non publique : s'en
+    # servir quand elle est retiree reviendrait a publier son existence.
+    if pivot_id := await resolve_card_by_content(db, url):
+        clauses.append(Source.linked_card_id == pivot_id)
     # Une URL illisible ne vaut pas « toutes les fiches ».
     if not clauses:
         return []

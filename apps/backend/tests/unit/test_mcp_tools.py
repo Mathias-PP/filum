@@ -620,3 +620,96 @@ async def test_le_lien_ne_revele_pas_un_brouillon(db_session, fiche_citant_une_f
 
     card = await get_card(db_session, creator=test_user.username, slug="fiche-citante")
     assert card["sources"][0]["linked_card"] is None
+
+
+@pytest_asyncio.fixture
+async def deux_ecritures_du_meme_travail(db_session, test_user):
+    """Deux fiches citent le meme travail, sous deux adresses sans rien de commun.
+
+    Mesure en production le 2026-08-17 : « ca-sert-a-quoi-de-dormir » designe
+    l'article par son adresse Nature, « replay-... » par son DOI. Aucune sous-
+    chaine commune, et pourtant le produit a resolu les deux vers la meme fiche.
+    Demander qui cite l'article n'en rendait qu'une.
+    """
+    from app.models.biblio_card import BiblioCard
+    from app.models.source import Source
+
+    citee = BiblioCard(
+        id=uuid4(),
+        user_id=test_user.id,
+        slug="article-cite",
+        title="Article cite",
+        content_url="https://www.nature.com/articles/nrn3667",
+        content_type="article",
+        platform="web",
+        status="published",
+    )
+    db_session.add(citee)
+    await db_session.flush()
+    for slug, url in (
+        ("par-l-adresse", "https://www.nature.com/articles/nrn3667"),
+        ("par-le-doi", "https://doi.org/10.1038/nrn3667"),
+    ):
+        citante = BiblioCard(
+            id=uuid4(),
+            user_id=test_user.id,
+            slug=slug,
+            title=f"Fiche {slug}",
+            content_type="video",
+            platform="youtube",
+            status="published",
+        )
+        db_session.add(citante)
+        await db_session.flush()
+        db_session.add(
+            Source(
+                id=uuid4(),
+                biblio_card_id=citante.id,
+                position=0,
+                url=url,
+                title="Article cite",
+                format="texte",
+                category="article-scientifique",
+                author_kind="chercheur",
+                linked_card_id=citee.id,
+            )
+        )
+    await db_session.commit()
+    return citee
+
+
+@pytest.mark.asyncio
+async def test_find_cards_citing_suit_le_lien_resolu(db_session, deux_ecritures_du_meme_travail):
+    from app.mcp_server.tools import find_cards_citing
+
+    results = await find_cards_citing(db_session, url="https://www.nature.com/articles/nrn3667")
+    assert sorted(r["slug"] for r in results) == ["par-l-adresse", "par-le-doi"]
+
+
+@pytest.mark.asyncio
+async def test_find_cards_citing_ne_rend_pas_la_fiche_citee_elle_meme(
+    db_session, deux_ecritures_du_meme_travail
+):
+    """Une fiche ne se cite pas en documentant son propre contenu."""
+    from app.mcp_server.tools import find_cards_citing
+
+    results = await find_cards_citing(db_session, url="https://www.nature.com/articles/nrn3667")
+    assert "article-cite" not in {r["slug"] for r in results}
+
+
+@pytest.mark.asyncio
+async def test_le_lien_resolu_ne_passe_pas_par_une_fiche_privee(
+    db_session, deux_ecritures_du_meme_travail
+):
+    """La fiche citee devenue privee ne sert plus de pont entre deux ecritures.
+
+    Le lien resolu reste vrai, mais il designe un travail retire du monde :
+    s'en servir reviendrait a repondre a partir de ce que le public ne voit pas.
+    """
+    from app.mcp_server.tools import find_cards_citing
+
+    deux_ecritures_du_meme_travail.visibility = "private"
+    await db_session.commit()
+
+    results = await find_cards_citing(db_session, url="https://www.nature.com/articles/nrn3667")
+    assert [r["slug"] for r in results] == ["par-l-adresse"]
