@@ -5,6 +5,7 @@ from uuid import UUID, uuid4
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
 
 from app.api.v1.endpoints.excerpts import verify_quote
 
@@ -111,7 +112,7 @@ async def test_suggest_verifies_quotes(client, source, monkeypatch):
     async def fake_scrape(url):
         return ExtractedMetadata(page_text=PAGE_TEXT)
 
-    async def fake_llm(page_text, context=None):
+    async def fake_llm(page_text, context=None, existing_excerpts=None):
         return [
             "le sommeil joue un rôle actif dans la consolidation",
             "citation inventée qui n'apparaît nulle part dans le texte",
@@ -133,13 +134,78 @@ async def test_suggest_verifies_quotes(client, source, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_suggest_transmet_les_options_de_contexte_selon_les_cases(
+    client, source, db_session, monkeypatch
+):
+    """Les cases a cocher orientent ce que le modele voit.
+
+    Sans elles, un auteur ne pouvait ni empecher l'annotation de biaiser la
+    selection, ni pousser le modele a couvrir d'autres passages que ceux
+    deja pris. Le test fige que les trois flags de la requete atteignent le
+    LLM sous la forme des trois arguments : contexte compose et liste
+    d'extraits deja cites.
+    """
+    from app.extractors.url_extractor import ExtractedMetadata
+    from app.models.biblio_card import BiblioCard
+    from app.models.source_excerpt import SourceExcerpt
+
+    card = await db_session.scalar(select(BiblioCard).where(BiblioCard.id == source.biblio_card_id))
+    card.description = "Une video sur la memoire."
+    source.annotation = "Le passage cle est en fin d'article."
+    db_session.add(
+        SourceExcerpt(
+            source_id=source.id,
+            position=1,
+            text="le sommeil joue un rôle actif dans la consolidation",
+        )
+    )
+    await db_session.commit()
+
+    async def fake_scrape(url):
+        return ExtractedMetadata(page_text=PAGE_TEXT)
+
+    monkeypatch.setattr("app.extractors.url_extractor._html_scrape", fake_scrape)
+    monkeypatch.setattr("app.api.v1.endpoints.excerpts.assert_url_is_safe", lambda url: None)
+
+    captures: dict = {}
+
+    async def capture(page_text, context=None, existing_excerpts=None):
+        captures["context"] = context
+        captures["existing_excerpts"] = existing_excerpts
+        return []
+
+    monkeypatch.setattr("app.api.v1.endpoints.excerpts.suggest_excerpts", capture)
+
+    # Tout coche : titre source + annotation + contexte fiche + extraits pris.
+    resp = await client.post(f"/api/v1/sources/{source.id}/excerpts/suggest")
+    assert resp.status_code == 200
+    assert "Un article" in (captures["context"] or "")
+    assert "Le passage cle" in captures["context"]
+    assert "Une video sur la memoire" in captures["context"]
+    assert captures["existing_excerpts"] and "le sommeil" in captures["existing_excerpts"][0]
+
+    # Tout decoche : plus rien que le titre de la source.
+    resp = await client.post(
+        f"/api/v1/sources/{source.id}/excerpts/suggest",
+        json={
+            "include_source_annotation": False,
+            "include_existing_excerpts": False,
+            "include_card_context": False,
+        },
+    )
+    assert resp.status_code == 200
+    assert captures["context"] == "Un article"
+    assert captures["existing_excerpts"] is None
+
+
+@pytest.mark.asyncio
 async def test_suggest_llm_disabled(client, source, monkeypatch):
     from app.extractors.url_extractor import ExtractedMetadata
 
     async def fake_scrape(url):
         return ExtractedMetadata(page_text=PAGE_TEXT)
 
-    async def no_llm(page_text, context=None):
+    async def no_llm(page_text, context=None, existing_excerpts=None):
         return None
 
     monkeypatch.setattr("app.extractors.url_extractor._html_scrape", fake_scrape)

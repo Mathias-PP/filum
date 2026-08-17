@@ -437,12 +437,21 @@ def parse_excerpts_content(content: str) -> list[str] | None:
         return None
 
 
-async def suggest_excerpts(page_text: str, context: str | None = None) -> list[str] | None:
+async def suggest_excerpts(
+    page_text: str,
+    context: str | None = None,
+    existing_excerpts: list[str] | None = None,
+) -> list[str] | None:
     """Suggère des citations verbatim via l'alias `excerpt-suggest`. Never raises.
 
     Retourne None si la couche LLM est désactivée ou en cas d'erreur.
     L'appelant DOIT vérifier que chaque extrait apparaît réellement dans le
     texte source (anti-hallucination) avant de l'exposer.
+
+    `existing_excerpts` : les passages déjà cités sur cette source. Les
+    donner au modèle évite qu'il repropose ce qui est déjà pris, et pousse
+    à couvrir d'autres affirmations du texte. Chacun tronqué à 300 car pour
+    ne pas gonfler le prompt.
     """
     settings = get_settings()
     if not settings.litellm_base_url:
@@ -451,6 +460,12 @@ async def suggest_excerpts(page_text: str, context: str | None = None) -> list[s
     user_content = f"Texte de la source :\n{page_text[:_MAX_INPUT_CHARS]}"
     if context:
         user_content = f"Contexte (fiche du créateur) : {context[:500]}\n\n{user_content}"
+    if existing_excerpts:
+        deja = "\n".join(f"- « {t[:300]} »" for t in existing_excerpts[:10])
+        user_content = (
+            f"Extraits déjà cités sur cette source (ne pas les redonner, "
+            f"privilégier d'autres affirmations du texte) :\n{deja}\n\n{user_content}"
+        )
 
     content = await _appel_json(
         "excerpt-suggest",
