@@ -112,7 +112,104 @@ async def test_export_csv_has_bom_and_rows(client, published_card, test_user):
     assert raw.startswith("\ufeff")
     lines = [line for line in raw.lstrip("\ufeff").splitlines() if line]
     assert len(lines) == 3  # header + 2 sources
-    assert lines[0].startswith("position,title,authors,url")
+    assert lines[0].startswith("position,reference,title,authors,url")
+
+
+@pytest.mark.asyncio
+async def test_le_style_de_citation_traverse_tous_les_formats(client, published_card, test_user):
+    """Chaque format porte la reference formatee, dans une place qui a du sens.
+
+    L'exigence : choisir « Harvard » doit changer ce que l'utilisateur voit,
+    que le fichier soit un JSON, un CSV, un Markdown, un DOCX ou un fichier
+    de gestionnaire de references. Avant, seul le txt honorait le style ;
+    les autres formats ignoraient silencieusement le choix. Ce test fige la
+    presence de la reference stylee dans chaque format, sous la forme qui
+    lui est propre.
+    """
+    base = f"/api/v1/@{test_user.username}/{published_card.slug}/export"
+
+    # Harvard rend « Dupont, M. » (initiale sans espace) et « (2024) ».
+    # APA rendrait « Dupont, M. (2024). » : signature differente.
+    # Testons les deux pour prouver que le style change bien le contenu.
+
+    async def contenu(params):
+        r = await client.get(base, params=params)
+        assert r.status_code == 200
+        return r
+
+    # JSON : champ `reference` par source, champ `citation_style` en tete.
+    r = await contenu({"format": "json", "style": "harvard"})
+    data = r.json()
+    assert data["citation_style"] == "harvard"
+    assert data["sources"][0]["reference"].startswith("Dupont, M. (2024)")
+
+    r = await contenu({"format": "json", "style": "apa"})
+    assert r.json()["sources"][0]["reference"].startswith("Dupont, M. (2024).")
+
+    # Philum JSON-LD : `philum:formattedReference` par source.
+    r = await contenu({"format": "philum", "style": "chicago"})
+    data = r.json()
+    assert data["philum:citationStyle"] == "chicago"
+    assert "Dupont" in data["citation"][0]["philum:formattedReference"]
+
+    # CSV : colonne `reference` en 2e position.
+    r = await contenu({"format": "csv", "style": "harvard"})
+    raw = r.content.decode("utf-8").lstrip("﻿")
+    header = raw.splitlines()[0].split(",")
+    assert header[1] == "reference"
+    # La ligne pivot commence par « 0, », suivie de la reference Harvard.
+    assert "Dupont, M. (2024)" in raw
+
+    # Markdown : ligne italique sous le lien.
+    r = await contenu({"format": "markdown", "style": "mla"})
+    assert "MLA 9" in r.text
+    assert "Dupont, Marie" in r.text  # MLA ecrit « Famille, Prenom »
+
+    # DOCX : la reference formatee vit dans le XML du document.
+    r = await contenu({"format": "docx", "style": "vancouver"})
+    with zipfile.ZipFile(io.BytesIO(r.content)) as zf:
+        doc = zf.read("word/document.xml").decode("utf-8")
+    assert "Vancouver" in doc
+    # Vancouver n'utilise pas la virgule apres la famille : « Dupont M ».
+    assert "Dupont M" in doc
+
+    # XLSX : la colonne reference est ecrite dans la premiere feuille.
+    r = await contenu({"format": "xlsx", "style": "ieee"})
+    with zipfile.ZipFile(io.BytesIO(r.content)) as zf:
+        sheet = zf.read("xl/worksheets/sheet1.xml").decode("utf-8")
+    # IEEE ecrit les initiales en premier : « M. Dupont ».
+    assert "M. Dupont" in sheet
+
+    # BibTeX : le style se retrouve dans le champ `annote`.
+    r = await contenu({"format": "bibtex", "style": "harvard"})
+    assert "annote = {Reference formatee (harvard)" in r.text
+    assert "Dupont, M. (2024)" in r.text
+
+    # RIS : le style se retrouve dans le champ `N1`.
+    r = await contenu({"format": "ris", "style": "chicago"})
+    assert "N1  - Reference formatee (chicago)" in r.text
+
+    # CSL-JSON : le style se retrouve dans le champ `note`.
+    r = await contenu({"format": "csl", "style": "mla"})
+    items = r.json()
+    assert any("Reference formatee (mla)" in item.get("note", "") for item in items)
+
+    # Le txt continue de rendre la bibliographie entiere dans le style demande.
+    r = await contenu({"format": "txt", "style": "vancouver"})
+    assert "(Vancouver)" in r.text or "Vancouver" in r.text
+    assert "Dupont M" in r.text
+
+
+@pytest.mark.asyncio
+async def test_un_style_inconnu_est_refuse(client, published_card, test_user):
+    """Le message dit la liste : un utilisateur qui tape mal peut lire ce
+    qu'il aurait du ecrire, plutot que d'ecran neutre."""
+    r = await client.get(
+        f"/api/v1/@{test_user.username}/{published_card.slug}/export",
+        params={"format": "json", "style": "bluebook"},
+    )
+    assert r.status_code == 422
+    assert "apa" in r.text
 
 
 @pytest.mark.asyncio

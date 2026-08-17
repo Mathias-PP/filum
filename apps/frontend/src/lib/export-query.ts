@@ -74,16 +74,12 @@ export const CITATION_STYLES = [
   { value: 'ieee', label: 'IEEE' },
 ] as const;
 
-/** Seul le texte brut porte un style de citation aujourd'hui : les autres
- * formats ont leur propre grammaire (BibTeX cite ses entrées avec sa syntaxe,
- * JSON porte les champs bruts, Markdown/Word suivent la mise en forme Philum).
- * La liste est cette porte de sortie : elle grandira quand on ajoutera par
- * exemple un rendu PDF, à qui appliquer un style de biblio ferait sens. */
-export const STYLED_FORMATS = new Set(['txt']);
-
 export interface ExportRequest {
   format: string;
-  /** Style de citation (APA, Harvard, ...). Ignoré par les formats qui ne le portent pas. */
+  /** Style de citation (APA, Harvard, ...). Applique à TOUS les formats :
+   * txt rend une bibliographie stylée entière ; markdown, docx, csv, xlsx,
+   * json et philum injectent une référence formatée par source ; bibtex,
+   * ris et csl la portent dans un champ note (`annote`, `N1`, `note`). */
   style?: string;
   scope: Scope;
   /** Les fiches que celle-ci cite — un périmètre par degré, dans l'ordre. */
@@ -94,7 +90,7 @@ export interface ExportRequest {
 
 export function buildExportUrl(base: string, req: ExportRequest): string {
   const params = new URLSearchParams({ format: req.format });
-  if (req.style && STYLED_FORMATS.has(req.format)) {
+  if (req.style) {
     params.set('style', req.style);
   }
   if (SCOPED_FORMATS.has(req.format)) {

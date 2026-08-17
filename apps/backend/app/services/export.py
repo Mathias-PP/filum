@@ -29,6 +29,10 @@ if TYPE_CHECKING:
 #: vide, ce qui se lit comme « rien a dire », pas comme « colonne disparue ».
 CSV_COLUMNS = [
     "position",
+    # Reference formatee dans le style demande. Premiere colonne de contenu
+    # apres la position : c'est ce qu'un lecteur veut coller dans un
+    # document sans passer par un gestionnaire de references.
+    "reference",
     "title",
     "authors",
     "url",
@@ -72,7 +76,10 @@ def source_columns(scope: ExportScope = FULL) -> list[str]:
 
 
 def _source_row(
-    source: Source, scope: ExportScope = FULL, shape: ExportScope | None = None
+    source: Source,
+    scope: ExportScope = FULL,
+    shape: ExportScope | None = None,
+    style: str = "apa",
 ) -> list[str]:
     """Une ligne de source.
 
@@ -85,6 +92,7 @@ def _source_row(
     shape = shape or scope
     row = [
         str(source.position),
+        citation_styles.format_reference(source, style),
         source.title or "",
         source.authors or "",
         source.url,
@@ -157,7 +165,7 @@ def _excerpts(source: Source) -> list[dict]:
     ]
 
 
-def _json_neighbourhood(voisinage: Neighbourhood, base_url: str) -> dict:
+def _json_neighbourhood(voisinage: Neighbourhood, base_url: str, style: str = "apa") -> dict:
     """Les fiches voisines, chaque sens dans son propre bac.
 
     Le sens est porte par la cle plutot que par un champ de chaque entree :
@@ -175,7 +183,7 @@ def _json_neighbourhood(voisinage: Neighbourhood, base_url: str) -> dict:
                 "creator": v.card.user.username,
                 "public_url": f"{base_url}/@{v.card.user.username}/{v.card.slug}",
                 "content_url": v.card.content_url,
-                "sources": [_json_source(s, v.scope) for s in v.card.sources],
+                "sources": [_json_source(s, v.scope, style) for s in v.card.sources],
             }
             for v in voisines
         ]
@@ -192,9 +200,11 @@ def export_json(
     public_url: str,
     scope: ExportScope = FULL,
     neighbourhood: Neighbourhood | None = None,
+    style: str = "apa",
 ) -> str:
     payload = {
         "philum_export_version": 1,
+        "citation_style": style,
         "card": {
             "title": card.title,
             "description": card.description,
@@ -207,18 +217,23 @@ def export_json(
             },
             "published_at": card.published_at.isoformat() if card.published_at else None,
         },
-        "sources": [_json_source(s, scope) for s in card.sources],
+        "sources": [_json_source(s, scope, style) for s in card.sources],
     }
     if neighbourhood is not None:
         payload["connected_cards"] = _json_neighbourhood(
-            neighbourhood, public_url.rsplit("/@", 1)[0]
+            neighbourhood, public_url.rsplit("/@", 1)[0], style
         )
     return json.dumps(payload, ensure_ascii=False, indent=2)
 
 
-def _json_source(s: Source, scope: ExportScope) -> dict:
+def _json_source(s: Source, scope: ExportScope, style: str = "apa") -> dict:
     entry: dict = {
         "position": s.position,
+        # Reference formatee dans le style demande. C'est ce qu'un lecteur
+        # colle dans un document sans avoir a la reformer a la main : sans
+        # elle, un JSON exporte contenait des champs bruts et laissait chaque
+        # consommateur reinventer la mise en forme.
+        "reference": citation_styles.format_reference(s, style),
         "title": s.title,
         "authors": s.authors,
         "url": s.url,
@@ -255,6 +270,7 @@ def export_philum_json(
     public_url: str,
     scope: ExportScope = FULL,
     neighbourhood: Neighbourhood | None = None,
+    style: str = "apa",
 ) -> str:
     """Format `application/vnd.philum+json` : cible primaire des agents IA.
 
@@ -282,19 +298,24 @@ def export_philum_json(
             "url": f"{public_url.rsplit('/@', 1)[0]}/@{card.user.username}",
         },
         "isBasedOn": card.content_url,
-        "citation": [_philum_source(s, scope) for s in card.sources],
+        "philum:citationStyle": style,
+        "citation": [_philum_source(s, scope, style) for s in card.sources],
     }
     if neighbourhood is not None:
         document["philum:connectedCards"] = _json_neighbourhood(
-            neighbourhood, public_url.rsplit("/@", 1)[0]
+            neighbourhood, public_url.rsplit("/@", 1)[0], style
         )
     return json.dumps(document, ensure_ascii=False, indent=2)
 
 
-def _philum_source(s: Source, scope: ExportScope) -> dict:
+def _philum_source(s: Source, scope: ExportScope, style: str = "apa") -> dict:
     entry: dict = {
         "@type": "CreativeWork",
         "position": s.position,
+        # Reference rendue dans le style demande. Prefixe `philum:` : le
+        # champ schema.org `citation` est deja pris au niveau document pour
+        # la liste des sources, il faut donc un nom sans collision ici.
+        "philum:formattedReference": citation_styles.format_reference(s, style),
         "name": s.title,
         "author": s.authors,
         "url": s.url,
@@ -334,7 +355,7 @@ def _philum_source(s: Source, scope: ExportScope) -> dict:
     return entry
 
 
-def export_csv(card: BiblioCard, scope: ExportScope = FULL) -> str:
+def export_csv(card: BiblioCard, scope: ExportScope = FULL, style: str = "apa") -> str:
     """Un tableau plat de sources.
 
     Le CSV n'a qu'une table : les extraits et les fiches voisines n'y tiennent
@@ -345,7 +366,7 @@ def export_csv(card: BiblioCard, scope: ExportScope = FULL) -> str:
     writer = csv.writer(buf, lineterminator="\r\n")
     writer.writerow(source_columns(scope))
     for source in card.sources:
-        writer.writerow(_source_row(source, scope))
+        writer.writerow(_source_row(source, scope, style=style))
     return buf.getvalue()
 
 
@@ -363,7 +384,7 @@ def _bibtex_escape(value: str) -> str:
     return value.replace("\\", "\\textbackslash{}").replace("{", "\\{").replace("}", "\\}")
 
 
-def export_bibtex(card: BiblioCard) -> str:
+def export_bibtex(card: BiblioCard, style: str = "apa") -> str:
     entries: list[str] = []
     for i, source in enumerate(card.sources, start=1):
         item = to_csl(source, i)
@@ -372,6 +393,12 @@ def export_bibtex(card: BiblioCard) -> str:
             "title": item["title"],
             "url": item["URL"],
         }
+        # `annote` : champ BibTeX standard porte par la plupart des styles.
+        # LaTeX ne l'imprime pas par defaut mais Zotero, Mendeley et JabRef
+        # l'exposent, et le fichier reste utilisable sans lui.
+        fields["annote"] = (
+            f"Reference formatee ({style}) : {citation_styles.format_reference(source, style)}"
+        )
         if item.get("author"):
             # BibTeX veut « Famille, Prenom and Famille, Prenom » : c'est ce
             # decoupage qui permet a LaTeX d'abreger et de trier les noms.
@@ -404,8 +431,18 @@ def export_bibtex(card: BiblioCard) -> str:
 # --- CSL-JSON (Zotero et al.) -----------------------------------------------
 
 
-def export_csl_json(card: BiblioCard) -> str:
-    items = [to_csl(s, i) for i, s in enumerate(card.sources, start=1)]
+def export_csl_json(card: BiblioCard, style: str = "apa") -> str:
+    items = []
+    for i, source in enumerate(card.sources, start=1):
+        item = to_csl(source, i)
+        # Prepend la reference formatee : la note contient deja l'annotation
+        # et `philum-stance`, ecraser les priverait l'export de son sens.
+        ref_ligne = (
+            f"Reference formatee ({style}) : {citation_styles.format_reference(source, style)}"
+        )
+        existant = item.get("note", "")
+        item["note"] = f"{ref_ligne}\n{existant}" if existant else ref_ligne
+        items.append(item)
     return json.dumps(items, ensure_ascii=False, indent=2)
 
 
@@ -465,10 +502,20 @@ def _ris_lines(item: dict, source: Source) -> list[str]:
     return lines
 
 
-def export_ris(card: BiblioCard) -> str:
+def export_ris(card: BiblioCard, style: str = "apa") -> str:
     out: list[str] = []
     for i, source in enumerate(card.sources, start=1):
-        out.extend(_ris_lines(to_csl(source, i), source))
+        item = to_csl(source, i)
+        # Prepend la reference formatee a la note CSL existante : la note
+        # portait deja l'annotation du createur et le champ `philum-stance`,
+        # ecraser ces informations reviendrait a les faire disparaitre du
+        # fichier RIS. `_ris_lines` mappe `note` -> `N1` ligne par ligne.
+        ref_ligne = (
+            f"Reference formatee ({style}) : {citation_styles.format_reference(source, style)}"
+        )
+        existant = item.get("note", "")
+        item["note"] = f"{ref_ligne}\n{existant}" if existant else ref_ligne
+        out.extend(_ris_lines(item, source))
         out.append("")
     return "\n".join(out)
 
@@ -680,11 +727,15 @@ _VERIFIED_LABELS = {
 }
 
 
-def _source_lines(source: Source, scope: ExportScope) -> list[str]:
+def _source_lines(source: Source, scope: ExportScope, style: str = "apa") -> list[str]:
     """Une source en puce Markdown, detail selon le perimetre."""
     label = source.title or source.url
     pivot = " ⭐" if source.is_pivot else ""
     lines = [f"- [{label}]({source.url}){pivot}"]
+    # Reference formatee sous le lien : c'est ce qu'un lecteur copie dans
+    # sa bibliographie sans avoir a la recomposer a partir des metadonnees
+    # brutes ci-dessous.
+    lines.append(f"  - *{citation_styles.format_reference(source, style)}*")
     meta = []
     if source.authors:
         meta.append(source.authors)
@@ -716,7 +767,7 @@ _DIRECTION_TITRES = {
 }
 
 
-def _neighbourhood_lines(voisinage: Neighbourhood, base_url: str) -> list[str]:
+def _neighbourhood_lines(voisinage: Neighbourhood, base_url: str, style: str = "apa") -> list[str]:
     lines: list[str] = []
     for sens, voisines in (("cited", voisinage.cited), ("citing", voisinage.citing)):
         if not voisines:
@@ -726,7 +777,7 @@ def _neighbourhood_lines(voisinage: Neighbourhood, base_url: str) -> list[str]:
             au_degre = [v for v in voisines if v.degree == degre]
             lines += [f"### Degré {degre}", ""]
             for v in au_degre:
-                lines += _neighbour_lines(v, base_url)
+                lines += _neighbour_lines(v, base_url, style)
         lines.append("")
     if voisinage.truncated:
         lines += [
@@ -737,7 +788,7 @@ def _neighbourhood_lines(voisinage: Neighbourhood, base_url: str) -> list[str]:
     return lines
 
 
-def _neighbour_lines(v: NeighbourCard, base_url: str) -> list[str]:
+def _neighbour_lines(v: NeighbourCard, base_url: str, style: str = "apa") -> list[str]:
     # Le titre est un lien vers la fiche voisine : sans lui, l'export dit
     # qu'une fiche existe sans donner le moyen d'y aller, ce qui est le
     # contraire de ce que Philum sert.
@@ -752,7 +803,7 @@ def _neighbour_lines(v: NeighbourCard, base_url: str) -> list[str]:
         lines += [f"- [{s.title or s.url}]({s.url})" for s in v.card.sources]
     else:
         for source in v.card.sources:
-            lines += _source_lines(source, v.scope)
+            lines += _source_lines(source, v.scope, style)
     lines.append("")
     return lines
 
@@ -762,6 +813,7 @@ def export_markdown(
     public_url: str,
     scope: ExportScope = FULL,
     neighbourhood: Neighbourhood | None = None,
+    style: str = "apa",
 ) -> str:
     lines = [
         "---",
@@ -782,13 +834,13 @@ def export_markdown(
         lines.append("")
     if scope.reliability:
         lines += _reliability_summary(list(card.sources))
-    lines.append("## Sources")
+    lines.append(f"## Sources (style {citation_styles.STYLES[style]})")
     lines.append("")
     for source in card.sources:
-        lines += _source_lines(source, scope)
+        lines += _source_lines(source, scope, style)
     lines.append("")
     if neighbourhood is not None:
-        lines += _neighbourhood_lines(neighbourhood, public_url.rsplit("/@", 1)[0])
+        lines += _neighbourhood_lines(neighbourhood, public_url.rsplit("/@", 1)[0], style)
     return "\n".join(lines)
 
 
@@ -817,7 +869,7 @@ def _docx_p(*runs: str) -> str:
     return f"<w:p>{''.join(runs)}</w:p>"
 
 
-def _docx_source(s: Source, i: int, scope: ExportScope) -> list[str]:
+def _docx_source(s: Source, i: int, scope: ExportScope, style: str = "apa") -> list[str]:
     """Une source, avec tout ce qui change ce qu'on ose en affirmer.
 
     Le Word disait le titre, les auteurs et l'adresse — soit moins que le
@@ -829,6 +881,7 @@ def _docx_source(s: Source, i: int, scope: ExportScope) -> list[str]:
     if s.is_pivot:
         title_runs.append(_docx_run(" (source pivot)"))
     paragraphs = [_docx_p(*title_runs)]
+    paragraphs.append(_docx_p(_docx_run(citation_styles.format_reference(s, style), italic=True)))
 
     meta_parts = []
     if s.authors:
@@ -878,7 +931,7 @@ def _docx_source(s: Source, i: int, scope: ExportScope) -> list[str]:
     return paragraphs
 
 
-def _docx_neighbourhood(voisinage: Neighbourhood, base_url: str) -> list[str]:
+def _docx_neighbourhood(voisinage: Neighbourhood, base_url: str, style: str = "apa") -> list[str]:
     """Les fiches voisines, groupees par sens puis par degre.
 
     Le degre est ecrit en toutes lettres et non deduit de l'ordre : c'est la
@@ -906,7 +959,7 @@ def _docx_neighbourhood(voisinage: Neighbourhood, base_url: str) -> list[str]:
                         paragraphs.append(_docx_p(_docx_run(f"— {s.title or s.url}")))
                 else:
                     for j, s in enumerate(v.card.sources, start=1):
-                        paragraphs += _docx_source(s, j, v.scope)
+                        paragraphs += _docx_source(s, j, v.scope, style)
                 paragraphs.append(_docx_p())
     if voisinage.truncated:
         paragraphs.append(
@@ -926,6 +979,7 @@ def export_docx(
     public_url: str,
     scope: ExportScope = FULL,
     neighbourhood: Neighbourhood | None = None,
+    style: str = "apa",
 ) -> bytes:
     """Document Word minimal : titre, méta, sources numérotées.
 
@@ -945,13 +999,21 @@ def export_docx(
     if card.content_url:
         paragraphs.append(_docx_p(_docx_run(f"Contenu : {card.content_url}")))
     paragraphs.append(_docx_p())
-    paragraphs.append(_docx_p(_docx_run(f"Sources ({len(card.sources)})", bold=True, size=28)))
+    paragraphs.append(
+        _docx_p(
+            _docx_run(
+                f"Sources ({len(card.sources)}) — style {citation_styles.STYLES[style]}",
+                bold=True,
+                size=28,
+            )
+        )
+    )
 
     for i, s in enumerate(card.sources, start=1):
-        paragraphs += _docx_source(s, i, scope)
+        paragraphs += _docx_source(s, i, scope, style)
 
     if neighbourhood is not None:
-        paragraphs += _docx_neighbourhood(neighbourhood, public_url.rsplit("/@", 1)[0])
+        paragraphs += _docx_neighbourhood(neighbourhood, public_url.rsplit("/@", 1)[0], style)
 
     paragraphs.append(_docx_p(_docx_run(f"Exporté depuis Philum — {public_url}", italic=True)))
 
@@ -1090,7 +1152,9 @@ def _union_scope(voisinage: Neighbourhood) -> ExportScope:
     )
 
 
-def _neighbour_source_rows(voisinage: Neighbourhood, shape: ExportScope) -> list[list[str]]:
+def _neighbour_source_rows(
+    voisinage: Neighbourhood, shape: ExportScope, style: str = "apa"
+) -> list[list[str]]:
     """Les sources des fiches voisines.
 
     Sans elles, demander un degre n'aurait rapporte au tableur que des titres —
@@ -1102,7 +1166,7 @@ def _neighbour_source_rows(voisinage: Neighbourhood, shape: ExportScope) -> list
         for v in sorted(voisines, key=lambda v: (v.degree, v.card.title)):
             tete = [_DIRECTION_XLSX[sens], str(v.degree), v.card.title, v.card.user.username]
             for s in v.card.sources:
-                rows.append(tete + _source_row(s, v.scope, shape))
+                rows.append(tete + _source_row(s, v.scope, shape, style))
     return rows
 
 
@@ -1129,6 +1193,7 @@ def export_xlsx(
     scope: ExportScope = FULL,
     neighbourhood: Neighbourhood | None = None,
     base_url: str = "",
+    style: str = "apa",
 ) -> bytes:
     """Le classeur : une feuille par nature d'information.
 
@@ -1138,7 +1203,10 @@ def export_xlsx(
     leur feuille, reliees par `source_position` et par le degre.
     """
     feuilles: list[tuple[str, list[list[str]]]] = [
-        ("Sources", [source_columns(scope)] + [_source_row(s, scope) for s in card.sources])
+        (
+            "Sources",
+            [source_columns(scope)] + [_source_row(s, scope, style=style) for s in card.sources],
+        )
     ]
     if scope.excerpts:
         feuilles.append(("Extraits", [EXCERPT_COLUMNS] + _excerpt_rows(card)))
@@ -1151,7 +1219,7 @@ def export_xlsx(
             (
                 "Sources des voisines",
                 [NEIGHBOUR_SOURCE_HEAD + source_columns(forme)]
-                + _neighbour_source_rows(neighbourhood, forme),
+                + _neighbour_source_rows(neighbourhood, forme, style),
             )
         )
 

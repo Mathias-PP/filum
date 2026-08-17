@@ -23,7 +23,6 @@
     NEIGHBOUR_FORMATS,
     SCOPED_FORMATS,
     SECTIONS,
-    STYLED_FORMATS,
     buildExportUrl,
     emptyScope,
     fullScope,
@@ -47,7 +46,7 @@
       formats: [
         { value: 'markdown', label: 'Markdown / Obsidian' },
         { value: 'docx', label: 'Word (.docx)' },
-        { value: 'txt', label: 'Texte (bibliographie stylée)' },
+        { value: 'txt', label: 'Bibliographie (.txt)' },
       ],
     },
     {
@@ -82,12 +81,14 @@
 
   const honoreLePerimetre = $derived(SCOPED_FORMATS.has(format));
   const porteLeVoisinage = $derived(NEIGHBOUR_FORMATS.has(format));
-  const porteUnStyle = $derived(STYLED_FORMATS.has(format));
 
   const url = $derived(
     buildExportUrl(exportBase, {
       format,
-      style: porteUnStyle ? style : undefined,
+      // Le style est envoye systematiquement : chaque format en fait
+      // quelque chose (ligne, colonne, champ note), il n'y a plus de cas
+      // ou le choix serait ignore silencieusement.
+      style,
       scope,
       cited: citedScopes.slice(0, citedDepth),
       citing: citingScopes.slice(0, citingDepth),
@@ -161,15 +162,11 @@
       <div>
         <label for="export-style" class="block text-xs font-medium text-ink-primary mb-1.5">
           Style de citation
-          {#if !porteUnStyle}
-            <span class="text-ink-tertiary font-normal">(inutilisé pour ce format)</span>
-          {/if}
         </label>
         <select
           id="export-style"
           bind:value={style}
-          disabled={!porteUnStyle}
-          class="w-full text-xs rounded-md border border-border bg-surface-primary text-ink-primary px-2.5 py-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="w-full text-xs rounded-md border border-border bg-surface-primary text-ink-primary px-2.5 py-1.5"
         >
           {#each CITATION_STYLES as s (s.value)}
             <option value={s.value}>{s.label}</option>

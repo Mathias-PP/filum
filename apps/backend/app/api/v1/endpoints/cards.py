@@ -658,10 +658,13 @@ async def export_public_card(
     style: str | None = Query(
         None,
         description=(
-            "Style de citation quand le format le porte. Valeurs : apa, harvard, "
-            "mla, chicago, vancouver, ieee. Applique uniquement a `format=txt` "
-            "(les autres formats ont leur propre grammaire et l'ignorent). Par "
-            "defaut : apa quand `format=txt`."
+            "Style de citation. Valeurs : apa, harvard, mla, chicago, vancouver, "
+            "ieee. Applique a TOUS les formats : txt rend une bibliographie "
+            "entiere dans le style ; markdown, docx, csv, xlsx, json, philum "
+            "rendent une reference formatee par source (ligne, colonne ou "
+            "champ) ; bibtex, ris, csl portent la reference formatee dans un "
+            "champ note (`annote`, `N1`, `note`), lisible sans casser la "
+            "grammaire du fichier. Par defaut : apa."
         ),
     ),
     include: str | None = Query(
@@ -743,39 +746,44 @@ async def export_public_card(
         )
 
     public_url = f"{get_settings().frontend_base_url}/@{creator_slug}/{card_slug}"
+    # Defaut APA partout : c'est le style le plus attendu et la seule option
+    # historiquement offerte. Le passer explicitement plutot que le laisser
+    # remonter des defauts de fonctions rend le choix visible ici.
+    style_effectif = style or "apa"
     content: str | bytes
     if format == "json":
-        content = export_service.export_json(card, public_url, scope, neighbourhood)
+        content = export_service.export_json(card, public_url, scope, neighbourhood, style_effectif)
     elif format == "philum":
-        content = export_service.export_philum_json(card, public_url, scope, neighbourhood)
+        content = export_service.export_philum_json(
+            card, public_url, scope, neighbourhood, style_effectif
+        )
     elif format == "csv":
         # BOM UTF-8 : Excel n'interprete pas l'UTF-8 sans lui.
-        content = "\ufeff" + export_service.export_csv(card, scope)
+        content = "\ufeff" + export_service.export_csv(card, scope, style_effectif)
     elif format == "xlsx":
         content = export_service.export_xlsx(
-            card, scope, neighbourhood, public_url.rsplit("/@", 1)[0]
+            card, scope, neighbourhood, public_url.rsplit("/@", 1)[0], style_effectif
         )
     elif format == "bibtex":
-        content = export_service.export_bibtex(card)
+        content = export_service.export_bibtex(card, style_effectif)
     elif format == "ris":
-        content = export_service.export_ris(card)
+        content = export_service.export_ris(card, style_effectif)
     elif format == "csl":
-        content = export_service.export_csl_json(card)
+        content = export_service.export_csl_json(card, style_effectif)
     elif format == "txt":
-        # Style APA par defaut quand rien n'est demande : c'etait la seule
-        # option historiquement offerte et beaucoup d'utilisateurs attendent
-        # ce style par convention.
-        content = export_service.export_bibliography(card, public_url, style or "apa")
+        content = export_service.export_bibliography(card, public_url, style_effectif)
     elif format == "docx":
-        content = export_service.export_docx(card, public_url, scope, neighbourhood)
+        content = export_service.export_docx(card, public_url, scope, neighbourhood, style_effectif)
     else:
-        content = export_service.export_markdown(card, public_url, scope, neighbourhood)
+        content = export_service.export_markdown(
+            card, public_url, scope, neighbourhood, style_effectif
+        )
 
     media_type, ext = _EXPORT_FORMATS[format]
     # Extension enrichie du style quand c'est txt : `card-slug.harvard.txt` dit
     # au lecteur ce qu'il vient de telecharger, `card-slug.txt` ne dit rien.
     if format == "txt":
-        ext = f"{style or 'apa'}.txt"
+        ext = f"{style_effectif}.txt"
     return Response(
         content=content,
         media_type=media_type,
