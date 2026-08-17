@@ -10,8 +10,8 @@ Quand deux fichiers disent des choses différentes, c'est le **fichier de gauche
 
 | Sujet | Source de vérité | Sources dérivées (ne pas modifier en premier) |
 |---|---|---|
-| État courant du projet | [`../../STATE.md`](../../STATE.md) | `PROJECT_SNAPSHOT.md`, descriptions PR |
-| Vision long terme | [`../../.docs/00-vision.md`](../../.docs/00-vision.md) | `PROJECT_SNAPSHOT.md`, `README.md` |
+| État courant du projet | [`../../STATE.md`](../../STATE.md) | descriptions PR |
+| Vision long terme | [`../../.docs/00-vision.md`](../../.docs/00-vision.md) | `README.md` |
 | Spec produit MVP | [`../../.docs/01-product-spec.md`](../../.docs/01-product-spec.md) | `README.md` |
 | Architecture technique | [`../../.docs/02-tech-architecture.md`](../../.docs/02-tech-architecture.md) | `README.md` stack |
 | Modèle de données | [`../../.docs/03-data-model.md`](../../.docs/03-data-model.md) | Migrations Alembic |
@@ -42,7 +42,7 @@ Quand deux fichiers disent des choses différentes, c'est le **fichier de gauche
 | Sécurité agent | [`../SECURITY.md`](../SECURITY.md) |
 | Pièges à éviter | [`../PITFALLS.md`](../PITFALLS.md) |
 | Protocole de tâche | [`../TASK_PROTOCOL.md`](../TASK_PROTOCOL.md) |
-| Snapshot projet condensé | [`./PROJECT_SNAPSHOT.md`](./PROJECT_SNAPSHOT.md) |
+| Règles techniques stables | [`../references/CODING_GUIDE.md`](../references/CODING_GUIDE.md) |
 
 ---
 
@@ -64,8 +64,9 @@ Quand deux fichiers disent des choses différentes, c'est le **fichier de gauche
 
 | Cible | URL | Vérifier comment |
 |---|---|---|
-| Backend prod | https://filum-production-07bb.up.railway.app | `curl .../health` |
-| Backend API docs | https://filum-production-07bb.up.railway.app/api/v1/docs | Browser |
+| Backend prod | https://philum-api.duckdns.org | `curl .../health` |
+| Backend API docs | https://philum-api.duckdns.org/api/v1/docs | Browser |
+| Serveur MCP | https://philum-api.duckdns.org/mcp/ | POST initialize + Bearer token |
 | Frontend prod | https://filum-eight.vercel.app | Browser |
 | Fiche démo publique | https://filum-eight.vercel.app/@example/memoire-et-cerveau | Browser |
 | Repo GitHub | https://github.com/Mathias-PP/filum | `gh repo view` |
@@ -77,7 +78,8 @@ Quand deux fichiers disent des choses différentes, c'est le **fichier de gauche
 
 L'agent n'a **pas** d'accès direct à :
 - L'inbox / mails du développeur
-- Le dashboard Railway / Vercel (uniquement via le développeur)
+- La console GCP (VM philum-api) et le dashboard Supabase (uniquement via le développeur ; l'agent peut ssh dans la VM avec la clé locale — cf. mémoire projet locale)
+- Le dashboard Vercel (uniquement via le développeur)
 - La BDD prod (uniquement via API)
 - Les credentials Google OAuth
 - Les conversations Slack/Discord (s'il y en a)

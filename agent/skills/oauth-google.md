@@ -1,10 +1,14 @@
-# Skill: OAuth Google (jalon M1)
+# Skill: OAuth Google — historique du branchement (jalon M1)
 
-> Quand l'utiliser : implémenter ou débugger le flow OAuth Google. C'est le **path critique** du jalon M1 de [`10-mvp-completion-plan.md`](../../.docs/10-mvp-completion-plan.md).
+> **Statut** : ce skill décrit le branchement initial d'OAuth Google, exécuté au jalon M1. Le flow est en production depuis mai 2026 et les utilisateurs se connectent quotidiennement. Le fichier est gardé comme **archive de la procédure** au cas où elle devrait être rejouée (nouveau provider OIDC, migration de compte Google Cloud, etc.).
+>
+> Pour **débugger** l'OAuth aujourd'hui : voir `agent/PITFALLS.md` §3 (« Cookies tiers Vercel↔backend et ITP Safari ») et le code `apps/backend/app/api/v1/endpoints/auth.py`.
+>
+> Les URLs Railway ci-dessous datent d'avant la migration ADR-028 vers GCP e2-micro + Supabase. Le remplaçant est `https://philum-api.duckdns.org`.
 
-## Contexte
+## Contexte (au moment du branchement, mai 2026)
 
-Aujourd'hui le projet a le scaffolding auth (cookies, JWT HS256, endpoint `/me`, `/logout`), mais **OAuth Google n'est pas branché**. Pas d'utilisateur tiers possible → bloqueur MVP. Cookies en `samesite=lax` → incompatible cross-origin Vercel ↔ Railway.
+Le projet avait le scaffolding auth (cookies, JWT HS256, endpoint `/me`, `/logout`), mais **OAuth Google n'était pas branché**. Pas d'utilisateur tiers possible → bloqueur MVP. Cookies en `samesite=lax` → incompatible cross-origin Vercel ↔ Railway.
 
 ## Pré-requis humain (l'agent ne peut pas faire)
 

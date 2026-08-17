@@ -1,6 +1,6 @@
 # PITFALLS — erreurs déjà payées par le projet, à ne pas reproduire
 
-> Source vérité : `CLAUDE.md` et `AGENTS.md` contiennent l'essentiel. Ce fichier les **agrège, complète et catégorise** pour un agent autonome qui pourrait ne pas avoir lu les deux.
+> **Source de vérité** pour tous les pièges techniques du projet. `CLAUDE.md`, `AGENTS.md` et `agent/README.md` renvoient ici plutôt que de dupliquer.
 >
 > Convention : chaque entrée a un **symptôme observable**, une **cause racine**, et une **prévention vérifiable**. Si tu identifies un nouveau piège lors d'une session, **ajoute-le ici** avant la fin de la PR.
 
@@ -51,7 +51,7 @@
   3. **Capturer les scalaires de relations AVANT le commit** quand on doit les utiliser après. Ex : `username = card.user.username` puis `await db.commit()` puis `f"@{username}"`.
 - **Cas vécu** (2026-05-14, fix sur PR #33) : `CardService.publish_card` accédait à `card.user.username` ligne 138 après `await db.commit() + await db.refresh(card)`. Le `refresh` avait expiré la relation `user`, l'accès lazy a planté la sérialisation HTTP → tous les `POST /cards/{id}/publish` retournaient `Failed to fetch` côté navigateur, sans aucun log clair côté Railway car l'exception est levée trop tard dans le pipeline ASGI.
 - **Filet de sécurité** (2026-05-14, PR #34) : `publish_card` endpoint enveloppé d'un `try/except Exception` qui log la stack et retourne un 500 JSON propre. Désormais, même si un `MissingGreenlet` futur est ré-introduit, le navigateur recevra `{"error": {"code": "publish_failed", ...}}` au lieu d'un `Failed to fetch` opaque. À répliquer sur tout endpoint qui mute + sérialise des relations.
-- **Vérifier que Railway a redéployé** : `curl https://filum-production-07bb.up.railway.app/health` retourne maintenant `{"commit": "<sha>"}` (champ ajouté PR #34). Comparer à `git log -1 --format=%H origin/main` pour confirmer que la version live est bien la dernière.
+- **Vérifier que la prod a redéployé** : `curl https://philum-api.duckdns.org/health` retourne `{"commit": "<sha>"}` (champ ajouté PR #34). Comparer à `git log -1 --format=%H origin/main` pour confirmer que la version live est bien la dernière. (Note historique : ce piège a été rencontré sur Railway ; la migration vers GCP e2-micro + Supabase — ADR-028 — n'a pas rendu la leçon obsolète.)
 
 ### 1.5 `datetime.utcnow()` déprécié Python 3.12 ET tz-aware datetime sur colonnes `TIMESTAMP WITHOUT TIME ZONE`
 

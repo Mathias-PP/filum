@@ -113,7 +113,7 @@ Documents vivants à maintenir au fil du projet :
 
 ## Conventions pour l'assistance IA
 
-Filum est conçu pour être développé en partie avec l'assistance d'agents IA (Claude Code en priorité, Aider en secours, opencode/Big Pickle pour les sessions autonomes longues).
+Philum est conçu pour être développé en partie avec l'assistance d'agents IA (Claude Code en priorité, Aider en secours, opencode/Big Pickle pour les sessions autonomes longues).
 
 - [`CLAUDE.md`](CLAUDE.md) — instructions et contraintes pour Claude Code (lu automatiquement)
 - [`AGENTS.md`](AGENTS.md) — instructions équivalentes pour d'autres agents (Aider, Codex, etc.)
@@ -140,7 +140,7 @@ Les deux fichiers racines (CLAUDE.md, AGENTS.md) contiennent les règles essenti
 
 ## Cause et neutralité
 
-Filum est conçu comme un commun numérique. Le cœur du projet (signature, bibliographie publique, archivage) est gratuit pour les créateurs individuels. La monétisation porte sur des fonctionnalités annexes (analytics, alertes, archivage premium) et sur les services aux organisations.
+Philum est conçu comme un commun numérique. Le cœur du projet (signature, bibliographie publique, archivage) est gratuit pour les créateurs individuels. La monétisation porte sur des fonctionnalités annexes (analytics, alertes, archivage premium) et sur les services aux organisations.
 
 Pas de publicité, pas de tracking intrusif. La neutralité éditoriale est une condition d'acceptation par les médias indépendants et les institutions.
 
