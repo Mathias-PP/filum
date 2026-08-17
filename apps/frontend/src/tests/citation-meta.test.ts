@@ -141,20 +141,32 @@ describe('cardHighwireTags', () => {
     expect(authors).toEqual(['Diamond, A.', 'Ling, D.S.']);
   });
 
-  it('retombe sur le créateur faute d’auteurs déclarés', () => {
-    // Google Scholar exige titre + premier auteur + année, sinon il traite la
-    // page comme dépourvue de métadonnées. Mieux vaut le créateur que rien.
+  it('retombe sur le créateur seulement quand il documente son propre contenu', () => {
+    // Une fiche non-seed : le créateur est aussi l'auteur du contenu, donc
+    // Scholar peut afficher son nom sans mentir.
     const tags = cardHighwireTags(baseCard, 'https://philum.app/x');
     const authors = tags.filter((t) => t.name === 'citation_author').map((t) => t.content);
     expect(authors).toEqual(['Mathias']);
   });
 
-  it('fournit le triplet minimum exigé par Google Scholar', () => {
-    const tags = cardHighwireTags(baseCard, 'https://philum.app/x');
+  it('n’invente pas d’auteur pour une fiche seed sans content_authors', () => {
+    // Une fiche seed documente le contenu d'autrui. Sans content_authors, on
+    // ne peut pas nommer l'auteur : retomber sur le créateur ferait dire à
+    // Zotero et Scholar que Mathias est l'auteur d'un article qu'il n'a pas
+    // écrit. Mieux vaut une page invisible de Scholar qu'une page fausse.
+    const seed = { ...baseCard, is_seed: true };
+    const tags = cardHighwireTags(seed, 'https://philum.app/x');
+    const authors = tags.filter((t) => t.name === 'citation_author').map((t) => t.content);
+    expect(authors).toEqual([]);
+  });
+
+  it('fournit au moins titre et date, même pour une seed anonyme', () => {
+    const seed = { ...baseCard, is_seed: true };
+    const tags = cardHighwireTags(seed, 'https://philum.app/x');
     const names = tags.map((t) => t.name);
     expect(names).toContain('citation_title');
-    expect(names).toContain('citation_author');
     expect(names).toContain('citation_publication_date');
+    expect(names).not.toContain('citation_author');
   });
 
   it('retombe sur created_at quand la fiche n’est pas encore publiée', () => {
