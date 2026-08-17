@@ -17,6 +17,14 @@ export interface Card {
   description: string | null;
   content_url: string | null;
   /**
+   * Texte intégral du contenu documenté quand le créateur l'a déposé.
+   *
+   * L'utilisateur déclare avoir le droit de le publier (contenu propre,
+   * libre de droit, ou droit de citation) via une case à cocher côté UI.
+   * Rendu sur la fiche publique et indexable par les outils MCP en aval.
+   */
+  content_text: string | null;
+  /**
    * Auteurs du contenu documenté — pas ceux de la fiche.
    *
    * Publier une fiche n'est pas signer ce qu'elle documente. Sans ce champ,
@@ -82,6 +90,8 @@ export interface CardCreate {
   title: string;
   description?: string;
   content_url?: string;
+  /** Texte intégral du contenu (max 500 000 caractères). Cf. Card.content_text. */
+  content_text?: string;
   content_authors?: string;
   platform: Platform;
   content_type: ContentType;

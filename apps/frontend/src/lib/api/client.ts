@@ -161,6 +161,16 @@ export const api = {
       });
     },
 
+    /** Dépose un fichier (PDF, DOCX, ODT, TXT, MD) pour remplir `content_text`. */
+    uploadContentText: async (cardId: string, file: File): Promise<Card> => {
+      const form = new FormData();
+      form.append('file', file);
+      return request<Card>(`/cards/${cardId}/content-text/upload`, {
+        method: 'POST',
+        body: form,
+      });
+    },
+
     publish: async (
       cardId: string
     ): Promise<{

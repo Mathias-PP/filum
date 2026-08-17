@@ -32,6 +32,14 @@
   // la fiche dans le graphe ne peut s'annoncer que sous le nom de son créateur
   // Philum, laissant croire qu'il est l'auteur de ce qu'elle documente.
   let contentAuthors = $state('');
+  // Texte intégral du contenu documenté quand l'utilisateur en dispose et a
+  // le droit de le publier. Rendu sur la fiche publique, indexable par les
+  // outils MCP en aval (recherche par le sens). Vide = non publié.
+  let contentText = $state('');
+  let contentTextUploading = $state(false);
+  let contentTextError = $state<string | null>(null);
+  let contentTextConfirmedRights = $state(false);
+  let contentTextFileInput = $state<HTMLInputElement | null>(null);
   let platform = $state<Platform>('other');
   let contentType = $state<ContentType>('other');
   let isAuthor = $state(false);
@@ -58,6 +66,10 @@
       description = card.description ?? '';
       contentUrl = card.content_url ?? '';
       contentAuthors = card.content_authors ?? '';
+      contentText = card.content_text ?? '';
+      // Sur une edition, l'utilisateur a deja fait ce choix au premier depot ;
+      // on ne le fait pas repasser la case a cocher pour un texte deja publie.
+      contentTextConfirmedRights = Boolean(card.content_text);
       lastSuggestedUrl = contentUrl;
       platform = card.platform;
       contentType = card.content_type;
@@ -93,6 +105,29 @@
   let droppedFile = $state<File | null>(null);
   let dragOver = $state(false);
   let fileInput = $state<HTMLInputElement | null>(null);
+
+  async function uploadContentTextFile(file: File | null | undefined) {
+    if (!file) return;
+    if (!editCardId) {
+      contentTextError =
+        "Enregistrez d'abord la fiche : le fichier a besoin d'un identifiant pour y déposer son texte.";
+      return;
+    }
+    if (!contentTextConfirmedRights) {
+      contentTextError = 'Cochez la case des droits avant de déposer un fichier.';
+      return;
+    }
+    contentTextError = null;
+    contentTextUploading = true;
+    try {
+      const updated = await api.cards.uploadContentText(editCardId, file);
+      contentText = updated.content_text ?? '';
+    } catch (err) {
+      contentTextError = err instanceof Error ? err.message : "L'extraction a échoué.";
+    } finally {
+      contentTextUploading = false;
+    }
+  }
 
   function deriveSlug(value: string) {
     return value
@@ -194,6 +229,9 @@
           // Chaîne vide transmise à dessein : elle efface les auteurs et rend
           // la main à la reconstitution depuis les fiches citantes.
           content_authors: contentAuthors.trim(),
+          // Meme regle : chaine vide efface le texte pose (l'utilisateur a
+          // decoche la case des droits ou a retire son texte).
+          content_text: contentTextConfirmedRights ? contentText : '',
           platform,
           content_type: contentType,
           is_seed: !isAuthor,
@@ -210,6 +248,7 @@
           description: description || undefined,
           content_url: contentUrl || undefined,
           content_authors: contentAuthors.trim() || undefined,
+          content_text: contentTextConfirmedRights && contentText.trim() ? contentText : undefined,
           platform,
           content_type: contentType,
           is_seed: !isAuthor,
@@ -475,6 +514,78 @@
         identifie la fiche dans le graphe des sources.
       </p>
     </div>
+
+    <details class="border border-border rounded-lg bg-surface-primary">
+      <summary class="cursor-pointer px-4 py-3 text-sm font-medium text-ink-secondary select-none">
+        Texte intégral du contenu <span class="text-ink-tertiary font-normal">(optionnel)</span>
+      </summary>
+      <div class="px-4 pb-4 pt-2 space-y-3">
+        <p class="text-xs text-ink-tertiary">
+          Collez le texte du contenu ou déposez un fichier (PDF, Word, ODT, TXT, Markdown). Utile
+          quand vous avez le droit de publier ce texte : votre propre article, un contenu libre de
+          droit, une retranscription que vous avez faite, ou un extrait sous droit de citation.
+        </p>
+
+        <label
+          class="flex items-start gap-2 rounded-md border border-warning bg-warning-subtle p-3 text-xs text-ink-primary cursor-pointer"
+        >
+          <input
+            type="checkbox"
+            bind:checked={contentTextConfirmedRights}
+            class="mt-0.5 accent-warning"
+          />
+          <span>
+            Je certifie avoir le droit de publier ce texte sur ma fiche publique (contenu propre,
+            libre de droit, ou extrait dans la limite du droit de citation). Sans cette case cochée,
+            le texte n'est ni envoyé ni sauvegardé.
+          </span>
+        </label>
+
+        {#if contentTextConfirmedRights}
+          <textarea
+            bind:value={contentText}
+            rows="8"
+            maxlength={500000}
+            placeholder="Collez ici le texte du contenu (jusqu'à 500 000 caractères)…"
+            class="w-full px-3 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary font-mono text-xs focus:outline-hidden focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
+          ></textarea>
+
+          <div class="flex items-center gap-3">
+            {#if editCardId}
+              <button
+                type="button"
+                onclick={() => contentTextFileInput?.click()}
+                disabled={contentTextUploading}
+                class="px-3 py-1.5 rounded-md border border-border-strong bg-surface-primary text-xs text-ink-secondary hover:bg-surface-tertiary disabled:opacity-50"
+              >
+                {contentTextUploading
+                  ? 'Extraction en cours…'
+                  : 'Déposer un fichier (PDF, Word, ODT, TXT, MD)'}
+              </button>
+              <input
+                bind:this={contentTextFileInput}
+                type="file"
+                accept=".pdf,.docx,.odt,.txt,.md,.markdown"
+                class="hidden"
+                onchange={(e) => uploadContentTextFile((e.target as HTMLInputElement).files?.[0])}
+              />
+            {:else}
+              <p class="text-xs text-ink-tertiary">
+                Le dépôt de fichier sera possible après avoir enregistré la fiche une première fois
+                (le fichier a besoin d'un identifiant où déposer son texte).
+              </p>
+            {/if}
+            <span class="text-xs text-ink-tertiary">
+              {contentText.length.toLocaleString('fr-FR')} / 500 000 caractères
+            </span>
+          </div>
+
+          {#if contentTextError}
+            <p class="text-xs text-danger">{contentTextError}</p>
+          {/if}
+        {/if}
+      </div>
+    </details>
 
     <div class="space-y-1.5">
       <label for="slug" class="block text-sm font-medium text-ink-secondary">
