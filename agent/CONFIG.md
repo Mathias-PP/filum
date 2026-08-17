@@ -51,7 +51,7 @@ opencode
 
 **Permissions** : gérées par Claude Code via son propre système de permission modes (`acceptAll`, `acceptEdits`, etc.) + hooks éventuels. Pas de fichier de permissions dédié dans le repo.
 
-**Politique projet** : décrite dans `CLAUDE.md` (section « Choses à ne PAS faire » et « Pièges Alembic à éviter »).
+**Politique projet** : `CLAUDE.md` route vers `agent/PERMISSIONS.md` (permissions), `agent/PITFALLS.md` (erreurs à éviter), `agent/references/CODING_GUIDE.md` (règles techniques).
 
 **Mémoire auto** : si activée localement, située dans `~/.claude/projects/<projet>/memory/MEMORY.md`. Personnelle, ne pas commit.
 
@@ -70,7 +70,7 @@ read:
   - agent/README.md
   - agent/PERMISSIONS.md
   - agent/PITFALLS.md
-  - agent/memory/PROJECT_SNAPSHOT.md
+  - agent/references/CODING_GUIDE.md
   - STATE.md
 auto-commits: false        # l'humain valide les commits
 dirty-commits: false
@@ -95,7 +95,7 @@ Lire au démarrage :
 - agent/README.md
 - agent/PERMISSIONS.md
 - agent/PITFALLS.md
-- agent/memory/PROJECT_SNAPSHOT.md
+- agent/references/CODING_GUIDE.md
 - STATE.md
 
 Règles strictes :

@@ -1,6 +1,6 @@
 # `agent/` — Système d'instructions pour agents autonomes
 
-> Ce dossier est le **point d'entrée** pour tout agent autonome (opencode/Big Pickle, Aider, Cursor, Continue, Claude Code en mode plan, etc.) opérant sur le repo Filum.
+> Ce dossier est le **point d'entrée** pour tout agent autonome (opencode/Big Pickle, Aider, Cursor, Continue, Claude Code en mode plan, etc.) opérant sur le repo Philum.
 >
 > Claude Code dispose déjà de [`CLAUDE.md`](../CLAUDE.md) chargé automatiquement. `AGENTS.md` à la racine est l'équivalent pour les autres outils. Ce dossier `agent/` **complète** ces deux fichiers avec un mode opératoire structuré pour le **travail autonome multi-sessions**, où l'agent doit savoir où il en est sans réinventer le contexte à chaque démarrage.
 
@@ -17,7 +17,7 @@
 | Question de sécurité | `agent/SECURITY.md` |
 | Avant tout commit | `agent/PITFALLS.md` (erreurs vécues à ne pas reproduire) |
 | Tâche spécialisée (Alembic, OAuth, SvelteKit…) | `agent/skills/<nom>.md` |
-| Besoin de contexte projet condensé | `agent/memory/PROJECT_SNAPSHOT.md` |
+| Règles techniques stables (stack, principes, nommage) | `agent/references/CODING_GUIDE.md` |
 
 ---
 
@@ -25,13 +25,12 @@
 
 À exécuter **dans cet ordre**, sans sauter d'étape :
 
-1. **Lire la mémoire condensée** : [`memory/PROJECT_SNAPSHOT.md`](./memory/PROJECT_SNAPSHOT.md) — donne la vision en 3 minutes.
-2. **Lire l'état réel** : [`../STATE.md`](../STATE.md) section « État production vérifié » et « Prochaines étapes par priorité ».
-3. **Lire le plan MVP** : [`../.docs/10-mvp-completion-plan.md`](../.docs/10-mvp-completion-plan.md) — identifier le jalon courant (M1, M2 ou M3) et la sous-tâche courante.
-4. **Lire les pièges** : [`PITFALLS.md`](./PITFALLS.md) — internaliser les erreurs déjà payées par le projet.
-5. **Vérifier l'état distant** : `git fetch origin && git status && git log --oneline origin/main..HEAD`. Si la branche locale a divergé du remote, comprendre pourquoi avant d'agir.
-6. **Vérifier la prod (si la tâche touche au backend)** : `curl -s https://filum-production-07bb.up.railway.app/health` → doit retourner `{"status":"ok","version":"0.1.0"}`.
-7. **Annoncer le plan** : produire un plan court en réponse au développeur (3-7 étapes) **avant** d'exécuter quoi que ce soit qui modifie le repo. Attendre validation tacite (silence prolongé = aller-y prudemment) ou explicite.
+1. **Lire l'état réel** : [`../STATE.md`](../STATE.md) sections « État production vérifié » et « Prochaines étapes par priorité ». C'est la vue courte et à jour du projet.
+2. **Lire les règles techniques stables** : [`references/CODING_GUIDE.md`](./references/CODING_GUIDE.md) — stack, principes, conventions, structure du repo.
+3. **Lire les pièges** : [`PITFALLS.md`](./PITFALLS.md) — internaliser les erreurs déjà payées par le projet.
+4. **Vérifier l'état distant** : `git fetch origin && git status && git log --oneline origin/main..HEAD`. Si la branche locale a divergé du remote, comprendre pourquoi avant d'agir.
+5. **Vérifier la prod (si la tâche touche au backend)** : `curl -s https://philum-api.duckdns.org/health` → doit retourner `{"status":"ok",...}`.
+6. **Annoncer le plan** : produire un plan court en réponse au développeur (3-7 étapes) **avant** d'exécuter quoi que ce soit qui modifie le repo. Attendre validation tacite (silence prolongé = aller-y prudemment) ou explicite.
 
 Si tu sautes une étape, tu te mettras dans une situation que `STATE.md` ou `PITFALLS.md` te disent déjà comment éviter.
 
@@ -48,8 +47,12 @@ agent/
 ├── PITFALLS.md                # erreurs déjà payées — ne pas reproduire
 ├── TASK_PROTOCOL.md           # cycle de vie d'une tâche
 ├── memory/
-│   ├── INDEX.md               # index de la mémoire référencée
-│   └── PROJECT_SNAPSHOT.md    # contexte projet condensé (3 min de lecture)
+│   └── INDEX.md               # index de la mémoire référencée
+├── references/                # règles techniques stables
+│   └── CODING_GUIDE.md
+├── reports/                   # rapports ponctuels datés (audits, walkthroughs)
+├── plans/                     # plans actifs (les exécutés → _archive/)
+├── research/                  # études techniques
 └── skills/
     ├── README.md              # index des skills disponibles
     ├── alembic-migrations.md
@@ -80,9 +83,8 @@ agent/
 │                                                            │
 │   Lecture obligatoire au démarrage :                       │
 │     1. agent/README.md (ce fichier)                        │
-│     2. agent/memory/PROJECT_SNAPSHOT.md                    │
-│     3. STATE.md (état réel)                                │
-│     4. .docs/10-mvp-completion-plan.md (jalon courant)     │
+│     2. STATE.md (état réel)                                │
+│     3. agent/references/CODING_GUIDE.md (règles stables)   │
 │                                                            │
 │   Référence permanente :                                   │
 │     - agent/PERMISSIONS.md (avant chaque action sensible)  │

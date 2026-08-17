@@ -20,12 +20,11 @@ Les réponses sont dans les fichiers du repo, jamais dans la mémoire de l'agent
 
 ### 1.1 Si c'est la première fois sur ce repo
 
-1. Lire [`README.md`](../README.md) (vue d'ensemble)
-2. Lire [`agent/README.md`](./README.md) (point d'entrée agent)
-3. Lire [`agent/memory/PROJECT_SNAPSHOT.md`](./memory/PROJECT_SNAPSHOT.md) (contexte condensé)
-4. Lire [`STATE.md`](../STATE.md) (état réel)
-5. Lire [`.docs/10-mvp-completion-plan.md`](../.docs/10-mvp-completion-plan.md) (jalon courant)
-6. Lire [`PITFALLS.md`](./PITFALLS.md) en entier
+1. Lire [`../README.md`](../README.md) (vue d'ensemble)
+2. Lire [`./README.md`](./README.md) (point d'entrée agent)
+3. Lire [`../STATE.md`](../STATE.md) (état réel, source de vérité)
+4. Lire [`./references/CODING_GUIDE.md`](./references/CODING_GUIDE.md) (stack, principes, structure)
+5. Lire [`./PITFALLS.md`](./PITFALLS.md) en entier
 
 ### 1.2 Si c'est une reprise (même journée ou session précédente)
 
