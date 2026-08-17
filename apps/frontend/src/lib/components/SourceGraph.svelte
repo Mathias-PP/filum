@@ -552,20 +552,19 @@
     return null;
   }
 
-  /** Étiquette d'un nœud fiche : les auteurs du contenu, le créateur faute de mieux. */
+  /** Étiquette d'un nœud fiche : les auteurs du contenu, le titre à défaut.
+   *  On ne retombe **jamais** sur le créateur Philum -- cf. `card-label.ts`. */
   function cardLabelOf(d: GraphNode): string {
     return d.cardMeta
       ? cardNodeLabel({
           authors: d.cardMeta.authors,
-          creatorName: d.cardMeta.creatorName,
-          creatorSlug: d.cardMeta.creatorSlug,
+          title: d.cardMeta.title,
         })
       : cardNodeLabel({
           // La fiche fait foi sur les auteurs de son contenu ; `rootAuthors`,
           // reconstitué depuis les fiches citantes, ne sert qu'à défaut.
           authors: card.content_authors ?? rootAuthors,
-          creatorName: card.creator.display_name,
-          creatorSlug: card.creator.slug,
+          title: card.title,
         });
   }
 

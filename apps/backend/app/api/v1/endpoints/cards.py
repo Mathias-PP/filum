@@ -202,6 +202,23 @@ async def create_card(
                 "message": f"Card with slug '{card_data.slug}' already exists",
             },
         )
+    # Auto-remplissage des auteurs du contenu quand ils sont connus mais non
+    # renseignes. Sans cette securite, une fiche cree via un chemin qui saute
+    # le bouton « Suggerer » de la wizard atterrit avec content_authors=NULL,
+    # et le graphe finit par retomber sur le createur -- ce qui laisse croire
+    # qu'il est l'auteur de l'article documente (cas vecu : fiche seed
+    # « Early detection of multiple cancers » chez mathias-pinault, articles
+    # ou Crossref connaissait pourtant les cinq auteurs). Best-effort, non
+    # bloquant : un extract qui echoue ne casse pas la creation.
+    if not card_data.content_authors and card_data.content_url:
+        try:
+            from app.extractors.url_extractor import extract
+
+            meta = await extract(card_data.content_url)
+            if meta and meta.authors:
+                card_data = card_data.model_copy(update={"content_authors": meta.authors[:500]})
+        except Exception as e:
+            logger.info("auto-fill content_authors failed for %s: %s", card_data.content_url, e)
     card = await card_service.create_card(current_user.id, card_data)
     return card
 
