@@ -51,6 +51,7 @@ const baseCard: CardDetail = {
   title: 'Ma vidéo sur la mémoire',
   description: null,
   content_url: 'https://youtube.com/watch?v=abc',
+  content_text: null,
   content_authors: null,
   platform: 'youtube',
   content_type: 'video',
