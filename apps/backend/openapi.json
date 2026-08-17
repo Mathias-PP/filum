@@ -2936,6 +2936,8 @@
         "properties": {
           "content_url": {
             "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
             "title": "Content Url"
           }
         },

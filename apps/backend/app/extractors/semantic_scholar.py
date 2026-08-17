@@ -94,9 +94,14 @@ def _extract_url_from_ext_ids(ext_ids: dict | None) -> tuple[str | None, str | N
 
 def _sanitize_text(s: str | None) -> str | None:
     """Nettoie les titres/auteurs S2 : demi-surrogates orphelins (rendent le
-    JSON invalide en aval) + tirets Unicode divers normalises en ASCII."""
+    JSON invalide en aval) + tirets Unicode divers normalises en ASCII.
+
+    Une chaine vide est traitee comme None : la fonction promet de rendre
+    None quand il n'y a rien d'exploitable, et rendre `""` au lieu de `None`
+    faisait dependre le pipeline aval du type exact au lieu de la presence.
+    """
     if not s:
-        return s
+        return None
     # \ud800-\udfff : surrogate halves orphelins qui apparaissent dans certains
     # titres S2 (papiers Wiley/PMC) et cassent la serialisation JSON aval.
     # Les tirets Unicode (hyphen U+2010, non-breaking U+2011, figure U+2012,
