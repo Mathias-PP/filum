@@ -32,11 +32,38 @@ def test_un_intitule_vide_vaut_absence() -> None:
     assert normalize_chunk_titles(["a", "   ", "c"], PASSAGES) == ["a", None, "c"]
 
 
-def test_un_intitule_demesure_est_borne() -> None:
-    """La colonne fait 200 caracteres : au-dela l'ecriture echouerait."""
-    titres = normalize_chunk_titles(["x" * 500, "b", "c"], PASSAGES)
-    assert titres[0] is not None
-    assert len(titres[0]) <= 200
+def test_une_phrase_entiere_est_refusee() -> None:
+    """« 2 a 6 mots » dit le prompt, mais le modele rend parfois une phrase.
+
+    Mesuree sur la vitrine : « Chiffre de depart de l'article : la depense
+    ne bougeant pas avec l'activite mentale, le sommeil ne peut pas etre une
+    simple mise en veille energetique. » etait servie comme titre d'extrait.
+    Un intitule sert a *retrouver* dans une liste, pas a *raconter*. Au-dela
+    de huit mots, on ne repere plus, on lit.
+    """
+    phrase = (
+        "Chiffre de depart de l'article : la depense ne bougeant pas avec "
+        "l'activite mentale, le sommeil ne peut pas etre une simple mise en "
+        "veille energetique."
+    )
+    assert normalize_chunk_titles([phrase, "b", "c"], PASSAGES) == [None, "b", "c"]
+
+
+def test_un_titre_court_passe() -> None:
+    assert normalize_chunk_titles(["Reconsolidation de la memoire", "b", "c"], PASSAGES) == [
+        "Reconsolidation de la memoire",
+        "b",
+        "c",
+    ]
+
+
+def test_huit_mots_juste_au_seuil_passe() -> None:
+    """La marge existe : le prompt dit 2-6, on tolere jusqu'a 8 pour ne pas
+    rejeter un titre qui contient une preposition ou un article de plus."""
+    huit = "Un titre exactement de huit mots ici bien"
+    assert len(huit.split()) == 8
+    result = normalize_chunk_titles([huit, "b", "c"], PASSAGES)
+    assert result[0] == huit
 
 
 def test_aucun_passage_aucun_intitule() -> None:

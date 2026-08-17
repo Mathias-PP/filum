@@ -473,9 +473,28 @@ _CHUNK_TITLE_SYSTEM_PROMPT = (
 )
 
 _MAX_TITLE_CHARS = 200
+# Un intitule sert a *retrouver* dans une liste. Le prompt dit « 2 a 6 mots » ;
+# on tolere jusqu'a huit pour laisser passer un article ou une preposition de
+# plus, mais on refuse tout ce qui devient une phrase : « Chiffre de depart de
+# l'article : la depense ne bougeant pas... » vue en production ne repere pas,
+# elle raconte. Un titre trop long est rendu None, pas tronque : couper au
+# milieu d'une phrase produirait un intitule faux au lieu d'une absence claire.
+_MAX_TITLE_MOTS = 8
 # Une phrase, pas un resume : au-dela, la mise en situation prend le pas sur
 # le passage qu'elle est censee servir. Meme plafond que la colonne.
 _MAX_CONTEXT_CHARS = 500
+
+
+def _titre_recevable(brut: str | None) -> str | None:
+    """Le titre nettoye si son format tient dans la contrainte, `None` sinon."""
+    if not brut:
+        return None
+    nettoye = brut.strip()
+    if not nettoye:
+        return None
+    if len(nettoye.split()) > _MAX_TITLE_MOTS:
+        return None
+    return nettoye[:_MAX_TITLE_CHARS]
 
 
 async def suggest_chunk_titles(chunks: list[str]) -> list[str | None] | None:
@@ -513,8 +532,8 @@ def normalize_chunk_titles(titles: list[str], chunks: list[str]) -> list[str | N
     """
     sortie: list[str | None] = []
     for i in range(len(chunks)):
-        brut = titles[i].strip() if i < len(titles) else ""
-        sortie.append(brut[:_MAX_TITLE_CHARS] if brut else None)
+        brut = titles[i] if i < len(titles) else None
+        sortie.append(_titre_recevable(brut))
     return sortie
 
 
@@ -579,7 +598,7 @@ async def suggest_annotation(passage: str, entourage: str = "") -> LlmAnnotation
     except ValidationError:
         return None
     return LlmAnnotation(
-        title=(annotation.title or "").strip()[:_MAX_TITLE_CHARS] or None,
+        title=_titre_recevable(annotation.title),
         context=(annotation.context or "").strip()[:_MAX_CONTEXT_CHARS] or None,
     )
 
