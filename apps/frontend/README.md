@@ -28,17 +28,17 @@ Le proxy `/api/[...path]` (voir `src/routes/api/[...path]/+server.ts`) proxifie 
 
 ## Où vivent les choses
 
-| Sous-dossier | Rôle |
-|---|---|
-| `src/routes/` | Routes SvelteKit. Publiques : `/`, `/about`, `/discover`, `/features`, `/feed`, `/@[creator]`, `/@[creator]/[card]`, `/c/[creator]/[card]` (URL agent-friendly sans `@`), `/developers`, `/roadmap`, `/privacy`, `/sandbox`. Créateur : `/dashboard`, `/dashboard/new`, `/dashboard/new/[card_id]/sources`, `/dashboard/recherche` |
-| `src/lib/components/` | Composants Svelte partagés (`Avatar`, `SourceGraph`, `HeroPulsar`, `Logo`, `ConfirmDialog`, `Toast`, `Modal`, etc.) |
-| `src/lib/stores/` | Stores Svelte (`currentUser`, etc.) |
-| `src/lib/api/` | Client API typé, `generated.ts` produit par `openapi-typescript` depuis `../backend/openapi.json` |
-| `src/lib/utils/` | Utilitaires purs (`citation-meta`, `coins`, `reveal`, etc.) |
-| `src/lib/actions/` | Actions Svelte (`reveal` pour l'apparition au scroll) |
-| `src/hooks.server.ts` | Réécriture MIME sur les URLs `.md` et `.philum.json` |
-| `src/tests/` | Tests vitest (`citation-meta.test.ts`, `coins.test.ts`) |
-| `static/` | Assets statiques servis à la racine |
+| Sous-dossier          | Rôle                                                                                                                                                                                                                                                                                                                               |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/routes/`         | Routes SvelteKit. Publiques : `/`, `/about`, `/discover`, `/features`, `/feed`, `/@[creator]`, `/@[creator]/[card]`, `/c/[creator]/[card]` (URL agent-friendly sans `@`), `/developers`, `/roadmap`, `/privacy`, `/sandbox`. Créateur : `/dashboard`, `/dashboard/new`, `/dashboard/new/[card_id]/sources`, `/dashboard/recherche` |
+| `src/lib/components/` | Composants Svelte partagés (`Avatar`, `SourceGraph`, `HeroPulsar`, `Logo`, `ConfirmDialog`, `Toast`, `Modal`, etc.)                                                                                                                                                                                                                |
+| `src/lib/stores/`     | Stores Svelte (`currentUser`, etc.)                                                                                                                                                                                                                                                                                                |
+| `src/lib/api/`        | Client API typé, `generated.ts` produit par `openapi-typescript` depuis `../backend/openapi.json`                                                                                                                                                                                                                                  |
+| `src/lib/utils/`      | Utilitaires purs (`citation-meta`, `coins`, `reveal`, etc.)                                                                                                                                                                                                                                                                        |
+| `src/lib/actions/`    | Actions Svelte (`reveal` pour l'apparition au scroll)                                                                                                                                                                                                                                                                              |
+| `src/hooks.server.ts` | Réécriture MIME sur les URLs `.md` et `.philum.json`                                                                                                                                                                                                                                                                               |
+| `src/tests/`          | Tests vitest (`citation-meta.test.ts`, `coins.test.ts`)                                                                                                                                                                                                                                                                            |
+| `static/`             | Assets statiques servis à la racine                                                                                                                                                                                                                                                                                                |
 
 ## SSR et hydration
 

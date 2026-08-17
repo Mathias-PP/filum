@@ -376,6 +376,13 @@ jobs:
         run: pnpm run generate:api
         working-directory: apps/frontend
 
+      # openapi-typescript produit un TS non-prettier ; le job Lint Frontend
+      # échouerait sur ce fichier régénéré au commit suivant. On applique
+      # prettier tout de suite : c'est la forme committée à comparer.
+      - name: Normaliser generated.ts avec prettier
+        run: pnpm exec prettier --write src/lib/api/generated.ts
+        working-directory: apps/frontend
+
       - name: Refuser tout drift
         run: |
           if ! git diff --exit-code apps/backend/openapi.json apps/frontend/src/lib/api/generated.ts; then
