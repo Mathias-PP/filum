@@ -92,16 +92,27 @@ describe('buildExportUrl', () => {
     }
   });
 
-  it('emet un style de biblio uniquement quand le format le porte', () => {
-    // txt le porte : la bibliographie est rendue dans le style choisi.
-    let url = new URL(buildExportUrl(BASE, { ...req, format: 'txt', style: 'harvard' }));
-    expect(url.searchParams.get('format')).toBe('txt');
-    expect(url.searchParams.get('style')).toBe('harvard');
-
-    // JSON ne le porte pas : donner un style est ignore, pas relaye. Sinon on
-    // fait croire au serveur qu'il fait quelque chose alors qu'il n'en fait rien.
-    url = new URL(buildExportUrl(BASE, { ...req, format: 'json', style: 'harvard' }));
-    expect(url.searchParams.has('style')).toBe(false);
+  it('emet le style de biblio pour TOUS les formats', () => {
+    // Chaque format porte le style, sous sa forme propre : bibliographie
+    // entiere pour txt, reference par source pour markdown/docx/csv/xlsx/
+    // json/philum, champ note pour bibtex/ris/csl. Silencieusement grise
+    // pour un format donne trahissait le fait que le style est un axe
+    // orthogonal au format.
+    for (const format of [
+      'txt',
+      'json',
+      'philum',
+      'csv',
+      'xlsx',
+      'markdown',
+      'docx',
+      'bibtex',
+      'ris',
+      'csl',
+    ]) {
+      const url = new URL(buildExportUrl(BASE, { ...req, format, style: 'harvard' }));
+      expect(url.searchParams.get('style')).toBe('harvard');
+    }
   });
 
   it('n emet pas de style pour txt quand aucun n est demande', () => {
