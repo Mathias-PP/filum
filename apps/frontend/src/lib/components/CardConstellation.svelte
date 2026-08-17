@@ -106,8 +106,7 @@
             creatorSlug: n.creator_slug ?? '',
             label: cardNodeLabel({
               authors: n.authors,
-              creatorName: n.creator_name,
-              creatorSlug: n.creator_slug,
+              title: n.title,
             }),
             sourcesCount: n.sources_count ?? 0,
             depth: n.depth,
