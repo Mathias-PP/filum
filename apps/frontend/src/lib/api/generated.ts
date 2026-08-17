@@ -330,6 +330,34 @@ export interface paths {
     patch: operations['update_card_api_v1_cards__card_id__patch'];
     trace?: never;
   };
+  '/api/v1/cards/{card_id}/content-text/upload': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Upload Content Text
+     * @description Depose un document (PDF, DOCX, ODT, TXT, MD) et remplit content_text.
+     *
+     *     Le fichier est lu, son texte extrait, puis jete : rien du fichier lui-meme
+     *     n'est conserve. Seul le texte l'est. Meme borne de taille et memes formats
+     *     que /excerpts/chunk-file.
+     *
+     *     L'utilisateur est cense avoir le droit de publier ce texte (contenu propre,
+     *     libre de droit, ou extrait sous droit de citation) ; l'UI l'en avertit
+     *     explicitement avant l'upload, le backend fait confiance.
+     */
+    post: operations['upload_content_text_api_v1_cards__card_id__content_text_upload_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/cards/{card_id}/publish': {
     parameters: {
       query?: never;
@@ -1201,6 +1229,11 @@ export interface components {
       /** File */
       file: string;
     };
+    /** Body_upload_content_text_api_v1_cards__card_id__content_text_upload_post */
+    Body_upload_content_text_api_v1_cards__card_id__content_text_upload_post: {
+      /** File */
+      file: string;
+    };
     /** CardConnection */
     CardConnection: {
       /**
@@ -1247,6 +1280,8 @@ export interface components {
       description?: string | null;
       /** Content Url */
       content_url?: string | null;
+      /** Content Text */
+      content_text?: string | null;
       /** Content Authors */
       content_authors?: string | null;
       /** @default other */
@@ -1279,6 +1314,8 @@ export interface components {
       description: string | null;
       /** Content Url */
       content_url: string | null;
+      /** Content Text */
+      content_text?: string | null;
       /** Content Authors */
       content_authors?: string | null;
       platform: components['schemas']['Platform'];
@@ -1337,6 +1374,8 @@ export interface components {
       description: string | null;
       /** Content Url */
       content_url: string | null;
+      /** Content Text */
+      content_text?: string | null;
       /** Content Authors */
       content_authors?: string | null;
       platform: components['schemas']['Platform'];
@@ -1442,6 +1481,8 @@ export interface components {
       description?: string | null;
       /** Content Url */
       content_url?: string | null;
+      /** Content Text */
+      content_text?: string | null;
       /** Content Authors */
       content_authors?: string | null;
       platform?: components['schemas']['Platform'] | null;
@@ -3051,6 +3092,41 @@ export interface operations {
     requestBody: {
       content: {
         'application/json': components['schemas']['CardUpdate'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CardResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  upload_content_text_api_v1_cards__card_id__content_text_upload_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        card_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'multipart/form-data': components['schemas']['Body_upload_content_text_api_v1_cards__card_id__content_text_upload_post'];
       };
     };
     responses: {

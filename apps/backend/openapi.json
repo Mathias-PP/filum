@@ -845,6 +845,60 @@
         }
       }
     },
+    "/api/v1/cards/{card_id}/content-text/upload": {
+      "post": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Upload Content Text",
+        "description": "Depose un document (PDF, DOCX, ODT, TXT, MD) et remplit content_text.\n\nLe fichier est lu, son texte extrait, puis jete : rien du fichier lui-meme\nn'est conserve. Seul le texte l'est. Meme borne de taille et memes formats\nque /excerpts/chunk-file.\n\nL'utilisateur est cense avoir le droit de publier ce texte (contenu propre,\nlibre de droit, ou extrait sous droit de citation) ; l'UI l'en avertit\nexplicitement avant l'upload, le backend fait confiance.",
+        "operationId": "upload_content_text_api_v1_cards__card_id__content_text_upload_post",
+        "parameters": [
+          {
+            "name": "card_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Card Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_content_text_api_v1_cards__card_id__content_text_upload_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/cards/{card_id}/publish": {
       "post": {
         "tags": [
@@ -3166,6 +3220,20 @@
         ],
         "title": "Body_parse_import_file_api_v1_import_parse_post"
       },
+      "Body_upload_content_text_api_v1_cards__card_id__content_text_upload_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_content_text_api_v1_cards__card_id__content_text_upload_post"
+      },
       "CardConnection": {
         "properties": {
           "source_id": {
@@ -3311,6 +3379,18 @@
             ],
             "title": "Content Url"
           },
+          "content_text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Text"
+          },
           "content_authors": {
             "anyOf": [
               {
@@ -3414,6 +3494,17 @@
               }
             ],
             "title": "Content Url"
+          },
+          "content_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Text"
           },
           "content_authors": {
             "anyOf": [
@@ -3606,6 +3697,17 @@
               }
             ],
             "title": "Content Url"
+          },
+          "content_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Text"
           },
           "content_authors": {
             "anyOf": [
@@ -3843,6 +3945,18 @@
               }
             ],
             "title": "Content Url"
+          },
+          "content_text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Text"
           },
           "content_authors": {
             "anyOf": [
