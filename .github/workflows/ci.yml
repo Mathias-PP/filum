@@ -326,10 +326,78 @@ jobs:
         run: dbt compile --target ci
         working-directory: apps/analytics
 
+  # Le contrat API vit dans deux fichiers commités : `apps/backend/openapi.json`
+  # (sortie de FastAPI, source de vérité) et `apps/frontend/src/lib/api/
+  # generated.ts` (types TypeScript dérivés). Un endpoint modifié dans le code
+  # sans régénération de ces deux fichiers ne casse rien au moment du commit,
+  # puis le premier appel touche une signature inexistante et l'erreur remonte
+  # en prod. Ce job les régénère et refuse tout drift.
+  #
+  # Le test `test_openapi_sync.py` fait la même chose côté backend seul (drift
+  # code Python vs openapi.json) ; ce job ajoute la vérification frontend.
+  contract-api-sync:
+    name: Contract API Sync
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Install backend dependencies
+        run: uv sync --all-extras
+        working-directory: apps/backend
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          package_json_file: apps/frontend/package.json
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: apps/frontend
+
+      - name: Regenerate openapi.json
+        run: uv run python -m app.scripts.export_openapi
+        working-directory: apps/backend
+
+      - name: Regenerate generated.ts
+        run: pnpm run generate:api
+        working-directory: apps/frontend
+
+      # openapi-typescript produit un TS non-prettier ; le job Lint Frontend
+      # échouerait sur ce fichier régénéré au commit suivant. On applique
+      # prettier tout de suite : c'est la forme committée à comparer.
+      - name: Normaliser generated.ts avec prettier
+        run: pnpm exec prettier --write src/lib/api/generated.ts
+        working-directory: apps/frontend
+
+      - name: Refuser tout drift
+        run: |
+          if ! git diff --exit-code apps/backend/openapi.json apps/frontend/src/lib/api/generated.ts; then
+            echo ""
+            echo "::error::Contract API désynchronisé. Régénérer localement :"
+            echo "::error::  cd apps/backend && uv run python -m app.scripts.export_openapi"
+            echo "::error::  cd apps/frontend && pnpm run generate:api"
+            echo "::error::puis commiter openapi.json et generated.ts ensemble."
+            exit 1
+          fi
+
   summary:
     name: CI Summary
     runs-on: ubuntu-latest
-    needs: [security-scan, lint-backend, typecheck-backend, lint-frontend, test-backend, test-frontend, build-frontend]
+    needs: [security-scan, lint-backend, typecheck-backend, lint-frontend, test-backend, test-frontend, build-frontend, contract-api-sync]
     if: always()
     steps:
       - name: Summary
@@ -342,3 +410,4 @@ jobs:
           echo "### Backend Tests: ${{ needs.test-backend.result }}"
           echo "### Frontend Tests: ${{ needs.test-frontend.result }}"
           echo "### Frontend Build: ${{ needs.build-frontend.result }}"
+          echo "### Contract API Sync: ${{ needs.contract-api-sync.result }}"

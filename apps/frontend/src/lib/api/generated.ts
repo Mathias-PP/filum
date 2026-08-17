@@ -123,6 +123,176 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/auth/mcp-token': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Create Mcp Token
+     * @description Un jeton porteur pour parler au MCP au nom de l'utilisateur connecte.
+     *
+     *     Le meme mecanisme que la session web : JWT signe par le meme secret, meme
+     *     duree de vie (sept jours). L'agent le copie une fois dans son client MCP
+     *     et le passe en en-tete Authorization. Aucun droit particulier n'est
+     *     accorde : le jeton porte l'identite du createur, rien de plus.
+     */
+    post: operations['create_mcp_token_api_v1_auth_mcp_token_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/cards/{card_id}/connections': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List Connections */
+    get: operations['list_connections_api_v1_cards__card_id__connections_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/cards/{card_id}/connections/{source_id}/confirm': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Confirm Connection */
+    post: operations['confirm_connection_api_v1_cards__card_id__connections__source_id__confirm_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/cards/{card_id}/connections/{source_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Remove Connection */
+    delete: operations['remove_connection_api_v1_cards__card_id__connections__source_id__delete'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/cards/citations': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Incoming Citations Endpoint
+     * @description Qui s'appuie sur mes fiches.
+     *
+     *     Comme /cards/deleted, cette route DOIT preceder /cards/{card_id} : sinon
+     *     FastAPI lirait 'citations' comme un UUID et repondrait 422.
+     */
+    get: operations['list_incoming_citations_endpoint_api_v1_cards_citations_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/cards/citations/seen': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Mark Incoming Citations Seen
+     * @description Marque les citations entrantes comme vues et renvoie la liste a jour.
+     *
+     *     On renvoie la liste plutot qu'un 204 : le frontend doit pouvoir afficher
+     *     d'un seul coup ce qui vient d'etre marque, sans re-interroger et sans
+     *     reconstruire l'etat de son cote.
+     */
+    post: operations['mark_incoming_citations_seen_api_v1_cards_citations_seen_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/cards/deleted': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List My Deleted Cards
+     * @description Liste les fiches soft-deletees de l'utilisateur (corbeille).
+     *
+     *     Chaque fiche est restaurable via POST /cards/{id}/restore. IMPORTANT :
+     *     cette route DOIT etre declaree AVANT /cards/{card_id} pour que FastAPI
+     *     ne matche pas 'deleted' comme un UUID (retournerait 422 sinon).
+     */
+    get: operations['list_my_deleted_cards_api_v1_cards_deleted_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/cards/search': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Search Cards
+     * @description Fiches selectionnables comme parent : celles de l'user + les publiques.
+     *
+     *     Sert le picker de meta-fiches. Comme /cards/deleted, DOIT etre declaree
+     *     avant /cards/{card_id} sinon FastAPI matche 'search' comme un UUID.
+     */
+    get: operations['search_cards_api_v1_cards_search_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/cards': {
     parameters: {
       query?: never;
@@ -177,6 +347,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/cards/{card_id}/restore': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Restore Card */
+    post: operations['restore_card_api_v1_cards__card_id__restore_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/@{creator_slug}/{card_slug}': {
     parameters: {
       query?: never;
@@ -186,6 +373,46 @@ export interface paths {
     };
     /** Get Public Card */
     get: operations['get_public_card_api_v1___creator_slug___card_slug__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/@{creator_slug}/{card_slug}/graph': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Public Card Graph
+     * @description Meta-graphe autour d'une fiche : ses sources et les fiches qu'elles citent.
+     *
+     *     ``include_sources=false`` renvoie le graphe fiches-seules (constellation).
+     *     Le parcours ne traverse que des fiches publiees et publiques.
+     */
+    get: operations['get_public_card_graph_api_v1___creator_slug___card_slug__graph_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/@{creator_slug}/{card_slug}/export': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Export Public Card */
+    get: operations['export_public_card_api_v1___creator_slug___card_slug__export_get'];
     put?: never;
     post?: never;
     delete?: never;
@@ -205,6 +432,355 @@ export interface paths {
     put?: never;
     /** Create Claim Request */
     post: operations['create_claim_request_api_v1_cards__card_id__claim_requests_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/discover': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Discover Cards */
+    get: operations['discover_cards_api_v1_discover_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/discover/creators': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Discover Creators
+     * @description Recherche de createurs qui ont au moins une fiche publique publiee.
+     *
+     *     Indexe uniquement ce que le createur a rendu public : `username`,
+     *     `display_name`, `bio`. Ne remonte jamais un compte qui n'a publie
+     *     aucune fiche : sans corpus, un profil n'a rien a offrir a la recherche.
+     */
+    get: operations['discover_creators_api_v1_discover_creators_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/discover/facets': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Discover Facets
+     * @description Ce qui existe reellement dans le corpus public.
+     *
+     *     L'interface n'invente pas ses filtres a partir des enums du modele : une
+     *     case a cocher qui ne ramene jamais rien est une promesse non tenue.
+     */
+    get: operations['discover_facets_api_v1_discover_facets_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/excerpts/search': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Search Excerpts
+     * @description Les extraits de la personne connectee les plus proches de `q`.
+     */
+    get: operations['search_excerpts_api_v1_excerpts_search_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/sources/{source_id}/excerpts': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Create Excerpt */
+    post: operations['create_excerpt_api_v1_sources__source_id__excerpts_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/sources/{source_id}/excerpts/{excerpt_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Delete Excerpt */
+    delete: operations['delete_excerpt_api_v1_sources__source_id__excerpts__excerpt_id__delete'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/sources/{source_id}/excerpts/chunk': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Chunk Source Text
+     * @description Propose un decoupage du texte de la source, colle ou recupere.
+     *
+     *     Le collage prime : c'est le seul chemin qui marche sur les cinq sites de la
+     *     mesure ou la recuperation ne rend rien. Sans collage on tente le site, et
+     *     une page illisible rend un decoupage vide plutot qu'une erreur.
+     */
+    post: operations['chunk_source_text_api_v1_sources__source_id__excerpts_chunk_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/sources/{source_id}/excerpts/chunk-file': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Chunk Uploaded Document
+     * @description Le meme decoupage, a partir d'un document depose.
+     *
+     *     Un chapitre ne se colle pas : au-dela de quelques pages, le collage devient
+     *     la corvee qui fait renoncer. Le fichier est lu puis jete — rien n'en est
+     *     conserve, seul son texte sert d'assise au decoupage.
+     */
+    post: operations['chunk_uploaded_document_api_v1_sources__source_id__excerpts_chunk_file_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/sources/{source_id}/excerpts/verify': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Verify Source Excerpts
+     * @description Reancre chaque extrait dans la page telle qu'elle est aujourd'hui.
+     *
+     *     C'est ce qui fait passer un extrait de *declare* a *verifie* : sans cette
+     *     passe, la fiche affirme qu'une source dit quelque chose sans que rien ne
+     *     l'ait jamais confirme.
+     *
+     *     Sur les cinq sites de la mesure ou la page ne rend rien, cette passe ne
+     *     disait ni oui ni non. Un texte fourni la debloque : la relecture porte
+     *     alors sur ce que l'auteur·ice atteste etre la source.
+     */
+    post: operations['verify_source_excerpts_api_v1_sources__source_id__excerpts_verify_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/sources/{source_id}/excerpts/suggest': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Suggest Source Excerpts */
+    post: operations['suggest_source_excerpts_api_v1_sources__source_id__excerpts_suggest_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/sources/{source_id}/excerpts/annotate': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Annotate Excerpt
+     * @description Propose un intitule et une phrase de mise en situation pour un passage.
+     *
+     *     Ne persiste rien et n'engage a rien : la reponse remplit des champs que
+     *     l'auteur·ice relit, corrige ou vide avant d'ajouter le passage.
+     */
+    post: operations['annotate_excerpt_api_v1_sources__source_id__excerpts_annotate_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/feed': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Read Feed */
+    get: operations['read_feed_api_v1_feed_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/import/parse': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Parse Import File */
+    post: operations['parse_import_file_api_v1_import_parse_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/import/paste': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Parse Pasted Bibliography */
+    post: operations['parse_pasted_bibliography_api_v1_import_paste_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/import/youtube-transcript': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Suggest From Youtube Transcript */
+    post: operations['suggest_from_youtube_transcript_api_v1_import_youtube_transcript_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/import/from-content-url': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Parse Content Url
+     * @description URL d'un contenu -> draft de fiche complet (titre + sources citees).
+     *
+     *     Rate-limit 5/heure (extraction LLM + fetch reseau). Auth requise.
+     *     SSRF-safe via assert_url_is_safe.
+     */
+    post: operations['parse_content_url_api_v1_import_from_content_url_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/import/url-metadata': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Url Metadata
+     * @description Metadata legere (titre, description) d'une URL de contenu.
+     *
+     *     Version rapide de /import/from-content-url : un seul fetch de page,
+     *     pas d'extraction de references ni de LLM. Sert a pre-remplir le
+     *     formulaire « Nouvelle fiche » pendant la saisie.
+     */
+    post: operations['url_metadata_api_v1_import_url_metadata_post'];
     delete?: never;
     options?: never;
     head?: never;
@@ -270,6 +846,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/sources/batch': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Create Sources Batch
+     * @description Cree N sources en une transaction. Ce qui echoue est retourne dans
+     *     ``failed`` avec la raison, ce qui reussit dans ``created``.
+     *
+     *     Impact archives Wayback : chaque source non-manuellement-archivee
+     *     declenche une tache de fond apres commit (idem POST individuel).
+     */
+    post: operations['create_sources_batch_api_v1_sources_batch_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/sources/archive': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Archive Sources
+     * @description Relance l'archivage des sources demandees, une ou plusieurs.
+     *
+     *     L'archivage automatique est cadence et peut prendre des heures sur une
+     *     grosse fiche. Cette route permet de designer ce qui presse, sans attendre
+     *     le tour de role.
+     */
+    post: operations['archive_sources_api_v1_sources_archive_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/sources/{source_id}': {
     parameters: {
       query?: never;
@@ -288,6 +912,27 @@ export interface paths {
     patch: operations['update_source_api_v1_sources__source_id__patch'];
     trace?: never;
   };
+  '/api/v1/users/me/linked-accounts': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Get My Linked Accounts */
+    get: operations['get_my_linked_accounts_api_v1_users_me_linked_accounts_get'];
+    /**
+     * Replace My Linked Accounts
+     * @description Remplace la liste complète (sémantique PUT — simple pour la v0).
+     */
+    put: operations['replace_my_linked_accounts_api_v1_users_me_linked_accounts_put'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/users/@{slug}': {
     parameters: {
       query?: never;
@@ -299,23 +944,6 @@ export interface paths {
     get: operations['get_user_profile_api_v1_users___slug__get'];
     put?: never;
     post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/v1/waitlist': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Join Waitlist */
-    post: operations['join_waitlist_api_v1_waitlist_post'];
     delete?: never;
     options?: never;
     head?: never;
@@ -348,6 +976,35 @@ export interface paths {
     };
     /** Database Health */
     get: operations['database_health_health_database_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/health/llm-diagnose': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Llm Diagnose
+     * @description Dit si la couche LLM est vivante, en faisant vraiment un aller-retour.
+     *
+     *     Trois fonctionnalités dependent d'un modele et se degradent en silence
+     *     quand il n'y en a pas : suggestion de citations, suggestion d'intitules,
+     *     extraction de metadonnees. Rien dans l'interface ne distingue « le modele
+     *     n'a rien trouve » de « il n'y a pas de modele », d'ou cette sonde.
+     *
+     *     Accessible sans auth, donc elle ne rend ni la cle, ni de traceback : juste
+     *     de quoi savoir quoi corriger. Le cout d'un appel est negligeable et il est
+     *     declenche a la main.
+     */
+    get: operations['llm_diagnose_health_llm_diagnose_get'];
     put?: never;
     post?: never;
     delete?: never;
@@ -407,11 +1064,49 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    /** AnnotationRequest */
+    AnnotationRequest: {
+      /** Text */
+      text: string;
+      /** Surrounding */
+      surrounding?: string | null;
+    };
+    /** AnnotationResponse */
+    AnnotationResponse: {
+      /** Title */
+      title?: string | null;
+      /** Context */
+      context?: string | null;
+      /** Llm Enabled */
+      llm_enabled: boolean;
+    };
+    /** ArchiveRequest */
+    ArchiveRequest: {
+      /** Source Ids */
+      source_ids: string[];
+    };
+    /**
+     * ArchiveResponse
+     * @description Ce que la demande a reellement declenche, poste par poste.
+     *
+     *     Un seul compteur global mentirait : « 40 » ne dirait pas si les 40 partent
+     *     a l'archivage ou si la moitie etait deja archivee. Chaque sort a sa case.
+     */
+    ArchiveResponse: {
+      /** Scheduled */
+      scheduled: number;
+      /** Already Archived */
+      already_archived: number;
+      /** Nothing To Archive */
+      nothing_to_archive: number;
+      /** Already Running */
+      already_running: number;
+    };
     /**
      * ArchiveStatus
      * @enum {string}
      */
-    ArchiveStatus: 'pending' | 'archived' | 'failed';
+    ArchiveStatus: 'pending' | 'archived' | 'failed' | 'not_applicable';
     /** AttestationCreate */
     AttestationCreate: {
       /** Content Url */
@@ -487,6 +1182,61 @@ export interface components {
       | 'entreprise'
       | 'asso'
       | 'individu';
+    /** Body_chunk_uploaded_document_api_v1_sources__source_id__excerpts_chunk_file_post */
+    Body_chunk_uploaded_document_api_v1_sources__source_id__excerpts_chunk_file_post: {
+      /** File */
+      file: string;
+      /** @default caracteres */
+      unit: components['schemas']['Unite'];
+      /** Size */
+      size?: number | null;
+      /**
+       * Suggest Titles
+       * @default false
+       */
+      suggest_titles: boolean;
+    };
+    /** Body_parse_import_file_api_v1_import_parse_post */
+    Body_parse_import_file_api_v1_import_parse_post: {
+      /** File */
+      file: string;
+    };
+    /** CardConnection */
+    CardConnection: {
+      /**
+       * Source Id
+       * Format: uuid
+       */
+      source_id: string;
+      /** Source Title */
+      source_title: string | null;
+      /** Source Url */
+      source_url: string;
+      /**
+       * Card Id
+       * Format: uuid
+       */
+      card_id: string;
+      /** Card Title */
+      card_title: string;
+      /** Card Slug */
+      card_slug: string;
+      /** Card Creator Slug */
+      card_creator_slug: string;
+      stance: components['schemas']['app__models__source__SourceStance'] | null;
+      origin: components['schemas']['LinkOrigin'] | null;
+      /** Confirmed */
+      confirmed: boolean;
+      /** Editable */
+      editable: boolean;
+    };
+    /** CardConnections */
+    CardConnections: {
+      /** Outgoing */
+      outgoing: components['schemas']['CardConnection'][];
+      /** Incoming */
+      incoming: components['schemas']['CardConnection'][];
+    };
     /** CardCreate */
     CardCreate: {
       /** Slug */
@@ -497,10 +1247,22 @@ export interface components {
       description?: string | null;
       /** Content Url */
       content_url?: string | null;
+      /** Content Authors */
+      content_authors?: string | null;
       /** @default other */
       platform: components['schemas']['Platform'];
       /** @default video */
       content_type: components['schemas']['ContentType'];
+      /** @default public */
+      visibility: components['schemas']['Visibility'];
+      /**
+       * Is Seed
+       * @default false
+       */
+      is_seed: boolean;
+      format?: components['schemas']['SourceFormat'] | null;
+      category?: components['schemas']['SourceCategory'] | null;
+      author_kind?: components['schemas']['AuthorKind'] | null;
     };
     /** CardDetail */
     CardDetail: {
@@ -517,6 +1279,8 @@ export interface components {
       description: string | null;
       /** Content Url */
       content_url: string | null;
+      /** Content Authors */
+      content_authors?: string | null;
       platform: components['schemas']['Platform'];
       content_type: components['schemas']['ContentType'];
       status: components['schemas']['CardStatus'];
@@ -525,6 +1289,8 @@ export interface components {
        * @default false
        */
       is_seed: boolean;
+      /** @default public */
+      visibility: components['schemas']['Visibility'];
       /** Published At */
       published_at: string | null;
       /**
@@ -534,10 +1300,27 @@ export interface components {
       created_at: string;
       /** Updated At */
       updated_at: string | null;
+      format?: components['schemas']['SourceFormat'] | null;
+      category?: components['schemas']['SourceCategory'] | null;
+      author_kind?: components['schemas']['AuthorKind'] | null;
       creator: components['schemas']['CreatorInfo'];
       /** Sources */
       sources: components['schemas']['SourceResponse'][];
       stats: components['schemas']['CardStats'];
+    };
+    /** CardGraphResponse */
+    CardGraphResponse: {
+      /** Root Id */
+      root_id: string;
+      /** Nodes */
+      nodes: components['schemas']['GraphNodeResponse'][];
+      /** Edges */
+      edges: components['schemas']['GraphEdgeResponse'][];
+      /**
+       * Truncated
+       * @default false
+       */
+      truncated: boolean;
     };
     /** CardResponse */
     CardResponse: {
@@ -554,6 +1337,8 @@ export interface components {
       description: string | null;
       /** Content Url */
       content_url: string | null;
+      /** Content Authors */
+      content_authors?: string | null;
       platform: components['schemas']['Platform'];
       content_type: components['schemas']['ContentType'];
       status: components['schemas']['CardStatus'];
@@ -562,6 +1347,8 @@ export interface components {
        * @default false
        */
       is_seed: boolean;
+      /** @default public */
+      visibility: components['schemas']['Visibility'];
       /** Published At */
       published_at: string | null;
       /**
@@ -571,6 +1358,33 @@ export interface components {
       created_at: string;
       /** Updated At */
       updated_at: string | null;
+      format?: components['schemas']['SourceFormat'] | null;
+      category?: components['schemas']['SourceCategory'] | null;
+      author_kind?: components['schemas']['AuthorKind'] | null;
+    };
+    /**
+     * CardSearchResult
+     * @description Fiche selectionnable comme parent (meta-fiches).
+     *
+     *     Volontairement minimal : le picker n'a besoin que de quoi identifier une
+     *     fiche et construire son URL publique.
+     */
+    CardSearchResult: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Title */
+      title: string;
+      /** Slug */
+      slug: string;
+      /** Creator Slug */
+      creator_slug: string;
+      /** Status */
+      status: string;
+      /** Is Own */
+      is_own: boolean;
     };
     /** CardStats */
     CardStats: {
@@ -605,6 +1419,11 @@ export interface components {
        */
       archived_count: number;
       /**
+       * Archivable Count
+       * @default 0
+       */
+      archivable_count: number;
+      /**
        * All Archived
        * @default false
        */
@@ -623,7 +1442,57 @@ export interface components {
       description?: string | null;
       /** Content Url */
       content_url?: string | null;
+      /** Content Authors */
+      content_authors?: string | null;
       platform?: components['schemas']['Platform'] | null;
+      content_type?: components['schemas']['ContentType'] | null;
+      /** Is Seed */
+      is_seed?: boolean | null;
+      visibility?: components['schemas']['Visibility'] | null;
+      format?: components['schemas']['SourceFormat'] | null;
+      category?: components['schemas']['SourceCategory'] | null;
+      author_kind?: components['schemas']['AuthorKind'] | null;
+    };
+    /** ChunkOut */
+    ChunkOut: {
+      /** Text */
+      text: string;
+      /** Start */
+      start: number;
+      /** End */
+      end: number;
+      /** Size */
+      size: number;
+      /** Title */
+      title?: string | null;
+    };
+    /** ChunkRequest */
+    ChunkRequest: {
+      /** Text */
+      text?: string | null;
+      /** @default caracteres */
+      unit: components['schemas']['Unite'];
+      /** Size */
+      size?: number | null;
+      /**
+       * Suggest Titles
+       * @default false
+       */
+      suggest_titles: boolean;
+    };
+    /** ChunkResponse */
+    ChunkResponse: {
+      /** Chunks */
+      chunks: components['schemas']['ChunkOut'][];
+      /** Text */
+      text: string;
+      /** Text Source */
+      text_source: string;
+      unit: components['schemas']['Unite'];
+      /** Suggested Size */
+      suggested_size: number;
+      /** Llm Enabled */
+      llm_enabled: boolean;
     };
     /** ClaimRequestCreate */
     ClaimRequestCreate: {
@@ -663,6 +1532,202 @@ export interface components {
       /** Public Key */
       public_key: string;
     };
+    /** CreatorResult */
+    CreatorResult: {
+      /** Slug */
+      slug: string;
+      /** Display Name */
+      display_name: string | null;
+      /** Bio */
+      bio: string | null;
+      /** Avatar Url */
+      avatar_url: string | null;
+      /** Is Verified */
+      is_verified: boolean;
+      /** Published Cards Count */
+      published_cards_count: number;
+      /** Url */
+      url: string;
+    };
+    /** CreatorSearchResponse */
+    CreatorSearchResponse: {
+      /** Total */
+      total: number;
+      /** Limit */
+      limit: number;
+      /** Offset */
+      offset: number;
+      /** Results */
+      results: components['schemas']['CreatorResult'][];
+    };
+    /** DiscoverFacets */
+    DiscoverFacets: {
+      /** Total */
+      total: number;
+      /** Platforms */
+      platforms: components['schemas']['Facet'][];
+      /** Content Types */
+      content_types: components['schemas']['Facet'][];
+      /** Creators */
+      creators: components['schemas']['Facet'][];
+    };
+    /** DiscoverResponse */
+    DiscoverResponse: {
+      /** Total */
+      total: number;
+      /** Limit */
+      limit: number;
+      /** Offset */
+      offset: number;
+      /** Results */
+      results: components['schemas']['DiscoverResult'][];
+    };
+    /** DiscoverResult */
+    DiscoverResult: {
+      /** Id */
+      id: string;
+      /** Slug */
+      slug: string;
+      /** Title */
+      title: string;
+      /** Description */
+      description: string | null;
+      /** Url */
+      url: string;
+      /** Creator Slug */
+      creator_slug: string;
+      /** Creator Name */
+      creator_name: string | null;
+      /** Content Url */
+      content_url: string | null;
+      /** Content Authors */
+      content_authors: string | null;
+      /** Content Type */
+      content_type: string;
+      /** Platform */
+      platform: string;
+      /** Published At */
+      published_at: string | null;
+      /** Source Count */
+      source_count: number;
+    };
+    /** ExcerptCheck */
+    ExcerptCheck: {
+      /**
+       * Excerpt Id
+       * Format: uuid
+       */
+      excerpt_id: string;
+      /** Status */
+      status: string;
+      /** Start */
+      start?: number | null;
+      /** End */
+      end?: number | null;
+      /** Context Before */
+      context_before?: string | null;
+      /** Context After */
+      context_after?: string | null;
+    };
+    /** ExcerptCreate */
+    ExcerptCreate: {
+      /** Text */
+      text: string;
+      /** Title */
+      title?: string | null;
+      /** Context */
+      context?: string | null;
+      /**
+       * Suggested By Ai
+       * @default false
+       */
+      suggested_by_ai: boolean;
+      /**
+       * Annotated By Ai
+       * @default false
+       */
+      annotated_by_ai: boolean;
+      /** Anchor Prefix */
+      anchor_prefix?: string | null;
+      /** Anchor Suffix */
+      anchor_suffix?: string | null;
+      /** Anchor Offset */
+      anchor_offset?: number | null;
+    };
+    /** ExcerptSearchHit */
+    ExcerptSearchHit: {
+      /**
+       * Excerpt Id
+       * Format: uuid
+       */
+      excerpt_id: string;
+      /** Text */
+      text: string;
+      /** Title */
+      title: string | null;
+      /** Context */
+      context: string | null;
+      /**
+       * Source Id
+       * Format: uuid
+       */
+      source_id: string;
+      /** Source Title */
+      source_title: string | null;
+      /** Source Url */
+      source_url: string;
+      /**
+       * Card Id
+       * Format: uuid
+       */
+      card_id: string;
+      /** Card Slug */
+      card_slug: string;
+      /** Card Title */
+      card_title: string;
+      /** Similarity */
+      similarity: number;
+    };
+    /** ExcerptSearchResponse */
+    ExcerptSearchResponse: {
+      /** Query */
+      query: string;
+      /** Results */
+      results: components['schemas']['ExcerptSearchHit'][];
+      /** Available */
+      available: boolean;
+    };
+    /** ExcerptSuggestResponse */
+    ExcerptSuggestResponse: {
+      /** Suggestions */
+      suggestions: components['schemas']['SuggestedExcerpt'][];
+      /** Page Text Length */
+      page_text_length: number;
+      /** Llm Enabled */
+      llm_enabled: boolean;
+      /**
+       * Access Blocked
+       * @default false
+       */
+      access_blocked: boolean;
+    };
+    /** ExcerptVerifyResponse */
+    ExcerptVerifyResponse: {
+      /** Checks */
+      checks: components['schemas']['ExcerptCheck'][];
+      /** Page Text Length */
+      page_text_length: number;
+      /**
+       * Access Blocked
+       * @default false
+       */
+      access_blocked: boolean;
+      /**
+       * Text Source
+       * @default fetched
+       */
+      text_source: string;
+    };
     /** ExtractResponse */
     ExtractResponse: {
       /** Title */
@@ -675,25 +1740,430 @@ export interface components {
       description: string | null;
       /** Citations Count */
       citations_count: number | null;
-      /** Impact Factor */
-      impact_factor: number | null;
       /** Format */
       format?: string | null;
       /** Category */
       category?: string | null;
       /** Author Kind */
       author_kind?: string | null;
+      /** Journal */
+      journal?: string | null;
+      /** Volume */
+      volume?: string | null;
+      /** Pages */
+      pages?: string | null;
+      /** Publisher */
+      publisher?: string | null;
+      /** Doi */
+      doi?: string | null;
+    };
+    /** Facet */
+    Facet: {
+      /** Value */
+      value: string;
+      /** Count */
+      count: number;
+    };
+    /** FeedEntry */
+    FeedEntry: {
+      /** Id */
+      id: string;
+      /** Kind */
+      kind: string;
+      /**
+       * Occurred At
+       * Format: date-time
+       */
+      occurred_at: string;
+      /** Unpublished At */
+      unpublished_at: string | null;
+      /** Creator Slug */
+      creator_slug: string;
+      /** Creator Display Name */
+      creator_display_name: string | null;
+      /** Card Title */
+      card_title: string;
+      /** Card Url */
+      card_url: string;
+      /** Card Description */
+      card_description: string | null;
+    };
+    /** FeedResponse */
+    FeedResponse: {
+      /** Limit */
+      limit: number;
+      /** Before */
+      before: string | null;
+      /** Next Before */
+      next_before: string | null;
+      /** Entries */
+      entries: components['schemas']['FeedEntry'][];
+    };
+    /** GraphEdgeResponse */
+    GraphEdgeResponse: {
+      /** Source */
+      source: string;
+      /** Target */
+      target: string;
+      /** Kind */
+      kind: string;
+      /** Stance */
+      stance?: string | null;
+    };
+    /**
+     * GraphNodeResponse
+     * @description Noeud du meta-graphe : soit une fiche, soit une de ses sources.
+     */
+    GraphNodeResponse: {
+      /** Id */
+      id: string;
+      /** Kind */
+      kind: string;
+      /** Depth */
+      depth: number;
+      /** Title */
+      title?: string | null;
+      /** Url */
+      url?: string | null;
+      /** Authors */
+      authors?: string | null;
+      /** Category */
+      category?: string | null;
+      /** Format */
+      format?: string | null;
+      /** Author Kind */
+      author_kind?: string | null;
+      /** Stance */
+      stance?: string | null;
+      /**
+       * Is Pivot
+       * @default false
+       */
+      is_pivot: boolean;
+      /** Published At */
+      published_at?: string | null;
+      /** Journal */
+      journal?: string | null;
+      /** Publisher */
+      publisher?: string | null;
+      /** Doi */
+      doi?: string | null;
+      /** Slug */
+      slug?: string | null;
+      /** Creator Slug */
+      creator_slug?: string | null;
+      /** Creator Name */
+      creator_name?: string | null;
+      /** Sources Count */
+      sources_count?: number | null;
+      /** Linked Card Id */
+      linked_card_id?: string | null;
+      /** Linked Card Slug */
+      linked_card_slug?: string | null;
+      /** Linked Card Creator Slug */
+      linked_card_creator_slug?: string | null;
+      /**
+       * Is Seed
+       * @default false
+       */
+      is_seed: boolean;
     };
     /** HTTPValidationError */
     HTTPValidationError: {
       /** Detail */
       detail?: components['schemas']['ValidationError'][];
     };
+    /** ImportFromUrlRequest */
+    ImportFromUrlRequest: {
+      /** Url */
+      url: string;
+    };
+    /** ImportFromUrlResponse */
+    ImportFromUrlResponse: {
+      card: components['schemas']['ImportedCardDraft'];
+      /** Sources */
+      sources: components['schemas']['ImportedSourceDraft'][];
+      /** Skipped */
+      skipped: number;
+      /** References Section Found */
+      references_section_found: boolean;
+      /** Fetch Status */
+      fetch_status: string;
+      /** Wayback Url */
+      wayback_url?: string | null;
+      /**
+       * Extraction Confidence
+       * @default medium
+       */
+      extraction_confidence: string;
+      /**
+       * Refs From Oracle
+       * @default 0
+       */
+      refs_from_oracle: number;
+      /**
+       * Refs From Enrichment
+       * @default 0
+       */
+      refs_from_enrichment: number;
+      /**
+       * Refs Dropped Validation
+       * @default 0
+       */
+      refs_dropped_validation: number;
+      /**
+       * Refs Dropped Scoring
+       * @default 0
+       */
+      refs_dropped_scoring: number;
+      /**
+       * Refs Dropped S2 Hallucination
+       * @default 0
+       */
+      refs_dropped_s2_hallucination: number;
+    };
+    /** ImportParseResponse */
+    ImportParseResponse: {
+      /** Sources */
+      sources: components['schemas']['ImportedSourceDraft'][];
+      /** Skipped */
+      skipped: number;
+      /** Format Detected */
+      format_detected: string;
+    };
+    /** ImportPasteRequest */
+    ImportPasteRequest: {
+      /** Text */
+      text: string;
+    };
+    /** ImportedCardDraft */
+    ImportedCardDraft: {
+      /** Title */
+      title?: string | null;
+      /** Description */
+      description?: string | null;
+      /** Authors */
+      authors?: string | null;
+      /** Content Url */
+      content_url: string;
+    };
+    /** ImportedSourceDraft */
+    ImportedSourceDraft: {
+      /** Url */
+      url: string;
+      /** Title */
+      title?: string | null;
+      /** Authors */
+      authors?: string | null;
+      /** Published At */
+      published_at?: string | null;
+      /**
+       * Format
+       * @default texte
+       */
+      format: string;
+      /**
+       * Category
+       * @default page-web
+       */
+      category: string;
+      /**
+       * Author Kind
+       * @default individu
+       */
+      author_kind: string;
+      /** Journal */
+      journal?: string | null;
+      /** Volume */
+      volume?: string | null;
+      /** Pages */
+      pages?: string | null;
+      /** Publisher */
+      publisher?: string | null;
+      /** Doi */
+      doi?: string | null;
+      /** Classification */
+      classification?: string | null;
+    };
+    /**
+     * IncomingCitationResponse
+     * @description Une fiche publique tierce cite une fiche de l'utilisateur.
+     */
+    IncomingCitationResponse: {
+      /**
+       * Source Id
+       * Format: uuid
+       */
+      source_id: string;
+      /**
+       * Cited Card Id
+       * Format: uuid
+       */
+      cited_card_id: string;
+      /** Cited Card Title */
+      cited_card_title: string;
+      /** Cited Card Slug */
+      cited_card_slug: string;
+      /**
+       * Citing Card Id
+       * Format: uuid
+       */
+      citing_card_id: string;
+      /** Citing Card Title */
+      citing_card_title: string;
+      /** Citing Card Slug */
+      citing_card_slug: string;
+      /** Citing Creator Slug */
+      citing_creator_slug: string;
+      /** Citing Creator Name */
+      citing_creator_name?: string | null;
+      /** Stance */
+      stance?: string | null;
+      /**
+       * Cited At
+       * Format: date-time
+       */
+      cited_at: string;
+      /** Is New */
+      is_new: boolean;
+    };
+    /** IncomingCitationsResponse */
+    IncomingCitationsResponse: {
+      /** Citations */
+      citations: components['schemas']['IncomingCitationResponse'][];
+      /** New Count */
+      new_count: number;
+      /** Seen At */
+      seen_at?: string | null;
+      /**
+       * Truncated
+       * @default false
+       */
+      truncated: boolean;
+    };
+    /**
+     * LinkOrigin
+     * @description D'ou vient le lien d'une source vers une fiche Philum.
+     *
+     *     MANUEL et URL sont des gestes du createur : ils valent confirmation.
+     *     CONTENU est une hypothese de la machine (meme DOI, meme URL normalisee) :
+     *     elle vaut proposition, pas declaration. Les confondre ferait porter au
+     *     createur une affirmation qu'il n'a pas faite.
+     * @enum {string}
+     */
+    LinkOrigin: 'manuel' | 'url' | 'contenu';
+    /** LinkedAccountIn */
+    LinkedAccountIn: {
+      platform: components['schemas']['LinkedPlatform'];
+      /** Url */
+      url: string;
+      /** Handle */
+      handle?: string | null;
+    };
+    /** LinkedAccountOut */
+    LinkedAccountOut: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      platform: components['schemas']['LinkedPlatform'];
+      /** Url */
+      url: string;
+      /** Handle */
+      handle: string | null;
+      /**
+       * Verified
+       * @default false
+       */
+      verified: boolean;
+    };
+    /** LinkedAccountsUpdate */
+    LinkedAccountsUpdate: {
+      /** Accounts */
+      accounts: components['schemas']['LinkedAccountIn'][];
+    };
+    /**
+     * LinkedPlatform
+     * @enum {string}
+     */
+    LinkedPlatform: 'youtube' | 'instagram' | 'x' | 'tiktok' | 'twitch' | 'site';
+    /**
+     * OpenAccessStatus
+     * @description Route d'acces libre a la reference, selon OpenAlex.
+     *
+     *     `CLOSED` (verifie, rien de gratuit) et `UNVERIFIABLE` (verification
+     *     impossible) sont deux affirmations differentes : les confondre pourrait
+     *     detourner le lecteur d'une version libre qui existe.
+     * @enum {string}
+     */
+    OpenAccessStatus:
+      'diamond' | 'gold' | 'green' | 'hybrid' | 'bronze' | 'open' | 'closed' | 'unverifiable';
     /**
      * Platform
      * @enum {string}
      */
-    Platform: 'youtube' | 'podcast' | 'blog' | 'x' | 'bluesky' | 'other';
+    Platform: 'youtube' | 'podcast' | 'blog' | 'x' | 'bluesky' | 'revue-scientifique' | 'other';
+    /**
+     * ProvidedText
+     * @description Le texte de la source, quand la page ne le rend pas.
+     *
+     *     Colle ou tire d'un document depose : dans les deux cas c'est l'auteur·ice
+     *     qui atteste que ce texte est celui de la source. Le serveur ne le stocke
+     *     pas, il s'en sert le temps de l'appel.
+     */
+    ProvidedText: {
+      /** Text */
+      text?: string | null;
+    };
+    /**
+     * RetractionStatus
+     * @description Etat de l'article aux yeux de Crossref / Retraction Watch.
+     *
+     *     `NONE` (aucun avis, verifie) et `UNVERIFIABLE` (verification impossible)
+     *     sont deux affirmations differentes ; les confondre reviendrait a rassurer
+     *     le lecteur sans avoir rien verifie.
+     * @enum {string}
+     */
+    RetractionStatus: 'none' | 'retracted' | 'concern' | 'corrected' | 'unverifiable';
+    /**
+     * SourceBatchDuplicate
+     * @description Reference deja presente dans la fiche, ecartee sans etre une erreur.
+     */
+    SourceBatchDuplicate: {
+      /** Index */
+      index: number;
+      /** Url */
+      url: string;
+      /** Existing Source Id */
+      existing_source_id?: string | null;
+    };
+    /** SourceBatchError */
+    SourceBatchError: {
+      /** Index */
+      index: number;
+      /** Url */
+      url: string;
+      /** Error */
+      error: string;
+    };
+    /** SourceBatchRequest */
+    SourceBatchRequest: {
+      /** Sources */
+      sources: components['schemas']['SourceCreate'][];
+    };
+    /** SourceBatchResponse */
+    SourceBatchResponse: {
+      /** Created */
+      created: components['schemas']['SourceResponse'][];
+      /** Failed */
+      failed: components['schemas']['SourceBatchError'][];
+      /**
+       * Duplicates
+       * @default []
+       */
+      duplicates: components['schemas']['SourceBatchDuplicate'][];
+    };
     /**
      * SourceCategory
      * @enum {string}
@@ -713,7 +2183,10 @@ export interface components {
       | 'notes';
     /** SourceCreate */
     SourceCreate: {
-      /** Url */
+      /**
+       * Url
+       * @default
+       */
       url: string;
       /** Title */
       title?: string | null;
@@ -726,6 +2199,7 @@ export interface components {
       author_kind: components['schemas']['AuthorKind'];
       /** Annotation */
       annotation?: string | null;
+      stance?: components['schemas']['SourceStance-Input'] | null;
       /**
        * Is Pivot
        * @default false
@@ -733,6 +2207,18 @@ export interface components {
       is_pivot: boolean;
       /** Parent Source Id */
       parent_source_id?: string | null;
+      /** Linked Card Id */
+      linked_card_id?: string | null;
+      /** Journal */
+      journal?: string | null;
+      /** Volume */
+      volume?: string | null;
+      /** Pages */
+      pages?: string | null;
+      /** Publisher */
+      publisher?: string | null;
+      /** Doi */
+      doi?: string | null;
       /** Archive Url */
       archive_url?: string | null;
     };
@@ -747,8 +2233,23 @@ export interface components {
       position: number;
       /** Text */
       text: string;
+      /** Title */
+      title?: string | null;
+      /** Context */
+      context?: string | null;
       /** Suggested By Ai */
       suggested_by_ai: boolean;
+      /**
+       * Annotated By Ai
+       * @default false
+       */
+      annotated_by_ai: boolean;
+      /** Verified At */
+      verified_at?: string | null;
+      /** Verified Status */
+      verified_status?: string | null;
+      /** Verified Text Source */
+      verified_text_source?: string | null;
     };
     /**
      * SourceFormat
@@ -775,6 +2276,7 @@ export interface components {
       author_kind: components['schemas']['AuthorKind'];
       /** Annotation */
       annotation: string | null;
+      stance?: components['schemas']['app__schemas__source__SourceStance'] | null;
       /** Is Pivot */
       is_pivot: boolean;
       archive_status: components['schemas']['ArchiveStatus'];
@@ -784,8 +2286,36 @@ export interface components {
       archive_timestamp: string | null;
       /** Parent Source Id */
       parent_source_id: string | null;
+      /** Linked Card Id */
+      linked_card_id?: string | null;
+      /** Linked Card Sources Count */
+      linked_card_sources_count?: number | null;
       /** Conflict Of Interest */
       conflict_of_interest?: string | null;
+      retraction_status?: components['schemas']['RetractionStatus'] | null;
+      /** Retraction Notice Doi */
+      retraction_notice_doi?: string | null;
+      /** Retraction Checked At */
+      retraction_checked_at?: string | null;
+      oa_status?: components['schemas']['OpenAccessStatus'] | null;
+      /** Oa Url */
+      oa_url?: string | null;
+      /** Oa License */
+      oa_license?: string | null;
+      /** In Doaj */
+      in_doaj?: boolean | null;
+      /** Oa Checked At */
+      oa_checked_at?: string | null;
+      /** Journal */
+      journal?: string | null;
+      /** Volume */
+      volume?: string | null;
+      /** Pages */
+      pages?: string | null;
+      /** Publisher */
+      publisher?: string | null;
+      /** Doi */
+      doi?: string | null;
       /** Citations Count */
       citations_count?: number | null;
       /** Subscribers Count */
@@ -804,6 +2334,15 @@ export interface components {
       /** Updated At */
       updated_at: string | null;
     };
+    /**
+     * SourceStance
+     * @description Rapport declare entre le propos du contenu et ce que dit la source.
+     *
+     *     Declaratif, jamais infere. `None` (non declare) n'est pas `MENTIONNE` :
+     *     l'un est un silence, l'autre une reponse.
+     * @enum {string}
+     */
+    'SourceStance-Input': 'appuie' | 'nuance-contredit' | 'mentionne' | 'contexte';
     /** SourceUpdate */
     SourceUpdate: {
       /** Title */
@@ -817,12 +2356,61 @@ export interface components {
       author_kind?: components['schemas']['AuthorKind'] | null;
       /** Annotation */
       annotation?: string | null;
+      stance?: components['schemas']['SourceStance-Input'] | null;
       /** Is Pivot */
       is_pivot?: boolean | null;
       /** Parent Source Id */
       parent_source_id?: string | null;
+      /** Linked Card Id */
+      linked_card_id?: string | null;
+      /** Journal */
+      journal?: string | null;
+      /** Volume */
+      volume?: string | null;
+      /** Pages */
+      pages?: string | null;
+      /** Publisher */
+      publisher?: string | null;
+      /** Doi */
+      doi?: string | null;
       /** Archive Url */
       archive_url?: string | null;
+    };
+    /** SuggestedExcerpt */
+    SuggestedExcerpt: {
+      /** Text */
+      text: string;
+      /** Char Offset */
+      char_offset: number;
+      /** Context Before */
+      context_before: string;
+      /** Context After */
+      context_after: string;
+    };
+    /**
+     * Unite
+     * @description L'unite dans laquelle la taille cible est exprimee.
+     * @enum {string}
+     */
+    Unite: 'caracteres' | 'mots' | 'tokens';
+    /** UrlMetadataRequest */
+    UrlMetadataRequest: {
+      /** Url */
+      url: string;
+    };
+    /** UrlMetadataResponse */
+    UrlMetadataResponse: {
+      /** Title */
+      title?: string | null;
+      /** Description */
+      description?: string | null;
+      /** Authors */
+      authors?: string | null;
+      /**
+       * Access Blocked
+       * @default false
+       */
+      access_blocked: boolean;
     };
     /** UserResponse */
     UserResponse: {
@@ -865,27 +2453,50 @@ export interface components {
       /** Context */
       ctx?: Record<string, never>;
     };
-    /** WaitlistCreate */
-    WaitlistCreate: {
-      /**
-       * Email
-       * Format: email
-       */
-      email: string;
-      /**
-       * Context
-       * @default home
-       */
-      context: string;
+    /**
+     * Visibility
+     * @enum {string}
+     */
+    Visibility: 'public' | 'private';
+    /** YoutubeTranscriptRequest */
+    YoutubeTranscriptRequest: {
+      /** Url */
+      url: string;
     };
-    /** WaitlistResponse */
-    WaitlistResponse: {
+    /** YoutubeTranscriptResponse */
+    YoutubeTranscriptResponse: {
+      /** Available */
+      available: boolean;
       /**
-       * Ok
-       * @default true
+       * Transcript Chars
+       * @default 0
        */
-      ok: boolean;
+      transcript_chars: number;
+      /**
+       * Suggestions
+       * @default []
+       */
+      suggestions: components['schemas']['ImportedSourceDraft'][];
     };
+    /**
+     * SourceStance
+     * @description Rapport declare entre le propos du contenu et ce que dit la source.
+     *
+     *     Declaratif, jamais infere : c'est l'auteur de la fiche qui l'affirme et en
+     *     repond. NULL reste la valeur normale -- une bibliographie non annotee vaut
+     *     mieux qu'une bibliographie annotee au hasard.
+     * @enum {string}
+     */
+    app__models__source__SourceStance: 'appuie' | 'nuance-contredit' | 'mentionne' | 'contexte';
+    /**
+     * SourceStance
+     * @description Rapport declare entre le propos du contenu et ce que dit la source.
+     *
+     *     Declaratif, jamais infere. `None` (non declare) n'est pas `MENTIONNE` :
+     *     l'un est un silence, l'autre une reponse.
+     * @enum {string}
+     */
+    app__schemas__source__SourceStance: 'appuie' | 'nuance-contredit' | 'mentionne' | 'contexte';
   };
   responses: never;
   parameters: never;
@@ -1079,6 +2690,225 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['UserResponse'];
+        };
+      };
+    };
+  };
+  create_mcp_token_api_v1_auth_mcp_token_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  list_connections_api_v1_cards__card_id__connections_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        card_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CardConnections'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  confirm_connection_api_v1_cards__card_id__connections__source_id__confirm_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        card_id: string;
+        source_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CardConnection'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  remove_connection_api_v1_cards__card_id__connections__source_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        card_id: string;
+        source_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  list_incoming_citations_endpoint_api_v1_cards_citations_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['IncomingCitationsResponse'];
+        };
+      };
+    };
+  };
+  mark_incoming_citations_seen_api_v1_cards_citations_seen_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['IncomingCitationsResponse'];
+        };
+      };
+    };
+  };
+  list_my_deleted_cards_api_v1_cards_deleted_get: {
+    parameters: {
+      query?: {
+        limit?: number;
+        offset?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CardResponse'][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  search_cards_api_v1_cards_search_get: {
+    parameters: {
+      query?: {
+        q?: string;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CardSearchResult'][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
         };
       };
     };
@@ -1277,6 +3107,37 @@ export interface operations {
       };
     };
   };
+  restore_card_api_v1_cards__card_id__restore_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        card_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CardResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
   get_public_card_api_v1___creator_slug___card_slug__get: {
     parameters: {
       query?: never;
@@ -1296,6 +3157,81 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['CardDetail'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  get_public_card_graph_api_v1___creator_slug___card_slug__graph_get: {
+    parameters: {
+      query?: {
+        depth?: number;
+        include_sources?: boolean;
+      };
+      header?: never;
+      path: {
+        creator_slug: string;
+        card_slug: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CardGraphResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  export_public_card_api_v1___creator_slug___card_slug__export_get: {
+    parameters: {
+      query?: {
+        format?: string;
+        /** @description Sections a emporter, separees par des virgules. Absent : tout. Vide : les references seules. Ignore par les formats bibliographiques (BibTeX, RIS, CSL, styles de citation). */
+        include?: string | null;
+        /** @description Fiches citees par celle-ci. « 2 » : degres 1 et 2, complets. « 1:excerpts|2: » : un perimetre par degre, meme grammaire qu'`include`. Absent : aucune. */
+        cited?: string | null;
+        /** @description Fiches qui citent celle-ci. Meme grammaire que `cited`. */
+        citing?: string | null;
+      };
+      header?: never;
+      path: {
+        creator_slug: string;
+        card_slug: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': unknown;
         };
       };
       /** @description Validation Error */
@@ -1331,6 +3267,571 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ClaimRequestResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  discover_cards_api_v1_discover_get: {
+    parameters: {
+      query?: {
+        q?: string;
+        creator?: string | null;
+        content_author?: string | null;
+        platform?: string | null;
+        content_type?: string | null;
+        published_after?: string | null;
+        published_before?: string | null;
+        sort?: string;
+        limit?: number;
+        offset?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['DiscoverResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  discover_creators_api_v1_discover_creators_get: {
+    parameters: {
+      query?: {
+        q?: string;
+        limit?: number;
+        offset?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CreatorSearchResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  discover_facets_api_v1_discover_facets_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['DiscoverFacets'];
+        };
+      };
+    };
+  };
+  search_excerpts_api_v1_excerpts_search_get: {
+    parameters: {
+      query: {
+        q: string;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ExcerptSearchResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  create_excerpt_api_v1_sources__source_id__excerpts_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        source_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ExcerptCreate'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['SourceExcerptResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  delete_excerpt_api_v1_sources__source_id__excerpts__excerpt_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        source_id: string;
+        excerpt_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  chunk_source_text_api_v1_sources__source_id__excerpts_chunk_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        source_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ChunkRequest'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ChunkResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  chunk_uploaded_document_api_v1_sources__source_id__excerpts_chunk_file_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        source_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'multipart/form-data': components['schemas']['Body_chunk_uploaded_document_api_v1_sources__source_id__excerpts_chunk_file_post'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ChunkResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  verify_source_excerpts_api_v1_sources__source_id__excerpts_verify_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        source_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['ProvidedText'] | null;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ExcerptVerifyResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  suggest_source_excerpts_api_v1_sources__source_id__excerpts_suggest_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        source_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['ProvidedText'] | null;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ExcerptSuggestResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  annotate_excerpt_api_v1_sources__source_id__excerpts_annotate_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        source_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AnnotationRequest'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AnnotationResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  read_feed_api_v1_feed_get: {
+    parameters: {
+      query?: {
+        limit?: number;
+        /** @description Curseur : ne renvoyer que les entrees strictement anterieures. Cursor-based, jamais offset : un feed grandit constamment et l'offset sauterait des entrees quand une nouvelle apparait entre deux appels. */
+        before?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FeedResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  parse_import_file_api_v1_import_parse_post: {
+    parameters: {
+      query?: {
+        format?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'multipart/form-data': components['schemas']['Body_parse_import_file_api_v1_import_parse_post'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ImportParseResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  parse_pasted_bibliography_api_v1_import_paste_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ImportPasteRequest'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ImportParseResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  suggest_from_youtube_transcript_api_v1_import_youtube_transcript_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['YoutubeTranscriptRequest'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['YoutubeTranscriptResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  parse_content_url_api_v1_import_from_content_url_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ImportFromUrlRequest'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ImportFromUrlResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  url_metadata_api_v1_import_url_metadata_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['UrlMetadataRequest'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['UrlMetadataResponse'];
         };
       };
       /** @description Validation Error */
@@ -1477,6 +3978,75 @@ export interface operations {
       };
     };
   };
+  create_sources_batch_api_v1_sources_batch_post: {
+    parameters: {
+      query: {
+        /** @description Card ID to attach the sources to */
+        card_id: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SourceBatchRequest'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['SourceBatchResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  archive_sources_api_v1_sources_archive_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ArchiveRequest'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ArchiveResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
   delete_source_api_v1_sources__source_id__delete: {
     parameters: {
       query?: never;
@@ -1541,6 +4111,59 @@ export interface operations {
       };
     };
   };
+  get_my_linked_accounts_api_v1_users_me_linked_accounts_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LinkedAccountOut'][];
+        };
+      };
+    };
+  };
+  replace_my_linked_accounts_api_v1_users_me_linked_accounts_put: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['LinkedAccountsUpdate'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LinkedAccountOut'][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
   get_user_profile_api_v1_users___slug__get: {
     parameters: {
       query?: never;
@@ -1561,39 +4184,6 @@ export interface operations {
           'application/json': {
             [key: string]: unknown;
           };
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['HTTPValidationError'];
-        };
-      };
-    };
-  };
-  join_waitlist_api_v1_waitlist_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['WaitlistCreate'];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['WaitlistResponse'];
         };
       };
       /** @description Validation Error */
@@ -1628,6 +4218,26 @@ export interface operations {
     };
   };
   database_health_health_database_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': unknown;
+        };
+      };
+    };
+  };
+  llm_diagnose_health_llm_diagnose_get: {
     parameters: {
       query?: never;
       header?: never;
