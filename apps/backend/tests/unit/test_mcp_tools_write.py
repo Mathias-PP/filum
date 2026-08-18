@@ -20,15 +20,22 @@ from fastmcp.exceptions import ToolError
 from app.mcp_server.tools_write import (
     add_excerpt,
     add_source,
+    add_sources_batch,
     archive_sources,
     confirm_connection,
     create_card,
+    create_claim_request,
+    create_content_attestation,
     delete_card,
     delete_excerpt,
     delete_source,
     list_connections,
+    list_deleted_cards,
+    list_incoming_citations,
     list_my_cards,
     list_sources,
+    mark_citations_seen,
+    parse_biblio,
     publish_card,
     remove_connection,
     restore_card,
@@ -870,3 +877,128 @@ async def test_archive_sources_refuse_les_sources_d_autrui(
     result = await archive_sources(db_session, autre_utilisateur, source_ids=[src["id"]])
     assert result["accepted"] == []
     assert len(result["refused"]) == 1
+
+
+# --- Attestations, citations entrantes, batch, claim, parsers (chantier D) --
+
+
+@pytest.mark.asyncio
+async def test_add_sources_batch_pose_plusieurs_sources_en_un_appel(
+    db_session, test_user, fiche_brouillon
+):
+    result = await add_sources_batch(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        sources=[
+            {"url": "https://a.org/1", "title": "A"},
+            {"url": "https://a.org/2", "title": "B"},
+            {"url": "https://a.org/3", "title": "C"},
+        ],
+    )
+    assert len(result["created"]) == 3
+    assert result["failed"] == []
+
+
+@pytest.mark.asyncio
+async def test_add_sources_batch_dedup_dans_le_meme_lot(db_session, test_user, fiche_brouillon):
+    result = await add_sources_batch(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        sources=[
+            {"url": "https://a.org/1"},
+            {"url": "https://a.org/1"},  # doublon
+        ],
+    )
+    assert len(result["created"]) == 1
+    assert len(result["failed"]) == 1
+
+
+@pytest.mark.asyncio
+async def test_add_sources_batch_refuse_non_proprietaire(
+    db_session, test_user, fiche_brouillon, autre_utilisateur
+):
+    with pytest.raises(ToolError, match="Aucune fiche"):
+        await add_sources_batch(
+            db_session,
+            autre_utilisateur,
+            card_slug="fiche-en-cours",
+            sources=[{"url": "https://x.org"}],
+        )
+
+
+@pytest.mark.asyncio
+async def test_list_incoming_citations_rend_zero_par_defaut(db_session, test_user):
+    result = await list_incoming_citations(db_session, test_user)
+    assert result["citations"] == []
+    assert result["new_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_mark_citations_seen_pose_un_timestamp(db_session, test_user):
+    result = await mark_citations_seen(db_session, test_user)
+    assert result["seen_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_list_deleted_cards_rend_les_fiches_de_la_corbeille(
+    db_session, test_user, fiche_brouillon
+):
+    await delete_card(db_session, test_user, slug="fiche-en-cours")
+    result = await list_deleted_cards(db_session, test_user)
+    slugs = {c["slug"] for c in result}
+    assert "fiche-en-cours" in slugs
+
+
+@pytest.mark.asyncio
+async def test_parse_biblio_extrait_des_references_d_un_texte(db_session, test_user):
+    text = """
+- [Article 1](https://example.org/1)
+- [Article 2](https://example.org/2)
+"""
+    result = await parse_biblio(db_session, test_user, text=text)
+    assert len(result["refs"]) >= 1
+
+
+@pytest.mark.asyncio
+async def test_parse_biblio_texte_vide_rend_liste_vide(db_session, test_user):
+    result = await parse_biblio(db_session, test_user, text="")
+    assert result["refs"] == []
+
+
+@pytest.mark.asyncio
+async def test_create_claim_request_refuse_fiche_non_seed(db_session, test_user, fiche_brouillon):
+    # La fiche_brouillon n'est pas seed (creee par le user directement).
+    # Il faut d'abord publier pour tester ; mais meme publiee elle n'est pas
+    # seed. Le check est_seed refuse.
+    await publish_card(db_session, test_user, slug="fiche-en-cours")
+    from sqlalchemy import select as _select
+
+    from app.models.biblio_card import BiblioCard as _BC
+
+    card = await db_session.scalar(_select(_BC).where(_BC.slug == "fiche-en-cours"))
+    with pytest.raises(ToolError, match="pas une fiche seed"):
+        await create_claim_request(db_session, test_user, card_id=str(card.id))
+
+
+@pytest.mark.asyncio
+async def test_create_content_attestation_refuse_fiche_sans_url(db_session, test_user):
+    # Sans content_url, l'attestation refuse (rien a signer).
+    await create_card(db_session, test_user, slug="sans-url", title="Sans URL")
+    with pytest.raises(ToolError, match="content_url"):
+        await create_content_attestation(db_session, test_user, card_slug="sans-url")
+
+
+@pytest.mark.asyncio
+async def test_create_content_attestation_refuse_non_proprietaire(
+    db_session, test_user, fiche_brouillon, autre_utilisateur
+):
+    with pytest.raises(ToolError, match="Aucune fiche"):
+        await create_content_attestation(db_session, autre_utilisateur, card_slug="fiche-en-cours")
+
+
+@pytest.mark.asyncio
+async def test_get_attestation_refuse_id_invalide(db_session, test_user):
+    with pytest.raises(ToolError, match="invalide"):
+        await create_claim_request(db_session, test_user, card_id="pas-un-uuid")
