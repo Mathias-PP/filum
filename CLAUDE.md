@@ -25,6 +25,7 @@ Pour le détail : [`README.md`](./README.md) → [`.docs/00-vision.md`](.docs/00
 | Permissions et sécurité de l'agent | [`agent/PERMISSIONS.md`](./agent/PERMISSIONS.md), [`agent/SECURITY.md`](./agent/SECURITY.md) |
 | Tâche spécialisée (Alembic, OAuth, Svelte...) | [`agent/skills/`](./agent/skills/) |
 | Session autonome multi-sessions | [`agent/README.md`](./agent/README.md) — point d'entrée du système agent |
+| Créer une fiche Philum de bout en bout | [`workspaces/createur-de-fiches/AGENTS.md`](./workspaces/createur-de-fiches/AGENTS.md) — workspace ICM 7 étapes |
 | Question produit non tranchée | [`.docs/07-open-questions.md`](.docs/07-open-questions.md) |
 
 ---
