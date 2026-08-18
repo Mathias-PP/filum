@@ -10,17 +10,19 @@ Publier la fiche et vérifier post-publish que le rendu public, l'export markdow
 |---|---|---|---|
 | Verdict de relecture | `../06-relecture/output/<slug>-verdict.md` | Frontmatter `go` | DOIT être `yes`, sinon refuser |
 | Preuve d'existence | `../01-brief/output/<slug>-card.json` | Champ `slug` | Cible de `publish_card` |
-| Signature `publish_card` | `../../shared/philum-mcp.md` | Ligne `publish_card` | Appel strict |
+| Signatures tools MCP | `../../shared/philum-mcp.md` | Lignes `publish_card`, `create_content_attestation` | Appels stricts |
 
 ## Process
 
 1. Vérifier `<slug>-verdict.md` : si `go: no`, s'arrêter et pointer l'étape défaillante.
 2. Appeler `mcp__philum__get_card(creator=<username>, slug=<slug>)` : confirmer que la fiche existe et porte les bons champs.
-3. Appeler `mcp__philum__publish_card(slug)`.
-4. **Vérification post-publish** :
+3. **Optionnel : attestation Ed25519** : `mcp__philum__create_content_attestation(card_slug)` avant `publish_card` signe cryptographiquement le `content_url`. L'attestation reste immuable même si la fiche est modifiée ensuite. Recommandé pour les fiches qui documentent un engagement daté (rapport, article scientifique, prise de position).
+4. Appeler `mcp__philum__publish_card(slug)`.
+5. **Vérification post-publish** :
    - Ouvrir `https://filum-eight.vercel.app/@<creator>/<slug>` : la fiche se charge.
    - Ouvrir `https://philum-api.duckdns.org/api/v1/@<creator>/<slug>/export?format=markdown` : titre, sources, extraits, connexions y sont.
    - Vérifier que `/api/v1/feed` porte une entrée `card_published` récente.
+   - Si attestation posée : `mcp__philum__verify_attestation(attestation_id)` doit rendre `valid: true`.
 
 ## Outputs
 
