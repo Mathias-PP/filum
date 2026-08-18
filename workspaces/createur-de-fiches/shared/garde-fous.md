@@ -31,8 +31,8 @@ Chaque règle bloque une action, avec la raison. Aucune n'est négociable.
 
 ## Sur les pivots
 
-- **Refuser plus de 3 pivots par fiche.** Un « tout est pivot » veut dire « rien n'est pivot ».
 - **Refuser qu'une source pivot n'ait pas d'extrait.** Un pivot sans extrait est une affirmation d'affirmation.
+- Aucun plafond arbitraire sur le nombre de pivots : marquer autant de sources clés que la thèse en compte réellement. Sur une fiche qui documente plusieurs pans distincts d'un même sujet (opération, fabrication, mesures, interactions...), il est légitime d'avoir 5, 7 ou 10 pivots, chacun portant son pan. Ce qui compte : chaque pivot porte quelque chose que la fiche perdrait s'il disparaissait.
 
 ## Sur le texte intégral (`set_content_text`)
 

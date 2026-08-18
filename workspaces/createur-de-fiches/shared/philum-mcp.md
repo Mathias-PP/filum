@@ -26,7 +26,7 @@ Tous les outils sont préfixés `mcp__philum__`. Un token est obtenu via `POST /
 
 - **Pas d'invention** : chaque champ passé est soit vérifié (DOI depuis Crossref/OpenAlex, dates depuis la source elle-même) soit laissé vide. Vide se lit « je ne sais pas » ; une valeur inventée se lit « je sais et j'affirme ».
 - **`stance`** : `appuie`, `nuance-contredit`, `mentionne`, `contexte`. Absent = position non déclarée. Silence, pas neutralité.
-- **`is_pivot`** : réservé aux sources qui portent la thèse centrale. Trois pivots maximum par fiche.
+- **`is_pivot`** : réservé aux sources qui portent la thèse. Pas de plafond fixe : autant de pivots que la thèse compte de pans distincts (voir `principes-editoriaux.md`).
 - **Ordre d'appel** : `create_card` → `add_source` × N → `add_excerpt` × M par source clé → `set_content_text` (optionnel) → connexions (étape 05) → `publish_card`.
 
 ## Ce que les tools MCP NE FONT PAS et qu'il faut faire à côté

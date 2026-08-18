@@ -41,7 +41,7 @@ Passer une check-list qualité complète sur la fiche, rendre un verdict `go` ou
 | Aucun tiret cadratin | `grep -R "—" runs/<slug>/stages/*/output/` retourne 0 |
 | Annotations non paraphrastiques | Aucune annotation ne reformule le titre de sa source |
 | Stance déclarée ou null assumé | Chaque source a un `stance` explicite (peut être `null`) |
-| Pivots 1 à 3 | 1 ≤ sources marquées `is_pivot=True` ≤ 3 |
+| Au moins un pivot | Au moins une source marquée `is_pivot=True` |
 | Pivots avec extraits | Chaque pivot a ≥ 2 extraits |
 | Extraits vérifiables | Aucun `verified_status=missing` sans autorisation explicite |
 | Aucune suggestion connexion pendante | Chaque `outgoing` a un verdict tranché |

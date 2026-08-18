@@ -20,7 +20,7 @@ Une fiche Philum n'est pas une bibliographie. C'est un **lien de confiance** ent
 
 ## Sources pivots
 
-`is_pivot=True` veut dire : cette source porte la thèse. Trois pivots maximum par fiche. Au-delà, la notion se dilue. Une fiche sans pivot déclaré est presque toujours une fiche qui n'assume pas ce qu'elle affirme.
+`is_pivot=True` veut dire : cette source porte la thèse. Pas de plafond arbitraire : une fiche peut légitimement avoir deux, cinq ou dix pivots selon le nombre de pans que la thèse recouvre. Sur un sujet qui documente plusieurs facettes distinctes (opération, fabrication, mesures, interactions...), chacune mérite son pivot si un papier différent la porte. Ce qui compte : chaque pivot porte quelque chose que la fiche perdrait s'il disparaissait. Une fiche sans aucun pivot déclaré est presque toujours une fiche qui n'assume pas ce qu'elle affirme.
 
 ## L'annotation d'une source
 
