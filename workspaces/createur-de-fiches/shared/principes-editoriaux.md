@@ -1,0 +1,54 @@
+# Ce qui fait une bonne fiche Philum
+
+Une fiche Philum n'est pas une bibliographie. C'est un **lien de confiance** entre un contenu (vidéo, article, podcast) et ses fondations. Chaque source y a un rôle nommé, pas juste une existence.
+
+## Les cinq propriétés d'une fiche parfaite
+
+1. **Chaque source affirme quelque chose de précis.** Pas de source « en général » : on nomme ce qu'elle apporte au contenu documenté. Sans quoi la fiche est un tas de liens.
+2. **Chaque source pivot porte au moins un extrait verbatim.** Sans extrait, une source pivot n'est pas prouvée ; c'est une affirmation d'affirmation.
+3. **Chaque source déclare sa position** (`stance`) par rapport au propos : appuie, nuance, contextualise, ou mentionne. `null` = silence assumé, pas position neutre.
+4. **Les métadonnées sont exactes ou absentes.** DOI vérifié via Crossref, dates depuis la source elle-même, auteurs tels qu'ils signent.
+5. **La fiche est branchée au graphe.** Si une source est déjà une fiche Philum publiée, la connexion doit être confirmée. Sinon la fiche est un îlot.
+
+## Ce qui n'est PAS une bonne fiche
+
+- Une liste de 40 sources dont aucune ne porte d'extrait.
+- Des `stance: null` partout (personne n'a rien à dire de la relation entre le contenu et ses sources).
+- Des annotations qui paraphrasent le titre de la source (« Article scientifique sur la mémoire » pour un article intitulé « The role of sleep in memory consolidation »).
+- Des extraits d'une phrase avec pronom démonstratif sans antécédent visible (« Cela améliore la mémoire ». Quoi, cela ?). Le garde-fou serveur les refuse, mais le principe est plus large : un extrait cité seul doit rester intelligible.
+- Le titre de la fiche qui répète exactement le titre du contenu documenté.
+
+## Sources pivots
+
+`is_pivot=True` veut dire : cette source porte la thèse. Trois pivots maximum par fiche. Au-delà, la notion se dilue. Une fiche sans pivot déclaré est presque toujours une fiche qui n'assume pas ce qu'elle affirme.
+
+## L'annotation d'une source
+
+Une annotation dit ce que la source **apporte** à la fiche. Deux à quatre lignes. Ni résumé, ni éloge : ce que le créateur a pris dans cette source pour construire son propos.
+
+Bon exemple :
+> Ce papier fige la mesure du 12 février 2025 : plasma stable à 1337 secondes sur WEST. C'est la ligne de base contre laquelle les progrès ultérieurs sont comparés.
+
+Mauvais exemple :
+> Article scientifique publié dans Nuclear Fusion sur le tokamak WEST.
+
+## Extraits
+
+Un extrait est un **verbatim** copié à la lettre, avec `context` qui nomme les référents et situe le passage. Trois à cinq extraits par source pivot, pas plus.
+
+- Titre court (2 à 6 mots) qui dit ce qu'on trouve dedans, pas un slogan.
+- `context` rend l'extrait intelligible seul. Si le passage commence par « Cela », dire ce que « cela » nomme.
+- Un extrait long qui pose lui-même son contexte n'a pas besoin d'un `context` séparé.
+
+## Titre et description de la fiche
+
+Le titre décrit **ce que la fiche prouve**, pas juste ce que le contenu documenté raconte.
+
+- Titre du contenu : « WEST bat le record du plasma le plus long ».
+- Titre de la fiche : « WEST et la préparation d'ITER : le tokamak du CEA bat les records de durée de plasma ».
+
+Description : 2 à 4 phrases. Situer le contenu documenté et annoncer ce que la fiche prouve.
+
+## Refuser une source
+
+Une source proposée automatiquement qu'on n'utilise pas vraiment ne doit **pas** figurer dans la fiche pour la longueur. Retirer une source est un geste éditorial, comme l'ajouter.
