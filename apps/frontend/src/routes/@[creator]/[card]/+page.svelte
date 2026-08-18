@@ -303,10 +303,26 @@
               >{card.creator.display_name || card.creator.slug}</span
             >
           </a>
-          <span class="text-ink-tertiary shrink-0">·</span>
-          <div class="flex-1 min-w-0">
+          <!--
+            Separateur cache en mobile : le bloc titre passe a la ligne suivante
+            (basis-full ci-dessous), le point pendrait entre creator et rien.
+          -->
+          <span class="text-ink-tertiary shrink-0 hidden sm:inline">·</span>
+          <!--
+            basis-full en mobile : le titre gagne toute la largeur au lieu
+            d'etre coince a droite du bloc creator + actions. Sans ca, le
+            titre etait force sur une seule ligne truncate a 3-4 mots visibles
+            (mesure sur https://filum-eight.vercel.app en 502px : « WEST et
+            la preparat... »). En desktop, comportement flex-1 classique.
+          -->
+          <div class="basis-full sm:basis-0 sm:flex-1 min-w-0">
+            <!--
+              line-clamp-2 en mobile : le titre wrappe sur 2 lignes au plus,
+              lisible tel quel. sm:truncate garde le rendu single-line sur
+              desktop ou la largeur suffit.
+            -->
             <h1
-              class="text-sm sm:text-base font-serif text-ink-primary truncate"
+              class="text-base sm:text-base font-serif text-ink-primary line-clamp-2 sm:truncate"
               title={card.title}
             >
               {card.title}
@@ -315,7 +331,11 @@
             <span class="Z3988" title={coinsTitle(card)}></span>
             {#if card.description}
               <div class="relative">
-                <p class="text-xs text-ink-tertiary mt-0.5 {descriptionExpanded ? '' : 'truncate'}">
+                <p
+                  class="text-xs text-ink-tertiary mt-0.5 {descriptionExpanded
+                    ? ''
+                    : 'line-clamp-2 sm:truncate'}"
+                >
                   {card.description}
                 </p>
                 {#if card.description.length > 100}
