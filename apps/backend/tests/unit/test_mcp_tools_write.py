@@ -20,13 +20,19 @@ from fastmcp.exceptions import ToolError
 from app.mcp_server.tools_write import (
     add_excerpt,
     add_source,
+    archive_sources,
     confirm_connection,
     create_card,
+    delete_card,
     delete_excerpt,
     delete_source,
     list_connections,
+    list_my_cards,
+    list_sources,
     publish_card,
     remove_connection,
+    restore_card,
+    search_my_excerpts,
     set_content_text,
     update_card,
     update_source,
@@ -758,3 +764,109 @@ async def test_remove_connection_refuse_non_proprietaire(
             card_slug="fiche-en-cours",
             source_id=src["id"],
         )
+
+
+# --- Import, LLM, listing, cycle de vie (chantier C - P2) -------------------
+
+
+@pytest.mark.asyncio
+async def test_list_my_cards_rend_les_fiches_du_user(db_session, test_user, fiche_brouillon):
+    result = await list_my_cards(db_session, test_user)
+    slugs = {c["slug"] for c in result}
+    assert "fiche-en-cours" in slugs
+
+
+@pytest.mark.asyncio
+async def test_list_my_cards_isole_par_user(db_session, test_user, autre_utilisateur):
+    await create_card(db_session, test_user, slug="a-moi", title="A moi")
+    await create_card(db_session, autre_utilisateur, slug="a-lui", title="A lui")
+    mine = await list_my_cards(db_session, test_user)
+    slugs = {c["slug"] for c in mine}
+    assert "a-moi" in slugs
+    assert "a-lui" not in slugs
+
+
+@pytest.mark.asyncio
+async def test_list_sources_rend_les_sources_de_la_fiche(db_session, test_user, fiche_brouillon):
+    await add_source(db_session, test_user, card_slug="fiche-en-cours", url="https://a.org")
+    await add_source(db_session, test_user, card_slug="fiche-en-cours", url="https://b.org")
+    result = await list_sources(db_session, test_user, card_slug="fiche-en-cours")
+    assert len(result) == 2
+    assert result[0]["position"] < result[1]["position"]
+
+
+@pytest.mark.asyncio
+async def test_list_sources_refuse_non_proprietaire(
+    db_session, test_user, fiche_brouillon, autre_utilisateur
+):
+    with pytest.raises(ToolError, match="Aucune fiche"):
+        await list_sources(db_session, autre_utilisateur, card_slug="fiche-en-cours")
+
+
+@pytest.mark.asyncio
+async def test_search_my_excerpts_trouve_par_texte(db_session, test_user, fiche_brouillon):
+    src = await add_source(db_session, test_user, card_slug="fiche-en-cours", url="https://a.org")
+    await add_excerpt(
+        db_session,
+        test_user,
+        source_id=src["id"],
+        text="Une affirmation precise avec le mot cle magique.",
+    )
+    result = await search_my_excerpts(db_session, test_user, query="magique")
+    assert len(result) == 1
+    assert "magique" in result[0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_search_my_excerpts_isole_par_user(
+    db_session, test_user, fiche_brouillon, autre_utilisateur
+):
+    src = await add_source(db_session, test_user, card_slug="fiche-en-cours", url="https://a.org")
+    await add_excerpt(
+        db_session,
+        test_user,
+        source_id=src["id"],
+        text="Une affirmation precise avec le mot cle magique.",
+    )
+    result = await search_my_excerpts(db_session, autre_utilisateur, query="magique")
+    assert result == []
+
+
+@pytest.mark.asyncio
+async def test_delete_card_puis_restore_est_reversible(db_session, test_user, fiche_brouillon):
+    del_result = await delete_card(db_session, test_user, slug="fiche-en-cours")
+    assert del_result["deleted"] is True
+    # Plus visible via list_my_cards
+    mine = await list_my_cards(db_session, test_user)
+    assert "fiche-en-cours" not in {c["slug"] for c in mine}
+    # Restore
+    restore_result = await restore_card(db_session, test_user, slug="fiche-en-cours")
+    assert restore_result["restored"] is True
+    mine = await list_my_cards(db_session, test_user)
+    assert "fiche-en-cours" in {c["slug"] for c in mine}
+
+
+@pytest.mark.asyncio
+async def test_delete_card_refuse_non_proprietaire(
+    db_session, test_user, fiche_brouillon, autre_utilisateur
+):
+    with pytest.raises(ToolError, match="Aucune fiche"):
+        await delete_card(db_session, autre_utilisateur, slug="fiche-en-cours")
+
+
+@pytest.mark.asyncio
+async def test_archive_sources_accepte_les_sources_du_user(db_session, test_user, fiche_brouillon):
+    src = await add_source(db_session, test_user, card_slug="fiche-en-cours", url="https://a.org")
+    result = await archive_sources(db_session, test_user, source_ids=[src["id"]])
+    assert src["id"] in result["accepted"]
+    assert result["refused"] == []
+
+
+@pytest.mark.asyncio
+async def test_archive_sources_refuse_les_sources_d_autrui(
+    db_session, test_user, fiche_brouillon, autre_utilisateur
+):
+    src = await add_source(db_session, test_user, card_slug="fiche-en-cours", url="https://a.org")
+    result = await archive_sources(db_session, autre_utilisateur, source_ids=[src["id"]])
+    assert result["accepted"] == []
+    assert len(result["refused"]) == 1

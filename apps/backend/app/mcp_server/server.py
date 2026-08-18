@@ -405,4 +405,133 @@ async def remove_connection(card_slug: str, source_id: str) -> dict[str, Any]:
         )
 
 
+# ---------------------------------------------------------------------------
+# Chantier C - P2 : import, aide LLM, listing, archivage, cycle de vie.
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def list_my_cards(status: str | None = None, limit: int = 20) -> list[dict[str, Any]]:
+    """Liste les fiches de l'utilisateur. `status` optionnel: draft|published."""
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.list_my_cards(db, user, status=status, limit=limit)
+
+
+@mcp.tool()
+async def list_sources(card_slug: str) -> list[dict[str, Any]]:
+    """Liste les sources d'une fiche dans leur ordre d'affichage."""
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.list_sources(db, user, card_slug=card_slug)
+
+
+@mcp.tool()
+async def search_my_excerpts(query: str, limit: int = 20) -> list[dict[str, Any]]:
+    """Recherche full-text dans les extraits de l'utilisateur."""
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.search_my_excerpts(db, user, query=query, limit=limit)
+
+
+@mcp.tool()
+async def delete_card(slug: str) -> dict[str, Any]:
+    """Soft-delete d'une fiche (rejoint la corbeille, reversible via `restore_card`)."""
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.delete_card(db, user, slug=slug)
+
+
+@mcp.tool()
+async def restore_card(slug: str) -> dict[str, Any]:
+    """Sort une fiche de la corbeille."""
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.restore_card(db, user, slug=slug)
+
+
+@mcp.tool()
+async def archive_sources(source_ids: list[str]) -> dict[str, Any]:
+    """Declenche l'archivage Wayback pour les sources donnees."""
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.archive_sources(db, user, source_ids=source_ids)
+
+
+@mcp.tool()
+async def suggest_excerpts(
+    source_id: str,
+    provided_text: str | None = None,
+    include_annotation: bool = True,
+    include_existing: bool = True,
+    include_card_context: bool = True,
+) -> dict[str, Any]:
+    """Le LLM propose des extraits verbatim pour une source. Chaque candidat
+    est deja verifie contre le texte (anti-hallucination)."""
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.suggest_excerpts(
+            db,
+            user,
+            source_id=source_id,
+            provided_text=provided_text,
+            include_annotation=include_annotation,
+            include_existing=include_existing,
+            include_card_context=include_card_context,
+        )
+
+
+@mcp.tool()
+async def annotate_excerpt(
+    source_id: str, excerpt_text: str, provided_text: str | None = None
+) -> dict[str, Any]:
+    """Le LLM suggere titre + `context` pour un extrait donne."""
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.annotate_excerpt(
+            db,
+            user,
+            source_id=source_id,
+            excerpt_text=excerpt_text,
+            provided_text=provided_text,
+        )
+
+
+@mcp.tool()
+async def chunk_text(source_id: str, text: str, size: int | None = None) -> dict[str, Any]:
+    """Decoupe un texte long en chunks candidats pour poser des extraits."""
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.chunk_text(db, user, source_id=source_id, text=text, size=size)
+
+
+@mcp.tool()
+async def get_youtube_transcript(url: str) -> dict[str, Any]:
+    """Recupere le transcript d'une video YouTube (via l'API interne)."""
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.get_youtube_transcript(db, user, url=url)
+
+
+@mcp.tool()
+async def get_url_metadata(url: str) -> dict[str, Any]:
+    """Metadonnees editoriales d'une URL : titre, description, auteurs, date."""
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.get_url_metadata(db, user, url=url)
+
+
+@mcp.tool()
+async def import_from_content_url(card_slug: str) -> dict[str, Any]:
+    """Extrait automatiquement les sources depuis l'URL du contenu de la fiche.
+
+    Equivalent du bouton « Extraire les sources » de l'UI. Ne pose PAS les
+    sources : rend la liste des candidates a l'agent qui appelle ensuite
+    `add_source` sur celles qu'il retient.
+    """
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.import_from_content_url(db, user, card_slug=card_slug)
+
+
 mcp_http_app = mcp.http_app(path="/")

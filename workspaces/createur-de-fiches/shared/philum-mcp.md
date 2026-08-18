@@ -29,6 +29,18 @@ Tous les outils sont préfixés `mcp__philum__`. Un token est obtenu via `POST /
 | `list_connections(card_slug)` | 05 | Rend `outgoing` (fiches que celle-ci cite) et `incoming` (fiches qui la citent). |
 | `confirm_connection(card_slug, source_id)` | 05 | Confirme qu'une source pointe bien vers la fiche Philum désignée. |
 | `remove_connection(card_slug, source_id)` | 05 | Retire le lien fiche à fiche sans supprimer la source. |
+| `list_my_cards(status?, limit)` | tout | Liste les fiches du créateur (`draft`, `published` ou les deux). |
+| `list_sources(card_slug)` | 02, 06 | Liste les sources d'une fiche avec leurs ID (à réutiliser dans les tools de mutation). |
+| `search_my_excerpts(query, limit)` | ponctuel | Cherche full-text dans les extraits du créateur. |
+| `delete_card(slug)` | ponctuel | Soft-delete d'une fiche (rejoint la corbeille). |
+| `restore_card(slug)` | ponctuel | Sort une fiche de la corbeille. |
+| `archive_sources(source_ids)` | 02 | Déclenche l'archivage Wayback pour les sources listées. |
+| `suggest_excerpts(source_id, provided_text?, include_annotation, include_existing, include_card_context)` | 04 | Le LLM propose des extraits verbatim (déjà vérifiés anti-hallucination). |
+| `annotate_excerpt(source_id, excerpt_text, provided_text?)` | 04 | Le LLM suggère titre et `context` pour un extrait donné. |
+| `chunk_text(source_id, text, size?)` | 04 | Découpe un texte long en chunks candidats. |
+| `get_youtube_transcript(url)` | 02 | Récupère le transcript d'une vidéo YouTube. |
+| `get_url_metadata(url)` | 02 | Titre, description, auteurs, date d'une URL. |
+| `import_from_content_url(card_slug)` | 02 | Extrait auto des sources depuis `card.content_url` (équivalent bouton « Extraire les sources »). Ne pose pas, rend les candidates. |
 
 ## Ce qu'il faut savoir avant d'appeler chaque écriture
 
@@ -41,22 +53,13 @@ Tous les outils sont préfixés `mcp__philum__`. Un token est obtenu via `POST /
 
 Les fonctions ci-dessous existent dans l'UI et dans l'API REST mais n'ont pas encore de wrapper MCP (chantiers B/C/D en cours, voir `agent/plans/2026-08-18-parite-mcp-et-hardening-workspace.md`). En attendant, les appeler en REST avec le même token JWT (`Authorization: Bearer <token>`) sur `https://philum-api.duckdns.org/api/v1`.
 
-**Mutations post-création** :
-- `DELETE /cards/{id}` : soft-delete une fiche (rejoint la corbeille).
-- `POST /cards/{id}/restore` : sortir de la corbeille.
-
-**Qualité LLM** :
-- `POST /sources/{id}/excerpts/suggest` : le LLM propose des extraits candidats.
-- `POST /sources/{id}/excerpts/annotate` : le LLM suggère titre + `context` pour un extrait donné.
-
-**Extraction et import** :
-- `POST /cards/{id}/sources/extract` : équivalent du bouton « Extraire les sources ». Lit `content_url` et rend les liens sortants scorés.
-- `POST /import/from-content-url`, `POST /import/youtube-transcript`, `POST /import/url-metadata`, `POST /import/parse` (BibTeX), `POST /import/paste`.
-
-**Autres** :
-- `POST /sources/archive` : déclencher l'archivage Wayback.
-- `GET /cards`, `GET /sources?card_id=`, `GET /excerpts/search` : listing.
-- `POST /attestations/content`, `GET /attestations/{id}/verify` : attestations Ed25519.
+**Reste à couvrir (chantier D)** :
+- `POST /attestations/content`, `GET /attestations/{id}/verify` : attestations Ed25519 (signature cryptographique).
+- `GET /cards/citations`, `POST /cards/citations/seen` : citations entrantes.
+- `POST /sources/batch` : poser plusieurs sources en un appel.
+- `POST /cards/{id}/claim-requests` : revendiquer une fiche seed.
+- `POST /cards/{id}/content-text/upload` : upload de fichier binaire pour `content_text`.
+- `POST /import/parse` (BibTeX/CSL/RIS), `POST /import/paste` : parsers de bibliographie.
 
 ## Gotchas mesurés
 

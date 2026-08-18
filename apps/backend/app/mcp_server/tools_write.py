@@ -743,3 +743,357 @@ async def remove_connection(
     source.link_confirmed_at = None
     await db.commit()
     return {"source_id": source_id, "card_slug": card.slug, "linked_card_removed": True}
+
+
+# ---------------------------------------------------------------------------
+# Import, aide LLM, listing, cycle de vie (chantier C - P2).
+#
+# 12 tools qui donnent au MCP la parite avec les fonctions non-mutatives de
+# l'UI : extraction auto de sources depuis l'URL du contenu, suggestions LLM
+# d'extraits et d'annotations, listing des fiches/sources/extraits, archivage
+# Wayback, cycle de vie corbeille.
+# ---------------------------------------------------------------------------
+
+
+async def list_my_cards(
+    db: AsyncSession, user: User, *, status: str | None = None, limit: int = 20
+) -> list[dict[str, Any]]:
+    """Liste les fiches de l'utilisateur.
+
+    `status` optionnel : `draft` ou `published`. Absent = les deux. `limit`
+    plafonne le nombre d'entrees rendues.
+    """
+    stmt = select(BiblioCard).where(BiblioCard.user_id == user.id, BiblioCard.deleted_at.is_(None))
+    if status is not None:
+        stmt = stmt.where(BiblioCard.status == status)
+    stmt = stmt.order_by(BiblioCard.updated_at.desc()).limit(max(1, min(limit, 200)))
+    cards = (await db.scalars(stmt)).all()
+    return [
+        {
+            "slug": c.slug,
+            "title": c.title,
+            "status": c.status,
+            "visibility": c.visibility,
+            "published_at": c.published_at.isoformat() if c.published_at else None,
+        }
+        for c in cards
+    ]
+
+
+async def list_sources(db: AsyncSession, user: User, *, card_slug: str) -> list[dict[str, Any]]:
+    """Liste les sources d'une fiche dans leur ordre d'affichage.
+
+    Chaque entree porte les champs edituriaux + l'identifiant a utiliser dans
+    les tools d'ecriture (`id`).
+    """
+    card = await _fiche_du_createur(db, user, card_slug)
+    sources = (
+        await db.scalars(
+            select(Source)
+            .where(Source.biblio_card_id == card.id, Source.deleted_at.is_(None))
+            .order_by(Source.position)
+        )
+    ).all()
+    return [
+        {
+            "id": str(s.id),
+            "position": s.position,
+            "url": s.url,
+            "title": s.title,
+            "authors": s.authors,
+            "doi": s.doi,
+            "journal": s.journal,
+            "category": s.category,
+            "author_kind": s.author_kind,
+            "stance": s.stance,
+            "is_pivot": s.is_pivot,
+            "annotation": s.annotation,
+            "archive_status": s.archive_status,
+        }
+        for s in sources
+    ]
+
+
+async def search_my_excerpts(
+    db: AsyncSession, user: User, *, query: str, limit: int = 20
+) -> list[dict[str, Any]]:
+    """Recherche full-text dans les extraits de l'utilisateur.
+
+    Cherche `query` dans le `text` des extraits des fiches du user. Rend
+    l'extrait, la source qui le porte et la fiche parente.
+    """
+    q = query.strip()
+    if not q:
+        return []
+    stmt = (
+        select(SourceExcerpt, Source, BiblioCard)
+        .join(Source, SourceExcerpt.source_id == Source.id)
+        .join(BiblioCard, Source.biblio_card_id == BiblioCard.id)
+        .where(
+            BiblioCard.user_id == user.id,
+            BiblioCard.deleted_at.is_(None),
+            Source.deleted_at.is_(None),
+            SourceExcerpt.text.ilike(f"%{q}%"),
+        )
+        .order_by(SourceExcerpt.created_at.desc())
+        .limit(max(1, min(limit, 100)))
+    )
+    rows = (await db.execute(stmt)).all()
+    return [
+        {
+            "excerpt_id": str(ex.id),
+            "text": ex.text,
+            "title": ex.title,
+            "context": ex.context,
+            "source_id": str(src.id),
+            "source_title": src.title,
+            "card_slug": card.slug,
+            "verified_status": ex.verified_status,
+        }
+        for ex, src, card in rows
+    ]
+
+
+async def delete_card(db: AsyncSession, user: User, *, slug: str) -> dict[str, Any]:
+    """Soft-delete d'une fiche : elle rejoint la corbeille (reversible via `restore_card`)."""
+    from datetime import datetime
+
+    card = await _fiche_du_createur(db, user, slug)
+    card.deleted_at = datetime.now().replace(tzinfo=None)
+    await db.commit()
+    return {"slug": slug, "deleted": True}
+
+
+async def restore_card(db: AsyncSession, user: User, *, slug: str) -> dict[str, Any]:
+    """Sort une fiche de la corbeille (annule un `delete_card`)."""
+    stmt = select(BiblioCard).where(
+        BiblioCard.user_id == user.id,
+        BiblioCard.slug == slug,
+        BiblioCard.deleted_at.is_not(None),
+    )
+    card = (await db.execute(stmt)).scalar_one_or_none()
+    if card is None:
+        raise ToolError(f"Aucune fiche {slug!r} en corbeille chez {user.username}.")
+    card.deleted_at = None
+    await db.commit()
+    return {"slug": slug, "restored": True}
+
+
+async def archive_sources(db: AsyncSession, user: User, *, source_ids: list[str]) -> dict[str, Any]:
+    """Declenche l'archivage Wayback pour les sources donnees.
+
+    Chaque source est verifiee comme appartenant a l'utilisateur avant. Le
+    passage a `archive_status=pending` marque la source pour le worker.
+    """
+    accepted: list[str] = []
+    refused: list[dict[str, str]] = []
+    for sid_str in source_ids:
+        try:
+            source = await _source_du_createur(db, user, sid_str)
+        except ToolError as exc:
+            refused.append({"source_id": sid_str, "reason": str(exc)})
+            continue
+        source.archive_status = "pending"
+        accepted.append(sid_str)
+    await db.commit()
+    return {"accepted": accepted, "refused": refused}
+
+
+async def suggest_excerpts(
+    db: AsyncSession,
+    user: User,
+    *,
+    source_id: str,
+    provided_text: str | None = None,
+    include_annotation: bool = True,
+    include_existing: bool = True,
+    include_card_context: bool = True,
+) -> dict[str, Any]:
+    """Le LLM propose des extraits verbatim pour une source.
+
+    `provided_text` : quand la page est bloquee anti-bot ou qu'on tient un
+    meilleur texte. Sinon le serveur fetch l'URL. Trois flags orientent ce
+    que voit le modele en plus du texte de la source.
+
+    Chaque candidat est deja verifie contre le texte (anti-hallucination).
+    A l'agent de trancher lesquels poser via `add_excerpt`.
+    """
+    from app.api.v1.endpoints.excerpts import _texte_de_la_source, verify_quote
+    from app.services.llm import suggest_excerpts as llm_suggest
+
+    source = await _source_du_createur(db, user, source_id)
+
+    page_text = (provided_text or "").strip()
+    if not page_text:
+        page_text, _refuse, _complet = await _texte_de_la_source(source.url)
+    if not page_text:
+        return {"suggestions": [], "page_text_length": 0, "llm_enabled": False}
+
+    morceaux: list[str] = []
+    if source.title:
+        morceaux.append(source.title)
+    if include_annotation and source.annotation:
+        morceaux.append(source.annotation)
+    if include_card_context:
+        card = await db.scalar(select(BiblioCard).where(BiblioCard.id == source.biblio_card_id))
+        if card:
+            entete = " - ".join(filter(None, [card.title, card.description]))
+            if entete:
+                morceaux.append(f"Fiche du createur : {entete}")
+    contexte = " - ".join(morceaux) or None
+
+    deja: list[str] | None = None
+    if include_existing:
+        existants = await db.scalars(
+            select(SourceExcerpt).where(SourceExcerpt.source_id == source.id)
+        )
+        textes = [e.text for e in existants if e.text]
+        if textes:
+            deja = textes
+
+    proposes = await llm_suggest(page_text, contexte, existing_excerpts=deja)
+    if proposes is None:
+        return {
+            "suggestions": [],
+            "page_text_length": len(page_text),
+            "llm_enabled": False,
+        }
+
+    suggestions: list[dict[str, Any]] = []
+    for quote in proposes:
+        m = verify_quote(page_text, quote)
+        if not m:
+            continue
+        suggestions.append({"text": m.group(0), "char_offset": m.start()})
+    return {
+        "suggestions": suggestions,
+        "page_text_length": len(page_text),
+        "llm_enabled": True,
+    }
+
+
+async def annotate_excerpt(
+    db: AsyncSession,
+    user: User,
+    *,
+    source_id: str,
+    excerpt_text: str,
+    provided_text: str | None = None,
+) -> dict[str, Any]:
+    """Le LLM suggere un titre court et un `context` pour un extrait donne.
+
+    A appeler apres avoir choisi le verbatim mais avant `add_excerpt`. A
+    l'agent de valider ce qu'il pose ensuite.
+    """
+    from app.services.llm import suggest_annotation as llm_annotate
+
+    source = await _source_du_createur(db, user, source_id)
+    entourage = (provided_text or "").strip()
+    if not entourage:
+        entourage = " - ".join(filter(None, [source.title, source.annotation]))
+    annotation = await llm_annotate(excerpt_text, entourage)
+    if annotation is None:
+        return {"title": None, "context": None, "llm_enabled": False}
+    return {
+        "title": annotation.title,
+        "context": annotation.context,
+        "llm_enabled": True,
+    }
+
+
+async def chunk_text(
+    db: AsyncSession,
+    user: User,
+    *,
+    source_id: str,
+    text: str,
+    size: int | None = None,
+) -> dict[str, Any]:
+    """Decoupe un texte long en chunks candidats pour poser des extraits.
+
+    Utile sur une source dont le texte fait plusieurs milliers de mots : le
+    LLM ne peut pas traiter d'un coup, on decoupe d'abord.
+    """
+    from app.services.chunker import Unite, suggerer_taille
+    from app.services.chunker import chunk_text as chunker_fn
+
+    source = await _source_du_createur(db, user, source_id)
+    unit = Unite.CARACTERES
+    suggeree = suggerer_taille(text, unit)
+    taille = size or suggeree
+    chunks = chunker_fn(text, taille=taille, unite=unit)
+    return {
+        "source_id": str(source.id),
+        "chunks": [{"text": c.text, "start": c.start, "end": c.end} for c in chunks],
+        "suggested_size": suggeree,
+    }
+
+
+async def get_youtube_transcript(db: AsyncSession, user: User, *, url: str) -> dict[str, Any]:
+    """Recupere le transcript d'une video YouTube (via l'API interne).
+
+    Aucun controle proprietaire : tout transcript public est accessible.
+    """
+    from app.extractors.youtube_transcript import fetch_youtube_transcript
+
+    transcript = await fetch_youtube_transcript(url)
+    if transcript is None:
+        raise ToolError(f"Aucun transcript disponible pour {url!r}.")
+    return {"url": url, "transcript": transcript}
+
+
+async def get_url_metadata(db: AsyncSession, user: User, *, url: str) -> dict[str, Any]:
+    """Metadonnees editoriales d'une URL : titre, description, auteurs, date."""
+    from app.extractors.url_extractor import extract as extract_meta
+
+    meta = await extract_meta(url)
+    if meta is None:
+        raise ToolError(f"Impossible d'extraire les metadonnees de {url!r}.")
+    return {
+        "url": url,
+        "title": meta.title,
+        "description": meta.description,
+        "authors": meta.authors,
+        "published_at": meta.published_at,
+    }
+
+
+async def import_from_content_url(
+    db: AsyncSession, user: User, *, card_slug: str
+) -> dict[str, Any]:
+    """Extrait automatiquement les sources depuis l'URL du contenu de la fiche.
+
+    Equivalent du bouton « Extraire les sources » de l'UI. Lit
+    `card.content_url` et rend les references citees. NE POSE PAS les
+    sources : l'agent decide ensuite lesquelles retenir via `add_source`.
+    """
+    from types import SimpleNamespace
+
+    from app.api.v1.endpoints.imports import ImportFromUrlRequest, parse_content_url
+
+    card = await _fiche_du_createur(db, user, card_slug)
+    if not card.content_url:
+        raise ToolError(f"La fiche {card_slug!r} n'a pas de content_url : impossible d'extraire.")
+    # Simule le Request FastAPI que l'endpoint attend (seul .headers /
+    # .client peuvent etre lus par slowapi ; MCP contourne le rate-limit).
+    fake_request = SimpleNamespace(headers={}, client=SimpleNamespace(host="mcp"), scope={})
+    payload = ImportFromUrlRequest(url=card.content_url)
+    try:
+        response = await parse_content_url(fake_request, payload, current_user=user)  # type: ignore[arg-type]
+    except Exception as exc:
+        raise ToolError(f"Extraction impossible : {exc}") from exc
+    return {
+        "card_slug": card.slug,
+        "content_url": card.content_url,
+        "sources": [
+            {
+                "url": ref.url,
+                "title": ref.title,
+                "authors": ref.authors,
+                "doi": ref.doi,
+                "score": ref.score,
+                "kind": ref.kind,
+            }
+            for ref in response.refs
+        ],
+    }
