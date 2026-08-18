@@ -32,6 +32,36 @@
   const params = $derived($page.url.searchParams);
   const q = $derived(params.get('q') ?? '');
   const activePlatform = $derived(params.get('platform') ?? '');
+
+  /**
+   * Etat local decouple de l'URL pour la barre de recherche.
+   *
+   * Sans lui, l'input etait pilote par `value={q}` derive de l'URL. Chaque
+   * frappe declenchait apres 300 ms un `goto()` qui rechangeait l'URL, ce
+   * qui reevaluait `q` et faisait re-render l'input avec l'ancienne valeur
+   * pendant que l'utilisateur continuait a taper. Resultat mesure :
+   * « memory » tape lettre par lettre ressortait « memry » ou « momery »
+   * selon la latence.
+   *
+   * Ici on separe : l'input suit l'etat local (source unique cote clavier)
+   * et pousse vers l'URL avec debounce ; l'URL ne pousse en retour que
+   * quand elle change *sans* que ce soit nous (retour navigateur, clic sur
+   * un lien filtre, « Tout effacer »).
+   */
+  let inputValue = $state('');
+  let lastLocalEdit = 0;
+
+  $effect(() => {
+    // params est reactive : `goto` la change, ce qui declenche cet effect.
+    // On ne re-pousse dans inputValue que si l'utilisateur n'a pas tape
+    // depuis 500 ms : au-dela, une navigation externe (retour, filtre,
+    // reset) fait autorite ; en deca, c'est notre propre setParam et on
+    // laisse la saisie en cours tranquille.
+    const urlQ = params.get('q') ?? '';
+    if (Date.now() - lastLocalEdit > 500 && inputValue !== urlQ) {
+      inputValue = urlQ;
+    }
+  });
   const activeType = $derived(params.get('content_type') ?? '');
   const activeCreator = $derived(params.get('creator') ?? '');
   const sort = $derived(params.get('sort') ?? 'recent');
@@ -60,9 +90,10 @@
   // Debounce de la frappe : sans lui, chaque lettre déclenche une requête.
   let searchTimer: ReturnType<typeof setTimeout>;
   function onSearchInput(e: Event) {
-    const value = (e.currentTarget as HTMLInputElement).value;
+    inputValue = (e.currentTarget as HTMLInputElement).value;
+    lastLocalEdit = Date.now();
     clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => setParam('q', value.trim()), 300);
+    searchTimer = setTimeout(() => setParam('q', inputValue.trim()), 300);
   }
 
   function toggle(key: string, value: string, current: string) {
@@ -70,6 +101,11 @@
   }
 
   function clearAll() {
+    // Force la reprise en main par l'URL malgre le garde-temps 500 ms :
+    // sans ce reset explicite, cliquer « Tout effacer » juste apres avoir
+    // tape ne viderait pas l'input.
+    inputValue = '';
+    lastLocalEdit = 0;
     goto('/discover');
   }
 
@@ -140,7 +176,7 @@
       <input
         id="discover-q"
         type="search"
-        value={q}
+        value={inputValue}
         oninput={onSearchInput}
         placeholder="Titre, auteur du contenu, créateur…"
         class="form-input w-full pl-11 pr-4 py-3 rounded-xl bg-surface-primary border border-border text-ink-primary placeholder:text-ink-placeholder focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
