@@ -19,9 +19,9 @@ Extraire et poser les verbatim des sources clés (pivots obligatoires, autres so
 ## Process
 
 1. **Récupérer le texte de chaque source clé** : lire la page ou coller le texte manuellement si HTML bloqué.
-2. **Sélectionner 3 à 5 extraits par pivot, 1 à 2 par autre source clé** : passages qui portent une affirmation clé.
+2. **Sélectionner 3 à 5 extraits par pivot, 1 à 2 par autre source clé** : passages qui portent une affirmation clé. La longueur idéale est de 15 mots et plus, mais un extrait plus court reste valable s'il est adossé à un `context` qui le rend intelligible seul.
 3. **Vérifier verbatim** : le passage doit exister mot pour mot dans la source. Toute reformulation invalide.
-4. **Écrire la mise en situation (`context`)** : obligatoire si extrait < 15 mots ou commençant par pronom référentiel ; sinon optionnel.
+4. **Écrire la mise en situation (`context`)** : obligatoire dès qu'un extrait commence par un pronom référentiel, ou qu'il est trop court pour se comprendre seul. Optionnel quand le passage porte lui-même son contexte.
 5. **Écrire le titre de l'extrait** : 2 à 6 mots, ce qu'on trouve dedans.
 6. **Appeler `mcp__philum__add_excerpt(source_id, text, title?, context?)`**. Si refus serveur (garde-fou), élargir ou compléter `context` puis rappeler.
 
@@ -45,6 +45,6 @@ Extraire et poser les verbatim des sources clés (pivots obligatoires, autres so
 |---|---|
 | Pivots couverts | Chaque source `is_pivot=True` a ≥ 2 extraits posés |
 | Vérifiabilité | Chaque `text` d'extrait apparaît mot pour mot dans la source (grep) |
-| Pas de hors-contexte court | Aucun extrait `len(text.split()) < 15` sans `context` non vide |
+| Pas de hors-contexte court | Aucun extrait court (moins d'une phrase autonome) sans `context` non vide |
 | Plafond éditorial | Aucune source > 5 extraits |
 | Titres descriptifs | Chaque titre d'extrait fait 2 à 6 mots, sans slogan (« Une découverte majeure ») |
