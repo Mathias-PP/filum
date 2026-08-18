@@ -1014,8 +1014,8 @@ async def chunk_text(
     Utile sur une source dont le texte fait plusieurs milliers de mots : le
     LLM ne peut pas traiter d'un coup, on decoupe d'abord.
     """
-    from app.services.chunker import Unite, chunk_text as chunker_fn
-    from app.services.chunker import suggerer_taille
+    from app.services.chunker import Unite, suggerer_taille
+    from app.services.chunker import chunk_text as chunker_fn
 
     source = await _source_du_createur(db, user, source_id)
     unit = Unite.CARACTERES
@@ -1054,7 +1054,7 @@ async def get_url_metadata(db: AsyncSession, user: User, *, url: str) -> dict[st
         "title": meta.title,
         "description": meta.description,
         "authors": meta.authors,
-        "published_at": meta.published_at.isoformat() if meta.published_at else None,
+        "published_at": meta.published_at,
     }
 
 
@@ -1079,7 +1079,7 @@ async def import_from_content_url(
     fake_request = SimpleNamespace(headers={}, client=SimpleNamespace(host="mcp"), scope={})
     payload = ImportFromUrlRequest(url=card.content_url)
     try:
-        response = await parse_content_url(fake_request, payload, current_user=user)
+        response = await parse_content_url(fake_request, payload, current_user=user)  # type: ignore[arg-type]
     except Exception as exc:
         raise ToolError(f"Extraction impossible : {exc}") from exc
     return {
