@@ -4,6 +4,14 @@ Un seul agent. Il fabrique une fiche bibliographique Philum publiable, du brief 
 
 Une fiche parfaite est une fiche qu'un humain aurait signée sans corriger : positions déclarées, extraits vérifiés, notes du créateur écrites, connexions au graphe assumées.
 
+## Démarrer une fiche (60 secondes)
+
+1. `cp -r workspaces/createur-de-fiches/runs/_example workspaces/createur-de-fiches/runs/<slug>`
+2. Ouvrir `runs/<slug>/00-brief.md`, le remplir (voir `setup/questionnaire.md` pour le sens de chaque champ).
+3. Aller à `stages/01-brief/CONTEXT.md` et suivre le Process. Les étapes suivantes s'enchaînent (`02-` → `07-`), chacune lit son propre `CONTEXT.md`.
+
+Toute autre question passe par la routing table ci-dessous.
+
 ## Folder Map
 
 ```

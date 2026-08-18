@@ -19,7 +19,7 @@ Rédiger la note du créateur et déclarer la position (`stance`) pour chaque so
 
 1. Pour chaque source, en particulier les pivots, rédiger l'annotation : 1 à 3 phrases, français, sans tiret cadratin.
 2. Déclarer la `stance` : `appuie`, `nuance-contredit`, `contexte`, `mentionne`, ou laisser `null`.
-3. Réappeler `mcp__philum__add_source` avec les mêmes champs plus `annotation` et `stance`. L'API met à jour la source existante par identité URL/DOI.
+3. Réappeler `mcp__philum__add_source` avec les mêmes champs plus `annotation` et `stance`. **L'API dé-duplique par URL/DOI** (voir `shared/pieges-vecus.md` §5) : le second appel met à jour la source existante au lieu d'en créer une deuxième, l'ID retourné est identique au premier passage. C'est le comportement voulu tant que `update_source` n'est pas encore un tool MCP.
 
 ## Outputs
 
