@@ -2039,7 +2039,7 @@
           {@const isThisEditing = editingSourceId === source.id}
           {@const archivable = isArchivable(source)}
           <div
-            class="flex items-start justify-between gap-3 bg-surface-primary border rounded-lg px-4 py-3 transition-colors {isThisEditing
+            class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 bg-surface-primary border rounded-lg px-4 py-3 transition-colors {isThisEditing
               ? 'border-info/50 ring-1 ring-info/30'
               : 'border-border'}"
           >
@@ -2074,25 +2074,25 @@
                 {color.label}
               </span>
               <div class="min-w-0 flex-1">
-                <p class="text-sm font-medium text-ink-primary line-clamp-2 sm:truncate">
+                <p class="text-sm font-medium text-ink-primary">
                   {source.title ?? source.url}
                 </p>
                 {#if source.authors}
-                  <p class="text-xs text-ink-tertiary line-clamp-1 sm:line-clamp-none">
+                  <p class="text-xs text-ink-tertiary">
                     {source.authors}
                   </p>
                 {/if}
-                <p class="text-xs text-ink-tertiary truncate break-all">{source.url}</p>
+                <p class="text-xs text-ink-tertiary break-all">{source.url}</p>
                 {#if source.parent_source_id}
                   {@const parentLabel = parentTitle(source.parent_source_id)}
                   {#if parentLabel}
-                    <p class="text-xs text-info truncate" title="Cette source cite : {parentLabel}">
+                    <p class="text-xs text-info" title="Cette source cite : {parentLabel}">
                       ↳ cite : {parentLabel}
                     </p>
                   {/if}
                 {/if}
                 {#if source.linked_card_id}
-                  <p class="text-xs text-info truncate">★ reliée à une fiche Philum</p>
+                  <p class="text-xs text-info">★ reliée à une fiche Philum</p>
                 {/if}
               </div>
             </div>

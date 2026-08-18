@@ -271,9 +271,7 @@
                   href="/dashboard/new/{card.id}/sources"
                   class="flex-1 min-w-0 transition-colors hover:text-info"
                 >
-                  <p
-                    class="font-medium text-ink-primary line-clamp-2 sm:truncate group-hover:text-info"
-                  >
+                  <p class="font-medium text-ink-primary group-hover:text-info">
                     {card.title}
                   </p>
                   <p class="text-xs text-ink-tertiary mt-0.5">
@@ -332,7 +330,7 @@
             {#each published as card (card.id)}
               <li class="card-row group">
                 <div class="flex-1 min-w-0">
-                  <p class="font-medium text-ink-primary line-clamp-2 sm:truncate">{card.title}</p>
+                  <p class="font-medium text-ink-primary">{card.title}</p>
                   <p class="text-xs text-ink-tertiary mt-0.5">
                     Publiée le {formatDate(card.published_at || card.created_at)}
                   </p>
@@ -431,7 +429,7 @@
             {@const style = stanceStyle(citation.stance)}
             <li class="card-row group">
               <div class="min-w-0 flex-1">
-                <p class="line-clamp-2 sm:truncate font-medium text-ink-primary">
+                <p class="font-medium text-ink-primary">
                   {#if citation.is_new}
                     <span
                       class="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-accent align-middle"
@@ -445,7 +443,7 @@
                     {citation.citing_card_title}
                   </a>
                 </p>
-                <p class="mt-0.5 truncate text-xs text-ink-tertiary">
+                <p class="mt-0.5 text-xs text-ink-tertiary">
                   par {citation.citing_creator_name || citation.citing_creator_slug} · cite
                   <span class="text-ink-secondary">{citation.cited_card_title}</span>
                   · {formatDate(citation.cited_at)}
@@ -508,7 +506,7 @@
           {#each deletedCards as card (card.id)}
             <li class="card-row group opacity-70">
               <div class="flex-1 min-w-0">
-                <p class="font-medium text-ink-primary line-clamp-2 sm:truncate">{card.title}</p>
+                <p class="font-medium text-ink-primary">{card.title}</p>
                 <p class="text-xs text-ink-tertiary mt-0.5">
                   Supprimée · statut d'origine : {card.status === 'published'
                     ? 'publiée'
@@ -624,16 +622,26 @@
     border: 1px solid rgb(var(--border));
     border-radius: 8px;
     padding: 0.875rem 1rem;
+    /* Sur mobile : titre plein largeur au-dessus, actions en dessous.
+       Sur desktop (>= 640px) : tout sur une ligne comme avant. La version
+       flex-wrap testee auparavant reduisait encore le titre a 3-4 mots
+       quand plusieurs badges (Non revendiquee + Privee + Brouillon) etaient
+       presents. Empiler verticalement rend le titre entier lisible. */
     display: flex;
-    /* flex-wrap : sous ~500px, les badges + boutons d'action serraient le
-       titre a 2-3 mots visibles. Ils passent maintenant sous le titre. */
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.75rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
     transition:
       border-color 150ms ease,
       transform 150ms cubic-bezier(0.2, 0.7, 0.3, 1),
       box-shadow 150ms ease;
+  }
+  @media (min-width: 640px) {
+    .card-row {
+      flex-direction: row;
+      align-items: center;
+      gap: 0.75rem;
+    }
   }
   /* Relief volontairement plus court que `.hover-lift` : ces rangees sont
      empilees a quelques pixels d'intervalle, un decalage de trois pixels y
