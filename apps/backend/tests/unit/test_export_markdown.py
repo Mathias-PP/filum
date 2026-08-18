@@ -217,7 +217,11 @@ class TestRoundTrip:
         assert len(parse_markdown(redondant).refs) == len(parse_markdown(nu).refs)
 
     def test_un_doi_absent_de_l_url_est_bien_ecrit(self):
-        assert "DOI : 10.5555/xyz" in _md(url="https://example.org/paper", doi="10.5555/xyz")
+        # Le DOI est rendu dans la reference stylee (« https://doi.org/... »)
+        # OU sur une ligne separee « DOI : ... » si le style ne l'a pas porte.
+        # Quel que soit le style, le DOI DOIT figurer quelque part.
+        body = _md(url="https://example.org/paper", doi="10.5555/xyz")
+        assert "10.5555/xyz" in body
 
     def test_acces_ouvert_et_avis_de_retractation_ajoutent_une_entree_chacun(self):
         """Limite mesuree et assumee, pas une surprise."""
@@ -243,6 +247,46 @@ class TestRegressionExistant:
     def test_une_source_sans_rien_ne_casse_pas(self):
         body = _md(title=None, authors=None, published_at=None)
         assert "https://doi.org/10.1234/abcd" in body
+
+
+class TestPasDeRedondance:
+    """Une meme information ecrite deux fois pour la meme source.
+
+    Ce qui etait rendu avant chaque source, en trois lignes :
+        - [Titre](URL)
+          - *reference stylee (URL portee dedans)*
+          - Auteurs · date · categorie · journal
+          - URL
+          - DOI : XXX
+    Repetait l'URL/DOI jusqu'a trois fois et les auteurs deux fois. Mesure
+    sur la fiche WEST-contributions-iter le 2026-08-18.
+    """
+
+    def test_url_n_est_pas_ecrite_deux_fois_hors_du_lien_markdown(self):
+        url = "https://example.org/paper-unique"
+        body = _md(url=url)
+        # Une seule occurrence hors du `](URL)` du lien : celle de la ref
+        # stylee. La ligne « URL nue » separee ne doit plus apparaitre.
+        assert body.count(url) <= 2  # lien markdown + reference stylee
+
+    def test_meta_ne_reecrit_pas_auteurs_date_journal(self):
+        # Ces trois informations sont deja dans la reference stylee.
+        body = _md(authors="Dupont, M.", journal="Nature")
+        # Ligne meta = « - Categorie : article-scientifique » : rien d'autre.
+        assert "- Catégorie : article-scientifique" in body
+        # L'ancienne ligne « auteurs · date · categorie · journal » ne doit
+        # plus apparaitre. La reference stylee, elle, porte les auteurs.
+        assert "Dupont, M. · " not in body
+
+    def test_doi_deja_dans_la_reference_stylee_n_est_pas_repete(self):
+        # Reference stylee APA : « ... https://doi.org/10.5555/xyz ». Ecrire
+        # « DOI : 10.5555/xyz » en dessous serait un doublon.
+        body = _md(url="https://example.org/paper", doi="10.5555/xyz")
+        # Le DOI reste visible quelque part (dans la reference stylee).
+        assert "10.5555/xyz" in body
+        # Mais il n'apparait pas DEUX fois : la ligne « DOI : XXX » est
+        # supprimee quand la reference stylee le porte deja.
+        assert body.count("10.5555/xyz") == 1
 
 
 class TestDeuxVoix:

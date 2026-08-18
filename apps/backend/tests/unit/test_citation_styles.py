@@ -150,3 +150,49 @@ def test_chicago_ne_double_pas_le_point_apres_une_initiale():
 def test_style_inconnu_leve():
     with pytest.raises(KeyError):
         format_reference(_source(), "zotero-maison")
+
+
+class TestInstitutionsDansLaReference:
+    """Une source signee par une institution cite l'institution, pas le titre.
+
+    Avant, les literal etaient filtres par `noms_propres` puis la reference
+    tombait sur `_titre(source)` en fallback : la citation devenait « Nuclear
+    Fusion (2024) 'Nuclear Fusion' » pour une source signee « EUROfusion ».
+    """
+
+    @pytest.mark.parametrize("style", ["apa", "harvard", "mla", "chicago", "vancouver", "ieee"])
+    def test_institution_apparait_telle_quelle(self, style):
+        rendu = format_reference(_source(authors="American Nuclear Society"), style)
+        assert "American Nuclear Society" in rendu
+        assert "Society, A" not in rendu
+
+    def test_liste_mixte_personnes_et_institution(self):
+        rendu = format_reference(
+            _source(
+                authors=("Bucalossi J., Ekedahl A. et al., EUROfusion Tokamak Exploitation Team")
+            ),
+            "harvard",
+        )
+        assert "Bucalossi, J." in rendu
+        assert "Ekedahl, A." in rendu
+        assert "EUROfusion Tokamak Exploitation Team" in rendu
+        assert "Team, E" not in rendu
+
+
+class TestParticulesDansLaReference:
+    def test_van_den_reste_intact_dans_la_reference(self):
+        for style in ("apa", "harvard", "mla", "chicago", "vancouver"):
+            rendu = format_reference(_source(authors="HC van den Broeck"), style)
+            assert "van den Broeck" in rendu
+            assert "V.D." not in rendu
+
+
+class TestSeparateursDansLaReference:
+    def test_esperluette_produit_deux_auteurs_distincts(self):
+        # Sans reconnaissance de &, on avait « Morris, R.L.R.&.R.G.M. ».
+        rendu = format_reference(
+            _source(authors="Roger L. Redondo & Richard G. M. Morris"), "harvard"
+        )
+        assert "Redondo, R.L." in rendu
+        assert "Morris, R.G.M." in rendu
+        assert "&." not in rendu

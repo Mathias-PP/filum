@@ -94,20 +94,52 @@ def _et_al(rendu: str, noms: list[dict[str, str]]) -> str:
     return f"{rendu}, et al."
 
 
+def _rendu_apa(n: dict[str, str]) -> str:
+    if "literal" in n:
+        return n["literal"]
+    return f"{n.get('family', '')}, {_initials(n.get('given', ''))}".strip(", ")
+
+
+def _rendu_harvard(n: dict[str, str]) -> str:
+    if "literal" in n:
+        return n["literal"]
+    return f"{n.get('family', '')}, {_initials(n.get('given', ''), espace=False)}".strip(", ")
+
+
+def _rendu_vancouver(n: dict[str, str]) -> str:
+    if "literal" in n:
+        return n["literal"]
+    return (
+        f"{n.get('family', '')} {_initials(n.get('given', ''), point=False, espace=False)}"
+    ).strip()
+
+
+def _rendu_ieee(n: dict[str, str]) -> str:
+    if "literal" in n:
+        return n["literal"]
+    return f"{_initials(n.get('given', ''))} {n.get('family', '')}".strip()
+
+
+def _rendu_chicago_premier(n: dict[str, str]) -> str:
+    if "literal" in n:
+        return n["literal"]
+    return ", ".join(p for p in (n.get("family"), n.get("given")) if p)
+
+
+def _rendu_chicago_suivant(n: dict[str, str]) -> str:
+    if "literal" in n:
+        return n["literal"]
+    return " ".join(p for p in (n.get("given"), n.get("family")) if p)
+
+
 def _auteurs_apa(noms: list[dict[str, str]]) -> str:
-    rendus = [
-        f"{n.get('family', '')}, {_initials(n.get('given', ''))}".strip(", ")
-        for n in noms_propres(noms)
-    ]
+    rendus = [_rendu_apa(n) for n in noms_propres(noms)]
     # APA 7 garde la virgule avant l'esperluette (« A, B, & C »).
     return _et_al(_joindre(rendus, ", & "), noms)
 
 
 def _auteurs_harvard(noms: list[dict[str, str]]) -> str:
-    rendus = [
-        f"{n.get('family', '')}, {_initials(n.get('given', ''), espace=False)}".strip(", ")
-        for n in noms_propres(noms)
-    ]
+    rendus = [_rendu_harvard(n) for n in noms_propres(noms)]
     return _et_al(_joindre(rendus, " and "), noms)
 
 
@@ -116,12 +148,12 @@ def _auteurs_mla(noms: list[dict[str, str]]) -> str:
     propres = noms_propres(noms)
     if not propres:
         return ""
-    premier = ", ".join(p for p in (propres[0].get("family"), propres[0].get("given")) if p)
+    premier = _rendu_chicago_premier(propres[0])
     if est_abrege(noms) or len(propres) > 2:
         return f"{premier}, et al."
     if len(propres) == 1:
         return premier
-    second = " ".join(p for p in (propres[1].get("given"), propres[1].get("family")) if p)
+    second = _rendu_chicago_suivant(propres[1])
     return f"{premier}, and {second}"
 
 
@@ -129,26 +161,21 @@ def _auteurs_chicago(noms: list[dict[str, str]]) -> str:
     propres = noms_propres(noms)
     if not propres:
         return ""
-    rendus = [", ".join(p for p in (propres[0].get("family"), propres[0].get("given")) if p)]
-    rendus += [" ".join(p for p in (n.get("given"), n.get("family")) if p) for n in propres[1:]]
+    rendus = [_rendu_chicago_premier(propres[0])]
+    rendus += [_rendu_chicago_suivant(n) for n in propres[1:]]
     return _et_al(_joindre(rendus, ", and "), noms)
 
 
 def _auteurs_vancouver(noms: list[dict[str, str]]) -> str:
     """Vancouver n'abrege qu'au-dela de six auteurs, sans ponctuation d'initiales."""
-    rendus = [
-        f"{n.get('family', '')} {_initials(n.get('given', ''), point=False, espace=False)}".strip()
-        for n in noms_propres(noms)
-    ]
+    rendus = [_rendu_vancouver(n) for n in noms_propres(noms)]
     if len(rendus) > 6:
         return ", ".join(rendus[:6]) + ", et al."
     return _et_al(", ".join(rendus), noms)
 
 
 def _auteurs_ieee(noms: list[dict[str, str]]) -> str:
-    rendus = [
-        f"{_initials(n.get('given', ''))} {n.get('family', '')}".strip() for n in noms_propres(noms)
-    ]
+    rendus = [_rendu_ieee(n) for n in noms_propres(noms)]
     return _et_al(_joindre(rendus, " and "), noms)
 
 
