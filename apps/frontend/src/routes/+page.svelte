@@ -653,12 +653,16 @@
       <div class="geste" use:reveal>
         <div class="geste-copy">
           <span class="geste-n">03</span>
-          <h3>Publier</h3>
+          <h3>Publier et vérifier au fil du temps</h3>
           <p>
-            Votre bibliographie est en ligne, à mettre en description de votre vidéo ou en fin
-            d’article. Chaque référence mène à l’article d’origine et montre les citations que vous
-            en avez tirées, avec le résultat de leur vérification. Export en BibTeX, RIS, CSL,
-            Markdown, JSON, tableur ou traitement de texte.
+            Votre fiche vit en ligne, à mettre en description de votre vidéo ou en fin d’article.
+            Chaque passage cité y porte le résultat de sa relecture&nbsp;: <b>retrouvé</b> dans la
+            page telle qu’elle est aujourd’hui, <b>déplacé</b> quand les mots ont légèrement bougé,
+            <b>illisible</b> quand la page ne rend plus rien. Un lecteur voit d’un coup d’œil ce qui tient
+            encore.
+          </p>
+          <p class="geste-note">
+            Export en BibTeX, RIS, CSL, Markdown, JSON, tableur ou traitement de texte.
           </p>
         </div>
         <div class="demo demo-verdicts" aria-hidden="true">
@@ -1447,6 +1451,13 @@
     color: rgb(var(--text-secondary));
     line-height: 1.68;
     max-width: 32rem;
+  }
+  /* Note discrete separee du corps du geste : sert aux precisions qui
+     alourdissaient le paragraphe principal (export, formats). */
+  .geste-copy .geste-note {
+    color: rgb(var(--text-tertiary));
+    font-size: 0.9rem;
+    margin-top: 0.75rem;
   }
 
   .demo {
