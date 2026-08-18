@@ -1097,3 +1097,307 @@ async def import_from_content_url(
             for ref in response.refs
         ],
     }
+
+
+# ---------------------------------------------------------------------------
+# Attestations Ed25519, citations entrantes, batch, claim, parsers (chantier D).
+#
+# Derniere vague de la parite MCP <-> UI : ce qui reste apres P1 (mutations)
+# et P2 (import/LLM/listing). Attestations = ADN cryptographique de Philum.
+# ---------------------------------------------------------------------------
+
+
+async def create_content_attestation(
+    db: AsyncSession, user: User, *, card_slug: str
+) -> dict[str, Any]:
+    """Signe cryptographiquement le contenu documente par la fiche (Ed25519).
+
+    L'attestation lie l'auteur (via sa cle publique) au `content_url` de la
+    fiche, avec un horodatage. C'est la couche verifiable de Philum : meme si
+    la fiche est modifiee, l'attestation reste immuable et prouve l'engagement
+    initial. Refuse si la fiche n'a pas de `content_url`.
+    """
+    from app.services.attestation import AttestationService
+
+    card = await _fiche_du_createur(db, user, card_slug)
+    if not card.content_url:
+        raise ToolError(f"La fiche {card_slug!r} n'a pas de content_url : rien a attester.")
+    service = AttestationService(db)
+    attestation = await service.create_attestation(user, card.content_url)
+    return {
+        "id": str(attestation.id),
+        "content_url": attestation.content_url,
+        "attested_at": attestation.attested_at.isoformat(),
+        "canonical_hash": attestation.canonical_hash,
+        "signature": attestation.signature,
+    }
+
+
+async def get_attestation(db: AsyncSession, user: User, *, attestation_id: str) -> dict[str, Any]:
+    """Recupere une attestation par son ID (lecture publique)."""
+    from app.services.attestation import AttestationService
+
+    try:
+        aid = UUID(attestation_id)
+    except ValueError as exc:
+        raise ToolError(f"Identifiant d'attestation invalide : {attestation_id!r}.") from exc
+    service = AttestationService(db)
+    attestation = await service.get_attestation(aid)
+    if attestation is None:
+        raise ToolError(f"Aucune attestation {attestation_id!r}.")
+    return {
+        "id": str(attestation.id),
+        "content_url": attestation.content_url,
+        "attested_at": attestation.attested_at.isoformat(),
+        "canonical_hash": attestation.canonical_hash,
+        "signature": attestation.signature,
+    }
+
+
+async def verify_attestation(
+    db: AsyncSession, user: User, *, attestation_id: str
+) -> dict[str, Any]:
+    """Verifie la signature Ed25519 d'une attestation. Rend `valid` + raison."""
+    from app.services.attestation import AttestationService
+
+    try:
+        aid = UUID(attestation_id)
+    except ValueError as exc:
+        raise ToolError(f"Identifiant d'attestation invalide : {attestation_id!r}.") from exc
+    service = AttestationService(db)
+    attestation = await service.get_attestation(aid)
+    if attestation is None:
+        raise ToolError(f"Aucune attestation {attestation_id!r}.")
+    result = await service.verify_attestation(attestation)
+    return {
+        "attestation_id": str(aid),
+        "valid": result["valid"],
+        "content_url": attestation.content_url,
+        "creator_slug": result.get("creator_slug"),
+        "reason": result.get("reason"),
+    }
+
+
+async def list_incoming_citations(db: AsyncSession, user: User) -> dict[str, Any]:
+    """Liste les fiches d'autres createurs qui citent une de tes fiches.
+
+    Chaque entree porte le nom du createur qui cite, la fiche qui cite, et
+    ta source qui est citee. Un `is_new` marque les entrees apparues depuis
+    la derniere consultation via `mark_citations_seen`.
+    """
+    from app.services.citations import list_incoming_citations as list_svc
+
+    result = await list_svc(db, user)
+    return {
+        "citations": [
+            {
+                "source_id": str(c.source_id),
+                "citing_creator_slug": c.citing_creator_slug,
+                "citing_creator_name": c.citing_creator_name,
+                "citing_card_slug": c.citing_card_slug,
+                "citing_card_title": c.citing_card_title,
+                "cited_card_slug": c.cited_card_slug,
+                "cited_card_title": c.cited_card_title,
+                "cited_at": c.cited_at.isoformat() if c.cited_at else None,
+                "stance": c.stance,
+                "is_new": c.is_new,
+            }
+            for c in result.citations
+        ],
+        "new_count": result.new_count,
+        "seen_at": result.seen_at.isoformat() if result.seen_at else None,
+        "truncated": result.truncated,
+    }
+
+
+async def mark_citations_seen(db: AsyncSession, user: User) -> dict[str, Any]:
+    """Marque les citations entrantes comme vues (arrete d'afficher `is_new`)."""
+    from app.services.citations import mark_citations_seen as mark_svc
+
+    seen_at = mark_svc(user)
+    await db.flush()
+    await db.commit()
+    return {"seen_at": seen_at.isoformat() if seen_at else None}
+
+
+async def list_deleted_cards(
+    db: AsyncSession, user: User, *, limit: int = 50
+) -> list[dict[str, Any]]:
+    """Liste les fiches en corbeille du user (restaurables via `restore_card`)."""
+    stmt = (
+        select(BiblioCard)
+        .where(BiblioCard.user_id == user.id, BiblioCard.deleted_at.is_not(None))
+        .order_by(BiblioCard.deleted_at.desc())
+        .limit(max(1, min(limit, 200)))
+    )
+    cards = (await db.scalars(stmt)).all()
+    return [
+        {
+            "slug": c.slug,
+            "title": c.title,
+            "status": c.status,
+            "deleted_at": c.deleted_at.isoformat() if c.deleted_at else None,
+        }
+        for c in cards
+    ]
+
+
+async def add_sources_batch(
+    db: AsyncSession,
+    user: User,
+    *,
+    card_slug: str,
+    sources: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Ajoute plusieurs sources a une fiche en un appel.
+
+    Chaque entree suit la meme signature que `add_source` (url, title,
+    authors, doi, category, author_kind, format, stance, annotation,
+    journal, archive_url). Ce qui echoue est retourne dans `failed` avec la
+    raison, ce qui reussit dans `created` (avec les IDs).
+
+    Utilise ce tool quand tu poses 5+ sources d'affilee : un seul commit
+    au lieu de N, une seule verification de dedup en amont.
+    """
+    card = await _fiche_du_createur(db, user, card_slug)
+    connues = await _identites_deja_citees(db, card.id)
+
+    max_position = await db.scalar(
+        select(func.max(Source.position)).where(Source.biblio_card_id == card.id)
+    )
+    next_pos = (max_position or 0) + 1
+
+    created: list[dict[str, Any]] = []
+    failed: list[dict[str, Any]] = []
+
+    for i, sd in enumerate(sources):
+        url = sd.get("url", "") or ""
+        doi = sd.get("doi")
+        cle = _identite(url, doi)
+        if cle and cle in connues:
+            failed.append({"index": i, "url": url, "reason": "Deja citee dans cette fiche."})
+            continue
+        try:
+            linked_card_id = await effective_linked_card_id(
+                db,
+                chosen=None,
+                url=url,
+                user_id=user.id,
+                current_card_id=card.id,
+                doi=doi,
+            )
+        except ValueError as exc:
+            failed.append({"index": i, "url": url, "reason": str(exc)})
+            continue
+
+        manual_archive = (sd.get("archive_url") or "").strip() or None
+        source = Source(
+            biblio_card_id=card.id,
+            position=next_pos,
+            url=url,
+            title=sd.get("title"),
+            authors=sd.get("authors"),
+            format=sd.get("format", "texte"),
+            category=sd.get("category", "article-scientifique"),
+            author_kind=sd.get("author_kind", "chercheur"),
+            stance=sd.get("stance"),
+            annotation=sd.get("annotation"),
+            journal=sd.get("journal"),
+            doi=doi,
+            linked_card_id=linked_card_id,
+            archive_url=manual_archive,
+            archive_status="archived" if manual_archive else "pending",
+            archive_timestamp=horodatage_wayback(manual_archive),
+        )
+        db.add(source)
+        await db.flush()
+        created.append(
+            {
+                "id": str(source.id),
+                "position": source.position,
+                "url": url,
+            }
+        )
+        next_pos += 1
+        if cle:
+            connues.add(cle)
+
+    await db.commit()
+    return {
+        "card_slug": card.slug,
+        "created": created,
+        "failed": failed,
+    }
+
+
+async def create_claim_request(
+    db: AsyncSession, user: User, *, card_id: str, message: str | None = None
+) -> dict[str, Any]:
+    """Revendique une fiche seed (fiche automatique sans compte proprietaire).
+
+    Un claim ouvre une demande manuelle : l'utilisateur du contenu documente
+    prouve son identite hors ligne, et un admin transfere la propriete.
+    Refuse si la fiche n'est pas seed ou n'existe pas.
+    """
+    from app.models.claim_request import ClaimRequest
+
+    try:
+        cid = UUID(card_id)
+    except ValueError as exc:
+        raise ToolError(f"Identifiant de fiche invalide : {card_id!r}.") from exc
+    card = await db.get(BiblioCard, cid)
+    if card is None or card.deleted_at is not None or card.status != "published":
+        raise ToolError(f"Aucune fiche publique {card_id!r}.")
+    if not card.is_seed:
+        raise ToolError(f"La fiche {card_id!r} n'est pas une fiche seed revendicable.")
+    claim = ClaimRequest(
+        card_id=cid,
+        claimant_id=user.id,
+        message=message,
+    )
+    db.add(claim)
+    await db.commit()
+    await db.refresh(claim)
+    return {
+        "id": str(claim.id),
+        "card_id": card_id,
+        "created_at": claim.created_at.isoformat(),
+    }
+
+
+async def parse_biblio(db: AsyncSession, user: User, *, text: str) -> dict[str, Any]:
+    """Parse une bibliographie collee (texte libre : BibTeX, CSL, markdown, ...).
+
+    Rend la liste des references detectees avec leurs metadonnees.
+    Enrichit avec le parseur de citations nues et le LLM (comme l'endpoint
+    REST /import/paste).
+    """
+    from app.services.import_parsers import parse_freetext_citations, parse_markdown
+
+    if not text.strip():
+        return {"refs": []}
+    result = parse_markdown(text)
+    freetext = parse_freetext_citations(text)
+    if freetext.refs:
+        known = {
+            f"{(r.title or '').strip().lower()}|{(r.authors or '').strip().lower()}"
+            for r in result.refs
+        }
+        for ref in freetext.refs:
+            key = f"{(ref.title or '').strip().lower()}|{(ref.authors or '').strip().lower()}"
+            if key not in known:
+                result.refs.append(ref)
+                known.add(key)
+    return {
+        "refs": [
+            {
+                "url": r.url,
+                "title": r.title,
+                "authors": r.authors,
+                "year": r.year,
+                "doi": r.doi,
+                "journal": r.journal,
+            }
+            for r in result.refs
+        ],
+    }

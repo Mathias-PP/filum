@@ -534,4 +534,97 @@ async def import_from_content_url(card_slug: str) -> dict[str, Any]:
         return await tools_write.import_from_content_url(db, user, card_slug=card_slug)
 
 
+# ---------------------------------------------------------------------------
+# Chantier D - P3 : attestations, citations entrantes, batch, claim, parsers.
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def create_content_attestation(card_slug: str) -> dict[str, Any]:
+    """Signe cryptographiquement (Ed25519) le content_url d'une fiche.
+
+    Etablit l'attestation immuable qui prouve l'engagement initial du createur
+    sur le contenu documente. Meme si la fiche est ensuite modifiee,
+    l'attestation reste et se verifie via `verify_attestation`.
+    """
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.create_content_attestation(db, user, card_slug=card_slug)
+
+
+@mcp.tool()
+async def get_attestation(attestation_id: str) -> dict[str, Any]:
+    """Recupere une attestation par son ID (lecture publique)."""
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.get_attestation(db, user, attestation_id=attestation_id)
+
+
+@mcp.tool()
+async def verify_attestation(attestation_id: str) -> dict[str, Any]:
+    """Verifie la signature Ed25519 d'une attestation. Rend `valid` + raison."""
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.verify_attestation(db, user, attestation_id=attestation_id)
+
+
+@mcp.tool()
+async def list_incoming_citations() -> dict[str, Any]:
+    """Liste les fiches d'autres createurs qui citent une de mes fiches."""
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.list_incoming_citations(db, user)
+
+
+@mcp.tool()
+async def mark_citations_seen() -> dict[str, Any]:
+    """Marque les citations entrantes comme vues (arrete d'afficher `is_new`)."""
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.mark_citations_seen(db, user)
+
+
+@mcp.tool()
+async def list_deleted_cards(limit: int = 50) -> list[dict[str, Any]]:
+    """Liste les fiches en corbeille (restaurables via `restore_card`)."""
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.list_deleted_cards(db, user, limit=limit)
+
+
+@mcp.tool()
+async def add_sources_batch(card_slug: str, sources: list[dict[str, Any]]) -> dict[str, Any]:
+    """Ajoute plusieurs sources a une fiche en un appel.
+
+    Chaque entree suit la meme signature que `add_source`. Utile pour les
+    fiches longues : un seul commit au lieu de N.
+    """
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.add_sources_batch(db, user, card_slug=card_slug, sources=sources)
+
+
+@mcp.tool()
+async def create_claim_request(card_id: str, message: str | None = None) -> dict[str, Any]:
+    """Revendique une fiche seed (fiche automatique sans compte proprietaire).
+
+    Ouvre une demande manuelle. Refuse si la fiche n'est pas seed.
+    """
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.create_claim_request(db, user, card_id=card_id, message=message)
+
+
+@mcp.tool()
+async def parse_biblio(text: str) -> dict[str, Any]:
+    """Parse une bibliographie collee (BibTeX, CSL, markdown, texte libre).
+
+    Rend la liste des references detectees avec leurs metadonnees. Utile en
+    amont de `add_sources_batch` pour ingerer une biblio d'un coup.
+    """
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.parse_biblio(db, user, text=text)
+
+
 mcp_http_app = mcp.http_app(path="/")

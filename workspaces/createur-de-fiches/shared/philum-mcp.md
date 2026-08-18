@@ -41,6 +41,15 @@ Tous les outils sont préfixés `mcp__philum__`. Un token est obtenu via `POST /
 | `get_youtube_transcript(url)` | 02 | Récupère le transcript d'une vidéo YouTube. |
 | `get_url_metadata(url)` | 02 | Titre, description, auteurs, date d'une URL. |
 | `import_from_content_url(card_slug)` | 02 | Extrait auto des sources depuis `card.content_url` (équivalent bouton « Extraire les sources »). Ne pose pas, rend les candidates. |
+| `create_content_attestation(card_slug)` | 07 | Signe cryptographiquement (Ed25519) le `content_url` de la fiche. Attestation immuable, indépendante des éditions ultérieures. |
+| `get_attestation(attestation_id)` | 07 | Récupère une attestation par son ID (lecture publique). |
+| `verify_attestation(attestation_id)` | 07 | Vérifie la signature Ed25519. Rend `valid` + raison. |
+| `list_incoming_citations()` | ponctuel | Fiches d'autres créateurs qui citent une de mes fiches. |
+| `mark_citations_seen()` | ponctuel | Marque les citations entrantes comme vues. |
+| `list_deleted_cards(limit)` | ponctuel | Fiches en corbeille (restaurables via `restore_card`). |
+| `add_sources_batch(card_slug, sources)` | 02 | Ajoute plusieurs sources en un appel (5+ à la fois). |
+| `create_claim_request(card_id, message?)` | rare | Revendique une fiche seed créée automatiquement sans compte. |
+| `parse_biblio(text)` | 02 | Parse une bibliographie collée (BibTeX, CSL, markdown, texte libre). |
 
 ## Ce qu'il faut savoir avant d'appeler chaque écriture
 
@@ -53,13 +62,10 @@ Tous les outils sont préfixés `mcp__philum__`. Un token est obtenu via `POST /
 
 Les fonctions ci-dessous existent dans l'UI et dans l'API REST mais n'ont pas encore de wrapper MCP (chantiers B/C/D en cours, voir `agent/plans/2026-08-18-parite-mcp-et-hardening-workspace.md`). En attendant, les appeler en REST avec le même token JWT (`Authorization: Bearer <token>`) sur `https://philum-api.duckdns.org/api/v1`.
 
-**Reste à couvrir (chantier D)** :
-- `POST /attestations/content`, `GET /attestations/{id}/verify` : attestations Ed25519 (signature cryptographique).
-- `GET /cards/citations`, `POST /cards/citations/seen` : citations entrantes.
-- `POST /sources/batch` : poser plusieurs sources en un appel.
-- `POST /cards/{id}/claim-requests` : revendiquer une fiche seed.
-- `POST /cards/{id}/content-text/upload` : upload de fichier binaire pour `content_text`.
-- `POST /import/parse` (BibTeX/CSL/RIS), `POST /import/paste` : parsers de bibliographie.
+**Reste à couvrir (mineur)** :
+- `POST /cards/{id}/content-text/upload` : upload de fichier binaire (PDF, DOCX). Le contournement passe par `set_content_text` avec le texte déjà extrait.
+- `POST /import/parse` (BibTeX/CSL/RIS multipart) : le parser texte libre `parse_biblio` couvre la plupart des cas.
+- Discover public, feed public, OG images : lecture publique sans intérêt via MCP.
 
 ## Gotchas mesurés
 
