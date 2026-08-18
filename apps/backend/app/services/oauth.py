@@ -96,7 +96,7 @@ async def register_client(
     client_id = _random_token(24)
     client_secret: str | None = None
     client_secret_hash: str | None = None
-    if token_endpoint_auth_method != "none":
+    if token_endpoint_auth_method != "none":  # nosec B105 - valeur OAuth, pas un mot de passe
         client_secret = _random_token(32)
         client_secret_hash = hash_secret(client_secret)
 
@@ -215,7 +215,7 @@ async def exchange_code_for_token(
 
     return {
         "access_token": access_token,
-        "token_type": "Bearer",
+        "token_type": "Bearer",  # nosec B105 - type OAuth (RFC 6749), pas un mot de passe
         "expires_in": ACCESS_TOKEN_EXPIRE_HOURS * 3600,
         "scope": entry.scope,
     }

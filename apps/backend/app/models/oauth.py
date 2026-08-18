@@ -20,11 +20,11 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.db.database import Base
+
 #: JSONB en PostgreSQL (indexable, typé), JSON portable partout ailleurs
 #: (SQLite en tests). Sans ce with_variant, SQLite plante au create_all.
 _JSON_LIST = JSON().with_variant(JSONB(), "postgresql")
-
-from app.db.database import Base
 
 
 class OAuthClient(Base):
