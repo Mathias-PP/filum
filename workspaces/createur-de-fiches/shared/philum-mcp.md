@@ -21,6 +21,14 @@ Tous les outils sont préfixés `mcp__philum__`. Un token est obtenu via `POST /
 | `add_excerpt(source_id, text, title?, context?)` | 04 | Un extrait par appel. `context` obligatoire dès que `text` contient un pronom référentiel ou fait moins de 15 mots (garde-fou serveur, refuse sinon). |
 | `set_content_text(card_slug, text, confirm_publication_rights)` | 01 ou 07 | Ne l'appeler QUE si le brief a coché `oui` explicite. Passer `confirm_publication_rights=True` engage la responsabilité du compte. |
 | `publish_card(slug)` | 07 | Rend la fiche publique. Ne bascule au public qu'une fois : republier n'est jamais un événement de feed. |
+| `update_card(slug, title?, description?, content_url?, content_authors?, platform?, content_type?, visibility?)` | 01, 06 | Corrige les champs éditoriaux après création. Slug immuable (identifiant public). |
+| `update_source(source_id, title?, authors?, doi?, journal?, category?, author_kind?, format?, stance?, annotation?, is_pivot?, archive_url?)` | 03, 06 | Corrige une source après création. URL immuable : pour la changer, `delete_source` puis `add_source`. |
+| `delete_source(source_id)` | 06 | Soft-delete d'une source. La ligne reste en base pour préserver les références historiques. |
+| `delete_excerpt(source_id, excerpt_id)` | 06 | Supprime physiquement un extrait. |
+| `verify_excerpts(source_id, provided_text?)` | 04, 06 | Relit chaque extrait vs le texte de la page et pose `verified_status` (`found`/`moved`/`missing`/`unreadable`). `provided_text` obligatoire quand la page est bloquée anti-bot. |
+| `list_connections(card_slug)` | 05 | Rend `outgoing` (fiches que celle-ci cite) et `incoming` (fiches qui la citent). |
+| `confirm_connection(card_slug, source_id)` | 05 | Confirme qu'une source pointe bien vers la fiche Philum désignée. |
+| `remove_connection(card_slug, source_id)` | 05 | Retire le lien fiche à fiche sans supprimer la source. |
 
 ## Ce qu'il faut savoir avant d'appeler chaque écriture
 
@@ -34,26 +42,16 @@ Tous les outils sont préfixés `mcp__philum__`. Un token est obtenu via `POST /
 Les fonctions ci-dessous existent dans l'UI et dans l'API REST mais n'ont pas encore de wrapper MCP (chantiers B/C/D en cours, voir `agent/plans/2026-08-18-parite-mcp-et-hardening-workspace.md`). En attendant, les appeler en REST avec le même token JWT (`Authorization: Bearer <token>`) sur `https://philum-api.duckdns.org/api/v1`.
 
 **Mutations post-création** :
-- `PATCH /cards/{id}` : corriger titre, description, visibility, status.
-- `PATCH /sources/{id}` : corriger annotation, stance, is_pivot, etc.
-- `DELETE /sources/{id}` : retirer une source (soft-delete).
-- `DELETE /sources/{source_id}/excerpts/{excerpt_id}` : retirer un extrait.
 - `DELETE /cards/{id}` : soft-delete une fiche (rejoint la corbeille).
 - `POST /cards/{id}/restore` : sortir de la corbeille.
 
-**Qualité et vérification** :
-- `POST /sources/{id}/excerpts/verify` : relire les extraits vs la page (bouton « Relire la source »). Accepte `{text: "..."}` en payload pour attester d'un texte quand la page est bloquée anti-bot (voir Gotchas ci-dessous).
+**Qualité LLM** :
 - `POST /sources/{id}/excerpts/suggest` : le LLM propose des extraits candidats.
 - `POST /sources/{id}/excerpts/annotate` : le LLM suggère titre + `context` pour un extrait donné.
 
 **Extraction et import** :
 - `POST /cards/{id}/sources/extract` : équivalent du bouton « Extraire les sources ». Lit `content_url` et rend les liens sortants scorés.
 - `POST /import/from-content-url`, `POST /import/youtube-transcript`, `POST /import/url-metadata`, `POST /import/parse` (BibTeX), `POST /import/paste`.
-
-**Graphe et connexions** :
-- `GET /cards/{id}/connections` : suggestions et confirmées.
-- `POST /cards/{id}/connections/{source_id}/confirm` : confirmer.
-- `DELETE /cards/{id}/connections/{source_id}` : retirer.
 
 **Autres** :
 - `POST /sources/archive` : déclencher l'archivage Wayback.
