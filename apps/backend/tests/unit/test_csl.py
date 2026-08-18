@@ -19,26 +19,26 @@ from app.services.csl import (
 
 
 def make_source(**kw):
-    base = dict(
-        position=1,
-        title="Un titre",
-        authors=None,
-        url="https://example.org/a",
-        published_at=None,
-        format="article",
-        category="article-scientifique",
-        author_kind="chercheur",
-        is_pivot=False,
-        annotation=None,
-        journal=None,
-        volume=None,
-        pages=None,
-        publisher=None,
-        doi=None,
-        archive_url=None,
-        archive_timestamp=None,
-        stance=None,
-    )
+    base = {
+        "position": 1,
+        "title": "Un titre",
+        "authors": None,
+        "url": "https://example.org/a",
+        "published_at": None,
+        "format": "article",
+        "category": "article-scientifique",
+        "author_kind": "chercheur",
+        "is_pivot": False,
+        "annotation": None,
+        "journal": None,
+        "volume": None,
+        "pages": None,
+        "publisher": None,
+        "doi": None,
+        "archive_url": None,
+        "archive_timestamp": None,
+        "stance": None,
+    }
     base.update(kw)
     return SimpleNamespace(**base)
 
@@ -171,15 +171,107 @@ class TestParseAuthors:
             assert noms_propres(names) == [{"family": "Dupont"}]
             assert est_abrege(names)
 
-    def test_un_nom_qui_commence_par_al_reste_intact(self):
-        # « Al » est une particule frequente. La couper produirait un auteur
-        # tronque a chaque export.
-        assert parse_authors("Mohammed Al Fayed") == [{"family": "Fayed", "given": "Mohammed Al"}]
+    def test_un_nom_avec_particule_al_garde_la_particule_dans_la_famille(self):
+        # « Al » est l'article arabe : culturellement partie du nom de famille,
+        # au meme titre que « van », « de » ou « von ». Le laisser filer dans
+        # le given produisait « Fayed, M.A. » en rendu APA -- une initiale
+        # inventee. Meme regle pour les particules europeennes.
+        assert parse_authors("Mohammed Al Fayed") == [{"family": "Al Fayed", "given": "Mohammed"}]
+        assert parse_authors("Ludwig van Beethoven") == [
+            {"family": "van Beethoven", "given": "Ludwig"}
+        ]
 
     def test_espaces_superflus_absorbes(self):
         assert parse_authors("  Adleman   N.  ,  Menon V. ") == [
             {"family": "Adleman", "given": "N."},
             {"family": "Menon", "given": "V."},
+        ]
+
+
+class TestSeparateursDauteurs:
+    """`&` et « and » sont des separateurs universels d'auteurs.
+
+    Sans cette reconnaissance, « Redondo & Morris » restait UN seul auteur
+    et la reference Harvard sortait « Morris, R.L.R.&.R.G.M. » -- l'esperluette
+    devenant une initiale. Mesure sur la fiche Ca-sert-a-quoi-de-dormir en
+    prod le 2026-08-18.
+    """
+
+    def test_esperluette_separe_deux_auteurs(self):
+        assert parse_authors("Roger L. Redondo & Richard G. M. Morris") == [
+            {"family": "Redondo", "given": "Roger L."},
+            {"family": "Morris", "given": "Richard G. M."},
+        ]
+
+    def test_and_separe_deux_auteurs(self):
+        assert parse_authors("Fasano A and Catassi C") == [
+            {"family": "Fasano", "given": "A"},
+            {"family": "Catassi", "given": "C"},
+        ]
+
+    def test_liste_mixte_virgule_esperluette(self):
+        # Convention frequente : « A, B, C & D ». La normalisation & -> ; doit
+        # laisser la virgule agir sur la partie gauche.
+        noms = parse_authors("Rogerson T., Cai D., Frank A. & Silva A.")
+        assert [n["family"] for n in noms] == ["Rogerson", "Cai", "Frank", "Silva"]
+
+
+class TestInstitutions:
+    """Une source signee par une organisation doit citer l'organisation.
+
+    Sans detection, « American Nuclear Society » se parsait « Society, A.N. »
+    dans la reference Harvard : une attribution fausse (personne ne s'appelle
+    Society A.N.) qui rendait chaque source institutionnelle illisible.
+    Mesure sur la fiche WEST-contributions-iter en prod le 2026-08-18.
+    """
+
+    def test_organisation_est_literal(self):
+        assert parse_authors("American Nuclear Society") == [
+            {"literal": "American Nuclear Society"}
+        ]
+
+    def test_organisation_avec_ville_est_literal(self):
+        assert parse_authors("CEA Cadarache") == [{"literal": "CEA Cadarache"}]
+
+    def test_sigle_seul_est_literal(self):
+        assert parse_authors("AFP") == [{"literal": "AFP"}]
+        assert parse_authors("EUROfusion") == [{"literal": "EUROfusion"}]
+
+    def test_acronyme_compose_est_literal(self):
+        assert parse_authors("CEA-IRFM") == [{"literal": "CEA-IRFM"}]
+
+    def test_institution_dans_une_liste_reste_intacte(self):
+        noms = parse_authors(
+            "Bucalossi J., Ekedahl A. et al., EUROfusion Tokamak Exploitation Team"
+        )
+        # Deux personnes + une institution + le marqueur « et al. » d'abrege.
+        propres = noms_propres(noms)
+        assert propres[0] == {"family": "Bucalossi", "given": "J."}
+        assert propres[1] == {"family": "Ekedahl", "given": "A."}
+        assert propres[2] == {"literal": "EUROfusion Tokamak Exploitation Team"}
+
+
+class TestParticules:
+    """Les particules nobiliaires appartiennent au nom de famille.
+
+    « HC van den Broeck » se lisait « Broeck, H.V.D. » : les particules « van
+    den » etaient transformees en initiales, produisant deux fausses initiales
+    et amputant le nom. Mesure sur la fiche celiac-disease en prod le
+    2026-08-18.
+    """
+
+    def test_van_den_reste_avec_la_famille(self):
+        assert parse_authors("HC van den Broeck") == [{"family": "van den Broeck", "given": "HC"}]
+
+    def test_de_reste_avec_la_famille(self):
+        assert parse_authors("Ludwig van Beethoven") == [
+            {"family": "van Beethoven", "given": "Ludwig"}
+        ]
+
+    def test_particule_en_convention_occidentale(self):
+        # « Jean de la Fontaine » : particules avant le dernier mot, tirees.
+        assert parse_authors("Jean de la Fontaine") == [
+            {"family": "de la Fontaine", "given": "Jean"}
         ]
 
 

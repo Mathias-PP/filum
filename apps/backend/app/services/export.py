@@ -637,7 +637,9 @@ def _reliability_summary(sources: list[Source]) -> list[str]:
     return lines
 
 
-def _source_details(source: Source, scope: ExportScope = FULL) -> list[str]:
+def _source_details(
+    source: Source, scope: ExportScope = FULL, dans_reference_stylee: bool = False
+) -> list[str]:
     """Les lignes qui rendent une source *verifiable*, pas seulement citable.
 
     C'est le markdown qu'un agent conversationnel lira pour decider ce qu'il
@@ -647,6 +649,12 @@ def _source_details(source: Source, scope: ExportScope = FULL) -> list[str]:
     pas renaitre en source fantome au reimport. L'acces ouvert fait seul
     exception : c'est le texte integral gratuit, l'omettre couterait plus que
     la gene qu'il cause.
+
+    `dans_reference_stylee` : quand la reference formatee vient d'etre rendue
+    juste au-dessus, elle contient deja l'URL et souvent le DOI (« Available
+    at: https://doi.org/... »). Repeter le DOI ferait la meme information
+    deux fois a une ligne d'ecart. On ne le rend dans ce cas que si l'URL de
+    la source ET la reference formatee n'en portent aucune trace.
     """
     lines: list[str] = []
 
@@ -659,8 +667,11 @@ def _source_details(source: Source, scope: ExportScope = FULL) -> list[str]:
     # Le DOI n'est repete que s'il n'est pas deja l'adresse de la source : la
     # plupart des references academiques pointent vers `doi.org/<doi>`, et le
     # redire n'apprendrait rien a un lecteur tout en faisant naitre une source
-    # de plus au reimport (`parse_markdown` recolte aussi les DOI nus).
-    if source.doi and source.doi.lower() not in (source.url or "").lower():
+    # de plus au reimport (`parse_markdown` recolte aussi les DOI nus). Quand
+    # la reference stylee a ete rendue juste au-dessus, le DOI y est presque
+    # toujours (via l'URL ou via un champ Available at) : on ne le repete pas.
+    doit_montrer_doi = source.doi and source.doi.lower() not in (source.url or "").lower()
+    if doit_montrer_doi and not dans_reference_stylee:
         lines.append(f"  - DOI : {source.doi}")
 
     if scope.reliability and source.oa_url:
@@ -734,18 +745,15 @@ def _source_lines(source: Source, scope: ExportScope, style: str = "apa") -> lis
     lines = [f"- [{label}]({source.url}){pivot}"]
     # Reference formatee sous le lien : c'est ce qu'un lecteur copie dans
     # sa bibliographie sans avoir a la recomposer a partir des metadonnees
-    # brutes ci-dessous.
+    # brutes ci-dessous. La reference porte deja auteurs, date, journal,
+    # URL et DOI dans son style natif : ne pas rerendre ces informations
+    # sur une ligne meta separee (auparavant, chaque source ecrivait deux
+    # fois auteurs+date+journal, une fois stylee, une fois brutes en dessous).
     lines.append(f"  - *{citation_styles.format_reference(source, style)}*")
-    meta = []
-    if source.authors:
-        meta.append(source.authors)
-    if source.published_at:
-        meta.append(source.published_at.date().isoformat())
-    meta.append(source.category)
-    if source.journal:
-        meta.append(source.journal)
-    lines.append(f"  - {' · '.join(meta)}")
-    lines += _source_details(source, scope)
+    # La categorie ADR-020 (article-scientifique, communique, ...) n'a pas
+    # d'equivalent dans les styles de citation : la garder ici, seule.
+    lines.append(f"  - Catégorie : {source.category}")
+    lines += _source_details(source, scope, dans_reference_stylee=True)
     if scope.annotations and source.annotation:
         # Nommee, parce que l'extrait juste en dessous porte la meme marque
         # de citation : l'un est ce que la source dit, l'autre ce que le
@@ -881,20 +889,20 @@ def _docx_source(s: Source, i: int, scope: ExportScope, style: str = "apa") -> l
     if s.is_pivot:
         title_runs.append(_docx_run(" (source pivot)"))
     paragraphs = [_docx_p(*title_runs)]
-    paragraphs.append(_docx_p(_docx_run(citation_styles.format_reference(s, style), italic=True)))
+    # La reference stylee porte auteurs, date, journal et URL en une phrase.
+    # Rerendre en dessous une ligne meta (auteurs · date · categorie · journal)
+    # puis l'URL nue produisait le meme contenu deux ou trois fois sous chaque
+    # source (mesure au 2026-08-18 sur une fiche prod : URL apparaissait
+    # jusqu'a trois fois quand DOI = URL). Cote docx, on ne garde qu'une ligne
+    # de meta : la categorie, seule information qui n'entre dans aucun style.
+    reference = citation_styles.format_reference(s, style)
+    paragraphs.append(_docx_p(_docx_run(reference, italic=True)))
+    paragraphs.append(_docx_p(_docx_run(f"Catégorie : {s.category}")))
 
-    meta_parts = []
-    if s.authors:
-        meta_parts.append(s.authors)
-    if s.published_at:
-        meta_parts.append(s.published_at.date().isoformat())
-    meta_parts.append(s.category)
-    if s.journal:
-        meta_parts.append(s.journal)
-    paragraphs.append(_docx_p(_docx_run(" · ".join(meta_parts))))
-    paragraphs.append(_docx_p(_docx_run(s.url)))
-
-    if s.doi and s.doi.lower() not in (s.url or "").lower():
+    # Le DOI n'est repete que si la reference stylee ne l'a pas porte (URL de
+    # la source distincte du DOI). Sans ce garde, chaque article scientifique
+    # aurait son DOI ecrit deux fois a une ligne d'ecart.
+    if s.doi and s.doi.lower() not in (s.url or "").lower() and s.doi not in reference:
         paragraphs.append(_docx_p(_docx_run(f"DOI : {s.doi}")))
     stance = _STANCE_LABELS.get(s.stance or "")
     if stance:

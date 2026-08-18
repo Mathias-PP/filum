@@ -42,6 +42,58 @@ CSL_TYPE_BY_CATEGORY = {
 #: seule comme nom d'auteur : c'est forcement le prenom du precedent.
 _INITIALS = re.compile(r"^(?:[A-Z]\.?[\s-]*){1,4}$")
 
+#: Mots qui trahissent une organisation plutot qu'une personne. Rendus dans
+#: n'importe quel style, une institution parsee comme un nom donne
+#: « Society, A.N. » pour « American Nuclear Society » ou « Team, E.T.E. »
+#: pour « EUROfusion Tokamak Exploitation Team » -- des references Harvard
+#: fausses qui n'attribuent le texte a personne d'identifiable. Reperees ici,
+#: elles restent une chaine `literal` : Zotero et les styles la rendent telle
+#: quelle, ce qui reste juste.
+_MARQUEURS_INSTITUTION = re.compile(
+    r"\b(?:"
+    r"society|societ[ée]|team|equipe|institute|institut|group|groupe|"
+    r"commission|committee|comit[ée]|office|centre|center|foundation|fondation|"
+    r"organization|organisation|agency|agence|council|conseil|department|"
+    r"departement|d[ée]partement|bureau|ministry|ministere|minist[eè]re|"
+    r"university|universit[ée]|college|coll[eè]ge|school|[ée]cole|"
+    r"laboratory|laboratoire|corporation|company|compagnie|"
+    r"inc\.?|ltd\.?|llc\.?|gmbh|s\.?a\.?s\.?|sarl|plc|"
+    r"cea|cnrs|inserm|inria|ifremer|irfm|"
+    r"who|oms|onu|un|nato|otan|eurofusion|iter|nasa|esa|fda|epa|"
+    r"afp|reuters|ans|apa|aps|"
+    r"association|federation|f[ée]d[ée]ration"
+    r")\b",
+    re.IGNORECASE,
+)
+
+#: Particules nobiliaires europeennes. Sans elles, « van den Broeck » se
+#: parsait « Broeck, van den » puis abregeait en « V.D. » : la famille perdait
+#: la moitie de son nom et les initiales inventaient un prenom faux. Les
+#: particules restent collees a la famille dans le rendu CSL.
+_PARTICULES = {
+    "van",
+    "von",
+    "de",
+    "del",
+    "della",
+    "der",
+    "den",
+    "des",
+    "du",
+    "da",
+    "di",
+    "le",
+    "la",
+    "el",
+    "al",
+    "bin",
+    "ben",
+    "ibn",
+    "y",
+    "ap",
+    "af",
+}
+
 #: Un jeton d'initiales isole, pour reconnaitre « N. » dans « Adleman N. ».
 _INITIAL_TOKEN = re.compile(r"^[A-Z]\.?(?:-[A-Z]\.?)*$")
 
@@ -55,37 +107,56 @@ _ET_AL = re.compile(
 )
 
 
+#: Valeur reservee au marqueur d'abreviation. Un `literal` porteur d'un vrai
+#: nom d'institution (« American Nuclear Society ») ne doit pas se confondre
+#: avec ce marqueur : sans cette distinction, `noms_propres` filtrait aussi
+#: les institutions et les styles retombaient sur le titre de la source.
+_ET_AL_LITERAL = "et al."
+
 #: L'abreviation, rendue en entree CSL. `literal` est la facon prevue par CSL
 #: de porter ce qui n'est pas un nom decoupable ; les consommateurs qui ne
 #: savent pas l'interpreter affichent la chaine telle quelle, ce qui reste
 #: juste. La supprimer ferait passer un article collectif pour un article a
 #: auteur unique : une attribution fausse, plus couteuse qu'une entree laide.
-ET_AL: dict[str, str] = {"literal": "et al."}
+ET_AL: dict[str, str] = {"literal": _ET_AL_LITERAL}
 
 
 def est_abrege(names: list[dict[str, str]]) -> bool:
     """La liste d'auteurs annonce-t-elle qu'elle est incomplete ?"""
-    return any("literal" in n for n in names)
+    return any(n.get("literal") == _ET_AL_LITERAL for n in names)
 
 
 def noms_propres(names: list[dict[str, str]]) -> list[dict[str, str]]:
-    """Les auteurs reellement nommes, sans la marque d'abreviation."""
-    return [n for n in names if "literal" not in n]
+    """Les auteurs nommes, sans la marque d'abreviation « et al. ».
 
-
-def _split_entries(authors: str) -> list[str]:
-    """Decoupe la chaine en auteurs, sans casser un « Famille, Prenom ».
-
-    Le point-virgule est sans ambiguite : il ne separe jamais qu'un auteur du
-    suivant. La virgule, elle, joue deux roles a la fois (« Dupont, J. » est
-    *un* auteur, « Dupont J., Martin A. » en fait deux). On la traite comme un
-    separateur, puis on recolle les morceaux qui ne sont que des initiales --
-    seul cas ou l'on peut affirmer, sans deviner, que la virgule etait interne.
+    Les institutions (portees en `literal` par `parse_name`) sont conservees :
+    une source signee par « American Nuclear Society » doit citer ce nom, non
+    tomber sur le titre en remplacement.
     """
-    if ";" in authors:
-        return [p.strip() for p in authors.split(";") if p.strip()]
+    return [n for n in names if n.get("literal") != _ET_AL_LITERAL]
 
-    parts = [p.strip() for p in authors.split(",") if p.strip()]
+
+#: `&` et ` and ` sont des separateurs d'auteurs quasi universels dans les
+#: bibliographies anglaises et francaises (« Redondo & Morris », « Fasano and
+#: Catassi »). Sans cette normalisation, « Redondo & Morris » restait UN
+#: auteur, dont la famille etait devenue « Morris » et le prenom « Redondo &
+#: Roger L. » -- initiales rendues « R.L.R.&.R.G.M. » dans la reference
+#: Harvard. Le remplacement se fait AVANT le split point-virgule/virgule pour
+#: qu'un « A, B & C » se lise ensuite comme trois auteurs.
+_SEP_AUTEURS = re.compile(r"\s+(?:&|and)\s+", re.IGNORECASE)
+
+
+def _split_par_virgule(chunk: str) -> list[str]:
+    """Sous-decoupe : virgule joue deux roles ambigus.
+
+    Cas 1 : « Dupont, J. » -- UN auteur (famille, initiales).
+    Cas 2 : « Dupont J., Martin A. » -- DEUX auteurs.
+    Cas 3 : « Dupont, Marie » -- famille/prenom occidental.
+
+    On decoupe puis on recolle les initiales isolees au precedent (cas 1) ;
+    a defaut d'initiales, une liste paire mono-mot se lit par paires (cas 3).
+    """
+    parts = [p.strip() for p in chunk.split(",") if p.strip()]
     merged: list[str] = []
     fused = False
     for part in parts:
@@ -96,16 +167,60 @@ def _split_entries(authors: str) -> list[str]:
             merged.append(part)
     if fused:
         return merged
-
-    # Aucune initiale n'a tranche. Reste le cas « Dupont, Marie » : des
-    # morceaux tous mono-mot et en nombre pair se lisent par paires
-    # famille/prenom, la convention de saisie manuelle la plus repandue.
-    # C'est un pari, et il peut se tromper sur « Bell, Aron » (deux auteurs
-    # sans prenom) -- une chaine que rien ne distingue d'un auteur unique.
-    # Le point-virgule leve l'ambiguite et reste la forme a preferer.
     if len(merged) >= 2 and len(merged) % 2 == 0 and all(" " not in p for p in merged):
         return [f"{merged[i]}, {merged[i + 1]}" for i in range(0, len(merged), 2)]
     return merged
+
+
+def _split_entries(authors: str) -> list[str]:
+    """Decoupe la chaine en auteurs, sans casser un « Famille, Prenom ».
+
+    Le point-virgule est sans ambiguite : il ne separe jamais qu'un auteur du
+    suivant. La virgule joue deux roles a la fois (`_split_par_virgule` s'en
+    charge). `&` et « and » sont normalises en point-virgule d'abord, mais
+    chaque morceau peut lui-meme contenir des virgules a decouper : « Rogerson,
+    Cai, Frank & Silva » se lit d'abord « Rogerson, Cai, Frank ; Silva », et
+    la premiere moitie porte encore trois auteurs.
+    """
+    authors = _SEP_AUTEURS.sub("; ", authors)
+    chunks = [c.strip() for c in authors.split(";") if c.strip()]
+    if not chunks:
+        return []
+    if len(chunks) > 1:
+        result: list[str] = []
+        for chunk in chunks:
+            result.extend(_split_par_virgule(chunk))
+        return result
+    return _split_par_virgule(chunks[0])
+
+
+def _semble_institution(entry: str) -> bool:
+    """L'entree se lit-elle comme une organisation plutot qu'une personne ?
+
+    Deux marqueurs : un mot institutionnel connu (Society, Team, Agency,
+    CEA...), ou un sigle typographique. Sans virgule et avec plusieurs mots
+    qui commencent tous par une majuscule *sauf* les articles courts, la
+    chaine est probablement un nom d'institution : « CEA Cadarache »,
+    « American Nuclear Society ». Une chaine avec virgule est presumee
+    « Famille, Prenom » et suit le chemin normal.
+    """
+    if "," in entry:
+        return False
+    if _MARQUEURS_INSTITUTION.search(entry):
+        return True
+    # Sigle en majuscules (« AFP », « CEA », « CNRS », « EUROfusion ») ou
+    # un mot majoritairement majuscules qui n'a pas la forme d'un nom propre.
+    tokens = entry.split()
+    if len(tokens) == 1 and tokens[0].isupper() and len(tokens[0]) >= 2:
+        return True
+    # Un tiret dans un sigle acronyme (« CEA-IRFM ») : deux morceaux tout en
+    # majuscules. Un patronyme composé (« Lopez-Aranda ») n'entre pas ici :
+    # ses moities sont capitalisees, pas tout en majuscules.
+    if len(tokens) == 1 and "-" in tokens[0]:
+        morceaux = tokens[0].split("-")
+        if all(m.isupper() and len(m) >= 2 for m in morceaux):
+            return True
+    return False
 
 
 def parse_name(entry: str) -> dict[str, str]:
@@ -116,10 +231,17 @@ def parse_name(entry: str) -> dict[str, str]:
     designent le meme auteur et se resolvent tous deux ; « Jean Dupont » suit
     la convention occidentale (dernier jeton = famille). Un nom d'un seul mot
     reste un nom de famille seul, plutot que d'inventer un prenom vide.
+
+    Une entree qui se lit comme une organisation (`_semble_institution`) est
+    portee telle quelle en `literal` : la decouper produirait des initiales
+    fausses (« Society, A.N. » pour « American Nuclear Society »).
     """
     entry = _ET_AL.sub("", entry.strip()).strip()
     if not entry:
         return {}
+
+    if _semble_institution(entry):
+        return {"literal": entry}
 
     if "," in entry:
         family, _, given = entry.partition(",")
@@ -144,10 +266,19 @@ def parse_name(entry: str) -> dict[str, str]:
     while leading < len(tokens) - 1 and _INITIAL_TOKEN.match(tokens[leading]):
         leading += 1
     if leading > 0:
+        # « HC van den Broeck » : les particules qui suivent les initiales
+        # doivent rester avec la famille. Les detecter puis avancer `leading`
+        # jusqu'apres la derniere particule.
+        while leading < len(tokens) - 1 and tokens[leading].lower() in _PARTICULES:
+            leading += 1
         return {"family": " ".join(tokens[leading:]), "given": " ".join(tokens[:leading])}
 
-    # « Jean Dupont » : convention occidentale, dernier jeton = famille.
-    return {"family": tokens[-1], "given": " ".join(tokens[:-1])}
+    # « Jean Dupont » / « Jean van der Berg » : dernier jeton = famille, sauf
+    # que les particules avant le dernier jeton en font partie.
+    coupe = len(tokens) - 1
+    while coupe > 0 and tokens[coupe - 1].lower() in _PARTICULES:
+        coupe -= 1
+    return {"family": " ".join(tokens[coupe:]), "given": " ".join(tokens[:coupe])}
 
 
 def parse_authors(authors: str | None) -> list[dict[str, str]]:
