@@ -232,6 +232,10 @@
   let hasAutoFitted = false;
   let hasUserAdjustedView = false;
   let isFullscreen = $state(false);
+  // Fallback CSS quand l'API Fullscreen echoue silencieusement (Safari iOS,
+  // permissions bloquees, iframe sans allowfullscreen). Un simple booleen
+  // pilote une classe qui pose le container en `position: fixed inset-0`.
+  let pseudoFullscreen = $state(false);
   let selectedSource = $state<Source | null>(null);
   // Une fiche et une source ne s'affichent jamais ensemble : le panneau est un
   // emplacement unique, sélectionner l'un ferme l'autre.
@@ -2007,27 +2011,52 @@
 
   async function toggleFullscreen() {
     if (!container) return;
-    if (!document.fullscreenElement) {
+    const alreadyFullscreen = !!document.fullscreenElement || pseudoFullscreen;
+    if (!alreadyFullscreen) {
+      // Tentative Fullscreen API : si elle passe, tant mieux (touches Esc,
+      // orientation, etc. gerees). Sinon on retombe sur un plein ecran CSS.
       try {
         await container.requestFullscreen();
+        return;
       } catch {
-        // ignore
+        // Safari iOS, permissions bloquees, iframe sans allowfullscreen :
+        // le bouton restait sans effet. On force le fallback ci-dessous.
       }
+      pseudoFullscreen = true;
+      isFullscreen = true;
+      selectSource(null);
     } else {
-      try {
-        await document.exitFullscreen();
-      } catch {
-        // ignore
+      if (document.fullscreenElement) {
+        try {
+          await document.exitFullscreen();
+        } catch {
+          // ignore
+        }
       }
+      pseudoFullscreen = false;
+      isFullscreen = false;
+      selectSource(null);
     }
   }
 
   function onFullscreenChange() {
+    // Ne pas ecraser le fallback CSS quand l'API Fullscreen n'est pas active.
+    if (pseudoFullscreen) return;
     isFullscreen = !!document.fullscreenElement;
     // Le passage en plein écran ne change pas les liens : réchauffer la
     // simulation ferait dériver une disposition que l'utilisateur vient de
     // lire. Le redimensionnement qui suit se contente de recadrer.
     selectSource(null);
+  }
+
+  // Fallback CSS : Escape pour sortir puisque l'API Fullscreen ne gere pas
+  // ce mode.
+  function onKeydownFullscreen(e: KeyboardEvent) {
+    if (e.key === 'Escape' && pseudoFullscreen) {
+      pseudoFullscreen = false;
+      isFullscreen = false;
+      selectSource(null);
+    }
   }
 
   onMount(() => {
@@ -2057,6 +2086,7 @@
     });
     resizeObserver.observe(container);
     document.addEventListener('fullscreenchange', onFullscreenChange);
+    document.addEventListener('keydown', onKeydownFullscreen);
 
     // Le voisinage arrive après coup : on ne remonte le graphe que s'il révèle
     // quelque chose de neuf, pour ne pas réanimer pour rien. Les auteurs de la
@@ -2072,6 +2102,7 @@
     resizeObserver?.disconnect();
     if (typeof document !== 'undefined') {
       document.removeEventListener('fullscreenchange', onFullscreenChange);
+      document.removeEventListener('keydown', onKeydownFullscreen);
     }
   });
 
@@ -2206,7 +2237,12 @@
   });
 </script>
 
-<div bind:this={container} class="relative w-full h-full bg-surface-primary">
+<div
+  bind:this={container}
+  class="relative w-full h-full bg-surface-primary {pseudoFullscreen
+    ? 'fixed inset-0 z-50 h-screen w-screen'
+    : ''}"
+>
   <svg
     bind:this={svgEl}
     class="w-full h-full block"

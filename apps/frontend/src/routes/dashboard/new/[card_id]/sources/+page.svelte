@@ -2073,14 +2073,16 @@
               >
                 {color.label}
               </span>
-              <div class="min-w-0">
-                <p class="text-sm font-medium text-ink-primary truncate">
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-medium text-ink-primary line-clamp-2 sm:truncate">
                   {source.title ?? source.url}
                 </p>
                 {#if source.authors}
-                  <p class="text-xs text-ink-tertiary">{source.authors}</p>
+                  <p class="text-xs text-ink-tertiary line-clamp-1 sm:line-clamp-none">
+                    {source.authors}
+                  </p>
                 {/if}
-                <p class="text-xs text-ink-tertiary truncate">{source.url}</p>
+                <p class="text-xs text-ink-tertiary truncate break-all">{source.url}</p>
                 {#if source.parent_source_id}
                   {@const parentLabel = parentTitle(source.parent_source_id)}
                   {#if parentLabel}
