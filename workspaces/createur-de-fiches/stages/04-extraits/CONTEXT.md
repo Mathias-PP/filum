@@ -18,12 +18,14 @@ Extraire et poser les verbatim des sources clés (pivots obligatoires, autres so
 
 ## Process
 
-1. **Récupérer le texte de chaque source clé** : lire la page ou coller le texte manuellement si HTML bloqué.
-2. **Sélectionner 3 à 5 extraits par pivot, 1 à 2 par autre source clé** : passages qui portent une affirmation clé. La longueur idéale est de 15 mots et plus, mais un extrait plus court reste valable s'il est adossé à un `context` qui le rend intelligible seul.
-3. **Vérifier verbatim** : le passage doit exister mot pour mot dans la source. Toute reformulation invalide.
-4. **Écrire la mise en situation (`context`)** : obligatoire dès qu'un extrait commence par un pronom référentiel, ou qu'il est trop court pour se comprendre seul. Optionnel quand le passage porte lui-même son contexte.
-5. **Écrire le titre de l'extrait** : 2 à 6 mots, ce qu'on trouve dedans.
-6. **Appeler `mcp__philum__add_excerpt(source_id, text, title?, context?)`**. Si refus serveur (garde-fou), élargir ou compléter `context` puis rappeler.
+1. **Récupérer le texte de chaque source clé** : lire la page directement, ou pour un texte long `mcp__philum__chunk_text(source_id, text, size)` qui découpe en chunks lisibles. Si HTML bloqué anti-bot, coller le texte à la main dans `provided_text`.
+2. **Optionnel : suggestions LLM** : `mcp__philum__suggest_excerpts(source_id, provided_text?, include_annotation, include_existing, include_card_context)` propose des candidats déjà vérifiés contre le texte (anti-hallucination). L'agent choisit lesquels retenir ; le LLM peut aussi suggérer titre + `context` via `mcp__philum__annotate_excerpt(source_id, excerpt_text)`.
+3. **Sélectionner 3 à 5 extraits par pivot, 1 à 2 par autre source clé** : passages qui portent une affirmation clé. La longueur idéale est de 15 mots et plus, mais un extrait plus court reste valable s'il est adossé à un `context` qui le rend intelligible seul.
+4. **Vérifier verbatim** : le passage doit exister mot pour mot dans la source. Toute reformulation invalide.
+5. **Écrire la mise en situation (`context`)** : obligatoire dès qu'un extrait commence par un pronom référentiel, ou qu'il est trop court pour se comprendre seul. Optionnel quand le passage porte lui-même son contexte.
+6. **Écrire le titre de l'extrait** : 2 à 6 mots, ce qu'on trouve dedans.
+7. **Appeler `mcp__philum__add_excerpt(source_id, text, title?, context?)`**. Si refus serveur (garde-fou), élargir ou compléter `context` puis rappeler.
+8. **Relecture serveur** : `mcp__philum__verify_excerpts(source_id, provided_text?)` fait passer `verified_status` de null à `found`/`moved`/`missing`/`unreadable`. Sans cette passe, la fiche affirme sans preuve. Pour les pages bloquées anti-bot, fournir `provided_text` (l'agent atteste le texte).
 
 ## Outputs
 
