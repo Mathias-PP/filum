@@ -2043,7 +2043,14 @@
               ? 'border-info/50 ring-1 ring-info/30'
               : 'border-border'}"
           >
-            <div class="flex items-start gap-3 min-w-0">
+            <!--
+              flex-wrap sur mobile : le bloc titre a `basis-full` et passe
+              sous les meta (checkbox + numero + badge de type d'auteur).
+              Sans ca, le badge « Institution publique » ou « Chercheur »
+              compressait le titre a 2-3 mots visibles a droite. Sur >= sm,
+              le titre revient a cote grace a `sm:basis-0 sm:flex-1`.
+            -->
+            <div class="flex flex-wrap items-start gap-3 min-w-0">
               {#if archivableSources.length > 0}
                 <input
                   type="checkbox"
@@ -2073,7 +2080,7 @@
               >
                 {color.label}
               </span>
-              <div class="min-w-0 flex-1">
+              <div class="min-w-0 basis-full sm:basis-0 sm:flex-1">
                 <p class="text-sm font-medium text-ink-primary">
                   {source.title ?? source.url}
                 </p>
