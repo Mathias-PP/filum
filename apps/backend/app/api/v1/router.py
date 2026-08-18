@@ -10,6 +10,7 @@ from app.api.v1.endpoints import (
     excerpts,
     feed,
     imports,
+    oauth,
     og,
     sources,
     users,
@@ -26,6 +27,7 @@ v1_router.include_router(excerpt_search.router)
 v1_router.include_router(excerpts.router)
 v1_router.include_router(feed.router)
 v1_router.include_router(imports.router)
+v1_router.include_router(oauth.router)
 v1_router.include_router(og.router)
 v1_router.include_router(sources.router)
 v1_router.include_router(users.router)

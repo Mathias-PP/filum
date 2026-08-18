@@ -1,6 +1,10 @@
 # Outils MCP Philum : inventaire et quand les utiliser
 
-Tous les outils sont préfixés `mcp__philum__`. Un token est obtenu via `POST /api/v1/auth/mcp-token` depuis un navigateur connecté, puis passé en `Authorization: Bearer`.
+Tous les outils sont préfixés `mcp__philum__`.
+
+**Authentification** (nouvelle depuis 2026-08-18) : le serveur MCP Philum supporte **OAuth 2.1 avec Dynamic Client Registration** (RFC 7591) + PKCE. Ajouter `https://philum-api.duckdns.org/mcp/` dans son client MCP (Claude Code, Cursor, ChatGPT, Zed…) déclenche automatiquement le flow : popup navigateur, login Google, un clic « Autoriser », terminé. Aucun token à coller à la main. Le token est stocké et rafraîchi automatiquement par le client MCP.
+
+L'ancien flow (`POST /api/v1/auth/mcp-token` puis header manuel) reste supporté pour rétrocompatibilité mais est déconseillé.
 
 ## Lecture (pas de compte requis)
 

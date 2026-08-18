@@ -101,6 +101,53 @@ app.add_middleware(
 )
 
 app.include_router(create_router(), prefix=settings.api_v1_prefix)
+
+
+# --- OAuth well-known endpoints (RFC 8414 + RFC 9728) -----------------------
+#
+# Servis a la racine du domaine (pas sous /api/v1) : c'est ce que les
+# clients MCP fetchent en premier pour decouvrir comment s'authentifier.
+
+
+@app.get("/.well-known/oauth-authorization-server")
+async def oauth_authorization_server_metadata(request: Request):
+    from app.api.v1.endpoints.oauth import build_authorization_server_metadata
+
+    return build_authorization_server_metadata(request)
+
+
+@app.get("/.well-known/oauth-protected-resource")
+@app.get("/.well-known/oauth-protected-resource/mcp")
+async def oauth_protected_resource_metadata(request: Request):
+    from app.api.v1.endpoints.oauth import build_protected_resource_metadata
+
+    return build_protected_resource_metadata(request)
+
+
+# --- Middleware WWW-Authenticate sur le MCP quand non authentifie ---------
+#
+# La spec MCP 2025-06-18 (§ 2.1.5) exige que le serveur MCP protege renvoie
+# un header WWW-Authenticate qui pointe le client vers l'authorization server.
+# Sans ce header, un client generique ne sait pas ou aller pour obtenir un
+# token.
+
+
+@app.middleware("http")
+async def mcp_www_authenticate(request: Request, call_next):
+    response = await call_next(request)
+    if (
+        request.url.path.startswith("/mcp")
+        and response.status_code == 401
+        and "WWW-Authenticate" not in response.headers
+    ):
+        base = f"{request.url.scheme}://{request.url.netloc}"
+        response.headers["WWW-Authenticate"] = (
+            f'Bearer realm="Philum MCP", '
+            f'resource_metadata="{base}/.well-known/oauth-protected-resource"'
+        )
+    return response
+
+
 app.mount("/mcp", mcp_http_app)
 
 
