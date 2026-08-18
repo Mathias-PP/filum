@@ -74,6 +74,32 @@ async def _identites_deja_citees(db: AsyncSession, card_id: UUID) -> set[str]:
     return {k for (u, d) in (await db.execute(stmt)).all() if (k := _identite(u, d))}
 
 
+async def _source_du_createur(db: AsyncSession, user: User, source_id: str) -> Source:
+    """La source `source_id`, si elle appartient a une fiche du createur.
+
+    Meme discretion que `_fiche_du_createur` : on refuse de dire « existe mais
+    pas a vous », qui revelerait indirectement l'existence de sources d'autrui.
+    """
+    try:
+        sid = UUID(source_id)
+    except ValueError as exc:
+        raise ToolError(f"Identifiant de source invalide : {source_id!r}.") from exc
+    stmt = (
+        select(Source)
+        .join(BiblioCard, Source.biblio_card_id == BiblioCard.id)
+        .where(
+            Source.id == sid,
+            Source.deleted_at.is_(None),
+            BiblioCard.user_id == user.id,
+            BiblioCard.deleted_at.is_(None),
+        )
+    )
+    source = (await db.execute(stmt)).scalar_one_or_none()
+    if source is None:
+        raise ToolError(f"Aucune source {source_id!r} chez {user.username}.")
+    return source
+
+
 async def create_card(
     db: AsyncSession,
     user: User,
@@ -208,24 +234,7 @@ async def add_excerpt(
     """Ajoute un verbatim a une source. Marque `annotated_by_ai=True` : cette
     reponse porte les extraits qu'un modele a produits, le distinguer preserve
     la separation entre ce que la source dit et ce qu'une IA en dit."""
-    try:
-        sid = UUID(source_id)
-    except ValueError as exc:
-        raise ToolError(f"Identifiant de source invalide : {source_id!r}.") from exc
-
-    stmt = (
-        select(Source)
-        .join(BiblioCard, Source.biblio_card_id == BiblioCard.id)
-        .where(
-            Source.id == sid,
-            Source.deleted_at.is_(None),
-            BiblioCard.user_id == user.id,
-            BiblioCard.deleted_at.is_(None),
-        )
-    )
-    source = (await db.execute(stmt)).scalar_one_or_none()
-    if source is None:
-        raise ToolError(f"Aucune source {source_id!r} chez {user.username}.")
+    source = await _source_du_createur(db, user, source_id)
 
     corps = (text or "").strip()
     if not corps:
@@ -352,3 +361,385 @@ async def publish_card(db: AsyncSession, user: User, *, slug: str) -> dict[str, 
         "published_at": published["published_at"].isoformat(),
         "public_url": published["public_url"],
     }
+
+
+# ---------------------------------------------------------------------------
+# Mutations d'une fiche existante : corriger sans avoir a tout redetruire.
+#
+# L'API REST expose deja PATCH et DELETE sur les cartes, sources et extraits ;
+# ces tools les rendent accessibles au MCP. Sans eux, un agent qui detecte une
+# erreur apres publication (annotation a reformuler, source hors sujet, extrait
+# posé sans le bon `context`) devait rebuild toute la fiche par delete+recreate,
+# ce qui cassait les UUID (perdus par les eventuels liens externes) et laissait
+# la fiche vide pendant l'operation.
+# ---------------------------------------------------------------------------
+
+
+async def update_card(
+    db: AsyncSession,
+    user: User,
+    *,
+    slug: str,
+    title: str | None = None,
+    description: str | None = None,
+    content_url: str | None = None,
+    content_authors: str | None = None,
+    platform: str | None = None,
+    content_type: str | None = None,
+    visibility: str | None = None,
+) -> dict[str, Any]:
+    """Corrige les champs edituriaux d'une fiche existante.
+
+    Un champ laisse a `None` reste inchange. Passer explicitement une chaine
+    vide sur `content_authors` retire les auteurs (rend la main a la
+    reconstitution depuis les fiches citantes). Le slug ne se change pas ici :
+    l'identifiant public d'une fiche fait autorite dans les liens deja emis.
+    """
+    card = await _fiche_du_createur(db, user, slug)
+    if title is not None:
+        card.title = title
+    if description is not None:
+        card.description = description
+    if content_url is not None:
+        card.content_url = content_url or None
+    if content_authors is not None:
+        card.content_authors = content_authors.strip() or None
+    if platform is not None:
+        try:
+            card.platform = Platform(platform).value
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+    if content_type is not None:
+        try:
+            card.content_type = ContentType(content_type).value
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+    if visibility is not None:
+        try:
+            card.visibility = Visibility(visibility).value
+        except ValueError as exc:
+            raise ToolError(str(exc)) from exc
+    await db.commit()
+    return {
+        "creator": user.username,
+        "slug": card.slug,
+        "title": card.title,
+        "description": card.description,
+        "visibility": card.visibility,
+    }
+
+
+async def update_source(
+    db: AsyncSession,
+    user: User,
+    *,
+    source_id: str,
+    title: str | None = None,
+    authors: str | None = None,
+    doi: str | None = None,
+    journal: str | None = None,
+    category: str | None = None,
+    author_kind: str | None = None,
+    format: str | None = None,
+    stance: str | None = None,
+    annotation: str | None = None,
+    is_pivot: bool | None = None,
+    archive_url: str | None = None,
+) -> dict[str, Any]:
+    """Corrige les champs edituriaux d'une source existante.
+
+    L'URL d'une source est immuable (elle fait autorite dans les liens deja
+    emis) : pour changer l'URL, `delete_source` puis `add_source`. Un champ
+    laisse a `None` reste inchange. Passer une chaine vide sur `archive_url`
+    retire l'archive et remet le statut en `pending`.
+    """
+    source = await _source_du_createur(db, user, source_id)
+    if title is not None:
+        source.title = title or None
+    if authors is not None:
+        source.authors = authors or None
+    if doi is not None:
+        source.doi = doi or None
+    if journal is not None:
+        source.journal = journal or None
+    if category is not None:
+        source.category = category
+    if author_kind is not None:
+        source.author_kind = author_kind
+    if format is not None:
+        source.format = format
+    if stance is not None:
+        # Chaine vide = retire la position declaree, revient au silence
+        # explicite.
+        source.stance = stance or None
+    if annotation is not None:
+        source.annotation = annotation or None
+    if is_pivot is not None:
+        source.is_pivot = is_pivot
+    if archive_url is not None:
+        new_archive = (archive_url or "").strip() or None
+        source.archive_url = new_archive
+        if new_archive:
+            source.archive_status = "archived"
+            source.archive_timestamp = horodatage_wayback(new_archive)
+        else:
+            source.archive_status = "pending"
+            source.archive_timestamp = None
+    await db.commit()
+    await db.refresh(source)
+    return {
+        "id": str(source.id),
+        "title": source.title,
+        "stance": source.stance,
+        "is_pivot": source.is_pivot,
+        "annotation": source.annotation,
+    }
+
+
+async def delete_source(db: AsyncSession, user: User, *, source_id: str) -> dict[str, Any]:
+    """Retire une source de la fiche (soft-delete).
+
+    La ligne est conservee en base pour ne pas casser les references
+    historiques (citations entrantes, attestations horodatees) : elle
+    disparait juste des vues publiques.
+    """
+    from datetime import datetime
+
+    source = await _source_du_createur(db, user, source_id)
+    source.deleted_at = datetime.now().replace(tzinfo=None)
+    await db.commit()
+    return {"id": str(source.id), "deleted": True}
+
+
+async def delete_excerpt(
+    db: AsyncSession, user: User, *, source_id: str, excerpt_id: str
+) -> dict[str, Any]:
+    """Retire un extrait d'une source. Suppression physique.
+
+    Un extrait n'a pas de citation entrante propre : le retirer n'invalide
+    aucune reference externe. Pour retirer TOUS les extraits d'une source,
+    boucler cet appel.
+    """
+    try:
+        eid = UUID(excerpt_id)
+    except ValueError as exc:
+        raise ToolError(f"Identifiant d'extrait invalide : {excerpt_id!r}.") from exc
+    source = await _source_du_createur(db, user, source_id)
+    excerpt = await db.scalar(
+        select(SourceExcerpt).where(SourceExcerpt.id == eid, SourceExcerpt.source_id == source.id)
+    )
+    if excerpt is None:
+        raise ToolError(f"Aucun extrait {excerpt_id!r} sur la source {source_id!r}.")
+    await db.delete(excerpt)
+    await db.commit()
+    return {"excerpt_id": excerpt_id, "source_id": source_id, "deleted": True}
+
+
+async def verify_excerpts(
+    db: AsyncSession,
+    user: User,
+    *,
+    source_id: str,
+    provided_text: str | None = None,
+) -> dict[str, Any]:
+    """Relit chaque extrait vs le texte de la source, fait passer les verdicts.
+
+    Sans cette passe, la fiche affirme qu'une source dit quelque chose sans
+    que rien ne l'ait jamais confirme (les extraits restent `verified_status=null`,
+    la fiche publique les rend « non verifiee »). Chaque extrait ressort avec
+    un statut :
+
+    - `found` : passage retrouve verbatim dans la page ;
+    - `moved` : passage retrouve mais les mots ont legerement bouge ;
+    - `missing` : passage introuvable dans la page (accuse la citation) ;
+    - `unreadable` : la page ne rend rien (accuse le site, pas la citation).
+
+    `provided_text` optionnel : quand la page est bloquee anti-bot (403 sur
+    ScienceDirect, IOP, PubMed), l'agent atteste le texte qu'il a recupere
+    ailleurs (NASA ADS, Semantic Scholar, Crossref abstract). Le champ
+    `text_source` de la reponse dit d'ou vient le texte de reference.
+    """
+    from datetime import UTC, datetime
+
+    from app.services.excerpt_anchor import Selecteurs, ancrer
+
+    source = await _source_du_createur(db, user, source_id)
+    excerpts = list(
+        (
+            await db.scalars(
+                select(SourceExcerpt)
+                .where(SourceExcerpt.source_id == source.id)
+                .order_by(SourceExcerpt.position)
+            )
+        ).all()
+    )
+    if not excerpts:
+        return {
+            "source_id": source_id,
+            "checks": [],
+            "page_text_length": 0,
+            "text_source": "fetched",
+        }
+
+    page_text = (provided_text or "").strip()
+    provenance = "provided" if page_text else "fetched"
+    # Un texte fourni par la personne est tenu pour entier : c'est elle qui a
+    # choisi ce qu'elle donnait a relire. Sans texte fourni, on lit la page.
+    complet = True
+    if not page_text:
+        from app.api.v1.endpoints.excerpts import _texte_de_la_source
+
+        page_text, _refuse, complet = await _texte_de_la_source(source.url)
+
+    releve_le = datetime.now(UTC).replace(tzinfo=None)
+    checks: list[dict[str, Any]] = []
+
+    if not page_text.strip():
+        for extrait in excerpts:
+            extrait.verified_at = releve_le
+            extrait.verified_status = "unreadable"
+            extrait.verified_text_source = provenance
+            checks.append({"excerpt_id": str(extrait.id), "status": "unreadable"})
+        await db.commit()
+        return {
+            "source_id": source_id,
+            "checks": checks,
+            "page_text_length": 0,
+            "text_source": provenance,
+        }
+
+    for extrait in excerpts:
+        ancrage = ancrer(
+            page_text,
+            Selecteurs(
+                quote=extrait.text,
+                prefix=extrait.anchor_prefix or "",
+                suffix=extrait.anchor_suffix or "",
+                offset=extrait.anchor_offset,
+            ),
+        )
+        extrait.verified_at = releve_le
+        extrait.verified_text_source = provenance
+        if ancrage is None:
+            verdict = "missing" if complet else "unreadable"
+            extrait.verified_status = verdict
+            checks.append({"excerpt_id": str(extrait.id), "status": verdict})
+            continue
+        extrait.verified_status = "found" if ancrage.exact else "moved"
+        checks.append(
+            {
+                "excerpt_id": str(extrait.id),
+                "status": extrait.verified_status,
+                "start": ancrage.start,
+                "end": ancrage.end,
+            }
+        )
+    await db.commit()
+    return {
+        "source_id": source_id,
+        "checks": checks,
+        "page_text_length": len(page_text),
+        "text_source": provenance,
+    }
+
+
+async def list_connections(db: AsyncSession, user: User, *, card_slug: str) -> dict[str, Any]:
+    """Liste les connexions entrantes et sortantes d'une fiche.
+
+    `outgoing` : les sources de la fiche qui designent une autre fiche Philum
+    (le geste de citation partant de moi). `incoming` : les sources d'autres
+    fiches qui me citent (que je vois mais ne peux pas modifier). Chaque
+    entree porte `confirmed` (le lien a-t-il ete valide par son auteur ?) et
+    `editable` (puis-je le trancher ?).
+    """
+    card = await _fiche_du_createur(db, user, card_slug)
+
+    outgoing = await db.execute(
+        select(Source, BiblioCard, User)
+        .join(BiblioCard, Source.linked_card_id == BiblioCard.id)
+        .join(User, BiblioCard.user_id == User.id)
+        .where(
+            Source.biblio_card_id == card.id,
+            Source.linked_card_id.is_not(None),
+            Source.deleted_at.is_(None),
+        )
+        .order_by(Source.position)
+    )
+    incoming = await db.execute(
+        select(Source, BiblioCard, User)
+        .join(BiblioCard, Source.biblio_card_id == BiblioCard.id)
+        .join(User, BiblioCard.user_id == User.id)
+        .where(
+            Source.linked_card_id == card.id,
+            Source.deleted_at.is_(None),
+            BiblioCard.deleted_at.is_(None),
+        )
+        .order_by(Source.created_at)
+    )
+
+    def _row(src: Source, other: BiblioCard, creator: User, editable: bool) -> dict[str, Any]:
+        return {
+            "source_id": str(src.id),
+            "source_title": src.title,
+            "source_url": src.url,
+            "card_slug": other.slug,
+            "card_title": other.title,
+            "card_creator_slug": creator.username,
+            "confirmed": src.link_confirmed_at is not None,
+            "editable": editable,
+        }
+
+    return {
+        "outgoing": [_row(s, c, u, True) for s, c, u in outgoing.all()],
+        "incoming": [_row(s, c, u, False) for s, c, u in incoming.all()],
+    }
+
+
+async def confirm_connection(
+    db: AsyncSession, user: User, *, card_slug: str, source_id: str
+) -> dict[str, Any]:
+    """Confirme qu'une source de la fiche pointe bien vers une fiche Philum.
+
+    Une source peut avoir un `linked_card_id` suggere par le serveur (URL/DOI
+    en commun avec une fiche existante) : ce tool le fige comme choix de
+    l'auteur. Refuse si la source n'appartient pas a la fiche indiquee, ou si
+    la source ne pointe encore vers aucune fiche.
+    """
+    from datetime import UTC, datetime
+
+    card = await _fiche_du_createur(db, user, card_slug)
+    source = await _source_du_createur(db, user, source_id)
+    if source.biblio_card_id != card.id:
+        raise ToolError(f"La source {source_id!r} n'appartient pas a la fiche {card_slug!r}.")
+    if source.linked_card_id is None:
+        raise ToolError(f"La source {source_id!r} ne designe aucune fiche.")
+    source.link_confirmed_at = datetime.now(UTC).replace(tzinfo=None)
+    linked = await db.get(BiblioCard, source.linked_card_id)
+    if linked is None:
+        raise ToolError("La fiche designee n'existe plus.")
+    await db.commit()
+    return {
+        "source_id": source_id,
+        "card_slug": card.slug,
+        "linked_card_slug": linked.slug,
+        "confirmed": True,
+    }
+
+
+async def remove_connection(
+    db: AsyncSession, user: User, *, card_slug: str, source_id: str
+) -> dict[str, Any]:
+    """Retire le lien fiche-a-fiche porte par une source, sans retirer la source.
+
+    La reference reste dans la bibliographie de la fiche ; elle cesse
+    seulement de designer une fiche Philum comme sa fiche cible.
+    """
+    card = await _fiche_du_createur(db, user, card_slug)
+    source = await _source_du_createur(db, user, source_id)
+    if source.biblio_card_id != card.id:
+        raise ToolError(f"La source {source_id!r} n'appartient pas a la fiche {card_slug!r}.")
+    source.linked_card_id = None
+    source.link_origin = None
+    source.link_confirmed_at = None
+    await db.commit()
+    return {"source_id": source_id, "card_slug": card.slug, "linked_card_removed": True}

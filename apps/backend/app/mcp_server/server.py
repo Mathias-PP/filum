@@ -242,4 +242,167 @@ async def publish_card(slug: str) -> dict[str, Any]:
         return await tools_write.publish_card(db, user, slug=slug)
 
 
+# ---------------------------------------------------------------------------
+# Mutations post-creation : corriger, retirer, verifier, gerer les connexions.
+# Chacun de ces tools wrappe un endpoint REST deja teste. Sans eux, un agent
+# qui detecte une erreur apres coup devait rebuild la fiche complete.
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def update_card(
+    slug: str,
+    title: str | None = None,
+    description: str | None = None,
+    content_url: str | None = None,
+    content_authors: str | None = None,
+    platform: str | None = None,
+    content_type: str | None = None,
+    visibility: str | None = None,
+) -> dict[str, Any]:
+    """Corrige les champs edituriaux d'une fiche existante (titre, description,
+    URL du contenu, auteurs, plateforme, type, visibilite). Un champ laisse a
+    `None` reste inchange. Le slug n'est pas modifiable : l'identifiant public
+    fait autorite dans les liens deja emis.
+    """
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.update_card(
+            db,
+            user,
+            slug=slug,
+            title=title,
+            description=description,
+            content_url=content_url,
+            content_authors=content_authors,
+            platform=platform,
+            content_type=content_type,
+            visibility=visibility,
+        )
+
+
+@mcp.tool()
+async def update_source(
+    source_id: str,
+    title: str | None = None,
+    authors: str | None = None,
+    doi: str | None = None,
+    journal: str | None = None,
+    category: str | None = None,
+    author_kind: str | None = None,
+    format: str | None = None,
+    stance: str | None = None,
+    annotation: str | None = None,
+    is_pivot: bool | None = None,
+    archive_url: str | None = None,
+) -> dict[str, Any]:
+    """Corrige les champs edituriaux d'une source existante (titre, auteurs,
+    DOI, revue, categorie, position declaree, annotation, statut pivot,
+    URL d'archive). Un champ laisse a `None` reste inchange. L'URL de la source
+    est immuable : pour la changer, `delete_source` puis `add_source`.
+    """
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.update_source(
+            db,
+            user,
+            source_id=source_id,
+            title=title,
+            authors=authors,
+            doi=doi,
+            journal=journal,
+            category=category,
+            author_kind=author_kind,
+            format=format,
+            stance=stance,
+            annotation=annotation,
+            is_pivot=is_pivot,
+            archive_url=archive_url,
+        )
+
+
+@mcp.tool()
+async def delete_source(source_id: str) -> dict[str, Any]:
+    """Retire une source (soft-delete). La ligne reste en base pour preserver
+    les references historiques (citations entrantes, attestations), elle
+    disparait seulement des vues publiques."""
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.delete_source(db, user, source_id=source_id)
+
+
+@mcp.tool()
+async def delete_excerpt(source_id: str, excerpt_id: str) -> dict[str, Any]:
+    """Retire un extrait d'une source (suppression physique). Un extrait n'a
+    pas de citation entrante propre : le retirer n'invalide aucune reference."""
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.delete_excerpt(
+            db, user, source_id=source_id, excerpt_id=excerpt_id
+        )
+
+
+@mcp.tool()
+async def verify_excerpts(
+    source_id: str,
+    provided_text: str | None = None,
+) -> dict[str, Any]:
+    """Relit chaque extrait d'une source vs le texte de la page.
+
+    Fait passer les verdicts de `verified_status`: `found`, `moved`, `missing`
+    ou `unreadable`. Sans cette passe, la fiche affirme qu'une source dit
+    quelque chose sans que rien ne l'ait jamais confirme.
+
+    `provided_text` : quand la page est bloquee anti-bot (403 sur ScienceDirect,
+    IOP, PubMed), l'agent atteste le texte qu'il a recupere ailleurs. Le
+    `text_source` de la reponse dit d'ou vient le texte de reference (`fetched`
+    ou `provided`).
+    """
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.verify_excerpts(
+            db, user, source_id=source_id, provided_text=provided_text
+        )
+
+
+@mcp.tool()
+async def list_connections(card_slug: str) -> dict[str, Any]:
+    """Liste les connexions d'une fiche vers d'autres fiches Philum et
+    inversement. `outgoing` = fiches que celle-ci cite (avec verdict a rendre
+    via `confirm_connection` ou `remove_connection`). `incoming` = fiches qui
+    citent celle-ci (lecture seule, elles appartiennent a d'autres createurs).
+    """
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.list_connections(db, user, card_slug=card_slug)
+
+
+@mcp.tool()
+async def confirm_connection(card_slug: str, source_id: str) -> dict[str, Any]:
+    """Confirme qu'une source pointe bien vers la fiche Philum designee.
+
+    A appeler apres avoir constate via `list_connections` qu'une source a un
+    `linked_card_id` suggere par le serveur (URL/DOI en commun avec une fiche
+    existante). Refuse si la source n'appartient pas a `card_slug` ou si elle
+    ne designe encore aucune fiche.
+    """
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.confirm_connection(
+            db, user, card_slug=card_slug, source_id=source_id
+        )
+
+
+@mcp.tool()
+async def remove_connection(card_slug: str, source_id: str) -> dict[str, Any]:
+    """Retire le lien fiche-a-fiche porte par une source, sans retirer la
+    source elle-meme. La reference reste dans la bibliographie ; elle cesse
+    seulement de designer une fiche Philum comme sa fiche cible."""
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.remove_connection(
+            db, user, card_slug=card_slug, source_id=source_id
+        )
+
+
 mcp_http_app = mcp.http_app(path="/")

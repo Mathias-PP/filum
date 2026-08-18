@@ -20,9 +20,17 @@ from fastmcp.exceptions import ToolError
 from app.mcp_server.tools_write import (
     add_excerpt,
     add_source,
+    confirm_connection,
     create_card,
+    delete_excerpt,
+    delete_source,
+    list_connections,
     publish_card,
+    remove_connection,
     set_content_text,
+    update_card,
+    update_source,
+    verify_excerpts,
 )
 
 
@@ -154,8 +162,9 @@ async def test_ajouter_un_extrait_le_marque_comme_ia(db_session, test_user, fich
         card_slug="fiche-en-cours",
         url="https://example.org/article",
     )
-    from app.models.source_excerpt import SourceExcerpt
     from sqlalchemy import select as _select
+
+    from app.models.source_excerpt import SourceExcerpt
 
     result = await add_excerpt(
         db_session,
@@ -444,4 +453,308 @@ async def test_set_content_text_fiche_d_autrui_est_refuse(db_session, test_user,
             card_slug="fiche-en-cours",
             text="Tentative.",
             confirm_publication_rights=True,
+        )
+
+
+# --- Mutations post-creation ------------------------------------------------
+#
+# Ces tests figent la parite MCP <-> UI cote mutations : un agent MCP-only
+# doit pouvoir corriger sa fiche apres coup sans rebuild. Ils couvrent aussi
+# le refus systematique d'un non-proprietaire, meme discretion que
+# `_fiche_du_createur` (ne jamais reveler l'existence d'une ressource d'autrui).
+
+
+@pytest_asyncio.fixture
+async def autre_utilisateur(db_session):
+    from app.models.user import User
+
+    autre = User(
+        id=uuid4(),
+        google_id="autre-google-mut",
+        email="autremut@example.org",
+        username="autremut",
+        display_name="Autre Mut",
+        public_key="e" * 64,
+        encrypted_private_key="k",
+    )
+    db_session.add(autre)
+    await db_session.commit()
+    return autre
+
+
+@pytest.mark.asyncio
+async def test_update_card_corrige_titre_et_description(db_session, test_user, fiche_brouillon):
+    result = await update_card(
+        db_session,
+        test_user,
+        slug="fiche-en-cours",
+        title="Nouveau titre",
+        description="Nouvelle description",
+    )
+    assert result["title"] == "Nouveau titre"
+    assert result["description"] == "Nouvelle description"
+
+
+@pytest.mark.asyncio
+async def test_update_card_champ_none_laisse_inchange(db_session, test_user, fiche_brouillon):
+    await update_card(db_session, test_user, slug="fiche-en-cours", title="Titre A")
+    result = await update_card(db_session, test_user, slug="fiche-en-cours", description="Descr B")
+    assert result["title"] == "Titre A"
+    assert result["description"] == "Descr B"
+
+
+@pytest.mark.asyncio
+async def test_update_card_refuse_non_proprietaire(
+    db_session, test_user, fiche_brouillon, autre_utilisateur
+):
+    with pytest.raises(ToolError, match="Aucune fiche"):
+        await update_card(db_session, autre_utilisateur, slug="fiche-en-cours", title="Hacked")
+
+
+@pytest.mark.asyncio
+async def test_update_source_pose_stance_et_annotation(db_session, test_user, fiche_brouillon):
+    src = await add_source(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        url="https://example.org/paper",
+        title="Un article",
+    )
+    result = await update_source(
+        db_session,
+        test_user,
+        source_id=src["id"],
+        stance="appuie",
+        annotation="Ce papier fige la mesure.",
+        is_pivot=True,
+    )
+    assert result["stance"] == "appuie"
+    assert result["annotation"] == "Ce papier fige la mesure."
+    assert result["is_pivot"] is True
+
+
+@pytest.mark.asyncio
+async def test_update_source_refuse_non_proprietaire(
+    db_session, test_user, fiche_brouillon, autre_utilisateur
+):
+    src = await add_source(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        url="https://example.org/paper",
+    )
+    with pytest.raises(ToolError, match="Aucune source"):
+        await update_source(db_session, autre_utilisateur, source_id=src["id"], stance="appuie")
+
+
+@pytest.mark.asyncio
+async def test_delete_source_marque_deleted_at(db_session, test_user, fiche_brouillon):
+    src = await add_source(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        url="https://example.org/paper",
+    )
+    result = await delete_source(db_session, test_user, source_id=src["id"])
+    assert result["deleted"] is True
+    # La source est bien filtree hors des vues publiques.
+    with pytest.raises(ToolError, match="Aucune source"):
+        await update_source(db_session, test_user, source_id=src["id"], stance="appuie")
+
+
+@pytest.mark.asyncio
+async def test_delete_source_refuse_non_proprietaire(
+    db_session, test_user, fiche_brouillon, autre_utilisateur
+):
+    src = await add_source(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        url="https://example.org/paper",
+    )
+    with pytest.raises(ToolError, match="Aucune source"):
+        await delete_source(db_session, autre_utilisateur, source_id=src["id"])
+
+
+@pytest.mark.asyncio
+async def test_delete_excerpt_retire_l_extrait(db_session, test_user, fiche_brouillon):
+    src = await add_source(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        url="https://example.org/paper",
+    )
+    ex = await add_excerpt(
+        db_session,
+        test_user,
+        source_id=src["id"],
+        text="Un passage suffisamment long pour passer le garde-fou.",
+    )
+    result = await delete_excerpt(db_session, test_user, source_id=src["id"], excerpt_id=ex["id"])
+    assert result["deleted"] is True
+
+
+@pytest.mark.asyncio
+async def test_delete_excerpt_refuse_non_proprietaire(
+    db_session, test_user, fiche_brouillon, autre_utilisateur
+):
+    src = await add_source(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        url="https://example.org/paper",
+    )
+    ex = await add_excerpt(
+        db_session,
+        test_user,
+        source_id=src["id"],
+        text="Un passage suffisamment long pour passer le garde-fou.",
+    )
+    with pytest.raises(ToolError, match="Aucune source"):
+        await delete_excerpt(
+            db_session, autre_utilisateur, source_id=src["id"], excerpt_id=ex["id"]
+        )
+
+
+@pytest.mark.asyncio
+async def test_verify_excerpts_avec_texte_fourni_marque_verified(
+    db_session, test_user, fiche_brouillon
+):
+    src = await add_source(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        url="https://example.org/paper",
+    )
+    await add_excerpt(
+        db_session,
+        test_user,
+        source_id=src["id"],
+        text="Le passage exact que la source contient.",
+    )
+    result = await verify_excerpts(
+        db_session,
+        test_user,
+        source_id=src["id"],
+        provided_text="Un contexte. Le passage exact que la source contient. Fin.",
+    )
+    assert result["text_source"] == "provided"
+    assert len(result["checks"]) == 1
+    assert result["checks"][0]["status"] == "found"
+
+
+@pytest.mark.asyncio
+async def test_verify_excerpts_refuse_non_proprietaire(
+    db_session, test_user, fiche_brouillon, autre_utilisateur
+):
+    src = await add_source(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        url="https://example.org/paper",
+    )
+    with pytest.raises(ToolError, match="Aucune source"):
+        await verify_excerpts(
+            db_session,
+            autre_utilisateur,
+            source_id=src["id"],
+            provided_text="rien",
+        )
+
+
+@pytest.mark.asyncio
+async def test_list_connections_rend_les_deux_sens(db_session, test_user, fiche_brouillon):
+    result = await list_connections(db_session, test_user, card_slug="fiche-en-cours")
+    assert "outgoing" in result
+    assert "incoming" in result
+    assert isinstance(result["outgoing"], list)
+    assert isinstance(result["incoming"], list)
+
+
+@pytest.mark.asyncio
+async def test_list_connections_refuse_non_proprietaire(
+    db_session, test_user, fiche_brouillon, autre_utilisateur
+):
+    with pytest.raises(ToolError, match="Aucune fiche"):
+        await list_connections(db_session, autre_utilisateur, card_slug="fiche-en-cours")
+
+
+@pytest.mark.asyncio
+async def test_confirm_connection_refuse_source_sans_lien(db_session, test_user, fiche_brouillon):
+    src = await add_source(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        url="https://example.org/paper",
+    )
+    with pytest.raises(ToolError, match="ne designe aucune fiche"):
+        await confirm_connection(
+            db_session,
+            test_user,
+            card_slug="fiche-en-cours",
+            source_id=src["id"],
+        )
+
+
+@pytest.mark.asyncio
+async def test_confirm_connection_refuse_source_autre_fiche(db_session, test_user):
+    await create_card(db_session, test_user, slug="fiche-a", title="A")
+    await create_card(db_session, test_user, slug="fiche-b", title="B")
+    src_a = await add_source(
+        db_session,
+        test_user,
+        card_slug="fiche-a",
+        url="https://example.org/paper",
+    )
+    with pytest.raises(ToolError, match="n'appartient pas"):
+        await confirm_connection(
+            db_session,
+            test_user,
+            card_slug="fiche-b",
+            source_id=src_a["id"],
+        )
+
+
+@pytest.mark.asyncio
+async def test_remove_connection_efface_le_lien(db_session, test_user):
+    # Deux fiches du meme user : la source de A designe B (linked automatique
+    # via effective_linked_card_id lors du add_source).
+    await create_card(db_session, test_user, slug="fiche-a", title="A")
+    fiche_b_res = await create_card(db_session, test_user, slug="fiche-b", title="B")
+    # `fiche-b` publiee pour que effective_linked_card_id la resolve.
+    await publish_card(db_session, test_user, slug="fiche-b")
+    # Utiliser l'URL publique de fiche-b comme source de fiche-a.
+    src_a = await add_source(
+        db_session,
+        test_user,
+        card_slug="fiche-a",
+        url=fiche_b_res["public_url_when_published"],
+    )
+    # Meme si le lien est pose automatiquement, remove_connection doit
+    # marcher sans erreur (idempotent quand pas de linked_card).
+    result = await remove_connection(
+        db_session,
+        test_user,
+        card_slug="fiche-a",
+        source_id=src_a["id"],
+    )
+    assert result["linked_card_removed"] is True
+
+
+@pytest.mark.asyncio
+async def test_remove_connection_refuse_non_proprietaire(
+    db_session, test_user, fiche_brouillon, autre_utilisateur
+):
+    src = await add_source(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        url="https://example.org/paper",
+    )
+    with pytest.raises(ToolError, match="Aucune fiche"):
+        await remove_connection(
+            db_session,
+            autre_utilisateur,
+            card_slug="fiche-en-cours",
+            source_id=src["id"],
         )
