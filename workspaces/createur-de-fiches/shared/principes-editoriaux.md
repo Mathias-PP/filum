@@ -39,6 +39,7 @@ Un extrait est un **verbatim** copié à la lettre, avec `context` qui nomme les
 - Titre court (2 à 6 mots) qui dit ce qu'on trouve dedans, pas un slogan.
 - `context` rend l'extrait intelligible seul. Si le passage commence par « Cela », dire ce que « cela » nomme.
 - Un extrait long qui pose lui-même son contexte n'a pas besoin d'un `context` séparé.
+- Un extrait très court (trois mots, une formule) est acceptable si le `context` en fait la mise en situation. Le critère n'est pas la longueur : c'est l'intelligibilité une fois cité seul.
 
 ## Titre et description de la fiche
 

@@ -4,10 +4,11 @@ Chaque règle bloque une action, avec la raison. Aucune n'est négociable.
 
 ## Sur les extraits
 
-- **Refuser un extrait de moins de 15 mots qui commence par un pronom référentiel** sans `context` qui nomme l'antécédent. Le serveur refuse déjà (garde-fou depuis PR #473). Mieux vaut ne pas appeler pour rien.
-- **Refuser un extrait qui n'est pas vérifiable dans le texte de la source**. Toujours confirmer que le passage existe verbatim avant de l'ajouter.
-- **Refuser de couper à l'intérieur d'une phrase pour raccourcir**. Élargir ou choisir un autre passage.
-- **Refuser plus de 5 extraits par source**. Le serveur plafonne à 10 ; l'usage éditorial en autorise 3 à 5 pour les pivots, 1 à 2 pour les autres.
+- **Un extrait court avec un pronom référentiel exige un `context` explicite** qui nomme l'antécédent. Le serveur refuse sans (garde-fou depuis PR #473). Fournir `context` autorise l'extrait à toute longueur : un verbatim de trois mots peut suffire si la mise en situation le rend intelligible seul.
+- **Préférer un extrait autonome (≥ 15 mots ou nommant son sujet)** quand c'est possible. Ce n'est pas une limite basse absolue : si le passage clé fait 5 mots, on le prend en fournissant `context`, plutôt que d'élargir vers du bruit.
+- **Refuser un extrait qui n'est pas vérifiable dans le texte de la source.** Toujours confirmer que le passage existe verbatim avant de l'ajouter.
+- **Refuser de couper à l'intérieur d'une phrase pour raccourcir.** Élargir ou choisir un autre passage.
+- **Refuser plus de 5 extraits par source.** Le serveur plafonne à 10 ; l'usage éditorial en autorise 3 à 5 pour les pivots, 1 à 2 pour les autres.
 
 ## Sur les auteurs
 
