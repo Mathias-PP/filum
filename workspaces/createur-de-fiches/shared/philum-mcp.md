@@ -31,11 +31,48 @@ Tous les outils sont préfixés `mcp__philum__`. Un token est obtenu via `POST /
 
 ## Ce que les tools MCP NE FONT PAS et qu'il faut faire à côté
 
-- **Extraction depuis une URL de contenu** : passe par l'endpoint REST `POST /api/v1/cards/{id}/sources/extract` (ou l'UI). Pas de tool MCP dédié.
-- **Suggestion d'extraits par le LLM** : endpoint REST `POST /api/v1/sources/{id}/excerpts/suggest`. Le tool MCP `add_excerpt` pose un extrait déjà décidé, il ne suggère pas.
-- **Confirmation des connexions** : endpoint REST `POST /api/v1/cards/{card_id}/connections/{source_id}/confirm` (ou l'UI `/dashboard/new/{card_id}/connexions`).
+Les fonctions ci-dessous existent dans l'UI et dans l'API REST mais n'ont pas encore de wrapper MCP (chantiers B/C/D en cours, voir `agent/plans/2026-08-18-parite-mcp-et-hardening-workspace.md`). En attendant, les appeler en REST avec le même token JWT (`Authorization: Bearer <token>`) sur `https://philum-api.duckdns.org/api/v1`.
 
-## Erreurs typiques
+**Mutations post-création** :
+- `PATCH /cards/{id}` : corriger titre, description, visibility, status.
+- `PATCH /sources/{id}` : corriger annotation, stance, is_pivot, etc.
+- `DELETE /sources/{id}` : retirer une source (soft-delete).
+- `DELETE /sources/{source_id}/excerpts/{excerpt_id}` : retirer un extrait.
+- `DELETE /cards/{id}` : soft-delete une fiche (rejoint la corbeille).
+- `POST /cards/{id}/restore` : sortir de la corbeille.
+
+**Qualité et vérification** :
+- `POST /sources/{id}/excerpts/verify` : relire les extraits vs la page (bouton « Relire la source »). Accepte `{text: "..."}` en payload pour attester d'un texte quand la page est bloquée anti-bot (voir Gotchas ci-dessous).
+- `POST /sources/{id}/excerpts/suggest` : le LLM propose des extraits candidats.
+- `POST /sources/{id}/excerpts/annotate` : le LLM suggère titre + `context` pour un extrait donné.
+
+**Extraction et import** :
+- `POST /cards/{id}/sources/extract` : équivalent du bouton « Extraire les sources ». Lit `content_url` et rend les liens sortants scorés.
+- `POST /import/from-content-url`, `POST /import/youtube-transcript`, `POST /import/url-metadata`, `POST /import/parse` (BibTeX), `POST /import/paste`.
+
+**Graphe et connexions** :
+- `GET /cards/{id}/connections` : suggestions et confirmées.
+- `POST /cards/{id}/connections/{source_id}/confirm` : confirmer.
+- `DELETE /cards/{id}/connections/{source_id}` : retirer.
+
+**Autres** :
+- `POST /sources/archive` : déclencher l'archivage Wayback.
+- `GET /cards`, `GET /sources?card_id=`, `GET /excerpts/search` : listing.
+- `POST /attestations/content`, `GET /attestations/{id}/verify` : attestations Ed25519.
+
+## Gotchas mesurés
+
+Autant de pièges déjà payés qu'il faut connaître avant d'agir. Détail dans `pieges-vecus.md`.
+
+- **URL immuable après `add_source`.** Un `PATCH /sources/{id}` avec `url` est refusé. Pour corriger une URL fautive : `DELETE` puis nouveau `add_source`.
+- **`add_source` dé-duplique par URL/DOI.** Un second appel avec le même URL/DOI (par exemple pour poser l'annotation après le premier passage) met à jour la source existante au lieu d'en créer une deuxième. Comportement volontaire, utilisé par le pipeline (étape 03 pose l'annotation via ce chemin).
+- **Position des sources = ordre d'insertion.** Pas d'endpoint de reorder. Une fiche mal ordonnée nécessiterait un DELETE+POST de toutes les sources ; en pratique, l'ordre visible est peu critique (les pivots portent une étoile).
+- **`text` d'extrait plafonné à 1 000 caractères** (`add_excerpt`). Un abstract scientifique long doit être coupé au niveau d'une phrase (jamais en milieu) et posé en plusieurs extraits.
+- **`DELETE` retourne 204 sans corps JSON.** Un client qui essaie de parser la réponse comme JSON échoue. Traiter le status code, pas le body.
+- **Fetch de source bloqué par un anti-bot** (ScienceDirect, IOP, PubMed) : le `verify` REST accepte un payload `{text: "..."}` que l'agent atteste être le texte de la source. Cas où l'agent a lu la source ailleurs (NASA ADS, Semantic Scholar, Crossref abstract) et veut valider malgré le 403 sur l'URL canonique.
+- **URL et DOI ne correspondent pas toujours.** Un fetch d'origine peut poser une URL IOP qui pointe vers un autre article que celui du DOI. Toujours vérifier avant `add_source` que l'URL contient bien le DOI ou pointe vers le bon article.
+
+## Erreurs typiques renvoyées par le serveur
 
 - `ToolError("Identifiant de source invalide")` : `source_id` n'est pas un UUID. Reprendre la sortie de `add_source` pour le bon.
 - `ToolError("Extrait trop court et referentiel...")` : garde-fou serveur. Élargir l'extrait ou fournir `context`.
