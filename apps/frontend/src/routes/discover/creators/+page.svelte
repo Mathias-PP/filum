@@ -5,8 +5,23 @@
 
   let { data } = $props();
 
-  const q = $derived($page.url.searchParams.get('q') ?? '');
+  const params = $derived($page.url.searchParams);
+  const q = $derived(params.get('q') ?? '');
   const lastPage = $derived(Math.max(1, Math.ceil(data.total / data.pageSize)));
+
+  // Meme separation etat local / URL que sur /discover : sans elle, l'input
+  // etait pilote par la valeur URL et la saisie se faisait ecraser des que
+  // goto rechargeait la page (mesure : « memory » sortait « memry »).
+  let inputValue = $state('');
+  let lastLocalEdit = 0;
+  let searchTimer: ReturnType<typeof setTimeout>;
+
+  $effect(() => {
+    const urlQ = params.get('q') ?? '';
+    if (Date.now() - lastLocalEdit > 500 && inputValue !== urlQ) {
+      inputValue = urlQ;
+    }
+  });
 
   /** Modification de q ou de la page : passe par l'URL, comme /discover. */
   function setParam(key: string, value: string) {
@@ -15,6 +30,13 @@
     else next.delete(key);
     if (key !== 'page') next.delete('page');
     goto(`?${next}`, { keepFocus: true });
+  }
+
+  function onSearchInput(e: Event) {
+    inputValue = (e.currentTarget as HTMLInputElement).value;
+    lastLocalEdit = Date.now();
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => setParam('q', inputValue.trim()), 300);
   }
 </script>
 
@@ -37,8 +59,8 @@
 
   <input
     type="search"
-    value={q}
-    oninput={(e) => setParam('q', (e.currentTarget as HTMLInputElement).value)}
+    value={inputValue}
+    oninput={onSearchInput}
     placeholder="Chercher un créateur"
     aria-label="Chercher un créateur"
     class="w-full px-4 py-2 mb-6 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info"
