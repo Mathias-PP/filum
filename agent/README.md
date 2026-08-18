@@ -18,6 +18,7 @@
 | Avant tout commit | `agent/PITFALLS.md` (erreurs vécues à ne pas reproduire) |
 | Tâche spécialisée (Alembic, OAuth, SvelteKit…) | `agent/skills/<nom>.md` |
 | Règles techniques stables (stack, principes, nommage) | `agent/references/CODING_GUIDE.md` |
+| Créer une fiche Philum de bout en bout | `agent/agents/createur-de-fiches/CLAUDE.md` (pipeline ICM 7 étapes) |
 
 ---
 
