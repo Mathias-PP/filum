@@ -815,6 +815,97 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/oauth/register': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Oauth Register
+     * @description Dynamic Client Registration (RFC 7591). Aucune auth requise.
+     *
+     *     C'est ce qui distingue OAuth 2.1 pour MCP de l'OAuth classique : chaque
+     *     client s'enregistre lui-meme au moment de sa premiere connexion, l'user
+     *     n'a jamais a copier un client_id.
+     */
+    post: operations['oauth_register_api_v1_oauth_register_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/oauth/authorize': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Oauth Authorize
+     * @description Point d'entree du flow d'autorisation.
+     *
+     *     Si l'user n'est pas connecte a Philum, redirige vers Google OAuth avec un
+     *     `state` qui memorise la requete originale ; le callback Google reviendra
+     *     ici avec la session posee. Sinon rend une page HTML de consentement.
+     */
+    get: operations['oauth_authorize_api_v1_oauth_authorize_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/oauth/consent': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Oauth Consent
+     * @description Recoit le POST de la page consent, cree le code et redirige.
+     */
+    post: operations['oauth_consent_api_v1_oauth_consent_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/oauth/token': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Oauth Token
+     * @description Echange un code d'autorisation contre un access token JWT.
+     *
+     *     Sans auth : le client public est identifie par `client_id`, l'authenticite
+     *     du porteur du code par PKCE (`code_verifier`).
+     */
+    post: operations['oauth_token_api_v1_oauth_token_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/og': {
     parameters: {
       query?: never;
@@ -970,6 +1061,57 @@ export interface paths {
     };
     /** Get User Profile */
     get: operations['get_user_profile_api_v1_users___slug__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/.well-known/oauth-authorization-server': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Oauth Authorization Server Metadata */
+    get: operations['oauth_authorization_server_metadata__well_known_oauth_authorization_server_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/.well-known/oauth-protected-resource/mcp': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Oauth Protected Resource Metadata */
+    get: operations['oauth_protected_resource_metadata__well_known_oauth_protected_resource_mcp_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/.well-known/oauth-protected-resource': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Oauth Protected Resource Metadata */
+    get: operations['oauth_protected_resource_metadata__well_known_oauth_protected_resource_get'];
     put?: never;
     post?: never;
     delete?: never;
@@ -1223,6 +1365,45 @@ export interface components {
        * @default false
        */
       suggest_titles: boolean;
+    };
+    /** Body_oauth_consent_api_v1_oauth_consent_post */
+    Body_oauth_consent_api_v1_oauth_consent_post: {
+      /** Decision */
+      decision: string;
+      /** Client Id */
+      client_id: string;
+      /** Redirect Uri */
+      redirect_uri: string;
+      /** Code Challenge */
+      code_challenge: string;
+      /**
+       * Code Challenge Method
+       * @default S256
+       */
+      code_challenge_method: string;
+      /**
+       * State
+       * @default
+       */
+      state: string;
+      /**
+       * Scope
+       * @default
+       */
+      scope: string;
+    };
+    /** Body_oauth_token_api_v1_oauth_token_post */
+    Body_oauth_token_api_v1_oauth_token_post: {
+      /** Grant Type */
+      grant_type: string;
+      /** Code */
+      code: string;
+      /** Redirect Uri */
+      redirect_uri: string;
+      /** Client Id */
+      client_id: string;
+      /** Code Verifier */
+      code_verifier: string;
     };
     /** Body_parse_import_file_api_v1_import_parse_post */
     Body_parse_import_file_api_v1_import_parse_post: {
@@ -1554,6 +1735,41 @@ export interface components {
        * @default true
        */
       ok: boolean;
+    };
+    /**
+     * ClientRegistrationRequest
+     * @description DCR request (RFC 7591 § 2).
+     */
+    ClientRegistrationRequest: {
+      /** Redirect Uris */
+      redirect_uris: string[];
+      /** Client Name */
+      client_name?: string | null;
+      /**
+       * Token Endpoint Auth Method
+       * @default none
+       */
+      token_endpoint_auth_method: string;
+    };
+    /**
+     * ClientRegistrationResponse
+     * @description DCR response (RFC 7591 § 3.2.1).
+     */
+    ClientRegistrationResponse: {
+      /** Client Id */
+      client_id: string;
+      /** Client Id Issued At */
+      client_id_issued_at: number;
+      /** Redirect Uris */
+      redirect_uris: string[];
+      /** Grant Types */
+      grant_types: string[];
+      /** Token Endpoint Auth Method */
+      token_endpoint_auth_method: string;
+      /** Client Name */
+      client_name?: string | null;
+      /** Client Secret */
+      client_secret?: string | null;
     };
     /**
      * ContentType
@@ -2450,6 +2666,23 @@ export interface components {
       context_before: string;
       /** Context After */
       context_after: string;
+    };
+    /**
+     * TokenResponse
+     * @description OAuth 2.0 token response (RFC 6749 § 5.1).
+     */
+    TokenResponse: {
+      /** Access Token */
+      access_token: string;
+      /**
+       * Token Type
+       * @default Bearer
+       */
+      token_type: string;
+      /** Expires In */
+      expires_in: number;
+      /** Scope */
+      scope?: string | null;
     };
     /**
      * Unite
@@ -3946,6 +4179,142 @@ export interface operations {
       };
     };
   };
+  oauth_register_api_v1_oauth_register_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ClientRegistrationRequest'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ClientRegistrationResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  oauth_authorize_api_v1_oauth_authorize_get: {
+    parameters: {
+      query: {
+        response_type: string;
+        client_id: string;
+        redirect_uri: string;
+        code_challenge: string;
+        code_challenge_method?: string;
+        state?: string | null;
+        scope?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  oauth_consent_api_v1_oauth_consent_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/x-www-form-urlencoded': components['schemas']['Body_oauth_consent_api_v1_oauth_consent_post'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  oauth_token_api_v1_oauth_token_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/x-www-form-urlencoded': components['schemas']['Body_oauth_token_api_v1_oauth_token_post'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TokenResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
   og_image_api_v1_og_get: {
     parameters: {
       query: {
@@ -4294,6 +4663,66 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  oauth_authorization_server_metadata__well_known_oauth_authorization_server_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': unknown;
+        };
+      };
+    };
+  };
+  oauth_protected_resource_metadata__well_known_oauth_protected_resource_mcp_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': unknown;
+        };
+      };
+    };
+  };
+  oauth_protected_resource_metadata__well_known_oauth_protected_resource_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': unknown;
         };
       };
     };
