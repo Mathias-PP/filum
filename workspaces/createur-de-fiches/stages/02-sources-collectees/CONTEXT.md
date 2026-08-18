@@ -22,7 +22,7 @@ Collecter, enrichir et poser les sources de la fiche, sans les annoter (annotati
 2. **Enrichissement** : pour chaque source, chercher les métadonnées manquantes via une source d'autorité (Crossref pour articles scientifiques, la source elle-même pour presse ou web).
 3. **Filtrage éditorial** : retirer les sources sans rapport avec la thèse ou en doublon. Consigner dans `<slug>-rejetees.md` pourquoi.
 4. **Pose côté prod** : pour chaque source retenue, appeler `mcp__philum__add_source` avec la signature stricte. NE PAS poser `stance` ni `annotation` maintenant.
-5. **Pivots** : marquer 1 à 3 sources en `is_pivot=True` (celles qui portent la thèse).
+5. **Pivots** : marquer en `is_pivot=True` autant de sources que la thèse en compte réellement, sans plafond arbitraire. Chaque pan distinct de la thèse mérite son pivot si un papier différent le porte. Voir `_system/principes-editoriaux.md`.
 6. **Graphe déjà là** : pour chaque source, appeler `mcp__philum__find_cards_citing(url)` et noter les résultats dans `<slug>-sources.md` pour l'étape 05.
 
 ## Outputs
@@ -39,7 +39,7 @@ Collecter, enrichir et poser les sources de la fiche, sans les annoter (annotati
 |---|---|---|
 | 2 | Liste enrichie complète, mise en évidence des DOI manquants | Compléter à la main les DOI que l'agent n'a pas trouvés |
 | 3 | `<slug>-rejetees.md` : sources écartées avec raison | Confirmer les rejets ou réintégrer |
-| 5 | Liste des sources marquées `is_pivot=True` | Ajuster : au plus 3, celles qui portent la thèse |
+| 5 | Liste des sources marquées `is_pivot=True` | Ajuster : celles qui portent réellement la thèse, autant qu'il en faut pour couvrir ses pans distincts |
 
 ## Audit
 
@@ -47,5 +47,5 @@ Collecter, enrichir et poser les sources de la fiche, sans les annoter (annotati
 |---|---|
 | Métadonnées non inventées | Chaque DOI présent est vérifié dans Crossref ; chaque date vient de la source |
 | Auteurs institutionnels intacts | Une institution (« American Nuclear Society ») figure telle quelle, pas décomposée en initiales |
-| Nombre de pivots | 1 ≤ pivots ≤ 3 |
+| Au moins un pivot | pivots ≥ 1 (une fiche sans aucun pivot n'assume pas ce qu'elle affirme) |
 | Cohérence UUID | Chaque source retenue a une entrée dans `<slug>-ids.json` |
