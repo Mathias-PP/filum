@@ -18,6 +18,7 @@
   import { goto } from '$app/navigation';
   import { api } from '$lib/api';
   import { cardNodeLabel } from '$lib/utils/card-label';
+  import { yearOf } from '$lib/utils/graph-chrono';
 
   interface Props {
     creatorSlug: string;
@@ -44,6 +45,8 @@
     creatorSlug: string;
     /** Étiquette principale : les auteurs du contenu, le créateur faute de mieux. */
     label: string;
+    /** Année du contenu documenté (parution du papier), remontée par le backend. */
+    year: string;
     sourcesCount: number;
     depth: number;
     radius: number;
@@ -108,6 +111,7 @@
               authors: n.authors,
               title: n.title,
             }),
+            year: yearOf(n.published_at ?? null)?.toString() ?? '',
             sourcesCount: n.sources_count ?? 0,
             depth: n.depth,
             radius: radiusFor(n.sources_count ?? 0, isRoot),
@@ -305,11 +309,25 @@
       .style('pointer-events', 'none')
       .text((d) => truncateText(d.title, 32));
 
+    // Année du contenu documenté sous le titre : une étoile sans date se lit
+    // comme un nœud incomplet. « s. d. » quand elle est inconnue, comme dans
+    // le graphe des sources, pour qu'une absence ne se confonde pas avec un
+    // défaut d'affichage.
+    starG
+      .append('text')
+      .attr('class', 'star-year')
+      .attr('text-anchor', 'middle')
+      .attr('y', (d) => d.radius + 32)
+      .attr('font-size', 10)
+      .attr('fill', (d) => (d.year ? '#818cf8' : '#475569'))
+      .style('pointer-events', 'none')
+      .text((d) => d.year || 's. d.');
+
     starG
       .append('title')
       .text(
         (d) =>
-          `${d.title} · ${d.label} · ${d.sourcesCount} source${d.sourcesCount > 1 ? 's' : ''}${d.isRoot ? ' (fiche affichée)' : ''}`
+          `${d.title} · ${d.label} · ${d.year || 'sans date'} · ${d.sourcesCount} source${d.sourcesCount > 1 ? 's' : ''}${d.isRoot ? ' (fiche affichée)' : ''}`
       );
 
     const sim = forceSimulation<StarNode>(nodes)

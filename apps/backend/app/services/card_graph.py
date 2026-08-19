@@ -222,6 +222,38 @@ async def _load_linked_card_paths(
     return {row[0]: (row[1], row[2]) for row in result.all()}
 
 
+async def _load_content_dates(db: AsyncSession, card_ids: set[UUID]) -> dict[UUID, datetime]:
+    """Date de publication du contenu documente : ``card_id -> date``.
+
+    Une fiche n'a pas de date de contenu propre ; seule la bibliographie de qui
+    la cite la connait, via le `published_at` des sources qui la designent
+    (``Source.linked_card_id``). On remonte donc l'information depuis les fiches
+    citantes, exactement comme les auteurs (`_load_card_authors`).
+
+    La plus ancienne gagne : le contenu documente a paru une fois, les sources
+    qui le citent portent sa date de parution (les reeditions sont rares en
+    science). Une date incertaine d'un import approximatif doit etre prise a la
+    baisse plutot que de vieillir artificiellement le graphe.
+    """
+    if not card_ids:
+        return {}
+    result = await db.execute(
+        select(Source.linked_card_id, Source.published_at).where(
+            Source.linked_card_id.in_(card_ids),
+            Source.published_at.is_not(None),
+            Source.deleted_at.is_(None),
+        )
+    )
+    dates: dict[UUID, datetime] = {}
+    for card_id, value in result.all():
+        if card_id is None or value is None:
+            continue
+        current = dates.get(card_id)
+        if current is None or value < current:
+            dates[card_id] = value
+    return dates
+
+
 async def build_card_graph(
     db: AsyncSession,
     root_card: BiblioCard,
@@ -304,6 +336,7 @@ async def build_card_graph(
                     format=card.format,
                     category=card.category,
                     author_kind=card.author_kind,
+                    published_at=card.published_at,
                 )
             )
 
@@ -389,6 +422,22 @@ async def build_card_graph(
         )
         for node in card_nodes:
             node.authors = real_authors.get(UUID(node.id.removeprefix("card:")))
+
+    # Meme principe pour la date : la fiche connait la date de mise en ligne de
+    # sa page Philum (`published_at`), pas celle du contenu qu'elle documente.
+    # C'est la bibliographie des fiches citantes qui porte la date de parution
+    # reelle (papier, pre-publication). On la prefere, sans jamais l'inventer :
+    # sans source citante datee, la fiche reste sur sa date Philum.
+    if graph.nodes:
+        content_dates = await _load_content_dates(
+            db, {UUID(n.id.removeprefix("card:")) for n in graph.nodes if n.kind == "card"}
+        )
+        for node in graph.nodes:
+            if node.kind != "card":
+                continue
+            content_date = content_dates.get(UUID(node.id.removeprefix("card:")))
+            if content_date is not None:
+                node.published_at = content_date
 
     linked_ids = {n.linked_card_id for n in graph.nodes if n.linked_card_id}
     if linked_ids:
