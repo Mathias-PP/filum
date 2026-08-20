@@ -97,6 +97,78 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/agent/sessions': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Lister Sessions */
+    get: operations['lister_sessions_api_v1_agent_sessions_get'];
+    put?: never;
+    /** Creer Session */
+    post: operations['creer_session_api_v1_agent_sessions_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/agent/sessions/{session_id}/messages': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Lister Messages */
+    get: operations['lister_messages_api_v1_agent_sessions__session_id__messages_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/agent/sessions/{session_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Supprimer Session */
+    delete: operations['supprimer_session_api_v1_agent_sessions__session_id__delete'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/agent/approve': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Repondre Approbation
+     * @description Débloque la boucle suspendue sur ``request_id``, pour ce créateur seul.
+     */
+    post: operations['repondre_approbation_api_v1_agent_approve_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/agent/workspace/tree': {
     parameters: {
       query?: never;
@@ -1401,6 +1473,13 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    /** AgentApprovalDecision */
+    AgentApprovalDecision: {
+      /** Request Id */
+      request_id: string;
+      /** Approved */
+      approved: boolean;
+    };
     /** AgentChatMessage */
     AgentChatMessage: {
       /**
@@ -1417,6 +1496,36 @@ export interface components {
       message: string;
       /** History */
       history?: components['schemas']['AgentChatMessage'][];
+      /**
+       * Session Id
+       * @description Session à poursuivre. Absente : une session est créée et son id arrive dans l'événement `session`.
+       */
+      session_id?: string | null;
+    };
+    /** AgentMessageRead */
+    AgentMessageRead: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Role */
+      role: string;
+      /** Content */
+      content: string;
+      /** Tool Calls */
+      tool_calls:
+        | {
+            [key: string]: unknown;
+          }[]
+        | null;
+      /** Tool Name */
+      tool_name: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
     };
     /** AgentProviderCreate */
     AgentProviderCreate: {
@@ -1489,6 +1598,35 @@ export interface components {
       api_key?: string | null;
       /** Is Default */
       is_default?: boolean | null;
+    };
+    /** AgentSessionCreate */
+    AgentSessionCreate: {
+      /**
+       * Title
+       * @default
+       */
+      title: string;
+      /** Provider Id */
+      provider_id?: string | null;
+    };
+    /** AgentSessionRead */
+    AgentSessionRead: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      /** Title */
+      title: string;
+      /** Provider Id */
+      provider_id: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Last Message At */
+      last_message_at: string | null;
     };
     /** AnnotationRequest */
     AnnotationRequest: {
@@ -3285,6 +3423,150 @@ export interface operations {
         content: {
           'application/json': components['schemas']['AgentProviderTestResult'];
         };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  lister_sessions_api_v1_agent_sessions_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AgentSessionRead'][];
+        };
+      };
+    };
+  };
+  creer_session_api_v1_agent_sessions_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AgentSessionCreate'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AgentSessionRead'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  lister_messages_api_v1_agent_sessions__session_id__messages_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        session_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AgentMessageRead'][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  supprimer_session_api_v1_agent_sessions__session_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        session_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  repondre_approbation_api_v1_agent_approve_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AgentApprovalDecision'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Validation Error */
       422: {

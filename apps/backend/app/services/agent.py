@@ -58,8 +58,10 @@ _SYSTEME = (
     "de citation : si tu ne peux pas vérifier, dis-le."
 )
 
-#: Type du callback d'approbation : (nom de l'outil, arguments) → feu vert ?
-Approuver = Callable[[str, dict[str, Any]], Awaitable[bool]]
+#: Type du callback d'approbation : (id de la demande, nom de l'outil,
+#: arguments) → feu vert ? Le ``request_id`` voyage jusqu'au callback parce
+#: que c'est lui que le client renvoie pour répondre.
+Approuver = Callable[[str, str, dict[str, Any]], Awaitable[bool]]
 #: Type de l'émetteur d'événements SSE : reçoit un dict sérialisable.
 Emitter = Callable[[dict[str, Any]], Awaitable[None]]
 
@@ -161,9 +163,12 @@ async def _executer_tour(
                     },
                 }
             )
-            approuve = await approuver(nom, args)
+            approuve = await approuver(request_id, nom, args)
             await emit(
-                {"type": "approval_resolved", "payload": {"tool": nom, "approved": approuve}}
+                {
+                    "type": "approval_resolved",
+                    "payload": {"request_id": request_id, "tool": nom, "approved": approuve},
+                }
             )
             if not approuve:
                 resultat: dict[str, Any] = {

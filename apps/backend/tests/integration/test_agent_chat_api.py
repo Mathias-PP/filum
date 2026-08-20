@@ -132,10 +132,10 @@ async def test_chat_flux_complet(client, session_token, db_session, test_user):
 
     app.dependency_overrides[get_http_client] = lambda: httpx.MockTransport(handler)
 
-    async def approuve(tool, args):
+    async def approuve(request_id, tool, args):
         return True
 
-    app.dependency_overrides[get_approver] = lambda: approuve
+    app.dependency_overrides[get_approver] = lambda: (lambda creator_id: approuve)
     client.cookies.set("filum_session", session_token)
 
     response = await _post_chat(client, "cherche étoiles")
@@ -143,13 +143,13 @@ async def test_chat_flux_complet(client, session_token, db_session, test_user):
     assert response.headers["content-type"].startswith("text/event-stream")
     events = _lire_evenements(response.text)
     types = [e["type"] for e in events]
-    assert types == ["tool_call", "tool_result", "message_delta", "done"]
-    assert events[1]["payload"]["result"]["error"]  # web_search non configurée en test
-    assert events[2]["payload"]["delta"] == "Voilà ce que j'ai trouvé."
+    assert types == ["session", "tool_call", "tool_result", "message_delta", "done"]
+    assert events[2]["payload"]["result"]["error"]  # web_search non configurée en test
+    assert events[3]["payload"]["delta"] == "Voilà ce que j'ai trouvé."
 
 
 @pytest.mark.asyncio
-async def test_chat_action_sensible_refusee_par_defaut(client, session_token, db_session, test_user):
+async def test_chat_action_sensible_refusee(client, session_token, db_session, test_user):
     await _inserer_provider_defaut(db_session, test_user)
     appels = {"n": 0}
 
@@ -160,6 +160,11 @@ async def test_chat_action_sensible_refusee_par_defaut(client, session_token, db
         return httpx.Response(200, json=_mock_texte("D'accord, je m'arrête."))
 
     app.dependency_overrides[get_http_client] = lambda: httpx.MockTransport(handler)
+
+    async def refuse(request_id, tool, args):
+        return False
+
+    app.dependency_overrides[get_approver] = lambda: (lambda creator_id: refuse)
     client.cookies.set("filum_session", session_token)
 
     response = await _post_chat(client, "publie ma fiche")
