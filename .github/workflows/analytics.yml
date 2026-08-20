@@ -1,8 +1,14 @@
 name: Analytics Pipeline
 
+# Ce pipeline n'a jamais tourne au vert : les modeles lisent une source
+# `postgres` (`database: filum` dans models/sources.yml) qu'aucun code
+# n'attache a DuckDB. Le chargement Postgres vers DuckDB prevu au jour 7 de
+# .docs/06-roadmap.md n'a jamais ete ecrit, et personne ne consomme les marts.
+# Le cron toutes les 6 heures est donc retire : il ne produisait que des
+# echecs silencieux. La validation des modeles reste assuree a chaque PR par
+# le job `dbt-check` de ci.yml (dbt compile + dbt test sur cible `ci`).
+# Declenchement manuel conserve pour le jour ou l'ETL existera.
 on:
-  schedule:
-    - cron: "0 */6 * * *"  # Every 6 hours
   workflow_dispatch:
 
 permissions:
