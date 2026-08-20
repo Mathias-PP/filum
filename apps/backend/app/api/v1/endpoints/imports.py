@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field
 
 from app.api.v1.endpoints.cards import get_current_user
-from app.core.url_safety import UnsafeUrlError, assert_url_is_safe
+from app.core.url_safety import SAFE_REDIRECT_HOOKS, UnsafeUrlError, assert_url_is_safe
 from app.extractors.body_links import extract_body_links
 from app.extractors.grobid import extract_pdf_references
 from app.extractors.ref_dedup import dedupe_refs, matches_authoritative_work, same_ref
@@ -897,7 +897,10 @@ async def _try_wayback_snapshot(url: str) -> tuple[str | None, str | None]:
     """
     try:
         async with httpx.AsyncClient(
-            headers=_HEADERS, timeout=_WAYBACK_TIMEOUT, follow_redirects=True
+            headers=_HEADERS,
+            timeout=_WAYBACK_TIMEOUT,
+            follow_redirects=True,
+            event_hooks=SAFE_REDIRECT_HOOKS,
         ) as client:
             r = await client.get(_WAYBACK_AVAILABLE_API, params={"url": url})
         if r.status_code != 200:
@@ -912,7 +915,10 @@ async def _try_wayback_snapshot(url: str) -> tuple[str | None, str | None]:
         # Fetch le HTML archive. Wayback renvoie le HTML original du site
         # ciblé (avec un banner Wayback injecte mais ça ne casse pas le scrape).
         async with httpx.AsyncClient(
-            headers=_HEADERS, timeout=_FETCH_TIMEOUT, follow_redirects=True
+            headers=_HEADERS,
+            timeout=_FETCH_TIMEOUT,
+            follow_redirects=True,
+            event_hooks=SAFE_REDIRECT_HOOKS,
         ) as client:
             r2 = await client.get(snapshot_url)
         if r2.status_code == 200 and "text/html" in r2.headers.get("content-type", ""):
@@ -1199,7 +1205,10 @@ async def parse_content_url(
     wayback_url: str | None = None
     try:
         async with httpx.AsyncClient(
-            headers=_HEADERS, timeout=_FETCH_TIMEOUT, follow_redirects=True
+            headers=_HEADERS,
+            timeout=_FETCH_TIMEOUT,
+            follow_redirects=True,
+            event_hooks=SAFE_REDIRECT_HOOKS,
         ) as client:
             r = await client.get(url)
         if r.status_code == 200:

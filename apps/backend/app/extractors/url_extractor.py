@@ -20,6 +20,7 @@ from urllib.parse import quote, urlparse
 import httpx
 from bs4 import BeautifulSoup
 
+from app.core.url_safety import SAFE_REDIRECT_HOOKS
 from app.extractors.semantic_scholar import SemanticScholarRef
 
 logger = logging.getLogger(__name__)
@@ -760,7 +761,10 @@ def doi_from_page_meta(html: str) -> str | None:
 
 async def _doi_from_page(url: str) -> str | None:
     async with httpx.AsyncClient(
-        headers=_HEADERS, timeout=_TIMEOUT, follow_redirects=True
+        headers=_HEADERS,
+        timeout=_TIMEOUT,
+        follow_redirects=True,
+        event_hooks=SAFE_REDIRECT_HOOKS,
     ) as client:
         r = await client.get(url)
     if r.status_code != 200 or "text/html" not in r.headers.get("content-type", ""):
@@ -896,7 +900,10 @@ def _iso_date_prefix(raw: str | None) -> str | None:
 async def _html_scrape(url: str) -> ExtractedMetadata | None:
     try:
         async with httpx.AsyncClient(
-            headers=_HEADERS, timeout=_TIMEOUT, follow_redirects=True
+            headers=_HEADERS,
+            timeout=_TIMEOUT,
+            follow_redirects=True,
+            event_hooks=SAFE_REDIRECT_HOOKS,
         ) as client:
             r = await client.get(url)
             # 429 et 503 disent « pas maintenant », pas « pas vous » : une

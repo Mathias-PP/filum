@@ -20,6 +20,8 @@ import re
 
 import httpx
 
+from app.core.url_safety import SAFE_REDIRECT_HOOKS
+
 logger = logging.getLogger(__name__)
 
 _YOUTUBE_HOST_RE = re.compile(
@@ -211,7 +213,10 @@ async def fetch_youtube_transcript(url: str) -> str | None:
     lang, track_url = track
     try:
         async with httpx.AsyncClient(
-            headers=_HEADERS, timeout=_TIMEOUT, follow_redirects=True
+            headers=_HEADERS,
+            timeout=_TIMEOUT,
+            follow_redirects=True,
+            event_hooks=SAFE_REDIRECT_HOOKS,
         ) as client:
             response = await client.get(track_url)
     except httpx.HTTPError as e:
@@ -233,7 +238,10 @@ async def fetch_youtube_description(url: str) -> tuple[str | None, str | None]:
     """
     try:
         async with httpx.AsyncClient(
-            headers=_HEADERS, timeout=_TIMEOUT, follow_redirects=True
+            headers=_HEADERS,
+            timeout=_TIMEOUT,
+            follow_redirects=True,
+            event_hooks=SAFE_REDIRECT_HOOKS,
         ) as client:
             response = await client.get(url)
     except httpx.HTTPError as e:

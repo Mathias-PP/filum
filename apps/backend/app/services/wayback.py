@@ -16,7 +16,7 @@ import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.url_safety import UnsafeUrlError, assert_url_is_safe
+from app.core.url_safety import SAFE_REDIRECT_HOOKS, UnsafeUrlError, assert_url_is_safe
 from app.models.source import ArchiveStatus, Source
 
 logger = logging.getLogger(__name__)
@@ -360,6 +360,7 @@ class WaybackService:
                     timeout=self.RESOLVE_TIMEOUT,
                     follow_redirects=True,
                     max_redirects=self.MAX_REDIRECTS,
+                    event_hooks=SAFE_REDIRECT_HOOKS,
                 ) as client,
                 client.stream("GET", url) as response,
             ):

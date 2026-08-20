@@ -17,15 +17,21 @@ controls the DNS could return a public IP to the validator and a private
 IP to the subsequent `httpx.get`. Mitigations (e.g. resolving once and
 passing the IP directly) are over-engineering for the current threat
 model (single FastAPI worker, no privileged data on private RFC1918 IPs
-on Railway). Document the limitation in PITFALLS if the threat model
+on the GCP VM). Document the limitation in PITFALLS if the threat model
 ever changes.
+
+Redirections: see ``SAFE_REDIRECT_HOOKS`` at the bottom of this module.
+Validating before ``client.get`` only covers the first hop.
 """
 
 from __future__ import annotations
 
+import asyncio
 import ipaddress
 import socket
 from urllib.parse import urlparse
+
+import httpx
 
 
 class UnsafeUrlError(ValueError):
@@ -96,3 +102,19 @@ def assert_url_is_safe(url: str) -> None:
                 f"Host {host} resolves to a non-public address ({ip}). "
                 "Loopback, private, link-local, and reserved ranges are blocked."
             )
+
+
+async def _verifier_chaque_saut(request: httpx.Request) -> None:
+    """Revalide l'URL a chaque requete envoyee, redirections comprises."""
+    # `assert_url_is_safe` fait un getaddrinfo bloquant : hors du thread, un
+    # DNS lent gele la boucle d'evenements du worker.
+    await asyncio.to_thread(assert_url_is_safe, str(request.url))
+
+
+# Valider l'URL avant `client.get` ne protege que le premier saut : avec
+# `follow_redirects=True`, une page publique qui repond 302 vers
+# http://169.254.169.254/ fait sortir httpx du perimetre valide. Ce hook
+# httpx s'execute pour chaque requete emise par le client, redirections
+# incluses, et leve `UnsafeUrlError` des qu'un saut vise une adresse non
+# publique. A passer en `event_hooks=` de tout client `follow_redirects=True`.
+SAFE_REDIRECT_HOOKS = {"request": [_verifier_chaque_saut]}

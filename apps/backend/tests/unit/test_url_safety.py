@@ -10,9 +10,14 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+import httpx
 import pytest
 
-from app.core.url_safety import UnsafeUrlError, assert_url_is_safe
+from app.core.url_safety import (
+    SAFE_REDIRECT_HOOKS,
+    UnsafeUrlError,
+    assert_url_is_safe,
+)
 
 
 class TestSchemeFilter:
@@ -97,3 +102,47 @@ class TestDnsResolution:
         with patch("app.core.url_safety.socket.getaddrinfo", return_value=fake_infos):
             with pytest.raises(UnsafeUrlError, match="non-public"):
                 assert_url_is_safe("http://internal.example.com/")
+
+
+class TestRedirectHook:
+    """Valider l'URL avant `client.get` ne couvre que le premier saut.
+
+    Une page publique qui repond 302 vers http://169.254.169.254/ ressort
+    du perimetre valide sans que personne ne le voie. `SAFE_REDIRECT_HOOKS`
+    replace la verification sur chaque requete emise par le client.
+    """
+
+    @pytest.mark.asyncio
+    async def test_redirection_vers_ip_privee_refusee(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.host == "public.example.com":
+                return httpx.Response(302, headers={"location": "http://169.254.169.254/"})
+            return httpx.Response(200, text="secret")
+
+        fake_infos = [(0, 0, 0, "", ("93.184.216.34", 0))]
+        with patch("app.core.url_safety.socket.getaddrinfo", return_value=fake_infos):
+            async with httpx.AsyncClient(
+                transport=httpx.MockTransport(handler),
+                follow_redirects=True,
+                event_hooks=SAFE_REDIRECT_HOOKS,
+            ) as client:
+                with pytest.raises(UnsafeUrlError, match="non-public"):
+                    await client.get("http://public.example.com/")
+
+    @pytest.mark.asyncio
+    async def test_redirection_vers_hote_public_autorisee(self):
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.host == "public.example.com":
+                return httpx.Response(302, headers={"location": "http://autre.example.com/"})
+            return httpx.Response(200, text="page")
+
+        fake_infos = [(0, 0, 0, "", ("93.184.216.34", 0))]
+        with patch("app.core.url_safety.socket.getaddrinfo", return_value=fake_infos):
+            async with httpx.AsyncClient(
+                transport=httpx.MockTransport(handler),
+                follow_redirects=True,
+                event_hooks=SAFE_REDIRECT_HOOKS,
+            ) as client:
+                r = await client.get("http://public.example.com/")
+        assert r.status_code == 200
+        assert r.text == "page"
