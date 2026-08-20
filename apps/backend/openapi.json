@@ -5,6 +5,220 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/api/v1/agent/providers/meta": {
+      "get": {
+        "tags": [
+          "agent-providers"
+        ],
+        "summary": "Provider Meta",
+        "description": "Notice de souveraineté, factuelle et sans discrimination.\n\nL'utilisateur décide, Philum informe : pays d'hébergement connu et périmètre\nprécis des données qui transitent pendant un échange.",
+        "operationId": "provider_meta_api_v1_agent_providers_meta_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent/providers": {
+      "get": {
+        "tags": [
+          "agent-providers"
+        ],
+        "summary": "Lister Mes Providers",
+        "operationId": "lister_mes_providers_api_v1_agent_providers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AgentProviderRead"
+                  },
+                  "type": "array",
+                  "title": "Response Lister Mes Providers Api V1 Agent Providers Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "agent-providers"
+        ],
+        "summary": "Creer Provider",
+        "operationId": "creer_provider_api_v1_agent_providers_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentProviderCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentProviderRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent/providers/{provider_id}": {
+      "patch": {
+        "tags": [
+          "agent-providers"
+        ],
+        "summary": "Mettre A Jour Provider",
+        "operationId": "mettre_a_jour_provider_api_v1_agent_providers__provider_id__patch",
+        "parameters": [
+          {
+            "name": "provider_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Provider Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentProviderUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentProviderRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "agent-providers"
+        ],
+        "summary": "Supprimer Provider",
+        "operationId": "supprimer_provider_api_v1_agent_providers__provider_id__delete",
+        "parameters": [
+          {
+            "name": "provider_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Provider Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent/providers/{provider_id}/test": {
+      "post": {
+        "tags": [
+          "agent-providers"
+        ],
+        "summary": "Tester Provider",
+        "operationId": "tester_provider_api_v1_agent_providers__provider_id__test_post",
+        "parameters": [
+          {
+            "name": "provider_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Provider Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentProviderTestResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/attestations/content": {
       "post": {
         "tags": [
@@ -3185,6 +3399,240 @@
   },
   "components": {
     "schemas": {
+      "AgentProviderCreate": {
+        "properties": {
+          "provider": {
+            "$ref": "#/components/schemas/ProviderKind"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "base_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          },
+          "model": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Model"
+          },
+          "api_key": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Api Key"
+          },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "provider",
+          "model",
+          "api_key"
+        ],
+        "title": "AgentProviderCreate"
+      },
+      "AgentProviderRead": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ProviderKind"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "base_url": {
+            "type": "string",
+            "title": "Base Url"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "is_default": {
+            "type": "boolean",
+            "title": "Is Default"
+          },
+          "api_key_masked": {
+            "type": "string",
+            "title": "Api Key Masked"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "provider",
+          "display_name",
+          "base_url",
+          "model",
+          "is_default",
+          "api_key_masked",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "AgentProviderRead",
+        "description": "Sortie : jamais la clé, toujours sa forme masquée."
+      },
+      "AgentProviderTestResult": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "http_status": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Http Status"
+          },
+          "model_resolved": {
+            "type": "string",
+            "title": "Model Resolved"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "model_resolved",
+          "url",
+          "message"
+        ],
+        "title": "AgentProviderTestResult",
+        "description": "Résultat du test de clé, avec un message actionnable par statut."
+      },
+      "AgentProviderUpdate": {
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "base_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 120,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "api_key": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "is_default": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Default"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "AgentProviderUpdate"
+      },
       "AnnotationRequest": {
         "properties": {
           "text": {
@@ -6518,6 +6966,17 @@
         "type": "object",
         "title": "ProvidedText",
         "description": "Le texte de la source, quand la page ne le rend pas.\n\nColle ou tire d'un document depose : dans les deux cas c'est l'auteur·ice\nqui atteste que ce texte est celui de la source. Le serveur ne le stocke\npas, il s'en sert le temps de l'appel.\n\nLes trois `include_*` (par defaut True) disent ce qu'on autorise le modele\na voir en plus du texte de la source. Une case decochee est une case\nd'auteur·ice qui prefere n'orienter le modele sur rien : la fiche\ngeneraliste dont l'annotation elargit trop, la source dont les extraits\ndeja poses induiraient un doublonnage stylistique, le cas ou l'ecart\nentre le theme de la fiche et le contenu ponctuel de cette source ne\ndoit pas biaiser la selection."
+      },
+      "ProviderKind": {
+        "type": "string",
+        "enum": [
+          "openai",
+          "anthropic",
+          "deepseek",
+          "gemini",
+          "custom"
+        ],
+        "title": "ProviderKind"
       },
       "RetractionStatus": {
         "type": "string",

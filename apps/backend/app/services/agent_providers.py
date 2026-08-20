@@ -1,0 +1,348 @@
+"""Service des providers IA BYOK des créateurs.
+
+Un créateur enregistre ses comptes IA (clé API, modèle, endpoint) ; Philum ne
+fait jamais l'inférence lui-même. La clé est chiffrée AES-GCM à la création
+(``KeyManager(master_encryption_key)``) et ne sort jamais en clair de ce
+service — seule la forme masquée (``sk-…1234``) atteint les endpoints.
+
+**Le provider est le cerveau, Philum est les mains et la preuve.**
+"""
+
+from __future__ import annotations
+
+import logging
+from uuid import UUID
+
+import httpx
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.config import get_settings
+from app.core.url_safety import UnsafeUrlError, assert_url_is_safe
+from app.crypto.keygen import KeyManager
+from app.models.agent_provider import AgentProvider
+from app.schemas.agent_provider import (
+    PROVIDER_DEFAULT_BASE_URLS,
+    AgentProviderCreate,
+    AgentProviderRead,
+    AgentProviderTestResult,
+    AgentProviderUpdate,
+    ProviderKind,
+    _api_key_masked,
+)
+from app.services.llm import url_chat
+
+logger = logging.getLogger(__name__)
+
+settings = get_settings()
+
+_TIMEOUT = 20.0
+
+
+class AgentProviderError(ValueError):
+    """Erreur métier : payload invalide, doublon, ressource d'un autre créateur."""
+
+
+class AgentProviderNotFoundError(AgentProviderError):
+    """Le provider n'existe pas ou n'appartient pas à ce créateur."""
+
+
+# --- Notice de souveraineté (factuelle, pour tous les providers) -------------
+#
+# Ce qui transite pendant un échange, c'est ce qui est envoyé au modèle :
+# messages, contenu des fiches/sources/workspace consulté, résultats d'outils.
+# L'endroit où le modèle est exécuté dépend du provider. Ton neutre, sans
+# jugement : l'utilisateur décide, Philum informe.
+
+DATA_SCOPE_NOTICE = (
+    "Pendant un échange, ces données sont envoyées au fournisseur du modèle : vos "
+    "messages, le contenu de vos fiches, de vos sources et de vos fichiers de "
+    "workspace consultés, et les résultats des outils renvoyés au modèle. Le "
+    "modèle est exécuté sur l'infrastructure du fournisseur indiquée ci-dessous. "
+    "Votre clé API n'est envoyée qu'à ce fournisseur."
+)
+
+PROVIDER_META: dict[str, dict[str, str]] = {
+    "openai": {
+        "hosting_country": "États-Unis",
+        "hosting_note": "Infrastructure d'OpenAI, principalement aux États-Unis.",
+    },
+    "anthropic": {
+        "hosting_country": "États-Unis",
+        "hosting_note": "Infrastructure d'Anthropic, principalement aux États-Unis.",
+    },
+    "deepseek": {
+        "hosting_country": "Chine",
+        "hosting_note": "Infrastructure de DeepSeek, principalement en Chine.",
+    },
+    "gemini": {
+        "hosting_country": "États-Unis",
+        "hosting_note": "Infrastructure de Google, répartie mondialement (siège aux États-Unis).",
+    },
+    "custom": {
+        "hosting_country": "Selon l'endpoint configuré",
+        "hosting_note": (
+            "Endpoint tiers : l'emplacement d'hébergement dépend du fournisseur "
+            "que vous configurez."
+        ),
+    },
+}
+
+
+def _key_manager() -> KeyManager:
+    return KeyManager(settings.master_encryption_key)
+
+
+def _decrypt(key_enc: str) -> str:
+    return _key_manager().decrypt_private_key(key_enc)
+
+
+def _to_read(provider: AgentProvider) -> AgentProviderRead:
+    return AgentProviderRead(
+        id=provider.id,
+        provider=ProviderKind(provider.provider),
+        display_name=provider.display_name,
+        base_url=provider.base_url,
+        model=provider.model,
+        is_default=provider.is_default,
+        api_key_masked=_api_key_masked(_decrypt(provider.api_key_enc)),
+        created_at=provider.created_at,
+        updated_at=provider.updated_at,
+    )
+
+
+def _resolve_base_url(provider: ProviderKind, base_url: str | None) -> str:
+    """La base_url à enregistrer, assainie si elle vient de l'utilisateur.
+
+    Une base_url fournie (custom, ou surcharge d'un provider intégré) passe par
+    ``assert_url_is_safe`` : Philum appellera cet endpoint, il ne doit pas
+    pouvoir viser une adresse interne (SSRF). Les défauts intégrés sont des
+    constantes de confiance.
+    """
+    if base_url is not None:
+        try:
+            assert_url_is_safe(base_url)
+        except UnsafeUrlError as exc:
+            raise AgentProviderError(f"base_url non sûre : {exc}") from exc
+        return base_url
+    if provider == ProviderKind.CUSTOM:
+        raise AgentProviderError("Un provider custom exige une base_url.")
+    return PROVIDER_DEFAULT_BASE_URLS[provider.value]
+
+
+async def _get_owned(
+    db: AsyncSession,
+    creator_id: UUID,
+    provider_id: UUID,
+) -> AgentProvider:
+    result = await db.execute(
+        select(AgentProvider).where(
+            AgentProvider.id == provider_id,
+            AgentProvider.creator_id == creator_id,
+        )
+    )
+    provider = result.scalar_one_or_none()
+    if provider is None:
+        raise AgentProviderNotFoundError("Provider introuvable.")
+    return provider
+
+
+async def _clear_default(db: AsyncSession, creator_id: UUID) -> None:
+    """Un seul défaut par créateur : efface les marques existantes."""
+    result = await db.execute(
+        select(AgentProvider).where(
+            AgentProvider.creator_id == creator_id,
+            AgentProvider.is_default.is_(True),
+        )
+    )
+    for provider in result.scalars().all():
+        provider.is_default = False
+
+
+async def lister(db: AsyncSession, creator_id: UUID) -> list[AgentProviderRead]:
+    result = await db.execute(
+        select(AgentProvider)
+        .where(AgentProvider.creator_id == creator_id)
+        .order_by(AgentProvider.created_at)
+    )
+    return [_to_read(p) for p in result.scalars().all()]
+
+
+async def creer(
+    db: AsyncSession,
+    creator_id: UUID,
+    payload: AgentProviderCreate,
+) -> AgentProviderRead:
+    base_url = _resolve_base_url(payload.provider, payload.base_url)
+    display_name = (payload.display_name or "").strip() or payload.provider.value
+    key_enc = _key_manager().encrypt_private_key(payload.api_key)
+
+    if payload.is_default:
+        await _clear_default(db, creator_id)
+
+    provider = AgentProvider(
+        creator_id=creator_id,
+        provider=payload.provider.value,
+        display_name=display_name,
+        base_url=base_url,
+        model=payload.model.strip(),
+        api_key_enc=key_enc,
+        is_default=payload.is_default,
+    )
+    db.add(provider)
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise AgentProviderError(
+            "Un provider identique (même provider, même base_url, même modèle) existe déjà."
+        ) from exc
+    await db.refresh(provider)
+    return _to_read(provider)
+
+
+async def mettre_a_jour(
+    db: AsyncSession,
+    creator_id: UUID,
+    provider_id: UUID,
+    payload: AgentProviderUpdate,
+) -> AgentProviderRead:
+    provider = await _get_owned(db, creator_id, provider_id)
+
+    if payload.display_name is not None:
+        display_name = payload.display_name.strip()
+        if not display_name:
+            raise AgentProviderError("display_name ne peut pas être vide.")
+        provider.display_name = display_name
+    if payload.base_url is not None:
+        base_url = _resolve_base_url(ProviderKind(provider.provider), payload.base_url)
+        provider.base_url = base_url
+    if payload.model is not None:
+        model = payload.model.strip()
+        if not model:
+            raise AgentProviderError("model ne peut pas être vide.")
+        provider.model = model
+    if payload.api_key is not None:
+        provider.api_key_enc = _key_manager().encrypt_private_key(payload.api_key)
+    if payload.is_default is True:
+        await _clear_default(db, creator_id)
+        provider.is_default = True
+    elif payload.is_default is False:
+        provider.is_default = False
+
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise AgentProviderError(
+            "Un provider identique (même provider, même base_url, même modèle) existe déjà."
+        ) from exc
+    await db.refresh(provider)
+    return _to_read(provider)
+
+
+async def supprimer(
+    db: AsyncSession,
+    creator_id: UUID,
+    provider_id: UUID,
+) -> None:
+    provider = await _get_owned(db, creator_id, provider_id)
+    await db.delete(provider)
+    await db.commit()
+
+
+async def resoudre_defaut(
+    db: AsyncSession,
+    creator_id: UUID,
+) -> AgentProvider | None:
+    """Le provider par défaut du créateur, s'il en a désigné un."""
+    result = await db.execute(
+        select(AgentProvider).where(
+            AgentProvider.creator_id == creator_id,
+            AgentProvider.is_default.is_(True),
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def tester(
+    db: AsyncSession,
+    creator_id: UUID,
+    provider_id: UUID,
+    transport: httpx.AsyncBaseTransport | None = None,
+) -> AgentProviderTestResult:
+    """Un appel minimal (1 token, prompt « ping ») avec la clé du créateur.
+
+    ``transport`` est injectable pour les tests (``httpx.MockTransport``) :
+    aucun appel réseau dans les tests. Pour Anthropic, la surface
+    OpenAI-compatible est tentée d'abord ; si elle est absente (400/404), on
+    bascule sur l'adapter natif ``/v1/messages`` (``x-api-key`` +
+    ``anthropic-version``). Ne lève jamais : retourne un résultat classifiable.
+    """
+    provider = await _get_owned(db, creator_id, provider_id)
+    key = _decrypt(provider.api_key_enc)
+    url = url_chat(provider.base_url)
+    openai_payload = {
+        "model": provider.model,
+        "messages": [{"role": "user", "content": "ping"}],
+        "max_tokens": 1,
+        "temperature": 0,
+    }
+    headers = {"Authorization": f"Bearer {key}"}
+
+    try:
+        async with httpx.AsyncClient(timeout=_TIMEOUT, transport=transport) as client:
+            r = await client.post(url, json=openai_payload, headers=headers)
+            if provider.provider == ProviderKind.ANTHROPIC.value and r.status_code in (400, 404):
+                r = await client.post(
+                    f"{provider.base_url.rstrip('/')}/v1/messages",
+                    json={
+                        "model": provider.model,
+                        "max_tokens": 1,
+                        "messages": [{"role": "user", "content": "ping"}],
+                    },
+                    headers={"x-api-key": key, "anthropic-version": "2023-06-01"},
+                )
+        return _classify(provider.model, url, r)
+    except httpx.HTTPError as exc:
+        return AgentProviderTestResult(
+            ok=False,
+            http_status=None,
+            model_resolved=provider.model,
+            url=url,
+            message=f"Impossible de joindre l'endpoint : {exc}",
+        )
+
+
+def _classify(
+    model: str,
+    url: str,
+    r: httpx.Response,
+) -> AgentProviderTestResult:
+    """Clé invalide, quota épuisé, modèle inconnu → message distinct et actionnable."""
+    if r.status_code == 200:
+        return AgentProviderTestResult(
+            ok=True,
+            http_status=200,
+            model_resolved=model,
+            url=url,
+            message=f"Clé valide — le modèle {model} répond.",
+        )
+    messages = {
+        400: "Requête refusée par le provider. Vérifier model et base_url.",
+        401: "Clé API invalide ou révoquée.",
+        403: "Accès refusé par le provider (clé sans autorisation).",
+        404: "Endpoint ou modèle introuvable. Vérifier base_url et model.",
+        429: "Quota épuisé ou limite de débit. Réessayer plus tard.",
+    }
+    return AgentProviderTestResult(
+        ok=False,
+        http_status=r.status_code,
+        model_resolved=model,
+        url=url,
+        message=messages.get(
+            r.status_code,
+            f"Réponse inattendue du provider (HTTP {r.status_code}).",
+        ),
+    )
