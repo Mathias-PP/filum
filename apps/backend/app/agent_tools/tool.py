@@ -7,6 +7,8 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.user import User
+
 
 @dataclass(frozen=True)
 class ToolContext:
@@ -14,10 +16,11 @@ class ToolContext:
 
     Porte la session DB et le créateur qui appelle : un outil n'a jamais accès
     à autre chose — un agent ne peut pas écrire hors de son propre périmètre.
-    La Phase 3 l'étendra (approbateur, session de chat).
+    ``creator_id`` est conservé pour les outils du workspace (== ``user.id``).
     """
 
     db: AsyncSession
+    user: User
     creator_id: UUID
 
 
@@ -27,7 +30,7 @@ class AgentTool:
 
     ``parameters`` est un schéma JSON Schema ``object`` avec ``required``.
     ``execute`` rend toujours un ``dict`` sérialisable (jamais un objet DB) ;
-    il peut lever une ``ValueError``, la boucle la transforme en résultat
+    il peut lever une ``ValueError``, le registre la transforme en résultat
     d'erreur lisible par le modèle.
     """
 

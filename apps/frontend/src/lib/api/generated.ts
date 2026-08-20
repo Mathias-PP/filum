@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+  '/api/v1/agent/chat': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Chat Agent */
+    post: operations['chat_agent_api_v1_agent_chat_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/agent/providers/meta': {
     parameters: {
       query?: never;
@@ -1384,6 +1401,23 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    /** AgentChatMessage */
+    AgentChatMessage: {
+      /**
+       * Role
+       * @enum {string}
+       */
+      role: 'user' | 'assistant';
+      /** Content */
+      content: string;
+    };
+    /** AgentChatRequest */
+    AgentChatRequest: {
+      /** Message */
+      message: string;
+      /** History */
+      history?: components['schemas']['AgentChatMessage'][];
+    };
     /** AgentProviderCreate */
     AgentProviderCreate: {
       provider: components['schemas']['ProviderKind'];
@@ -3062,6 +3096,39 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+  chat_agent_api_v1_agent_chat_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AgentChatRequest'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
   provider_meta_api_v1_agent_providers_meta_get: {
     parameters: {
       query?: never;
