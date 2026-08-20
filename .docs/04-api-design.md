@@ -13,6 +13,8 @@
 
 > ℹ️ **Rate-limit `/mcp/` (2026-07)** : le mount ASGI `/mcp` bypassait slowapi (les décorateurs `@limiter.limit` n'attrapent que les routes FastAPI). Middleware HTTP dédié dans `app/main.py` applique un moving-window **60/minute par IP** via la lib `limits`. Dépassé → 429 + `Retry-After: 60`.
 
+> ⚠️ **Inventaire incomplet (note ajoutée le 2026-08-20)** : ce document décrit les endpoints du MVP et n'a pas suivi les livraisons suivantes. Ne s'y trouvent pas encore, alors qu'ils sont en production : le serveur MCP à deux portes (`/mcp/` en lecture publique anonyme, `/mcp-account/` avec les 39 tools après authentification), les endpoints OAuth 2.1 qui l'alimentent (`POST /api/v1/oauth/register` pour l'enregistrement dynamique de client RFC 7591, `GET /api/v1/oauth/authorize`, `POST /api/v1/oauth/consent`, `POST /api/v1/oauth/token`, avec PKCE), l'agent BYOK (`/api/v1/agent/providers`, `/api/v1/agent/workspace/*`, `/api/v1/agent/chat` en SSE), la recherche d'extraits par le sens, le feed, la découverte et les connexions entre fiches. La source d'autorité reste l'OpenAPI servi par le backend et le dossier `app/api/v1/endpoints/`.
+
 > Endpoints REST exposés par le backend FastAPI. Conventions, contrats, exemples.
 
 ---
@@ -35,7 +37,7 @@ Toutes les routes mutables nécessitent l'authentification.
 
 **Mécanisme** : OAuth Google → session côté backend → cookie HTTP-only sécurisé `filum_session` (JWT signé).
 
-**Header alternatif** : `Authorization: Bearer <token>` pour les appels API depuis scripts (à venir en phase 2, en MVP seulement le cookie).
+**Header alternatif** : `Authorization: Bearer <token>`, en production sur les deux portes MCP (`app/mcp_server/auth.py`). Deux façons d'obtenir un token : `POST /api/v1/auth/mcp-token` depuis un navigateur déjà connecté (jeton court, pour un usage manuel), ou le flux OAuth 2.1 complet ci-dessous pour un client tiers.
 
 **Endpoints d'authentification** :
 

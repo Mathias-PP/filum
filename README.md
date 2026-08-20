@@ -4,7 +4,7 @@
 >
 > _Note : le projet a été renommé « Filum » → « Philum » (2026). Le dépôt Git et quelques docs historiques mentionnent encore l'ancien nom, la migration progressive est décrite dans [`.docs/14-philum-rename-migration.md`](.docs/14-philum-rename-migration.md)._
 
-**Philum** est un outil qui permet à tout créateur de contenu (vidéo, article, podcast, post long) de transformer sa bibliographie en une fiche publique interactive : sources organisées par type et autorité, archivées de manière horodatée (Wayback Machine), reliées entre elles dans un **graphe interactif D3.js**, et chaque contenu original revendiqué par son créateur·ice est attesté cryptographiquement (Ed25519, ADR-019) — le tout sur une page publique stable.
+**Philum** est un outil qui permet à tout créateur de contenu (vidéo, article, podcast, post long) de transformer sa bibliographie en une fiche publique interactive : sources organisées par type et autorité, archivées de manière horodatée (Wayback Machine), reliées entre elles dans un **graphe interactif D3.js**, et chaque contenu original revendiqué par son créateur·ice est attesté cryptographiquement (Ed25519, ADR-019), le tout sur une page publique stable.
 
 À l'ère de l'IA générative qui brouille les pistes de l'authenticité, Philum n'est pas un outil de détection de faux. C'est un **label qualité** pour les créateurs qui prennent le temps de bien sourcer leur travail.
 
@@ -26,15 +26,15 @@ Voir [`.docs/01-product-spec.md`](.docs/01-product-spec.md) pour le détail des 
 En résumé, la plateforme permet à un créateur :
 
 1. De s'authentifier avec son compte Google
-2. De créer une fiche de bibliographie pour un de ses contenus en y ajoutant ses sources — soit manuellement, soit **en collant l'URL d'un article** (Philum extrait titre + sources citées automatiquement via LLM + regex), soit en **important un fichier** BibTeX / CSL-JSON (Zotero) / Markdown (Obsidian) / PDF, soit en **collant une bibliographie textuelle** brute
+2. De créer une fiche de bibliographie pour un de ses contenus en y ajoutant ses sources : soit manuellement, soit **en collant l'URL d'un article** (Philum extrait titre + sources citées automatiquement via LLM + regex), soit en **important un fichier** BibTeX / CSL-JSON (Zotero) / Markdown (Obsidian) / PDF, soit en **collant une bibliographie textuelle** brute
 3. De recevoir une page publique stable (`filum-eight.vercel.app/@[créateur]/[contenu]`) qui présente sa bibliographie sous forme de graphe interactif et de liste éditoriale
-4. De partager cette page (OpenGraph riche, exports JSON/CSV/BibTeX/Markdown/xlsx/docx)
+4. De partager cette page (OpenGraph riche, exports JSON, `vnd.philum+json`, CSV, xlsx, BibTeX, RIS, CSL-JSON, texte, Markdown, docx), la bibliographie étant rendue au choix en APA 7, Harvard, MLA 9, Chicago auteur-date, Vancouver ou IEEE
 5. De signer cryptographiquement l'attestation d'auteur du contenu (Ed25519 sur le triplet `(creator_id, content_url, attested_at)`, cf. ADR-019)
 
 Et permet à n'importe qui :
 
 6. De consulter une fiche publique, naviguer dans le graphe de sources, lire les annotations, accéder aux snapshots archivés (Wayback Machine)
-7. D'interroger l'API REST publique ou le **serveur MCP** (Model Context Protocol) pour explorer les fiches depuis un agent IA — 4 tools read-only, rate-limité 60/min par IP
+7. D'interroger l'API REST publique ou le **serveur MCP** (Model Context Protocol) depuis un agent IA. Deux portes : `/mcp/` explore les fiches publiques sans compte, rate-limité 60/min par IP ; `/mcp-account/` donne les 39 tools, dont l'écriture, après une connexion OAuth 2.1
 
 ---
 
@@ -78,9 +78,11 @@ Hébergement post-2026-07-19 : VM GCP e2-micro always-free (Docker Compose backe
 ### CI (16 jobs)
 
 - Sécurité : Security Scan (Trivy), Static Analysis (Bandit), Secrets Detection (TruffleHog), Vulnerability Check (Safety), Dependency Review
-- Backend : Lint (ruff), Type Check (mypy), Test (pytest — **197 tests**)
+- Backend : Lint (ruff), Type Check (mypy), Test (pytest, environ **1400 tests**), Migrations Postgres
 - Frontend : Lint (ESLint + Prettier), Test (vitest), Build (vite)
-- Analytics : dbt compile
+- Contrats : Contract API Sync (le client TypeScript suit l'OpenAPI)
+- Analytics : dbt compile, dbt run
+- Synthèse : CI Summary
 
 ---
 
@@ -96,11 +98,22 @@ Tous les fichiers de spec sont dans [`.docs/`](.docs/). Ils sont conçus pour ê
 | [`03-data-model.md`](.docs/03-data-model.md) | Schéma de base de données, modèles dbt |
 | [`04-api-design.md`](.docs/04-api-design.md) | Endpoints REST, contrats |
 | [`05-design-system.md`](.docs/05-design-system.md) | Couleurs, typographie, composants, inspirations |
-| [`06-roadmap.md`](.docs/06-roadmap.md) | Plan jour par jour de la semaine 1, puis phases 2-6 |
+| [`06-roadmap.md`](.docs/06-roadmap.md) | Plan jour par jour de la semaine 1, puis phases 2-6. Document historique, voir `21-roadmap-2026-07.md` pour l'état courant |
 | [`07-open-questions.md`](.docs/07-open-questions.md) | Arbitrages non tranchés |
 | [`08-glossary.md`](.docs/08-glossary.md) | Glossaire technique et institutionnel |
+| [`09-private-mode-and-integrations.md`](.docs/09-private-mode-and-integrations.md) | Mode privé et intégrations Zotero / Obsidian / Notion. Spec non implémentée |
+| [`10-mvp-completion-plan.md`](.docs/10-mvp-completion-plan.md) | Plan de complétion du MVP à budget zéro, écrit pour un agent autonome |
+| [`11-critique-and-improvements.md`](.docs/11-critique-and-improvements.md) | Regard critique : ce qu'on pourrait mieux faire, arbitrages à assumer |
 | [`12-next-steps.md`](.docs/12-next-steps.md) | Chemin critique post-MVP : axe C (refonte backend ADR-019), axe B (archivage multi-cible), axe A (stockage cloud R2) |
 | [`13-audit-2026-05-26-followups.md`](.docs/13-audit-2026-05-26-followups.md) | Suites à donner issues de l'audit du 26/05 : 11 items P1/P2/P3 avec triggers naturels (types TS auto, tests Postgres, queue Wayback durable, multi-tenancy, restore endpoint…) |
+| [`14-philum-rename-migration.md`](.docs/14-philum-rename-migration.md) | Plan de migration du renommage Filum vers Philum, phase par phase |
+| [`15-audit-improvements-plan.md`](.docs/15-audit-improvements-plan.md) | Plan d'améliorations post-audit de juin 2026 |
+| [`16-declencheur-adoption.md`](.docs/16-declencheur-adoption.md) | Ce qui déclenche l'usage puis l'achat, distingués l'un de l'autre |
+| [`17-llm-strategy.md`](.docs/17-llm-strategy.md) | Cascade de free tiers LLM routée par tâche |
+| [`18-linked-accounts.md`](.docs/18-linked-accounts.md) | Comptes plateformes liés (YouTube, Instagram, X, TikTok). v0 déclarative livrée |
+| [`20-profils-et-feed.md`](.docs/20-profils-et-feed.md) | Spec des profils publics cherchables et du feed chronologique |
+| [`21-roadmap-2026-07.md`](.docs/21-roadmap-2026-07.md) | Roadmap consolidée au 2026-07-19 |
+| [`ADR-019-bis-preuve-autorat.md`](.docs/ADR-019-bis-preuve-autorat.md) | Preuve d'autorat, anti-usurpation, garantie d'authenticité. Pendant documentaire d'ADR-019 |
 
 Documents vivants à maintenir au fil du projet :
 
@@ -116,10 +129,10 @@ Documents vivants à maintenir au fil du projet :
 
 Philum est conçu pour être développé en partie avec l'assistance d'agents IA (Claude Code en priorité, Aider en secours, opencode/Big Pickle pour les sessions autonomes longues).
 
-- [`CLAUDE.md`](CLAUDE.md) — instructions et contraintes pour Claude Code (lu automatiquement)
-- [`AGENTS.md`](AGENTS.md) — instructions équivalentes pour d'autres agents (Aider, Codex, etc.)
-- [`agent/`](agent/) — système d'instructions pour le travail autonome multi-sessions : permissions, git workflow, sécurité, pièges à éviter, protocole de tâche, mémoire et skills (Alembic, Svelte, OAuth, etc.)
-- [`opencode.json`](opencode.json) — config runtime pour opencode (instructions chargées + matrice de permissions bash)
+- [`CLAUDE.md`](CLAUDE.md) : instructions et contraintes pour Claude Code (lu automatiquement)
+- [`AGENTS.md`](AGENTS.md) : instructions équivalentes pour d'autres agents (Aider, Codex, etc.)
+- [`agent/`](agent/) : système d'instructions pour le travail autonome multi-sessions : permissions, git workflow, sécurité, pièges à éviter, protocole de tâche, mémoire et skills (Alembic, Svelte, OAuth, etc.)
+- [`opencode.json`](opencode.json) : config runtime pour opencode (instructions chargées + matrice de permissions bash)
 
 Les deux fichiers racines (CLAUDE.md, AGENTS.md) contiennent les règles essentielles. Le dossier `agent/` les opérationnalise pour un travail autonome avec garde-fous explicites.
 
@@ -145,7 +158,7 @@ Philum est conçu comme un commun numérique. Le cœur du projet (signature, bib
 
 Pas de publicité, pas de tracking intrusif. La neutralité éditoriale est une condition d'acceptation par les médias indépendants et les institutions.
 
-Voir le [manifeste fondateur](.docs/MANIFESTE.md) pour la vision complète à long terme (à importer dans `.docs/`).
+Voir [`00-vision.md`](.docs/00-vision.md) pour la vision complète à long terme et ce que le projet n'est pas.
 
 ---
 

@@ -1,8 +1,14 @@
 # Comptes plateformes liés (YouTube, Instagram, X, TikTok)
 
 > Exploration d'implémentation demandée le 2026-07-19. Objectif produit : le compte
-> Philum devient le hub d'identité du créateur — il centralise et affiche ses
+> Philum devient le hub d'identité du créateur, il centralise et affiche ses
 > connexions aux plateformes où il publie.
+>
+> **État (2026-08-20)** : la v0 déclarative est livrée. Le modèle `linked_accounts`
+> existe (`app/models/linked_account.py`) et les endpoints
+> `GET`/`PUT /api/v1/users/me/linked-accounts` sont en production
+> (`app/api/v1/endpoints/users.py`). Ce qui reste exploratoire ici : la
+> vérification effective de la propriété d'un compte (OAuth par plateforme).
 
 ---
 
