@@ -1,3 +1,4 @@
+from app.models.agent_provider import AgentProvider
 from app.models.audit_event import AuditEvent
 from app.models.biblio_card import BiblioCard
 from app.models.claim_request import ClaimRequest
@@ -12,6 +13,7 @@ from app.models.user import User
 
 __all__ = [
     "User",
+    "AgentProvider",
     "BiblioCard",
     "ClaimRequest",
     "ContentAttestation",

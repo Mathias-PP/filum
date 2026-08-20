@@ -4,6 +4,82 @@
  */
 
 export interface paths {
+  '/api/v1/agent/providers/meta': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Provider Meta
+     * @description Notice de souveraineté, factuelle et sans discrimination.
+     *
+     *     L'utilisateur décide, Philum informe : pays d'hébergement connu et périmètre
+     *     précis des données qui transitent pendant un échange.
+     */
+    get: operations['provider_meta_api_v1_agent_providers_meta_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/agent/providers': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Lister Mes Providers */
+    get: operations['lister_mes_providers_api_v1_agent_providers_get'];
+    put?: never;
+    /** Creer Provider */
+    post: operations['creer_provider_api_v1_agent_providers_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/agent/providers/{provider_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** Supprimer Provider */
+    delete: operations['supprimer_provider_api_v1_agent_providers__provider_id__delete'];
+    options?: never;
+    head?: never;
+    /** Mettre A Jour Provider */
+    patch: operations['mettre_a_jour_provider_api_v1_agent_providers__provider_id__patch'];
+    trace?: never;
+  };
+  '/api/v1/agent/providers/{provider_id}/test': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Tester Provider */
+    post: operations['tester_provider_api_v1_agent_providers__provider_id__test_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/attestations/content': {
     parameters: {
       query?: never;
@@ -1255,6 +1331,78 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    /** AgentProviderCreate */
+    AgentProviderCreate: {
+      provider: components['schemas']['ProviderKind'];
+      /** Display Name */
+      display_name?: string | null;
+      /** Base Url */
+      base_url?: string | null;
+      /** Model */
+      model: string;
+      /** Api Key */
+      api_key: string;
+      /**
+       * Is Default
+       * @default false
+       */
+      is_default: boolean;
+    };
+    /**
+     * AgentProviderRead
+     * @description Sortie : jamais la clé, toujours sa forme masquée.
+     */
+    AgentProviderRead: {
+      /**
+       * Id
+       * Format: uuid
+       */
+      id: string;
+      provider: components['schemas']['ProviderKind'];
+      /** Display Name */
+      display_name: string;
+      /** Base Url */
+      base_url: string;
+      /** Model */
+      model: string;
+      /** Is Default */
+      is_default: boolean;
+      /** Api Key Masked */
+      api_key_masked: string;
+      /** Created At */
+      created_at: string | null;
+      /** Updated At */
+      updated_at: string | null;
+    };
+    /**
+     * AgentProviderTestResult
+     * @description Résultat du test de clé, avec un message actionnable par statut.
+     */
+    AgentProviderTestResult: {
+      /** Ok */
+      ok: boolean;
+      /** Http Status */
+      http_status?: number | null;
+      /** Model Resolved */
+      model_resolved: string;
+      /** Url */
+      url: string;
+      /** Message */
+      message: string;
+    };
+    /** AgentProviderUpdate */
+    AgentProviderUpdate: {
+      /** Display Name */
+      display_name?: string | null;
+      /** Base Url */
+      base_url?: string | null;
+      /** Model */
+      model?: string | null;
+      /** Api Key */
+      api_key?: string | null;
+      /** Is Default */
+      is_default?: boolean | null;
+    };
     /** AnnotationRequest */
     AnnotationRequest: {
       /** Text */
@@ -2418,6 +2566,11 @@ export interface components {
       include_card_context: boolean;
     };
     /**
+     * ProviderKind
+     * @enum {string}
+     */
+    ProviderKind: 'openai' | 'anthropic' | 'deepseek' | 'gemini' | 'custom';
+    /**
      * RetractionStatus
      * @description Etat de l'article aux yeux de Crossref / Retraction Watch.
      *
@@ -2824,6 +2977,174 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+  provider_meta_api_v1_agent_providers_meta_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': unknown;
+        };
+      };
+    };
+  };
+  lister_mes_providers_api_v1_agent_providers_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AgentProviderRead'][];
+        };
+      };
+    };
+  };
+  creer_provider_api_v1_agent_providers_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AgentProviderCreate'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AgentProviderRead'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  supprimer_provider_api_v1_agent_providers__provider_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        provider_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  mettre_a_jour_provider_api_v1_agent_providers__provider_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        provider_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AgentProviderUpdate'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AgentProviderRead'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  tester_provider_api_v1_agent_providers__provider_id__test_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        provider_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AgentProviderTestResult'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
   create_attestation_api_v1_attestations_content_post: {
     parameters: {
       query?: never;

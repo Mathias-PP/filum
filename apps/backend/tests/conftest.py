@@ -34,12 +34,13 @@ get_settings.cache_clear()
 from app.db.database import Base, engine  # noqa: E402
 
 import app.models.user  # noqa: E402, F401
+import app.models.agent_provider  # noqa: E402, F401
+import app.models.audit_event  # noqa: E402, F401
 import app.models.biblio_card  # noqa: E402, F401
 import app.models.claim_request  # noqa: E402, F401
+import app.models.linked_account  # noqa: E402, F401
 import app.models.source  # noqa: E402, F401
 import app.models.source_excerpt  # noqa: E402, F401
-import app.models.audit_event  # noqa: E402, F401
-import app.models.linked_account  # noqa: E402, F401
 
 
 @pytest_asyncio.fixture
