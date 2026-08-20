@@ -24,25 +24,33 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-
-      - name: Install dbt-duckdb
-        run: uvx dbt-duckdb
-
-      - name: Run dbt deps
-        run: uvx dbt-duckdb deps
+      # `uvx dbt-duckdb` cherchait un executable du meme nom que le paquet :
+      # dbt-duckdb est un adaptateur, l'executable `dbt` vient de dbt-core.
+      # Le job echouait a chaque cron. Meme installation que `dbt-check` dans
+      # ci.yml, qui elle passe.
+      - name: Install dbt
+        run: pip install -r requirements.txt
         working-directory: apps/analytics
 
+      - name: Run dbt deps
+        run: dbt deps
+        working-directory: apps/analytics
+
+      # DuckDB ne cree pas les dossiers parents du fichier de base.
+      - name: Prepare data directory
+        run: mkdir -p "${{ github.workspace }}/data"
+
       - name: Run dbt models
-        run: uvx dbt-duckdb run
+        run: dbt run
         working-directory: apps/analytics
         env:
           DUCKDB_PATH: ${{ github.workspace }}/data/filum_analytics.duckdb
 
       - name: Run dbt tests
-        run: uvx dbt-duckdb test
+        run: dbt test
         working-directory: apps/analytics
+        env:
+          DUCKDB_PATH: ${{ github.workspace }}/data/filum_analytics.duckdb
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
