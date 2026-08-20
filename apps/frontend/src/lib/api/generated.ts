@@ -1086,7 +1086,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/.well-known/oauth-protected-resource/mcp': {
+  '/.well-known/oauth-protected-resource/mcp-account': {
     parameters: {
       query?: never;
       header?: never;
@@ -1094,7 +1094,7 @@ export interface paths {
       cookie?: never;
     };
     /** Oauth Protected Resource Metadata */
-    get: operations['oauth_protected_resource_metadata__well_known_oauth_protected_resource_mcp_get'];
+    get: operations['oauth_protected_resource_metadata__well_known_oauth_protected_resource_mcp_account_get'];
     put?: never;
     post?: never;
     delete?: never;
@@ -1112,6 +1112,27 @@ export interface paths {
     };
     /** Oauth Protected Resource Metadata */
     get: operations['oauth_protected_resource_metadata__well_known_oauth_protected_resource_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/.well-known/oauth-protected-resource/mcp': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Oauth Protected Resource Metadata Public
+     * @description La porte publique accepte aussi un token : un client deja connecte
+     *     peut viser `/mcp` et ecrire. Le document doit donc exister pour elle.
+     */
+    get: operations['oauth_protected_resource_metadata_public__well_known_oauth_protected_resource_mcp_get'];
     put?: never;
     post?: never;
     delete?: never;
@@ -4687,7 +4708,7 @@ export interface operations {
       };
     };
   };
-  oauth_protected_resource_metadata__well_known_oauth_protected_resource_mcp_get: {
+  oauth_protected_resource_metadata__well_known_oauth_protected_resource_mcp_account_get: {
     parameters: {
       query?: never;
       header?: never;
@@ -4708,6 +4729,26 @@ export interface operations {
     };
   };
   oauth_protected_resource_metadata__well_known_oauth_protected_resource_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': unknown;
+        };
+      };
+    };
+  };
+  oauth_protected_resource_metadata_public__well_known_oauth_protected_resource_mcp_get: {
     parameters: {
       query?: never;
       header?: never;

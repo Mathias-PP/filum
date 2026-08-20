@@ -9,7 +9,7 @@ inexistante et l'erreur remonte en prod. Ce test bloque l'oubli au commit.
 Si ce test echoue :
 
     cd apps/backend
-    uv run python -m app.scripts.export_openapi > openapi.json
+    uv run python -m app.scripts.export_openapi
     cd ../frontend
     pnpm run generate:api
 
@@ -28,7 +28,7 @@ def test_openapi_committe_reflete_l_app_courante():
     fichier = Path(__file__).resolve().parents[2] / "openapi.json"
     assert fichier.exists(), (
         "openapi.json manquant. Regenerer avec "
-        "`uv run python -m app.scripts.export_openapi > openapi.json`."
+        "`uv run python -m app.scripts.export_openapi`."
     )
 
     committe = json.loads(fichier.read_text(encoding="utf-8"))
@@ -49,6 +49,6 @@ def test_openapi_committe_reflete_l_app_courante():
         raise AssertionError(
             "openapi.json ne reflete plus le code. "
             + " ; ".join(details)
-            + ". Regenerer avec `uv run python -m app.scripts.export_openapi > openapi.json` "
+            + ". Regenerer avec `uv run python -m app.scripts.export_openapi` "
             "puis `pnpm run generate:api` cote frontend."
         )

@@ -3050,10 +3050,10 @@
         }
       }
     },
-    "/.well-known/oauth-protected-resource/mcp": {
+    "/.well-known/oauth-protected-resource/mcp-account": {
       "get": {
         "summary": "Oauth Protected Resource Metadata",
-        "operationId": "oauth_protected_resource_metadata__well_known_oauth_protected_resource_mcp_get",
+        "operationId": "oauth_protected_resource_metadata__well_known_oauth_protected_resource_mcp_account_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -3070,6 +3070,23 @@
       "get": {
         "summary": "Oauth Protected Resource Metadata",
         "operationId": "oauth_protected_resource_metadata__well_known_oauth_protected_resource_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/.well-known/oauth-protected-resource/mcp": {
+      "get": {
+        "summary": "Oauth Protected Resource Metadata Public",
+        "description": "La porte publique accepte aussi un token : un client deja connecte\npeut viser `/mcp` et ecrire. Le document doit donc exister pour elle.",
+        "operationId": "oauth_protected_resource_metadata_public__well_known_oauth_protected_resource_mcp_get",
         "responses": {
           "200": {
             "description": "Successful Response",

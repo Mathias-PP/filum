@@ -42,12 +42,26 @@
     ['get_card', 'Détail d’une fiche (créateur + slug) avec ses sources.'],
     ['get_source', 'Détail complet d’une source (annotation, archive, taxonomie).'],
     ['find_cards_citing', 'Quelles fiches citent une URL donnée.'],
+    ['create_card, add_source, add_excerpt', 'Construire une fiche, source par source.'],
+    ['import_from_content_url', 'Extraire les sources citées dans un contenu.'],
+    ['suggest_excerpts, annotate_excerpt', 'Propositions d’extraits et de mises en situation.'],
+    ['verify_excerpts', 'Relire les extraits posés face à la page d’origine.'],
+    ['create_content_attestation', 'Signer le contenu documenté en Ed25519.'],
+    ['publish_card', 'Publier la fiche.'],
   ];
 
-  const mcpConfig = `{
+  const mcpConfigPublic = `{
   "mcpServers": {
     "philum": {
-      "url": "${MCP_URL}"
+      "url": "${MCP_URL}/"
+    }
+  }
+}`;
+
+  const mcpConfigCompte = `{
+  "mcpServers": {
+    "philum": {
+      "url": "${MCP_URL}-account/"
     }
   }
 }`;
@@ -132,17 +146,32 @@
         rel="noopener"
         class="text-accent hover:underline">Model Context Protocol</a
       >
-      en lecture seule : un assistant IA (Claude, etc.) peut interroger les bibliographies publiées et
-      citer ses sources.
+      : un assistant IA (Claude, Cursor, Gemini…) peut interroger les bibliographies publiées, citer ses
+      sources, et construire des fiches à votre place. Deux adresses, selon ce que vous voulez faire.
     </p>
-    <div class="bg-surface-secondary border border-border rounded-xl p-5 mb-4" use:reveal>
-      <p class="text-sm font-semibold text-ink-primary mb-2">
-        Configuration client (Claude Desktop, Claude Code…)
-      </p>
-      <pre
-        class="bg-surface-primary border border-border rounded-lg p-3 text-xs overflow-x-auto"><code
-          >{mcpConfig}</code
-        ></pre>
+    <div class="grid gap-4 sm:grid-cols-2 mb-4">
+      <div class="bg-surface-secondary border border-border rounded-xl p-5" use:reveal>
+        <p class="text-sm font-semibold text-ink-primary mb-1">Lecture publique</p>
+        <p class="text-sm text-ink-secondary mb-3">
+          Sans compte. Pour explorer ce que Philum publie : recherche, fiches, sources, citations.
+          Fonctionne avec un modèle local ou un client sans authentification.
+        </p>
+        <pre
+          class="bg-surface-primary border border-border rounded-lg p-3 text-xs overflow-x-auto"><code
+            >{mcpConfigPublic}</code
+          ></pre>
+      </div>
+      <div class="bg-surface-secondary border border-border rounded-xl p-5" use:reveal>
+        <p class="text-sm font-semibold text-ink-primary mb-1">Avec votre compte</p>
+        <p class="text-sm text-ink-secondary mb-3">
+          Les 39 outils, dont l'écriture : créer, corriger et publier vos fiches. Votre client ouvre
+          la page d'autorisation au premier appel, vous cliquez une fois. Aucun token à copier.
+        </p>
+        <pre
+          class="bg-surface-primary border border-border rounded-lg p-3 text-xs overflow-x-auto"><code
+            >{mcpConfigCompte}</code
+          ></pre>
+      </div>
     </div>
     <div class="space-y-2">
       {#each mcpTools as [name, desc], i (name)}

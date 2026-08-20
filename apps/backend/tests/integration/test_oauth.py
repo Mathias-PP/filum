@@ -70,13 +70,22 @@ async def test_metadata_serveur_expose_les_endpoints(client):
 
 @pytest.mark.asyncio
 async def test_protected_resource_metadata_pointe_vers_l_as(client):
-    """RFC 9728 : ce que le client MCP lit apres avoir vu un 401 sur /mcp/."""
+    """RFC 9728 : ce que le client MCP lit apres avoir vu un 401 sur /mcp-account/.
+
+    Le document par defaut decrit la porte qui exige une authentification.
+    La porte publique a son propre document sous /mcp-account.
+    """
     r = await client.get("/.well-known/oauth-protected-resource")
     assert r.status_code == 200
     data = r.json()
-    assert data["resource"].endswith("/mcp/")
+    assert data["resource"].endswith("/mcp-account/")
     assert len(data["authorization_servers"]) == 1
     assert data["bearer_methods_supported"] == ["header"]
+
+    # La porte publique a son propre document.
+    r2 = await client.get("/.well-known/oauth-protected-resource/mcp")
+    assert r2.status_code == 200
+    assert r2.json()["resource"].endswith("/mcp/")
 
 
 @pytest.mark.asyncio
@@ -307,35 +316,23 @@ async def test_pkce_verifier_invalide_est_refuse(client, test_user):
 
 
 @pytest.mark.asyncio
-async def test_www_authenticate_middleware_construit_le_header():
-    """Le middleware pose le WWW-Authenticate sur les 401 du chemin /mcp.
+async def test_mcp_authentification_middleware():
+    """La porte /mcp-account repond 401 + WWW-Authenticate quand aucun token n'est fourni.
 
-    Test unitaire du middleware sans passer par le vrai serveur MCP (qui
-    exige un lifespan initialise, pas trivial en test).
+    Teste le middleware `mcp_authentification` directement sur l'app principale.
+    Les tests de comportement plus detailles vivent dans test_mcp_mount.py.
     """
-    from starlette.applications import Starlette
-    from starlette.middleware.base import BaseHTTPMiddleware
-    from starlette.responses import Response as StResponse
-    from starlette.routing import Route
-    from starlette.testclient import TestClient
+    from fastapi.testclient import TestClient
 
-    from app.main import mcp_www_authenticate
+    from app.main import _mcp_rate_storage, app
 
-    async def fake_mcp(_request):
-        return StResponse(status_code=401)
-
-    async def homepage(_request):
-        return StResponse(status_code=200)
-
-    app = Starlette(routes=[Route("/mcp/", fake_mcp), Route("/", homepage)])
-    app.add_middleware(BaseHTTPMiddleware, dispatch=mcp_www_authenticate)
-
+    _mcp_rate_storage.reset()
     with TestClient(app) as client:
-        r = client.get("/mcp/")
+        r = client.get("/mcp-account/", follow_redirects=False)
         assert r.status_code == 401
         auth = r.headers.get("WWW-Authenticate", "")
         assert "resource_metadata=" in auth
-        assert "/.well-known/oauth-protected-resource" in auth
-        # Le header ne s'ajoute pas hors /mcp
-        r = client.get("/")
-        assert "WWW-Authenticate" not in r.headers
+        assert "/.well-known/oauth-protected-resource/mcp-account" in auth
+        # La porte publique n'est pas bloquee sans token
+        r2 = client.get("/mcp", follow_redirects=False)
+        assert r2.status_code != 401

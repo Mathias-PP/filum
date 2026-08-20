@@ -2,7 +2,14 @@
 
 Tous les outils sont préfixés `mcp__philum__`.
 
-**Authentification** (nouvelle depuis 2026-08-18) : le serveur MCP Philum supporte **OAuth 2.1 avec Dynamic Client Registration** (RFC 7591) + PKCE. Ajouter `https://philum-api.duckdns.org/mcp/` dans son client MCP (Claude Code, Cursor, ChatGPT, Zed…) déclenche automatiquement le flow : popup navigateur, login Google, un clic « Autoriser », terminé. Aucun token à coller à la main. Le token est stocké et rafraîchi automatiquement par le client MCP.
+**Authentification** (depuis 2026-08-20) : deux adresses, à choisir selon ce qu'on vient faire.
+
+| URL à mettre dans le client MCP | Comportement |
+|---|---|
+| `https://philum-api.duckdns.org/mcp-account/` | **Pour créer des fiches.** Répond 401 tant qu'aucun token valide n'accompagne la requête, ce qui déclenche le flow **OAuth 2.1 + Dynamic Client Registration** (RFC 7591) + PKCE : popup navigateur, login Google, un clic « Autoriser », terminé. Aucun token à coller. Le client le stocke et le rafraîchit seul. |
+| `https://philum-api.duckdns.org/mcp/` | Lecture publique anonyme. Aucun compte requis, aucune écriture possible. Pour explorer ce que Philum publie. |
+
+Un token expiré ou invalide vaut 401 sur les deux adresses : le client relance son flow au lieu de retomber silencieusement en anonyme, ce qui ferait échouer toutes les écritures sans explication.
 
 L'ancien flow (`POST /api/v1/auth/mcp-token` puis header manuel) reste supporté pour rétrocompatibilité mais est déconseillé.
 
