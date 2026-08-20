@@ -78,6 +78,16 @@ class Settings(BaseSettings):
 
     duckdb_path: str = "/data/filum_analytics.duckdb"
 
+    # --- Harness agent BYOK (chat + outils) --------------------------------
+    # Boucle de l'agent : bornes dures contre les boucles infinies et les coûts.
+    agent_max_tours: int = 24
+    agent_max_turn_tokens: int = 8192
+    # Recherche web dédiée (utilisée quand le provider courant n'expose pas de
+    # grounding natif). `agent_web_search_provider` : tavily | exa | brave |
+    # serper. Vide = recherche web désactivée pour l'agent.
+    agent_web_search_provider: str = ""
+    agent_web_search_api_key: str = ""
+
     @field_validator("database_url", mode="before")
     @classmethod
     def _coerce_async_driver(cls, value: str) -> str:
