@@ -388,7 +388,7 @@ async def update_card(
     content_type: str | None = None,
     visibility: str | None = None,
 ) -> dict[str, Any]:
-    """Corrige les champs edituriaux d'une fiche existante.
+    """Corrige les champs editoriaux d'une fiche existante.
 
     Un champ laisse a `None` reste inchange. Passer explicitement une chaine
     vide sur `content_authors` retire les auteurs (rend la main a la
@@ -1044,7 +1044,18 @@ async def get_youtube_transcript(db: AsyncSession, user: User, *, url: str) -> d
 
 async def get_url_metadata(db: AsyncSession, user: User, *, url: str) -> dict[str, Any]:
     """Metadonnees editoriales d'une URL : titre, description, auteurs, date."""
+    import asyncio
+
+    from app.core.url_safety import UnsafeUrlError, assert_url_is_safe
     from app.extractors.url_extractor import extract as extract_meta
+
+    # L'URL vient d'un agent, pas d'un formulaire : sans cette garde, un
+    # `http://169.254.169.254/...` remonterait les identifiants de la VM dans
+    # le titre. `assert_url_is_safe` resout le DNS en bloquant, d'ou le thread.
+    try:
+        await asyncio.to_thread(assert_url_is_safe, url)
+    except UnsafeUrlError as exc:
+        raise ToolError(f"URL refusee : {exc}") from exc
 
     meta = await extract_meta(url)
     if meta is None:

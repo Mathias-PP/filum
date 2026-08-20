@@ -13,6 +13,7 @@ extensions futures.
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 import httpx
@@ -110,13 +111,16 @@ async def _execute_fetch_url(ctx: ToolContext, args: dict[str, Any]) -> dict[str
     url = args.get("url")
     if not isinstance(url, str) or not url.strip():
         return {"error": "fetch_url attend url (str)."}
+    url = url.strip()
     try:
-        assert_url_is_safe(url)
+        # Resolution DNS bloquante : hors du thread, un DNS lent gele tous les
+        # flux SSE du worker.
+        await asyncio.to_thread(assert_url_is_safe, url)
     except UnsafeUrlError as exc:
         return {"error": f"URL refusée (SSRF) : {exc}"}
     from app.api.v1.endpoints.excerpts import _texte_de_la_source
 
-    texte, refuse, _complet = await _texte_de_la_source(url.strip())
+    texte, refuse, _complet = await _texte_de_la_source(url)
     if not texte.strip():
         return {"error": "Impossible de lire cette URL (page vide ou bloquée).", "blocked": refuse}
     tronque = len(texte) > _TEXT_MAX

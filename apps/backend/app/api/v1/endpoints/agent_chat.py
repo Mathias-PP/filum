@@ -104,12 +104,18 @@ async def chat_agent(
                 await queue.put(None)
 
         task = asyncio.create_task(runner())
-        while True:
-            event = await queue.get()
-            if event is None:
-                break
-            yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
-        await task
+        # Sans ce `finally`, un client qui ferme l'onglet laisse la boucle
+        # tourner jusqu'a 24 tours : elle continue de facturer le provider et
+        # d'ecrire via une session de base que FastAPI a deja fermee.
+        try:
+            while True:
+                event = await queue.get()
+                if event is None:
+                    break
+                yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+            await task
+        finally:
+            task.cancel()
 
     return StreamingResponse(
         gen(),

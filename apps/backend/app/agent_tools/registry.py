@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.agent_tools.fiche import fiche_tools
-from app.agent_tools.philum import philum_tools
+from app.agent_tools.philum import est_sensible, philum_tools
 from app.agent_tools.tool import AgentTool, ToolContext
 from app.agent_tools.web import web_tools
 from app.agent_tools.workspace import workspace_tools
@@ -45,10 +45,25 @@ async def executer(
     name: str,
     args: dict[str, Any],
     ctx: ToolContext,
+    *,
+    approbation_obtenue: bool = False,
 ) -> dict[str, Any]:
+    """Exécute un outil. Une action sensible exige `approbation_obtenue`.
+
+    La garde vit ici plutôt qu'au site d'appel : tout futur orchestrateur qui
+    passera par cette porte hérite de l'approbation sans avoir à y penser, et
+    l'oubli devient un refus au lieu d'une publication silencieuse.
+    """
     outil = registre.get(name)
     if outil is None:
         return {"error": f"Outil inconnu : {name}."}
+    if est_sensible(name, args) and not approbation_obtenue:
+        return {
+            "error": (
+                f"L'action {name} est sensible : elle exige une validation humaine "
+                "explicite et n'a pas été exécutée."
+            )
+        }
     try:
         return await outil.execute(ctx, args)
     except Exception as exc:  # noqa: BLE001 — l'agent lit l'erreur, la boucle continue

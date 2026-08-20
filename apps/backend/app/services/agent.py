@@ -170,7 +170,7 @@ async def _executer_tour(
                     "error": "Action refusée : l'utilisateur n'a pas validé cette écriture."
                 }
             else:
-                resultat = await executer(registre, nom, args, ctx)
+                resultat = await executer(registre, nom, args, ctx, approbation_obtenue=True)
         else:
             resultat = await executer(registre, nom, args, ctx)
         await emit(

@@ -43,7 +43,12 @@ def est_sensible(name: str, args: dict[str, Any]) -> bool:
     # récupéré ailleurs : l'utilisateur doit valider avant que la fiche
     # n'accuse la source. Sans texte fourni, le serveur relit la page
     # lui-même : ce n'est pas une action sensible.
-    return name == "verify_excerpts" and bool(args.get("provided_text"))
+    if name == "verify_excerpts" and args.get("provided_text"):
+        return True
+    # `update_card(visibility="public")` publie aussi sûrement que
+    # `publish_card` : sans cette branche, l'approbation se contourne en
+    # changeant d'outil.
+    return name == "update_card" and args.get("visibility") == "public"
 
 
 def _json_schema(tp: Any) -> dict[str, Any]:
@@ -82,7 +87,11 @@ def _envelopper(fonction, *, avec_utilisateur: bool) -> tuple[dict[str, Any], An
     async def _execute(ctx: ToolContext, args: dict[str, Any]) -> dict[str, Any]:
         kwargs = {k: v for k, v in args.items() if k in proprietes}
         try:
-            resultat = await fonction(ctx.db, ctx.user, **kwargs) if avec_utilisateur else await fonction(ctx.db, **kwargs)
+            resultat = (
+                await fonction(ctx.db, ctx.user, **kwargs)
+                if avec_utilisateur
+                else await fonction(ctx.db, **kwargs)
+            )
             return cast("dict[str, Any]", resultat)
         except ToolError as exc:
             return {"error": str(exc)}
@@ -114,6 +123,8 @@ _ECRITURE = (
     "add_sources_batch",
     "get_url_metadata",
     "import_from_content_url",
+    "archive_sources",
+    "create_content_attestation",
 )
 
 

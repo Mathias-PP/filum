@@ -174,7 +174,9 @@ async def test_chat_action_sensible_refusee_par_defaut(client, session_token, db
 
 
 @pytest.mark.asyncio
-async def test_chat_isolation_entre_createurs(client, db_session, test_user, auth_service):
+async def test_chat_nemprunte_pas_le_provider_dun_autre(
+    client, db_session, test_user, auth_service
+):
     await _inserer_provider_defaut(db_session, test_user)
 
     autre = __import__("app.models.user", fromlist=["User"]).User(

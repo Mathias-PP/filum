@@ -99,6 +99,32 @@ class TestSensibilite:
         assert est_sensible("fs_read", {"path": "AGENTS.md"}) is False
         assert est_sensible("web_search", {"query": "x"}) is False
 
+    def test_update_card_public_est_sensible(self):
+        # Publier via `update_card` contourne `publish_card` : même porte.
+        assert est_sensible("update_card", {"slug": "f", "visibility": "public"}) is True
+        assert est_sensible("update_card", {"slug": "f", "visibility": "private"}) is False
+        assert est_sensible("update_card", {"slug": "f", "title": "T"}) is False
+
+    def test_pas_de_sensible_mort(self):
+        # Un nom classé sensible mais absent du registre est une garde qui ne
+        # garde rien : la liste et les outils exposés doivent rester alignés.
+        assert SENSITIVE_TOOLS <= set(construire_registre())
+
+    def test_tout_outil_irreversible_est_sensible(self):
+        # La réciproque : un outil qui publie, détruit, signe ou envoie vers un
+        # tiers ne doit jamais s'exécuter sans feu vert humain.
+        irreversibles = {
+            "publish_card",
+            "delete_card",
+            "delete_source",
+            "delete_excerpt",
+            "create_content_attestation",
+            "archive_sources",
+        }
+        registre = construire_registre()
+        for nom in irreversibles & set(registre):
+            assert est_sensible(nom, {}) is True, f"{nom} exposé mais non sensible"
+
 
 class TestRegistre:
     def test_registre_contient_les_domaines(self):
@@ -121,6 +147,26 @@ class TestRegistre:
         ctx = ToolContext(db=db_session, user=test_user, creator_id=test_user.id)
         resultat = await executer({}, "nimporte_quoi", {}, ctx)
         assert resultat["error"]
+
+    @pytest.mark.asyncio
+    async def test_executer_refuse_le_sensible_sans_approbation(self, db_session, test_user):
+        # La garde vit dans `executer`, pas au site d'appel : un orchestrateur
+        # qui oublierait l'approbation obtient un refus, pas une publication.
+        registre = construire_registre()
+        ctx = ToolContext(db=db_session, user=test_user, creator_id=test_user.id)
+        resultat = await executer(registre, "publish_card", {"slug": "inexistante"}, ctx)
+        assert "validation humaine" in resultat["error"]
+
+    @pytest.mark.asyncio
+    async def test_executer_sensible_approuve_atteint_loutil(self, db_session, test_user):
+        executed: list[dict] = []
+        registre = _registre_fake(executed)
+        ctx = ToolContext(db=db_session, user=test_user, creator_id=test_user.id)
+        resultat = await executer(
+            registre, "publish_card", {"slug": "f"}, ctx, approbation_obtenue=True
+        )
+        assert resultat == {"ok": True}
+        assert executed == [{"slug": "f"}]
 
     @pytest.mark.asyncio
     async def test_executer_exception_devenue_resultat(self, db_session, test_user):
