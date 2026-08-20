@@ -206,8 +206,9 @@ async def exchange_code_for_token(
         "sub": str(entry.user_id),
         "iat": int(now.timestamp()),
         "exp": int(expire.timestamp()),
-        # Marque l'origine du token pour audit (le middleware MCP ne l'utilise
-        # pas mais un futur revoke ou un log d'acces peut s'en servir).
+        # Marque l'origine du token pour audit. `app/mcp_server/auth.py` doit
+        # decoder avec `verify_aud=False` : PyJWT rejette un token porteur
+        # d'`aud` quand l'appelant n'en annonce aucune.
         "aud": "mcp",
         "client_id": client_id,
     }
