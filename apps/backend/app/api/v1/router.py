@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     agent_chat,
     agent_providers,
+    agent_sessions,
     agent_workspace,
     attestations,
     auth,
@@ -23,6 +24,7 @@ v1_router = APIRouter()
 
 v1_router.include_router(agent_chat.router)
 v1_router.include_router(agent_providers.router)
+v1_router.include_router(agent_sessions.router)
 v1_router.include_router(agent_workspace.router)
 v1_router.include_router(attestations.router)
 v1_router.include_router(auth.router)

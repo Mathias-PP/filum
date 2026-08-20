@@ -259,7 +259,7 @@ class TestBoucle:
         appels = {"n": 0}
         executed = []
 
-        async def approuve(tool, args):
+        async def approuve(request_id, tool, args):
             return True
 
         def handler(request):
@@ -303,5 +303,5 @@ class TestBoucle:
         assert "500" in events[-1]["payload"]["message"]
 
 
-async def _refuse(tool: str, args: dict) -> bool:
+async def _refuse(request_id: str, tool: str, args: dict) -> bool:
     return False

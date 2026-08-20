@@ -1,4 +1,5 @@
 from app.models.agent_provider import AgentProvider
+from app.models.agent_session import AgentMessage, AgentSession
 from app.models.audit_event import AuditEvent
 from app.models.biblio_card import BiblioCard
 from app.models.claim_request import ClaimRequest
@@ -15,6 +16,8 @@ from app.models.workspace_file import WorkspaceFile
 __all__ = [
     "User",
     "AgentProvider",
+    "AgentMessage",
+    "AgentSession",
     "BiblioCard",
     "ClaimRequest",
     "ContentAttestation",
