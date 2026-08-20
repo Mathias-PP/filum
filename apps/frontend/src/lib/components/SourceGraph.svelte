@@ -85,6 +85,8 @@
     creatorName: string | null;
     /** Auteurs réels du contenu documenté, remontés par le backend. */
     authors: string | null;
+    /** Date du contenu documenté (parution du papier), remontée par le backend. */
+    published_at: string | null;
     sourcesCount: number;
     format: SourceFormat | null;
     category: SourceCategory | null;
@@ -247,6 +249,8 @@
   // Auteurs réels de la fiche racine : elle ne les porte pas non plus, ils
   // viennent du méta-graphe quand une autre fiche la cite.
   let rootAuthors = $state<string | null>(null);
+  /** Date du contenu documenté par la fiche racine, remontée par le méta-graphe. */
+  let rootPublishedAt = $state<string | null>(null);
   // Arêtes fiche → fiche du voisinage, dans les deux sens.
   let cardLinks = $state<CardLink[]>([]);
   let neighborSources = new Map<string, GraphSourceData[]>();
@@ -469,15 +473,18 @@
   /**
    * Année d'un nœud, ou chaîne vide si elle est inconnue.
    *
-   * Même source de vérité que la frise : un nœud fiche n'a pas de date propre,
-   * il prend celle de la référence qu'il absorbe. Les deux modes doivent dater
-   * un nœud à l'identique, sinon la frise contredirait l'étiquette.
+   * Même source de vérité que la frise : un nœud fiche porte la date du
+   * contenu qu'il documente (reconstruite par le backend depuis les fiches qui
+   * le citent), la référence absorbée faisant foi à défaut. Les deux modes
+   * doivent dater un nœud à l'identique, sinon la frise contredirait
+   * l'étiquette.
    */
   function nodeYear(d: GraphNode): string {
     const raw =
       d.source?.published_at ??
+      d.cardMeta?.published_at ??
       d.absorbedSource?.published_at ??
-      (d.id === cardId ? card.published_at : null);
+      (d.id === cardId ? (rootPublishedAt ?? card.published_at) : null);
     if (!raw) return '';
     const y = new Date(raw).getFullYear();
     return Number.isNaN(y) ? '' : String(y);
@@ -618,6 +625,7 @@
           creatorSlug: n.creator_slug ?? '',
           creatorName: n.creator_name ?? null,
           authors: n.authors ?? null,
+          published_at: n.published_at ?? null,
           sourcesCount: n.sources_count ?? 0,
           format: (n.format ?? null) as SourceFormat | null,
           category: (n.category ?? null) as SourceCategory | null,
@@ -673,6 +681,7 @@
     // appauvries (pas d'extraits, pas d'archive).
     byCard.delete(card.id);
     rootAuthors = cards.get(card.id)?.authors ?? null;
+    rootPublishedAt = cards.get(card.id)?.published_at ?? null;
     cards.delete(card.id);
     neighborSources = byCard;
     neighborCards = cards;
@@ -1378,12 +1387,13 @@
               .filter((n) => n.tier !== 'junction')
               .map((n) => ({
                 id: n.id,
-                // Un nœud fiche n'a pas de date propre : on prend celle de la
-                // référence qu'il absorbe, et la fiche racine connaît la sienne.
+                // Un nœud fiche porte la date du contenu qu'il documente ;
+                // la référence absorbée et la fiche racine complètent.
                 published_at:
                   n.source?.published_at ??
+                  n.cardMeta?.published_at ??
                   n.absorbedSource?.published_at ??
-                  (n.id === cardId ? card.published_at : null),
+                  (n.id === cardId ? (rootPublishedAt ?? card.published_at) : null),
               })),
             width - CHRONO_MARGIN * 2
           )

@@ -258,8 +258,18 @@ async def oauth_token(
 
 def _base_url(request: Request) -> str:
     """L'URL publique du serveur, sans slash final. Utilise pour construire
-    les endpoints dans les metadata OAuth."""
-    return f"{request.url.scheme}://{request.url.netloc}"
+    les endpoints dans les metadata OAuth.
+
+    Force `https` sauf pour localhost/127.0.0.1 : les clients OAuth 2.1
+    refusent un issuer non-HTTPS (specs, RFC 8414 § 2). Ceinture et bretelles
+    au cas ou `--proxy-headers` ne transmettrait pas correctement le scheme
+    depuis Caddy (mesure sur prod le 2026-08-18 : issuer sortait en `http`).
+    """
+    scheme = request.url.scheme
+    host = request.url.netloc
+    if scheme == "http" and not (host.startswith("localhost") or host.startswith("127.0.0.1")):
+        scheme = "https"
+    return f"{scheme}://{host}"
 
 
 def build_authorization_server_metadata(request: Request) -> dict[str, Any]:
