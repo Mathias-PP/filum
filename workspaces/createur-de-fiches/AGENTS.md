@@ -27,6 +27,8 @@ workspaces/createur-de-fiches/
 │   └── voix-createur.md         (style, longueurs, mots interdits)
 ├── _core/templates/             (squelettes copiables)
 │   ├── brief.md, source.md, extrait.md
+├── _core/audit/                 (audit de fiche : titre + dates, alertes non bloquantes)
+│   └── audit_fiche.py
 ├── stages/                      (Layer 2 : contrats d'étape)
 │   ├── 01-brief/CONTEXT.md      + output/
 │   ├── 02-sources-collectees/CONTEXT.md + output/
@@ -49,6 +51,7 @@ workspaces/createur-de-fiches/
 | Savoir quel tool MCP appeler quand | `shared/philum-mcp.md` |
 | Vérifier ce qu'on ne fait jamais | `shared/garde-fous.md` |
 | Écrire un titre, une annotation, un extrait | `shared/voix-createur.md` |
+| Auditer titre/date d'une fiche (alertes) | `_core/audit/audit_fiche.py <slug>` |
 | Voir le pipeline en un coup d'œil | `CONTEXT.md` |
 
 ## Triggers

@@ -82,3 +82,42 @@ return response.json()
 **Résolution.** Deux options :
 1. **Vivre avec** : les pivots portent une étoile visible dans la fiche publique, l'ordre est peu critique.
 2. **Rebuild manuel** : `DELETE` toutes les sources dans l'ordre, puis les recréer dans l'ordre voulu. Coûteux (perte des UUID, perte des connexions entrantes). N'y aller que si vraiment nécessaire.
+
+---
+
+## 8. Titre de fiche reformulé au lieu du titre exact du contenu
+
+**Symptôme.** La fiche porte « Stellarator contre tokamak : Stellaris, un concept de centrale à fusion en continu » alors que le contenu documenté s'intitule « Stellaris: A high-field quasi-isodynamic stellarator for a prototypical fusion power plant ». Le lecteur ne retrouve pas le contenu au titre de la fiche.
+
+**Cause.** L'ancienne règle éditoriale « le titre de la fiche ≠ le titre du contenu » poussait à reformuler. Cette règle est **abrogée** (directive utilisateur 2026-08-19).
+
+**Résolution.**
+- Règle actuelle : **titre de la fiche = titre exact du contenu**, quel que soit le type (article, blog, vidéo…).
+- Vérifier le titre du contenu sur une source d'autorité (Crossref pour les articles) avant de créer la fiche.
+- Si détecté après coup : `PATCH /cards/{id}` avec `title` corrigé, puis relire l'export publié.
+
+---
+
+## 9. Sources affichées « s. d. » alors que la date de publication est connue
+
+**Symptôme.** Toutes les sources d'une fiche affichent « s. d. » dans la fiche publique. Le graphe remonte `published_at: null` pour chaque source.
+
+**Cause.** `add_source` a été appelé sans `published_at`. Les dates existaient pourtant (Crossref/éditeur), personne ne les a renseignées.
+
+**Résolution.**
+- Au moment d'ajouter une source, lancer l'extraction de métadonnées (`GET /sources/extract?url=...`) et poser `published_at` avec la date trouvée (Crossref `published` pour les articles).
+- Si détecté après coup : `PATCH /sources/{id}` avec `{"published_at": "YYYY-MM-DDT00:00:00Z"}`.
+- Règle actuelle : une date connue doit figurer ; une date introuvable se trace (« pas de date trouvée » dans l'audit).
+
+---
+
+## 10. La fiche affiche la date de publication Philum au lieu de la date du contenu
+
+**Symptôme.** La fiche publique montre « Publiée le 19 août 2026 » (ou l'année 2026 sur le graphe) alors que le contenu documenté est sorti en 2025. Le `citation_publication_date` de la page reprend `card.published_at` (horodatage de publication Philum).
+
+**Cause.** La carte n'a pas de métadonnées de date de contenu renseignées : le nœud carte du graphe a `published_at: null` et l'interface retombe sur la date de publication de la fiche.
+
+**Résolution.**
+- La date affichée pour le contenu doit être celle du contenu, pas l'horodatage de publication Philum (deux notions distinctes, directive utilisateur).
+- Renseigner la date de publication du contenu sur la fiche au moment de sa création (via l'extraction du `content_url`), et vérifier à l'étape 07 que la page affiche l'année du contenu.
+- Un correctif serveur propre (exposer/remplir une métadonnée de date de contenu distincte de `published_at`) reste à faire ; à ce stade, noter l'écart en alerte d'audit tant que le mécanisme n'est pas exposé par l'API.

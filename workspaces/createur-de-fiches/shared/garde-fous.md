@@ -19,6 +19,9 @@ Chaque règle bloque une action, avec la raison. Aucune n'est négociable.
 ## Sur les métadonnées
 
 - **Refuser d'inventer DOI, date, pagination, journal.** Absence > invention.
+- **Le titre de la fiche est le titre exact du contenu documenté**, quel que soit le type de contenu (article, blog, vidéo, livre…). Aucune reformulation, aucun ajout, aucune traduction.
+- **Une date de publication connue doit figurer** — sur la fiche (date du contenu) et sur chaque source. La date se prend sur le contenu lui-même ; Crossref en source complémentaire pour les articles.
+- **Une date introuvable se trace** : noter « pas de date trouvée » dans l'audit. Ce n'est jamais une excuse pour laisser une date connue absente.
 - **Vérifier via une source d'autorité** avant d'écrire :
   - DOI et référence complète : Crossref (`https://api.crossref.org/works/{doi}`) ou OpenAlex.
   - Date de publication : la source elle-même, jamais un tiers.
@@ -41,6 +44,7 @@ Chaque règle bloque une action, avec la raison. Aucune n'est négociable.
 
 ## Sur la publication
 
+- **Les vérifications titre/date sont des alertes, pas des verrous.** Aucune alerte ne bloque la publication par elle-même : elle est listée dans le verdict de relecture et la décision revient à l'humain.
 - **Refuser de publier sans que `stages/06-relecture/output/<slug>-verdict.md` rende `go: yes`** en frontmatter. Une publication est un événement de feed unique : on ne rembobine pas.
 - **Refuser de publier si un extrait est marqué `verified_status=missing`** sans autorisation utilisateur explicite.
 

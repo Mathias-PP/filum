@@ -13,7 +13,7 @@ Les textes générés par l'agent (titre, description, annotation, titre d'extra
 
 | Élément | Longueur |
 |---|---|
-| Titre de fiche | 40 à 90 caractères, phrase complète, sans doublon avec le titre du contenu |
+| Titre de fiche | **Titre exact du contenu documenté**, tel que publié par son auteur (aucune longueur imposée) |
 | Description de fiche | 2 à 4 phrases, ~250 à 500 caractères |
 | Annotation d'une source | 1 à 3 phrases, ~100 à 300 caractères |
 | Titre d'un extrait | 2 à 6 mots, dit ce qu'on trouve dedans |
