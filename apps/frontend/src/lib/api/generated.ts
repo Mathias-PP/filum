@@ -80,6 +80,59 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/agent/workspace/tree': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Arbre Workspace */
+    get: operations['arbre_workspace_api_v1_agent_workspace_tree_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/agent/workspace/file': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Lire Fichier */
+    get: operations['lire_fichier_api_v1_agent_workspace_file_get'];
+    /** Ecrire Fichier */
+    put: operations['ecrire_fichier_api_v1_agent_workspace_file_put'];
+    post?: never;
+    /** Supprimer Fichier */
+    delete: operations['supprimer_fichier_api_v1_agent_workspace_file_delete'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/agent/workspace/seed': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Re Seed Workspace */
+    post: operations['re_seed_workspace_api_v1_agent_workspace_seed_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/attestations/content': {
     parameters: {
       query?: never;
@@ -2929,6 +2982,38 @@ export interface components {
      * @enum {string}
      */
     Visibility: 'public' | 'private';
+    /** WorkspaceFileRead */
+    WorkspaceFileRead: {
+      /** Path */
+      path: string;
+      /** Sha256 */
+      sha256: string;
+      /** Content */
+      content: string;
+      /** Created At */
+      created_at?: string | null;
+      /** Updated At */
+      updated_at?: string | null;
+    };
+    /** WorkspaceFileWrite */
+    WorkspaceFileWrite: {
+      /** Content */
+      content: string;
+    };
+    /** WorkspaceTreeEntry */
+    WorkspaceTreeEntry: {
+      /** Path */
+      path: string;
+      /**
+       * Type
+       * @enum {string}
+       */
+      type: 'file' | 'directory';
+      /** Sha256 */
+      sha256?: string | null;
+      /** Updated At */
+      updated_at?: string | null;
+    };
     /** YoutubeTranscriptRequest */
     YoutubeTranscriptRequest: {
       /** Url */
@@ -3141,6 +3226,152 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  arbre_workspace_api_v1_agent_workspace_tree_get: {
+    parameters: {
+      query?: {
+        prefix?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['WorkspaceTreeEntry'][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  lire_fichier_api_v1_agent_workspace_file_get: {
+    parameters: {
+      query: {
+        path: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['WorkspaceFileRead'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  ecrire_fichier_api_v1_agent_workspace_file_put: {
+    parameters: {
+      query: {
+        path: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['WorkspaceFileWrite'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['WorkspaceFileRead'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  supprimer_fichier_api_v1_agent_workspace_file_delete: {
+    parameters: {
+      query: {
+        path: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  re_seed_workspace_api_v1_agent_workspace_seed_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': unknown;
         };
       };
     };

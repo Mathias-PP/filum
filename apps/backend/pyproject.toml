@@ -67,6 +67,10 @@ analytics = [
 [tool.ruff]
 target-version = "py312"
 line-length = 100
+# Le snapshot gelé du template ICM est du contenu embarqué, pas notre code :
+# il ne doit ni être linté ni être reformaté (il est copié tel quel dans le
+# workspace de chaque créateur).
+exclude = ["app/agent_workspace_seed"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]

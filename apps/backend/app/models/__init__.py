@@ -10,6 +10,7 @@ from app.models.oauth import OAuthAuthorizationCode, OAuthClient
 from app.models.source import Source
 from app.models.source_excerpt import SourceExcerpt
 from app.models.user import User
+from app.models.workspace_file import WorkspaceFile
 
 __all__ = [
     "User",
@@ -27,4 +28,5 @@ __all__ = [
     "Source",
     "SourceExcerpt",
     "AuditEvent",
+    "WorkspaceFile",
 ]
