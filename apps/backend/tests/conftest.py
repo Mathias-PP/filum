@@ -41,6 +41,7 @@ import app.models.claim_request  # noqa: E402, F401
 import app.models.linked_account  # noqa: E402, F401
 import app.models.source  # noqa: E402, F401
 import app.models.source_excerpt  # noqa: E402, F401
+import app.models.workspace_file  # noqa: E402, F401
 
 
 @pytest_asyncio.fixture

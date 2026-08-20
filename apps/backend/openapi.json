@@ -219,6 +219,203 @@
         }
       }
     },
+    "/api/v1/agent/workspace/tree": {
+      "get": {
+        "tags": [
+          "agent-workspace"
+        ],
+        "summary": "Arbre Workspace",
+        "operationId": "arbre_workspace_api_v1_agent_workspace_tree_get",
+        "parameters": [
+          {
+            "name": "prefix",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Prefix"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WorkspaceTreeEntry"
+                  },
+                  "title": "Response Arbre Workspace Api V1 Agent Workspace Tree Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent/workspace/file": {
+      "get": {
+        "tags": [
+          "agent-workspace"
+        ],
+        "summary": "Lire Fichier",
+        "operationId": "lire_fichier_api_v1_agent_workspace_file_get",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceFileRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "agent-workspace"
+        ],
+        "summary": "Ecrire Fichier",
+        "operationId": "ecrire_fichier_api_v1_agent_workspace_file_put",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceFileWrite"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceFileRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "agent-workspace"
+        ],
+        "summary": "Supprimer Fichier",
+        "operationId": "supprimer_fichier_api_v1_agent_workspace_file_delete",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Path"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent/workspace/seed": {
+      "post": {
+        "tags": [
+          "agent-workspace"
+        ],
+        "summary": "Re Seed Workspace",
+        "operationId": "re_seed_workspace_api_v1_agent_workspace_seed_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/attestations/content": {
       "post": {
         "tags": [
@@ -8243,6 +8440,113 @@
           "private"
         ],
         "title": "Visibility"
+      },
+      "WorkspaceFileRead": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "sha256": {
+            "type": "string",
+            "title": "Sha256"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "path",
+          "sha256",
+          "content"
+        ],
+        "title": "WorkspaceFileRead"
+      },
+      "WorkspaceFileWrite": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "maxLength": 1000000,
+            "title": "Content"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "title": "WorkspaceFileWrite"
+      },
+      "WorkspaceTreeEntry": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "file",
+              "directory"
+            ],
+            "title": "Type"
+          },
+          "sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sha256"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "path",
+          "type"
+        ],
+        "title": "WorkspaceTreeEntry"
       },
       "YoutubeTranscriptRequest": {
         "properties": {

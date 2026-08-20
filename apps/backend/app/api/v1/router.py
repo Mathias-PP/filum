@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
     agent_providers,
+    agent_workspace,
     attestations,
     auth,
     card_connections,
@@ -20,6 +21,7 @@ from app.api.v1.endpoints import (
 v1_router = APIRouter()
 
 v1_router.include_router(agent_providers.router)
+v1_router.include_router(agent_workspace.router)
 v1_router.include_router(attestations.router)
 v1_router.include_router(auth.router)
 v1_router.include_router(card_connections.router)
