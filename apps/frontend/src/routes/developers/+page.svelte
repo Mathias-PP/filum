@@ -146,9 +146,8 @@
         rel="noopener"
         class="text-accent hover:underline">Model Context Protocol</a
       >
-      : un assistant IA (Claude, Cursor, Gemini…) peut interroger les bibliographies publiées, citer
-      ses sources, et construire des fiches à votre place. Deux adresses, selon ce que vous voulez
-      faire.
+      : un assistant IA (Claude, Cursor, Gemini…) peut interroger les bibliographies publiées, citer ses
+      sources, et construire des fiches à votre place. Deux adresses, selon ce que vous voulez faire.
     </p>
     <div class="grid gap-4 sm:grid-cols-2 mb-4">
       <div class="bg-surface-secondary border border-border rounded-xl p-5" use:reveal>
