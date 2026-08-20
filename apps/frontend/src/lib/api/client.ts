@@ -40,9 +40,9 @@ import { normalizeCardDetail, normalizeSource } from './legacy-adapter';
 // exact symptom of the "Echec de l'authentification" reported on mobile only.
 // On SSR (during page render on Vercel) we may still use the env var if set,
 // but it works equally well with a relative path through the same proxy.
-const API_BASE = browser ? '/api/v1' : `${env.PUBLIC_API_BASE_URL ?? ''}/api/v1`;
+export const API_BASE = browser ? '/api/v1' : `${env.PUBLIC_API_BASE_URL ?? ''}/api/v1`;
 
-class ApiError extends Error {
+export class ApiError extends Error {
   constructor(
     public status: number,
     public code: string,
@@ -54,7 +54,7 @@ class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+export async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   // Un envoi multipart porte une frontière générée par le navigateur ; imposer
   // `application/json` la remplacerait et le serveur ne trouverait plus le
   // fichier dans un corps qu'il ne sait plus découper.
@@ -508,5 +508,4 @@ export const api = {
   },
 };
 
-export { ApiError };
 export type { ApiError as ApiErrorType };
