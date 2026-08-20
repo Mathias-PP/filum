@@ -102,7 +102,7 @@ Hook prévu dans `parse_content_url` : paramètre `use_playwright: bool = False`
 
 **Décision :** Génération de `src/lib/api/generated.ts` via `openapi-typescript` (devDependency frontend, ~0 dep transitive) à partir d'un export offline du schéma :
 
-1. `cd apps/backend && uv run python -m app.scripts.export_openapi > openapi.json` (aucun serveur ni DB requis, env vars factices) ;
+1. `cd apps/backend && uv run python -m app.scripts.export_openapi` (aucun serveur ni DB requis, env vars factices) ;
 2. `cd apps/frontend && pnpm generate:api`.
 
 `generated.ts` est commité (diff lisible en PR = le drift devient visible en review). `openapi.json` est un artefact gitignoré. Les types manuels `types.ts` restent la surface utilisée par `client.ts` pour l'instant : `generated.ts` sert de référence de vérité et permet une migration progressive des interfaces (les remplacer d'un bloc serait un refactor risqué sans gain immédiat).

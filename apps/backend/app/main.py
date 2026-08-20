@@ -51,6 +51,57 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 
+# --- Deux portes d'entree MCP ----------------------------------------------
+#
+# `/mcp` : lecture publique. Aucun compte requis, un agent anonyme (LLM local,
+# client sans compte Philum) explore ce que Philum publie.
+# `/mcp-account` : agit au nom d'un compte. Repond 401 tant qu'aucun token
+# valide n'accompagne la requete, ce qui declenche la decouverte OAuth du
+# client (spec MCP 2025-06-18 § 2.1.5) et donc la connexion en un clic.
+#
+# Sur les deux portes, un Bearer *present mais invalide ou expire* vaut 401 :
+# le client relance son flow au lieu de retomber silencieusement en anonyme,
+# ou l'utilisateur croirait etre connecte alors que ses ecritures echouent.
+
+MCP_PATH_PUBLIC = "/mcp"
+MCP_PATH_COMPTE = "/mcp-account"
+
+
+@app.middleware("http")
+async def mcp_authentification(request: Request, call_next):
+    path = request.url.path
+    if path.startswith(MCP_PATH_PUBLIC) or path.startswith(MCP_PATH_COMPTE):
+        from app.api.v1.endpoints.oauth import _base_url
+        from app.mcp_server.auth import bearer_exploitable
+
+        header = request.headers.get("Authorization")
+        porte_compte = path.startswith(MCP_PATH_COMPTE)
+        if (porte_compte or header) and not bearer_exploitable(header):
+            base = _base_url(request)
+            suffixe = "/mcp-account" if porte_compte else "/mcp"
+            return JSONResponse(
+                status_code=401,
+                content={
+                    "error": {
+                        "code": "unauthorized",
+                        "message": (
+                            "Token absent, invalide ou expire. Authentifiez-vous "
+                            "via OAuth (le client le fait seul) ou utilisez "
+                            f"{base}/mcp pour la lecture publique anonyme."
+                        ),
+                    }
+                },
+                headers={
+                    "WWW-Authenticate": (
+                        f'Bearer realm="Philum MCP", '
+                        f'resource_metadata="{base}'
+                        f'/.well-known/oauth-protected-resource{suffixe}"'
+                    )
+                },
+            )
+    return await call_next(request)
+
+
 _mcp_rate_storage = MemoryStorage()
 _mcp_rate_strategy = MovingWindowRateLimiter(_mcp_rate_storage)
 _mcp_rate_limit = parse("60/minute")
@@ -117,38 +168,26 @@ async def oauth_authorization_server_metadata(request: Request):
 
 
 @app.get("/.well-known/oauth-protected-resource")
-@app.get("/.well-known/oauth-protected-resource/mcp")
+@app.get("/.well-known/oauth-protected-resource/mcp-account")
 async def oauth_protected_resource_metadata(request: Request):
     from app.api.v1.endpoints.oauth import build_protected_resource_metadata
 
     return build_protected_resource_metadata(request)
 
 
-# --- Middleware WWW-Authenticate sur le MCP quand non authentifie ---------
-#
-# La spec MCP 2025-06-18 (§ 2.1.5) exige que le serveur MCP protege renvoie
-# un header WWW-Authenticate qui pointe le client vers l'authorization server.
-# Sans ce header, un client generique ne sait pas ou aller pour obtenir un
-# token.
+@app.get("/.well-known/oauth-protected-resource/mcp")
+async def oauth_protected_resource_metadata_public(request: Request):
+    """La porte publique accepte aussi un token : un client deja connecte
+    peut viser `/mcp` et ecrire. Le document doit donc exister pour elle."""
+    from app.api.v1.endpoints.oauth import build_protected_resource_metadata
+
+    return build_protected_resource_metadata(request, resource_path="/mcp/")
 
 
-@app.middleware("http")
-async def mcp_www_authenticate(request: Request, call_next):
-    response = await call_next(request)
-    if (
-        request.url.path.startswith("/mcp")
-        and response.status_code == 401
-        and "WWW-Authenticate" not in response.headers
-    ):
-        base = f"{request.url.scheme}://{request.url.netloc}"
-        response.headers["WWW-Authenticate"] = (
-            f'Bearer realm="Philum MCP", '
-            f'resource_metadata="{base}/.well-known/oauth-protected-resource"'
-        )
-    return response
-
-
-app.mount("/mcp", mcp_http_app)
+# Le chemin le plus specifique d'abord : Starlette teste les mounts dans
+# l'ordre de declaration.
+app.mount(MCP_PATH_COMPTE, mcp_http_app)
+app.mount(MCP_PATH_PUBLIC, mcp_http_app)
 
 
 @app.get("/health")

@@ -286,16 +286,22 @@ def build_authorization_server_metadata(request: Request) -> dict[str, Any]:
     }
 
 
-def build_protected_resource_metadata(request: Request) -> dict[str, Any]:
+def build_protected_resource_metadata(
+    request: Request, resource_path: str = "/mcp-account/"
+) -> dict[str, Any]:
     """RFC 9728. Dit au client MCP OU trouver l'authorization server.
 
     C'est ce que le client MCP fetch en premier quand il se voit refuser
-    l'acces au /mcp/ endpoint : le header `WWW-Authenticate` pointe vers ce
+    l'acces a l'endpoint MCP : le header `WWW-Authenticate` pointe vers ce
     document, qui donne l'URL du /.well-known/oauth-authorization-server.
+
+    `resource_path` distingue les deux portes (`/mcp/` publique, `/mcp-account/`
+    au nom d'un compte) : le client verifie que le `resource` annonce
+    correspond a l'URL qu'il tentait d'atteindre.
     """
     base = _base_url(request)
     return {
-        "resource": f"{base}/mcp/",
+        "resource": f"{base}{resource_path}",
         "authorization_servers": [base],
         "bearer_methods_supported": ["header"],
     }

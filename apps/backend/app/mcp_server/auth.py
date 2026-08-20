@@ -58,6 +58,28 @@ def _token_dans_l_entete() -> str | None:
     return header[7:] if header.startswith("Bearer ") else None
 
 
+def bearer_exploitable(header: str | None) -> bool:
+    """Le header `Authorization` porte-t-il un JWT Philum encore valide ?
+
+    Verification cryptographique seule, sans base : le middleware s'en sert
+    pour decider s'il doit repondre 401 (et declencher la decouverte OAuth du
+    client), pas pour autoriser une action. La resolution vers un `User` reel
+    reste faite par les tools.
+    """
+    if not header or not header.startswith("Bearer "):
+        return False
+    try:
+        jwt.decode(
+            header[7:],
+            settings.session_secret,
+            algorithms=[ALGORITHM],
+            options={"verify_aud": False},
+        )
+    except jwt.InvalidTokenError:
+        return False
+    return True
+
+
 async def utilisateur_courant(db: AsyncSession) -> User | None:
     """L'utilisateur identifie par le Bearer, ou None si le token est absent
     ou invalide. Ne leve jamais : un tool qui accepte l'anonyme peut choisir."""

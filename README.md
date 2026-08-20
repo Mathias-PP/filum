@@ -66,7 +66,8 @@ Hébergement post-2026-07-19 : VM GCP e2-micro always-free (Docker Compose backe
 - Production : https://philum-api.duckdns.org
 - API docs : https://philum-api.duckdns.org/api/v1/docs
 - Health : https://philum-api.duckdns.org/health
-- MCP endpoint : https://philum-api.duckdns.org/mcp/ (4 tools read-only, cf. `/developers`)
+- MCP public : https://philum-api.duckdns.org/mcp/ (lecture anonyme, aucun compte requis)
+- MCP compte : https://philum-api.duckdns.org/mcp-account/ (39 tools, connexion OAuth en un clic, cf. `/developers`)
 
 ### Frontend déployé
 
