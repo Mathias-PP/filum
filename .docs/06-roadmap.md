@@ -1,5 +1,11 @@
 # 06 — Feuille de route
 
+> 📦 **Document historique.** Ce plan a été écrit avant le démarrage et décrit une
+> semaine 1 depuis un dépôt vide. Le MVP et les phases 2-3 sont livrés, l'hébergement
+> a changé (GCP, pas Railway). Conservé comme trace de l'intention initiale.
+> Pour l'état courant, voir [`21-roadmap-2026-07.md`](./21-roadmap-2026-07.md) et
+> [`STATE.md`](../STATE.md).
+
 > Plan détaillé de la semaine 1 (MVP), puis phases 2 à 5.
 
 ---

@@ -2,6 +2,8 @@
 
 > ⚠️ **Pivot ADR-019 (2026-05-14)** : les sections « signature/canonicalisation de fiche » sont obsolètes. La signature porte désormais sur l'attestation de contenu (triplet `(creator_id, content_url, attested_at)`). Le pipeline crypto (Ed25519 + SHA-256 + RFC 8785) reste identique, seul l'objet signé change. Voir `DECISIONS.md` ADR-019. Réécriture intégrale à la PR de bascule backend.
 
+> ⚠️ **Hébergement (2026-07-19, ADR-028)** : toute mention de Railway ci-dessous est périmée. Le backend tourne sur une VM GCP e2-micro always-free (Docker Compose + Caddy pour le TLS), la base est un Postgres Supabase, le frontend reste sur Vercel. La migration Scaleway décrite en « phase 3 » n'est plus le plan. Les sections « Déploiement » et « Coûts » sont conservées à titre historique.
+
 > Ce document décrit les choix d'architecture du projet : stack, structure, déploiement.
 
 ---
@@ -14,13 +16,13 @@
                   └──────────┬───────────┘
                              │ HTTPS
                   ┌──────────▼───────────┐
-                  │  Frontend SvelteKit  │   Vercel ou Netlify
+                  │  Frontend SvelteKit  │   Vercel
                   │  (SSR + îlots Svelte)│
                   └──────────┬───────────┘
-                             │ REST/JSON
+                             │ REST/JSON, MCP
                   ┌──────────▼───────────┐
-                  │  Backend FastAPI     │   Railway
-                  │  (Python 3.12)       │
+                  │  Backend FastAPI     │   VM GCP e2-micro
+                  │  (Python 3.12)       │   (Docker + Caddy)
                   └──┬───────────────┬───┘
                      │               │
           ┌──────────▼──────┐  ┌────▼──────────────────┐
@@ -126,8 +128,9 @@ Résumé :
 
 ```
 apps/
-├── backend/     # FastAPI
+├── backend/     # FastAPI (app/crypto/, app/mcp_server/, app/services/agent.py…)
 ├── frontend/    # SvelteKit
+├── extension/   # extension navigateur MV3
 └── analytics/   # dbt project
 ```
 
@@ -143,8 +146,8 @@ Mono-repo simple, géré avec `make` à la racine.
 - **CSP** : Content Security Policy stricte sur les pages publiques
 - **Rate limiting** : `slowapi` côté FastAPI sur les endpoints sensibles (création de fiche, ajout de source)
 - **Audit logs** : table `audit_events` qui log toutes les actions sensibles (création, modification, suppression)
-- **HTTPS** : Railway et Vercel/Netlify l'imposent par défaut
-- **Stockage des secrets utilisateur** : clés privées chiffrées au repos avec une clé maître (Fernet symétrique), clé maître en env var
+- **HTTPS** : Caddy sur la VM et Vercel l'imposent par défaut
+- **Stockage des secrets utilisateur** : clés privées chiffrées au repos en AES-GCM avec une clé maître (`app/crypto/keygen.py`), clé maître en env var
 - **SQL injection** : impossible avec SQLAlchemy ORM, jamais de requêtes formatées par string
 
 ---
@@ -164,7 +167,7 @@ Mono-repo simple, géré avec `make` à la racine.
 En MVP, minimal :
 - Logs structurés côté backend (`structlog`)
 - Erreurs frontend dans la console (pas de Sentry en MVP — à ajouter en phase 2)
-- Métriques de base (uptime, latence API) via Railway/Vercel dashboards
+- Métriques de base (uptime, latence API) via les dashboards GCP et Vercel
 
 En phase 2, ajouter :
 - Sentry pour le tracking d'erreurs

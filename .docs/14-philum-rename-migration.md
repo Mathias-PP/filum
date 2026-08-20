@@ -5,7 +5,7 @@
 > - ✅ **Bonus** : User-Agent backend `"Filum/0.1"` → `"Philum/0.1"` dans `url_extractor.py` (PR #92 audit-improvements).
 > - ⏳ **Phases 2-4** : non planifiées. **Recommandation** : créer une issue GitHub par phase plutôt qu'attendre un gros chantier coordonné. Triggers naturels :
 >   - Phase 2 (docs `.md`) → quand on publie une doc externe
->   - Phase 3 (config infra, env vars) → quand on bascule de Railway vers Infomaniak ou autre
+>   - Phase 3 (config infra, env vars) → la bascule d'hébergement a eu lieu le 2026-07-19 (Railway vers GCP e2-micro, ADR-028) sans que cette phase soit traitée. Nouveau trigger : le prochain chantier infra.
 >   - Phase 4 (identifiants techniques — URL repo, package npm, cookies, headers) → quand on branche le domaine custom `philum.app` et qu'on republie le package
 
 ## Pourquoi ce document
