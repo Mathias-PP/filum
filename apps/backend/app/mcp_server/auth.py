@@ -31,7 +31,16 @@ async def _user_depuis_token(db: AsyncSession, token: str | None) -> User | None
     if not token:
         return None
     try:
-        payload = jwt.decode(token, settings.session_secret, algorithms=[ALGORITHM])
+        # `verify_aud=False` : les tokens du flow OAuth portent `aud: "mcp"`,
+        # ceux de `/auth/mcp-token` n'ont pas d'audience. PyJWT rejette un
+        # token porteur d'`aud` si on ne lui en annonce aucune ; sans ce flag,
+        # aucun token OAuth ne passe.
+        payload = jwt.decode(
+            token,
+            settings.session_secret,
+            algorithms=[ALGORITHM],
+            options={"verify_aud": False},
+        )
         user_id = UUID(payload["sub"])
     except (jwt.InvalidTokenError, ValueError, KeyError):
         return None

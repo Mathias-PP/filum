@@ -82,6 +82,32 @@ async def test_un_utilisateur_supprime_n_est_plus_reconnu(db_session, test_user)
 
 
 @pytest.mark.asyncio
+async def test_un_token_du_flow_oauth_identifie_l_utilisateur(db_session, test_user):
+    """Le token emis par `/oauth/token` porte `aud: "mcp"`, pas celui de
+    `/auth/mcp-token`. PyJWT rejette un token porteur d'`aud` si on ne lui en
+    annonce aucune : sans `verify_aud=False`, tout le flow OAuth se terminait
+    par un token que le MCP refusait.
+    """
+    from app.core.config import get_settings
+
+    now = datetime.now(UTC)
+    token = jwt.encode(
+        {
+            "sub": str(test_user.id),
+            "iat": int(now.timestamp()),
+            "exp": int((now + timedelta(hours=1)).timestamp()),
+            "aud": "mcp",
+            "client_id": "client-de-test",
+        },
+        get_settings().session_secret,
+        algorithm=ALGORITHM,
+    )
+    user = await _user_depuis_token(db_session, token)
+    assert user is not None
+    assert user.id == test_user.id
+
+
+@pytest.mark.asyncio
 async def test_utilisateur_courant_hors_contexte_http_renvoie_none(db_session):
     """Depuis un test unitaire (pas d'HTTP en cours), la lecture doit dire None."""
     assert await utilisateur_courant(db_session) is None
