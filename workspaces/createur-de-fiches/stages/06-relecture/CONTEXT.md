@@ -34,10 +34,14 @@ Passer une check-list qualité complète sur la fiche, rendre un verdict `go` ou
 
 ## Audit
 
+Les checks ci-dessous émettent des **alertes** listées dans le verdict. Aucune n'est un verrou : la décision de publier appartient à l'humain, mais rien ne passe silencieusement. Un fichier `audit_fiche.py` (voir `_core/audit/`) automatise les vérifications de titre et de dates.
+
 | Check | Pass Condition |
 |---|---|
-| Titre ne doublonne pas le contenu | `<slug>-brief.md` title différent du titre du contenu documenté |
-| Longueurs titre/description | Titre 40-90 car, description 250-500 car |
+| Titre = titre exact du contenu | `titre_contenu` du brief == `title` de la carte (vérifié sur le contenu lui-même, Crossref pour les articles) |
+| Date du contenu tracée | `date_contenu` du brief renseignée (ou notée « pas de date trouvée ») et cohérente avec le contenu |
+| Dates des sources | Chaque source porte `published_at` si la date existe (aucune « s. d. » quand la date est connue) |
+| Longueurs titre/description | Titre = titre exact du contenu ; description 250-500 car |
 | Aucun tiret cadratin | `grep -R "—" runs/<slug>/stages/*/output/` retourne 0 |
 | Annotations non paraphrastiques | Aucune annotation ne reformule le titre de sa source |
 | Stance déclarée ou null assumé | Chaque source a un `stance` explicite (peut être `null`) |
@@ -46,4 +50,4 @@ Passer une check-list qualité complète sur la fiche, rendre un verdict `go` ou
 | Extraits vérifiables | Aucun `verified_status=missing` sans autorisation explicite |
 | Aucune suggestion connexion pendante | Chaque `outgoing` a un verdict tranché |
 | Extraits ≤ 5 par source | Aucune source > 5 extraits |
-| Métadonnées vérifiées | DOI présents cochés via Crossref, dates depuis la source |
+| Métadonnées vérifiées | DOI présents cochés via Crossref, dates depuis le contenu |

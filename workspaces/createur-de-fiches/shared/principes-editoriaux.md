@@ -7,7 +7,7 @@ Une fiche Philum n'est pas une bibliographie. C'est un **lien de confiance** ent
 1. **Chaque source affirme quelque chose de précis.** Pas de source « en général » : on nomme ce qu'elle apporte au contenu documenté. Sans quoi la fiche est un tas de liens.
 2. **Chaque source pivot porte au moins un extrait verbatim.** Sans extrait, une source pivot n'est pas prouvée ; c'est une affirmation d'affirmation.
 3. **Chaque source déclare sa position** (`stance`) par rapport au propos : appuie, nuance, contextualise, ou mentionne. `null` = silence assumé, pas position neutre.
-4. **Les métadonnées sont exactes ou absentes.** DOI vérifié via Crossref, dates depuis la source elle-même, auteurs tels qu'ils signent.
+4. **Les métadonnées sont exactes.** Titre de la fiche = titre exact du contenu. Date de publication (fiche et sources) renseignée quand elle existe, prise sur le contenu lui-même. DOI vérifié via Crossref pour les articles scientifiques, auteurs tels qu'ils signent.
 5. **La fiche est branchée au graphe.** Si une source est déjà une fiche Philum publiée, la connexion doit être confirmée. Sinon la fiche est un îlot.
 
 ## Ce qui n'est PAS une bonne fiche
@@ -16,7 +16,7 @@ Une fiche Philum n'est pas une bibliographie. C'est un **lien de confiance** ent
 - Des `stance: null` partout (personne n'a rien à dire de la relation entre le contenu et ses sources).
 - Des annotations qui paraphrasent le titre de la source (« Article scientifique sur la mémoire » pour un article intitulé « The role of sleep in memory consolidation »).
 - Des extraits d'une phrase avec pronom démonstratif sans antécédent visible (« Cela améliore la mémoire ». Quoi, cela ?). Le garde-fou serveur les refuse, mais le principe est plus large : un extrait cité seul doit rester intelligible.
-- Le titre de la fiche qui répète exactement le titre du contenu documenté.
+- Une source dont la date de publication est connue mais absente de la fiche (« s. d. »), ou une fiche qui affiche une date qui n'est pas celle du contenu documenté.
 
 ## Sources pivots
 
@@ -43,12 +43,24 @@ Un extrait est un **verbatim** copié à la lettre, avec `context` qui nomme les
 
 ## Titre et description de la fiche
 
-Le titre décrit **ce que la fiche prouve**, pas juste ce que le contenu documenté raconte.
+**Le titre de la fiche EST le titre exact du contenu documenté.** Aucune reformulation, aucun ajout, aucune traduction : le titre de la fiche est celui que l'auteur du contenu a publié, quelle que soit la nature du contenu (article scientifique, article de blog, vidéo, livre, podcast…). La fiche documente un contenu précis ; l'afficher sous un autre titre la rend non vérifiable.
 
-- Titre du contenu : « WEST bat le record du plasma le plus long ».
-- Titre de la fiche : « WEST et la préparation d'ITER : le tokamak du CEA bat les records de durée de plasma ».
+- Titre du contenu (vidéo) : « WEST bat le record du plasma le plus long ».
+- Titre de la fiche : « WEST bat le record du plasma le plus long » (identique).
 
-Description : 2 à 4 phrases. Situer le contenu documenté et annoncer ce que la fiche prouve.
+Description : 2 à 4 phrases. Situer le contenu documenté et annoncer ce que la fiche prouve. C'est la description qui porte la lecture éditoriale, pas le titre.
+
+## Dates de publication
+
+**Une date de publication doit figurer quand elle existe** — sur la fiche (celle du contenu documenté) et sur chaque source.
+
+- La date se prend sur le **contenu lui-même** : date affichée par la vidéo, pied de page du blog, page de l'éditeur, métadonnées de la page (`/sources/extract`), Crossref en source complémentaire pour les articles scientifiques.
+- Une date connue qui manque est une erreur : jamais de « s. d. » quand la date est trouvable.
+- Une date réellement introuvable est acceptée mais **tracée** : noter « pas de date trouvée » dans l'audit, jamais un simple oubli.
+
+## Alertes, pas de blocage
+
+Les vérifications de titre et de dates émettent des **alertes** qui alimentent le verdict de relecture. Aucune alerte ne bloque automatiquement la publication : la décision appartient à l'humain, mais rien ne doit passer silencieusement.
 
 ## Refuser une source
 

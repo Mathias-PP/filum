@@ -21,6 +21,7 @@ Publier la fiche et vérifier post-publish que le rendu public, l'export markdow
 5. **Vérification post-publish** :
    - Ouvrir `https://filum-eight.vercel.app/@<creator>/<slug>` : la fiche se charge.
    - Ouvrir `https://philum-api.duckdns.org/api/v1/@<creator>/<slug>/export?format=markdown` : titre, sources, extraits, connexions y sont.
+   - Vérifier que le titre affiché est le **titre exact du contenu** et que les dates de publication (contenu et sources) sont affichées quand elles existent.
    - Vérifier que `/api/v1/feed` porte une entrée `card_published` récente.
    - Si attestation posée : `mcp__philum__verify_attestation(attestation_id)` doit rendre `valid: true`.
 
@@ -44,4 +45,6 @@ Publier la fiche et vérifier post-publish que le rendu public, l'export markdow
 | Verdict autorise | `<slug>-verdict.md` a `go: yes` en frontmatter |
 | Fiche publique accessible | `curl -sI` sur `https://filum-eight.vercel.app/@<creator>/<slug>` retourne 200 |
 | Export markdown fonctionnel | L'export markdown contient le titre, au moins une source et au moins un extrait |
+| Titre exact dans l'export | Le titre de l'export == titre exact du contenu |
+| Dates présentes dans l'export | Chaque source a sa date (`published_at`) si elle existe ; la date du contenu est renseignée/affichée |
 | Feed à jour | Une entrée `card_published` pour ce `slug` figure dans `/api/v1/feed` dans les 60 secondes qui suivent |
