@@ -177,6 +177,12 @@
                     Tableau de bord
                   </a>
                   <a
+                    href="/dashboard/chat"
+                    class="block px-3 py-2 text-sm text-ink-secondary hover:bg-surface-tertiary hover:text-ink-primary transition-colors"
+                  >
+                    Agent
+                  </a>
+                  <a
                     href="/@{data.user.username}"
                     class="block px-3 py-2 text-sm text-ink-secondary hover:bg-surface-tertiary hover:text-ink-primary transition-colors"
                   >
