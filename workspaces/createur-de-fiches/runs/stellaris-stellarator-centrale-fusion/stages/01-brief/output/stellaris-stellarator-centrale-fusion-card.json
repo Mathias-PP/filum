@@ -1,0 +1,17 @@
+{
+  "id": "0c4ac549-b183-4c0a-8db5-771a185ee9c0",
+  "slug": "stellaris-stellarator-centrale-fusion",
+  "title": "Stellaris: A high-field quasi-isodynamic stellarator for a prototypical fusion power plant",
+  "description": "Le papier Stellaris, publié par Proxima Fusion et le Max-Planck-Institut pour la physique des plasmas en 2025, présente le premier concept intégré de centrale à fusion basée sur un stellarator quasi-isodynamique compact à aimants supraconducteurs haute température. La fiche prouve la thèse centrale du papier : la configuration QI-HTS offre les propriétés nécessaires à un réacteur sans les disruptions qui menacent la disponibilité des centrales à tokamak, et ouvre ainsi une voie vers une production industrielle continue.",
+  "content_url": "https://www.sciencedirect.com/science/article/pii/S0920379625000705",
+  "content_text": null,
+  "content_authors": "J. Lion et al.",
+  "platform": "other",
+  "content_type": "article",
+  "status": "draft",
+  "is_seed": false,
+  "visibility": "public",
+  "published_at": null,
+  "created_at": "2026-08-19T15:52:28.861121Z",
+  "public_url_when_published": "https://philum-eight.vercel.app/@mathias-pinault/stellaris-stellarator-centrale-fusion"
+}
