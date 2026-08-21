@@ -144,13 +144,20 @@ async def tester_provider(
 async def lister_modeles_provider(
     provider_id: UUID,
     request: Request,
+    refresh: bool = False,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     transport: httpx.AsyncBaseTransport | None = Depends(get_http_client),
 ):
-    """Les modeles disponibles pour ce compte, demandes au fournisseur."""
+    """Les modèles disponibles pour ce compte, demandés au fournisseur.
+
+    Cache serveur 15 min. Passer ``?refresh=true`` pour forcer le rappel réseau
+    (utile si l'utilisateur vient d'activer un nouveau plan chez le fournisseur).
+    """
     try:
-        return await lister_modeles(db, current_user.id, provider_id, transport=transport)
+        return await lister_modeles(
+            db, current_user.id, provider_id, transport=transport, refresh=refresh
+        )
     except AgentProviderNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

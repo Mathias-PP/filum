@@ -348,7 +348,7 @@
           "agent-providers"
         ],
         "summary": "Lister Modeles Provider",
-        "description": "Les modeles disponibles pour ce compte, demandes au fournisseur.",
+        "description": "Les modèles disponibles pour ce compte, demandés au fournisseur.\n\nCache serveur 15 min. Passer ``?refresh=true`` pour forcer le rappel réseau\n(utile si l'utilisateur vient d'activer un nouveau plan chez le fournisseur).",
         "operationId": "lister_modeles_provider_api_v1_agent_providers__provider_id__models_get",
         "parameters": [
           {
@@ -359,6 +359,16 @@
               "type": "string",
               "format": "uuid",
               "title": "Provider Id"
+            }
+          },
+          {
+            "name": "refresh",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Refresh"
             }
           }
         ],
@@ -4287,6 +4297,20 @@
               }
             ],
             "title": "Provider Message"
+          },
+          "models": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Models"
           }
         },
         "type": "object",

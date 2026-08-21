@@ -222,6 +222,11 @@ class TestTester:
             vus.append(request)
             if request.url.path.endswith("/v1/messages"):
                 return httpx.Response(200, json={"content": []})
+            if request.url.path.endswith("/models"):
+                # Le succès du test déclenche un auto-fetch des modèles (chauffe
+                # le cache). Anthropic ne sert pas /models en OpenAI-compat :
+                # 404, repli sur MODELES_SUGGERES silencieusement.
+                return httpx.Response(404, json={})
             return httpx.Response(404, json={})
 
         transport = httpx.MockTransport(handler)
@@ -229,12 +234,15 @@ class TestTester:
         result = await service_tester(db_session, test_user.id, p.id, transport=transport)
 
         assert result.ok is True
-        assert len(vus) == 2
+        # 3 requêtes : (1) tentative OpenAI-compat, (2) bascule messages,
+        # (3) auto-fetch models pour chauffer le cache
+        assert len(vus) == 3
         assert vus[0].url.path.endswith("/v1/chat/completions")
         messages_call = vus[1]
         assert messages_call.url.path.endswith("/v1/messages")
         assert messages_call.headers["x-api-key"] == "sk-test-key-12345678"
         assert messages_call.headers["anthropic-version"] == "2023-06-01"
+        assert vus[2].url.path.endswith("/models")
 
     async def test_provider_d_un_autre_createur_invisible(self, db_session, test_user):
         p = await _mk_provider(db_session, uuid4())
@@ -343,6 +351,73 @@ class TestDetailProvider:
         assert _detail_provider(r) == "Wrong API Key"
 
 
+class TestClassifyParCodeErreur:
+    """Le code d'erreur du provider dit plus precisement que le status HTTP.
+
+    Sans cette distinction, HTTP 429 est toujours "credit ou quota ou debit",
+    et l'utilisateur ne sait pas quoi faire : recharger, attendre, ou changer de
+    modele.
+    """
+
+    def test_insufficient_quota_dit_credit_epuise(self):
+        r = httpx.Response(
+            429, json={"error": {"code": "insufficient_quota", "message": "You exceeded"}}
+        )
+        res = _classify("m", "u", r)
+        assert "crédit" in res.message.lower() or "credit" in res.message.lower()
+        assert "épuisé" in res.message.lower() or "epuise" in res.message.lower()
+
+    def test_rate_limit_exceeded_dit_reessayer(self):
+        r = httpx.Response(
+            429, json={"error": {"code": "rate_limit_exceeded", "message": "Rate limit"}}
+        )
+        res = _classify("m", "u", r)
+        assert "débit" in res.message.lower() or "debit" in res.message.lower()
+        assert "réessayer" in res.message.lower() or "reessayer" in res.message.lower()
+
+    def test_invalid_api_key_dit_cle_revoquee(self):
+        r = httpx.Response(401, json={"error": {"code": "invalid_api_key", "message": "bad key"}})
+        res = _classify("m", "u", r)
+        assert "clé" in res.message.lower() or "cle" in res.message.lower()
+        assert "révoquée" in res.message.lower() or "revoquee" in res.message.lower()
+
+    def test_model_not_found(self):
+        r = httpx.Response(
+            404, json={"error": {"code": "model_not_found", "message": "no such model"}}
+        )
+        res = _classify("gpt-inconnu", "u", r)
+        assert "modèle" in res.message.lower() or "modele" in res.message.lower()
+
+    def test_context_length_exceeded(self):
+        r = httpx.Response(
+            400, json={"error": {"code": "context_length_exceeded", "message": "too long"}}
+        )
+        res = _classify("m", "u", r)
+        assert "conversation" in res.message.lower() or "contexte" in res.message.lower()
+
+    def test_code_cerebras_racine(self):
+        """Cerebras met code a la racine, pas dans error.code."""
+        r = httpx.Response(
+            401,
+            json={
+                "message": "Wrong API Key",
+                "code": "wrong_api_key",
+                "type": "invalid_request_error",
+            },
+        )
+        res = _classify("m", "u", r)
+        assert "clé" in res.message.lower() or "cle" in res.message.lower()
+
+    def test_code_inconnu_retombe_sur_le_status(self):
+        """Un code non repertorie doit retomber sur le cadrage HTTP, pas planter."""
+        r = httpx.Response(403, json={"error": {"code": "some_new_code", "message": "hmm"}})
+        res = _classify("m", "u", r)
+        # Retombe sur _CADRAGES[403]
+        assert "refusé" in res.message.lower() or "refuse" in res.message.lower()
+        # Le message brut du provider apparait tout de meme
+        assert "hmm" in res.message
+
+
 class TestClassifyRemonteLeProvider:
     def test_le_404_gemini_cite_le_modele_de_remplacement(self):
         corps = [{"error": {"code": 404, "message": "use models/gemini-3.6-flash"}}]
@@ -408,3 +483,142 @@ class TestListerModeles:
             db_session, test_user.id, provider.id, transport=httpx.MockTransport(handler)
         )
         assert res["source"] == "repli"
+
+
+class TestCacheModeles:
+    """Le sélecteur de modèle rappelle /models à chaque ouverture.
+
+    Un cache 15 min par (créateur, provider) rend le dropdown instantané et
+    évite de brûler du rate-limit chez le fournisseur pour une info qui bouge
+    rarement à l'échelle d'un compte utilisateur.
+    """
+
+    async def test_deuxieme_appel_ne_touche_pas_le_reseau(self, db_session, test_user):
+        # Isoler du cache global : purger avant le test
+        svc._invalider_cache_modeles_tout()
+        provider = await _mk_provider(db_session, test_user.id)
+        appels: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            appels.append(str(request.url))
+            return httpx.Response(200, json={"data": [{"id": "m1"}, {"id": "m2"}]})
+
+        transport = httpx.MockTransport(handler)
+        r1 = await lister_modeles(db_session, test_user.id, provider.id, transport=transport)
+        r2 = await lister_modeles(db_session, test_user.id, provider.id, transport=transport)
+
+        assert r1 == r2
+        assert r1["source"] == "provider"
+        assert len(appels) == 1, "second appel doit venir du cache, pas du reseau"
+
+    async def test_refresh_force_le_rafraichissement(self, db_session, test_user):
+        svc._invalider_cache_modeles_tout()
+        provider = await _mk_provider(db_session, test_user.id)
+        appels = [0]
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            appels[0] += 1
+            return httpx.Response(200, json={"data": [{"id": f"m{appels[0]}"}]})
+
+        transport = httpx.MockTransport(handler)
+        r1 = await lister_modeles(db_session, test_user.id, provider.id, transport=transport)
+        r2 = await lister_modeles(
+            db_session, test_user.id, provider.id, transport=transport, refresh=True
+        )
+        assert r1["models"] == ["m1"]
+        assert r2["models"] == ["m2"]
+
+    async def test_echec_n_est_pas_mis_en_cache(self, db_session, test_user):
+        """Un provider qui refuse ne doit pas 'coller' au cache : un rappel
+        immediat doit retenter (sinon un utilisateur qui vient de fixer sa cle
+        verrait toujours l'ancien echec)."""
+        svc._invalider_cache_modeles_tout()
+        provider = await _mk_provider(db_session, test_user.id)
+        etat = {"ok": False}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if etat["ok"]:
+                return httpx.Response(200, json={"data": [{"id": "vrai"}]})
+            return httpx.Response(401, json={"error": {"message": "bad"}})
+
+        transport = httpx.MockTransport(handler)
+        r1 = await lister_modeles(db_session, test_user.id, provider.id, transport=transport)
+        assert r1["source"] == "repli"
+
+        etat["ok"] = True
+        r2 = await lister_modeles(db_session, test_user.id, provider.id, transport=transport)
+        assert r2["source"] == "provider"
+        assert r2["models"] == ["vrai"]
+
+    async def test_patch_invalide_le_cache(self, db_session, test_user):
+        """Changer la cle ou le base_url d'un provider doit invalider le cache."""
+        from app.schemas.agent_provider import AgentProviderUpdate
+
+        svc._invalider_cache_modeles_tout()
+        provider = await _mk_provider(db_session, test_user.id)
+        appels = [0]
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            appels[0] += 1
+            return httpx.Response(200, json={"data": [{"id": f"m{appels[0]}"}]})
+
+        transport = httpx.MockTransport(handler)
+        await lister_modeles(db_session, test_user.id, provider.id, transport=transport)
+        assert appels[0] == 1
+
+        await svc.mettre_a_jour(
+            db_session,
+            test_user.id,
+            provider.id,
+            AgentProviderUpdate(api_key="sk-nouvelle-cle-abcdef"),
+        )
+        # Apres update, la cache doit avoir ete videe
+        await lister_modeles(db_session, test_user.id, provider.id, transport=transport)
+        assert appels[0] == 2, "PATCH doit invalider le cache /models"
+
+
+class TestTesterRemonteLesModeles:
+    """Le test de cle est le moment ou l'utilisateur signale une intention d'usage.
+
+    C'est le bon moment pour populer la liste des modeles disponibles : le cache
+    est chaud pour la premiere ouverture du dropdown, sans deuxieme aller-retour
+    depuis le front.
+    """
+
+    async def test_succes_inclut_les_modeles_du_compte(self, db_session, test_user):
+        svc._invalider_cache_modeles_tout()
+        p = await _mk_provider(db_session, test_user.id)
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path.endswith("/chat/completions"):
+                return httpx.Response(200, json={})
+            if request.url.path.endswith("/models"):
+                return httpx.Response(200, json={"data": [{"id": "gpt-x"}, {"id": "gpt-y"}]})
+            return httpx.Response(500)
+
+        res = await service_tester(
+            db_session, test_user.id, p.id, transport=httpx.MockTransport(handler)
+        )
+        assert res.ok is True
+        assert res.models == ["gpt-x", "gpt-y"]
+
+    async def test_echec_ne_lance_pas_l_appel_modeles(self, db_session, test_user):
+        """Une cle invalide : inutile de lister les modeles, ne pas gaspiller."""
+        svc._invalider_cache_modeles_tout()
+        p = await _mk_provider(db_session, test_user.id)
+        appels_models = [0]
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path.endswith("/chat/completions"):
+                return httpx.Response(401, json={"error": {"message": "bad key"}})
+            if request.url.path.endswith("/models"):
+                appels_models[0] += 1
+                return httpx.Response(200, json={"data": []})
+            return httpx.Response(500)
+
+        res = await service_tester(
+            db_session, test_user.id, p.id, transport=httpx.MockTransport(handler)
+        )
+        assert res.ok is False
+        assert res.models is None
+        assert appels_models[0] == 0
