@@ -20,6 +20,7 @@ message ``tool``, et on relance — jusqu'à ce que le modèle réponde en texte
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from collections.abc import Awaitable, Callable
@@ -79,13 +80,82 @@ def _texte_message(message: dict[str, Any]) -> str:
     return ""
 
 
+#: Retry unique sur 429 quand le provider dit combien attendre. 60 s est le
+#: seuil au-dessus duquel il vaut mieux rendre la main a l'utilisateur qu'a
+#: la boucle : les fenetres de contexte se ferment, l'attente devient une
+#: perte perceptible.
+_RETRY_MAX_ATTENTE_S = 60.0
+
+
+def _extraire_retry_delay(body: Any) -> float | None:
+    """Extrait ``retryDelay`` de l'erreur Google, ou None.
+
+    Format observe en prod le 2026-08-21 sur Gemini free tier :
+    ``{"error": {"details": [{"@type": "...RetryInfo", "retryDelay": "43s"}]}}``.
+    Aussi enveloppe dans une liste par Gemini (``[{"error": ...}]``).
+    """
+    if isinstance(body, list) and body:
+        body = body[0]
+    if not isinstance(body, dict):
+        return None
+    erreur = body.get("error")
+    if not isinstance(erreur, dict):
+        return None
+    details = erreur.get("details")
+    if not isinstance(details, list):
+        return None
+    for entree in details:
+        if not isinstance(entree, dict):
+            continue
+        if "RetryInfo" in str(entree.get("@type", "")):
+            delay = entree.get("retryDelay")
+            if isinstance(delay, str) and delay.endswith("s"):
+                try:
+                    return float(delay[:-1])
+                except ValueError:
+                    return None
+    return None
+
+
+def _extraire_message_erreur(body: Any) -> str:
+    """Le message texte d'un corps d'erreur OpenAI-compat, ou le body reduit.
+
+    Duplique volontairement une partie de la logique de
+    ``services.agent_providers._detail_provider`` : y avoir recours creerait
+    un cycle d'import (agent -> providers -> agent via les tests). Cinq
+    formes gerees (voir ce module pour la lecture).
+    """
+    if isinstance(body, list) and body:
+        body = body[0]
+    if isinstance(body, dict):
+        erreur = body.get("error")
+        if isinstance(erreur, dict):
+            msg = erreur.get("message")
+            if isinstance(msg, str) and msg.strip():
+                return msg.strip()
+        if isinstance(erreur, str) and erreur.strip():
+            return erreur.strip()
+        for key in ("detail", "message"):
+            val = body.get(key)
+            if isinstance(val, str) and val.strip():
+                return val.strip()
+    return str(body)[:400] if body else ""
+
+
 async def _appel_provider(
     provider: AgentProvider,
     messages: list[dict[str, Any]],
     outils_api: list[dict[str, Any]],
     transport: httpx.AsyncBaseTransport | None,
-) -> tuple[dict[str, Any], dict[str, Any]] | str:
-    """Un tour. Rend ``(message, usage)`` ou une chaîne d'erreur lisible."""
+) -> tuple[dict[str, Any], str | None, dict[str, Any]] | str:
+    """Un tour. Rend ``(message, finish_reason, usage)`` ou une chaîne d'erreur.
+
+    Sur HTTP 429 avec ``retryDelay`` (Google/Gemini), attend une fois avant
+    de renoncer : sur le free tier Gemini (5 req/min), l'agent enchaîne
+    naturellement plus de 5 tours pour construire une fiche, et sans ce
+    retry la session s'effondre au 6ème tour alors que 44 secondes d'attente
+    la sauveraient.
+    """
     key = _decrypt(provider.api_key_enc)
     payload = {
         "model": provider.model,
@@ -95,26 +165,91 @@ async def _appel_provider(
         "temperature": 0,
     }
     headers = {"Authorization": f"Bearer {key}"}
+    url = url_chat(provider.base_url)
     try:
         async with httpx.AsyncClient(timeout=_TIMEOUT, transport=transport) as client:
-            r = await client.post(url_chat(provider.base_url), json=payload, headers=headers)
+            r = await client.post(url, json=payload, headers=headers)
+            if r.status_code == 429:
+                try:
+                    body_429 = r.json()
+                except ValueError:
+                    body_429 = None
+                attente = _extraire_retry_delay(body_429)
+                if attente is not None and attente <= _RETRY_MAX_ATTENTE_S:
+                    logger.info(
+                        "429 sur %s, attente %.1fs puis retry (retryDelay du provider)",
+                        provider.model,
+                        attente,
+                    )
+                    await asyncio.sleep(attente)
+                    r = await client.post(url, json=payload, headers=headers)
         if r.status_code != 200:
             try:
-                detail = r.json()
+                body = r.json()
             except ValueError:
-                detail = r.text[:500]
-            return f"Le provider a répondu HTTP {r.status_code} : {detail}"
+                body = r.text[:500]
+            msg = _extraire_message_erreur(body)
+            if r.status_code == 429:
+                return (
+                    f"Le fournisseur ({provider.provider}) refuse : quota ou limite de "
+                    f"débit atteinte. {msg}"
+                )
+            return f"Le provider a répondu HTTP {r.status_code} : {msg or body}"
         data = r.json()
     except httpx.HTTPError as exc:
         return f"Erreur réseau vers le provider : {exc}"
     except ValueError as exc:
         return f"Réponse illisible du provider : {exc}"
     try:
-        message = data["choices"][0]["message"]
+        choice = data["choices"][0]
+        message = choice["message"]
     except (KeyError, IndexError, TypeError) as exc:
         return f"Réponse du provider inattendue (pas de choices) : {exc}"
+    finish_reason = choice.get("finish_reason") if isinstance(choice, dict) else None
     usage = data.get("usage", {})
-    return message, usage
+    return message, finish_reason, usage
+
+
+def _diagnostic_vide(
+    modele: str,
+    finish_reason: str | None,
+    usage: dict[str, Any],
+) -> str:
+    """Un message d'erreur actionnable quand le modele rend un contenu vide.
+
+    Trois cas distincts, chacun mène a une réparation différente :
+    - ``length`` : le modèle a épuisé sa fenêtre. Sur Gemini/o1 en mode
+      raisonnement, les tokens de pensée sont comptés dans ``max_tokens``,
+      donc un budget de 8192 peut être englouti sans qu'aucune sortie visible
+      ne sorte. Remède : augmenter ``agent_max_turn_tokens`` ou basculer sur
+      un modèle sans raisonnement caché (``gemini-3.6-flash`` plutôt que
+      ``gemini-3.7-flash`` par exemple).
+    - ``content_filter`` : le filtre de sécurité a bloqué. Remède : reformuler.
+    - ``stop`` avec vide : le modèle a « renoncé ». Souvent un signe que la
+      combinaison prompt + outils déroute le modèle. Remède : reformuler ou
+      changer de modèle.
+    """
+    tokens_completion = 0
+    if isinstance(usage, dict):
+        tok = usage.get("completion_tokens")
+        if isinstance(tok, int):
+            tokens_completion = tok
+    if finish_reason == "length":
+        return (
+            f"Le modèle {modele} a épuisé sa fenêtre de sortie "
+            f"({tokens_completion} tokens) sans produire de réponse visible. "
+            "Chez Gemini et les modèles à raisonnement caché, les tokens de "
+            "pensée sont comptés dans le même budget. Essayer un modèle sans "
+            "raisonnement (par exemple gemini-3.6-flash) ou augmenter la "
+            "limite de tokens."
+        )
+    if finish_reason == "content_filter":
+        return f"Le filtre de sécurité de {modele} a bloqué la réponse. Reformuler la demande."
+    return (
+        f"Le modèle {modele} a rendu une réponse vide "
+        f"(finish_reason={finish_reason or 'inconnu'}). Reformuler la demande "
+        "ou changer de modèle."
+    )
 
 
 def _message_tool(tool_call_id: str, nom: str, resultat: dict[str, Any]) -> dict[str, Any]:
@@ -226,13 +361,35 @@ async def boucle(
             if isinstance(reponse, str):
                 await emit({"type": "error", "payload": {"message": reponse}})
                 return
-            message, _usage = reponse
+            message, finish_reason, usage = reponse
             tool_calls = message.get("tool_calls") or []
             if not tool_calls:
                 texte = _texte_message(message)
                 if texte:
                     await emit({"type": "message_delta", "payload": {"delta": texte, "tour": tour}})
-                await emit({"type": "done", "payload": {"reason": "complete"}})
+                    await emit({"type": "done", "payload": {"reason": "complete"}})
+                    return
+                # Contenu vide sans tool_call : silence interdit. Le modele n'a
+                # rien produit d'exploitable ; on remonte le finish_reason et
+                # l'usage pour que l'utilisateur puisse diagnostiquer (typique
+                # sur Gemini reasoning models : finish_reason=length avec les
+                # 8192 tokens consommes en pensee interne sans emettre de
+                # sortie visible).
+                logger.warning(
+                    "Reponse vide du provider %s modele=%s finish_reason=%s usage=%s",
+                    provider.provider,
+                    provider.model,
+                    finish_reason,
+                    usage,
+                )
+                await emit(
+                    {
+                        "type": "error",
+                        "payload": {
+                            "message": _diagnostic_vide(provider.model, finish_reason, usage)
+                        },
+                    }
+                )
                 return
             messages.append(
                 {
