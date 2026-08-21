@@ -45,6 +45,7 @@ SENSITIVE_TOOLS: frozenset[str] = frozenset(
         "publish_card",
         "delete_card",
         "delete_source",
+        "delete_excerpt",
         "create_content_attestation",
         "archive_sources",
     }
