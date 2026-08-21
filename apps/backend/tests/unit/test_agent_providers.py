@@ -208,7 +208,7 @@ class TestTester:
         assert result.http_status is None
         assert "Impossible de joindre" in result.message
 
-    async def test_anthropic_bascule_sur_messages(self, db_session, test_user):
+    async def test_anthropic_va_direct_en_messages(self, db_session, test_user):
         p = await _mk_provider(
             db_session,
             test_user.id,
@@ -223,7 +223,7 @@ class TestTester:
             if request.url.path.endswith("/v1/messages"):
                 return httpx.Response(200, json={"content": []})
             if request.url.path.endswith("/models"):
-                # Le succès du test déclenche un auto-fetch des modèles (chauffe
+                # Le succes du test declenche un auto-fetch des modeles (chauffe
                 # le cache). Anthropic ne sert pas /models en OpenAI-compat :
                 # 404, repli sur MODELES_SUGGERES silencieusement.
                 return httpx.Response(404, json={})
@@ -234,15 +234,13 @@ class TestTester:
         result = await service_tester(db_session, test_user.id, p.id, transport=transport)
 
         assert result.ok is True
-        # 3 requêtes : (1) tentative OpenAI-compat, (2) bascule messages,
-        # (3) auto-fetch models pour chauffer le cache
-        assert len(vus) == 3
-        assert vus[0].url.path.endswith("/v1/chat/completions")
-        messages_call = vus[1]
+        # 2 requetes : (1) messages direct, (2) auto-fetch models pour chauffer le cache
+        assert len(vus) == 2
+        messages_call = vus[0]
         assert messages_call.url.path.endswith("/v1/messages")
         assert messages_call.headers["x-api-key"] == "sk-test-key-12345678"
         assert messages_call.headers["anthropic-version"] == "2023-06-01"
-        assert vus[2].url.path.endswith("/models")
+        assert vus[1].url.path.endswith("/models")
 
     async def test_provider_d_un_autre_createur_invisible(self, db_session, test_user):
         p = await _mk_provider(db_session, uuid4())

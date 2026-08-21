@@ -590,6 +590,59 @@ class TestBoucle:
         assert len(errors) == 1
         assert "401" in errors[0]["payload"]["message"]
 
+    @pytest.mark.asyncio
+    async def test_appel_anthropic_va_direct_v1_messages(self, db_session, test_user):
+        """Pour kind=anthropic, _appel_provider cible /v1/messages directement
+        sans passer par /v1/chat/completions."""
+        key = KeyManager(get_settings().master_encryption_key).encrypt_private_key(
+            "sk-ant-test-key"
+        )
+        provider = AgentProvider(
+            creator_id=test_user.id,
+            provider="anthropic",
+            display_name="anthropic",
+            base_url="https://api.anthropic.com",
+            model="claude-sonnet-4",
+            api_key_enc=key,
+            is_default=True,
+        )
+        db_session.add(provider)
+        await db_session.commit()
+
+        vus: list[httpx.Request] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            vus.append(request)
+            if request.url.path.endswith("/v1/messages"):
+                return httpx.Response(
+                    200,
+                    json={
+                        "content": [{"type": "text", "text": "pong"}],
+                        "stop_reason": "end_turn",
+                        "usage": {"input_tokens": 5, "output_tokens": 2},
+                    },
+                )
+            return httpx.Response(404, json={"error": {"message": "Not found"}})
+
+        events = await _collect(
+            db_session,
+            test_user,
+            provider,
+            [{"role": "user", "content": "hello"}],
+            _refuse,
+            httpx.MockTransport(handler),
+            _registre_fake([]),
+        )
+
+        assert all(req.url.path.endswith("/v1/messages") for req in vus), (
+            "Anthropic doit cibler /v1/messages, pas /v1/chat/completions"
+        )
+        assert vus[0].headers.get("x-api-key") == "sk-ant-test-key"
+        assert vus[0].headers.get("anthropic-version") == "2023-06-01"
+        types = [e["type"] for e in events]
+        assert "done" in types
+        assert "error" not in types
+
 
 async def _refuse(request_id: str, tool: str, args: dict) -> bool:
     return False
