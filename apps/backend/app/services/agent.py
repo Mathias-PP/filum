@@ -28,6 +28,7 @@ from typing import Any
 from uuid import uuid4
 
 import httpx
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent_tools.philum import est_sensible
@@ -36,6 +37,7 @@ from app.agent_tools.tool import AgentTool, ToolContext
 from app.core.config import get_settings
 from app.models.agent_provider import AgentProvider
 from app.models.user import User
+from app.models.workspace_file import WorkspaceFile
 from app.services.agent_providers import _decrypt
 from app.services.llm_adapters import (
     format_chat_payload,
@@ -61,11 +63,53 @@ TOOL_RESULT_MAX = 120_000
 _SYSTEME = (
     "Tu es Philum Agent, l'assistant d'un créateur de contenu scientifique. "
     "Tu utilises des outils pour lire et écrire des fiches, des sources, des "
-    "extraits vérifiés, faire des recherches web et consulter le workspace de "
-    "configuration. Réponds en phrases courtes et factuelles. Quand tu écris "
-    "un extrait, cite le verbatim exact de la source. Tu ne fabriques jamais "
-    "de citation : si tu ne peux pas vérifier, dis-le."
+    "extraits vérifiés, et faire des recherches web.\n\n"
+    "RÈGLES ABSOLUES :\n"
+    "1. Agis, ne planifie pas. N'annonce une action qu'après l'avoir exécutée. "
+    "« J'ai créé... » seulement si l'outil a répondu sans erreur.\n"
+    "2. Ne fabrique jamais une source, un auteur, une date ou une URL de mémoire. "
+    "Si tu ne peux pas vérifier via un outil, dis-le et arrête-toi.\n"
+    "3. Les extraits sont des verbatim exacts dans la langue de la source. "
+    "La traduction va dans le champ `context`, jamais dans `text`.\n"
+    "4. En cas d'erreur sur une valeur de champ, corrige avant de supprimer. "
+    "Préfère `update_source` à `delete_source` + `add_source`.\n"
+    "5. Si un outil renvoie une erreur, lis le message et corrige la valeur. "
+    "Ne répète pas le même appel avec les mêmes arguments.\n"
+    "6. Si la recherche web est indisponible, dis-le à l'utilisateur et arrête-toi. "
+    "Ne substitue rien de ta mémoire d'entraînement.\n\n"
+    "Réponds en français, en phrases courtes et factuelles."
 )
+
+#: Taille max du contexte workspace injecté dans le prompt système.
+_PRIMING_MAX = 40_000
+
+
+async def _priming_workspace(db: AsyncSession, creator_id: Any) -> str:
+    """Charge les fichiers shared/ du workspace du créateur pour le prompt système.
+
+    Renvoie une chaîne vide si le workspace n'est pas encore amorcé.
+    """
+    result = await db.execute(
+        select(WorkspaceFile)
+        .where(
+            WorkspaceFile.creator_id == creator_id,
+            WorkspaceFile.path.startswith("shared/"),
+        )
+        .order_by(WorkspaceFile.path)
+    )
+    fichiers = result.scalars().all()
+    if not fichiers:
+        return ""
+    parties: list[str] = ["\n\n---\n## Workspace éditorial du créateur\n"]
+    total = len(parties[0])
+    for f in fichiers:
+        bloc = f"\n### {f.path}\n{f.content}\n"
+        if total + len(bloc) > _PRIMING_MAX:
+            break
+        parties.append(bloc)
+        total += len(bloc)
+    return "".join(parties)
+
 
 #: Type du callback d'approbation : (id de la demande, nom de l'outil,
 #: arguments) → feu vert ? Le ``request_id`` voyage jusqu'au callback parce
@@ -620,7 +664,8 @@ async def boucle(
     """
     registre = registre or construire_registre()
     outils_api = registre_api(registre)
-    messages.insert(0, {"role": "system", "content": _SYSTEME})
+    workspace_ctx = await _priming_workspace(db, user.id)
+    messages.insert(0, {"role": "system", "content": _SYSTEME + workspace_ctx})
     usage_total: dict[str, int] = {"prompt_tokens": 0, "completion_tokens": 0}
     try:
         for tour in range(1, MAX_TOURS + 1):

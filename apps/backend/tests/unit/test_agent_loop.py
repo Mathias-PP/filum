@@ -13,6 +13,7 @@ from app.agent_tools.tool import AgentTool, ToolContext
 from app.core.config import get_settings
 from app.crypto.keygen import KeyManager
 from app.models.agent_provider import AgentProvider
+from app.models.workspace_file import WorkspaceFile
 from app.services import agent as agent_svc
 from app.services import agent_sessions
 
@@ -778,3 +779,107 @@ class TestUsagePersistance:
         assert isinstance(u, dict)
         assert u["prompt_tokens"] == 42
         assert u["completion_tokens"] == 7
+
+
+@pytest.mark.asyncio
+class TestPrimingWorkspace:
+    async def test_vide_si_pas_de_fichiers(self, db_session, test_user):
+        """Sans fichiers shared/ en base, le priming renvoie une chaine vide."""
+        ctx = await agent_svc._priming_workspace(db_session, test_user.id)
+        assert ctx == ""
+
+    async def test_injecte_les_shared(self, db_session, test_user):
+        """Avec des fichiers shared/, le priming les inclut dans la sortie."""
+        from hashlib import sha256
+
+        contenu = "Ne jamais fabriquer de source."
+        sha = sha256(contenu.encode()).hexdigest()
+        db_session.add(
+            WorkspaceFile(
+                creator_id=test_user.id,
+                path="shared/garde-fous.md",
+                content=contenu,
+                sha256=sha,
+            )
+        )
+        await db_session.commit()
+
+        ctx = await agent_svc._priming_workspace(db_session, test_user.id)
+        assert "shared/garde-fous.md" in ctx
+        assert "Ne jamais fabriquer de source." in ctx
+
+    async def test_respecte_la_limite(self, db_session, test_user):
+        """Les fichiers trop volumineux ne font pas exploser le prompt."""
+        from hashlib import sha256
+
+        gros = "x" * (agent_svc._PRIMING_MAX + 1000)
+        sha = sha256(gros.encode()).hexdigest()
+        db_session.add(
+            WorkspaceFile(
+                creator_id=test_user.id,
+                path="shared/gros.md",
+                content=gros,
+                sha256=sha,
+            )
+        )
+        await db_session.commit()
+
+        ctx = await agent_svc._priming_workspace(db_session, test_user.id)
+        assert len(ctx) <= agent_svc._PRIMING_MAX
+
+    async def test_boucle_injecte_workspace_dans_systeme(self, db_session, test_user):
+        """boucle() doit inserer le contexte workspace dans le message system."""
+        from hashlib import sha256
+
+        contenu = "Principe editorial de test."
+        sha = sha256(contenu.encode()).hexdigest()
+        db_session.add(
+            WorkspaceFile(
+                creator_id=test_user.id,
+                path="shared/principes.md",
+                content=contenu,
+                sha256=sha,
+            )
+        )
+        await db_session.commit()
+
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+        corps_recus: list[dict] = []
+
+        def handler(request):
+            corps_recus.append(json.loads(request.content))
+            return httpx.Response(200, json=_mock_texte("ok"))
+
+        messages = [{"role": "user", "content": "test"}]
+        await _collect(
+            db_session,
+            test_user,
+            provider,
+            messages,
+            _refuse,
+            httpx.MockTransport(handler),
+            _registre_fake([]),
+        )
+        system_msg = next(m for m in corps_recus[0]["messages"] if m["role"] == "system")
+        assert "Principe editorial de test." in system_msg["content"]
+
+
+class TestSystemeAgent:
+    def test_regles_absolues_dans_systeme(self):
+        """Le prompt systeme doit contenir les regles absolues."""
+        assert "Agis, ne planifie pas" in agent_svc._SYSTEME
+        assert "Ne fabrique jamais" in agent_svc._SYSTEME
+        assert "verbatim" in agent_svc._SYSTEME
+        assert "corrige avant de supprimer" in agent_svc._SYSTEME
+
+    @pytest.mark.asyncio
+    async def test_web_search_non_configure_interdit_fabrication(self):
+        """Le message d'erreur de web_search non configure doit interdire les
+        sources inventees."""
+        from app.agent_tools.tool import ToolContext
+        from app.agent_tools.web import _execute_web_search
+
+        ctx = ToolContext(db=None, user=None, creator_id=None)
+        result = await _execute_web_search(ctx, {"query": "test"})
+        assert "mémoire d'entraînement" in result["error"]
