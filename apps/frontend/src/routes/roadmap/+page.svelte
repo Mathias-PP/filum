@@ -28,7 +28,7 @@
         'Repérage automatique des citations dans les sources (IA)',
         "API publique REST + serveur MCP (39 outils, lecture et écriture, OAuth)",
         "Agent IA BYOK : votre clé, votre modèle, votre facture",
-        ‘Signalement de l’accès libre et des rétractations (avec état « non vérifié » explicite)’,
+        "Signalement de l’accès libre et des rétractations (avec état « non vérifié » explicite)",
         'Tableau comparatif des sources d’une fiche',
         'Citations entrantes : quelles fiches citent une source donnée',
         'Mode chronologie et recherche dans le graphe',
