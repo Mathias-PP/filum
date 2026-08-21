@@ -1669,6 +1669,8 @@ export interface components {
       message: string;
       /** Provider Message */
       provider_message?: string | null;
+      /** Latency Ms */
+      latency_ms?: number | null;
       /** Models */
       models?: string[] | null;
     };

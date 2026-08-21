@@ -341,6 +341,7 @@ async def tester(
     headers = {"Authorization": f"Bearer {key}"}
 
     try:
+        t0 = monotonic()
         async with httpx.AsyncClient(timeout=_TIMEOUT, transport=transport) as client:
             r = await client.post(url, json=openai_payload, headers=headers)
             if provider.provider == ProviderKind.ANTHROPIC.value and r.status_code in (400, 404):
@@ -353,6 +354,7 @@ async def tester(
                     },
                     headers={"x-api-key": key, "anthropic-version": "2023-06-01"},
                 )
+        latency_ms = int((monotonic() - t0) * 1000)
         result = _classify(provider.model, url, r)
     except httpx.HTTPError as exc:
         return AgentProviderTestResult(
@@ -372,7 +374,7 @@ async def tester(
         modeles = await lister_modeles(
             db, creator_id, provider_id, transport=transport, refresh=True
         )
-        result = result.model_copy(update={"models": modeles["models"]})
+        result = result.model_copy(update={"models": modeles["models"], "latency_ms": latency_ms})
     return result
 
 

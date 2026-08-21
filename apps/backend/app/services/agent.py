@@ -86,6 +86,10 @@ def _texte_message(message: dict[str, Any]) -> str:
 #: perte perceptible.
 _RETRY_MAX_ATTENTE_S = 60.0
 
+#: Backoff court sur 502/503/504 (infrastructure instable, pas un refus).
+#: Deux tentatives max, attentes [2 s, 5 s]. Au-delà, l'erreur est remontée.
+_BACKOFF_5XX = (2.0, 5.0)
+
 
 def _extraire_retry_delay(body: Any) -> float | None:
     """Extrait ``retryDelay`` de l'erreur Google, ou None.
@@ -282,6 +286,80 @@ async def _emettre_en_un_bloc(
     return resultat
 
 
+async def _traiter_reponse_flux(
+    r: httpx.Response,
+    client: httpx.AsyncClient,
+    url: str,
+    payload: dict[str, Any],
+    headers: dict[str, str],
+    provider: AgentProvider,
+    on_delta: Callable[[str], Awaitable[None]] | None,
+) -> tuple[dict[str, Any], str | None, dict[str, Any]] | str:
+    """Gère le statut HTTP d'une réponse de streaming et renvoie le résultat.
+
+    Centralise 429 (avec retry retryDelay), 400 (repli bloquant), 200 (stream ou
+    bloc selon Content-Type), et tout autre statut (erreur). Appelé depuis
+    ``_appel_provider`` pour la tentative initiale ET pour chaque retry 5xx.
+    """
+    if r.status_code == 429:
+        await r.aread()
+        try:
+            body_429 = r.json()
+        except ValueError:
+            body_429 = None
+        attente = _extraire_retry_delay(body_429)
+        if attente is not None and attente <= _RETRY_MAX_ATTENTE_S:
+            logger.info(
+                "429 sur %s, attente %.1fs puis retry (retryDelay du provider)",
+                provider.model,
+                attente,
+            )
+            await asyncio.sleep(attente)
+            async with client.stream("POST", url, json=payload, headers=headers) as r2:
+                if r2.status_code != 200:
+                    await r2.aread()
+                    try:
+                        body2 = r2.json()
+                    except ValueError:
+                        body2 = r2.text[:500]
+                    msg2 = _extraire_message_erreur(body2)
+                    if r2.status_code == 429:
+                        return (
+                            f"Le fournisseur ({provider.provider}) refuse : quota ou "
+                            f"limite de débit atteinte. {msg2}"
+                        )
+                    return f"Le provider a répondu HTTP {r2.status_code} : {msg2 or body2}"
+                if "text/event-stream" not in r2.headers.get("content-type", ""):
+                    await r2.aread()
+                    return await _emettre_en_un_bloc(
+                        _parse_blocking_response(r2, provider), on_delta
+                    )
+                return await _parse_sse_stream(r2, on_delta)
+        msg = _extraire_message_erreur(body_429)
+        return (
+            f"Le fournisseur ({provider.provider}) refuse : quota ou limite de "
+            f"débit atteinte. {msg}"
+        )
+    if r.status_code == 400:
+        await r.aread()
+        logger.info("stream=True refusé (400) par %s, repli bloquant", provider.model)
+        payload_bloquant = {k: v for k, v in payload.items() if k != "stream"}
+        r_bloquant = await client.post(url, json=payload_bloquant, headers=headers)
+        return await _emettre_en_un_bloc(_parse_blocking_response(r_bloquant, provider), on_delta)
+    if r.status_code != 200:
+        await r.aread()
+        try:
+            body = r.json()
+        except ValueError:
+            body = r.text[:500]
+        msg = _extraire_message_erreur(body)
+        return f"Le provider a répondu HTTP {r.status_code} : {msg or body}"
+    if "text/event-stream" not in r.headers.get("content-type", ""):
+        await r.aread()
+        return await _emettre_en_un_bloc(_parse_blocking_response(r, provider), on_delta)
+    return await _parse_sse_stream(r, on_delta)
+
+
 async def _appel_provider(
     provider: AgentProvider,
     messages: list[dict[str, Any]],
@@ -292,11 +370,11 @@ async def _appel_provider(
 ) -> tuple[dict[str, Any], str | None, dict[str, Any]] | str:
     """Un tour. Rend ``(message, finish_reason, usage)`` ou une chaîne d'erreur.
 
-    Tente le streaming SSE (``stream=True``) : ``on_delta`` est appelée pour chaque
-    fragment texte reçu, permettant un affichage progressif. Sur HTTP 400 (provider
-    sans support streaming), repli automatique sur mode bloquant -- le texte complet
-    est alors émis en un seul appel à ``on_delta``. Sur HTTP 429 avec ``retryDelay``,
-    attend une fois avant de renoncer.
+    Tente le streaming SSE (``stream=True``) avec backoff automatique :
+    - 502/503/504 : backoff [2 s, 5 s], 2 tentatives max (infrastructure instable).
+    - 429 avec ``retryDelay`` : attend l'indice du provider, une fois max.
+    - 400 : repli sur mode bloquant (provider sans support streaming).
+    ``on_delta`` est appelée pour chaque fragment texte, au fil de l'eau.
     """
     key = _decrypt(provider.api_key_enc)
     headers = {"Authorization": f"Bearer {key}"}
@@ -310,79 +388,33 @@ async def _appel_provider(
         "stream": True,
     }
     try:
-        # noqa suit : le second flux ne s'ouvre qu'après l'attente du retryDelay,
-        # imbriqué dans le client -- combiner les ``with`` n'a pas de sens ici.
         async with httpx.AsyncClient(timeout=_TIMEOUT, transport=transport) as client:  # noqa: SIM117
             async with client.stream("POST", url, json=payload, headers=headers) as r:
-                if r.status_code == 429:
+                if r.status_code in (502, 503, 504):
                     await r.aread()
-                    try:
-                        body_429 = r.json()
-                    except ValueError:
-                        body_429 = None
-                    attente = _extraire_retry_delay(body_429)
-                    if attente is not None and attente <= _RETRY_MAX_ATTENTE_S:
+                    statut_5xx = r.status_code
+                    for i, attente in enumerate(_BACKOFF_5XX):
                         logger.info(
-                            "429 sur %s, attente %.1fs puis retry (retryDelay du provider)",
-                            provider.model,
+                            "HTTP %s sur tour agent (tentative %d/%d), backoff %.0fs",
+                            statut_5xx,
+                            i + 1,
+                            len(_BACKOFF_5XX),
                             attente,
                         )
                         await asyncio.sleep(attente)
-                        async with client.stream("POST", url, json=payload, headers=headers) as r2:
-                            if r2.status_code != 200:
-                                await r2.aread()
-                                try:
-                                    body2 = r2.json()
-                                except ValueError:
-                                    body2 = r2.text[:500]
-                                msg2 = _extraire_message_erreur(body2)
-                                if r2.status_code == 429:
-                                    return (
-                                        f"Le fournisseur ({provider.provider}) refuse : quota ou "
-                                        f"limite de débit atteinte. {msg2}"
-                                    )
-                                return (
-                                    f"Le provider a répondu HTTP {r2.status_code} : {msg2 or body2}"
+                        async with client.stream(
+                            "POST", url, json=payload, headers=headers
+                        ) as r_retry:
+                            statut_5xx = r_retry.status_code
+                            if statut_5xx not in (502, 503, 504) or i >= len(_BACKOFF_5XX) - 1:
+                                return await _traiter_reponse_flux(
+                                    r_retry, client, url, payload, headers, provider, on_delta
                                 )
-                            # Même règle que le premier appel : JSON bloquant
-                            # possible malgré stream=True.
-                            if "text/event-stream" not in r2.headers.get("content-type", ""):
-                                await r2.aread()
-                                return await _emettre_en_un_bloc(
-                                    _parse_blocking_response(r2, provider), on_delta
-                                )
-                            return await _parse_sse_stream(r2, on_delta)
-                    msg = _extraire_message_erreur(body_429)
-                    return (
-                        f"Le fournisseur ({provider.provider}) refuse : quota ou limite de "
-                        f"débit atteinte. {msg}"
-                    )
-                if r.status_code == 400:
-                    # Repli sur mode bloquant : provider qui refuse stream=True
-                    await r.aread()
-                    logger.info("stream=True refusé (400) par %s, repli bloquant", provider.model)
-                    payload_bloquant = {k: v for k, v in payload.items() if k != "stream"}
-                    r_bloquant = await client.post(url, json=payload_bloquant, headers=headers)
-                    return await _emettre_en_un_bloc(
-                        _parse_blocking_response(r_bloquant, provider), on_delta
-                    )
-                if r.status_code != 200:
-                    await r.aread()
-                    try:
-                        body = r.json()
-                    except ValueError:
-                        body = r.text[:500]
-                    msg = _extraire_message_erreur(body)
-                    return f"Le provider a répondu HTTP {r.status_code} : {msg or body}"
-                # Un provider peut répondre en JSON bloquant même quand
-                # stream=True est demandé : le Content-Type tranche. Le texte
-                # complet part alors en un seul on_delta, comme sur repli 400.
-                if "text/event-stream" not in r.headers.get("content-type", ""):
-                    await r.aread()
-                    return await _emettre_en_un_bloc(
-                        _parse_blocking_response(r, provider), on_delta
-                    )
-                return await _parse_sse_stream(r, on_delta)
+                            await r_retry.aread()
+                    return f"Le provider a répondu HTTP {statut_5xx} : infrastructure instable."
+                return await _traiter_reponse_flux(
+                    r, client, url, payload, headers, provider, on_delta
+                )
     except httpx.HTTPError as exc:
         return f"Erreur réseau vers le provider : {exc}"
     except ValueError as exc:

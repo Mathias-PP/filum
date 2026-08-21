@@ -622,3 +622,24 @@ class TestTesterRemonteLesModeles:
         assert res.ok is False
         assert res.models is None
         assert appels_models[0] == 0
+
+    @pytest.mark.asyncio
+    async def test_latency_ms_present_sur_succes(self, db_session, test_user):
+        """Un test reussi doit porter latency_ms > 0 (signal diagnostic pour
+        identifier un provider lent)."""
+        svc._invalider_cache_modeles_tout()
+        p = await _mk_provider(db_session, test_user.id)
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path.endswith("/chat/completions"):
+                return httpx.Response(200, json={})
+            if request.url.path.endswith("/models"):
+                return httpx.Response(200, json={"data": [{"id": "gpt-x"}]})
+            return httpx.Response(500)
+
+        res = await service_tester(
+            db_session, test_user.id, p.id, transport=httpx.MockTransport(handler)
+        )
+        assert res.ok is True
+        assert isinstance(res.latency_ms, int)
+        assert res.latency_ms >= 0

@@ -172,6 +172,7 @@ class AgentProviderTestResult(BaseModel):
     url: str
     message: str
     provider_message: str | None = None
+    latency_ms: int | None = None
     # Sur un test reussi, la liste des modeles du compte est chargee en meme
     # temps : le dropdown est chaud et le cache serveur (15 min) est populé
     # sans qu'un second appel soit necessaire depuis le front.

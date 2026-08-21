@@ -50,6 +50,7 @@ export interface AgentProviderTestResult {
   url: string;
   message: string;
   provider_message: string | null;
+  latency_ms: number | null;
   // Sur un test réussi, la liste des modèles du compte est chargée en même
   // temps (cache serveur 15 min chauffé). Null sur échec.
   models: string[] | null;
