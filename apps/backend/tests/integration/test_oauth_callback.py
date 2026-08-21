@@ -108,6 +108,7 @@ async def test_google_callback_creates_new_user(
     assert "filum_session=" in set_cookie
 
     from sqlalchemy import select
+
     from app.models.user import User
 
     result = await db_session.execute(select(User).where(User.google_id == "google_test_sub_123"))

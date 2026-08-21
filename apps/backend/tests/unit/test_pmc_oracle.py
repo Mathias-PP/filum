@@ -21,8 +21,8 @@ import json
 from app.extractors.pmc_oracle import (
     est_url_ncbi,
     identifiant_depuis_url,
-    texte_du_resume,
     texte_des_passages,
+    texte_du_resume,
 )
 
 

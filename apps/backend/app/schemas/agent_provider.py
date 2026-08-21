@@ -12,6 +12,10 @@ class ProviderKind(str, Enum):
     ANTHROPIC = "anthropic"
     DEEPSEEK = "deepseek"
     GEMINI = "gemini"
+    GROQ = "groq"
+    OPENROUTER = "openrouter"
+    MISTRAL = "mistral"
+    CEREBRAS = "cerebras"
     CUSTOM = "custom"
 
 
@@ -22,6 +26,25 @@ PROVIDER_DEFAULT_BASE_URLS: dict[str, str] = {
     "anthropic": "https://api.anthropic.com",
     "deepseek": "https://api.deepseek.com",
     "gemini": "https://generativelanguage.googleapis.com/v1beta/openai",
+    "groq": "https://api.groq.com/openai/v1",
+    "openrouter": "https://openrouter.ai/api/v1",
+    "mistral": "https://api.mistral.ai/v1",
+    "cerebras": "https://api.cerebras.ai/v1",
+}
+
+#: Filet de securite quand le fournisseur ne repond pas sur ``/models``. Ce n'est
+#: PAS la source de verite : la liste vivante vient de ``lister_modeles()``, qui
+#: interroge le compte de l'utilisateur. Verifie le 2026-08-21.
+MODELES_SUGGERES: dict[str, list[str]] = {
+    "openai": ["gpt-5.6-luna", "gpt-5.6-terra"],
+    "anthropic": ["claude-opus-4-7", "claude-sonnet-4-6", "claude-haiku-4-5-20251001"],
+    "deepseek": ["deepseek-chat", "deepseek-reasoner"],
+    "gemini": ["gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.1-pro"],
+    "groq": [],
+    "openrouter": [],
+    "mistral": [],
+    "cerebras": [],
+    "custom": [],
 }
 
 
@@ -135,10 +158,17 @@ class AgentProviderRead(BaseModel):
 
 
 class AgentProviderTestResult(BaseModel):
-    """Résultat du test de clé, avec un message actionnable par statut."""
+    """Résultat du test de clé, avec un message actionnable par statut.
+
+    ``provider_message`` porte le texte brut renvoyé par le fournisseur. C'est
+    souvent la seule information exploitable de toute la chaine : Gemini y nomme
+    le modele de remplacement, OpenAI y distingue un credit epuise d'une limite
+    de debit. Ne jamais le remplacer par une reformulation.
+    """
 
     ok: bool
     http_status: int | None = None
     model_resolved: str
     url: str
     message: str
+    provider_message: str | None = None

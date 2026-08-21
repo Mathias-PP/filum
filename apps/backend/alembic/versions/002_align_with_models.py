@@ -49,9 +49,7 @@ def upgrade() -> None:
         "biblio_cards",
         sa.Column("signed_at", sa.DateTime(timezone=True), nullable=True),
     )
-    op.create_index(
-        "ix_biblio_cards_user_status", "biblio_cards", ["user_id", "status"]
-    )
+    op.create_index("ix_biblio_cards_user_status", "biblio_cards", ["user_id", "status"])
 
     op.add_column(
         "sources",

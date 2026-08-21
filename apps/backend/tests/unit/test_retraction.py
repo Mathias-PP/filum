@@ -57,8 +57,7 @@ class TestClassifyUpdates:
 
     def test_mise_en_garde(self):
         assert (
-            classify_updates([{"type": "expression_of_concern"}]).status
-            is RetractionStatus.CONCERN
+            classify_updates([{"type": "expression_of_concern"}]).status is RetractionStatus.CONCERN
         )
 
     def test_type_inconnu_invite_a_verifier_plutot_que_de_rassurer(self):
@@ -149,4 +148,3 @@ def _fake_get(*, status_code: int, payload: dict):
         return Response()
 
     return get
-

@@ -113,7 +113,9 @@ def test_renonce_aux_liens_internes_quand_le_site_en_fait_un_dispositif():
         f"<p>{phrase}<a href='/note-{i}'>note {i}</a> {phrase}</p>"
         for i in range(_INTERNAL_LINKS_MAX + 1)
     )
-    refs = extract_body_links(f"<html><body><main>{corps}</main></body></html>", "https://blog.ex/a")
+    refs = extract_body_links(
+        f"<html><body><main>{corps}</main></body></html>", "https://blog.ex/a"
+    )
     assert refs == []
 
 

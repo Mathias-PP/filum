@@ -176,7 +176,9 @@ def test_dedup_crossref_plus_s2_yields_152(crossref_payload, s2_payload, frontie
     # auteurs). Sans elle, S2 reintroduit des refs deja presentes chez
     # Crossref sous un autre DOI et avec une chaine auteur degradee
     # differemment (ex: Stroop 1935 -> auteur S2 'J. Ridley').
-    s2_enrichment = [r for r in s2_validated if not any(matches_authoritative_work(r, cr) for cr in cr_refs)]
+    s2_enrichment = [
+        r for r in s2_validated if not any(matches_authoritative_work(r, cr) for cr in cr_refs)
+    ]
 
     all_refs = list(cr_refs) + s2_enrichment
     deduped = dedupe_refs(all_refs)

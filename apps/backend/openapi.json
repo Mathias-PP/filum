@@ -44,6 +44,90 @@
         }
       }
     },
+    "/api/v1/agent/fiche/{slug}": {
+      "get": {
+        "tags": [
+          "agent-fiche"
+        ],
+        "summary": "Etat Fiche",
+        "description": "Où en est le run : quels étages ont déposé leur compte rendu.",
+        "operationId": "etat_fiche_api_v1_agent_fiche__slug__get",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Slug"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Etat Fiche Api V1 Agent Fiche  Slug  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent/fiche": {
+      "post": {
+        "tags": [
+          "agent-fiche"
+        ],
+        "summary": "Lancer Fiche",
+        "operationId": "lancer_fiche_api_v1_agent_fiche_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentFicheRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/agent/providers/meta": {
       "get": {
         "tags": [
@@ -242,6 +326,48 @@
                 "schema": {
                   "$ref": "#/components/schemas/AgentProviderTestResult"
                 }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent/providers/{provider_id}/models": {
+      "get": {
+        "tags": [
+          "agent-providers"
+        ],
+        "summary": "Lister Modeles Provider",
+        "description": "Les modeles disponibles pour ce compte, demandes au fournisseur.",
+        "operationId": "lister_modeles_provider_api_v1_agent_providers__provider_id__models_get",
+        "parameters": [
+          {
+            "name": "provider_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Provider Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
               }
             }
           },
@@ -3900,6 +4026,44 @@
         ],
         "title": "AgentChatRequest"
       },
+      "AgentFicheRequest": {
+        "properties": {
+          "content_url": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Content Url"
+          },
+          "slug": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "title": "Slug"
+          },
+          "depuis": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Depuis",
+            "description": "Reprendre à cet étage. Les comptes rendus déjà écrits servent de contexte."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "content_url",
+          "slug"
+        ],
+        "title": "AgentFicheRequest",
+        "description": "Lancement d'un run de fiche : quel contenu, sous quel slug."
+      },
       "AgentMessageRead": {
         "properties": {
           "id": {
@@ -4112,6 +4276,17 @@
           "message": {
             "type": "string",
             "title": "Message"
+          },
+          "provider_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Message"
           }
         },
         "type": "object",
@@ -4122,7 +4297,7 @@
           "message"
         ],
         "title": "AgentProviderTestResult",
-        "description": "Résultat du test de clé, avec un message actionnable par statut."
+        "description": "Résultat du test de clé, avec un message actionnable par statut.\n\n``provider_message`` porte le texte brut renvoyé par le fournisseur. C'est\nsouvent la seule information exploitable de toute la chaine : Gemini y nomme\nle modele de remplacement, OpenAI y distingue un credit epuise d'une limite\nde debit. Ne jamais le remplacer par une reformulation."
       },
       "AgentProviderUpdate": {
         "properties": {
@@ -7609,6 +7784,10 @@
           "anthropic",
           "deepseek",
           "gemini",
+          "groq",
+          "openrouter",
+          "mistral",
+          "cerebras",
           "custom"
         ],
         "title": "ProviderKind"

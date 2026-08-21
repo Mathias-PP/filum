@@ -11,6 +11,7 @@ service — seule la forme masquée (``sk-…1234``) atteint les endpoints.
 from __future__ import annotations
 
 import logging
+from typing import Any
 from uuid import UUID
 
 import httpx
@@ -23,6 +24,7 @@ from app.core.url_safety import UnsafeUrlError, assert_url_is_safe
 from app.crypto.keygen import KeyManager
 from app.models.agent_provider import AgentProvider
 from app.schemas.agent_provider import (
+    MODELES_SUGGERES,
     PROVIDER_DEFAULT_BASE_URLS,
     AgentProviderCreate,
     AgentProviderRead,
@@ -79,6 +81,25 @@ PROVIDER_META: dict[str, dict[str, str]] = {
     "gemini": {
         "hosting_country": "États-Unis",
         "hosting_note": "Infrastructure de Google, répartie mondialement (siège aux États-Unis).",
+    },
+    "groq": {
+        "hosting_country": "États-Unis",
+        "hosting_note": "Infrastructure de Groq, principalement aux États-Unis.",
+    },
+    "openrouter": {
+        "hosting_country": "Variable",
+        "hosting_note": (
+            "OpenRouter route vers le fournisseur du modele choisi : "
+            "l'hebergement depend de ce modele."
+        ),
+    },
+    "mistral": {
+        "hosting_country": "France",
+        "hosting_note": "Infrastructure de Mistral AI, en Europe.",
+    },
+    "cerebras": {
+        "hosting_country": "États-Unis",
+        "hosting_note": "Infrastructure de Cerebras, principalement aux États-Unis.",
     },
     "custom": {
         "hosting_country": "Selon l'endpoint configuré",
@@ -315,34 +336,120 @@ async def tester(
         )
 
 
+def _detail_provider(r: httpx.Response) -> str | None:
+    """Le texte que le fournisseur a reellement renvoye, ou ``None``.
+
+    Trois formes rencontrees : ``{"error": {"message": ...}}`` (OpenAI, Gemini),
+    ``[{"error": {"message": ...}}]`` (Gemini renvoie parfois une liste), et du
+    HTML brut derriere un proxy. Ne leve jamais.
+    """
+    try:
+        corps = r.json()
+    except ValueError:
+        corps = None
+
+    if isinstance(corps, list) and corps:
+        corps = corps[0]
+    if isinstance(corps, dict):
+        erreur = corps.get("error")
+        if isinstance(erreur, dict):
+            message = erreur.get("message")
+            if isinstance(message, str) and message.strip():
+                return message.strip()
+        if isinstance(erreur, str) and erreur.strip():
+            return erreur.strip()
+
+    # Eviter de renvoyer un corps JSON syntaxiquement valide mais sans information
+    # utile (ex: "{}") comme si c'etait un message du provider.
+    if corps is not None:
+        return None
+    texte = " ".join(r.text.split())
+    return texte[:300] or None
+
+
+_CADRAGES: dict[int, str] = {
+    400: "Requête refusée par le provider.",
+    401: "Clé API invalide ou révoquée.",
+    403: "Accès refusé par le provider (clé sans autorisation).",
+    404: "Le provider ne connaît pas ce modèle à cette adresse.",
+    429: "Le provider refuse : crédit insuffisant, quota épuisé, ou limite de débit.",
+}
+
+
 def _classify(
     model: str,
     url: str,
     r: httpx.Response,
 ) -> AgentProviderTestResult:
-    """Clé invalide, quota épuisé, modèle inconnu → message distinct et actionnable."""
+    """Un cadrage lisible, suivi du texte exact du provider quand il en donne un."""
     if r.status_code == 200:
         return AgentProviderTestResult(
             ok=True,
             http_status=200,
             model_resolved=model,
             url=url,
-            message=f"Clé valide — le modèle {model} répond.",
+            message=f"Clé valide, le modèle {model} répond.",
         )
-    messages = {
-        400: "Requête refusée par le provider. Vérifier model et base_url.",
-        401: "Clé API invalide ou révoquée.",
-        403: "Accès refusé par le provider (clé sans autorisation).",
-        404: "Endpoint ou modèle introuvable. Vérifier base_url et model.",
-        429: "Quota épuisé ou limite de débit. Réessayer plus tard.",
-    }
+
+    cadrage = _CADRAGES.get(
+        r.status_code,
+        f"Réponse inattendue du provider (HTTP {r.status_code}).",
+    )
+    detail = _detail_provider(r)
     return AgentProviderTestResult(
         ok=False,
         http_status=r.status_code,
         model_resolved=model,
         url=url,
-        message=messages.get(
-            r.status_code,
-            f"Réponse inattendue du provider (HTTP {r.status_code}).",
-        ),
+        message=f"{cadrage} {detail}" if detail else cadrage,
+        provider_message=detail,
     )
+
+
+async def lister_modeles(
+    db: AsyncSession,
+    creator_id: UUID,
+    provider_id: UUID,
+    transport: httpx.AsyncBaseTransport | None = None,
+) -> dict[str, Any]:
+    """Les modeles auxquels *ce* compte a droit, demandes au fournisseur.
+
+    Tous les fournisseurs OpenAI-compatibles servent ``GET /models`` avec la cle
+    du porteur, et la reponse depend du plan souscrit. Ne leve jamais : un echec
+    se replie sur ``MODELES_SUGGERES``.
+    """
+    provider = await _get_owned(db, creator_id, provider_id)
+    repli = MODELES_SUGGERES.get(provider.provider, [])
+    url = f"{provider.base_url.rstrip('/')}/models"
+
+    try:
+        async with httpx.AsyncClient(timeout=_TIMEOUT, transport=transport) as client:
+            r = await client.get(
+                url,
+                headers={"Authorization": f"Bearer {_decrypt(provider.api_key_enc)}"},
+            )
+    except httpx.HTTPError as exc:
+        return {"models": repli, "source": "repli", "message": f"Fournisseur injoignable : {exc}"}
+
+    if r.status_code != 200:
+        detail = _detail_provider(r)
+        msg = f"Le fournisseur n'a pas liste ses modeles (HTTP {r.status_code})."
+        if detail:
+            msg = f"{msg} {detail}"
+        return {"models": repli, "source": "repli", "message": msg}
+
+    try:
+        entrees = r.json().get("data", [])
+    except ValueError:
+        return {"models": repli, "source": "repli", "message": "Reponse illisible du fournisseur."}
+
+    noms = sorted(
+        {e["id"] for e in entrees if isinstance(e, dict) and isinstance(e.get("id"), str)}
+    )
+    if not noms:
+        return {
+            "models": repli,
+            "source": "repli",
+            "message": "Le fournisseur n'a liste aucun modele.",
+        }
+    return {"models": noms, "source": "provider"}

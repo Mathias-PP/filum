@@ -45,7 +45,9 @@ def upgrade() -> None:
             nullable=False,
             comment="Chemin normalisé relatif (racines fermées : shared/, stages/, _core/, runs/, setup/, agents/).",
         ),
-        sa.Column("content", sa.Text(), nullable=False, server_default="", comment="Contenu du fichier"),
+        sa.Column(
+            "content", sa.Text(), nullable=False, server_default="", comment="Contenu du fichier"
+        ),
         sa.Column(
             "sha256",
             sa.String(64),

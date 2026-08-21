@@ -46,6 +46,10 @@
       title: 'API publique + MCP',
       desc: 'Intégrez Philum dans vos outils : API REST publique et serveur MCP pour les agents IA.',
     },
+    {
+      title: 'Un agent IA avec votre clé',
+      desc: "Branchez votre propre clé (OpenAI, Anthropic, Gemini, Mistral, Groq, OpenRouter, Cerebras, DeepSeek) et l'agent construit vos fiches source par source. Votre clé, votre facture, votre modèle.",
+    },
   ];
 
   const upcoming = [

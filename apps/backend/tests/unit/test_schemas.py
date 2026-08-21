@@ -5,8 +5,7 @@ from uuid import uuid4
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.user import SlugPattern
-from app.schemas.biblio_card import CardCreate, Platform, ContentType
+from app.schemas.biblio_card import CardCreate, ContentType, Platform
 from app.schemas.source import (
     AuthorKind,
     SourceCategory,
@@ -15,6 +14,7 @@ from app.schemas.source import (
     SourceStance,
     SourceUpdate,
 )
+from app.schemas.user import SlugPattern
 
 
 class TestUserSchemas:

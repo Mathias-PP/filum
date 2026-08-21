@@ -163,9 +163,7 @@ async def test_confirmer_une_suggestion(
     client, session_token, card_id, suggested_source_id, db_session
 ):
     client.cookies.set("filum_session", session_token)
-    resp = await client.post(
-        f"/api/v1/cards/{card_id}/connections/{suggested_source_id}/confirm"
-    )
+    resp = await client.post(f"/api/v1/cards/{card_id}/connections/{suggested_source_id}/confirm")
     assert resp.status_code == 200
     assert resp.json()["confirmed"] is True
 

@@ -77,7 +77,9 @@ def test_le_nom_propre_a_majuscule_interne_survit(ancre: str) -> None:
 
 
 def test_un_titre_deja_present_n_est_jamais_touche() -> None:
-    ref = ImportedRef(url="https://exemple.test/a", title="Titre reel", raw_text="ran for president")
+    ref = ImportedRef(
+        url="https://exemple.test/a", title="Titre reel", raw_text="ran for president"
+    )
     _fallback_title_from_anchor([ref])
     assert ref.title == "Titre reel"
 

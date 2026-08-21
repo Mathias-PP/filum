@@ -30,6 +30,7 @@ from app.services.agent_providers import (
     AgentProviderNotFoundError,
     creer,
     lister,
+    lister_modeles,
     mettre_a_jour,
     supprimer,
     tester,
@@ -131,6 +132,25 @@ async def tester_provider(
 ):
     try:
         return await tester(db, current_user.id, provider_id, transport=transport)
+    except AgentProviderNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": str(exc)},
+        ) from exc
+
+
+@router.get("/{provider_id}/models")
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+async def lister_modeles_provider(
+    provider_id: UUID,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    transport: httpx.AsyncBaseTransport | None = Depends(get_http_client),
+):
+    """Les modeles disponibles pour ce compte, demandes au fournisseur."""
+    try:
+        return await lister_modeles(db, current_user.id, provider_id, transport=transport)
     except AgentProviderNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

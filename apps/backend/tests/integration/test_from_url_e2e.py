@@ -12,8 +12,6 @@ montre = ce qui est persiste = ce qu'on relit via GET /sources.
 
 from __future__ import annotations
 
-from uuid import uuid4
-
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient

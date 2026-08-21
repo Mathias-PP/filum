@@ -9,7 +9,16 @@
 
 import { API_BASE, ApiError, request } from './client';
 
-export type ProviderKind = 'openai' | 'anthropic' | 'deepseek' | 'gemini' | 'custom';
+export type ProviderKind =
+  | 'openai'
+  | 'anthropic'
+  | 'deepseek'
+  | 'gemini'
+  | 'groq'
+  | 'openrouter'
+  | 'mistral'
+  | 'cerebras'
+  | 'custom';
 
 export interface AgentProvider {
   id: string;
@@ -40,6 +49,7 @@ export interface AgentProviderTestResult {
   model_resolved: string;
   url: string;
   message: string;
+  provider_message: string | null;
 }
 
 export interface ProviderMetaEntry {
@@ -50,6 +60,12 @@ export interface ProviderMetaEntry {
 export interface AgentProviderMeta {
   data_scope: string;
   providers: Record<string, ProviderMetaEntry>;
+}
+
+export interface AgentProviderModels {
+  models: string[];
+  source: 'provider' | 'repli';
+  message?: string;
 }
 
 export interface AgentSession {
@@ -118,6 +134,7 @@ export const agentApi = {
     remove: (id: string) => request<void>(`/agent/providers/${id}`, { method: 'DELETE' }),
     test: (id: string) =>
       request<AgentProviderTestResult>(`/agent/providers/${id}/test`, { method: 'POST' }),
+    models: (id: string) => request<AgentProviderModels>(`/agent/providers/${id}/models`),
   },
 
   sessions: {

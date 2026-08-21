@@ -2,7 +2,35 @@
 
 > Snapshot vivant, 1 page max. **Pour l'historique détaillé** : voir [`CHANGELOG.md`](./CHANGELOG.md). **Pour les items long terme** : voir [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md).
 
-**Dernière mise à jour : 2026-08-16**
+**Dernière mise à jour : 2026-08-21**
+
+---
+
+## Session 2026-08-21 (autonome) : moteur d'agent BYOK, 39 outils MCP, interface de chat
+
+**PR #499** : providers BYOK CRUD. Le createur enregistre sa cle API (OpenAI, Anthropic, Gemini, DeepSeek) chiffree en AES-GCM, test de cle depuis l'interface, masquage a l'affichage. Isolation par createur, un seul defaut par provider.
+
+**PR #500** : workspace ICM heberge en base. La progression d'une session d'agent (etapes completees, sorties texte, avertissements) est persistee dans une table `agent_sessions`.
+
+**PR #508** : moteur d'agent BYOK, boucle, outils, chat SSE. Le createur ouvre un chat dans son tableau de bord ; l'agent enchaîne les appels d'outils en streaming SSE, chaque evenement est visible en temps reel. La boucle est plafonnee (protection contre les cycles infinis).
+
+**Plan d'implementation 2026-08-21, 8 taches :**
+
+- **Tache 1** : orchestrateur de fiche autonome. `POST /agent/fiche` demarre un run ICM en 7 etapes (brief, sources, extraits, relecture, connexions, attestation, publication), chaque etape streamee en SSE avec `stage_start` / `stage_done` / `stage_failed`.
+
+- **Tache 2** : le test de cle rend le message exact du fournisseur. `_detail_provider()` extrait le texte brut de trois formes de corps d'erreur (OpenAI, Gemini liste, HTML brut). `_classify()` prefixe d'un cadrage lisible et expose `provider_message`. Avant : « Quota epuise ou limite de debit. Reessayer plus tard. » ; apres : le message verbatim du provider apparait.
+
+- **Tache 3** : selecteur de modele via `GET /agent/providers/{id}/models`. Le backend interroge `GET /models` avec la cle du createur et replie sur `MODELES_SUGGERES` si le provider refuse. Le front affiche un `<select>` avec les modeles du compte, avec bascule vers la saisie libre.
+
+- **Tache 4** : modifier une cle sans la supprimer. Bouton « Modifier » sur chaque provider ; en mode edition le champ cle est optionnel (vide = conserver l'actuelle), le fournisseur est en lecture seule.
+
+- **Tache 5** : quatre fournisseurs a cle gratuite sans carte (Groq, OpenRouter, Mistral, Cerebras), avec liens directs vers les consoles. Encart d'onboarding quand aucun provider n'est enregistre.
+
+- **Tache 6** : navigation et contexte. Lien retour depuis Providers, banniere du provider actif dans le chat, bloc d'onboarding si aucun provider n'est marque par defaut. Bouton « Nouvelle conversation ».
+
+- **Tache 7** : schemas MCP compatibles Gemini. `aplatir_nullable()` remplace recursivement `anyOf: [T, null]` par `T` dans les `parameters` des 39 outils. Le validateur de function declarations de Gemini rejetait `anyOf` et silenciait la liste entiere. Verifie : `test_aucun_outil_mcp_ne_publie_any_of` passe, 0 `anyOf` dans les schemas d'entree.
+
+- **Tache 8** : page `/developers` utilisable. L'URL nue du serveur MCP apparait en premier avec un bouton copier. Une recette par client (Claude Code, Claude application, Gemini CLI avec `httpUrl`, Cursor/opencode/Codex). Les 39 outils sont listes et groupes par categorie.
 
 ---
 
@@ -1013,6 +1041,7 @@ Vercel : `BACKEND_URL=https://philum-api.duckdns.org` (env var serverless, jamai
 > **Roadmap consolidée et priorisée** : [`.docs/21-roadmap-2026-07.md`](./.docs/21-roadmap-2026-07.md). Plan d'audit détaillé : [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md). Comptes plateformes liés : [`.docs/18-linked-accounts.md`](./.docs/18-linked-accounts.md).
 
 **Immédiat**
+- ~~**Moteur d'agent BYOK + orchestrateur de fiche**~~ ✅ **fait le 2026-08-21** (PRs #499, #500, #508 + plan 8 taches). Le createur branche sa propre cle, l'agent construit une fiche en 7 etapes streamees. Quatre corrections d'interface : message exact du fournisseur, selecteur de modele vivant, edition de cle sans suppression, page `/developers` avec URL MCP en clair. Schemas MCP compatibles Gemini (0 `anyOf` dans les 39 outils d'entree). Cinq fournisseurs a cle gratuite sans carte (Mistral, Groq, OpenRouter, Cerebras, Google AI Studio).
 - ✅ **Dates manquantes et voie « sans date » en chronologie** (signalé le 2026-08-04) — **les deux défauts sont traités**, vérifié le 2026-08-07.
   1. ~~**L'identification de la date échoue là où la donnée existe.**~~ ✅ **#312**. Cause trouvée et mesurée comme générale : `_parse_crossref_work` ne lisait que `published-print` et `published-online`, et un enregistrement `posted-content` ne porte **ni l'un ni l'autre** — sa date vit dans `issued`. Vérifié sur OSF, bioRxiv et medRxiv comme la note le demandait. `issued` ajouté en **dernier** repli : présent sur tous les types (donc pas de branche par hébergeur ni de test sur `type`), et placé en dernier pour que la parution papier continue de faire foi — `nrn3667` reste à `2014-03-01`, aucun enregistrement déjà daté ne bouge. Cas témoin `10.31234/osf.io/x4yj3` : `null` → `2021-09-09`.
      - ~~⚠️ Mesuré au passage, hors périmètre : `_extract_doi` *et* `resolve_doi_from_url` rendent `None` sur `osf.io/preprints/…` **et** `arxiv.org/abs/…`.~~ ✅ **#323** — et **la note tirait la mauvaise conclusion des deux côtés**, vérifié le 2026-08-07 :
