@@ -99,7 +99,13 @@ async def _execute_web_search(ctx: ToolContext, args: dict[str, Any]) -> dict[st
     provider = settings.agent_web_search_provider.strip().lower()
     cle = settings.agent_web_search_api_key.strip()
     if not provider or not cle:
-        return {"error": "Recherche web non configurée sur ce serveur."}
+        return {
+            "error": (
+                "Recherche web non configurée sur ce serveur. "
+                "Signalez-le au créateur. "
+                "Ne proposez jamais de sources inventées ou issues de votre mémoire d'entraînement."
+            )
+        }
     try:
         resultats = await _rechercher(provider, cle, query.strip())
     except Exception as exc:  # noqa: BLE001 — message lisible par le modèle
