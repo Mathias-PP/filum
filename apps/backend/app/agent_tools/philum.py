@@ -21,6 +21,22 @@ from fastmcp.exceptions import ToolError
 from app.agent_tools.tool import AgentTool, ToolContext
 from app.mcp_server import tools as lecture
 from app.mcp_server import tools_write as ecriture
+from app.models.biblio_card import CardStatus
+from app.models.source import AuthorKind, SourceCategory, SourceFormat, SourceStance
+from app.schemas.biblio_card import ContentType, Platform, Visibility
+
+#: Enums par nom de parametre : injectees dans le schema JSON pour que le modele
+#: voie les valeurs acceptees et ne parte pas en boucle sur une valeur inventee.
+_ENUMS_PAR_PARAMETRE: dict[str, list[str]] = {
+    "platform": [e.value for e in Platform],
+    "content_type": [e.value for e in ContentType],
+    "visibility": [e.value for e in Visibility],
+    "status": [e.value for e in CardStatus],
+    "category": [e.value for e in SourceCategory],
+    "author_kind": [e.value for e in AuthorKind],
+    "format": [e.value for e in SourceFormat],
+    "stance": [e.value for e in SourceStance],
+}
 
 #: Actions sensibles : toujours soumises à validation humaine (approbation
 #: hybride). Leur exécution ne se fait qu'après un feu vert explicite.
@@ -29,6 +45,7 @@ SENSITIVE_TOOLS: frozenset[str] = frozenset(
         "publish_card",
         "delete_card",
         "delete_source",
+        "delete_excerpt",
         "create_content_attestation",
         "archive_sources",
     }
@@ -66,6 +83,8 @@ def _json_schema(tp: Any) -> dict[str, Any]:
         return {"type": "integer"}
     if tp is bool:
         return {"type": "boolean"}
+    if tp is dict or (origin is dict):
+        return {"type": "object"}
     return {"type": "string"}
 
 
@@ -78,6 +97,8 @@ def _envelopper(fonction, *, avec_utilisateur: bool) -> tuple[dict[str, Any], An
         if nom in ("db", "user"):
             continue
         props = _json_schema(hints.get(nom, str))
+        if nom in _ENUMS_PAR_PARAMETRE and props.get("type") == "string":
+            props["enum"] = _ENUMS_PAR_PARAMETRE[nom]
         if param.default is inspect.Parameter.empty:
             requis.append(nom)
         else:
@@ -117,6 +138,7 @@ _ECRITURE = (
     "publish_card",
     "delete_card",
     "delete_source",
+    "delete_excerpt",
     "suggest_excerpts",
     "annotate_excerpt",
     "parse_biblio",
@@ -129,8 +151,8 @@ _ECRITURE = (
 
 
 def _description(fonction) -> str:
-    doc = (fonction.__doc__ or "").strip()
-    return doc.splitlines()[0] if doc else fonction.__name__
+    doc = inspect.cleandoc(fonction.__doc__ or "")
+    return " ".join(doc.split()) if doc else fonction.__name__
 
 
 def philum_tools() -> list[AgentTool]:
