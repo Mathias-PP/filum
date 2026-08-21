@@ -143,7 +143,10 @@ export interface paths {
     };
     /**
      * Lister Modeles Provider
-     * @description Les modeles disponibles pour ce compte, demandes au fournisseur.
+     * @description Les modèles disponibles pour ce compte, demandés au fournisseur.
+     *
+     *     Cache serveur 15 min. Passer ``?refresh=true`` pour forcer le rappel réseau
+     *     (utile si l'utilisateur vient d'activer un nouveau plan chez le fournisseur).
      */
     get: operations['lister_modeles_provider_api_v1_agent_providers__provider_id__models_get'];
     put?: never;
@@ -1664,6 +1667,8 @@ export interface components {
       message: string;
       /** Provider Message */
       provider_message?: string | null;
+      /** Models */
+      models?: string[] | null;
     };
     /** AgentProviderUpdate */
     AgentProviderUpdate: {
@@ -3591,7 +3596,9 @@ export interface operations {
   };
   lister_modeles_provider_api_v1_agent_providers__provider_id__models_get: {
     parameters: {
-      query?: never;
+      query?: {
+        refresh?: boolean;
+      };
       header?: never;
       path: {
         provider_id: string;

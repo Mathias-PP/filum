@@ -11,6 +11,7 @@ service — seule la forme masquée (``sk-…1234``) atteint les endpoints.
 from __future__ import annotations
 
 import logging
+from time import monotonic
 from typing import Any
 from uuid import UUID
 
@@ -40,6 +41,28 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 _TIMEOUT = 20.0
+
+# Cache in-memory de ``lister_modeles()``. Le catalogue d'un compte bouge
+# rarement a l'echelle d'un utilisateur (nouveaux modeles publies par le
+# fournisseur, changement de plan) ; un TTL de 15 minutes evite de brûler du
+# rate-limit chez le fournisseur pour la meme information sur une session
+# d'usage typique. Cle : (creator_id, provider_id). Invalide sur update et
+# supprime. On ne monte pas Redis pour ce cache : le backend tourne en single
+# node (VM e2-micro), et cette memoire disparait naturellement au redemarrage.
+_MODELES_TTL_SECS = 15 * 60
+_modeles_cache: dict[tuple[UUID, UUID], tuple[dict[str, Any], float]] = {}
+
+
+def _invalider_cache_modeles(provider_id: UUID) -> None:
+    """Retire toutes les entrees du cache concernant ce provider (tous createurs)."""
+    for cle in list(_modeles_cache.keys()):
+        if cle[1] == provider_id:
+            del _modeles_cache[cle]
+
+
+def _invalider_cache_modeles_tout() -> None:
+    """Vide le cache. Utilise dans les tests pour isoler chaque cas."""
+    _modeles_cache.clear()
 
 
 class AgentProviderError(ValueError):
@@ -260,6 +283,10 @@ async def mettre_a_jour(
             "Un provider identique (même provider, même base_url, même modèle) existe déjà."
         ) from exc
     await db.refresh(provider)
+    # Toute mutation peut rendre le catalogue en cache faux (nouvelle clé =
+    # potentiellement nouveau plan, nouveau base_url = endpoint différent).
+    # Invalidation systématique : ne pas essayer de deviner ce qui a bougé.
+    _invalider_cache_modeles(provider_id)
     return _to_read(provider)
 
 
@@ -271,6 +298,7 @@ async def supprimer(
     provider = await _get_owned(db, creator_id, provider_id)
     await db.delete(provider)
     await db.commit()
+    _invalider_cache_modeles(provider_id)
 
 
 async def resoudre_defaut(
@@ -325,7 +353,7 @@ async def tester(
                     },
                     headers={"x-api-key": key, "anthropic-version": "2023-06-01"},
                 )
-        return _classify(provider.model, url, r)
+        result = _classify(provider.model, url, r)
     except httpx.HTTPError as exc:
         return AgentProviderTestResult(
             ok=False,
@@ -334,6 +362,18 @@ async def tester(
             url=url,
             message=f"Impossible de joindre l'endpoint : {exc}",
         )
+
+    # Sur succès, on chauffe le cache /models pour ce provider : le sélecteur
+    # de modèle sera instantané au prochain affichage. On rafraîchit toujours
+    # (refresh=True) car un test réussi signale que la clé/base_url viennent
+    # potentiellement d'être fixées — la ligne de cache précédente peut être
+    # périmée. `lister_modeles` ne lève jamais, on peut donc chaîner sans try.
+    if result.ok:
+        modeles = await lister_modeles(
+            db, creator_id, provider_id, transport=transport, refresh=True
+        )
+        result = result.model_copy(update={"models": modeles["models"]})
+    return result
 
 
 def _detail_provider(r: httpx.Response) -> str | None:
@@ -391,13 +431,59 @@ _CADRAGES: dict[int, str] = {
     429: "Le provider refuse : crédit insuffisant, quota épuisé, ou limite de débit.",
 }
 
+# Codes d'erreur normalises par les fournisseurs OpenAI-compat. Le code precise
+# ce que le status HTTP ne dit pas : HTTP 429 recouvre à la fois "crédit épuisé"
+# (recharger) et "limite de débit" (attendre) — deux réponses opposées pour
+# l'utilisateur. Verifie en prod le 2026-08-21 chez OpenAI, Groq, Cerebras.
+_CADRAGES_CODE: dict[str, str] = {
+    "invalid_api_key": "Clé API invalide ou révoquée.",
+    "authentication_error": "Clé API invalide ou révoquée.",
+    "wrong_api_key": "Clé API invalide ou révoquée.",
+    "insufficient_quota": "Crédit épuisé sur le compte du fournisseur.",
+    "billing_hard_limit_reached": "Crédit épuisé sur le compte du fournisseur.",
+    "rate_limit_exceeded": "Limite de débit atteinte. Réessayer dans quelques secondes.",
+    "requests_rate_limit_exceeded": ("Limite de débit atteinte. Réessayer dans quelques secondes."),
+    "model_not_found": "Le modèle demandé n'existe pas chez ce fournisseur.",
+    "context_length_exceeded": "Conversation trop longue pour la fenêtre de ce modèle.",
+}
+
+
+def _extraire_code_erreur(r: httpx.Response) -> str | None:
+    """Le champ ``code`` d'un corps d'erreur, ou ``None``.
+
+    Deux emplacements observes en prod : ``error.code`` (OpenAI, Groq,
+    OpenRouter) et ``code`` a la racine (Cerebras). Ne leve jamais.
+    """
+    try:
+        corps = r.json()
+    except ValueError:
+        return None
+    if isinstance(corps, list) and corps:
+        corps = corps[0]
+    if not isinstance(corps, dict):
+        return None
+    erreur = corps.get("error")
+    if isinstance(erreur, dict):
+        code = erreur.get("code")
+        if isinstance(code, str) and code.strip():
+            return code.strip()
+    code = corps.get("code")
+    if isinstance(code, str) and code.strip():
+        return code.strip()
+    return None
+
 
 def _classify(
     model: str,
     url: str,
     r: httpx.Response,
 ) -> AgentProviderTestResult:
-    """Un cadrage lisible, suivi du texte exact du provider quand il en donne un."""
+    """Un cadrage lisible, suivi du texte exact du provider quand il en donne un.
+
+    Priorite : code d'erreur du corps (specifique, actionnable) > cadrage HTTP
+    (generique). Le message brut du fournisseur suit dans les deux cas pour ne
+    pas perdre l'information particulière que la reformulation gomme toujours.
+    """
     if r.status_code == 200:
         return AgentProviderTestResult(
             ok=True,
@@ -407,10 +493,13 @@ def _classify(
             message=f"Clé valide, le modèle {model} répond.",
         )
 
-    cadrage = _CADRAGES.get(
-        r.status_code,
-        f"Réponse inattendue du provider (HTTP {r.status_code}).",
-    )
+    code = _extraire_code_erreur(r)
+    cadrage: str | None = _CADRAGES_CODE.get(code) if code else None
+    if cadrage is None:
+        cadrage = _CADRAGES.get(
+            r.status_code,
+            f"Réponse inattendue du provider (HTTP {r.status_code}).",
+        )
     detail = _detail_provider(r)
     return AgentProviderTestResult(
         ok=False,
@@ -427,13 +516,26 @@ async def lister_modeles(
     creator_id: UUID,
     provider_id: UUID,
     transport: httpx.AsyncBaseTransport | None = None,
+    refresh: bool = False,
 ) -> dict[str, Any]:
     """Les modeles auxquels *ce* compte a droit, demandes au fournisseur.
 
     Tous les fournisseurs OpenAI-compatibles servent ``GET /models`` avec la cle
     du porteur, et la reponse depend du plan souscrit. Ne leve jamais : un echec
     se replie sur ``MODELES_SUGGERES``.
+
+    Cache TTL 15 min par (createur, provider) : le sélecteur de modèle sera
+    servi depuis la mémoire à la deuxième ouverture. Seuls les résultats
+    ``source == "provider"`` sont mis en cache — une erreur ne colle jamais,
+    l'utilisateur qui vient de fixer sa clé doit voir le résultat immédiatement.
+    ``refresh=True`` force le rappel réseau (utilisé par ``tester()``).
     """
+    cle_cache = (creator_id, provider_id)
+    if not refresh:
+        entree = _modeles_cache.get(cle_cache)
+        if entree is not None and entree[1] > monotonic():
+            return entree[0]
+
     provider = await _get_owned(db, creator_id, provider_id)
     repli = MODELES_SUGGERES.get(provider.provider, [])
     url = f"{provider.base_url.rstrip('/')}/models"
@@ -468,4 +570,6 @@ async def lister_modeles(
             "source": "repli",
             "message": "Le fournisseur n'a liste aucun modele.",
         }
-    return {"models": noms, "source": "provider"}
+    resultat = {"models": noms, "source": "provider"}
+    _modeles_cache[cle_cache] = (resultat, monotonic() + _MODELES_TTL_SECS)
+    return resultat
