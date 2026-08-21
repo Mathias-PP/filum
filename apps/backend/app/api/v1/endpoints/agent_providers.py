@@ -18,6 +18,7 @@ from app.core.rate_limit import limiter
 from app.db.database import get_db
 from app.models.user import User
 from app.schemas.agent_provider import (
+    MODELES_RECOMMANDES,
     AgentProviderCreate,
     AgentProviderRead,
     AgentProviderTestResult,
@@ -53,7 +54,11 @@ async def provider_meta():
     L'utilisateur décide, Philum informe : pays d'hébergement connu et périmètre
     précis des données qui transitent pendant un échange.
     """
-    return {"data_scope": DATA_SCOPE_NOTICE, "providers": PROVIDER_META}
+    return {
+        "data_scope": DATA_SCOPE_NOTICE,
+        "providers": PROVIDER_META,
+        "recommended_models": MODELES_RECOMMANDES,
+    }
 
 
 @router.get("", response_model=list[AgentProviderRead])

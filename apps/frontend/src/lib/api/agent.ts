@@ -64,6 +64,7 @@ export interface ProviderMetaEntry {
 export interface AgentProviderMeta {
   data_scope: string;
   providers: Record<string, ProviderMetaEntry>;
+  recommended_models?: Record<string, string[]>;
 }
 
 export interface AgentModelMeta {
