@@ -137,8 +137,25 @@ class TestRegistre:
         assert {"fs_read", "fs_write", "fs_list"} <= noms
         assert {"create_card", "publish_card", "verify_excerpts"} <= noms
         assert {"search_cards", "get_card"} <= noms
-        assert {"web_search", "fetch_url"} <= noms
+        # fetch_url toujours disponible ; web_search seulement si configure
+        # (voir web_tools) — pas de config en tests, donc absent.
+        assert "fetch_url" in noms
         assert {"fiche_state", "fiche_etapes"} <= noms
+
+    def test_web_search_absent_sans_configuration(self):
+        """web_search non exposé quand pas de provider configuré : évite au
+        modèle un tour gâché à essayer un outil qui renvoie systématiquement
+        'Recherche web non configurée'."""
+        registre = construire_registre()
+        assert "web_search" not in registre
+
+    def test_web_search_present_quand_configure(self, monkeypatch):
+        from app.agent_tools import web as web_module
+
+        monkeypatch.setattr(web_module.settings, "agent_web_search_provider", "tavily")
+        monkeypatch.setattr(web_module.settings, "agent_web_search_api_key", "sk-fake")
+        registre = construire_registre()
+        assert "web_search" in registre
 
     def test_tous_les_outils_ont_un_schema_valide(self):
         for outil in construire_registre().values():
@@ -227,6 +244,162 @@ class TestBoucle:
         assert executed == [{"query": "étoiles"}]
         assert events[0]["payload"]["name"] == "web_search"
         assert any(m["role"] == "tool" for m in messages)
+
+    @pytest.mark.asyncio
+    async def test_reponse_vide_remonte_diagnostic(self, db_session, test_user):
+        """Silence interdit : un modèle qui rend un contenu vide sans
+        tool_call doit produire un message d'erreur avec finish_reason.
+        Cas reel observe sur Gemini 3.7 Flash en prod le 2026-08-21."""
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+
+        def handler(request):
+            return httpx.Response(
+                200,
+                json={
+                    "choices": [
+                        {
+                            "message": {"role": "assistant", "content": ""},
+                            "finish_reason": "length",
+                        }
+                    ],
+                    "usage": {"completion_tokens": 8192, "prompt_tokens": 42},
+                },
+            )
+
+        events = await _collect(
+            db_session,
+            test_user,
+            provider,
+            [{"role": "user", "content": "hello"}],
+            _refuse,
+            httpx.MockTransport(handler),
+            _registre_fake([]),
+        )
+        # Un evenement error DOIT etre emis, jamais silence
+        errors = [e for e in events if e["type"] == "error"]
+        assert len(errors) == 1
+        assert "épuisé" in errors[0]["payload"]["message"].lower() or (
+            "epuise" in errors[0]["payload"]["message"].lower()
+        )
+        assert "gpt-4o-mini" in errors[0]["payload"]["message"]
+
+    @pytest.mark.asyncio
+    async def test_reponse_vide_stop_dit_reformuler(self, db_session, test_user):
+        """finish_reason=stop avec contenu vide : diagnostic distinct."""
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+
+        def handler(request):
+            return httpx.Response(
+                200,
+                json={
+                    "choices": [
+                        {
+                            "message": {"role": "assistant", "content": ""},
+                            "finish_reason": "stop",
+                        }
+                    ],
+                    "usage": {},
+                },
+            )
+
+        events = await _collect(
+            db_session,
+            test_user,
+            provider,
+            [{"role": "user", "content": "hello"}],
+            _refuse,
+            httpx.MockTransport(handler),
+            _registre_fake([]),
+        )
+        errors = [e for e in events if e["type"] == "error"]
+        assert len(errors) == 1
+        assert "vide" in errors[0]["payload"]["message"].lower()
+
+    @pytest.mark.asyncio
+    async def test_429_avec_retry_delay_attend_et_reprend(self, db_session, test_user, monkeypatch):
+        """Sur Gemini free tier (5 req/min), un agent qui construit une fiche
+        depasse le quota en 5-6 tours. Le provider donne l'attente exacte :
+        on retente une fois. Verifie en prod le 2026-08-21."""
+        # Neutraliser le vrai sleep pour ne pas ralentir les tests
+        attentes: list[float] = []
+
+        async def _fake_sleep(s: float) -> None:
+            attentes.append(s)
+
+        monkeypatch.setattr("app.services.agent.asyncio.sleep", _fake_sleep)
+
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+        appels = [0]
+
+        def handler(request):
+            appels[0] += 1
+            if appels[0] == 1:
+                # Réponse Gemini réelle observée en prod : liste + retryDelay
+                return httpx.Response(
+                    429,
+                    json=[
+                        {
+                            "error": {
+                                "code": 429,
+                                "message": "Quota exceeded",
+                                "status": "RESOURCE_EXHAUSTED",
+                                "details": [
+                                    {
+                                        "@type": "type.googleapis.com/google.rpc.RetryInfo",
+                                        "retryDelay": "43s",
+                                    }
+                                ],
+                            }
+                        }
+                    ],
+                )
+            return httpx.Response(200, json=_mock_texte("ok apres retry"))
+
+        events = await _collect(
+            db_session,
+            test_user,
+            provider,
+            [{"role": "user", "content": "cherche"}],
+            _refuse,
+            httpx.MockTransport(handler),
+            _registre_fake([]),
+        )
+        # Le tour a bien attendu 43s puis réussi
+        assert attentes == [43.0]
+        types = [e["type"] for e in events]
+        assert "message_delta" in types
+        assert "error" not in types
+
+    @pytest.mark.asyncio
+    async def test_429_sans_retry_delay_rend_message_lisible(self, db_session, test_user):
+        """429 sans indication d'attente : message lisible, pas de JSON brut."""
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+
+        def handler(request):
+            return httpx.Response(
+                429, json={"error": {"code": "rate_limit_exceeded", "message": "Too many requests"}}
+            )
+
+        events = await _collect(
+            db_session,
+            test_user,
+            provider,
+            [{"role": "user", "content": "cherche"}],
+            _refuse,
+            httpx.MockTransport(handler),
+            _registre_fake([]),
+        )
+        errors = [e for e in events if e["type"] == "error"]
+        assert len(errors) == 1
+        msg = errors[0]["payload"]["message"]
+        assert "quota" in msg.lower() or "débit" in msg.lower() or "debit" in msg.lower()
+        assert "Too many requests" in msg
+        # Pas de {}/ [ / ' du JSON brut
+        assert "{'error'" not in msg
 
     @pytest.mark.asyncio
     async def test_message_tool_porte_tool_call_id(self, db_session, test_user):

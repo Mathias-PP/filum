@@ -128,23 +128,36 @@ async def _execute_fetch_url(ctx: ToolContext, args: dict[str, Any]) -> dict[str
 
 
 def web_tools() -> list[AgentTool]:
-    return [
-        AgentTool(
-            name="web_search",
-            description=(
-                "Recherche web. Rend des URLs brutes, titres et snippets — jamais une synthèse : "
-                "vérifie ensuite ce que tu cites via fetch_url ou find_cards_citing."
-            ),
-            parameters={
-                "type": "object",
-                "properties": {
-                    "query": {"type": "string", "description": "La requête de recherche."}
+    """Outils web disponibles selon la configuration serveur.
+
+    ``web_search`` n'est exposé que si un fournisseur est configuré : sinon
+    le modèle voit l'outil, l'appelle, reçoit ``"Recherche web non configurée"``
+    et gaspille un tour (voire une session complète chez les modèles à quota
+    strict comme Gemini free tier). ``fetch_url`` reste toujours disponible
+    (pas de dépendance externe).
+    """
+    outils: list[AgentTool] = []
+    if settings.agent_web_search_provider.strip() and settings.agent_web_search_api_key.strip():
+        outils.append(
+            AgentTool(
+                name="web_search",
+                description=(
+                    "Recherche web. Rend des URLs brutes, titres et snippets — jamais une "
+                    "synthèse : vérifie ensuite ce que tu cites via fetch_url ou "
+                    "find_cards_citing."
+                ),
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "La requête de recherche."}
+                    },
+                    "required": ["query"],
                 },
-                "required": ["query"],
-            },
-            output="query, results: [{url, title, snippet}]",
-            execute=_execute_web_search,
-        ),
+                output="query, results: [{url, title, snippet}]",
+                execute=_execute_web_search,
+            )
+        )
+    outils.append(
         AgentTool(
             name="fetch_url",
             description=(
@@ -160,5 +173,6 @@ def web_tools() -> list[AgentTool]:
             },
             output="url, text, truncated, blocked",
             execute=_execute_fetch_url,
-        ),
-    ]
+        )
+    )
+    return outils
