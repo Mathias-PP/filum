@@ -94,6 +94,9 @@ export function appliquer(items: ChatItem[], event: AgentEvent): ChatItem[] {
       return remplacer(items, cible, { ...item, approved: event.payload.approved });
     }
 
+    case 'discovery_active':
+      return items;
+
     case 'error':
       return cloturerSansReponse([...items, { kind: 'error', text: event.payload.message }]);
 

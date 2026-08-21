@@ -24,6 +24,11 @@
   let chargement = $state(Boolean(sessionId));
   let controleur: AbortController | null = null;
   let usage = $state<AgentSessionUsage | null>(null);
+  let decouverte = $state<{
+    provider_public_name: string;
+    remaining_today: number | null;
+    retention_notice: string;
+  } | null>(null);
 
   onMount(async () => {
     if (!sessionId) return;
@@ -53,6 +58,9 @@
         if (evenement.type === 'session' && !sessionId) {
           sessionId = evenement.payload.id;
           onsession?.(sessionId);
+        }
+        if (evenement.type === 'discovery_active') {
+          decouverte = evenement.payload;
         }
         items = appliquer(items, evenement);
       }
@@ -136,6 +144,25 @@
         usage.total_completion_tokens / 1000
       ).toFixed(1)}k completion{usage.cost_eur != null ? ` · ~${usage.cost_eur.toFixed(2)} €` : ''}
     </p>
+  {/if}
+
+  {#if decouverte}
+    <div
+      class="mt-2 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
+    >
+      <span class="font-medium">Mode decouverte</span> -- vos echanges transitent par
+      <span class="font-medium">{decouverte.provider_public_name}</span>.
+      {decouverte.retention_notice}
+      {#if decouverte.remaining_today !== null}
+        <span class="ml-1 font-medium"
+          >{decouverte.remaining_today} message{decouverte.remaining_today !== 1 ? 's' : ''} restant{decouverte.remaining_today !==
+          1
+            ? 's'
+            : ''} aujourd'hui.</span
+        >
+      {/if}
+      <a href="/dashboard/agents" class="ml-1 underline">Connecter votre cle</a>
+    </div>
   {/if}
 
   <form class="flex gap-2 border-t border-subtle pt-3" onsubmit={envoyer}>
