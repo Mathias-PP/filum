@@ -339,9 +339,15 @@ async def tester(
 def _detail_provider(r: httpx.Response) -> str | None:
     """Le texte que le fournisseur a reellement renvoye, ou ``None``.
 
-    Trois formes rencontrees : ``{"error": {"message": ...}}`` (OpenAI, Gemini),
-    ``[{"error": {"message": ...}}]`` (Gemini renvoie parfois une liste), et du
-    HTML brut derriere un proxy. Ne leve jamais.
+    Cinq formes rencontrees, testees en prod le 2026-08-21 :
+    - ``{"error": {"message": ...}}`` (OpenAI, Gemini, Groq, OpenRouter)
+    - ``[{"error": {"message": ...}}]`` (Gemini renvoie parfois une liste)
+    - ``{"detail": "..."}`` (Mistral, convention FastAPI)
+    - ``{"message": "...", "type": "..."}`` (Cerebras, message a la racine)
+    - HTML brut derriere un proxy (fallback texte)
+
+    Ne leve jamais : un test de cle qui plante en lisant un corps d'erreur ne
+    diagnostique plus rien.
     """
     try:
         corps = r.json()
@@ -358,6 +364,16 @@ def _detail_provider(r: httpx.Response) -> str | None:
                 return message.strip()
         if isinstance(erreur, str) and erreur.strip():
             return erreur.strip()
+        # Mistral : {"detail": "..."}
+        detail = corps.get("detail")
+        if isinstance(detail, str) and detail.strip():
+            return detail.strip()
+        # Cerebras : {"message": "...", "type": "...", "code": "..."}
+        # Note : ne s'active que si `error` et `detail` sont absents, pour ne pas
+        # confondre avec {"error": {..., "message": "..."}} deja traite ci-dessus.
+        message = corps.get("message")
+        if isinstance(message, str) and message.strip():
+            return message.strip()
 
     # Eviter de renvoyer un corps JSON syntaxiquement valide mais sans information
     # utile (ex: "{}") comme si c'etait un message du provider.
