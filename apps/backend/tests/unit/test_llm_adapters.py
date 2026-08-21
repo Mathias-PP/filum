@@ -85,8 +85,18 @@ class TestMessagesVersAnthropic:
 
     def test_messages_tool_regroupes_en_user(self):
         messages = [
-            {"role": "tool", "tool_call_id": "call_1", "name": "web_search", "content": '{"ok":true}'},
-            {"role": "tool", "tool_call_id": "call_2", "name": "get_card", "content": '{"id":"abc"}'},
+            {
+                "role": "tool",
+                "tool_call_id": "call_1",
+                "name": "web_search",
+                "content": '{"ok":true}',
+            },
+            {
+                "role": "tool",
+                "tool_call_id": "call_2",
+                "name": "get_card",
+                "content": '{"id":"abc"}',
+            },
         ]
         _, anthropic_msgs = _messages_vers_anthropic(messages)
         assert len(anthropic_msgs) == 1

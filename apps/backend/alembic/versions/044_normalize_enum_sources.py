@@ -84,12 +84,8 @@ def upgrade() -> None:
     # etat normal du modele) ; les axes taxonomiques prennent la valeur la
     # moins engageante.
     op.execute(f"UPDATE sources SET stance = NULL WHERE {_in('stance', _STANCES)}")
-    op.execute(
-        f"UPDATE sources SET category = 'page-web' WHERE {_in('category', _CATEGORIES)}"
-    )
-    op.execute(
-        f"UPDATE sources SET author_kind = 'individu' WHERE {_in('author_kind', _AUTEURS)}"
-    )
+    op.execute(f"UPDATE sources SET category = 'page-web' WHERE {_in('category', _CATEGORIES)}")
+    op.execute(f"UPDATE sources SET author_kind = 'individu' WHERE {_in('author_kind', _AUTEURS)}")
     op.execute(f"UPDATE sources SET format = 'texte' WHERE {_in('format', _FORMATS)}")
 
 

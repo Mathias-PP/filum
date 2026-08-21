@@ -164,6 +164,33 @@ async def historique_pour_modele(
     return rendu
 
 
+async def mettre_a_jour(
+    db: AsyncSession,
+    creator_id: UUID,
+    session_id: UUID,
+    *,
+    title: str | None = None,
+    provider_id: UUID | None = None,
+    model_override: str | None = None,
+) -> AgentSession:
+    """Met à jour le titre, la clé provider et/ou le modèle d'une session.
+
+    Seuls les champs explicitement passes (non None) sont modifies.
+    Un titre vide est normalise en 'Nouvelle conversation'.
+    """
+    session = await obtenir(db, creator_id, session_id)
+    if title is not None:
+        propre = " ".join(title.split())[:TITRE_MAX]
+        session.title = propre or "Nouvelle conversation"
+    if provider_id is not None:
+        session.provider_id = provider_id
+    if model_override is not None:
+        session.model_override = model_override if model_override.strip() else None
+    await db.commit()
+    await db.refresh(session)
+    return session
+
+
 async def supprimer(db: AsyncSession, creator_id: UUID, session_id: UUID) -> None:
     """Suppression logique : la trace reste, la session sort des listes."""
     session = await obtenir(db, creator_id, session_id)

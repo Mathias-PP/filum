@@ -33,6 +33,7 @@ class AgentSession(Base):
         ForeignKey("agent_providers.id", ondelete="SET NULL"),
         nullable=True,
     )
+    model_override: Mapped[str | None] = mapped_column(String(120), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()
