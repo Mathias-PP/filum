@@ -75,6 +75,10 @@ class AgentMessageRead(BaseModel):
     content: str
     tool_calls: list[dict[str, Any]] | None
     tool_name: str | None
+    # Identifiant du tool_call auquel ce message repond : le front en a besoin
+    # pour rejouer une session sans afficher deux fois chaque outil (l'appel
+    # orphelin resterait « En cours… » a jamais).
+    tool_call_id: str | None
     created_at: datetime
 
 

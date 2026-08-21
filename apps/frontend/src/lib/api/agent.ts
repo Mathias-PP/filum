@@ -85,6 +85,9 @@ export interface AgentMessage {
   content: string;
   tool_calls: Record<string, unknown>[] | null;
   tool_name: string | null;
+  /** Identifiant du tool_call auquel ce message répond : sert à réapparier
+   * appel et résultat au rechargement d'une session. */
+  tool_call_id?: string | null;
   created_at: string;
 }
 

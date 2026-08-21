@@ -11,7 +11,7 @@ les reimplementer : chaque fonction delegue au meme service metier.
 
 from __future__ import annotations
 
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 import pytest_asyncio
@@ -1002,3 +1002,97 @@ async def test_create_content_attestation_refuse_non_proprietaire(
 async def test_get_attestation_refuse_id_invalide(db_session, test_user):
     with pytest.raises(ToolError, match="invalide"):
         await create_claim_request(db_session, test_user, card_id="pas-un-uuid")
+
+
+# --- Validation des enums a l'entree (regression fiche creatine 2026-08-21) --
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("champ", "valeur"),
+    [
+        ("stance", "soutient"),
+        ("category", "rapport-officiel"),
+        ("author_kind", "institution"),
+        ("format", "pdf"),
+    ],
+)
+async def test_add_source_refuse_une_valeur_hors_vocabulaire(
+    db_session, test_user, fiche_brouillon, champ, valeur
+):
+    with pytest.raises(ToolError, match="Valeurs acceptees"):
+        await add_source(
+            db_session,
+            test_user,
+            card_slug="fiche-en-cours",
+            url="https://a.org/refusee",
+            **{champ: valeur},
+        )
+
+
+@pytest.mark.asyncio
+async def test_add_source_message_d_erreur_cite_le_vocabulaire(
+    db_session, test_user, fiche_brouillon
+):
+    with pytest.raises(ToolError) as exc_info:
+        await add_source(
+            db_session,
+            test_user,
+            card_slug="fiche-en-cours",
+            url="https://a.org/x",
+            stance="soutient",
+        )
+    # L'agent doit pouvoir se corriger seul : la bonne valeur est dans le message.
+    assert "appuie" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_add_source_stance_vide_vaut_silence(db_session, test_user, fiche_brouillon):
+    from sqlalchemy import select as _select
+
+    from app.models.source import Source as _Source
+
+    src = await add_source(
+        db_session, test_user, card_slug="fiche-en-cours", url="https://a.org/silence", stance=""
+    )
+    ligne = await db_session.scalar(_select(_Source).where(_Source.id == UUID(src["id"])))
+    # Chaine vide = silence declare, jamais une valeur hors vocabulaire.
+    assert ligne.stance is None
+
+
+@pytest.mark.asyncio
+async def test_update_source_refuse_une_valeur_hors_vocabulaire(
+    db_session, test_user, fiche_brouillon
+):
+    src = await add_source(db_session, test_user, card_slug="fiche-en-cours", url="https://a.org/u")
+    with pytest.raises(ToolError, match="Valeurs acceptees"):
+        await update_source(db_session, test_user, source_id=src["id"], stance="soutient")
+
+
+@pytest.mark.asyncio
+async def test_update_source_stance_vide_efface_la_position(
+    db_session, test_user, fiche_brouillon
+):
+    src = await add_source(
+        db_session, test_user, card_slug="fiche-en-cours", url="https://a.org/v", stance="appuie"
+    )
+    result = await update_source(db_session, test_user, source_id=src["id"], stance="")
+    assert result["stance"] is None
+
+
+@pytest.mark.asyncio
+async def test_add_sources_batch_rejette_dans_failed_sans_bloquer_le_lot(
+    db_session, test_user, fiche_brouillon
+):
+    result = await add_sources_batch(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        sources=[
+            {"url": "https://a.org/ok", "stance": "soutient"},  # refuse
+            {"url": "https://a.org/bon", "stance": "appuie"},  # accepte
+        ],
+    )
+    assert [c["url"] for c in result["created"]] == ["https://a.org/bon"]
+    assert len(result["failed"]) == 1
+    assert "Valeurs acceptees" in result["failed"][0]["reason"]

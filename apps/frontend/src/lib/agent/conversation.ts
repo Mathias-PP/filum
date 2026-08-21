@@ -95,33 +95,69 @@ export function appliquer(items: ChatItem[], event: AgentEvent): ChatItem[] {
     }
 
     case 'error':
-      return [...items, { kind: 'error', text: event.payload.message }];
+      return cloturerSansReponse([...items, { kind: 'error', text: event.payload.message }]);
 
     case 'done':
-      return items;
+      // Un appel resté sans résultat à la fin du flux est une anomalie : le
+      // montrer comme un échec plutôt qu'un spinner « En cours… » éternel.
+      return cloturerSansReponse(items);
   }
 }
 
-/** Rehydrate une session persistée. Les approbations ne sont pas rejouables. */
+function cloturerSansReponse(items: ChatItem[]): ChatItem[] {
+  return items.map((item) =>
+    item.kind === 'tool' && item.result === null
+      ? { ...item, result: { error: 'Aucun résultat reçu : l’appel est resté sans réponse.' } }
+      : item
+  );
+}
+
+/** Rehydrate une session persistée. Les approbations ne sont pas rejouables.
+ *
+ * Chaque message `tool` répond à un `tool_call` précis (via `tool_call_id`) :
+ * sans réappariement, l'appel resterait une carte « En cours… » orpheline et
+ * le résultat apparaîtrait en doublon, sans arguments. Les vieilles lignes
+ * sans identifiant retombent sur un appariement séquentiel par nom d'outil.
+ */
 export function depuisMessages(messages: AgentMessage[]): ChatItem[] {
   const items: ChatItem[] = [];
+  const enAttente = new Map<string, number>();
   for (const message of messages) {
     if (message.role === 'user') {
       items.push({ kind: 'user', text: message.content });
     } else if (message.role === 'tool') {
-      items.push({
-        kind: 'tool',
-        id: message.id,
-        name: message.tool_name ?? 'outil',
-        args: {},
-        result: lireJson(message.content),
-      });
+      const resultat = lireJson(message.content);
+      let cible: number;
+      if (message.tool_call_id && enAttente.has(message.tool_call_id)) {
+        cible = enAttente.get(message.tool_call_id) as number;
+        enAttente.delete(message.tool_call_id);
+      } else {
+        // Fallback legacy : premier appel du même outil encore sans réponse.
+        cible = trouverDernier(
+          items,
+          (item) => item.kind === 'tool' && item.result === null && item.name === message.tool_name
+        );
+      }
+      if (cible >= 0) {
+        const item = items[cible] as Extract<ChatItem, { kind: 'tool' }>;
+        items[cible] = { ...item, result: resultat };
+      } else {
+        items.push({
+          kind: 'tool',
+          id: message.id,
+          name: message.tool_name ?? 'outil',
+          args: {},
+          result: resultat,
+        });
+      }
     } else if (message.tool_calls?.length) {
       for (const appel of message.tool_calls) {
         const fonction = (appel as { function?: { name?: string; arguments?: string } }).function;
+        const id = String((appel as { id?: string }).id ?? message.id);
+        enAttente.set(id, items.length);
         items.push({
           kind: 'tool',
-          id: String((appel as { id?: string }).id ?? message.id),
+          id,
           name: fonction?.name ?? 'outil',
           args: lireJson(fonction?.arguments ?? '{}') ?? {},
           result: null,
@@ -131,7 +167,7 @@ export function depuisMessages(messages: AgentMessage[]): ChatItem[] {
       items.push({ kind: 'assistant', text: message.content });
     }
   }
-  return items;
+  return cloturerSansReponse(items);
 }
 
 function lireJson(texte: string): Record<string, unknown> | null {

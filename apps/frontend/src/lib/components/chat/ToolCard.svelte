@@ -11,6 +11,14 @@
 
   const echoue = $derived(Boolean(result && 'error' in result));
   const etat = $derived(result === null ? 'En cours…' : echoue ? 'Échec' : 'Terminé');
+  // L'échec doit se lire sans déplier le JSON : le message d'erreur est la
+  // seule chose que l'utilisateur cherche en général.
+  const raison = $derived.by(() => {
+    if (!result || !('error' in result)) return null;
+    const err = result.error;
+    if (typeof err === 'string') return err;
+    return JSON.stringify(err);
+  });
 </script>
 
 <div class="rounded-lg border border-subtle bg-surface-secondary px-3 py-2 text-sm">
@@ -24,6 +32,9 @@
       {etat}
     </span>
   </button>
+  {#if raison}
+    <p class="mt-1 text-xs text-danger">{raison}</p>
+  {/if}
   {#if ouvert}
     <pre
       class="mt-2 overflow-x-auto rounded bg-surface-tertiary p-2 text-xs text-ink-secondary">{JSON.stringify(
