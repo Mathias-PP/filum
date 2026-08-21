@@ -315,34 +315,71 @@ async def tester(
         )
 
 
+def _detail_provider(r: httpx.Response) -> str | None:
+    """Le texte que le fournisseur a reellement renvoye, ou ``None``.
+
+    Trois formes rencontrees : ``{"error": {"message": ...}}`` (OpenAI, Gemini),
+    ``[{"error": {"message": ...}}]`` (Gemini renvoie parfois une liste), et du
+    HTML brut derriere un proxy. Ne leve jamais.
+    """
+    try:
+        corps = r.json()
+    except ValueError:
+        corps = None
+
+    if isinstance(corps, list) and corps:
+        corps = corps[0]
+    if isinstance(corps, dict):
+        erreur = corps.get("error")
+        if isinstance(erreur, dict):
+            message = erreur.get("message")
+            if isinstance(message, str) and message.strip():
+                return message.strip()
+        if isinstance(erreur, str) and erreur.strip():
+            return erreur.strip()
+
+    # Eviter de renvoyer un corps JSON syntaxiquement valide mais sans information
+    # utile (ex: "{}") comme si c'etait un message du provider.
+    if corps is not None:
+        return None
+    texte = " ".join(r.text.split())
+    return texte[:300] or None
+
+
+_CADRAGES: dict[int, str] = {
+    400: "Requête refusée par le provider.",
+    401: "Clé API invalide ou révoquée.",
+    403: "Accès refusé par le provider (clé sans autorisation).",
+    404: "Le provider ne connaît pas ce modèle à cette adresse.",
+    429: "Le provider refuse : crédit insuffisant, quota épuisé, ou limite de débit.",
+}
+
+
 def _classify(
     model: str,
     url: str,
     r: httpx.Response,
 ) -> AgentProviderTestResult:
-    """Clé invalide, quota épuisé, modèle inconnu → message distinct et actionnable."""
+    """Un cadrage lisible, suivi du texte exact du provider quand il en donne un."""
     if r.status_code == 200:
         return AgentProviderTestResult(
             ok=True,
             http_status=200,
             model_resolved=model,
             url=url,
-            message=f"Clé valide — le modèle {model} répond.",
+            message=f"Clé valide, le modèle {model} répond.",
         )
-    messages = {
-        400: "Requête refusée par le provider. Vérifier model et base_url.",
-        401: "Clé API invalide ou révoquée.",
-        403: "Accès refusé par le provider (clé sans autorisation).",
-        404: "Endpoint ou modèle introuvable. Vérifier base_url et model.",
-        429: "Quota épuisé ou limite de débit. Réessayer plus tard.",
-    }
+
+    cadrage = _CADRAGES.get(
+        r.status_code,
+        f"Réponse inattendue du provider (HTTP {r.status_code}).",
+    )
+    detail = _detail_provider(r)
     return AgentProviderTestResult(
         ok=False,
         http_status=r.status_code,
         model_resolved=model,
         url=url,
-        message=messages.get(
-            r.status_code,
-            f"Réponse inattendue du provider (HTTP {r.status_code}).",
-        ),
+        message=f"{cadrage} {detail}" if detail else cadrage,
+        provider_message=detail,
     )

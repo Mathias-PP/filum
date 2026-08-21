@@ -16,7 +16,7 @@ from app.schemas.agent_provider import (
     _api_key_masked,
 )
 from app.services import agent_providers as svc
-from app.services.agent_providers import AgentProviderError, creer, lister
+from app.services.agent_providers import AgentProviderError, creer, lister, _classify, _detail_provider
 from app.services.agent_providers import tester as service_tester
 from app.services.llm import url_chat
 
@@ -177,7 +177,7 @@ class TestTester:
         result = await service_tester(db_session, test_user.id, p.id, transport=transport)
 
         assert result.ok is False
-        assert "Quota" in result.message
+        assert "crédit" in result.message or "quota" in result.message.lower()
 
     async def test_modele_inconnu(self, db_session, test_user):
         p = await _mk_provider(db_session, test_user.id)
@@ -186,7 +186,7 @@ class TestTester:
         result = await service_tester(db_session, test_user.id, p.id, transport=transport)
 
         assert result.ok is False
-        assert "Endpoint ou modèle introuvable" in result.message
+        assert "modèle" in result.message.lower() or "provider" in result.message.lower()
 
     async def test_erreur_reseau(self, db_session, test_user):
         p = await _mk_provider(db_session, test_user.id)
@@ -289,3 +289,51 @@ class TestServiceCrud:
         await creer(db_session, test_user.id, payload)
         with pytest.raises(AgentProviderError):
             await creer(db_session, test_user.id, payload)
+
+
+class TestDetailProvider:
+    """Le message du provider est la seule information actionnable de la chaine."""
+
+    def test_forme_openai(self):
+        r = httpx.Response(429, json={"error": {"message": "You exceeded your current quota."}})
+        assert _detail_provider(r) == "You exceeded your current quota."
+
+    def test_forme_liste_gemini(self):
+        corps = [
+            {
+                "error": {
+                    "code": 404,
+                    "message": "This model models/gemini-2.5-flash is no longer available "
+                    "to new users. Please update your code to use models/gemini-3.6-flash.",
+                    "status": "NOT_FOUND",
+                }
+            }
+        ]
+        assert "gemini-3.6-flash" in (_detail_provider(httpx.Response(404, json=corps)) or "")
+
+    def test_corps_non_json_ne_plante_pas(self):
+        r = httpx.Response(502, content=b"<html>Bad Gateway</html>")
+        assert "Bad Gateway" in (_detail_provider(r) or "")
+
+    def test_corps_vide_rend_none(self):
+        assert _detail_provider(httpx.Response(500, content=b"")) is None
+
+
+class TestClassifyRemonteLeProvider:
+    def test_le_404_gemini_cite_le_modele_de_remplacement(self):
+        corps = [{"error": {"code": 404, "message": "use models/gemini-3.6-flash"}}]
+        res = _classify("gemini-2.5-flash", "https://x/chat/completions", httpx.Response(404, json=corps))
+        assert res.ok is False
+        assert "gemini-3.6-flash" in res.message
+        assert res.provider_message == "use models/gemini-3.6-flash"
+
+    def test_le_429_openai_dit_le_credit(self):
+        r = httpx.Response(429, json={"error": {"message": "insufficient_quota"}})
+        res = _classify("gpt-5.6-luna", "https://x/chat/completions", r)
+        assert "insufficient_quota" in res.message
+        assert "crédit" in res.message or "quota" in res.message.lower()
+
+    def test_succes_inchange(self):
+        res = _classify("m", "u", httpx.Response(200, json={}))
+        assert res.ok is True
+        assert res.provider_message is None

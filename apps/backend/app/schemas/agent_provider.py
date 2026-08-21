@@ -135,10 +135,17 @@ class AgentProviderRead(BaseModel):
 
 
 class AgentProviderTestResult(BaseModel):
-    """Résultat du test de clé, avec un message actionnable par statut."""
+    """Résultat du test de clé, avec un message actionnable par statut.
+
+    ``provider_message`` porte le texte brut renvoyé par le fournisseur. C'est
+    souvent la seule information exploitable de toute la chaine : Gemini y nomme
+    le modele de remplacement, OpenAI y distingue un credit epuise d'une limite
+    de debit. Ne jamais le remplacer par une reformulation.
+    """
 
     ok: bool
     http_status: int | None = None
     model_resolved: str
     url: str
     message: str
+    provider_message: str | None = None

@@ -288,13 +288,19 @@
             </div>
           </div>
           {#if results[provider.id]}
-            <p
-              class="mt-2 text-sm"
-              class:text-success={results[provider.id].ok}
-              class:text-danger={!results[provider.id].ok}
-            >
-              {results[provider.id].message}
-            </p>
+            <div class="mt-2 text-sm">
+              <p
+                class:text-success={results[provider.id].ok}
+                class:text-danger={!results[provider.id].ok}
+              >
+                {results[provider.id].message}
+              </p>
+              {#if !results[provider.id].ok}
+                <p class="mt-1 font-mono text-xs text-ink-tertiary break-all">
+                  HTTP {results[provider.id].http_status ?? '?'} · {results[provider.id].url}
+                </p>
+              {/if}
+            </div>
           {/if}
         </li>
       {/each}

@@ -40,6 +40,7 @@ export interface AgentProviderTestResult {
   model_resolved: string;
   url: string;
   message: string;
+  provider_message: string | null;
 }
 
 export interface ProviderMetaEntry {
