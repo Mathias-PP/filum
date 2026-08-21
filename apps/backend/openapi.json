@@ -44,6 +44,90 @@
         }
       }
     },
+    "/api/v1/agent/fiche/{slug}": {
+      "get": {
+        "tags": [
+          "agent-fiche"
+        ],
+        "summary": "Etat Fiche",
+        "description": "Où en est le run : quels étages ont déposé leur compte rendu.",
+        "operationId": "etat_fiche_api_v1_agent_fiche__slug__get",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Slug"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Etat Fiche Api V1 Agent Fiche  Slug  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent/fiche": {
+      "post": {
+        "tags": [
+          "agent-fiche"
+        ],
+        "summary": "Lancer Fiche",
+        "operationId": "lancer_fiche_api_v1_agent_fiche_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentFicheRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/agent/providers/meta": {
       "get": {
         "tags": [
@@ -3899,6 +3983,44 @@
           "message"
         ],
         "title": "AgentChatRequest"
+      },
+      "AgentFicheRequest": {
+        "properties": {
+          "content_url": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Content Url"
+          },
+          "slug": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "title": "Slug"
+          },
+          "depuis": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Depuis",
+            "description": "Reprendre à cet étage. Les comptes rendus déjà écrits servent de contexte."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "content_url",
+          "slug"
+        ],
+        "title": "AgentFicheRequest",
+        "description": "Lancement d'un run de fiche : quel contenu, sous quel slug."
       },
       "AgentMessageRead": {
         "properties": {

@@ -134,7 +134,7 @@ class TestRegistre:
         assert {"create_card", "publish_card", "verify_excerpts"} <= noms
         assert {"search_cards", "get_card"} <= noms
         assert {"web_search", "fetch_url"} <= noms
-        assert {"fiche_state", "fiche_lancer"} <= noms
+        assert {"fiche_state", "fiche_etapes"} <= noms
 
     def test_tous_les_outils_ont_un_schema_valide(self):
         for outil in construire_registre().values():
