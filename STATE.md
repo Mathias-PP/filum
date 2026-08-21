@@ -6,6 +6,20 @@
 
 ---
 
+## Session 2026-08-21 (suite) : fiche « créatine » réparée, chat fiabilisé entre providers, sources datées
+
+Trois salves de correctifs nées des bugs constatés sur l'UI Agent, **toutes mergées et déployées en prod le 2026-08-21**.
+
+**PR #515 (`0fc57c1`, migration 044)** — les outils MCP écrivaient `category`/`author_kind`/`format`/`stance` sans validation dans des colonnes VARCHAR libres ; l'agent avait écrit `stance="soutient"`, `category="rapport-officiel"`, `author_kind="institution"`, et la lecture stricte répondait 500 sur toute la fiche publique. Validation à l'écriture (`_valeur_enum`) + migration de normalisation. Vérifié en prod : la fiche `/@mathias-pinault/creatine-monohydrate-efficacite-force-musculaire` repasse de 500 à 200, les 3 sources normalisées. Côté UI : markdown rendu sans dépendance ni `{@html}`, résultats d'outils réappariés via `tool_call_id`, statuts finalisés sur done/error.
+
+**PRs #516-#519 (`8f4e8e7`, migrations 045)** — backoff 502/503/504, usage tokens par session, et deux correctifs nés d'une poursuite de conversation Gemini→Mistral :
+- `_nettoyer_messages()` réduit chaque message au contrat OpenAI commun avant chaque appel provider. Les `tool_calls` signés `extra_content.google.thought_signature` par Gemini, copiés verbatim dans l'historique persisté, faisaient répondre Mistral **422 extra_forbidden** dès le tour suivant ; une session ouverte avec un provider se poursuit désormais sur un autre.
+- Les outils MCP exposent enfin `published_at` sur `add_source` / `update_source` / `add_sources_batch` (formats souples `2016` / `2016-03` / `2016-03-15`, chaîne vide = efface). Les sources créées par l'agent sortaient toutes sans date, faute de champ exposé ; les dates des sources existantes de la fiche créatine restent à remplir par l'agent lui-même dans la conversation.
+
+Déploiement vérifié sur la VM : conteneur reconstruit sur `8f4e8e7` (code embarqué contrôlé dans le conteneur), `alembic_version = 045_agent_message_usage`, `/health` OK depuis l'extérieur, seed rejoué sans perte. ⚠️ Leçon de coordination : deux agents sur le même arbre de travail se sont marchés dessus toute la journée (commits aspirés, branches switchées sous nos pieds) ; depuis, chacun travaille dans son `git worktree` avec branche et PR dédiées.
+
+---
+
 ## Session 2026-08-21 (autonome) : moteur d'agent BYOK, 39 outils MCP, interface de chat
 
 **PR #499** : providers BYOK CRUD. Le createur enregistre sa cle API (OpenAI, Anthropic, Gemini, DeepSeek) chiffree en AES-GCM, test de cle depuis l'interface, masquage a l'affichage. Isolation par createur, un seul defaut par provider.
