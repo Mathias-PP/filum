@@ -76,25 +76,81 @@
 
   // Groupes d'outils MCP (39 outils, verifies le 2026-08-21).
   const mcpGroupes = [
-    { titre: "Lecture publique", outils: ["search_cards", "get_card", "get_source", "find_cards_citing"] },
-    { titre: "Identite", outils: ["whoami"] },
-    { titre: "Fiche", outils: ["create_card", "update_card", "delete_card", "restore_card", "list_my_cards", "list_deleted_cards", "publish_card", "set_content_text"] },
-    { titre: "Sources", outils: ["add_source", "add_sources_batch", "update_source", "delete_source", "list_sources", "archive_sources"] },
-    { titre: "Extraits", outils: ["add_excerpt", "delete_excerpt", "verify_excerpts", "suggest_excerpts", "annotate_excerpt", "chunk_text", "search_my_excerpts"] },
-    { titre: "Connexions", outils: ["list_connections", "confirm_connection", "remove_connection", "list_incoming_citations", "mark_citations_seen"] },
-    { titre: "Imports", outils: ["import_from_content_url", "get_youtube_transcript", "get_url_metadata", "parse_biblio"] },
-    { titre: "Attestations", outils: ["create_content_attestation", "get_attestation", "verify_attestation"] },
-    { titre: "Autre", outils: ["create_claim_request"] },
+    {
+      titre: 'Lecture publique',
+      outils: ['search_cards', 'get_card', 'get_source', 'find_cards_citing'],
+    },
+    { titre: 'Identite', outils: ['whoami'] },
+    {
+      titre: 'Fiche',
+      outils: [
+        'create_card',
+        'update_card',
+        'delete_card',
+        'restore_card',
+        'list_my_cards',
+        'list_deleted_cards',
+        'publish_card',
+        'set_content_text',
+      ],
+    },
+    {
+      titre: 'Sources',
+      outils: [
+        'add_source',
+        'add_sources_batch',
+        'update_source',
+        'delete_source',
+        'list_sources',
+        'archive_sources',
+      ],
+    },
+    {
+      titre: 'Extraits',
+      outils: [
+        'add_excerpt',
+        'delete_excerpt',
+        'verify_excerpts',
+        'suggest_excerpts',
+        'annotate_excerpt',
+        'chunk_text',
+        'search_my_excerpts',
+      ],
+    },
+    {
+      titre: 'Connexions',
+      outils: [
+        'list_connections',
+        'confirm_connection',
+        'remove_connection',
+        'list_incoming_citations',
+        'mark_citations_seen',
+      ],
+    },
+    {
+      titre: 'Imports',
+      outils: [
+        'import_from_content_url',
+        'get_youtube_transcript',
+        'get_url_metadata',
+        'parse_biblio',
+      ],
+    },
+    {
+      titre: 'Attestations',
+      outils: ['create_content_attestation', 'get_attestation', 'verify_attestation'],
+    },
+    { titre: 'Autre', outils: ['create_claim_request'] },
   ];
 
-  let copie = $state("");
+  let copie = $state('');
   let copieTimer: ReturnType<typeof setTimeout>;
   function copier(texte: string, cle: string) {
-    if (typeof navigator === "undefined" || !navigator.clipboard) return;
+    if (typeof navigator === 'undefined' || !navigator.clipboard) return;
     navigator.clipboard.writeText(texte).then(() => {
       copie = cle;
       clearTimeout(copieTimer);
-      copieTimer = setTimeout(() => (copie = ""), 2000);
+      copieTimer = setTimeout(() => (copie = ''), 2000);
     });
   }
 </script>
@@ -184,7 +240,7 @@
     </p>
 
     <div class="grid gap-4 sm:grid-cols-2 mb-4" use:reveal>
-      {#each [["Lecture publique", `${MCP_URL}/`, "pub"], ["Avec votre compte", `${MCP_URL}-account/`, "compte"]] as [titre, adresse, cle] (cle)}
+      {#each [['Lecture publique', `${MCP_URL}/`, 'pub'], ['Avec votre compte', `${MCP_URL}-account/`, 'compte']] as [titre, adresse, cle] (cle)}
         <div class="bg-surface-secondary border border-border rounded-xl p-5">
           <p class="text-sm font-semibold text-ink-primary mb-2">{titre}</p>
           <code class="block text-sm break-all text-ink-primary mb-2">{adresse}</code>
@@ -193,7 +249,7 @@
             class="text-xs text-accent hover:underline"
             onclick={() => copier(adresse, cle)}
           >
-            {copie === cle ? "Copie" : "Copier l'adresse"}
+            {copie === cle ? 'Copie' : "Copier l'adresse"}
           </button>
         </div>
       {/each}

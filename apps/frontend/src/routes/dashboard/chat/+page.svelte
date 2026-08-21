@@ -90,8 +90,7 @@
       <div class="rounded-lg border border-subtle bg-surface-secondary px-4 py-5 text-sm">
         <p class="text-ink-primary font-medium mb-1">Aucune clé enregistrée.</p>
         <p class="text-ink-secondary mb-3">
-          Philum n'héberge aucun modèle : l'agent a besoin de la clé d'un fournisseur pour
-          répondre.
+          Philum n'héberge aucun modèle : l'agent a besoin de la clé d'un fournisseur pour répondre.
         </p>
         <Button href="/dashboard/agents">Enregistrer une clé</Button>
       </div>

@@ -199,7 +199,10 @@
 </svelte:head>
 
 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-  <a href="/dashboard/chat" class="mb-4 inline-block text-sm text-ink-secondary hover:text-ink-primary">
+  <a
+    href="/dashboard/chat"
+    class="mb-4 inline-block text-sm text-ink-secondary hover:text-ink-primary"
+  >
     &larr; Retour à l'agent
   </a>
 
@@ -230,11 +233,46 @@
         et sur la facture. Plusieurs fournisseurs délivrent une clé sans carte bancaire.
       </p>
       <ul class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-ink-secondary">
-        <li><a class="text-accent hover:underline" href="https://console.mistral.ai" target="_blank" rel="noopener">Mistral (France)</a></li>
-        <li><a class="text-accent hover:underline" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a></li>
-        <li><a class="text-accent hover:underline" href="https://console.groq.com/keys" target="_blank" rel="noopener">Groq</a></li>
-        <li><a class="text-accent hover:underline" href="https://openrouter.ai/keys" target="_blank" rel="noopener">OpenRouter</a></li>
-        <li><a class="text-accent hover:underline" href="https://cloud.cerebras.ai" target="_blank" rel="noopener">Cerebras</a></li>
+        <li>
+          <a
+            class="text-accent hover:underline"
+            href="https://console.mistral.ai"
+            target="_blank"
+            rel="noopener">Mistral (France)</a
+          >
+        </li>
+        <li>
+          <a
+            class="text-accent hover:underline"
+            href="https://aistudio.google.com/apikey"
+            target="_blank"
+            rel="noopener">Google AI Studio</a
+          >
+        </li>
+        <li>
+          <a
+            class="text-accent hover:underline"
+            href="https://console.groq.com/keys"
+            target="_blank"
+            rel="noopener">Groq</a
+          >
+        </li>
+        <li>
+          <a
+            class="text-accent hover:underline"
+            href="https://openrouter.ai/keys"
+            target="_blank"
+            rel="noopener">OpenRouter</a
+          >
+        </li>
+        <li>
+          <a
+            class="text-accent hover:underline"
+            href="https://cloud.cerebras.ai"
+            target="_blank"
+            rel="noopener">Cerebras</a
+          >
+        </li>
       </ul>
     </div>
   {/if}
