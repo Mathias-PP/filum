@@ -883,3 +883,99 @@ class TestSystemeAgent:
         ctx = ToolContext(db=None, user=None, creator_id=None)
         result = await _execute_web_search(ctx, {"query": "test"})
         assert "mémoire d'entraînement" in result["error"]
+
+
+class TestCompactionContexte:
+    def test_fenetre_par_modele(self):
+        assert agent_svc.fenetre_du_modele("gemini-2.0-flash") == 1_000_000
+        assert agent_svc.fenetre_du_modele("gemini-2.5-pro") == 2_000_000
+        assert agent_svc.fenetre_du_modele("claude-sonnet-4") == 200_000
+        assert agent_svc.fenetre_du_modele("gpt-4o-mini") == 128_000
+        assert agent_svc.fenetre_du_modele("modele-inconnu") == 128_000
+
+    def test_tokens_approx_proportionnel_contenu(self):
+        msgs = [{"role": "user", "content": "a" * 400}]
+        assert agent_svc._tokens_approx(msgs) >= 100
+
+    def test_tronquer_ne_fait_rien_si_dans_budget(self):
+        msgs = [{"role": "user", "content": "court"}, {"role": "assistant", "content": "ok"}]
+        assert agent_svc._tronquer_historique(msgs, 10_000) == msgs
+
+    def test_tronquer_insere_synthese(self):
+        """Quand on tronque, un message de synthèse marque la coupure."""
+        # Generer assez de tokens pour forcer une coupure
+        long_content = "x" * 4000
+        msgs = [
+            {"role": "user", "content": long_content},
+            {"role": "assistant", "content": long_content},
+            {"role": "user", "content": "suite"},
+        ]
+        budget = 400  # tres petit pour forcer la coupure
+        resultat = agent_svc._tronquer_historique(msgs, budget)
+        assert any("omis" in m.get("content", "") for m in resultat)
+
+    def test_tronquer_preserve_les_paires_tool(self):
+        """Un assistant avec tool_calls ne doit jamais etre separe de ses tools."""
+        tool_call_msg = {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [{"id": "c1", "type": "function", "function": {"name": "f", "arguments": "{}"}}],
+        }
+        tool_result_msg = {
+            "role": "tool",
+            "tool_call_id": "c1",
+            "content": "resultat",
+        }
+        msgs = [
+            {"role": "user", "content": "a" * 2000},
+            tool_call_msg,
+            tool_result_msg,
+            {"role": "user", "content": "suite"},
+        ]
+        budget = 600  # force coupure, mais la paire doit rester intacte
+        resultat = agent_svc._tronquer_historique(msgs, budget)
+        roles = [m["role"] for m in resultat]
+        # Si tool est présent, son assistant doit l'être aussi
+        if "tool" in roles:
+            idx_tool = roles.index("tool")
+            assert roles[idx_tool - 1] == "assistant"
+
+    @pytest.mark.asyncio
+    async def test_boucle_rejeu_sur_depassement_contexte(self, db_session, test_user):
+        """Sur context_length_exceeded, boucle() tronque et retente une fois.
+
+        _appel_provider fait un fallback bloquant sur 400 avant de rendre le
+        controle a boucle() : il faut 2 appels en 400 (streaming + bloquant)
+        pour que l'erreur atteigne boucle(), puis 1 appel 200 pour le rejeu.
+        """
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+        appels = [0]
+        erreur_ctx = {
+            "error": {
+                "message": "context_length_exceeded: too many tokens",
+                "code": "context_length_exceeded",
+            }
+        }
+
+        def handler(request):
+            appels[0] += 1
+            if appels[0] <= 2:
+                # Appels 1-2 : streaming 400 + fallback bloquant 400
+                return httpx.Response(400, json=erreur_ctx)
+            return httpx.Response(200, json=_mock_texte("ok apres compaction"))
+
+        events = await _collect(
+            db_session,
+            test_user,
+            provider,
+            [{"role": "user", "content": "salut"}],
+            _refuse,
+            httpx.MockTransport(handler),
+            _registre_fake([]),
+        )
+        types = [e["type"] for e in events]
+        assert "contexte_compacte" in types
+        assert "done" in types
+        assert "error" not in types
+        assert appels[0] == 3
