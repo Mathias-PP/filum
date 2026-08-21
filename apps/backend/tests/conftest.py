@@ -35,10 +35,15 @@ from app.db.database import Base, engine  # noqa: E402
 
 import app.models.user  # noqa: E402, F401
 import app.models.agent_provider  # noqa: E402, F401
+import app.models.agent_session  # noqa: E402, F401
 import app.models.audit_event  # noqa: E402, F401
 import app.models.biblio_card  # noqa: E402, F401
 import app.models.claim_request  # noqa: E402, F401
+import app.models.content_attestation  # noqa: E402, F401
+import app.models.excerpt_embedding  # noqa: E402, F401
+import app.models.feed_event  # noqa: E402, F401
 import app.models.linked_account  # noqa: E402, F401
+import app.models.oauth  # noqa: E402, F401
 import app.models.source  # noqa: E402, F401
 import app.models.source_excerpt  # noqa: E402, F401
 import app.models.workspace_file  # noqa: E402, F401

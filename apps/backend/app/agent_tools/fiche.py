@@ -1,10 +1,10 @@
-"""Outils d'orchestration de fiches de l'agent — socle de la Phase 5.
+"""Outils d'orchestration de fiches exposés à l'agent.
 
-Phase 5 orchestrera la création de fiche automatisée (brief → source →
-extraits vérifiés → synthèse) à partir du workspace. En attendant, les agents
-peuvent déjà **tout construire** outil par outil ; ces outils ne font que
-connaître l'existence de l'orchestration et rendent un état explicite au lieu
-de faire croire à un super-pouvoir.
+L'agent peut *consulter* l'avancement d'un run (`fiche_state`) et connaître
+la liste des étages (`fiche_etapes`). Il ne peut pas *lancer* un run depuis
+une conversation : une boucle qui démarre une boucle multiplie le budget de
+tours sans qu'aucune borne ne s'en aperçoive. Le lancement passe par la route
+dédiée, où l'utilisateur voit ce qu'il déclenche.
 """
 
 from __future__ import annotations
@@ -13,43 +13,50 @@ from typing import Any
 
 from app.agent_tools.tool import AgentTool, ToolContext
 
-_NOT_READY = "Orchestration de fiche automatisée : disponible en Phase 5 (travaux en cours)."
+# Import différé : l'orchestrateur dépend de la boucle, qui dépend du registre,
+# qui dépend de ce module. Le résoudre à l'appel plutôt qu'à l'import casse le
+# cycle sans forcer aucun des trois à s'aplatir.
 
 
 async def _execute_fiche_state(ctx: ToolContext, args: dict[str, Any]) -> dict[str, Any]:
-    return {"message": _NOT_READY}
+    from app.services import agent_fiche
+
+    slug = (args.get("slug") or "").strip()
+    if not slug:
+        return {"error": "Le slug de la fiche est requis."}
+    return await agent_fiche.etat(ctx.db, ctx.creator_id, slug)
 
 
-async def _execute_fiche_lancer(ctx: ToolContext, args: dict[str, Any]) -> dict[str, Any]:
-    return {"error": _NOT_READY}
+async def _execute_fiche_etapes(ctx: ToolContext, args: dict[str, Any]) -> dict[str, Any]:
+    from app.services import agent_fiche
+
+    return {
+        "etapes": [
+            {"id": etape.id, "instructions": etape.instructions} for etape in agent_fiche.ETAPES
+        ]
+    }
 
 
 def fiche_tools() -> list[AgentTool]:
     return [
         AgentTool(
             name="fiche_state",
-            description="État d'une orchestration de fiche du workspace (Phase 5).",
+            description="Avancement d'un run de création de fiche : étages faits, fichiers écrits.",
             parameters={
                 "type": "object",
                 "properties": {
-                    "slug": {"type": "string", "description": "Slug de la fiche (Phase 5)."}
-                },
-                "required": [],
-            },
-            output="message",
-            execute=_execute_fiche_state,
-        ),
-        AgentTool(
-            name="fiche_lancer",
-            description="Lance l'orchestration automatisée d'une fiche du workspace (Phase 5).",
-            parameters={
-                "type": "object",
-                "properties": {
-                    "slug": {"type": "string", "description": "Slug de la fiche (Phase 5)."}
+                    "slug": {"type": "string", "description": "Slug de la fiche."},
                 },
                 "required": ["slug"],
             },
-            output="message",
-            execute=_execute_fiche_lancer,
+            output="dict",
+            execute=_execute_fiche_state,
+        ),
+        AgentTool(
+            name="fiche_etapes",
+            description="Les étages ICM d'une création de fiche, dans l'ordre, et leurs règles.",
+            parameters={"type": "object", "properties": {}, "required": []},
+            output="dict",
+            execute=_execute_fiche_etapes,
         ),
     ]

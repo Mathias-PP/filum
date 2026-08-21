@@ -78,6 +78,20 @@ class AgentMessageRead(BaseModel):
     created_at: datetime
 
 
+class AgentFicheRequest(BaseModel):
+    """Lancement d'un run de fiche : quel contenu, sous quel slug."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    content_url: str = Field(min_length=1, max_length=2000)
+    slug: str = Field(min_length=1, max_length=120, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+    depuis: str | None = Field(
+        default=None,
+        max_length=40,
+        description="Reprendre à cet étage. Les comptes rendus déjà écrits servent de contexte.",
+    )
+
+
 class AgentApprovalDecision(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
