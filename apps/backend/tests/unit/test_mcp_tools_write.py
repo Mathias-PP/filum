@@ -874,8 +874,10 @@ async def test_remove_connection_refuse_non_proprietaire(
 @pytest.mark.asyncio
 async def test_list_my_cards_rend_les_fiches_du_user(db_session, test_user, fiche_brouillon):
     result = await list_my_cards(db_session, test_user)
-    slugs = {c["slug"] for c in result}
+    slugs = {c["slug"] for c in result["cards"]}
     assert "fiche-en-cours" in slugs
+    assert "total" in result
+    assert result["total"] >= 1
 
 
 @pytest.mark.asyncio
@@ -883,7 +885,7 @@ async def test_list_my_cards_isole_par_user(db_session, test_user, autre_utilisa
     await create_card(db_session, test_user, slug="a-moi", title="A moi")
     await create_card(db_session, autre_utilisateur, slug="a-lui", title="A lui")
     mine = await list_my_cards(db_session, test_user)
-    slugs = {c["slug"] for c in mine}
+    slugs = {c["slug"] for c in mine["cards"]}
     assert "a-moi" in slugs
     assert "a-lui" not in slugs
 
@@ -940,12 +942,12 @@ async def test_delete_card_puis_restore_est_reversible(db_session, test_user, fi
     assert del_result["deleted"] is True
     # Plus visible via list_my_cards
     mine = await list_my_cards(db_session, test_user)
-    assert "fiche-en-cours" not in {c["slug"] for c in mine}
+    assert "fiche-en-cours" not in {c["slug"] for c in mine["cards"]}
     # Restore
     restore_result = await restore_card(db_session, test_user, slug="fiche-en-cours")
     assert restore_result["restored"] is True
     mine = await list_my_cards(db_session, test_user)
-    assert "fiche-en-cours" in {c["slug"] for c in mine}
+    assert "fiche-en-cours" in {c["slug"] for c in mine["cards"]}
 
 
 @pytest.mark.asyncio
