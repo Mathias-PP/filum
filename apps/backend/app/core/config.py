@@ -96,6 +96,9 @@ class Settings(BaseSettings):
     agent_discovery_provider: str = "deepseek"
     agent_discovery_model: str = "deepseek-chat"
     agent_discovery_api_key: str = ""
+    # Self-hosted uniquement : autorise localhost comme base_url de provider.
+    # Ne jamais mettre a True sur le SaaS Philum (VM distante != loopback user).
+    agent_allow_local_providers: bool = False
 
     @field_validator("database_url", mode="before")
     @classmethod

@@ -312,6 +312,77 @@
     </div>
   </section>
 
+  <section id="tunnel-ollama" class="mb-12" use:reveal>
+    <h2 class="text-2xl font-semibold text-ink-primary mb-3">Brancher un modele local (Ollama)</h2>
+    <p class="text-ink-secondary leading-relaxed mb-4">
+      Le backend Philum tourne sur une VM distante : il ne peut pas joindre
+      <code>localhost</code> sur votre machine. Pour utiliser Ollama ou tout autre modele local, exposez-le
+      via un tunnel HTTPS et branchez-le comme provider custom.
+    </p>
+
+    <ol class="list-decimal pl-5 text-sm text-ink-secondary space-y-4">
+      <li>
+        <span class="text-ink-primary font-medium">Lancer Ollama et charger un modele.</span>
+        <pre
+          class="mt-2 bg-surface-primary border border-border rounded-lg p-3 text-xs overflow-x-auto"><code
+            >ollama run llama3.2</code
+          ></pre>
+      </li>
+      <li>
+        <span class="text-ink-primary font-medium">Ouvrir un tunnel HTTPS.</span>
+        <p class="mt-1">
+          Deux options gratuites qui preservent l'authentification (recommandees face a ngrok sans
+          auth, qui expose publiquement votre endpoint) :
+        </p>
+        <ul class="list-disc pl-5 mt-2 space-y-1">
+          <li>
+            <strong>Cloudflare Tunnel</strong> : stable, URL fixe avec Access auth, gratuit.
+            <a
+              href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/get-started/create-remote-tunnel/"
+              target="_blank"
+              rel="noopener"
+              class="text-accent hover:underline">Guide Cloudflare</a
+            >
+          </li>
+          <li>
+            <strong>Tailscale Funnel</strong> : necessiteer un compte Tailscale, URL fixe, zero
+            config une fois installe.
+            <a
+              href="https://tailscale.com/kb/1223/funnel"
+              target="_blank"
+              rel="noopener"
+              class="text-accent hover:underline">Guide Tailscale Funnel</a
+            >
+          </li>
+        </ul>
+      </li>
+      <li>
+        <span class="text-ink-primary font-medium">Recuperer l'URL publique HTTPS</span> (ex. :
+        <code>https://mon-tunnel.example.com</code>).
+      </li>
+      <li>
+        <span class="text-ink-primary font-medium"
+          >Dans Philum : Agent &rarr; Providers &rarr; Ajouter.</span
+        >
+        <ul class="list-disc pl-5 mt-1 space-y-1">
+          <li>Fournisseur : <code>Autre (URL a saisir)</code></li>
+          <li>URL de base : <code>https://mon-tunnel.example.com/v1</code></li>
+          <li>Cle API : <code>ollama</code> (Ollama l'ignore, mais le champ est requis)</li>
+          <li>Modele : nom local, ex. <code>llama3.2</code></li>
+        </ul>
+      </li>
+    </ol>
+
+    <div
+      class="mt-4 rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
+    >
+      <span class="font-medium">Avertissements :</span> l'URL du tunnel est accessible sur Internet
+      pendant toute sa duree de vie. Activez l'authentification (Access ou Tailscale ACL). Les quick
+      tunnels ngrok/Cloudflare ont une URL changeante a chaque redemarrage. Ajoutez
+      <code>OLLAMA_KEEP_ALIVE=24h</code> pour eviter qu'Ollama decharge le modele entre deux messages.
+    </div>
+  </section>
+
   <section use:reveal>
     <h2 class="text-2xl font-semibold text-ink-primary mb-3">Bonnes pratiques</h2>
     <ul class="list-disc pl-5 text-sm text-ink-secondary space-y-2">
