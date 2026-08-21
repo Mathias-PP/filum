@@ -324,6 +324,24 @@ class TestDetailProvider:
     def test_corps_vide_rend_none(self):
         assert _detail_provider(httpx.Response(500, content=b"")) is None
 
+    def test_forme_mistral_detail(self):
+        """Mistral rend {"detail": "..."} (convention FastAPI/pydantic)."""
+        r = httpx.Response(401, json={"detail": "Invalid API Key"})
+        assert _detail_provider(r) == "Invalid API Key"
+
+    def test_forme_cerebras_message_racine(self):
+        """Cerebras rend {"message": "...", "type": "...", "code": "..."} sans wrapper error."""
+        r = httpx.Response(
+            401,
+            json={
+                "message": "Wrong API Key",
+                "type": "invalid_request_error",
+                "param": "api_key",
+                "code": "wrong_api_key",
+            },
+        )
+        assert _detail_provider(r) == "Wrong API Key"
+
 
 class TestClassifyRemonteLeProvider:
     def test_le_404_gemini_cite_le_modele_de_remplacement(self):
