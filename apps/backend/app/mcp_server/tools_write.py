@@ -56,7 +56,9 @@ def _valeur_enum(champ: str, valeur: str | None, cls: type[Enum]) -> str | None:
     if valeur is None or valeur == "":
         return None
     try:
-        return cls(valeur).value
+        # Enum.value est typé Any dans les stubs : resserrer avant de rendre.
+        canonique = cls(valeur).value
+        return canonique if isinstance(canonique, str) else str(canonique)
     except ValueError:
         autorisees = ", ".join(m.value for m in cls)
         raise ToolError(
@@ -211,7 +213,9 @@ async def add_source(
         _valeur_enum("category", category, SourceCategory)
         or SourceCategory.ARTICLE_SCIENTIFIQUE.value
     )
-    nature_auteur = _valeur_enum("author_kind", author_kind, AuthorKind) or AuthorKind.CHERCHEUR.value
+    nature_auteur = (
+        _valeur_enum("author_kind", author_kind, AuthorKind) or AuthorKind.CHERCHEUR.value
+    )
     position_declaree = _valeur_enum("stance", stance, SourceStance)
 
     try:
