@@ -55,6 +55,7 @@
   const modelesProposes = $derived(
     modelesConnus.length > 0 ? modelesConnus : (MODELES_SUGGERES[kind] ?? [])
   );
+  const modelesRecommandes = $derived<string[]>((meta?.recommended_models ?? {})[kind] ?? []);
 
   let testing = $state<string | null>(null);
   let results = $state<Record<string, AgentProviderTestResult>>({});
@@ -312,7 +313,7 @@
             >
               <option value="" disabled>Choisir un modèle</option>
               {#each modelesProposes as m (m)}
-                <option value={m}>{m}</option>
+                <option value={m}>{modelesRecommandes.includes(m) ? '★ ' : ''}{m}</option>
               {/each}
             </select>
           {/if}
