@@ -83,6 +83,109 @@ _SYSTEME = (
 #: Taille max du contexte workspace injecté dans le prompt système.
 _PRIMING_MAX = 40_000
 
+#: Taille de fenêtre de contexte par sous-chaîne de nom de modèle.
+_FENETRES: dict[str, int] = {
+    "gemini-2.5": 2_000_000,
+    "gemini-2.0": 1_000_000,
+    "gemini-1.5": 1_000_000,
+    "gemini": 1_000_000,
+    "claude": 200_000,
+    "gpt-4o": 128_000,
+    "gpt-4-turbo": 128_000,
+    "gpt-4": 128_000,
+    "gpt-3.5": 16_385,
+    "mistral-large": 128_000,
+    "mistral": 32_000,
+    "mixtral": 32_000,
+}
+
+#: Mots-clés signalant un dépassement de fenêtre de contexte.
+_MOTS_DEPASSEMENT = frozenset(
+    {
+        "context_length_exceeded",
+        "maximum context length",
+        "context window",
+        "exceeds the limit",
+        "too many tokens",
+        "prompt is too long",
+        "reduce your prompt",
+    }
+)
+
+
+def fenetre_du_modele(model: str) -> int:
+    """Taille de la fenêtre de contexte d'un modèle (en tokens), repli 128 000."""
+    modele_lower = model.lower()
+    for prefixe, taille in _FENETRES.items():
+        if prefixe in modele_lower:
+            return taille
+    return 128_000
+
+
+def _est_depassement_contexte(erreur: str) -> bool:
+    """Le message d'erreur indique-t-il un dépassement de fenêtre de contexte ?"""
+    err = erreur.lower()
+    return any(kw in err for kw in _MOTS_DEPASSEMENT)
+
+
+def _tokens_approx(messages: list[dict[str, Any]]) -> int:
+    """Estimation grossière du nombre de tokens dans une liste de messages.
+
+    4 caractères ~ 1 token (BPE moyen occidental). Overhead par message : 8.
+    """
+    total = 0
+    for m in messages:
+        content = m.get("content") or ""
+        if isinstance(content, str):
+            total += len(content) // 4 + 8
+        tcs = m.get("tool_calls")
+        if isinstance(tcs, list):
+            for tc in tcs:
+                fn = tc.get("function", {})
+                total += len(str(fn.get("arguments", ""))) // 4 + 16
+    return total
+
+
+def _tronquer_historique(messages: list[dict[str, Any]], budget: int) -> list[dict[str, Any]]:
+    """Tronque l'historique pour tenir dans budget tokens.
+
+    Règles :
+    - Ne sépare jamais une paire assistant(tool_calls)/tool : un tool orphelin
+      est rejeté par tous les providers.
+    - Insère un message de synthèse à la place du bloc retiré.
+    - Si même après tout couper on dépasse, garde les 6 derniers messages.
+    """
+    if _tokens_approx(messages) <= budget:
+        return messages
+
+    # Construire les points de coupe valides (juste après un groupe complet)
+    points: list[int] = []
+    i = 0
+    n = len(messages)
+    while i < n:
+        if messages[i].get("role") == "assistant" and messages[i].get("tool_calls"):
+            j = i + 1
+            while j < n and messages[j].get("role") == "tool":
+                j += 1
+            points.append(j)
+            i = j
+        else:
+            points.append(i + 1)
+            i += 1
+
+    for coupe in points:
+        if _tokens_approx(messages[coupe:]) <= budget:
+            synthese: dict[str, Any] = {
+                "role": "system",
+                "content": (
+                    f"[{coupe} message(s) anciens omis pour tenir "
+                    "dans la fenêtre de contexte du modèle.]"
+                ),
+            }
+            return [synthese, *messages[coupe:]]
+
+    return messages[-6:] if len(messages) > 6 else messages
+
 
 async def _priming_workspace(db: AsyncSession, creator_id: Any) -> str:
     """Charge les fichiers shared/ du workspace du créateur pour le prompt système.
@@ -665,8 +768,19 @@ async def boucle(
     registre = registre or construire_registre()
     outils_api = registre_api(registre)
     workspace_ctx = await _priming_workspace(db, user.id)
-    messages.insert(0, {"role": "system", "content": _SYSTEME + workspace_ctx})
+    systeme = {"role": "system", "content": _SYSTEME + workspace_ctx}
+    messages.insert(0, systeme)
+
+    # Troncature préventive : garder 80% de la fenêtre du modèle.
+    modele_effectif = modele or provider.model
+    budget = int(fenetre_du_modele(modele_effectif) * 0.8)
+    if _tokens_approx(messages) > budget:
+        # Ne pas tronquer le message système (index 0).
+        reste = _tronquer_historique(messages[1:], budget)
+        messages[1:] = reste
+
     usage_total: dict[str, int] = {"prompt_tokens": 0, "completion_tokens": 0}
+    contexte_compacte = False
     try:
         for tour in range(1, MAX_TOURS + 1):
 
@@ -677,6 +791,19 @@ async def boucle(
                 provider, messages, outils_api, transport, on_delta=_on_delta, modele=modele
             )
             if isinstance(reponse, str):
+                if not contexte_compacte and _est_depassement_contexte(reponse):
+                    # Rejeu unique : tronquer à 60% et réessayer.
+                    budget_reduit = int(fenetre_du_modele(modele_effectif) * 0.6)
+                    reste_reduit = _tronquer_historique(messages[1:], budget_reduit)
+                    messages[1:] = reste_reduit
+                    contexte_compacte = True
+                    await emit(
+                        {
+                            "type": "contexte_compacte",
+                            "payload": {"budget_tokens": budget_reduit},
+                        }
+                    )
+                    continue
                 await emit({"type": "error", "payload": {"message": reponse}})
                 return
             message, finish_reason, usage = reponse
