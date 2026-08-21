@@ -123,8 +123,8 @@ async def chat_agent(
         async def emit(event: dict[str, Any]) -> None:
             if event.get("type") == "message_delta":
                 reponse_finale.append(event["payload"]["delta"])
-            if event.get("type") == "done":
-                u = (event.get("payload") or {}).get("usage")
+            elif event.get("type") == "done":
+                u = event.get("payload", {}).get("usage")
                 if isinstance(u, dict):
                     usage_capture.append(u)
             await queue.put(event)
@@ -155,7 +155,7 @@ async def chat_agent(
                     break
                 yield _sse(event)
             await task
-            usage = usage_capture[0] if usage_capture else {}
+            usage = usage_capture[0] if usage_capture else None
             await _persister_tour(db, session, messages[depart:], "".join(reponse_finale), usage)
         finally:
             task.cancel()

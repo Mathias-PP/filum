@@ -167,6 +167,7 @@ async def add_source(
     stance: str | None = None,
     annotation: str | None = None,
     journal: str | None = None,
+    published_at: str | None = None,
     archive_url: str | None = None,
 ) -> dict[str, Any]:
     """Ajoute une source citee a la fiche `card_slug`.
@@ -177,6 +178,8 @@ async def add_source(
       laboratoire|entreprise|asso|individu.
     `format` : texte|video|image|audio|data.
     `stance` (optionnel) : appuie|nuance-contredit|mentionne|contexte.
+    `published_at` : date de publication, ``2016``, ``2016-03`` ou
+      ``2016-03-15``. A renseigner des que la source en porte une.
 
     La meme reference dans deux ecritures d'URL est refusee : l'identite est
     calculee sur le DOI ou l'URL normalisee. Enchaine `add_excerpt` pour
@@ -198,6 +201,7 @@ async def add_source(
             stance=stance,
             annotation=annotation,
             journal=journal,
+            published_at=published_at,
             archive_url=archive_url,
         )
 
@@ -319,12 +323,15 @@ async def update_source(
     stance: str | None = None,
     annotation: str | None = None,
     is_pivot: bool | None = None,
+    published_at: str | None = None,
     archive_url: str | None = None,
 ) -> dict[str, Any]:
     """Corrige les champs edituriaux d'une source existante (titre, auteurs,
-    DOI, revue, categorie, position declaree, annotation, statut pivot,
-    URL d'archive). Un champ laisse a `None` reste inchange. L'URL de la source
-    est immuable : pour la changer, `delete_source` puis `add_source`.
+    DOI, revue, categorie, position declaree, annotation, statut pivot, date
+    de publication, URL d'archive). Un champ laisse a `None` reste inchange.
+    `published_at` : 2016, 2016-03 ou 2016-03-15 ; chaine vide pour effacer.
+    L'URL de la source est immuable : pour la changer, `delete_source` puis
+    `add_source`.
     """
     async with _session() as db:
         user = await exiger_utilisateur(db)
@@ -342,6 +349,7 @@ async def update_source(
             stance=stance,
             annotation=annotation,
             is_pivot=is_pivot,
+            published_at=published_at,
             archive_url=archive_url,
         )
 

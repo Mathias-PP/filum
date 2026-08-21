@@ -433,6 +433,58 @@ class TestBoucle:
         )
 
     @pytest.mark.asyncio
+    async def test_historique_pollue_gemini_assaini_avant_envoi(self, db_session, test_user):
+        """Gemini signe ses tool_calls d'un ``extra_content.google.thought_signature``
+        ; l'ancien code copiait le message du provider verbatim dans l'historique
+        persiste. Rejouer cette historique vers un provider strict (Mistral)
+        repondait 422 ``extra_forbidden`` des le tour suivant. Verifie en prod
+        le 2026-08-21."""
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+        corps_recus: list[dict] = []
+
+        def handler(request):
+            corps_recus.append(json.loads(request.content))
+            if len(corps_recus) == 1:
+                return httpx.Response(200, json=_mock_tool_call("web_search", {"query": "x"}))
+            return httpx.Response(200, json=_mock_texte("ok"))
+
+        transport = httpx.MockTransport(handler)
+        messages = [
+            {"role": "user", "content": "cherche"},
+            {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": "call_old",
+                        "type": "function",
+                        "function": {"name": "web_search", "arguments": '{"query": "x"}'},
+                        "extra_content": {"google": {"thought_signature": "EpoFCpcF"}},
+                    }
+                ],
+            },
+            {
+                "role": "tool",
+                "tool_call_id": "call_old",
+                "content": "{}",
+                "champ_etranger": 1,
+            },
+            {"role": "user", "content": "et maintenant ?"},
+        ]
+        await _collect(
+            db_session, test_user, provider, messages, _refuse, transport, _registre_fake([])
+        )
+        envoyes = corps_recus[0]["messages"]
+        assistant = next(m for m in envoyes if m.get("role") == "assistant")
+        tc = assistant["tool_calls"][0]
+        assert set(tc) == {"id", "type", "function"}, (
+            "un tool_call specifique Gemini ne doit jamais repartir tel quel"
+        )
+        tool_msg = next(m for m in envoyes if m["role"] == "tool")
+        assert "champ_etranger" not in tool_msg
+
+    @pytest.mark.asyncio
     async def test_action_sensible_refusee_sans_execution(self, db_session, test_user):
         provider = _provider(db_session, test_user)
         await db_session.commit()

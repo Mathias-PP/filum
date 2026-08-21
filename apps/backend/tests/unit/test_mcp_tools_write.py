@@ -547,6 +547,101 @@ async def test_update_source_pose_stance_et_annotation(db_session, test_user, fi
 
 
 @pytest.mark.asyncio
+async def test_add_source_pose_published_at(db_session, test_user, fiche_brouillon):
+    """Une source sans date n'est pas une bibliographie : l'agent doit pouvoir
+    poser l'annee (au minimum) des la creation. Defaut constate sur la fiche
+    creatine (2026-08-21) : add_source n'exposait pas le champ, toutes les
+    sources sont sorties sans date."""
+    from app.models.source import Source
+
+    src = await add_source(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        url="https://example.org/efsa-2016",
+        title="Scientific Opinion on creatine",
+        published_at="2016",
+    )
+    lu = await db_session.get(Source, UUID(src["id"]))
+    assert lu is not None and lu.published_at is not None
+    assert lu.published_at.year == 2016
+
+
+@pytest.mark.asyncio
+async def test_add_source_published_at_formats_souples(db_session, test_user, fiche_brouillon):
+    from app.models.source import Source
+
+    s_mois = await add_source(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        url="https://example.org/format-mois",
+        title="Article mois",
+        published_at="2016-03",
+    )
+    s_jour = await add_source(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        url="https://example.org/format-jour",
+        title="Article jour",
+        published_at="2016-03-15",
+    )
+    s_an = await add_source(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        url="https://example.org/format-an",
+        title="Article an",
+        published_at="2016",
+    )
+    lu_mois = await db_session.get(Source, UUID(s_mois["id"]))
+    lu_jour = await db_session.get(Source, UUID(s_jour["id"]))
+    lu_an = await db_session.get(Source, UUID(s_an["id"]))
+    assert lu_mois and lu_mois.published_at
+    assert (lu_mois.published_at.year, lu_mois.published_at.month) == (2016, 3)
+    assert lu_jour and lu_jour.published_at and lu_jour.published_at.day == 15
+    assert lu_an and lu_an.published_at
+    assert (
+        lu_an.published_at.year,
+        lu_an.published_at.month,
+        lu_an.published_at.day,
+    ) == (2016, 1, 1)
+
+
+@pytest.mark.asyncio
+async def test_add_source_published_at_illisible_refuse(db_session, test_user, fiche_brouillon):
+    with pytest.raises(ToolError, match="format illisible"):
+        await add_source(
+            db_session,
+            test_user,
+            card_slug="fiche-en-cours",
+            url="https://example.org/date-bizarre",
+            title="Article",
+            published_at="vers 2016",
+        )
+
+
+@pytest.mark.asyncio
+async def test_update_source_efface_published_at_par_chaine_vide(
+    db_session, test_user, fiche_brouillon
+):
+    from app.models.source import Source
+
+    src = await add_source(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        url="https://example.org/a-corrigee",
+        title="Article date",
+        published_at="2016-03-15",
+    )
+    await update_source(db_session, test_user, source_id=src["id"], published_at="")
+    lu = await db_session.get(Source, UUID(src["id"]))
+    assert lu is not None and lu.published_at is None
+
+
+@pytest.mark.asyncio
 async def test_update_source_refuse_non_proprietaire(
     db_session, test_user, fiche_brouillon, autre_utilisateur
 ):
@@ -1070,9 +1165,7 @@ async def test_update_source_refuse_une_valeur_hors_vocabulaire(
 
 
 @pytest.mark.asyncio
-async def test_update_source_stance_vide_efface_la_position(
-    db_session, test_user, fiche_brouillon
-):
+async def test_update_source_stance_vide_efface_la_position(db_session, test_user, fiche_brouillon):
     src = await add_source(
         db_session, test_user, card_slug="fiche-en-cours", url="https://a.org/v", stance="appuie"
     )
