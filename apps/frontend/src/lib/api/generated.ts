@@ -134,6 +134,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/agent/providers/{provider_id}/models': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Lister Modeles Provider
+     * @description Les modeles disponibles pour ce compte, demandes au fournisseur.
+     */
+    get: operations['lister_modeles_provider_api_v1_agent_providers__provider_id__models_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/agent/sessions': {
     parameters: {
       query?: never;
@@ -1625,6 +1645,11 @@ export interface components {
     /**
      * AgentProviderTestResult
      * @description Résultat du test de clé, avec un message actionnable par statut.
+     *
+     *     ``provider_message`` porte le texte brut renvoyé par le fournisseur. C'est
+     *     souvent la seule information exploitable de toute la chaine : Gemini y nomme
+     *     le modele de remplacement, OpenAI y distingue un credit epuise d'une limite
+     *     de debit. Ne jamais le remplacer par une reformulation.
      */
     AgentProviderTestResult: {
       /** Ok */
@@ -1637,6 +1662,8 @@ export interface components {
       url: string;
       /** Message */
       message: string;
+      /** Provider Message */
+      provider_message?: string | null;
     };
     /** AgentProviderUpdate */
     AgentProviderUpdate: {
@@ -2846,7 +2873,16 @@ export interface components {
      * ProviderKind
      * @enum {string}
      */
-    ProviderKind: 'openai' | 'anthropic' | 'deepseek' | 'gemini' | 'custom';
+    ProviderKind:
+      | 'openai'
+      | 'anthropic'
+      | 'deepseek'
+      | 'gemini'
+      | 'groq'
+      | 'openrouter'
+      | 'mistral'
+      | 'cerebras'
+      | 'custom';
     /**
      * RetractionStatus
      * @description Etat de l'article aux yeux de Crossref / Retraction Watch.
@@ -3540,6 +3576,37 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['AgentProviderTestResult'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  lister_modeles_provider_api_v1_agent_providers__provider_id__models_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        provider_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': unknown;
         };
       };
       /** @description Validation Error */

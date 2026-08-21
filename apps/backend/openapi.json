@@ -342,6 +342,48 @@
         }
       }
     },
+    "/api/v1/agent/providers/{provider_id}/models": {
+      "get": {
+        "tags": [
+          "agent-providers"
+        ],
+        "summary": "Lister Modeles Provider",
+        "description": "Les modeles disponibles pour ce compte, demandes au fournisseur.",
+        "operationId": "lister_modeles_provider_api_v1_agent_providers__provider_id__models_get",
+        "parameters": [
+          {
+            "name": "provider_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Provider Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/agent/sessions": {
       "get": {
         "tags": [
@@ -4234,6 +4276,17 @@
           "message": {
             "type": "string",
             "title": "Message"
+          },
+          "provider_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Message"
           }
         },
         "type": "object",
@@ -4244,7 +4297,7 @@
           "message"
         ],
         "title": "AgentProviderTestResult",
-        "description": "Résultat du test de clé, avec un message actionnable par statut."
+        "description": "Résultat du test de clé, avec un message actionnable par statut.\n\n``provider_message`` porte le texte brut renvoyé par le fournisseur. C'est\nsouvent la seule information exploitable de toute la chaine : Gemini y nomme\nle modele de remplacement, OpenAI y distingue un credit epuise d'une limite\nde debit. Ne jamais le remplacer par une reformulation."
       },
       "AgentProviderUpdate": {
         "properties": {
@@ -7731,6 +7784,10 @@
           "anthropic",
           "deepseek",
           "gemini",
+          "groq",
+          "openrouter",
+          "mistral",
+          "cerebras",
           "custom"
         ],
         "title": "ProviderKind"

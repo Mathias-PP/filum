@@ -60,14 +60,10 @@ class TestTexteBrut:
 
 class TestDocumentsStructures:
     def test_docx(self):
-        assert extract_text("c.docx", _docx(["Premier.", "Second."])) == (
-            "Premier.\nSecond.\n"
-        )
+        assert extract_text("c.docx", _docx(["Premier.", "Second."])) == ("Premier.\nSecond.\n")
 
     def test_odt(self):
-        assert extract_text("c.odt", _odt(["Premier.", "Second."])) == (
-            "Premier.\nSecond.\n"
-        )
+        assert extract_text("c.odt", _odt(["Premier.", "Second."])) == ("Premier.\nSecond.\n")
 
     def test_les_paragraphes_ne_se_collent_pas(self):
         """Sans saut, « fin.Debut » ferait un mot qui n'existe dans aucun texte,

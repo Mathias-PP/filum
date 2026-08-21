@@ -53,7 +53,9 @@ class TestIsolationWorkspace:
         )
         await db_session.commit()
 
-        chez_moi = await executer(registre, "fs_read", {"path": chemin}, _ctx(db_session, test_user))
+        chez_moi = await executer(
+            registre, "fs_read", {"path": chemin}, _ctx(db_session, test_user)
+        )
         assert chez_moi["found"] is True
 
         chez_lautre = await executer(
@@ -73,7 +75,9 @@ class TestIsolationWorkspace:
         )
         await db_session.commit()
 
-        entrees = await executer(registre, "fs_list", {"path": "runs/"}, _ctx(db_session, autre_user))
+        entrees = await executer(
+            registre, "fs_list", {"path": "runs/"}, _ctx(db_session, autre_user)
+        )
         assert entrees["entries"] == []
 
     @pytest.mark.asyncio

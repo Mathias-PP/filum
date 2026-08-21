@@ -65,6 +65,38 @@
     }
   }
 }`;
+
+  const mcpConfigGemini = `{
+  "mcpServers": {
+    "philum": {
+      "httpUrl": "${MCP_URL}-account/"
+    }
+  }
+}`;
+
+  // Groupes d'outils MCP (39 outils, verifies le 2026-08-21).
+  const mcpGroupes = [
+    { titre: "Lecture publique", outils: ["search_cards", "get_card", "get_source", "find_cards_citing"] },
+    { titre: "Identite", outils: ["whoami"] },
+    { titre: "Fiche", outils: ["create_card", "update_card", "delete_card", "restore_card", "list_my_cards", "list_deleted_cards", "publish_card", "set_content_text"] },
+    { titre: "Sources", outils: ["add_source", "add_sources_batch", "update_source", "delete_source", "list_sources", "archive_sources"] },
+    { titre: "Extraits", outils: ["add_excerpt", "delete_excerpt", "verify_excerpts", "suggest_excerpts", "annotate_excerpt", "chunk_text", "search_my_excerpts"] },
+    { titre: "Connexions", outils: ["list_connections", "confirm_connection", "remove_connection", "list_incoming_citations", "mark_citations_seen"] },
+    { titre: "Imports", outils: ["import_from_content_url", "get_youtube_transcript", "get_url_metadata", "parse_biblio"] },
+    { titre: "Attestations", outils: ["create_content_attestation", "get_attestation", "verify_attestation"] },
+    { titre: "Autre", outils: ["create_claim_request"] },
+  ];
+
+  let copie = $state("");
+  let copieTimer: ReturnType<typeof setTimeout>;
+  function copier(texte: string, cle: string) {
+    if (typeof navigator === "undefined" || !navigator.clipboard) return;
+    navigator.clipboard.writeText(texte).then(() => {
+      copie = cle;
+      clearTimeout(copieTimer);
+      copieTimer = setTimeout(() => (copie = ""), 2000);
+    });
+  }
 </script>
 
 <svelte:head>
@@ -133,7 +165,8 @@
     </div>
     <p class="text-sm text-ink-secondary mt-4" use:reveal>
       Les endpoints d'écriture (création de fiches et de sources, imports, publication) requièrent
-      une session authentifiée. Des jetons d'API personnels sont prévus sur la roadmap.
+      une session authentifiée. Pour écrire depuis un assistant, utiliser le serveur MCP avec votre
+      compte (ci-dessous) : l'autorisation se fait en un clic dans le navigateur.
     </p>
   </section>
 
@@ -149,35 +182,75 @@
       : un assistant IA (Claude, Cursor, Gemini…) peut interroger les bibliographies publiées, citer ses
       sources, et construire des fiches à votre place. Deux adresses, selon ce que vous voulez faire.
     </p>
-    <div class="grid gap-4 sm:grid-cols-2 mb-4">
+
+    <div class="grid gap-4 sm:grid-cols-2 mb-4" use:reveal>
+      {#each [["Lecture publique", `${MCP_URL}/`, "pub"], ["Avec votre compte", `${MCP_URL}-account/`, "compte"]] as [titre, adresse, cle] (cle)}
+        <div class="bg-surface-secondary border border-border rounded-xl p-5">
+          <p class="text-sm font-semibold text-ink-primary mb-2">{titre}</p>
+          <code class="block text-sm break-all text-ink-primary mb-2">{adresse}</code>
+          <button
+            type="button"
+            class="text-xs text-accent hover:underline"
+            onclick={() => copier(adresse, cle)}
+          >
+            {copie === cle ? "Copie" : "Copier l'adresse"}
+          </button>
+        </div>
+      {/each}
+    </div>
+    <p class="text-sm text-ink-secondary mb-6" use:reveal>
+      C'est l'adresse a coller dans le champ MCP server URL de ChatGPT ou d'un connecteur Claude.
+      Garder la barre finale : sans elle le serveur repond une redirection que tous les clients ne
+      suivent pas sur un POST.
+    </p>
+
+    <h3 class="text-lg font-semibold text-ink-primary mb-3" use:reveal>Recettes par client</h3>
+    <div class="space-y-4 mb-6">
       <div class="bg-surface-secondary border border-border rounded-xl p-5" use:reveal>
-        <p class="text-sm font-semibold text-ink-primary mb-1">Lecture publique</p>
-        <p class="text-sm text-ink-secondary mb-3">
-          Sans compte. Pour explorer ce que Philum publie : recherche, fiches, sources, citations.
-          Fonctionne avec un modèle local ou un client sans authentification.
-        </p>
+        <p class="text-sm font-semibold text-ink-primary mb-2">Claude Code</p>
         <pre
-          class="bg-surface-primary border border-border rounded-lg p-3 text-xs overflow-x-auto"><code
-            >{mcpConfigPublic}</code
+          class="bg-surface-primary border border-border rounded-lg p-3 text-xs overflow-x-auto mb-2"><code
+            >claude mcp add --transport http philum {MCP_URL}-account/</code
           ></pre>
       </div>
       <div class="bg-surface-secondary border border-border rounded-xl p-5" use:reveal>
-        <p class="text-sm font-semibold text-ink-primary mb-1">Avec votre compte</p>
-        <p class="text-sm text-ink-secondary mb-3">
-          Les 39 outils, dont l'écriture : créer, corriger et publier vos fiches. Votre client ouvre
-          la page d'autorisation au premier appel, vous cliquez une fois. Aucun token à copier.
+        <p class="text-sm font-semibold text-ink-primary mb-1">Claude (application) et ChatGPT</p>
+        <p class="text-sm text-ink-secondary">
+          Ajouter un connecteur, coller l'URL de votre choix ci-dessus. Rien d'autre a saisir.
         </p>
+      </div>
+      <div class="bg-surface-secondary border border-border rounded-xl p-5" use:reveal>
+        <p class="text-sm font-semibold text-ink-primary mb-1">Gemini CLI</p>
+        <p class="text-sm text-ink-secondary mb-2">
+          Dans <code>~/.gemini/settings.json</code>. Chez Gemini CLI, <code>url</code> designe le
+          transport SSE que Philum n'expose pas. Il faut <code>httpUrl</code>.
+        </p>
+        <pre
+          class="bg-surface-primary border border-border rounded-lg p-3 text-xs overflow-x-auto"><code
+            >{mcpConfigGemini}</code
+          ></pre>
+      </div>
+      <div class="bg-surface-secondary border border-border rounded-xl p-5" use:reveal>
+        <p class="text-sm font-semibold text-ink-primary mb-2">Cursor, opencode, Codex</p>
         <pre
           class="bg-surface-primary border border-border rounded-lg p-3 text-xs overflow-x-auto"><code
             >{mcpConfigCompte}</code
           ></pre>
       </div>
     </div>
-    <div class="space-y-2">
-      {#each mcpTools as [name, desc], i (name)}
-        <div class="flex gap-3 items-baseline" use:reveal style="transition-delay: {i * 50}ms">
-          <code class="text-sm font-semibold text-ink-primary shrink-0">{name}</code>
-          <span class="text-sm text-ink-secondary">{desc}</span>
+
+    <h3 class="text-lg font-semibold text-ink-primary mb-3" use:reveal>39 outils disponibles</h3>
+    <div class="space-y-4">
+      {#each mcpGroupes as groupe, gi (groupe.titre)}
+        <div use:reveal style="transition-delay: {gi * 40}ms">
+          <p class="text-xs font-medium uppercase tracking-wider text-ink-tertiary mb-1">
+            {groupe.titre}
+          </p>
+          <div class="flex flex-wrap gap-x-3 gap-y-0.5">
+            {#each groupe.outils as name (name)}
+              <code class="text-sm text-ink-primary">{name}</code>
+            {/each}
+          </div>
         </div>
       {/each}
     </div>

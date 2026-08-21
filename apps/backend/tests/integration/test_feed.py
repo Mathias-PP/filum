@@ -67,16 +67,26 @@ async def test_feed_returns_public_cards_in_reverse_chronological_order(
     client, db_session, test_user
 ):
     await _publish_card(
-        db_session, test_user, slug="ancienne", title="Ancienne fiche",
+        db_session,
+        test_user,
+        slug="ancienne",
+        title="Ancienne fiche",
         at=datetime(2026, 1, 1),
     )
     await _publish_card(
-        db_session, test_user, slug="recente", title="Recente fiche",
+        db_session,
+        test_user,
+        slug="recente",
+        title="Recente fiche",
         at=datetime(2026, 8, 1),
     )
     await _publish_card(
-        db_session, test_user, slug="privee", title="Privee",
-        at=datetime(2026, 6, 1), visibility="private",
+        db_session,
+        test_user,
+        slug="privee",
+        title="Privee",
+        at=datetime(2026, 6, 1),
+        visibility="private",
     )
 
     resp = await client.get("/api/v1/feed")
@@ -96,8 +106,10 @@ async def test_feed_returns_public_cards_in_reverse_chronological_order(
 async def test_feed_cursor_pagination(client, db_session, test_user):
     for i in range(5):
         await _publish_card(
-            db_session, test_user,
-            slug=f"card-{i}", title=f"Fiche {i}",
+            db_session,
+            test_user,
+            slug=f"card-{i}",
+            title=f"Fiche {i}",
             at=datetime(2026, 1, 1) + timedelta(days=i),
         )
     resp = await client.get("/api/v1/feed?limit=2")
@@ -115,10 +127,11 @@ async def test_feed_cursor_pagination(client, db_session, test_user):
 async def test_publish_card_creates_feed_event(db_session, test_user):
     """Le service publish_card doit inserer une entree pour une fiche publique
     et n'en inserer aucune pour une fiche privee (ni pour une republication)."""
+    from sqlalchemy import func, select
+
     from app.models.biblio_card import BiblioCard
     from app.models.feed_event import FeedEvent
     from app.services.card import CardService
-    from sqlalchemy import func, select
 
     service = CardService(db_session)
 

@@ -4,6 +4,7 @@
   import type {
     AgentProvider,
     AgentProviderMeta,
+    AgentProviderModels,
     AgentProviderTestResult,
     ProviderKind,
   } from '$lib/api/agent';
@@ -13,10 +14,26 @@
   const kinds: Array<{ value: ProviderKind; label: string }> = [
     { value: 'openai', label: 'OpenAI' },
     { value: 'anthropic', label: 'Anthropic' },
-    { value: 'deepseek', label: 'DeepSeek' },
     { value: 'gemini', label: 'Google Gemini' },
+    { value: 'mistral', label: 'Mistral (France)' },
+    { value: 'groq', label: 'Groq' },
+    { value: 'openrouter', label: 'OpenRouter' },
+    { value: 'cerebras', label: 'Cerebras' },
+    { value: 'deepseek', label: 'DeepSeek' },
     { value: 'custom', label: 'Autre (URL à saisir)' },
   ];
+
+  const MODELES_SUGGERES: Record<string, string[]> = {
+    openai: ['gpt-5.6-luna', 'gpt-5.6-terra'],
+    anthropic: ['claude-opus-4-7', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001'],
+    deepseek: ['deepseek-chat', 'deepseek-reasoner'],
+    gemini: ['gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.1-pro'],
+    groq: [],
+    openrouter: [],
+    mistral: [],
+    cerebras: [],
+    custom: [],
+  };
 
   let loading = $state(true);
   let loadFailed = $state(false);
@@ -32,6 +49,12 @@
   let displayName = $state('');
   let isDefault = $state(false);
   let formError = $state<string | null>(null);
+  let editing = $state<string | null>(null);
+  let modelesConnus = $state<string[]>([]);
+  let modeleLibre = $state(false);
+  const modelesProposes = $derived(
+    modelesConnus.length > 0 ? modelesConnus : (MODELES_SUGGERES[kind] ?? [])
+  );
 
   let testing = $state<string | null>(null);
   let results = $state<Record<string, AgentProviderTestResult>>({});
@@ -52,6 +75,9 @@
   });
 
   function resetForm() {
+    editing = null;
+    modelesConnus = [];
+    modeleLibre = false;
     kind = 'openai';
     model = '';
     apiKey = '';
@@ -66,28 +92,63 @@
     formOpen = true;
   }
 
+  function ouvrirEdition(provider: AgentProvider) {
+    resetForm();
+    editing = provider.id;
+    kind = provider.provider;
+    model = provider.model;
+    baseUrl = provider.base_url;
+    displayName = provider.display_name;
+    isDefault = provider.is_default;
+    apiKey = '';
+    formOpen = true;
+  }
+
+  async function chargerModeles() {
+    if (!editing) return;
+    try {
+      const res = await agentApi.providers.models(editing);
+      modelesConnus = res.models;
+      if (res.source === 'repli' && res.message) toast.info(res.message);
+    } catch (e) {
+      toast.danger(e instanceof ApiError ? e.message : 'Impossible de lister les modeles.');
+    }
+  }
+
   async function submit(event: SubmitEvent) {
     event.preventDefault();
     formError = null;
     saving = true;
     try {
-      const cree = await agentApi.providers.create({
-        provider: kind,
-        model: model.trim(),
-        api_key: apiKey.trim(),
-        base_url: baseUrl.trim() || null,
-        display_name: displayName.trim() || null,
-        is_default: isDefault,
-      });
-      // La clé quitte l'écran dès qu'elle est partie : elle ne revient jamais
-      // du serveur, et la garder en mémoire du navigateur ne sert à rien.
-      apiKey = '';
-      providers = await agentApi.providers.list();
-      formOpen = false;
-      toast.success(`${cree.display_name} enregistré.`);
+      if (editing) {
+        const modifie = await agentApi.providers.update(editing, {
+          model: model.trim(),
+          base_url: baseUrl.trim() || null,
+          display_name: displayName.trim() || null,
+          is_default: isDefault,
+          ...(apiKey.trim() ? { api_key: apiKey.trim() } : {}),
+        });
+        apiKey = '';
+        providers = await agentApi.providers.list();
+        formOpen = false;
+        toast.success(`${modifie.display_name} mis a jour.`);
+      } else {
+        const cree = await agentApi.providers.create({
+          provider: kind,
+          model: model.trim(),
+          api_key: apiKey.trim(),
+          base_url: baseUrl.trim() || null,
+          display_name: displayName.trim() || null,
+          is_default: isDefault,
+        });
+        apiKey = '';
+        providers = await agentApi.providers.list();
+        formOpen = false;
+        toast.success(`${cree.display_name} enregistre.`);
+      }
     } catch (e) {
       formError =
-        e instanceof ApiError ? e.message : "Impossible d'enregistrer ce provider. Réessayez.";
+        e instanceof ApiError ? e.message : "Impossible d'enregistrer ce provider. Reessayez.";
     } finally {
       saving = false;
     }
@@ -138,6 +199,10 @@
 </svelte:head>
 
 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <a href="/dashboard/chat" class="mb-4 inline-block text-sm text-ink-secondary hover:text-ink-primary">
+    &larr; Retour à l'agent
+  </a>
+
   <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
     <div>
       <h1 class="font-serif text-3xl text-ink-primary mb-1">Providers IA</h1>
@@ -157,6 +222,23 @@
     </p>
   {/if}
 
+  {#if !loading && providers.length === 0}
+    <div class="rounded-lg border border-subtle bg-surface-secondary px-4 py-4 mb-6 text-sm">
+      <p class="text-ink-primary font-medium mb-1">Vous n'avez pas encore de clé ?</p>
+      <p class="text-ink-secondary">
+        Philum n'héberge aucun modèle : vous branchez le vôtre, vous gardez la main sur vos données
+        et sur la facture. Plusieurs fournisseurs délivrent une clé sans carte bancaire.
+      </p>
+      <ul class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-ink-secondary">
+        <li><a class="text-accent hover:underline" href="https://console.mistral.ai" target="_blank" rel="noopener">Mistral (France)</a></li>
+        <li><a class="text-accent hover:underline" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a></li>
+        <li><a class="text-accent hover:underline" href="https://console.groq.com/keys" target="_blank" rel="noopener">Groq</a></li>
+        <li><a class="text-accent hover:underline" href="https://openrouter.ai/keys" target="_blank" rel="noopener">OpenRouter</a></li>
+        <li><a class="text-accent hover:underline" href="https://cloud.cerebras.ai" target="_blank" rel="noopener">Cerebras</a></li>
+      </ul>
+    </div>
+  {/if}
+
   {#if formOpen}
     <form
       class="rounded-lg border border-subtle bg-surface-secondary p-4 mb-6 space-y-3"
@@ -167,42 +249,75 @@
           <span class="text-ink-secondary">Fournisseur</span>
           <select
             bind:value={kind}
-            class="mt-1 w-full rounded border border-subtle bg-surface-primary px-3 py-2"
+            disabled={editing !== null}
+            class="mt-1 w-full rounded border border-subtle bg-surface-primary px-3 py-2 disabled:opacity-50"
           >
             {#each kinds as k (k.value)}
               <option value={k.value}>{k.label}</option>
             {/each}
           </select>
         </label>
-        <label class="block text-sm">
+        <div class="block text-sm">
           <span class="text-ink-secondary">Modèle</span>
-          <input
-            bind:value={model}
-            required
-            placeholder="gpt-4o-mini"
-            class="mt-1 w-full rounded border border-subtle bg-surface-primary px-3 py-2"
-          />
-        </label>
+          {#if modeleLibre || modelesProposes.length === 0}
+            <input
+              bind:value={model}
+              required
+              placeholder="nom exact du modèle"
+              class="mt-1 w-full rounded border border-subtle bg-surface-primary px-3 py-2 font-mono"
+            />
+          {:else}
+            <select
+              bind:value={model}
+              required
+              class="mt-1 w-full rounded border border-subtle bg-surface-primary px-3 py-2 font-mono"
+            >
+              <option value="" disabled>Choisir un modèle</option>
+              {#each modelesProposes as m (m)}
+                <option value={m}>{m}</option>
+              {/each}
+            </select>
+          {/if}
+          <div class="mt-1 flex flex-wrap gap-3 text-xs">
+            <button
+              type="button"
+              class="text-accent hover:underline"
+              onclick={() => (modeleLibre = !modeleLibre)}
+            >
+              {modeleLibre ? 'Choisir dans la liste' : 'Saisir un autre nom'}
+            </button>
+            {#if editing}
+              <button type="button" class="text-accent hover:underline" onclick={chargerModeles}>
+                Lister les modèles de mon compte
+              </button>
+            {/if}
+          </div>
+        </div>
       </div>
 
       <label class="block text-sm">
         <span class="text-ink-secondary">Clé d'API</span>
         <input
           bind:value={apiKey}
-          required
+          required={editing === null}
           type="password"
           autocomplete="off"
           placeholder="sk-…"
           class="mt-1 w-full rounded border border-subtle bg-surface-primary px-3 py-2 font-mono"
         />
+        {#if editing}
+          <span class="mt-1 block text-xs text-ink-tertiary">
+            Laisser vide pour conserver la clé actuelle.
+          </span>
+        {/if}
       </label>
 
-      {#if kind === 'custom'}
+      {#if kind === 'custom' || editing}
         <label class="block text-sm">
           <span class="text-ink-secondary">URL de l'API</span>
           <input
             bind:value={baseUrl}
-            required
+            required={kind === 'custom' && !editing}
             placeholder="https://mon-serveur.example/v1"
             class="mt-1 w-full rounded border border-subtle bg-surface-primary px-3 py-2"
           />
@@ -264,9 +379,10 @@
                   <span class="badge-soft ml-2">Par défaut</span>
                 {/if}
               </p>
-              <p class="text-xs text-ink-tertiary mt-0.5 font-mono">
+              <p class="text-xs text-ink-tertiary mt-0.5 font-mono break-all">
                 {provider.model} · {provider.api_key_masked}
               </p>
+              <p class="text-xs text-ink-tertiary font-mono break-all">{provider.base_url}</p>
             </div>
             <div class="flex flex-wrap gap-2">
               {#if !provider.is_default}
@@ -274,6 +390,9 @@
                   Par défaut
                 </Button>
               {/if}
+              <Button size="sm" variant="ghost" onclick={() => ouvrirEdition(provider)}>
+                Modifier
+              </Button>
               <Button
                 size="sm"
                 variant="secondary"

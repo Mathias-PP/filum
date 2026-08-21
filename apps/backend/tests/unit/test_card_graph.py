@@ -47,7 +47,9 @@ async def _make_card(db, user: User, *, slug: str, published: bool = True) -> Bi
     return card
 
 
-async def _make_source(db, from_card: BiblioCard, *, linked_card: BiblioCard | None = None) -> Source:
+async def _make_source(
+    db, from_card: BiblioCard, *, linked_card: BiblioCard | None = None
+) -> Source:
     source = Source(
         id=uuid4(),
         biblio_card_id=from_card.id,

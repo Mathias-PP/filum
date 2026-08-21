@@ -1,21 +1,25 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { agentApi, type AgentSession } from '$lib/api/agent';
+  import { agentApi, type AgentSession, type AgentProvider } from '$lib/api/agent';
   import { ApiError } from '$lib/api';
   import { Button, ConfirmDialog, toast } from '$lib/components';
   import ChatPanel from '$lib/components/chat/ChatPanel.svelte';
 
   let sessions = $state<AgentSession[]>([]);
+  let providers = $state<AgentProvider[]>([]);
   let confirmOpen = $state(false);
   let cible = $state<AgentSession | null>(null);
 
+  const defaut = $derived(providers.find((p) => p.is_default) ?? null);
+
   onMount(async () => {
-    try {
-      sessions = await agentApi.sessions.list();
-    } catch {
-      // Une conversation qu'on n'arrive pas à lister n'empêche pas d'en ouvrir une.
-    }
+    const [s, p] = await Promise.all([
+      agentApi.sessions.list().catch(() => []),
+      agentApi.providers.list().catch(() => []),
+    ]);
+    sessions = s;
+    providers = p;
   });
 
   async function supprimer() {
@@ -39,7 +43,10 @@
   <aside>
     <div class="flex items-center justify-between gap-2 mb-3">
       <h2 class="text-xs font-medium uppercase tracking-wider text-ink-tertiary">Conversations</h2>
-      <Button size="sm" variant="ghost" href="/dashboard/agents">Providers</Button>
+      <div class="flex gap-1">
+        <Button size="sm" variant="ghost" href="/dashboard/chat">Nouvelle</Button>
+        <Button size="sm" variant="ghost" href="/dashboard/agents">Providers</Button>
+      </div>
     </div>
     {#if sessions.length === 0}
       <p class="text-sm text-ink-tertiary">Aucune conversation pour l'instant.</p>
@@ -72,11 +79,31 @@
 
   <section class="min-h-[60vh]">
     <h1 class="font-serif text-3xl text-ink-primary mb-1">Agent</h1>
-    <p class="text-sm text-ink-secondary mb-4">
-      L'agent utilise la clé du provider marqué par défaut. Il lit et écrit vos fiches avec votre
-      compte, jamais celui d'un autre.
-    </p>
-    <ChatPanel onsession={(id) => goto(`/dashboard/chat/${id}`, { replaceState: true })} />
+    {#if defaut}
+      <p class="text-sm text-ink-secondary mb-4">
+        Répondra avec <span class="font-mono">{defaut.model}</span> ({defaut.display_name}), votre
+        clé, votre facture.
+        <a href="/dashboard/agents" class="text-accent hover:underline">Changer</a>
+      </p>
+      <ChatPanel onsession={(id) => goto(`/dashboard/chat/${id}`, { replaceState: true })} />
+    {:else if providers.length === 0}
+      <div class="rounded-lg border border-subtle bg-surface-secondary px-4 py-5 text-sm">
+        <p class="text-ink-primary font-medium mb-1">Aucune clé enregistrée.</p>
+        <p class="text-ink-secondary mb-3">
+          Philum n'héberge aucun modèle : l'agent a besoin de la clé d'un fournisseur pour
+          répondre.
+        </p>
+        <Button href="/dashboard/agents">Enregistrer une clé</Button>
+      </div>
+    {:else}
+      <div class="rounded-lg border border-subtle bg-surface-secondary px-4 py-5 text-sm">
+        <p class="text-ink-primary font-medium mb-1">Aucun provider par défaut.</p>
+        <p class="text-ink-secondary mb-3">
+          Le chat ne sait pas quel provider utiliser. Désignez-en un par défaut.
+        </p>
+        <Button href="/dashboard/agents">Gérer les providers</Button>
+      </div>
+    {/if}
   </section>
 </div>
 

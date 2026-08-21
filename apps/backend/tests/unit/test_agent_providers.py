@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from uuid import uuid4
 
@@ -10,13 +10,21 @@ from app.core.config import get_settings
 from app.crypto.keygen import KeyManager
 from app.models.agent_provider import AgentProvider
 from app.schemas.agent_provider import (
+    MODELES_SUGGERES,
     PROVIDER_DEFAULT_BASE_URLS,
     AgentProviderCreate,
     ProviderKind,
     _api_key_masked,
 )
 from app.services import agent_providers as svc
-from app.services.agent_providers import AgentProviderError, creer, lister, _classify, _detail_provider
+from app.services.agent_providers import (
+    AgentProviderError,
+    _classify,
+    _detail_provider,
+    creer,
+    lister,
+    lister_modeles,
+)
 from app.services.agent_providers import tester as service_tester
 from app.services.llm import url_chat
 
@@ -50,9 +58,7 @@ class TestValidationSchema:
     def test_custom_sans_base_url_passe_au_schema(self):
         # Structurellement valide : la base_url exigée pour custom est vérifiée
         # dans le service (elle passe par assert_url_is_safe).
-        AgentProviderCreate(
-            provider=ProviderKind.CUSTOM, model="m", api_key="k"
-        )
+        AgentProviderCreate(provider=ProviderKind.CUSTOM, model="m", api_key="k")
 
     def test_base_url_non_http_refusee(self):
         with pytest.raises(ValidationError):
@@ -98,9 +104,9 @@ class TestValidationSchema:
 
 class TestResolutionBaseUrl:
     def test_defaut_provider_integre(self):
-        assert svc._resolve_base_url(ProviderKind.OPENAI, None) == PROVIDER_DEFAULT_BASE_URLS[
-            "openai"
-        ]
+        assert (
+            svc._resolve_base_url(ProviderKind.OPENAI, None) == PROVIDER_DEFAULT_BASE_URLS["openai"]
+        )
 
     def test_custom_sans_base_url_refuse(self):
         with pytest.raises(AgentProviderError):
@@ -322,7 +328,9 @@ class TestDetailProvider:
 class TestClassifyRemonteLeProvider:
     def test_le_404_gemini_cite_le_modele_de_remplacement(self):
         corps = [{"error": {"code": 404, "message": "use models/gemini-3.6-flash"}}]
-        res = _classify("gemini-2.5-flash", "https://x/chat/completions", httpx.Response(404, json=corps))
+        res = _classify(
+            "gemini-2.5-flash", "https://x/chat/completions", httpx.Response(404, json=corps)
+        )
         assert res.ok is False
         assert "gemini-3.6-flash" in res.message
         assert res.provider_message == "use models/gemini-3.6-flash"
@@ -337,3 +345,48 @@ class TestClassifyRemonteLeProvider:
         res = _classify("m", "u", httpx.Response(200, json={}))
         assert res.ok is True
         assert res.provider_message is None
+
+
+@pytest.mark.asyncio
+class TestListerModeles:
+    async def test_rend_la_liste_du_provider(self, db_session, test_user):
+        provider = await _mk_provider(db_session, test_user.id)
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            assert request.url.path.endswith("/models")
+            return httpx.Response(
+                200,
+                json={"data": [{"id": "gpt-5.6-terra"}, {"id": "gpt-5.6-luna"}]},
+            )
+
+        res = await lister_modeles(
+            db_session, test_user.id, provider.id, transport=httpx.MockTransport(handler)
+        )
+
+        assert res["source"] == "provider"
+        assert res["models"] == ["gpt-5.6-luna", "gpt-5.6-terra"]
+
+    async def test_replie_sur_la_liste_curee_si_le_provider_refuse(self, db_session, test_user):
+        provider = await _mk_provider(db_session, test_user.id)
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(401, json={"error": {"message": "bad key"}})
+
+        res = await lister_modeles(
+            db_session, test_user.id, provider.id, transport=httpx.MockTransport(handler)
+        )
+
+        assert res["source"] == "repli"
+        assert res["models"] == MODELES_SUGGERES["openai"]
+        assert "bad key" in res["message"]
+
+    async def test_ne_leve_pas_sur_une_panne_reseau(self, db_session, test_user):
+        provider = await _mk_provider(db_session, test_user.id)
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectError("injoignable")
+
+        res = await lister_modeles(
+            db_session, test_user.id, provider.id, transport=httpx.MockTransport(handler)
+        )
+        assert res["source"] == "repli"

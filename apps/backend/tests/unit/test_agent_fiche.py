@@ -161,7 +161,10 @@ class TestLancer:
             "01-brief"
         ]
         assert not [e for e in events if e["type"] == "done"]
-        assert await agent_workspace.lire(db_session, test_user.id, "runs/ma-fiche/01-sources.md") is None
+        assert (
+            await agent_workspace.lire(db_session, test_user.id, "runs/ma-fiche/01-sources.md")
+            is None
+        )
 
     async def test_regles_manquantes_refuse_de_demarrer(self, db_session, test_user):
         provider = _provider(db_session, test_user)

@@ -77,7 +77,7 @@ async def test_meta_public(client):
     assert response.status_code == 200
     body = response.json()
     assert "data_scope" in body
-    assert set(body["providers"]) == {"openai", "anthropic", "deepseek", "gemini", "custom"}
+    assert set(body["providers"]) >= {"openai", "anthropic", "deepseek", "gemini", "custom", "groq", "openrouter", "mistral", "cerebras"}
     assert "Chine" in body["providers"]["deepseek"]["hosting_country"]
     assert "vos messages" in body["data_scope"]
     assert "clé api" in body["data_scope"].lower()

@@ -27,8 +27,7 @@ def test_openapi_committe_reflete_l_app_courante():
 
     fichier = Path(__file__).resolve().parents[2] / "openapi.json"
     assert fichier.exists(), (
-        "openapi.json manquant. Regenerer avec "
-        "`uv run python -m app.scripts.export_openapi`."
+        "openapi.json manquant. Regenerer avec `uv run python -m app.scripts.export_openapi`."
     )
 
     committe = json.loads(fichier.read_text(encoding="utf-8"))

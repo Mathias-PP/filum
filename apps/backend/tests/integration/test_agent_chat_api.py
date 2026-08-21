@@ -135,7 +135,7 @@ async def test_chat_flux_complet(client, session_token, db_session, test_user):
     async def approuve(request_id, tool, args):
         return True
 
-    app.dependency_overrides[get_approver] = lambda: (lambda creator_id: approuve)
+    app.dependency_overrides[get_approver] = lambda: lambda creator_id: approuve
     client.cookies.set("filum_session", session_token)
 
     response = await _post_chat(client, "cherche étoiles")
@@ -164,7 +164,7 @@ async def test_chat_action_sensible_refusee(client, session_token, db_session, t
     async def refuse(request_id, tool, args):
         return False
 
-    app.dependency_overrides[get_approver] = lambda: (lambda creator_id: refuse)
+    app.dependency_overrides[get_approver] = lambda: lambda creator_id: refuse
     client.cookies.set("filum_session", session_token)
 
     response = await _post_chat(client, "publie ma fiche")

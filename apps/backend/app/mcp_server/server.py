@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import async_session_maker
 from app.mcp_server import tools, tools_write
 from app.mcp_server.auth import exiger_utilisateur, utilisateur_courant
+from app.mcp_server.schema_compat import aplatir_nullable
 
 mcp = FastMCP(
     "philum",
@@ -18,19 +19,43 @@ mcp = FastMCP(
         "Naviguer comme un graphe : search_cards pour trouver, get_card pour le detail "
         "compact d'une fiche, get_source pour une source precise, find_cards_citing "
         "pour decouvrir qui d'autre cite une URL. "
-        "Pour ecrire (create_card, add_source, add_excerpt, set_content_text, "
-        "publish_card), obtenir "
-        "un token via POST /api/v1/auth/mcp-token depuis un navigateur connecte, "
-        "puis le passer en en-tete Authorization: Bearer. whoami verifie l'identite."
+        "L'ecriture (create_card, add_source, add_excerpt, verify_excerpts, "
+        "publish_card) exige un compte : sur /mcp-account/ le client ouvre la page "
+        "d'autorisation au premier appel, sans token a copier. whoami verifie "
+        "l'identite du porteur."
     ),
 )
+
+
+def outil():
+    """`@mcp.tool()`, plus l'aplatissement des optionnels du schema d'entree.
+
+    Passer par ce decorateur plutot que de reecrire 39 signatures : les
+    annotations `X | None = None` restent la bonne facon d'ecrire du Python, et
+    seule la forme publiee du schema change. Les `output_schema` ne sont pas
+    touches : fastmcp valide les resultats contre eux, et un outil qui rend
+    legitimement `None` echouerait.
+    """
+
+    def decore(fn):  # type: ignore[no-untyped-def]
+        mcp.tool()(fn)
+        # L'outil enregistre est dans _local_provider._components sous la cle
+        # "tool:<nom>@". On mute ses parameters en place : c'est le meme objet
+        # que list_tools() servira.
+        key = f"tool:{fn.__name__}@"
+        stored = mcp._local_provider._components.get(key)
+        if stored is not None:
+            stored.parameters = aplatir_nullable(stored.parameters)
+        return fn
+
+    return decore
 
 
 def _session() -> AsyncSession:
     return async_session_maker()
 
 
-@mcp.tool()
+@outil()
 async def search_cards(query: str, limit: int = 10) -> list[dict[str, Any]]:
     """Cherche des fiches publiees par sujet, par createur, ou par un travail cite.
 
@@ -44,7 +69,7 @@ async def search_cards(query: str, limit: int = 10) -> list[dict[str, Any]]:
         return await tools.search_cards(db, query=query, limit=limit)
 
 
-@mcp.tool()
+@outil()
 async def get_card(creator: str, slug: str) -> dict[str, Any] | None:
     """Detail d'une fiche : description et sources compactes.
 
@@ -56,7 +81,7 @@ async def get_card(creator: str, slug: str) -> dict[str, Any] | None:
         return await tools.get_card(db, creator=creator, slug=slug)
 
 
-@mcp.tool()
+@outil()
 async def get_source(source_id: str) -> dict[str, Any] | None:
     """Detail complet d'une source : extraits verbatim, retractation, archive horodatee.
 
@@ -67,7 +92,7 @@ async def get_source(source_id: str) -> dict[str, Any] | None:
         return await tools.get_source(db, source_id=source_id)
 
 
-@mcp.tool()
+@outil()
 async def find_cards_citing(url: str, limit: int = 10) -> list[dict[str, Any]]:
     """Fiches publiees citant cette reference : les aretes du graphe de citations.
 
@@ -80,7 +105,7 @@ async def find_cards_citing(url: str, limit: int = 10) -> list[dict[str, Any]]:
         return await tools.find_cards_citing(db, url=url, limit=limit)
 
 
-@mcp.tool()
+@outil()
 async def whoami() -> dict[str, Any] | None:
     """L'utilisateur identifie par le token, ou `null` si personne.
 
@@ -94,7 +119,7 @@ async def whoami() -> dict[str, Any] | None:
         return {"creator": user.username, "display_name": user.display_name}
 
 
-@mcp.tool()
+@outil()
 async def create_card(
     slug: str,
     title: str,
@@ -129,7 +154,7 @@ async def create_card(
         )
 
 
-@mcp.tool()
+@outil()
 async def add_source(
     card_slug: str,
     url: str = "",
@@ -177,7 +202,7 @@ async def add_source(
         )
 
 
-@mcp.tool()
+@outil()
 async def add_excerpt(
     source_id: str,
     text: str,
@@ -201,7 +226,7 @@ async def add_excerpt(
         )
 
 
-@mcp.tool()
+@outil()
 async def set_content_text(
     card_slug: str,
     text: str,
@@ -230,7 +255,7 @@ async def set_content_text(
         )
 
 
-@mcp.tool()
+@outil()
 async def publish_card(slug: str) -> dict[str, Any]:
     """Rend la fiche `slug` visible sur le web public.
 
@@ -249,7 +274,7 @@ async def publish_card(slug: str) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@outil()
 async def update_card(
     slug: str,
     title: str | None = None,
@@ -281,7 +306,7 @@ async def update_card(
         )
 
 
-@mcp.tool()
+@outil()
 async def update_source(
     source_id: str,
     title: str | None = None,
@@ -321,7 +346,7 @@ async def update_source(
         )
 
 
-@mcp.tool()
+@outil()
 async def delete_source(source_id: str) -> dict[str, Any]:
     """Retire une source (soft-delete). La ligne reste en base pour preserver
     les references historiques (citations entrantes, attestations), elle
@@ -331,7 +356,7 @@ async def delete_source(source_id: str) -> dict[str, Any]:
         return await tools_write.delete_source(db, user, source_id=source_id)
 
 
-@mcp.tool()
+@outil()
 async def delete_excerpt(source_id: str, excerpt_id: str) -> dict[str, Any]:
     """Retire un extrait d'une source (suppression physique). Un extrait n'a
     pas de citation entrante propre : le retirer n'invalide aucune reference."""
@@ -342,7 +367,7 @@ async def delete_excerpt(source_id: str, excerpt_id: str) -> dict[str, Any]:
         )
 
 
-@mcp.tool()
+@outil()
 async def verify_excerpts(
     source_id: str,
     provided_text: str | None = None,
@@ -365,7 +390,7 @@ async def verify_excerpts(
         )
 
 
-@mcp.tool()
+@outil()
 async def list_connections(card_slug: str) -> dict[str, Any]:
     """Liste les connexions d'une fiche vers d'autres fiches Philum et
     inversement. `outgoing` = fiches que celle-ci cite (avec verdict a rendre
@@ -377,7 +402,7 @@ async def list_connections(card_slug: str) -> dict[str, Any]:
         return await tools_write.list_connections(db, user, card_slug=card_slug)
 
 
-@mcp.tool()
+@outil()
 async def confirm_connection(card_slug: str, source_id: str) -> dict[str, Any]:
     """Confirme qu'une source pointe bien vers la fiche Philum designee.
 
@@ -393,7 +418,7 @@ async def confirm_connection(card_slug: str, source_id: str) -> dict[str, Any]:
         )
 
 
-@mcp.tool()
+@outil()
 async def remove_connection(card_slug: str, source_id: str) -> dict[str, Any]:
     """Retire le lien fiche-a-fiche porte par une source, sans retirer la
     source elle-meme. La reference reste dans la bibliographie ; elle cesse
@@ -410,7 +435,7 @@ async def remove_connection(card_slug: str, source_id: str) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@outil()
 async def list_my_cards(status: str | None = None, limit: int = 20) -> list[dict[str, Any]]:
     """Liste les fiches de l'utilisateur. `status` optionnel: draft|published."""
     async with _session() as db:
@@ -418,7 +443,7 @@ async def list_my_cards(status: str | None = None, limit: int = 20) -> list[dict
         return await tools_write.list_my_cards(db, user, status=status, limit=limit)
 
 
-@mcp.tool()
+@outil()
 async def list_sources(card_slug: str) -> list[dict[str, Any]]:
     """Liste les sources d'une fiche dans leur ordre d'affichage."""
     async with _session() as db:
@@ -426,7 +451,7 @@ async def list_sources(card_slug: str) -> list[dict[str, Any]]:
         return await tools_write.list_sources(db, user, card_slug=card_slug)
 
 
-@mcp.tool()
+@outil()
 async def search_my_excerpts(query: str, limit: int = 20) -> list[dict[str, Any]]:
     """Recherche full-text dans les extraits de l'utilisateur."""
     async with _session() as db:
@@ -434,7 +459,7 @@ async def search_my_excerpts(query: str, limit: int = 20) -> list[dict[str, Any]
         return await tools_write.search_my_excerpts(db, user, query=query, limit=limit)
 
 
-@mcp.tool()
+@outil()
 async def delete_card(slug: str) -> dict[str, Any]:
     """Soft-delete d'une fiche (rejoint la corbeille, reversible via `restore_card`)."""
     async with _session() as db:
@@ -442,7 +467,7 @@ async def delete_card(slug: str) -> dict[str, Any]:
         return await tools_write.delete_card(db, user, slug=slug)
 
 
-@mcp.tool()
+@outil()
 async def restore_card(slug: str) -> dict[str, Any]:
     """Sort une fiche de la corbeille."""
     async with _session() as db:
@@ -450,7 +475,7 @@ async def restore_card(slug: str) -> dict[str, Any]:
         return await tools_write.restore_card(db, user, slug=slug)
 
 
-@mcp.tool()
+@outil()
 async def archive_sources(source_ids: list[str]) -> dict[str, Any]:
     """Declenche l'archivage Wayback pour les sources donnees."""
     async with _session() as db:
@@ -458,7 +483,7 @@ async def archive_sources(source_ids: list[str]) -> dict[str, Any]:
         return await tools_write.archive_sources(db, user, source_ids=source_ids)
 
 
-@mcp.tool()
+@outil()
 async def suggest_excerpts(
     source_id: str,
     provided_text: str | None = None,
@@ -481,7 +506,7 @@ async def suggest_excerpts(
         )
 
 
-@mcp.tool()
+@outil()
 async def annotate_excerpt(
     source_id: str, excerpt_text: str, provided_text: str | None = None
 ) -> dict[str, Any]:
@@ -497,7 +522,7 @@ async def annotate_excerpt(
         )
 
 
-@mcp.tool()
+@outil()
 async def chunk_text(source_id: str, text: str, size: int | None = None) -> dict[str, Any]:
     """Decoupe un texte long en chunks candidats pour poser des extraits."""
     async with _session() as db:
@@ -505,7 +530,7 @@ async def chunk_text(source_id: str, text: str, size: int | None = None) -> dict
         return await tools_write.chunk_text(db, user, source_id=source_id, text=text, size=size)
 
 
-@mcp.tool()
+@outil()
 async def get_youtube_transcript(url: str) -> dict[str, Any]:
     """Recupere le transcript d'une video YouTube (via l'API interne)."""
     async with _session() as db:
@@ -513,7 +538,7 @@ async def get_youtube_transcript(url: str) -> dict[str, Any]:
         return await tools_write.get_youtube_transcript(db, user, url=url)
 
 
-@mcp.tool()
+@outil()
 async def get_url_metadata(url: str) -> dict[str, Any]:
     """Metadonnees editoriales d'une URL : titre, description, auteurs, date."""
     async with _session() as db:
@@ -521,7 +546,7 @@ async def get_url_metadata(url: str) -> dict[str, Any]:
         return await tools_write.get_url_metadata(db, user, url=url)
 
 
-@mcp.tool()
+@outil()
 async def import_from_content_url(card_slug: str) -> dict[str, Any]:
     """Extrait automatiquement les sources depuis l'URL du contenu de la fiche.
 
@@ -539,7 +564,7 @@ async def import_from_content_url(card_slug: str) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@outil()
 async def create_content_attestation(card_slug: str) -> dict[str, Any]:
     """Signe cryptographiquement (Ed25519) le content_url d'une fiche.
 
@@ -552,7 +577,7 @@ async def create_content_attestation(card_slug: str) -> dict[str, Any]:
         return await tools_write.create_content_attestation(db, user, card_slug=card_slug)
 
 
-@mcp.tool()
+@outil()
 async def get_attestation(attestation_id: str) -> dict[str, Any]:
     """Recupere une attestation par son ID (lecture publique)."""
     async with _session() as db:
@@ -560,7 +585,7 @@ async def get_attestation(attestation_id: str) -> dict[str, Any]:
         return await tools_write.get_attestation(db, user, attestation_id=attestation_id)
 
 
-@mcp.tool()
+@outil()
 async def verify_attestation(attestation_id: str) -> dict[str, Any]:
     """Verifie la signature Ed25519 d'une attestation. Rend `valid` + raison."""
     async with _session() as db:
@@ -568,7 +593,7 @@ async def verify_attestation(attestation_id: str) -> dict[str, Any]:
         return await tools_write.verify_attestation(db, user, attestation_id=attestation_id)
 
 
-@mcp.tool()
+@outil()
 async def list_incoming_citations() -> dict[str, Any]:
     """Liste les fiches d'autres createurs qui citent une de mes fiches."""
     async with _session() as db:
@@ -576,7 +601,7 @@ async def list_incoming_citations() -> dict[str, Any]:
         return await tools_write.list_incoming_citations(db, user)
 
 
-@mcp.tool()
+@outil()
 async def mark_citations_seen() -> dict[str, Any]:
     """Marque les citations entrantes comme vues (arrete d'afficher `is_new`)."""
     async with _session() as db:
@@ -584,7 +609,7 @@ async def mark_citations_seen() -> dict[str, Any]:
         return await tools_write.mark_citations_seen(db, user)
 
 
-@mcp.tool()
+@outil()
 async def list_deleted_cards(limit: int = 50) -> list[dict[str, Any]]:
     """Liste les fiches en corbeille (restaurables via `restore_card`)."""
     async with _session() as db:
@@ -592,7 +617,7 @@ async def list_deleted_cards(limit: int = 50) -> list[dict[str, Any]]:
         return await tools_write.list_deleted_cards(db, user, limit=limit)
 
 
-@mcp.tool()
+@outil()
 async def add_sources_batch(card_slug: str, sources: list[dict[str, Any]]) -> dict[str, Any]:
     """Ajoute plusieurs sources a une fiche en un appel.
 
@@ -604,7 +629,7 @@ async def add_sources_batch(card_slug: str, sources: list[dict[str, Any]]) -> di
         return await tools_write.add_sources_batch(db, user, card_slug=card_slug, sources=sources)
 
 
-@mcp.tool()
+@outil()
 async def create_claim_request(card_id: str, message: str | None = None) -> dict[str, Any]:
     """Revendique une fiche seed (fiche automatique sans compte proprietaire).
 
@@ -615,7 +640,7 @@ async def create_claim_request(card_id: str, message: str | None = None) -> dict
         return await tools_write.create_claim_request(db, user, card_id=card_id, message=message)
 
 
-@mcp.tool()
+@outil()
 async def parse_biblio(text: str) -> dict[str, Any]:
     """Parse une bibliographie collee (BibTeX, CSL, markdown, texte libre).
 

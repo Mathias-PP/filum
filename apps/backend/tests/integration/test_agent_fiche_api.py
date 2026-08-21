@@ -34,7 +34,7 @@ async def client(db_session):
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[get_approver] = lambda: (lambda creator_id: _refuse)
+    app.dependency_overrides[get_approver] = lambda: lambda creator_id: _refuse
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
@@ -155,9 +155,7 @@ async def test_regles_absentes_rendent_une_erreur_lisible(
 
 @pytest.mark.asyncio
 async def test_etat_du_run(client, session_token, db_session, test_user):
-    await agent_workspace.ecrire(
-        db_session, test_user.id, "runs/ma-fiche/00-brief.md", "le brief"
-    )
+    await agent_workspace.ecrire(db_session, test_user.id, "runs/ma-fiche/00-brief.md", "le brief")
     await db_session.commit()
     client.cookies.set("filum_session", session_token)
 

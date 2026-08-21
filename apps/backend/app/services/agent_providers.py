@@ -11,6 +11,7 @@ service — seule la forme masquée (``sk-…1234``) atteint les endpoints.
 from __future__ import annotations
 
 import logging
+from typing import Any
 from uuid import UUID
 
 import httpx
@@ -23,6 +24,7 @@ from app.core.url_safety import UnsafeUrlError, assert_url_is_safe
 from app.crypto.keygen import KeyManager
 from app.models.agent_provider import AgentProvider
 from app.schemas.agent_provider import (
+    MODELES_SUGGERES,
     PROVIDER_DEFAULT_BASE_URLS,
     AgentProviderCreate,
     AgentProviderRead,
@@ -79,6 +81,25 @@ PROVIDER_META: dict[str, dict[str, str]] = {
     "gemini": {
         "hosting_country": "États-Unis",
         "hosting_note": "Infrastructure de Google, répartie mondialement (siège aux États-Unis).",
+    },
+    "groq": {
+        "hosting_country": "États-Unis",
+        "hosting_note": "Infrastructure de Groq, principalement aux États-Unis.",
+    },
+    "openrouter": {
+        "hosting_country": "Variable",
+        "hosting_note": (
+            "OpenRouter route vers le fournisseur du modele choisi : "
+            "l'hebergement depend de ce modele."
+        ),
+    },
+    "mistral": {
+        "hosting_country": "France",
+        "hosting_note": "Infrastructure de Mistral AI, en Europe.",
+    },
+    "cerebras": {
+        "hosting_country": "États-Unis",
+        "hosting_note": "Infrastructure de Cerebras, principalement aux États-Unis.",
     },
     "custom": {
         "hosting_country": "Selon l'endpoint configuré",
@@ -383,3 +404,52 @@ def _classify(
         message=f"{cadrage} {detail}" if detail else cadrage,
         provider_message=detail,
     )
+
+
+async def lister_modeles(
+    db: AsyncSession,
+    creator_id: UUID,
+    provider_id: UUID,
+    transport: httpx.AsyncBaseTransport | None = None,
+) -> dict[str, Any]:
+    """Les modeles auxquels *ce* compte a droit, demandes au fournisseur.
+
+    Tous les fournisseurs OpenAI-compatibles servent ``GET /models`` avec la cle
+    du porteur, et la reponse depend du plan souscrit. Ne leve jamais : un echec
+    se replie sur ``MODELES_SUGGERES``.
+    """
+    provider = await _get_owned(db, creator_id, provider_id)
+    repli = MODELES_SUGGERES.get(provider.provider, [])
+    url = f"{provider.base_url.rstrip('/')}/models"
+
+    try:
+        async with httpx.AsyncClient(timeout=_TIMEOUT, transport=transport) as client:
+            r = await client.get(
+                url,
+                headers={"Authorization": f"Bearer {_decrypt(provider.api_key_enc)}"},
+            )
+    except httpx.HTTPError as exc:
+        return {"models": repli, "source": "repli", "message": f"Fournisseur injoignable : {exc}"}
+
+    if r.status_code != 200:
+        detail = _detail_provider(r)
+        msg = f"Le fournisseur n'a pas liste ses modeles (HTTP {r.status_code})."
+        if detail:
+            msg = f"{msg} {detail}"
+        return {"models": repli, "source": "repli", "message": msg}
+
+    try:
+        entrees = r.json().get("data", [])
+    except ValueError:
+        return {"models": repli, "source": "repli", "message": "Reponse illisible du fournisseur."}
+
+    noms = sorted(
+        {e["id"] for e in entrees if isinstance(e, dict) and isinstance(e.get("id"), str)}
+    )
+    if not noms:
+        return {
+            "models": repli,
+            "source": "repli",
+            "message": "Le fournisseur n'a liste aucun modele.",
+        }
+    return {"models": noms, "source": "provider"}

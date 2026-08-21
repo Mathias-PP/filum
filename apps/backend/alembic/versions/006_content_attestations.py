@@ -32,8 +32,7 @@ def upgrade() -> None:
         sa.Column("attested_at", sa.DateTime(), nullable=False),
         sa.Column("canonical_hash", sa.String(64), nullable=False),
         sa.Column("signature", sa.Text(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), nullable=False,
-                  server_default=sa.func.now()),
+        sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.func.now()),
         sa.ForeignKeyConstraint(
             ["user_id"],
             ["users.id"],

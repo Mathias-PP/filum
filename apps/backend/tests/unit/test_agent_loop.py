@@ -62,7 +62,9 @@ async def _collect(db, user, provider, messages, approuver, transport, registre)
     async def emit(event):
         events.append(event)
 
-    await agent_svc.boucle(db, user, provider, messages, emit, approuver, transport=transport, registre=registre)
+    await agent_svc.boucle(
+        db, user, provider, messages, emit, approuver, transport=transport, registre=registre
+    )
     return events
 
 
@@ -93,7 +95,9 @@ class TestSensibilite:
 
     def test_verify_excerpts_sensible_seulement_avec_texte_fourni(self):
         assert est_sensible("verify_excerpts", {"source_id": "s"}) is False
-        assert est_sensible("verify_excerpts", {"source_id": "s", "provided_text": "un texte"}) is True
+        assert (
+            est_sensible("verify_excerpts", {"source_id": "s", "provided_text": "un texte"}) is True
+        )
 
     def test_lecture_non_sensible(self):
         assert est_sensible("fs_read", {"path": "AGENTS.md"}) is False
@@ -108,7 +112,7 @@ class TestSensibilite:
     def test_pas_de_sensible_mort(self):
         # Un nom classé sensible mais absent du registre est une garde qui ne
         # garde rien : la liste et les outils exposés doivent rester alignés.
-        assert SENSITIVE_TOOLS <= set(construire_registre())
+        assert set(construire_registre()) >= SENSITIVE_TOOLS
 
     def test_tout_outil_irreversible_est_sensible(self):
         # La réciproque : un outil qui publie, détruit, signe ou envoie vers un
@@ -190,9 +194,13 @@ class TestBoucle:
     async def test_reponse_texte_directe(self, db_session, test_user):
         provider = _provider(db_session, test_user)
         await db_session.commit()
-        transport = httpx.MockTransport(lambda request: httpx.Response(200, json=_mock_texte("Bonjour.")))
+        transport = httpx.MockTransport(
+            lambda request: httpx.Response(200, json=_mock_texte("Bonjour."))
+        )
         messages = [{"role": "user", "content": "salut"}]
-        events = await _collect(db_session, test_user, provider, messages, _refuse, transport, _registre_fake([]))
+        events = await _collect(
+            db_session, test_user, provider, messages, _refuse, transport, _registre_fake([])
+        )
         assert [e["type"] for e in events] == ["message_delta", "done"]
         assert events[0]["payload"]["delta"] == "Bonjour."
 
@@ -230,7 +238,9 @@ class TestBoucle:
         def handler(request):
             appels["n"] += 1
             if appels["n"] == 1:
-                return httpx.Response(200, json=_mock_tool_call("publish_card", {"slug": "ma-fiche"}))
+                return httpx.Response(
+                    200, json=_mock_tool_call("publish_card", {"slug": "ma-fiche"})
+                )
             return httpx.Response(200, json=_mock_texte("Publication refusée."))
 
         transport = httpx.MockTransport(handler)
@@ -265,7 +275,9 @@ class TestBoucle:
         def handler(request):
             appels["n"] += 1
             if appels["n"] == 1:
-                return httpx.Response(200, json=_mock_tool_call("publish_card", {"slug": "ma-fiche"}))
+                return httpx.Response(
+                    200, json=_mock_tool_call("publish_card", {"slug": "ma-fiche"})
+                )
             return httpx.Response(200, json=_mock_texte("Publié."))
 
         transport = httpx.MockTransport(handler)
@@ -288,7 +300,9 @@ class TestBoucle:
 
         transport = httpx.MockTransport(handler)
         messages = [{"role": "user", "content": "boucle"}]
-        events = await _collect(db_session, test_user, provider, messages, _refuse, transport, _registre_fake([]))
+        events = await _collect(
+            db_session, test_user, provider, messages, _refuse, transport, _registre_fake([])
+        )
         assert events[-1]["type"] == "error"
         assert "3 tours" in events[-1]["payload"]["message"]
 
@@ -298,7 +312,9 @@ class TestBoucle:
         await db_session.commit()
         transport = httpx.MockTransport(lambda request: httpx.Response(500, text="boom"))
         messages = [{"role": "user", "content": "salut"}]
-        events = await _collect(db_session, test_user, provider, messages, _refuse, transport, _registre_fake([]))
+        events = await _collect(
+            db_session, test_user, provider, messages, _refuse, transport, _registre_fake([])
+        )
         assert events[-1]["type"] == "error"
         assert "500" in events[-1]["payload"]["message"]
 

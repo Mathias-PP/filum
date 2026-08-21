@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import os
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 from uuid import uuid4
 
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,9 +30,6 @@ from app.core.config import Settings, get_settings  # noqa: E402
 Settings.model_config["case_sensitive"] = False
 get_settings.cache_clear()
 
-from app.db.database import Base, engine  # noqa: E402
-
-import app.models.user  # noqa: E402, F401
 import app.models.agent_provider  # noqa: E402, F401
 import app.models.agent_session  # noqa: E402, F401
 import app.models.audit_event  # noqa: E402, F401
@@ -46,7 +42,9 @@ import app.models.linked_account  # noqa: E402, F401
 import app.models.oauth  # noqa: E402, F401
 import app.models.source  # noqa: E402, F401
 import app.models.source_excerpt  # noqa: E402, F401
+import app.models.user  # noqa: E402, F401
 import app.models.workspace_file  # noqa: E402, F401
+from app.db.database import Base, engine  # noqa: E402
 
 
 @pytest_asyncio.fixture

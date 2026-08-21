@@ -9,7 +9,7 @@ import pytest_asyncio
 
 from app.models.biblio_card import BiblioCard, CardStatus, ContentType, Platform
 from app.models.user import User
-from app.services.card_link import LinkOrigin, LinkResolution, parse_public_card_path, resolve_link
+from app.services.card_link import LinkOrigin, parse_public_card_path, resolve_link
 
 
 async def _make_user(db, *, username: str) -> User:
