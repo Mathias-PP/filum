@@ -521,6 +521,75 @@ class TestBoucle:
         assert events[-1]["type"] == "error"
         assert "500" in events[-1]["payload"]["message"]
 
+    @pytest.mark.asyncio
+    async def test_retry_backoff_sur_503(self, db_session, test_user, monkeypatch):
+        """502/503/504 : backoff [2 s, 5 s], 2 tentatives max. La premiere tentative
+        reussit apres 2 s d'attente."""
+        attentes: list[float] = []
+
+        async def _fake_sleep(s: float) -> None:
+            attentes.append(s)
+
+        monkeypatch.setattr("app.services.agent.asyncio.sleep", _fake_sleep)
+
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+        appels = [0]
+
+        def handler(request):
+            appels[0] += 1
+            if appels[0] == 1:
+                return httpx.Response(503, text="Service Unavailable")
+            return httpx.Response(200, json=_mock_texte("ok apres 503"))
+
+        events = await _collect(
+            db_session,
+            test_user,
+            provider,
+            [{"role": "user", "content": "hello"}],
+            _refuse,
+            httpx.MockTransport(handler),
+            _registre_fake([]),
+        )
+        assert attentes == [2.0], f"attendait [2.0], obtenu {attentes}"
+        types = [e["type"] for e in events]
+        assert "message_delta" in types
+        assert "error" not in types
+
+    @pytest.mark.asyncio
+    async def test_pas_de_retry_sur_401(self, db_session, test_user, monkeypatch):
+        """401 ne declenche PAS de retry : c'est un refus definitif, pas un echec
+        d'infrastructure."""
+        attentes: list[float] = []
+
+        async def _fake_sleep(s: float) -> None:
+            attentes.append(s)
+
+        monkeypatch.setattr("app.services.agent.asyncio.sleep", _fake_sleep)
+
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+        appels = [0]
+
+        def handler(request):
+            appels[0] += 1
+            return httpx.Response(401, json={"error": {"message": "Unauthorized"}})
+
+        events = await _collect(
+            db_session,
+            test_user,
+            provider,
+            [{"role": "user", "content": "hello"}],
+            _refuse,
+            httpx.MockTransport(handler),
+            _registre_fake([]),
+        )
+        assert appels[0] == 1, "401 ne doit produire qu'un seul appel"
+        assert attentes == [], "401 ne doit pas déclencher de sleep"
+        errors = [e for e in events if e["type"] == "error"]
+        assert len(errors) == 1
+        assert "401" in errors[0]["payload"]["message"]
+
 
 async def _refuse(request_id: str, tool: str, args: dict) -> bool:
     return False

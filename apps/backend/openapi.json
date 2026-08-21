@@ -4310,6 +4310,17 @@
             ],
             "title": "Provider Message"
           },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
           "models": {
             "anyOf": [
               {

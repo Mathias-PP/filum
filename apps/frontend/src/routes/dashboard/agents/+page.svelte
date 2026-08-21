@@ -452,6 +452,11 @@
               >
                 {results[provider.id].message}
               </p>
+              {#if results[provider.id].ok && results[provider.id].latency_ms != null}
+                <p class="mt-1 text-xs text-ink-tertiary">
+                  Latence : {results[provider.id].latency_ms} ms
+                </p>
+              {/if}
               {#if !results[provider.id].ok}
                 <p class="mt-1 font-mono text-xs text-ink-tertiary break-all">
                   HTTP {results[provider.id].http_status ?? '?'} · {results[provider.id].url}
