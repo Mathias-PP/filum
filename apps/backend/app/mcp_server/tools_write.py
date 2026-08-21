@@ -926,10 +926,10 @@ async def list_my_cards(
     )
     if status is not None:
         stmt_base = stmt_base.where(BiblioCard.status == status)
-    total = await db.scalar(
-        select(func.count()).select_from(stmt_base.subquery())
-    )
-    cards = (await db.scalars(stmt_base.order_by(BiblioCard.updated_at.desc()).limit(plafond))).all()
+    total = await db.scalar(select(func.count()).select_from(stmt_base.subquery()))
+    cards = (
+        await db.scalars(stmt_base.order_by(BiblioCard.updated_at.desc()).limit(plafond))
+    ).all()
     return {
         "cards": [
             {
