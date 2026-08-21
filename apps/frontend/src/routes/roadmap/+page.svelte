@@ -40,8 +40,8 @@
       badge: 'En cours',
       status: 'current',
       items: [
-        ‘Extension navigateur (ajout de source en un clic)’,
-        ‘Revendication de fiches amorcées (seed cards)’,
+        "Extension navigateur (ajout de source en un clic)",
+        "Revendication de fiches amorcées (seed cards)",
       ],
     },
     {
