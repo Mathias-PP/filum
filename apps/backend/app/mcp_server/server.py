@@ -37,7 +37,7 @@ def outil():
     legitimement `None` echouerait.
     """
 
-    def decore(fn):  # type: ignore[no-untyped-def]
+    def decore(fn):
         mcp.tool()(fn)
         # L'outil enregistre est dans _local_provider._components sous la cle
         # "tool:<nom>@". On mute ses parameters en place : c'est le meme objet
