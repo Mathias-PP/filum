@@ -34,7 +34,7 @@ from app.schemas.agent_provider import (
     ProviderKind,
     _api_key_masked,
 )
-from app.services.llm import url_chat
+from app.services.llm_adapters import format_chat_payload, url_et_headers
 
 logger = logging.getLogger(__name__)
 
@@ -321,39 +321,28 @@ async def tester(
     provider_id: UUID,
     transport: httpx.AsyncBaseTransport | None = None,
 ) -> AgentProviderTestResult:
-    """Un appel minimal (1 token, prompt « ping ») avec la clé du créateur.
+    """Un appel minimal (1 token, prompt « ping ») avec la cle du createur.
 
     ``transport`` est injectable pour les tests (``httpx.MockTransport``) :
-    aucun appel réseau dans les tests. Pour Anthropic, la surface
-    OpenAI-compatible est tentée d'abord ; si elle est absente (400/404), on
-    bascule sur l'adapter natif ``/v1/messages`` (``x-api-key`` +
-    ``anthropic-version``). Ne lève jamais : retourne un résultat classifiable.
+    aucun appel reseau dans les tests. Ne leve jamais : retourne un resultat
+    classifiable.
     """
     provider = await _get_owned(db, creator_id, provider_id)
     key = _decrypt(provider.api_key_enc)
-    url = url_chat(provider.base_url)
-    openai_payload = {
-        "model": provider.model,
-        "messages": [{"role": "user", "content": "ping"}],
-        "max_tokens": 1,
-        "temperature": 0,
-    }
-    headers = {"Authorization": f"Bearer {key}"}
+    url, headers = url_et_headers(provider.provider, provider.base_url, key)
+    payload = format_chat_payload(
+        provider.provider,
+        provider.model,
+        [{"role": "user", "content": "ping"}],
+        [],
+        1,
+        stream=False,
+    )
 
     try:
         t0 = monotonic()
         async with httpx.AsyncClient(timeout=_TIMEOUT, transport=transport) as client:
-            r = await client.post(url, json=openai_payload, headers=headers)
-            if provider.provider == ProviderKind.ANTHROPIC.value and r.status_code in (400, 404):
-                r = await client.post(
-                    f"{provider.base_url.rstrip('/')}/v1/messages",
-                    json={
-                        "model": provider.model,
-                        "max_tokens": 1,
-                        "messages": [{"role": "user", "content": "ping"}],
-                    },
-                    headers={"x-api-key": key, "anthropic-version": "2023-06-01"},
-                )
+            r = await client.post(url, json=payload, headers=headers)
         latency_ms = int((monotonic() - t0) * 1000)
         result = _classify(provider.model, url, r)
     except httpx.HTTPError as exc:

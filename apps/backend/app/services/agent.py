@@ -37,7 +37,15 @@ from app.core.config import get_settings
 from app.models.agent_provider import AgentProvider
 from app.models.user import User
 from app.services.agent_providers import _decrypt
-from app.services.llm import url_chat
+from app.services.llm_adapters import (
+    format_chat_payload,
+    parse_sse_stream_anthropic,
+    protocole_pour,
+    url_et_headers,
+)
+from app.services.llm_adapters import (
+    parse_blocking_response as _adapter_parse_blocking,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -150,7 +158,7 @@ def _parse_blocking_response(
     response: httpx.Response,
     provider: AgentProvider,
 ) -> tuple[dict[str, Any], str | None, dict[str, Any]] | str:
-    """Parse une réponse bloquante JSON OpenAI-compat."""
+    """Parse une reponse bloquante JSON selon le protocole du provider."""
     if response.status_code != 200:
         try:
             body = response.json()
@@ -167,14 +175,7 @@ def _parse_blocking_response(
         data = response.json()
     except ValueError as exc:
         return f"Réponse illisible du provider : {exc}"
-    try:
-        choice = data["choices"][0]
-        message = choice["message"]
-    except (KeyError, IndexError, TypeError) as exc:
-        return f"Réponse du provider inattendue (pas de choices) : {exc}"
-    finish_reason = choice.get("finish_reason") if isinstance(choice, dict) else None
-    usage = data.get("usage", {})
-    return message, finish_reason, usage
+    return _adapter_parse_blocking(provider.provider, data)
 
 
 async def _parse_sse_stream(
@@ -286,6 +287,17 @@ async def _emettre_en_un_bloc(
     return resultat
 
 
+async def _dispatcher_sse(
+    response: httpx.Response,
+    provider: AgentProvider,
+    on_delta: Callable[[str], Awaitable[None]] | None,
+) -> tuple[dict[str, Any], str | None, dict[str, Any]] | str:
+    """Dispatche le parsing SSE selon le protocole du provider."""
+    if protocole_pour(provider.provider) == "anthropic":
+        return await parse_sse_stream_anthropic(response, on_delta)
+    return await _parse_sse_stream(response, on_delta)
+
+
 async def _traiter_reponse_flux(
     r: httpx.Response,
     client: httpx.AsyncClient,
@@ -334,7 +346,7 @@ async def _traiter_reponse_flux(
                     return await _emettre_en_un_bloc(
                         _parse_blocking_response(r2, provider), on_delta
                     )
-                return await _parse_sse_stream(r2, on_delta)
+                return await _dispatcher_sse(r2, provider, on_delta)
         msg = _extraire_message_erreur(body_429)
         return (
             f"Le fournisseur ({provider.provider}) refuse : quota ou limite de "
@@ -342,7 +354,7 @@ async def _traiter_reponse_flux(
         )
     if r.status_code == 400:
         await r.aread()
-        logger.info("stream=True refusé (400) par %s, repli bloquant", provider.model)
+        logger.info("stream=True refuse (400) par %s, repli bloquant", provider.model)
         payload_bloquant = {k: v for k, v in payload.items() if k != "stream"}
         r_bloquant = await client.post(url, json=payload_bloquant, headers=headers)
         return await _emettre_en_un_bloc(_parse_blocking_response(r_bloquant, provider), on_delta)
@@ -357,7 +369,7 @@ async def _traiter_reponse_flux(
     if "text/event-stream" not in r.headers.get("content-type", ""):
         await r.aread()
         return await _emettre_en_un_bloc(_parse_blocking_response(r, provider), on_delta)
-    return await _parse_sse_stream(r, on_delta)
+    return await _dispatcher_sse(r, provider, on_delta)
 
 
 async def _appel_provider(
@@ -377,16 +389,10 @@ async def _appel_provider(
     ``on_delta`` est appelée pour chaque fragment texte, au fil de l'eau.
     """
     key = _decrypt(provider.api_key_enc)
-    headers = {"Authorization": f"Bearer {key}"}
-    url = url_chat(provider.base_url)
-    payload = {
-        "model": provider.model,
-        "messages": messages,
-        "tools": outils_api,
-        "max_tokens": MAX_TURN_TOKENS,
-        "temperature": 0,
-        "stream": True,
-    }
+    url, headers = url_et_headers(provider.provider, provider.base_url, key)
+    payload = format_chat_payload(
+        provider.provider, provider.model, messages, outils_api, MAX_TURN_TOKENS
+    )
     try:
         async with httpx.AsyncClient(timeout=_TIMEOUT, transport=transport) as client:  # noqa: SIM117
             async with client.stream("POST", url, json=payload, headers=headers) as r:
