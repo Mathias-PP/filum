@@ -331,7 +331,9 @@ async def _traiter_reponse_flux(
                     return f"Le provider a répondu HTTP {r2.status_code} : {msg2 or body2}"
                 if "text/event-stream" not in r2.headers.get("content-type", ""):
                     await r2.aread()
-                    return await _emettre_en_un_bloc(_parse_blocking_response(r2, provider), on_delta)
+                    return await _emettre_en_un_bloc(
+                        _parse_blocking_response(r2, provider), on_delta
+                    )
                 return await _parse_sse_stream(r2, on_delta)
         msg = _extraire_message_erreur(body_429)
         return (
@@ -400,7 +402,9 @@ async def _appel_provider(
                             attente,
                         )
                         await asyncio.sleep(attente)
-                        async with client.stream("POST", url, json=payload, headers=headers) as r_retry:
+                        async with client.stream(
+                            "POST", url, json=payload, headers=headers
+                        ) as r_retry:
                             statut_5xx = r_retry.status_code
                             if statut_5xx not in (502, 503, 504) or i >= len(_BACKOFF_5XX) - 1:
                                 return await _traiter_reponse_flux(
@@ -408,7 +412,9 @@ async def _appel_provider(
                                 )
                             await r_retry.aread()
                     return f"Le provider a répondu HTTP {statut_5xx} : infrastructure instable."
-                return await _traiter_reponse_flux(r, client, url, payload, headers, provider, on_delta)
+                return await _traiter_reponse_flux(
+                    r, client, url, payload, headers, provider, on_delta
+                )
     except httpx.HTTPError as exc:
         return f"Erreur réseau vers le provider : {exc}"
     except ValueError as exc:
