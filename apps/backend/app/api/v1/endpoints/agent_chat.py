@@ -181,6 +181,7 @@ async def _persister_tour(
                 role="tool",
                 content=message.get("content") or "",
                 tool_name=message.get("name"),
+                tool_call_id=message.get("tool_call_id"),
             )
         else:
             await agent_sessions.ajouter_message(
