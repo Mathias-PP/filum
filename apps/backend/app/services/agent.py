@@ -372,6 +372,49 @@ async def _traiter_reponse_flux(
     return await _dispatcher_sse(r, provider, on_delta)
 
 
+_CHAMPS_MESSAGE_STANDARDS = ("role", "content", "tool_calls", "tool_call_id", "name")
+
+
+def _nettoyer_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Ne renvoie au provider que le contrat OpenAI commun.
+
+    Gemini signe ses tool_calls d'un ``extra_content.google.thought_signature``
+    ; copie verbatim dans l'historique persiste (l'ancien code bloquant
+    renvoyait le message du provider tel quel), ce champ est refuse par les
+    providers stricts : Mistral repond 422 ``extra_forbidden`` des le tour
+    suivant. Une session ouverte avec un provider doit pouvoir continuer sur
+    un autre : on reduit chaque message a role/content/tool_call_id/name et
+    chaque tool_call a id/type/function{name, arguments}.
+    """
+    propres: list[dict[str, Any]] = []
+    for m in messages:
+        if not isinstance(m, dict):
+            propres.append(m)
+            continue
+        propre = {k: m[k] for k in _CHAMPS_MESSAGE_STANDARDS if k in m}
+        tcs = m.get("tool_calls")
+        if isinstance(tcs, list):
+            nettoyes: list[dict[str, Any]] = []
+            for tc in tcs:
+                if not isinstance(tc, dict):
+                    continue
+                fn_brut = tc.get("function")
+                fn: dict[str, Any] = fn_brut if isinstance(fn_brut, dict) else {}
+                nettoyes.append(
+                    {
+                        "id": tc.get("id") or "",
+                        "type": tc.get("type") or "function",
+                        "function": {
+                            "name": fn.get("name") or "",
+                            "arguments": fn.get("arguments") or "",
+                        },
+                    }
+                )
+            propre["tool_calls"] = nettoyes
+        propres.append(propre)
+    return propres
+
+
 async def _appel_provider(
     provider: AgentProvider,
     messages: list[dict[str, Any]],
@@ -391,7 +434,7 @@ async def _appel_provider(
     key = _decrypt(provider.api_key_enc)
     url, headers = url_et_headers(provider.provider, provider.base_url, key)
     payload = format_chat_payload(
-        provider.provider, provider.model, messages, outils_api, MAX_TURN_TOKENS
+        provider.provider, provider.model, _nettoyer_messages(messages), outils_api, MAX_TURN_TOKENS
     )
     try:
         async with httpx.AsyncClient(timeout=_TIMEOUT, transport=transport) as client:  # noqa: SIM117
@@ -587,8 +630,8 @@ async def boucle(
                 return
             message, finish_reason, usage = reponse
             if isinstance(usage, dict):
-                usage_total["prompt_tokens"] += usage.get("prompt_tokens") or 0
-                usage_total["completion_tokens"] += usage.get("completion_tokens") or 0
+                usage_total["prompt_tokens"] += int(usage.get("prompt_tokens") or 0)
+                usage_total["completion_tokens"] += int(usage.get("completion_tokens") or 0)
             tool_calls = message.get("tool_calls") or []
             if not tool_calls:
                 texte = _texte_message(message)

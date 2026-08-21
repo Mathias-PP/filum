@@ -15,6 +15,7 @@ detail complet gaspille sa fenetre de tokens.
 
 from __future__ import annotations
 
+from datetime import datetime
 from enum import Enum
 from typing import Any
 from uuid import UUID
@@ -64,6 +65,29 @@ def _valeur_enum(champ: str, valeur: str | None, cls: type[Enum]) -> str | None:
         raise ToolError(
             f"{champ}={valeur!r} : valeur inconnue. Valeurs acceptees : {autorisees}."
         ) from None
+
+
+def _valeur_date(valeur: str | None) -> datetime | None:
+    """Parse une date de publication souple : ``2016``, ``2016-03``, ``2016-03-15``.
+
+    Une chaine vide ou None rend None (silence explicite, permet aussi
+    d'effacer via `update_source`). Un format illisible leve ToolError tout
+    de suite : une date perdue en silence serait une source sans annee,
+    exactement le defaut que ce champ existe pour reparer.
+    """
+    if valeur is None:
+        return None
+    texte = valeur.strip()
+    if not texte:
+        return None
+    for fmt in ("%Y-%m-%d", "%Y-%m", "%Y"):
+        try:
+            return datetime.strptime(texte, fmt)
+        except ValueError:
+            continue
+    raise ToolError(
+        f"published_at={valeur!r} : format illisible. Formats acceptes : 2016, 2016-03, 2016-03-15."
+    )
 
 
 async def _fiche_du_createur(db: AsyncSession, user: User, slug: str) -> BiblioCard:
@@ -189,11 +213,16 @@ async def add_source(
     stance: str | None = None,
     annotation: str | None = None,
     journal: str | None = None,
+    published_at: str | None = None,
     archive_url: str | None = None,
 ) -> dict[str, Any]:
     """Ajoute une source a la fiche. Ne declenche pas l'archivage automatique :
     un agent qui tient une capture Wayback peut la donner via `archive_url`,
     sinon la source reste `pending` et sera archivee au prochain passage cote UI.
+
+    `published_at` : date de publication de la source, ``2016``, ``2016-03``
+    ou ``2016-03-15``. A renseigner des que la source en porte une : une
+    bibliographie sans dates n'est pas une bibliographie.
     """
     card = await _fiche_du_createur(db, user, card_slug)
 
@@ -217,6 +246,7 @@ async def add_source(
         _valeur_enum("author_kind", author_kind, AuthorKind) or AuthorKind.CHERCHEUR.value
     )
     position_declaree = _valeur_enum("stance", stance, SourceStance)
+    date_publication = _valeur_date(published_at)
 
     try:
         linked_card_id = await effective_linked_card_id(
@@ -242,6 +272,7 @@ async def add_source(
         stance=position_declaree,
         annotation=annotation,
         journal=journal,
+        published_at=date_publication,
         doi=doi,
         linked_card_id=linked_card_id,
         archive_url=manual_archive,
@@ -481,6 +512,7 @@ async def update_source(
     stance: str | None = None,
     annotation: str | None = None,
     is_pivot: bool | None = None,
+    published_at: str | None = None,
     archive_url: str | None = None,
 ) -> dict[str, Any]:
     """Corrige les champs edituriaux d'une source existante.
@@ -488,7 +520,8 @@ async def update_source(
     L'URL d'une source est immuable (elle fait autorite dans les liens deja
     emis) : pour changer l'URL, `delete_source` puis `add_source`. Un champ
     laisse a `None` reste inchange. Passer une chaine vide sur `archive_url`
-    retire l'archive et remet le statut en `pending`.
+    retire l'archive et remet le statut en `pending`. Sur `published_at`,
+    une chaine vide efface la date ; formats : 2016, 2016-03, 2016-03-15.
     """
     source = await _source_du_createur(db, user, source_id)
     if title is not None:
@@ -516,6 +549,8 @@ async def update_source(
         source.stance = _valeur_enum("stance", stance, SourceStance)
     if annotation is not None:
         source.annotation = annotation or None
+    if published_at is not None:
+        source.published_at = _valeur_date(published_at)
     if is_pivot is not None:
         source.is_pivot = is_pivot
     if archive_url is not None:
@@ -1306,8 +1341,8 @@ async def add_sources_batch(
 
     Chaque entree suit la meme signature que `add_source` (url, title,
     authors, doi, category, author_kind, format, stance, annotation,
-    journal, archive_url). Ce qui echoue est retourne dans `failed` avec la
-    raison, ce qui reussit dans `created` (avec les IDs).
+    journal, published_at, archive_url). Ce qui echoue est retourne dans
+    `failed` avec la raison, ce qui reussit dans `created` (avec les IDs).
 
     Utilise ce tool quand tu poses 5+ sources d'affilee : un seul commit
     au lieu de N, une seule verification de dedup en amont.
@@ -1356,6 +1391,7 @@ async def add_sources_batch(
                 or AuthorKind.CHERCHEUR.value
             )
             position_declaree = _valeur_enum("stance", sd.get("stance"), SourceStance)
+            date_publication = _valeur_date(sd.get("published_at"))
         except ToolError as exc:
             failed.append({"index": i, "url": url, "reason": str(exc)})
             continue
@@ -1373,6 +1409,7 @@ async def add_sources_batch(
             stance=position_declaree,
             annotation=sd.get("annotation"),
             journal=sd.get("journal"),
+            published_at=date_publication,
             doi=doi,
             linked_card_id=linked_card_id,
             archive_url=manual_archive,
