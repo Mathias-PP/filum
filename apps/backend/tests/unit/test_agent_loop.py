@@ -229,6 +229,36 @@ class TestBoucle:
         assert any(m["role"] == "tool" for m in messages)
 
     @pytest.mark.asyncio
+    async def test_message_tool_porte_tool_call_id(self, db_session, test_user):
+        """Sans ``tool_call_id``, Gemini rejette le tour suivant avec HTTP 400
+        INVALID_ARGUMENT. La spec OpenAI l'exige aussi ; OpenAI est juste
+        tolérant, Gemini pas. Verifie en prod le 2026-08-21."""
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+        appels = {"n": 0}
+        executed: list[dict] = []
+
+        def handler(request):
+            appels["n"] += 1
+            if appels["n"] == 1:
+                return httpx.Response(
+                    200,
+                    json=_mock_tool_call("web_search", {"query": "x"}, tool_id="call_abc123"),
+                )
+            return httpx.Response(200, json=_mock_texte("ok"))
+
+        transport = httpx.MockTransport(handler)
+        messages = [{"role": "user", "content": "cherche"}]
+        await _collect(
+            db_session, test_user, provider, messages, _refuse, transport, _registre_fake(executed)
+        )
+        message_tool = next(m for m in messages if m["role"] == "tool")
+        assert message_tool.get("tool_call_id") == "call_abc123", (
+            "le tool_call_id doit revenir du tool_calls du provider, sinon"
+            " Gemini refuse la requête suivante"
+        )
+
+    @pytest.mark.asyncio
     async def test_action_sensible_refusee_sans_execution(self, db_session, test_user):
         provider = _provider(db_session, test_user)
         await db_session.commit()

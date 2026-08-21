@@ -92,6 +92,7 @@ async def ajouter_message(
     content: str = "",
     tool_calls: list[dict[str, Any]] | None = None,
     tool_name: str | None = None,
+    tool_call_id: str | None = None,
 ) -> AgentMessage:
     """Ajoute un message. Append-only : aucune mise à jour d'un message existant."""
     message = AgentMessage(
@@ -100,6 +101,7 @@ async def ajouter_message(
         content=content or "",
         tool_calls=tool_calls,
         tool_name=tool_name,
+        tool_call_id=tool_call_id,
     )
     db.add(message)
     session.last_message_at = datetime.now(UTC).replace(tzinfo=None)
@@ -115,9 +117,17 @@ async def historique_pour_modele(
     rendu: list[dict[str, Any]] = []
     for message in await messages(db, creator_id, session_id):
         if message.role == "tool":
-            rendu.append(
-                {"role": "tool", "name": message.tool_name or "", "content": message.content}
-            )
+            # ``tool_call_id`` requis par la spec OpenAI ; Gemini refuse sans.
+            # Lignes anciennes (avant migration 043) : nullable -> id absent ->
+            # rejouera degrade sur Gemini, correct sur OpenAI/Anthropic.
+            tool_msg: dict[str, Any] = {
+                "role": "tool",
+                "name": message.tool_name or "",
+                "content": message.content,
+            }
+            if message.tool_call_id:
+                tool_msg["tool_call_id"] = message.tool_call_id
+            rendu.append(tool_msg)
         elif message.tool_calls:
             rendu.append(
                 {

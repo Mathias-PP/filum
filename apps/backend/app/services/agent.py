@@ -117,9 +117,17 @@ async def _appel_provider(
     return message, usage
 
 
-def _message_tool(nom: str, resultat: dict[str, Any]) -> dict[str, Any]:
+def _message_tool(tool_call_id: str, nom: str, resultat: dict[str, Any]) -> dict[str, Any]:
+    """Message ``tool`` renvoyé au modèle après exécution.
+
+    ``tool_call_id`` doit correspondre à l'``id`` du ``tool_calls`` renvoyé par
+    l'assistant au tour précédent. La spec OpenAI l'exige ; OpenAI est tolérant
+    en l'absence, mais **Gemini rejette avec HTTP 400 INVALID_ARGUMENT** dès le
+    tour suivant, laissant l'utilisateur devant un chat cassé sans explication.
+    Vérifié en prod le 2026-08-21 sur ``gemini-3.7-flash``.
+    """
     contenu = json.dumps(resultat, ensure_ascii=False)[:TOOL_RESULT_MAX]
-    return {"role": "tool", "name": nom, "content": contenu}
+    return {"role": "tool", "tool_call_id": tool_call_id, "name": nom, "content": contenu}
 
 
 async def _executer_tour(
@@ -184,7 +192,11 @@ async def _executer_tour(
                 "payload": {"id": tc.get("id"), "name": nom, "result": resultat},
             }
         )
-        messages.append(_message_tool(nom, resultat))
+        # Fallback si le provider a envoyé un tool_call sans id (rare mais
+        # possible avec des endpoints custom) : on en synthétise un pour
+        # préserver la correspondance côté message tool.
+        tool_call_id = tc.get("id") or f"call_{uuid4().hex[:12]}"
+        messages.append(_message_tool(tool_call_id, nom, resultat))
 
 
 async def boucle(

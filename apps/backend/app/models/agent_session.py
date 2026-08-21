@@ -64,6 +64,12 @@ class AgentMessage(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False, default="")
     tool_calls: Mapped[list[dict[str, Any]] | None] = mapped_column(_JSON_LIST, nullable=True)
     tool_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    # Identifiant du tool_call auquel ce message ``tool`` répond. La spec OpenAI
+    # l'exige sur les messages de rôle ``tool`` ; Gemini rejette HTTP 400
+    # INVALID_ARGUMENT sans lui. Nullable pour les rôles non-tool et pour la
+    # rétrocompat des lignes anciennes (leur session ne pourra pas etre reprise
+    # sur Gemini mais aucun autre defaut).
+    tool_call_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
     # Horodaté côté Python : `now()` de la base est figé sur la transaction, et
     # sa précision dépend du moteur. Or `created_at` sert à réordonner le
     # journal, où deux messages du même tour ne doivent jamais être ex aequo.
