@@ -2,7 +2,7 @@
 
 Un tour = un appel au provider avec l'historique complet. Si le modèle
 demande des outils, on exécute la séquence, on renvoie les résultats en
-message ``tool``, et on relance — jusqu'à ce que le modèle réponde en texte
+message ``tool``, et on relance jusqu'à ce que le modèle réponde en texte
 (``done``), ou jusqu'à la borne dure (``error``).
 
 **Sécurité, pas délégation** :
@@ -118,12 +118,12 @@ def _extraire_retry_delay(body: Any) -> float | None:
 
 
 def _extraire_message_erreur(body: Any) -> str:
-    """Le message texte d'un corps d'erreur OpenAI-compat, ou le body reduit.
+    """Le message texte d'un corps d'erreur OpenAI-compat, ou le body réduit.
 
     Duplique volontairement une partie de la logique de
-    ``services.agent_providers._detail_provider`` : y avoir recours creerait
+    ``services.agent_providers._detail_provider`` : y avoir recours créerait
     un cycle d'import (agent -> providers -> agent via les tests). Cinq
-    formes gerees (voir ce module pour la lecture).
+    formes gérées (voir ce module pour la lecture).
     """
     if isinstance(body, list) and body:
         body = body[0]
@@ -142,62 +142,25 @@ def _extraire_message_erreur(body: Any) -> str:
     return str(body)[:400] if body else ""
 
 
-async def _appel_provider(
+def _parse_blocking_response(
+    response: httpx.Response,
     provider: AgentProvider,
-    messages: list[dict[str, Any]],
-    outils_api: list[dict[str, Any]],
-    transport: httpx.AsyncBaseTransport | None,
 ) -> tuple[dict[str, Any], str | None, dict[str, Any]] | str:
-    """Un tour. Rend ``(message, finish_reason, usage)`` ou une chaîne d'erreur.
-
-    Sur HTTP 429 avec ``retryDelay`` (Google/Gemini), attend une fois avant
-    de renoncer : sur le free tier Gemini (5 req/min), l'agent enchaîne
-    naturellement plus de 5 tours pour construire une fiche, et sans ce
-    retry la session s'effondre au 6ème tour alors que 44 secondes d'attente
-    la sauveraient.
-    """
-    key = _decrypt(provider.api_key_enc)
-    payload = {
-        "model": provider.model,
-        "messages": messages,
-        "tools": outils_api,
-        "max_tokens": MAX_TURN_TOKENS,
-        "temperature": 0,
-    }
-    headers = {"Authorization": f"Bearer {key}"}
-    url = url_chat(provider.base_url)
+    """Parse une réponse bloquante JSON OpenAI-compat."""
+    if response.status_code != 200:
+        try:
+            body = response.json()
+        except ValueError:
+            body = response.text[:500]
+        msg = _extraire_message_erreur(body)
+        if response.status_code == 429:
+            return (
+                f"Le fournisseur ({provider.provider}) refuse : quota ou limite de "
+                f"débit atteinte. {msg}"
+            )
+        return f"Le provider a répondu HTTP {response.status_code} : {msg or body}"
     try:
-        async with httpx.AsyncClient(timeout=_TIMEOUT, transport=transport) as client:
-            r = await client.post(url, json=payload, headers=headers)
-            if r.status_code == 429:
-                try:
-                    body_429 = r.json()
-                except ValueError:
-                    body_429 = None
-                attente = _extraire_retry_delay(body_429)
-                if attente is not None and attente <= _RETRY_MAX_ATTENTE_S:
-                    logger.info(
-                        "429 sur %s, attente %.1fs puis retry (retryDelay du provider)",
-                        provider.model,
-                        attente,
-                    )
-                    await asyncio.sleep(attente)
-                    r = await client.post(url, json=payload, headers=headers)
-        if r.status_code != 200:
-            try:
-                body = r.json()
-            except ValueError:
-                body = r.text[:500]
-            msg = _extraire_message_erreur(body)
-            if r.status_code == 429:
-                return (
-                    f"Le fournisseur ({provider.provider}) refuse : quota ou limite de "
-                    f"débit atteinte. {msg}"
-                )
-            return f"Le provider a répondu HTTP {r.status_code} : {msg or body}"
-        data = r.json()
-    except httpx.HTTPError as exc:
-        return f"Erreur réseau vers le provider : {exc}"
+        data = response.json()
     except ValueError as exc:
         return f"Réponse illisible du provider : {exc}"
     try:
@@ -208,6 +171,222 @@ async def _appel_provider(
     finish_reason = choice.get("finish_reason") if isinstance(choice, dict) else None
     usage = data.get("usage", {})
     return message, finish_reason, usage
+
+
+async def _parse_sse_stream(
+    response: httpx.Response,
+    on_delta: Callable[[str], Awaitable[None]] | None,
+) -> tuple[dict[str, Any], str | None, dict[str, Any]] | str:
+    """Parse un flux SSE OpenAI-compat. Appelle on_delta pour chaque fragment texte.
+
+    Gère trois cas observés en prod :
+    - Format SSE standard : ``data: {...}`` par ligne
+    - Format Cerebras non-SSE : JSON brut par ligne sans préfixe ``data:``
+    - Fragmentation Gemini : tool_calls répartis sur plusieurs chunks,
+      ``tool_call_id`` seulement dans le premier fragment ; réassemblage par index.
+    - Mistral : ``finish_reason`` dans un chunk avant ``[DONE]`` ; on garde le
+      dernier vu.
+    """
+    text_parts: list[str] = []
+    tool_calls_par_index: dict[int, dict[str, Any]] = {}
+    finish_reason: str | None = None
+    usage: dict[str, Any] = {}
+    try:
+        async for ligne in response.aiter_lines():
+            ligne = ligne.strip()
+            if not ligne:
+                continue
+            if ligne.startswith("data: "):
+                data_str = ligne[6:]
+            elif ligne.startswith("{"):
+                data_str = ligne  # Cerebras : JSON nu sans préfixe data:
+            else:
+                continue
+            if data_str == "[DONE]":
+                break
+            try:
+                chunk = json.loads(data_str)
+            except json.JSONDecodeError:
+                continue
+            # Usage (certains providers l'incluent dans le dernier chunk)
+            if isinstance(chunk.get("usage"), dict) and chunk["usage"]:
+                usage = chunk["usage"]
+            choices = chunk.get("choices")
+            if not isinstance(choices, list) or not choices:
+                continue
+            choice = choices[0]
+            if not isinstance(choice, dict):
+                continue
+            # Conserver le dernier finish_reason vu (Mistral le met avant [DONE])
+            fr = choice.get("finish_reason")
+            if fr is not None:
+                finish_reason = fr
+            delta = choice.get("delta")
+            if not isinstance(delta, dict):
+                continue
+            # Fragments texte
+            content = delta.get("content")
+            if isinstance(content, str) and content:
+                text_parts.append(content)
+                if on_delta is not None:
+                    await on_delta(content)
+            # Tool calls fragmentés : réassembler par index (pas par id)
+            tc_list = delta.get("tool_calls")
+            if isinstance(tc_list, list):
+                for tc_delta in tc_list:
+                    if not isinstance(tc_delta, dict):
+                        continue
+                    idx = tc_delta.get("index", 0)
+                    if idx not in tool_calls_par_index:
+                        tool_calls_par_index[idx] = {
+                            "id": "",
+                            "type": "function",
+                            "function": {"name": "", "arguments": ""},
+                        }
+                    existing = tool_calls_par_index[idx]
+                    if tc_delta.get("id"):
+                        existing["id"] = tc_delta["id"]
+                    if tc_delta.get("type"):
+                        existing["type"] = tc_delta["type"]
+                    fn_delta = tc_delta.get("function") or {}
+                    if fn_delta.get("name"):
+                        existing["function"]["name"] += fn_delta["name"]
+                    if fn_delta.get("arguments"):
+                        existing["function"]["arguments"] += fn_delta["arguments"]
+    except httpx.StreamError as exc:
+        return f"Erreur réseau vers le provider : {exc}"
+
+    text = "".join(text_parts)
+    tool_calls = [tool_calls_par_index[i] for i in sorted(tool_calls_par_index)]
+    message: dict[str, Any] = {"role": "assistant", "content": text if text else None}
+    if tool_calls:
+        message["tool_calls"] = tool_calls
+    return message, finish_reason, usage
+
+
+async def _emettre_en_un_bloc(
+    resultat: tuple[dict[str, Any], str | None, dict[str, Any]] | str,
+    on_delta: Callable[[str], Awaitable[None]] | None,
+) -> tuple[dict[str, Any], str | None, dict[str, Any]] | str:
+    """Sur une réponse reçue d'un bloc, pousse son texte complet via ``on_delta``.
+
+    Utilisé pour le repli 400 (provider sans streaming) comme pour un provider
+    qui répond en JSON malgré ``stream=True`` : le client doit voir le texte
+    arriver, fût-il d'une traite.
+    """
+    if not isinstance(resultat, str) and on_delta is not None:
+        msg_bloc, _, _ = resultat
+        texte_bloc = _texte_message(msg_bloc)
+        if texte_bloc:
+            await on_delta(texte_bloc)
+    return resultat
+
+
+async def _appel_provider(
+    provider: AgentProvider,
+    messages: list[dict[str, Any]],
+    outils_api: list[dict[str, Any]],
+    transport: httpx.AsyncBaseTransport | None,
+    *,
+    on_delta: Callable[[str], Awaitable[None]] | None = None,
+) -> tuple[dict[str, Any], str | None, dict[str, Any]] | str:
+    """Un tour. Rend ``(message, finish_reason, usage)`` ou une chaîne d'erreur.
+
+    Tente le streaming SSE (``stream=True``) : ``on_delta`` est appelée pour chaque
+    fragment texte reçu, permettant un affichage progressif. Sur HTTP 400 (provider
+    sans support streaming), repli automatique sur mode bloquant -- le texte complet
+    est alors émis en un seul appel à ``on_delta``. Sur HTTP 429 avec ``retryDelay``,
+    attend une fois avant de renoncer.
+    """
+    key = _decrypt(provider.api_key_enc)
+    headers = {"Authorization": f"Bearer {key}"}
+    url = url_chat(provider.base_url)
+    payload = {
+        "model": provider.model,
+        "messages": messages,
+        "tools": outils_api,
+        "max_tokens": MAX_TURN_TOKENS,
+        "temperature": 0,
+        "stream": True,
+    }
+    try:
+        # noqa suit : le second flux ne s'ouvre qu'après l'attente du retryDelay,
+        # imbriqué dans le client -- combiner les ``with`` n'a pas de sens ici.
+        async with httpx.AsyncClient(timeout=_TIMEOUT, transport=transport) as client:  # noqa: SIM117
+            async with client.stream("POST", url, json=payload, headers=headers) as r:
+                if r.status_code == 429:
+                    await r.aread()
+                    try:
+                        body_429 = r.json()
+                    except ValueError:
+                        body_429 = None
+                    attente = _extraire_retry_delay(body_429)
+                    if attente is not None and attente <= _RETRY_MAX_ATTENTE_S:
+                        logger.info(
+                            "429 sur %s, attente %.1fs puis retry (retryDelay du provider)",
+                            provider.model,
+                            attente,
+                        )
+                        await asyncio.sleep(attente)
+                        async with client.stream("POST", url, json=payload, headers=headers) as r2:
+                            if r2.status_code != 200:
+                                await r2.aread()
+                                try:
+                                    body2 = r2.json()
+                                except ValueError:
+                                    body2 = r2.text[:500]
+                                msg2 = _extraire_message_erreur(body2)
+                                if r2.status_code == 429:
+                                    return (
+                                        f"Le fournisseur ({provider.provider}) refuse : quota ou "
+                                        f"limite de débit atteinte. {msg2}"
+                                    )
+                                return (
+                                    f"Le provider a répondu HTTP {r2.status_code} : {msg2 or body2}"
+                                )
+                            # Même règle que le premier appel : JSON bloquant
+                            # possible malgré stream=True.
+                            if "text/event-stream" not in r2.headers.get("content-type", ""):
+                                await r2.aread()
+                                return await _emettre_en_un_bloc(
+                                    _parse_blocking_response(r2, provider), on_delta
+                                )
+                            return await _parse_sse_stream(r2, on_delta)
+                    msg = _extraire_message_erreur(body_429)
+                    return (
+                        f"Le fournisseur ({provider.provider}) refuse : quota ou limite de "
+                        f"débit atteinte. {msg}"
+                    )
+                if r.status_code == 400:
+                    # Repli sur mode bloquant : provider qui refuse stream=True
+                    await r.aread()
+                    logger.info("stream=True refusé (400) par %s, repli bloquant", provider.model)
+                    payload_bloquant = {k: v for k, v in payload.items() if k != "stream"}
+                    r_bloquant = await client.post(url, json=payload_bloquant, headers=headers)
+                    return await _emettre_en_un_bloc(
+                        _parse_blocking_response(r_bloquant, provider), on_delta
+                    )
+                if r.status_code != 200:
+                    await r.aread()
+                    try:
+                        body = r.json()
+                    except ValueError:
+                        body = r.text[:500]
+                    msg = _extraire_message_erreur(body)
+                    return f"Le provider a répondu HTTP {r.status_code} : {msg or body}"
+                # Un provider peut répondre en JSON bloquant même quand
+                # stream=True est demandé : le Content-Type tranche. Le texte
+                # complet part alors en un seul on_delta, comme sur repli 400.
+                if "text/event-stream" not in r.headers.get("content-type", ""):
+                    await r.aread()
+                    return await _emettre_en_un_bloc(
+                        _parse_blocking_response(r, provider), on_delta
+                    )
+                return await _parse_sse_stream(r, on_delta)
+    except httpx.HTTPError as exc:
+        return f"Erreur réseau vers le provider : {exc}"
+    except ValueError as exc:
+        return f"Réponse illisible du provider : {exc}"
 
 
 def _diagnostic_vide(
@@ -225,7 +404,7 @@ def _diagnostic_vide(
       un modèle sans raisonnement caché (``gemini-3.6-flash`` plutôt que
       ``gemini-3.7-flash`` par exemple).
     - ``content_filter`` : le filtre de sécurité a bloqué. Remède : reformuler.
-    - ``stop`` avec vide : le modèle a « renoncé ». Souvent un signe que la
+    - ``stop`` avec vide : le modèle a renoncé. Souvent un signe que la
       combinaison prompt + outils déroute le modèle. Remède : reformuler ou
       changer de modèle.
     """
@@ -357,7 +536,13 @@ async def boucle(
     messages.insert(0, {"role": "system", "content": _SYSTEME})
     try:
         for tour in range(1, MAX_TOURS + 1):
-            reponse = await _appel_provider(provider, messages, outils_api, transport)
+
+            async def _on_delta(content: str, _t: int = tour) -> None:
+                await emit({"type": "message_delta", "payload": {"delta": content, "tour": _t}})
+
+            reponse = await _appel_provider(
+                provider, messages, outils_api, transport, on_delta=_on_delta
+            )
             if isinstance(reponse, str):
                 await emit({"type": "error", "payload": {"message": reponse}})
                 return
@@ -366,7 +551,8 @@ async def boucle(
             if not tool_calls:
                 texte = _texte_message(message)
                 if texte:
-                    await emit({"type": "message_delta", "payload": {"delta": texte, "tour": tour}})
+                    # Texte émis en temps réel via on_delta (streaming) ou en
+                    # bloc dans _appel_provider (repli bloquant). Pas de re-emit ici.
                     await emit({"type": "done", "payload": {"reason": "complete"}})
                     return
                 # Contenu vide sans tool_call : silence interdit. Le modele n'a
@@ -405,6 +591,6 @@ async def boucle(
                 "payload": {"message": f"Maximum de {MAX_TOURS} tours atteint, arrêt de l'agent."},
             }
         )
-    except Exception as exc:  # noqa: BLE001 — un échec de boucle doit être visible, pas silencieux
+    except Exception as exc:  # noqa: BLE001 -- un échec de boucle doit être visible, pas silencieux
         logger.exception("Échec de la boucle de l'agent pour %s", user.id)
         await emit({"type": "error", "payload": {"message": f"Erreur interne de l'agent : {exc}"}})
