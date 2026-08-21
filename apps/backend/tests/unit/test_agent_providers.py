@@ -123,7 +123,7 @@ class TestResolutionBaseUrl:
 
     def test_custom_valide_resolu(self, monkeypatch):
         # Pas de DNS dans les tests : on neutralise le contrôle réseau.
-        monkeypatch.setattr(svc, "assert_url_is_safe", lambda url: None)
+        monkeypatch.setattr(svc, "assert_url_is_safe", lambda url, **_: None)
         assert svc._resolve_base_url(ProviderKind.CUSTOM, "https://example.com") == (
             "https://example.com"
         )

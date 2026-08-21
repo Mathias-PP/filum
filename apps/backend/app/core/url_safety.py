@@ -52,13 +52,24 @@ def _ip_is_safe(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
     )
 
 
-def assert_url_is_safe(url: str) -> None:
+_MSG_LOOPBACK_SAAS = (
+    "Le backend Philum tourne sur une VM distante et ne peut pas joindre "
+    "localhost sur votre machine. Pour brancher un modele local, exposez-le "
+    "via un tunnel HTTPS (voir /developers#tunnel-ollama)."
+)
+
+
+def assert_url_is_safe(url: str, *, allow_loopback: bool = False) -> None:
     """Raise ``UnsafeUrlError`` if ``url`` targets a non-public host.
 
     Validates:
       - scheme is http or https
       - host is set
       - host resolves to at least one IP and ALL resolved IPs are public
+
+    ``allow_loopback=True`` est reserve aux instances self-hostees
+    (``AGENT_ALLOW_LOCAL_PROVIDERS=true``). Ne jamais passer ``True`` pour
+    les fetches web ou les redirections.
 
     No network I/O beyond ``getaddrinfo`` on the hostname.
     """
@@ -75,7 +86,11 @@ def assert_url_is_safe(url: str) -> None:
     except ValueError:
         literal_ip = None
     if literal_ip is not None:
-        if not _ip_is_safe(literal_ip):
+        if literal_ip.is_loopback and not allow_loopback:
+            raise UnsafeUrlError(_MSG_LOOPBACK_SAAS)
+        if not allow_loopback and not _ip_is_safe(literal_ip):
+            raise UnsafeUrlError(f"URL host is a non-public address ({host})")
+        if allow_loopback and not literal_ip.is_loopback and not _ip_is_safe(literal_ip):
             raise UnsafeUrlError(f"URL host is a non-public address ({host})")
         return
 
@@ -97,7 +112,10 @@ def assert_url_is_safe(url: str) -> None:
             # getaddrinfo should never produce an invalid address, but be
             # defensive: treat anything we can't parse as unsafe.
             raise UnsafeUrlError(f"Unparseable IP from DNS for {host}: {raw_ip}") from None
-        if not _ip_is_safe(ip):
+        if ip.is_loopback and not allow_loopback:
+            raise UnsafeUrlError(_MSG_LOOPBACK_SAAS)
+        safe = _ip_is_safe(ip) or (allow_loopback and ip.is_loopback)
+        if not safe:
             raise UnsafeUrlError(
                 f"Host {host} resolves to a non-public address ({ip}). "
                 "Loopback, private, link-local, and reserved ranges are blocked."

@@ -340,7 +340,7 @@
           required={editing === null}
           type="password"
           autocomplete="off"
-          placeholder="sk-…"
+          placeholder={kind === 'custom' ? 'ollama (ou toute valeur non vide)' : 'sk-…'}
           class="mt-1 w-full rounded border border-subtle bg-surface-primary px-3 py-2 font-mono"
         />
         {#if editing}

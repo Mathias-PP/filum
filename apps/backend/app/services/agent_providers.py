@@ -165,10 +165,11 @@ def _resolve_base_url(provider: ProviderKind, base_url: str | None) -> str:
     constantes de confiance.
     """
     if base_url is not None:
+        allow_loopback = settings.agent_allow_local_providers
         try:
-            assert_url_is_safe(base_url)
+            assert_url_is_safe(base_url, allow_loopback=allow_loopback)
         except UnsafeUrlError as exc:
-            raise AgentProviderError(f"base_url non sûre : {exc}") from exc
+            raise AgentProviderError(str(exc)) from exc
         return base_url
     if provider == ProviderKind.CUSTOM:
         raise AgentProviderError("Un provider custom exige une base_url.")

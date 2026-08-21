@@ -49,12 +49,23 @@ class TestLiteralIpRejection:
     """Literal IPs in the URL bypass DNS — must be caught without I/O."""
 
     def test_loopback_ipv4_rejected(self):
-        with pytest.raises(UnsafeUrlError, match="non-public"):
+        with pytest.raises(UnsafeUrlError, match="VM distante"):
             assert_url_is_safe("http://127.0.0.1/")
 
     def test_loopback_ipv6_rejected(self):
-        with pytest.raises(UnsafeUrlError, match="non-public"):
+        with pytest.raises(UnsafeUrlError, match="VM distante"):
             assert_url_is_safe("http://[::1]/")
+
+    def test_loopback_ipv4_autorise_si_flag(self):
+        assert_url_is_safe("http://127.0.0.1:11434/v1", allow_loopback=True)
+
+    def test_loopback_ipv6_autorise_si_flag(self):
+        assert_url_is_safe("http://[::1]:11434/v1", allow_loopback=True)
+
+    def test_rfc1918_toujours_refuse_meme_avec_flag(self):
+        # allow_loopback n'elargit pas aux plages RFC1918
+        with pytest.raises(UnsafeUrlError, match="non-public"):
+            assert_url_is_safe("http://192.168.1.1/v1", allow_loopback=True)
 
     def test_private_rfc1918_rejected(self):
         for ip in ("10.0.0.1", "172.16.0.1", "192.168.1.1"):
@@ -85,8 +96,11 @@ class TestDnsResolution:
 
     def test_hostname_resolving_to_loopback_rejected(self):
         # `localhost` typically resolves to 127.0.0.1.
-        with pytest.raises(UnsafeUrlError, match="non-public"):
+        with pytest.raises(UnsafeUrlError, match="VM distante"):
             assert_url_is_safe("http://localhost/admin")
+
+    def test_hostname_loopback_autorise_si_flag(self):
+        assert_url_is_safe("http://localhost:11434/v1", allow_loopback=True)
 
     def test_dns_failure_rejected(self):
         # Non-existent TLD → gaierror → wrapped as UnsafeUrlError.
