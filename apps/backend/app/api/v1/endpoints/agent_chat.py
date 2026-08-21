@@ -36,6 +36,14 @@ from app.models.user import User
 from app.schemas.agent_chat import AgentChatRequest
 from app.services import agent_approvals, agent_sessions
 from app.services.agent import boucle
+from app.services.agent_discovery import (
+    ErreurQuota,
+    consommer_message,
+    discovery_est_actif,
+    nom_public_provider,
+    resoudre_provider_decouverte,
+    verifier_quota,
+)
 from app.services.agent_providers import resoudre_defaut
 
 settings = get_settings()
@@ -95,18 +103,49 @@ async def chat_agent(
         messages = await agent_sessions.historique_pour_modele(db, current_user.id, session.id)
 
     provider = await resoudre_defaut(db, current_user.id)
+    mode_decouverte = False
+    remaining_today: int | None = None
     if provider is None:
-        erreur = {
-            "type": "error",
-            "payload": {
-                "message": "Aucun provider IA par défaut configuré. Définis-en un dans Agent → Providers."
-            },
-        }
-        return StreamingResponse(
-            iter([_sse({"type": "session", "payload": {"id": str(session.id)}}), _sse(erreur)]),
-            media_type="text/event-stream",
-            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-        )
+        if discovery_est_actif():
+            try:
+                remaining_today = await verifier_quota(db, current_user.id)
+            except ErreurQuota as exc:
+                quota_msg = (
+                    f"Vous avez atteint la limite de {exc.quota} messages par jour "
+                    "en mode decouverte. Connectez votre propre cle pour continuer "
+                    "sans limite. Providers gratuits : Mistral, Google AI Studio, "
+                    "Groq, Cerebras."
+                )
+                erreur = {"type": "error", "payload": {"message": quota_msg}}
+                return StreamingResponse(
+                    iter(
+                        [
+                            _sse({"type": "session", "payload": {"id": str(session.id)}}),
+                            _sse(erreur),
+                        ]
+                    ),
+                    media_type="text/event-stream",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+                )
+            provider = resoudre_provider_decouverte()
+            mode_decouverte = True
+        else:
+            erreur = {
+                "type": "error",
+                "payload": {
+                    "message": "Aucun provider IA par defaut configure. Definis-en un dans Agent -> Providers."
+                },
+            }
+            return StreamingResponse(
+                iter(
+                    [
+                        _sse({"type": "session", "payload": {"id": str(session.id)}}),
+                        _sse(erreur),
+                    ]
+                ),
+                media_type="text/event-stream",
+                headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+            )
 
     messages.append({"role": "user", "content": body.message})
     await agent_sessions.ajouter_message(db, session, role="user", content=body.message)
@@ -145,6 +184,17 @@ async def chat_agent(
 
         task = asyncio.create_task(runner())
         yield _sse({"type": "session", "payload": {"id": str(session.id)}})
+        if mode_decouverte:
+            yield _sse(
+                {
+                    "type": "discovery_active",
+                    "payload": {
+                        "provider_public_name": nom_public_provider(),
+                        "remaining_today": remaining_today,
+                        "retention_notice": "Ce provider peut utiliser vos echanges pour ameliorer son modele.",
+                    },
+                }
+            )
         # Sans ce `finally`, un client qui ferme l'onglet laisse la boucle
         # tourner jusqu'a 24 tours : elle continue de facturer le provider et
         # d'ecrire via une session de base que FastAPI a deja fermee.
@@ -157,6 +207,8 @@ async def chat_agent(
             await task
             usage = usage_capture[0] if usage_capture else None
             await _persister_tour(db, session, messages[depart:], "".join(reponse_finale), usage)
+            if mode_decouverte:
+                await consommer_message(db, current_user.id)
         finally:
             task.cancel()
 

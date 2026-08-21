@@ -88,6 +88,15 @@ class Settings(BaseSettings):
     agent_web_search_provider: str = ""
     agent_web_search_api_key: str = ""
 
+    # Mode découverte : clé serveur sponsorisée pour permettre d'essayer
+    # l'agent sans configurer de provider. Désactivé par défaut.
+    # Recommandation prod : DeepSeek (ToS commercial, ~0.27 $/M tokens).
+    agent_discovery_enabled: bool = False
+    agent_discovery_daily_quota_messages: int = 10
+    agent_discovery_provider: str = "deepseek"
+    agent_discovery_model: str = "deepseek-chat"
+    agent_discovery_api_key: str = ""
+
     @field_validator("database_url", mode="before")
     @classmethod
     def _coerce_async_driver(cls, value: str) -> str:

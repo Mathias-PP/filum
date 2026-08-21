@@ -28,10 +28,10 @@
     anthropic: ['claude-opus-4-7', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001'],
     deepseek: ['deepseek-chat', 'deepseek-reasoner'],
     gemini: ['gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.1-pro'],
-    groq: [],
+    groq: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'],
     openrouter: [],
-    mistral: [],
-    cerebras: [],
+    mistral: ['mistral-large-latest', 'mistral-small-latest', 'codestral-latest'],
+    cerebras: ['llama-3.3-70b', 'llama-4-scout-17b-16e-instruct'],
     custom: [],
   };
 

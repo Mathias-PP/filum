@@ -106,6 +106,14 @@ export interface AgentMessage {
 
 export type AgentEvent =
   | { type: 'session'; payload: { id: string } }
+  | {
+      type: 'discovery_active';
+      payload: {
+        provider_public_name: string;
+        remaining_today: number | null;
+        retention_notice: string;
+      };
+    }
   | { type: 'message_delta'; payload: { delta: string; tour: number } }
   | {
       type: 'tool_call';
