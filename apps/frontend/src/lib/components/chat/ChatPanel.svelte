@@ -7,6 +7,7 @@
   import { toast } from '../Toast.svelte';
   import ApprovalCard from './ApprovalCard.svelte';
   import ToolCard from './ToolCard.svelte';
+  import AgentMarkdown from './AgentMarkdown.svelte';
 
   interface Props {
     /** Session existante à reprendre. Absente : la première réponse en crée une. */
@@ -102,7 +103,9 @@
           {item.text}
         </div>
       {:else if item.kind === 'assistant'}
-        <div class="max-w-[85%] whitespace-pre-wrap text-sm text-ink-primary">{item.text}</div>
+        <div class="max-w-[85%]">
+          <AgentMarkdown texte={item.text} />
+        </div>
       {:else if item.kind === 'tool'}
         <ToolCard name={item.name} args={item.args} result={item.result} />
       {:else if item.kind === 'approval'}

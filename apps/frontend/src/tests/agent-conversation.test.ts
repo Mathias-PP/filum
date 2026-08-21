@@ -80,6 +80,35 @@ describe('repli des événements de l’agent', () => {
     ]);
     expect(items).toEqual([]);
   });
+
+  it('clôture un appel resté sans résultat quand le flux se termine', () => {
+    const items = replier([
+      {
+        type: 'tool_call',
+        payload: { id: 'call_1', name: 'web_search', arguments: {}, tour: 1 },
+      },
+      { type: 'done', payload: { reason: 'complete' } },
+    ]);
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({
+      kind: 'tool',
+      name: 'web_search',
+      result: { error: expect.stringContaining('sans réponse') },
+    });
+  });
+
+  it('clôture les appels en vol quand une erreur survient', () => {
+    const items = replier([
+      {
+        type: 'tool_call',
+        payload: { id: 'call_1', name: 'fs_read', arguments: {}, tour: 1 },
+      },
+      { type: 'error', payload: { message: 'provider injoignable' } },
+    ]);
+    const carte = items[0] as Extract<ChatItem, { kind: 'tool' }>;
+    expect(carte.result).toEqual({ error: expect.stringContaining('sans réponse') });
+    expect(items.map((i) => i.kind)).toEqual(['tool', 'error']);
+  });
 });
 
 describe('rehydratation d’une session persistée', () => {
@@ -93,31 +122,87 @@ describe('rehydratation d’une session persistée', () => {
     ...partiel,
   });
 
-  it('rend les bulles dans l’ordre du journal', () => {
+  it('réapparie chaque résultat à son appel d’origine via tool_call_id', () => {
     const items = depuisMessages([
       message({ id: 'm1', role: 'user', content: 'cherche' }),
       message({
         id: 'm2',
         role: 'assistant',
+        content: '',
         tool_calls: [
-          { id: 'call_1', function: { name: 'web_search', arguments: '{"q":"étoiles"}' } },
+          { id: 'call_1', function: { name: 'fs_read', arguments: '{"path":"a.md"}' } },
+          { id: 'call_2', function: { name: 'fs_list', arguments: '{}' } },
         ],
       }),
-      message({ id: 'm3', role: 'tool', tool_name: 'web_search', content: '{"ok":true}' }),
-      message({ id: 'm4', role: 'assistant', content: 'voilà' }),
+      message({
+        id: 'm3',
+        role: 'tool',
+        tool_name: 'fs_list',
+        tool_call_id: 'call_2',
+        content: '{"entries":[]}',
+      }),
+      message({
+        id: 'm4',
+        role: 'tool',
+        tool_name: 'fs_read',
+        tool_call_id: 'call_1',
+        content: '{"found":true}',
+      }),
+      message({ id: 'm5', role: 'assistant', content: 'voilà' }),
+    ]);
+    expect(items.map((i) => i.kind)).toEqual(['user', 'tool', 'tool', 'assistant']);
+    expect(items[1]).toMatchObject({
+      kind: 'tool',
+      id: 'call_1',
+      name: 'fs_read',
+      args: { path: 'a.md' },
+      result: { found: true },
+    });
+    expect(items[2]).toMatchObject({
+      kind: 'tool',
+      id: 'call_2',
+      name: 'fs_list',
+      args: {},
+      result: { entries: [] },
+    });
+  });
+
+  it('réapparie à l’ancienne (par nom) les lignes sans identifiant', () => {
+    const items = depuisMessages([
+      message({
+        id: 'm1',
+        role: 'assistant',
+        content: '',
+        tool_calls: [{ function: { name: 'web_search', arguments: '{"q":"x"}' } }],
+      }),
+      message({ id: 'm2', role: 'tool', tool_name: 'web_search', content: '{"ok":1}' }),
     ]);
     expect(items).toEqual([
-      { kind: 'user', text: 'cherche' },
       {
         kind: 'tool',
-        id: 'call_1',
+        id: 'm1',
         name: 'web_search',
-        args: { q: 'étoiles' },
-        result: null,
+        args: { q: 'x' },
+        result: { ok: 1 },
       },
-      { kind: 'tool', id: 'm3', name: 'web_search', args: {}, result: { ok: true } },
-      { kind: 'assistant', text: 'voilà' },
     ]);
+  });
+
+  it('montre un échec explicite pour un appel jamais abouti dans le journal', () => {
+    const items = depuisMessages([
+      message({
+        id: 'm1',
+        role: 'assistant',
+        content: '',
+        tool_calls: [{ id: 'call_9', function: { name: 'publish_card', arguments: '{}' } }],
+      }),
+    ]);
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({
+      kind: 'tool',
+      name: 'publish_card',
+      result: { error: expect.stringContaining('sans réponse') },
+    });
   });
 
   it('ne fabrique pas de bulle vide pour un assistant sans texte ni outil', () => {
