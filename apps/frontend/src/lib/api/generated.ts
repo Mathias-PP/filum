@@ -1596,6 +1596,8 @@ export interface components {
         | null;
       /** Tool Name */
       tool_name: string | null;
+      /** Tool Call Id */
+      tool_call_id: string | null;
       /**
        * Created At
        * Format: date-time

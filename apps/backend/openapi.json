@@ -4115,6 +4115,17 @@
             ],
             "title": "Tool Name"
           },
+          "tool_call_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Call Id"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -4128,6 +4139,7 @@
           "content",
           "tool_calls",
           "tool_name",
+          "tool_call_id",
           "created_at"
         ],
         "title": "AgentMessageRead"
