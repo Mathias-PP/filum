@@ -641,3 +641,53 @@ class TestTesterRemonteLesModeles:
         assert res.ok is True
         assert isinstance(res.latency_ms, int)
         assert res.latency_ms >= 0
+
+
+@pytest.mark.asyncio
+class TestListerModelesMetadonnees:
+    async def test_openrouter_garde_context_et_prix(self, db_session, test_user):
+        """OpenRouter renvoie context_length + pricing : les garder dans models."""
+        svc._invalider_cache_modeles_tout()
+        provider = await _mk_provider(db_session, test_user.id)
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                json={
+                    "data": [
+                        {
+                            "id": "openai/gpt-4o",
+                            "context_length": 128000,
+                            "pricing": {"prompt": "0.0025", "completion": "0.01"},
+                        }
+                    ]
+                },
+            )
+
+        res = await lister_modeles(
+            db_session, test_user.id, provider.id, transport=httpx.MockTransport(handler)
+        )
+
+        assert res["source"] == "provider"
+        assert isinstance(res["models"], list)
+        m = res["models"][0]
+        assert isinstance(m, dict)
+        assert m["id"] == "openai/gpt-4o"
+        assert m["context_length"] == 128000
+        assert m["pricing"] == {"prompt": "0.0025", "completion": "0.01"}
+
+    async def test_ids_nus_restent_liste_str(self, db_session, test_user):
+        """Sans context_length ni pricing, models reste list[str] (retro-compat)."""
+        svc._invalider_cache_modeles_tout()
+        provider = await _mk_provider(db_session, test_user.id)
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json={"data": [{"id": "m1"}, {"id": "m2"}]})
+
+        res = await lister_modeles(
+            db_session, test_user.id, provider.id, transport=httpx.MockTransport(handler)
+        )
+
+        assert res["source"] == "provider"
+        assert res["models"] == ["m1", "m2"]
+        assert all(isinstance(m, str) for m in res["models"])

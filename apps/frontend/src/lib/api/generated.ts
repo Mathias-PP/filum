@@ -209,6 +209,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/agent/sessions/{session_id}/usage': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Usage Session */
+    get: operations['usage_session_api_v1_agent_sessions__session_id__usage_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/agent/approve': {
     parameters: {
       query?: never;
@@ -1715,6 +1732,15 @@ export interface components {
       created_at: string;
       /** Last Message At */
       last_message_at: string | null;
+    };
+    /** AgentSessionUsage */
+    AgentSessionUsage: {
+      /** Total Prompt Tokens */
+      total_prompt_tokens: number;
+      /** Total Completion Tokens */
+      total_completion_tokens: number;
+      /** Cost Eur */
+      cost_eur?: number | null;
     };
     /** AnnotationRequest */
     AnnotationRequest: {
@@ -3732,6 +3758,37 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  usage_session_api_v1_agent_sessions__session_id__usage_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        session_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AgentSessionUsage'];
+        };
       };
       /** @description Validation Error */
       422: {

@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.agent_session import AgentMessage, AgentSession
@@ -93,6 +93,8 @@ async def ajouter_message(
     tool_calls: list[dict[str, Any]] | None = None,
     tool_name: str | None = None,
     tool_call_id: str | None = None,
+    prompt_tokens: int | None = None,
+    completion_tokens: int | None = None,
 ) -> AgentMessage:
     """Ajoute un message. Append-only : aucune mise à jour d'un message existant."""
     message = AgentMessage(
@@ -102,12 +104,33 @@ async def ajouter_message(
         tool_calls=tool_calls,
         tool_name=tool_name,
         tool_call_id=tool_call_id,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
     )
     db.add(message)
     session.last_message_at = datetime.now(UTC).replace(tzinfo=None)
     await db.commit()
     await db.refresh(message)
     return message
+
+
+async def usage_session(
+    db: AsyncSession, creator_id: UUID, session_id: UUID
+) -> dict[str, int | None]:
+    """Tokens cumulés de la session : somme sur tous les messages assistant."""
+    await obtenir(db, creator_id, session_id)
+    row = await db.execute(
+        select(
+            func.sum(AgentMessage.prompt_tokens).label("total_prompt"),
+            func.sum(AgentMessage.completion_tokens).label("total_completion"),
+        ).where(AgentMessage.session_id == session_id)
+    )
+    r = row.one()
+    return {
+        "total_prompt_tokens": r.total_prompt or 0,
+        "total_completion_tokens": r.total_completion or 0,
+        "cost_eur": None,
+    }
 
 
 async def historique_pour_modele(

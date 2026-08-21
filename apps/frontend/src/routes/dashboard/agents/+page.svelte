@@ -108,7 +108,7 @@
     if (!editing) return;
     try {
       const res = await agentApi.providers.models(editing);
-      modelesConnus = res.models;
+      modelesConnus = res.models.map((m) => (typeof m === 'string' ? m : m.id));
       if (res.source === 'repli' && res.message) toast.info(res.message);
     } catch (e) {
       toast.danger(e instanceof ApiError ? e.message : 'Impossible de lister les modeles.');

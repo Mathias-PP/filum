@@ -66,10 +66,22 @@ export interface AgentProviderMeta {
   providers: Record<string, ProviderMetaEntry>;
 }
 
+export interface AgentModelMeta {
+  id: string;
+  context_length?: number;
+  pricing?: { prompt: string; completion: string };
+}
+
 export interface AgentProviderModels {
-  models: string[];
+  models: (string | AgentModelMeta)[];
   source: 'provider' | 'repli';
   message?: string;
+}
+
+export interface AgentSessionUsage {
+  total_prompt_tokens: number;
+  total_completion_tokens: number;
+  cost_eur: number | null;
 }
 
 export interface AgentSession {
@@ -118,7 +130,10 @@ export type AgentEvent =
       };
     }
   | { type: 'approval_resolved'; payload: { request_id: string; tool: string; approved: boolean } }
-  | { type: 'done'; payload: { reason: string } }
+  | {
+      type: 'done';
+      payload: { reason: string; usage?: { prompt_tokens: number; completion_tokens: number } };
+    }
   | { type: 'error'; payload: { message: string } };
 
 export interface ChatInput {
@@ -149,6 +164,7 @@ export const agentApi = {
     create: (body: { title?: string; provider_id?: string | null } = {}) =>
       request<AgentSession>('/agent/sessions', { method: 'POST', body: JSON.stringify(body) }),
     messages: (id: string) => request<AgentMessage[]>(`/agent/sessions/${id}/messages`),
+    usage: (id: string) => request<AgentSessionUsage>(`/agent/sessions/${id}/usage`),
     remove: (id: string) => request<void>(`/agent/sessions/${id}`, { method: 'DELETE' }),
   },
 

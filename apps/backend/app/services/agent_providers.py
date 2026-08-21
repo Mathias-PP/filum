@@ -552,15 +552,36 @@ async def lister_modeles(
     except ValueError:
         return {"models": repli, "source": "repli", "message": "Reponse illisible du fournisseur."}
 
-    noms = sorted(
-        {e["id"] for e in entrees if isinstance(e, dict) and isinstance(e.get("id"), str)}
-    )
-    if not noms:
+    valides = [e for e in entrees if isinstance(e, dict) and isinstance(e.get("id"), str)]
+    if not valides:
         return {
             "models": repli,
             "source": "repli",
             "message": "Le fournisseur n'a liste aucun modele.",
         }
-    resultat = {"models": noms, "source": "provider"}
+
+    avec_meta = any(
+        e.get("context_length") is not None or e.get("pricing") is not None for e in valides
+    )
+    if avec_meta:
+        models: list[Any] = sorted(
+            [
+                {
+                    k: v
+                    for k, v in {
+                        "id": e["id"],
+                        "context_length": e.get("context_length"),
+                        "pricing": e.get("pricing"),
+                    }.items()
+                    if v is not None
+                }
+                for e in valides
+            ],
+            key=lambda m: m["id"],
+        )
+    else:
+        models = sorted({e["id"] for e in valides})
+
+    resultat = {"models": models, "source": "provider"}
     _modeles_cache[cle_cache] = (resultat, monotonic() + _MODELES_TTL_SECS)
     return resultat
