@@ -133,7 +133,7 @@ async def chat_agent(
             erreur = {
                 "type": "error",
                 "payload": {
-                    "message": "Aucun provider IA par defaut configure. Definis-en un dans Agent -> Providers."
+                    "message": "Aucun provider IA par défaut configuré. Définis-en un dans Agent -> Providers."
                 },
             }
             return StreamingResponse(
