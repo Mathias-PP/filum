@@ -366,12 +366,33 @@ async def delete_source(source_id: str) -> dict[str, Any]:
 
 @outil()
 async def delete_excerpt(source_id: str, excerpt_id: str) -> dict[str, Any]:
-    """Retire un extrait d'une source (suppression physique). Un extrait n'a
-    pas de citation entrante propre : le retirer n'invalide aucune reference."""
+    """Supprime physiquement un extrait (irreversible). Preferer `update_excerpt` pour corriger."""
     async with _session() as db:
         user = await exiger_utilisateur(db)
         return await tools_write.delete_excerpt(
             db, user, source_id=source_id, excerpt_id=excerpt_id
+        )
+
+
+@outil()
+async def update_excerpt(
+    source_id: str,
+    excerpt_id: str,
+    text: str | None = None,
+    title: str | None = None,
+    context: str | None = None,
+) -> dict[str, Any]:
+    """Corrige le texte, le titre ou le contexte d'un extrait ; modifier le texte annule la verification."""
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.update_excerpt(
+            db,
+            user,
+            source_id=source_id,
+            excerpt_id=excerpt_id,
+            text=text,
+            title=title,
+            context=context,
         )
 
 
@@ -444,8 +465,8 @@ async def remove_connection(card_slug: str, source_id: str) -> dict[str, Any]:
 
 
 @outil()
-async def list_my_cards(status: str | None = None, limit: int = 20) -> list[dict[str, Any]]:
-    """Liste les fiches de l'utilisateur. `status` optionnel: draft|published."""
+async def list_my_cards(status: str | None = None, limit: int = 20) -> dict[str, Any]:
+    """Liste les fiches de l'utilisateur avec total et indicateur de troncature. `status` optionnel: draft|published."""
     async with _session() as db:
         user = await exiger_utilisateur(db)
         return await tools_write.list_my_cards(db, user, status=status, limit=limit)

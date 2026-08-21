@@ -139,6 +139,7 @@ _ECRITURE = (
     "delete_card",
     "delete_source",
     "delete_excerpt",
+    "update_excerpt",
     "suggest_excerpts",
     "annotate_excerpt",
     "parse_biblio",

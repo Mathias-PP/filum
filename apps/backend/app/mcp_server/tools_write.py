@@ -43,12 +43,21 @@ from app.services.wayback import horodatage_wayback
 _EXTRAITS_MAX_PAR_SOURCE = 12
 
 
+_ENUMS_VOISINS: dict[str, list[tuple[str, type[Enum]]]] = {
+    "category": [("content_type", ContentType), ("platform", Platform)],
+    "content_type": [("category", SourceCategory)],
+    "platform": [("category", SourceCategory), ("content_type", ContentType)],
+    "author_kind": [("category", SourceCategory)],
+    "format": [("category", SourceCategory)],
+}
+
+
 def _valeur_enum(champ: str, valeur: str | None, cls: type[Enum]) -> str | None:
     """Valide `valeur` contre l'enum et rend la valeur canonique (None si vide).
 
     Les colonnes `format`/`category`/`author_kind`/`stance` sont des VARCHAR
     libres en base : une valeur hors vocabulaire s'y inscrit sans erreur, puis
-    fait echouer TOUTE relecture de la fiche — `SourceResponse` valide les enums
+    fait echouer TOUTE relecture de la fiche -- `SourceResponse` valide les enums
     a la sortie, et une seule source fautive repond 500 sur la vue publique,
     l'editeur et le graphe. Lecon de la fiche creatine (2026-08-21) : valider a
     l'entree comme `create_card` le fait deja, en rendant a l'agent la liste
@@ -57,11 +66,21 @@ def _valeur_enum(champ: str, valeur: str | None, cls: type[Enum]) -> str | None:
     if valeur is None or valeur == "":
         return None
     try:
-        # Enum.value est typé Any dans les stubs : resserrer avant de rendre.
         canonique = cls(valeur).value
         return canonique if isinstance(canonique, str) else str(canonique)
     except ValueError:
         autorisees = ", ".join(m.value for m in cls)
+        # Verifier si la valeur appartient a un enum voisin pour guider la correction.
+        for champ_voisin, cls_voisine in _ENUMS_VOISINS.get(champ, []):
+            try:
+                cls_voisine(valeur)
+                raise ToolError(
+                    f"{champ}={valeur!r} : cette valeur appartient a {champ_voisin!r}, "
+                    f"pas a {champ!r}. Pour {champ!r}, utilisez : {autorisees}."
+                ) from None
+            except (ValueError, ToolError) as exc:
+                if isinstance(exc, ToolError):
+                    raise
         raise ToolError(
             f"{champ}={valeur!r} : valeur inconnue. Valeurs acceptees : {autorisees}."
         ) from None
@@ -371,7 +390,7 @@ async def set_content_text(
     text: str,
     confirm_publication_rights: bool,
 ) -> dict[str, Any]:
-    """Pose le texte integral du contenu documente sur la fiche `card_slug`.
+    """Ecrase le texte integral de la fiche (sans confirmation, le precedent est perdu).
 
     Le texte est rendu tel quel sur la fiche publique. Un agent qui l'appelle
     a la place de l'utilisateur porte la meme responsabilite que lui : il doit
@@ -574,11 +593,13 @@ async def update_source(
 
 
 async def delete_source(db: AsyncSession, user: User, *, source_id: str) -> dict[str, Any]:
-    """Retire une source de la fiche (soft-delete).
+    """Retire une source de la fiche ; tous ses extraits deviennent invisibles avec elle (soft-delete).
 
     La ligne est conservee en base pour ne pas casser les references
     historiques (citations entrantes, attestations horodatees) : elle
-    disparait juste des vues publiques.
+    disparait juste des vues publiques. Les extraits associes restent
+    en base mais ne s'affichent plus. Preferer `update_source` pour corriger
+    une source ; utiliser `delete_source` uniquement si la reference est hors sujet.
     """
     from datetime import datetime
 
@@ -591,11 +612,12 @@ async def delete_source(db: AsyncSession, user: User, *, source_id: str) -> dict
 async def delete_excerpt(
     db: AsyncSession, user: User, *, source_id: str, excerpt_id: str
 ) -> dict[str, Any]:
-    """Retire un extrait d'une source. Suppression physique.
+    """Supprime physiquement un extrait (irreversible). Preferer `update_excerpt` pour corriger.
 
     Un extrait n'a pas de citation entrante propre : le retirer n'invalide
-    aucune reference externe. Pour retirer TOUS les extraits d'une source,
-    boucler cet appel.
+    aucune reference externe. La suppression est physique (pas de corbeille).
+    Pour corriger le texte, utiliser `update_excerpt` qui remet la verification
+    a zero sans perdre l'historique de la source.
     """
     try:
         eid = UUID(excerpt_id)
@@ -610,6 +632,62 @@ async def delete_excerpt(
     await db.delete(excerpt)
     await db.commit()
     return {"excerpt_id": excerpt_id, "source_id": source_id, "deleted": True}
+
+
+async def update_excerpt(
+    db: AsyncSession,
+    user: User,
+    *,
+    source_id: str,
+    excerpt_id: str,
+    text: str | None = None,
+    title: str | None = None,
+    context: str | None = None,
+) -> dict[str, Any]:
+    """Corrige le texte, le titre ou le contexte d'un extrait ; modifier le texte annule la verification.
+
+    Modifier `text` remet verified_at, verified_text_source et les ancres a zero :
+    le passage verifie n'est plus le meme. Relancer `verify_excerpts` apres
+    modification pour reetablir le verdict. Un champ laisse a None reste inchange.
+    """
+    try:
+        eid = UUID(excerpt_id)
+    except ValueError as exc:
+        raise ToolError(f"Identifiant d'extrait invalide : {excerpt_id!r}.") from exc
+    source = await _source_du_createur(db, user, source_id)
+    excerpt = await db.scalar(
+        select(SourceExcerpt).where(SourceExcerpt.id == eid, SourceExcerpt.source_id == source.id)
+    )
+    if excerpt is None:
+        raise ToolError(f"Aucun extrait {excerpt_id!r} sur la source {source_id!r}.")
+    text_modifie = False
+    if text is not None:
+        corps = text.strip()
+        if not corps:
+            raise ToolError("Un extrait vide ne cite rien.")
+        excerpt.text = corps
+        text_modifie = True
+    if title is not None:
+        excerpt.title = title.strip() or None
+    if context is not None:
+        excerpt.context = context.strip() or None
+    if text_modifie:
+        excerpt.verified_at = None
+        excerpt.verified_status = None
+        excerpt.verified_text_source = None
+        excerpt.anchor_prefix = None
+        excerpt.anchor_suffix = None
+        excerpt.anchor_offset = None
+    await db.commit()
+    await db.refresh(excerpt)
+    return {
+        "id": str(excerpt.id),
+        "source_id": source_id,
+        "text": excerpt.text,
+        "title": excerpt.title,
+        "context": excerpt.context,
+        "verified_status": excerpt.verified_status,
+    }
 
 
 async def verify_excerpts(
@@ -834,27 +912,38 @@ async def remove_connection(
 
 async def list_my_cards(
     db: AsyncSession, user: User, *, status: str | None = None, limit: int = 20
-) -> list[dict[str, Any]]:
-    """Liste les fiches de l'utilisateur.
+) -> dict[str, Any]:
+    """Liste les fiches de l'utilisateur avec indicateur de troncature.
 
     `status` optionnel : `draft` ou `published`. Absent = les deux. `limit`
-    plafonne le nombre d'entrees rendues.
+    plafonne le nombre d'entrees rendues (max 200). Retourne `{cards, total, truncated}` :
+    `total` est le nombre reel de fiches (avant troncature), `truncated` indique
+    si `limit` a coupe la liste -- augmenter `limit` pour tout voir.
     """
-    stmt = select(BiblioCard).where(BiblioCard.user_id == user.id, BiblioCard.deleted_at.is_(None))
+    plafond = max(1, min(limit, 200))
+    stmt_base = select(BiblioCard).where(
+        BiblioCard.user_id == user.id, BiblioCard.deleted_at.is_(None)
+    )
     if status is not None:
-        stmt = stmt.where(BiblioCard.status == status)
-    stmt = stmt.order_by(BiblioCard.updated_at.desc()).limit(max(1, min(limit, 200)))
-    cards = (await db.scalars(stmt)).all()
-    return [
-        {
-            "slug": c.slug,
-            "title": c.title,
-            "status": c.status,
-            "visibility": c.visibility,
-            "published_at": c.published_at.isoformat() if c.published_at else None,
-        }
-        for c in cards
-    ]
+        stmt_base = stmt_base.where(BiblioCard.status == status)
+    total = await db.scalar(
+        select(func.count()).select_from(stmt_base.subquery())
+    )
+    cards = (await db.scalars(stmt_base.order_by(BiblioCard.updated_at.desc()).limit(plafond))).all()
+    return {
+        "cards": [
+            {
+                "slug": c.slug,
+                "title": c.title,
+                "status": c.status,
+                "visibility": c.visibility,
+                "published_at": c.published_at.isoformat() if c.published_at else None,
+            }
+            for c in cards
+        ],
+        "total": total or 0,
+        "truncated": (total or 0) > plafond,
+    }
 
 
 async def list_sources(db: AsyncSession, user: User, *, card_slug: str) -> list[dict[str, Any]]:
@@ -932,7 +1021,12 @@ async def search_my_excerpts(
 
 
 async def delete_card(db: AsyncSession, user: User, *, slug: str) -> dict[str, Any]:
-    """Soft-delete d'une fiche : elle rejoint la corbeille (reversible via `restore_card`)."""
+    """Envoie la fiche et toutes ses sources en corbeille (reversible via `restore_card`).
+
+    La fiche et ses sources disparaissent des vues publiques et de l'editeur.
+    Les extraits et attestations restent en base. Utiliser `restore_card` pour
+    annuler. Irreversible au-dela de la politique de retention (90 jours).
+    """
     from datetime import datetime
 
     card = await _fiche_du_createur(db, user, slug)
