@@ -723,9 +723,7 @@ class TestUsagePersistance:
     async def test_usage_agrege_par_session(self, db_session, test_user):
         """usage_session() renvoie la somme des tokens de tous les messages."""
         session = await agent_sessions.creer(db_session, test_user.id, title="test")
-        await agent_sessions.ajouter_message(
-            db_session, session, role="user", content="hello"
-        )
+        await agent_sessions.ajouter_message(db_session, session, role="user", content="hello")
         await agent_sessions.ajouter_message(
             db_session,
             session,
@@ -757,7 +755,9 @@ class TestUsagePersistance:
             return httpx.Response(
                 200,
                 json={
-                    "choices": [{"message": {"role": "assistant", "content": "ok"}, "finish_reason": "stop"}],
+                    "choices": [
+                        {"message": {"role": "assistant", "content": "ok"}, "finish_reason": "stop"}
+                    ],
                     "usage": {"prompt_tokens": 42, "completion_tokens": 7},
                 },
             )

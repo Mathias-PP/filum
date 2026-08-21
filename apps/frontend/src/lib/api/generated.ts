@@ -175,6 +175,28 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/agent/sessions/{session_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Lire Session */
+    get: operations['lire_session_api_v1_agent_sessions__session_id__get'];
+    put?: never;
+    post?: never;
+    /** Supprimer Session */
+    delete: operations['supprimer_session_api_v1_agent_sessions__session_id__delete'];
+    options?: never;
+    head?: never;
+    /**
+     * Mettre A Jour Session
+     * @description Renomme la conversation et/ou change sa cle provider ou son modele.
+     */
+    patch: operations['mettre_a_jour_session_api_v1_agent_sessions__session_id__patch'];
+    trace?: never;
+  };
   '/api/v1/agent/sessions/{session_id}/messages': {
     parameters: {
       query?: never;
@@ -187,23 +209,6 @@ export interface paths {
     put?: never;
     post?: never;
     delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/v1/agent/sessions/{session_id}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post?: never;
-    /** Supprimer Session */
-    delete: operations['supprimer_session_api_v1_agent_sessions__session_id__delete'];
     options?: never;
     head?: never;
     patch?: never;
@@ -1578,6 +1583,16 @@ export interface components {
        * @description Session à poursuivre. Absente : une session est créée et son id arrive dans l'événement `session`.
        */
       session_id?: string | null;
+      /**
+       * Provider Id
+       * @description Clé provider à utiliser pour ce tour. Null : provider par défaut.
+       */
+      provider_id?: string | null;
+      /**
+       * Model Override
+       * @description Modèle à utiliser à la place de provider.model pour cette session.
+       */
+      model_override?: string | null;
     };
     /**
      * AgentFicheRequest
@@ -1725,6 +1740,8 @@ export interface components {
       title: string;
       /** Provider Id */
       provider_id: string | null;
+      /** Model Override */
+      model_override: string | null;
       /**
        * Created At
        * Format: date-time
@@ -1732,6 +1749,15 @@ export interface components {
       created_at: string;
       /** Last Message At */
       last_message_at: string | null;
+    };
+    /** AgentSessionUpdate */
+    AgentSessionUpdate: {
+      /** Title */
+      title?: string | null;
+      /** Provider Id */
+      provider_id?: string | null;
+      /** Model Override */
+      model_override?: string | null;
     };
     /** AgentSessionUsage */
     AgentSessionUsage: {
@@ -3710,7 +3736,7 @@ export interface operations {
       };
     };
   };
-  lister_messages_api_v1_agent_sessions__session_id__messages_get: {
+  lire_session_api_v1_agent_sessions__session_id__get: {
     parameters: {
       query?: never;
       header?: never;
@@ -3727,7 +3753,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['AgentMessageRead'][];
+          'application/json': components['schemas']['AgentSessionRead'];
         };
       };
       /** @description Validation Error */
@@ -3758,6 +3784,72 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  mettre_a_jour_session_api_v1_agent_sessions__session_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        session_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AgentSessionUpdate'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AgentSessionRead'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  lister_messages_api_v1_agent_sessions__session_id__messages_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        session_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AgentMessageRead'][];
+        };
       };
       /** @description Validation Error */
       422: {

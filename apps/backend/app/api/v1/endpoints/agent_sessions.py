@@ -23,6 +23,7 @@ from app.schemas.agent_chat import (
     AgentMessageRead,
     AgentSessionCreate,
     AgentSessionRead,
+    AgentSessionUpdate,
     AgentSessionUsage,
 )
 from app.services import agent_approvals, agent_sessions
@@ -51,6 +52,47 @@ async def creer_session(
     return await agent_sessions.creer(
         db, current_user.id, title=body.title, provider_id=body.provider_id
     )
+
+
+@router.get("/sessions/{session_id}", response_model=AgentSessionRead)
+async def lire_session(
+    session_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        return await agent_sessions.obtenir(db, current_user.id, session_id)
+    except agent_sessions.AgentSessionNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "session_not_found", "message": str(exc)},
+        ) from exc
+
+
+@router.patch("/sessions/{session_id}", response_model=AgentSessionRead)
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+async def mettre_a_jour_session(
+    session_id: UUID,
+    request: Request,
+    body: AgentSessionUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Renomme la conversation et/ou change sa cle provider ou son modele."""
+    try:
+        return await agent_sessions.mettre_a_jour(
+            db,
+            current_user.id,
+            session_id,
+            title=body.title,
+            provider_id=body.provider_id,
+            model_override=body.model_override,
+        )
+    except agent_sessions.AgentSessionNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "session_not_found", "message": str(exc)},
+        ) from exc
 
 
 @router.get("/sessions/{session_id}/messages", response_model=list[AgentMessageRead])

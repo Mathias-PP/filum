@@ -422,6 +422,7 @@ async def _appel_provider(
     transport: httpx.AsyncBaseTransport | None,
     *,
     on_delta: Callable[[str], Awaitable[None]] | None = None,
+    modele: str | None = None,
 ) -> tuple[dict[str, Any], str | None, dict[str, Any]] | str:
     """Un tour. Rend ``(message, finish_reason, usage)`` ou une chaîne d'erreur.
 
@@ -434,7 +435,11 @@ async def _appel_provider(
     key = _decrypt(provider.api_key_enc)
     url, headers = url_et_headers(provider.provider, provider.base_url, key)
     payload = format_chat_payload(
-        provider.provider, provider.model, _nettoyer_messages(messages), outils_api, MAX_TURN_TOKENS
+        provider.provider,
+        modele or provider.model,
+        _nettoyer_messages(messages),
+        outils_api,
+        MAX_TURN_TOKENS,
     )
     try:
         async with httpx.AsyncClient(timeout=_TIMEOUT, transport=transport) as client:  # noqa: SIM117
@@ -604,6 +609,7 @@ async def boucle(
     *,
     transport: httpx.AsyncBaseTransport | None = None,
     registre: dict[str, AgentTool] | None = None,
+    modele: str | None = None,
 ) -> None:
     """Exécute la boucle jusqu'à ``done`` ou à la borne dure.
 
@@ -623,7 +629,7 @@ async def boucle(
                 await emit({"type": "message_delta", "payload": {"delta": content, "tour": _t}})
 
             reponse = await _appel_provider(
-                provider, messages, outils_api, transport, on_delta=_on_delta
+                provider, messages, outils_api, transport, on_delta=_on_delta, modele=modele
             )
             if isinstance(reponse, str):
                 await emit({"type": "error", "payload": {"message": reponse}})

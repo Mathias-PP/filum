@@ -44,7 +44,7 @@ from app.services.agent_discovery import (
     resoudre_provider_decouverte,
     verifier_quota,
 )
-from app.services.agent_providers import resoudre_defaut
+from app.services.agent_providers import obtenir_pour_chat, resoudre_defaut
 
 settings = get_settings()
 
@@ -102,7 +102,17 @@ async def chat_agent(
         # pourrait avoir été retouché en route.
         messages = await agent_sessions.historique_pour_modele(db, current_user.id, session.id)
 
-    provider = await resoudre_defaut(db, current_user.id)
+    # Provider explicite du corps de la requete, sinon provider par defaut.
+    provider = None
+    if body.provider_id:
+        provider = await obtenir_pour_chat(db, current_user.id, body.provider_id)
+        if provider is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"code": "provider_not_found", "message": "Cle provider introuvable."},
+            )
+    if provider is None:
+        provider = await resoudre_defaut(db, current_user.id)
     mode_decouverte = False
     remaining_today: int | None = None
     if provider is None:
@@ -178,6 +188,7 @@ async def chat_agent(
                     emit,
                     approuver,
                     transport=transport,
+                    modele=body.model_override or session.model_override or None,
                 )
             finally:
                 await queue.put(None)

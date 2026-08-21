@@ -1,4 +1,5 @@
 """Tests du mode decouverte : quota, consommation, resolution du provider."""
+
 from __future__ import annotations
 
 import uuid

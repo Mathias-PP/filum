@@ -10,6 +10,7 @@
   let providers = $state<AgentProvider[]>([]);
   let confirmOpen = $state(false);
   let cible = $state<AgentSession | null>(null);
+  let titreNouveau = $state('');
 
   const defaut = $derived(providers.find((p) => p.is_default) ?? null);
 
@@ -45,7 +46,7 @@
       <h2 class="text-xs font-medium uppercase tracking-wider text-ink-tertiary">Conversations</h2>
       <div class="flex gap-1">
         <Button size="sm" variant="ghost" href="/dashboard/chat">Nouvelle</Button>
-        <Button size="sm" variant="ghost" href="/dashboard/agents">Providers</Button>
+        <Button size="sm" variant="ghost" href="/dashboard/agents">Cles</Button>
       </div>
     </div>
     {#if sessions.length === 0}
@@ -85,7 +86,18 @@
         clé, votre facture.
         <a href="/dashboard/agents" class="text-accent hover:underline">Changer</a>
       </p>
-      <ChatPanel onsession={(id) => goto(`/dashboard/chat/${id}`, { replaceState: true })} />
+      <div class="mb-3">
+        <input
+          bind:value={titreNouveau}
+          class="w-full rounded border border-subtle bg-surface-primary px-3 py-2 text-sm"
+          maxlength="200"
+          placeholder="Nommer la conversation (optionnel)"
+        />
+      </div>
+      <ChatPanel
+        titreInitial={titreNouveau}
+        onsession={(id) => goto(`/dashboard/chat/${id}`, { replaceState: true })}
+      />
     {:else if providers.length === 0}
       <div class="rounded-lg border border-subtle bg-surface-secondary px-4 py-5 text-sm">
         <p class="text-ink-primary font-medium mb-1">Aucune clé enregistrée.</p>

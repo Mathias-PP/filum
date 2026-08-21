@@ -40,6 +40,15 @@ class AgentChatRequest(BaseModel):
         description="Session à poursuivre. Absente : une session est créée et son id "
         "arrive dans l'événement `session`.",
     )
+    provider_id: UUID | None = Field(
+        default=None,
+        description="Clé provider à utiliser pour ce tour. Null : provider par défaut.",
+    )
+    model_override: str | None = Field(
+        default=None,
+        max_length=120,
+        description="Modèle à utiliser à la place de provider.model pour cette session.",
+    )
 
     @field_validator("message")
     @classmethod
@@ -57,12 +66,21 @@ class AgentSessionCreate(BaseModel):
     provider_id: UUID | None = None
 
 
+class AgentSessionUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str | None = Field(default=None, min_length=0, max_length=200)
+    provider_id: UUID | None = None
+    model_override: str | None = Field(default=None, max_length=120)
+
+
 class AgentSessionRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     title: str
     provider_id: UUID | None
+    model_override: str | None
     created_at: datetime
     last_message_at: datetime | None
 

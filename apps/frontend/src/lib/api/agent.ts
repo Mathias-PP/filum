@@ -89,6 +89,7 @@ export interface AgentSession {
   id: string;
   title: string;
   provider_id: string | null;
+  model_override: string | null;
   created_at: string;
   last_message_at: string | null;
 }
@@ -148,6 +149,8 @@ export type AgentEvent =
 export interface ChatInput {
   message: string;
   session_id?: string;
+  provider_id?: string;
+  model_override?: string;
   signal?: AbortSignal;
 }
 
@@ -172,8 +175,17 @@ export const agentApi = {
     list: () => request<AgentSession[]>('/agent/sessions'),
     create: (body: { title?: string; provider_id?: string | null } = {}) =>
       request<AgentSession>('/agent/sessions', { method: 'POST', body: JSON.stringify(body) }),
+    get: (id: string) => request<AgentSession>(`/agent/sessions/${id}`),
     messages: (id: string) => request<AgentMessage[]>(`/agent/sessions/${id}/messages`),
     usage: (id: string) => request<AgentSessionUsage>(`/agent/sessions/${id}/usage`),
+    update: (
+      id: string,
+      body: { title?: string; provider_id?: string | null; model_override?: string | null }
+    ) =>
+      request<AgentSession>(`/agent/sessions/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      }),
     remove: (id: string) => request<void>(`/agent/sessions/${id}`, { method: 'DELETE' }),
   },
 
@@ -187,12 +199,22 @@ export const agentApi = {
   streamChat,
 };
 
-async function* streamChat({ message, session_id, signal }: ChatInput): AsyncGenerator<AgentEvent> {
+async function* streamChat({
+  message,
+  session_id,
+  provider_id,
+  model_override,
+  signal,
+}: ChatInput): AsyncGenerator<AgentEvent> {
+  const body: Record<string, unknown> = { message };
+  if (session_id) body.session_id = session_id;
+  if (provider_id) body.provider_id = provider_id;
+  if (model_override) body.model_override = model_override;
   const response = await fetch(`${API_BASE}/agent/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
-    body: JSON.stringify(session_id ? { message, session_id } : { message }),
+    body: JSON.stringify(body),
     signal,
   });
 

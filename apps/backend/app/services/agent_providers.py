@@ -302,6 +302,19 @@ async def supprimer(
     _invalider_cache_modeles(provider_id)
 
 
+async def obtenir_pour_chat(
+    db: AsyncSession, creator_id: UUID, provider_id: UUID
+) -> AgentProvider | None:
+    """Un provider specifique, verifie qu'il appartient au createur."""
+    result = await db.execute(
+        select(AgentProvider).where(
+            AgentProvider.id == provider_id,
+            AgentProvider.creator_id == creator_id,
+        )
+    )
+    return result.scalar_one_or_none()
+
+
 async def resoudre_defaut(
     db: AsyncSession,
     creator_id: UUID,
