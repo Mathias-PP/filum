@@ -15,6 +15,7 @@ detail complet gaspille sa fenetre de tokens.
 
 from __future__ import annotations
 
+from enum import Enum
 from typing import Any
 from uuid import UUID
 
@@ -25,7 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.biblio_card import BiblioCard, CardStatus
-from app.models.source import Source
+from app.models.source import AuthorKind, Source, SourceCategory, SourceFormat, SourceStance
 from app.models.source_excerpt import SourceExcerpt
 from app.models.user import User
 from app.schemas.biblio_card import CardCreate, ContentType, Platform, Visibility
@@ -39,6 +40,28 @@ from app.services.wayback import horodatage_wayback
 # Meme limite que l'endpoint REST : au dela, l'agent noie sa fenetre et le
 # lecteur perd de vue le fil du passage.
 _EXTRAITS_MAX_PAR_SOURCE = 12
+
+
+def _valeur_enum(champ: str, valeur: str | None, cls: type[Enum]) -> str | None:
+    """Valide `valeur` contre l'enum et rend la valeur canonique (None si vide).
+
+    Les colonnes `format`/`category`/`author_kind`/`stance` sont des VARCHAR
+    libres en base : une valeur hors vocabulaire s'y inscrit sans erreur, puis
+    fait echouer TOUTE relecture de la fiche — `SourceResponse` valide les enums
+    a la sortie, et une seule source fautive repond 500 sur la vue publique,
+    l'editeur et le graphe. Lecon de la fiche creatine (2026-08-21) : valider a
+    l'entree comme `create_card` le fait deja, en rendant a l'agent la liste
+    exacte de ce qui est acceptable pour qu'il corrige seul.
+    """
+    if valeur is None or valeur == "":
+        return None
+    try:
+        return cls(valeur).value
+    except ValueError:
+        autorisees = ", ".join(m.value for m in cls)
+        raise ToolError(
+            f"{champ}={valeur!r} : valeur inconnue. Valeurs acceptees : {autorisees}."
+        ) from None
 
 
 async def _fiche_du_createur(db: AsyncSession, user: User, slug: str) -> BiblioCard:
@@ -181,6 +204,16 @@ async def add_source(
     )
     manual_archive = (archive_url or "").strip() or None
 
+    # Validation enum avant ecriture (cf. _valeur_enum) : refuser ici plutot
+    # que de rendre la fiche entiere illisible a la prochaine lecture.
+    fmt = _valeur_enum("format", format, SourceFormat) or SourceFormat.TEXTE.value
+    categorie = (
+        _valeur_enum("category", category, SourceCategory)
+        or SourceCategory.ARTICLE_SCIENTIFIQUE.value
+    )
+    nature_auteur = _valeur_enum("author_kind", author_kind, AuthorKind) or AuthorKind.CHERCHEUR.value
+    position_declaree = _valeur_enum("stance", stance, SourceStance)
+
     try:
         linked_card_id = await effective_linked_card_id(
             db,
@@ -199,10 +232,10 @@ async def add_source(
         url=url,
         title=title,
         authors=authors,
-        format=format,
-        category=category,
-        author_kind=author_kind,
-        stance=stance,
+        format=fmt,
+        category=categorie,
+        author_kind=nature_auteur,
+        stance=position_declaree,
         annotation=annotation,
         journal=journal,
         doi=doi,
@@ -463,15 +496,20 @@ async def update_source(
     if journal is not None:
         source.journal = journal or None
     if category is not None:
-        source.category = category
+        source.category = (
+            _valeur_enum("category", category, SourceCategory)
+            or SourceCategory.ARTICLE_SCIENTIFIQUE.value
+        )
     if author_kind is not None:
-        source.author_kind = author_kind
+        source.author_kind = (
+            _valeur_enum("author_kind", author_kind, AuthorKind) or AuthorKind.CHERCHEUR.value
+        )
     if format is not None:
-        source.format = format
+        source.format = _valeur_enum("format", format, SourceFormat) or SourceFormat.TEXTE.value
     if stance is not None:
         # Chaine vide = retire la position declaree, revient au silence
         # explicite.
-        source.stance = stance or None
+        source.stance = _valeur_enum("stance", stance, SourceStance)
     if annotation is not None:
         source.annotation = annotation or None
     if is_pivot is not None:
@@ -1301,6 +1339,23 @@ async def add_sources_batch(
             failed.append({"index": i, "url": url, "reason": str(exc)})
             continue
 
+        # Meme validation enum que `add_source` : une entree fautive est
+        # rejetee dans `failed`, le lot continue sans elle.
+        try:
+            fmt = _valeur_enum("format", sd.get("format"), SourceFormat) or SourceFormat.TEXTE.value
+            categorie = (
+                _valeur_enum("category", sd.get("category"), SourceCategory)
+                or SourceCategory.ARTICLE_SCIENTIFIQUE.value
+            )
+            nature_auteur = (
+                _valeur_enum("author_kind", sd.get("author_kind"), AuthorKind)
+                or AuthorKind.CHERCHEUR.value
+            )
+            position_declaree = _valeur_enum("stance", sd.get("stance"), SourceStance)
+        except ToolError as exc:
+            failed.append({"index": i, "url": url, "reason": str(exc)})
+            continue
+
         manual_archive = (sd.get("archive_url") or "").strip() or None
         source = Source(
             biblio_card_id=card.id,
@@ -1308,10 +1363,10 @@ async def add_sources_batch(
             url=url,
             title=sd.get("title"),
             authors=sd.get("authors"),
-            format=sd.get("format", "texte"),
-            category=sd.get("category", "article-scientifique"),
-            author_kind=sd.get("author_kind", "chercheur"),
-            stance=sd.get("stance"),
+            format=fmt,
+            category=categorie,
+            author_kind=nature_auteur,
+            stance=position_declaree,
             annotation=sd.get("annotation"),
             journal=sd.get("journal"),
             doi=doi,
