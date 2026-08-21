@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import JSON, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -70,6 +70,8 @@ class AgentMessage(Base):
     # rétrocompat des lignes anciennes (leur session ne pourra pas etre reprise
     # sur Gemini mais aucun autre defaut).
     tool_call_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    prompt_tokens: Mapped[int | None] = mapped_column(Integer(), nullable=True)
+    completion_tokens: Mapped[int | None] = mapped_column(Integer(), nullable=True)
     # Horodaté côté Python : `now()` de la base est figé sur la transaction, et
     # sa précision dépend du moteur. Or `created_at` sert à réordonner le
     # journal, où deux messages du même tour ne doivent jamais être ex aequo.

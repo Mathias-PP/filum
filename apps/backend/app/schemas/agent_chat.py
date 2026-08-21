@@ -101,3 +101,9 @@ class AgentApprovalDecision(BaseModel):
 
     request_id: str = Field(min_length=1, max_length=64)
     approved: bool
+
+
+class AgentSessionUsage(BaseModel):
+    total_prompt_tokens: int
+    total_completion_tokens: int
+    cost_eur: float | None = None

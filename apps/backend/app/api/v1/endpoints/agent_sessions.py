@@ -23,6 +23,7 @@ from app.schemas.agent_chat import (
     AgentMessageRead,
     AgentSessionCreate,
     AgentSessionRead,
+    AgentSessionUsage,
 )
 from app.services import agent_approvals, agent_sessions
 
@@ -80,6 +81,22 @@ async def supprimer_session(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"code": "session_not_found", "message": str(exc)},
         ) from exc
+
+
+@router.get("/sessions/{session_id}/usage", response_model=AgentSessionUsage)
+async def usage_session(
+    session_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        data = await agent_sessions.usage_session(db, current_user.id, session_id)
+    except agent_sessions.AgentSessionNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "session_not_found", "message": str(exc)},
+        ) from exc
+    return AgentSessionUsage(**data)
 
 
 @router.post("/approve", status_code=status.HTTP_204_NO_CONTENT)

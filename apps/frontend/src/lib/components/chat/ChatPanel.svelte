@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { agentApi } from '$lib/api/agent';
+  import { agentApi, type AgentSessionUsage } from '$lib/api/agent';
   import { ApiError } from '$lib/api';
   import { appliquer, depuisMessages, type ChatItem } from '$lib/agent/conversation';
   import Button from '../Button.svelte';
@@ -23,6 +23,7 @@
   let enCours = $state(false);
   let chargement = $state(Boolean(sessionId));
   let controleur: AbortController | null = null;
+  let usage = $state<AgentSessionUsage | null>(null);
 
   onMount(async () => {
     if (!sessionId) return;
@@ -68,6 +69,12 @@
     } finally {
       enCours = false;
       controleur = null;
+      if (sessionId) {
+        agentApi.sessions
+          .usage(sessionId)
+          .then((u) => (usage = u))
+          .catch(() => null);
+      }
     }
   }
 
@@ -122,6 +129,14 @@
       {/if}
     {/each}
   </div>
+
+  {#if usage && (usage.total_prompt_tokens > 0 || usage.total_completion_tokens > 0)}
+    <p class="py-1 text-right text-xs text-ink-tertiary">
+      {(usage.total_prompt_tokens / 1000).toFixed(1)}k prompt · {(
+        usage.total_completion_tokens / 1000
+      ).toFixed(1)}k completion{usage.cost_eur != null ? ` · ~${usage.cost_eur.toFixed(2)} €` : ''}
+    </p>
+  {/if}
 
   <form class="flex gap-2 border-t border-subtle pt-3" onsubmit={envoyer}>
     <input

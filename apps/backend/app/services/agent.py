@@ -572,6 +572,7 @@ async def boucle(
     registre = registre or construire_registre()
     outils_api = registre_api(registre)
     messages.insert(0, {"role": "system", "content": _SYSTEME})
+    usage_total: dict[str, int] = {"prompt_tokens": 0, "completion_tokens": 0}
     try:
         for tour in range(1, MAX_TOURS + 1):
 
@@ -585,13 +586,18 @@ async def boucle(
                 await emit({"type": "error", "payload": {"message": reponse}})
                 return
             message, finish_reason, usage = reponse
+            if isinstance(usage, dict):
+                usage_total["prompt_tokens"] += usage.get("prompt_tokens") or 0
+                usage_total["completion_tokens"] += usage.get("completion_tokens") or 0
             tool_calls = message.get("tool_calls") or []
             if not tool_calls:
                 texte = _texte_message(message)
                 if texte:
                     # Texte émis en temps réel via on_delta (streaming) ou en
                     # bloc dans _appel_provider (repli bloquant). Pas de re-emit ici.
-                    await emit({"type": "done", "payload": {"reason": "complete"}})
+                    await emit(
+                        {"type": "done", "payload": {"reason": "complete", "usage": usage_total}}
+                    )
                     return
                 # Contenu vide sans tool_call : silence interdit. Le modele n'a
                 # rien produit d'exploitable ; on remonte le finish_reason et

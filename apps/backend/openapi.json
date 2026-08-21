@@ -541,6 +541,49 @@
         }
       }
     },
+    "/api/v1/agent/sessions/{session_id}/usage": {
+      "get": {
+        "tags": [
+          "agent-sessions"
+        ],
+        "summary": "Usage Session",
+        "operationId": "usage_session_api_v1_agent_sessions__session_id__usage_get",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentSessionUsage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/agent/approve": {
       "post": {
         "tags": [
@@ -4489,6 +4532,35 @@
           "last_message_at"
         ],
         "title": "AgentSessionRead"
+      },
+      "AgentSessionUsage": {
+        "properties": {
+          "total_prompt_tokens": {
+            "type": "integer",
+            "title": "Total Prompt Tokens"
+          },
+          "total_completion_tokens": {
+            "type": "integer",
+            "title": "Total Completion Tokens"
+          },
+          "cost_eur": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Eur"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_prompt_tokens",
+          "total_completion_tokens"
+        ],
+        "title": "AgentSessionUsage"
       },
       "AnnotationRequest": {
         "properties": {

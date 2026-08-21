@@ -14,6 +14,7 @@ from app.core.config import get_settings
 from app.crypto.keygen import KeyManager
 from app.models.agent_provider import AgentProvider
 from app.services import agent as agent_svc
+from app.services import agent_sessions
 
 
 def _provider(db_session, test_user, *, base_url="https://api.openai.com") -> AgentProvider:
@@ -646,3 +647,82 @@ class TestBoucle:
 
 async def _refuse(request_id: str, tool: str, args: dict) -> bool:
     return False
+
+
+@pytest.mark.asyncio
+class TestUsagePersistance:
+    async def test_ajouter_message_persiste_usage(self, db_session, test_user):
+        """ajouter_message() persiste prompt_tokens et completion_tokens."""
+        session = await agent_sessions.creer(db_session, test_user.id, title="test")
+        await agent_sessions.ajouter_message(
+            db_session,
+            session,
+            role="assistant",
+            content="pong",
+            prompt_tokens=10,
+            completion_tokens=5,
+        )
+
+        msgs = await agent_sessions.messages(db_session, test_user.id, session.id)
+        msg = msgs[0]
+        assert msg.prompt_tokens == 10
+        assert msg.completion_tokens == 5
+
+    async def test_usage_agrege_par_session(self, db_session, test_user):
+        """usage_session() renvoie la somme des tokens de tous les messages."""
+        session = await agent_sessions.creer(db_session, test_user.id, title="test")
+        await agent_sessions.ajouter_message(
+            db_session, session, role="user", content="hello"
+        )
+        await agent_sessions.ajouter_message(
+            db_session,
+            session,
+            role="assistant",
+            content="tour 1",
+            prompt_tokens=100,
+            completion_tokens=20,
+        )
+        await agent_sessions.ajouter_message(
+            db_session,
+            session,
+            role="assistant",
+            content="tour 2",
+            prompt_tokens=120,
+            completion_tokens=30,
+        )
+
+        usage = await agent_sessions.usage_session(db_session, test_user.id, session.id)
+        assert usage["total_prompt_tokens"] == 220
+        assert usage["total_completion_tokens"] == 50
+        assert usage["cost_eur"] is None
+
+    async def test_done_event_inclut_usage(self, db_session, test_user):
+        """boucle() inclut usage dans l'evenement done."""
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                json={
+                    "choices": [{"message": {"role": "assistant", "content": "ok"}, "finish_reason": "stop"}],
+                    "usage": {"prompt_tokens": 42, "completion_tokens": 7},
+                },
+            )
+
+        events = await _collect(
+            db_session,
+            test_user,
+            provider,
+            [{"role": "user", "content": "hello"}],
+            _refuse,
+            httpx.MockTransport(handler),
+            _registre_fake([]),
+        )
+
+        done_events = [e for e in events if e["type"] == "done"]
+        assert len(done_events) == 1
+        u = done_events[0]["payload"].get("usage")
+        assert isinstance(u, dict)
+        assert u["prompt_tokens"] == 42
+        assert u["completion_tokens"] == 7

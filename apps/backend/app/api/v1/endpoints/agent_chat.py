@@ -118,10 +118,15 @@ async def chat_agent(
     async def gen():
         queue: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
         reponse_finale: list[str] = []
+        usage_capture: list[dict[str, Any]] = []
 
         async def emit(event: dict[str, Any]) -> None:
             if event.get("type") == "message_delta":
                 reponse_finale.append(event["payload"]["delta"])
+            if event.get("type") == "done":
+                u = (event.get("payload") or {}).get("usage")
+                if isinstance(u, dict):
+                    usage_capture.append(u)
             await queue.put(event)
 
         async def runner() -> None:
@@ -150,7 +155,8 @@ async def chat_agent(
                     break
                 yield _sse(event)
             await task
-            await _persister_tour(db, session, messages[depart:], "".join(reponse_finale))
+            usage = usage_capture[0] if usage_capture else {}
+            await _persister_tour(db, session, messages[depart:], "".join(reponse_finale), usage)
         finally:
             task.cancel()
 
@@ -166,11 +172,12 @@ async def _persister_tour(
     session,
     ajouts: list[dict[str, Any]],
     reponse_finale: str,
+    usage: dict[str, Any] | None = None,
 ) -> None:
-    """Écrit le tour en base, append-only, dans l'ordre où il s'est produit.
+    """Ecrit le tour en base, append-only, dans l'ordre ou il s'est produit.
 
-    La réponse textuelle finale n'est pas dans ``messages`` : la boucle
-    l'émet en ``message_delta`` sans la rajouter à l'historique. On la
+    La reponse textuelle finale n'est pas dans ``messages`` : la boucle
+    l'emet en ``message_delta`` sans la rajouter a l'historique. On la
     recompose ici pour que le tour suivant la voie.
     """
     for message in ajouts:
@@ -192,4 +199,18 @@ async def _persister_tour(
                 tool_calls=message.get("tool_calls"),
             )
     if reponse_finale:
-        await agent_sessions.ajouter_message(db, session, role="assistant", content=reponse_finale)
+        prompt_tokens: int | None = None
+        completion_tokens: int | None = None
+        if isinstance(usage, dict):
+            v = usage.get("prompt_tokens")
+            prompt_tokens = v if isinstance(v, int) and v > 0 else None
+            v = usage.get("completion_tokens")
+            completion_tokens = v if isinstance(v, int) and v > 0 else None
+        await agent_sessions.ajouter_message(
+            db,
+            session,
+            role="assistant",
+            content=reponse_finale,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+        )
