@@ -55,6 +55,56 @@
   );
   const empreinte = $derived(`${items.length}-${derniereAssistantLongueur}`);
 
+  // Amorces cliquables affichees dans l'EmptyState. Trois questions qui
+  // couvrent les trois flux principaux (creation, verification, decouverte)
+  // pour aider l'utilisateur qui ne sait pas quoi taper.
+  const AMORCES = [
+    'Crée une fiche pour cette vidéo YouTube :',
+    'Vérifie les extraits de ma dernière source',
+    "Trouve des sources sur l'effet Warburg",
+  ];
+
+  // Regroupe les appels d'outils consecutifs de meme nom pour eviter d'avoir
+  // 10 cartes « Lit la source #a1b2c3d4 » qui empilent le meme verbe. Le nom
+  // « Lit la source » figure une fois, les entrees s'empilent en dessous.
+  type Affichable =
+    | Extract<ChatItem, { kind: 'user' | 'assistant' | 'approval' | 'error' }>
+    | {
+        kind: 'group-outils';
+        name: string;
+        entrees: Extract<ChatItem, { kind: 'tool' }>[];
+      };
+
+  const affichables = $derived.by<Affichable[]>(() => {
+    const rendu: Affichable[] = [];
+    for (const item of items) {
+      if (item.kind === 'tool') {
+        const dernier = rendu[rendu.length - 1];
+        if (dernier?.kind === 'group-outils' && dernier.name === item.name) {
+          dernier.entrees.push(item);
+          continue;
+        }
+        rendu.push({ kind: 'group-outils', name: item.name, entrees: [item] });
+        continue;
+      }
+      rendu.push(item);
+    }
+    return rendu;
+  });
+
+  // Curseur clignotant : montre que le modele reflechit *avant* que le
+  // premier token n'arrive. Sans ca, l'utilisateur ne sait pas si le message
+  // a bien ete envoye pendant les 5-10 s de latence typiques d'un chat LLM.
+  const attentePremierToken = $derived(
+    enCours && (items.length === 0 || items[items.length - 1].kind === 'user')
+  );
+
+  // Modele effectif affiche a cote de l'usage : override de session > modele
+  // du provider actif.
+  const modeleEffectif = $derived(
+    modeleChoisi || cles.find((c) => c.id === cleChoisie)?.model || ''
+  );
+
   $effect(() => {
     void empreinte; // lire la derivee pour que l'effet se rejoue
     if (auBas && fil) {
@@ -347,29 +397,60 @@
     {/if}
   {/if}
 
-  <!-- Fil de conversation -->
-  <div bind:this={fil} class="flex-1 space-y-3 overflow-y-auto px-1 py-2" onscroll={surDefilement}>
+  <!-- Fil de conversation : un seul fil vertical, pas de bulles. Les tours
+       utilisateur sont marques par une barre laterale plutot qu'une bulle
+       flottante (standard 2026 : ChatGPT, Claude, Cursor). -->
+  <div bind:this={fil} class="flex-1 space-y-4 overflow-y-auto px-1 py-2" onscroll={surDefilement}>
     {#if chargement}
       <p class="text-sm text-ink-tertiary">Chargement de la conversation...</p>
     {:else if items.length === 0}
-      <p class="text-sm text-ink-tertiary">
-        Demandez une fiche, une source a verifier, un extrait a relire.
-      </p>
+      <div class="mt-6 space-y-3">
+        <p class="text-sm text-ink-secondary">
+          Que doit faire l'agent ? Cliquez une amorce ou tapez la vôtre.
+        </p>
+        <ul class="space-y-1.5">
+          {#each AMORCES as amorce (amorce)}
+            <li>
+              <button
+                type="button"
+                class="w-full rounded border border-subtle bg-surface-secondary px-3 py-2 text-left text-sm text-ink-primary hover:border-accent hover:bg-surface-tertiary"
+                onclick={() => {
+                  saisie = amorce;
+                }}
+              >
+                {amorce}
+              </button>
+            </li>
+          {/each}
+        </ul>
+      </div>
     {/if}
 
-    {#each items as item, i (i)}
+    {#each affichables as item, i (i)}
       {#if item.kind === 'user'}
-        <div
-          class="ml-auto max-w-[85%] rounded-lg bg-surface-tertiary px-3 py-2 text-sm text-ink-primary"
-        >
+        <div class="border-l-2 border-accent pl-3 text-sm text-ink-primary">
           {item.text}
         </div>
       {:else if item.kind === 'assistant'}
-        <div class="max-w-[85%]">
+        <div class="text-sm">
           <AgentMarkdown texte={item.text} />
         </div>
-      {:else if item.kind === 'tool'}
-        <ToolCard name={item.name} args={item.args} result={item.result} />
+      {:else if item.kind === 'group-outils'}
+        {#if item.entrees.length === 1}
+          {@const seule = item.entrees[0]}
+          <ToolCard name={seule.name} args={seule.args} result={seule.result} />
+        {:else}
+          <!-- N cartes consecutives de meme outil : un en-tete compte les
+               appels, chaque carte reste consultable en dessous. -->
+          <div class="space-y-1 rounded-lg border border-subtle bg-surface-secondary/40 p-1.5">
+            <p class="px-1 text-xs text-ink-tertiary">
+              {item.entrees.length}× {item.name}
+            </p>
+            {#each item.entrees as tc (tc.id)}
+              <ToolCard name={tc.name} args={tc.args} result={tc.result} />
+            {/each}
+          </div>
+        {/if}
       {:else if item.kind === 'approval'}
         <ApprovalCard
           tool={item.tool}
@@ -385,10 +466,18 @@
       {/if}
     {/each}
 
+    {#if attentePremierToken}
+      <!-- Curseur clignotant : le message est parti, le modele n'a pas
+           encore repondu. Sans ce signal, l'utilisateur ne sait pas si
+           l'envoi a echoue ou si l'agent reflechit. -->
+      <div class="flex items-center gap-2 text-sm text-ink-secondary">
+        <span class="curseur-clignotant inline-block h-4 w-[2px] bg-ink-primary"></span>
+      </div>
+    {/if}
+
     {#if enCours}
-      <!-- Signal visuel : le logo Philum en noir & blanc tourne tant que le
-           modèle réfléchit ou qu'un outil s'exécute. Rassure sur le fait que
-           quelque chose se passe, même si aucun token n'est encore arrivé. -->
+      <!-- Logo Philum anime : rassure sur le travail en cours meme apres le
+           premier token (recherche web, appel d'outil, etc.). -->
       <div class="flex items-center gap-2 text-xs text-ink-tertiary">
         <LogoLoader size={20} />
         <span>Philum réfléchit…</span>
@@ -412,6 +501,9 @@
 
   {#if usage && (usage.total_prompt_tokens > 0 || usage.total_completion_tokens > 0)}
     <p class="py-1 text-right text-xs text-ink-tertiary">
+      {#if modeleEffectif}
+        <span class="font-mono">{modeleEffectif}</span> ·
+      {/if}
       {(usage.total_prompt_tokens / 1000).toFixed(1)}k prompt · {(
         usage.total_completion_tokens / 1000
       ).toFixed(1)}k completion{usage.cost_eur != null
@@ -462,3 +554,20 @@
     {/if}
   </form>
 </div>
+
+<style>
+  .curseur-clignotant {
+    animation: clignoter 1s steps(2, start) infinite;
+  }
+  @keyframes clignoter {
+    to {
+      visibility: hidden;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .curseur-clignotant {
+      animation: none;
+      opacity: 0.6;
+    }
+  }
+</style>
