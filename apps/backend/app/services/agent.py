@@ -530,7 +530,10 @@ async def _traiter_reponse_flux(
 _CHAMPS_MESSAGE_STANDARDS = ("role", "content", "tool_calls", "tool_call_id", "name")
 
 
-def _nettoyer_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _nettoyer_messages(
+    messages: list[dict[str, Any]],
+    noms_outils_valides: set[str] | None = None,
+) -> list[dict[str, Any]]:
     """Ne renvoie au provider que le contrat OpenAI commun.
 
     Gemini signe ses tool_calls d'un ``extra_content.google.thought_signature``
@@ -540,8 +543,18 @@ def _nettoyer_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     suivant. Une session ouverte avec un provider doit pouvoir continuer sur
     un autre : on reduit chaque message a role/content/tool_call_id/name et
     chaque tool_call a id/type/function{name, arguments}.
+
+    Si ``noms_outils_valides`` est fourni, les tool_calls dont le ``name`` n'y
+    figure pas sont retires (historique corrompu par un ancien bug ou par un
+    provider qui a hallucine un nom d'outil). Les messages ``tool`` orphelins
+    (qui repondaient a un tool_call retire) sont retires aussi : Gemini refuse
+    HTTP 400 « Request contains an invalid argument » sur un `tool` sans son
+    `assistant.tool_calls` correspondant. Bug prod 2026-08-22 :
+    ``fs_readfs_readfs_readfiche_etapes`` persiste par le bug SSE avant fix,
+    puis chaque tour suivant bloquait.
     """
     propres: list[dict[str, Any]] = []
+    ids_valides: set[str] = set()
     for m in messages:
         if not isinstance(m, dict):
             propres.append(m)
@@ -555,17 +568,43 @@ def _nettoyer_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     continue
                 fn_brut = tc.get("function")
                 fn: dict[str, Any] = fn_brut if isinstance(fn_brut, dict) else {}
+                nom = fn.get("name") or ""
+                if noms_outils_valides is not None and nom and nom not in noms_outils_valides:
+                    # Tool_call orphelin : outil inconnu du provider. Le
+                    # rejouer produit HTTP 400.
+                    logger.info("tool_call filtre : nom inconnu %r", nom)
+                    continue
+                tc_id = tc.get("id") or ""
+                if tc_id:
+                    ids_valides.add(tc_id)
                 nettoyes.append(
                     {
-                        "id": tc.get("id") or "",
+                        "id": tc_id,
                         "type": tc.get("type") or "function",
                         "function": {
-                            "name": fn.get("name") or "",
+                            "name": nom,
                             "arguments": fn.get("arguments") or "",
                         },
                     }
                 )
-            propre["tool_calls"] = nettoyes
+            # Message assistant vide de tool_calls valides ET sans contenu
+            # texte : on le drop plutot que d'envoyer un fantome.
+            if not nettoyes and not (propre.get("content") or "").strip():
+                continue
+            if nettoyes:
+                propre["tool_calls"] = nettoyes
+            else:
+                propre.pop("tool_calls", None)
+        # Un message `tool` qui repond a un tool_call retire est orphelin :
+        # Gemini refuse HTTP 400 sur un tool sans son assistant.tool_calls.
+        if (
+            propre.get("role") == "tool"
+            and noms_outils_valides is not None
+            and propre.get("tool_call_id")
+            and propre["tool_call_id"] not in ids_valides
+        ):
+            logger.info("message tool orphelin filtre (tool_call_id inconnu)")
+            continue
         propres.append(propre)
     return propres
 
@@ -589,10 +628,19 @@ async def _appel_provider(
     """
     key = _decrypt(provider.api_key_enc)
     url, headers = url_et_headers(provider.provider, provider.base_url, key)
+    # Noms d'outils valides pour ce tour : sert a filtrer les tool_calls
+    # historiques dont le nom n'existe plus (bug SSE d'avant fix, hallucination
+    # provider, evolution du registre).
+    noms_valides: set[str] = set()
+    for o in outils_api or []:
+        if isinstance(o, dict):
+            fn_meta = o.get("function")
+            if isinstance(fn_meta, dict) and isinstance(fn_meta.get("name"), str):
+                noms_valides.add(fn_meta["name"])
     payload = format_chat_payload(
         provider.provider,
         modele or provider.model,
-        _nettoyer_messages(messages),
+        _nettoyer_messages(messages, noms_valides or None),
         outils_api,
         MAX_TURN_TOKENS,
     )

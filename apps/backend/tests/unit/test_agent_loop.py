@@ -404,6 +404,69 @@ class TestBoucle:
         assert "{'error'" not in msg
 
     @pytest.mark.asyncio
+    async def test_historique_avec_tool_call_orphelin_filtre_avant_envoi(
+        self, db_session, test_user
+    ):
+        """Un tool_call persiste avec un nom d'outil qui n'existe plus (bug SSE
+        Gemini d'avant fix, ou hallucination) doit etre filtre de l'historique
+        avant envoi, sinon Gemini refuse HTTP 400 « Request contains an
+        invalid argument » et l'utilisateur est coince sur cette session pour
+        toujours. Bug prod 2026-08-22."""
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+
+        corps_recus: list[dict] = []
+
+        def handler(request):
+            corps_recus.append(json.loads(request.content))
+            return httpx.Response(200, json=_mock_texte("Reponse."))
+
+        transport = httpx.MockTransport(handler)
+        # Historique corrompu : un tool_call inventé + son résultat orphelin
+        messages = [
+            {"role": "user", "content": "fais une fiche"},
+            {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": "call_pourri",
+                        "type": "function",
+                        "function": {
+                            "name": "fs_readfs_readfs_readfiche_etapes",
+                            "arguments": "{}",
+                        },
+                    }
+                ],
+            },
+            {
+                "role": "tool",
+                "tool_call_id": "call_pourri",
+                "content": '{"error": "Outil inconnu."}',
+            },
+            {"role": "user", "content": "tu peux lire la fiche sur la creatine ?"},
+        ]
+        await _collect(
+            db_session, test_user, provider, messages, _refuse, transport, _registre_fake([])
+        )
+        envoyes = corps_recus[0]["messages"]
+        # Le tool_call pourri et son tool orphelin doivent avoir disparu
+        for m in envoyes:
+            if m.get("role") == "assistant" and m.get("tool_calls"):
+                for tc in m["tool_calls"]:
+                    nom = (tc.get("function") or {}).get("name") or ""
+                    assert nom != "fs_readfs_readfs_readfiche_etapes", (
+                        "le tool_call pourri est reste dans l'historique envoye"
+                    )
+            if m.get("role") == "tool":
+                assert m.get("tool_call_id") != "call_pourri", (
+                    "le message tool orphelin est reste dans l'historique envoye"
+                )
+        # Les deux messages utilisateur doivent etre presents
+        roles = [m["role"] for m in envoyes]
+        assert roles.count("user") == 2
+
+    @pytest.mark.asyncio
     async def test_gemini_streaming_tool_calls_sans_index_ne_fusionnent_pas(
         self, db_session, test_user
     ):
