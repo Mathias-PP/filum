@@ -1,6 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { agentApi, type WorkspaceTreeEntry } from '$lib/api/agent';
+  import {
+    agentApi,
+    type AgentDefinition,
+    type AgentDefinitionRejected,
+    type WorkspaceTreeEntry,
+  } from '$lib/api/agent';
   import { ApiError } from '$lib/api';
   import { Button, ConfirmDialog, toast } from '$lib/components';
 
@@ -14,6 +19,26 @@
   let contenu = $state('');
   let contenuOriginal = $state('');
   let messageErr = $state('');
+
+  // Les agents viennent d'un endpoint separe : le serveur seul sait quels
+  // outils il expose reellement et pourquoi un fichier ne charge pas.
+  let definitions = $state<AgentDefinition[]>([]);
+  let rejets = $state<AgentDefinitionRejected[]>([]);
+
+  const agentParChemin = $derived(new Map(definitions.map((a) => [a.path, a])));
+  const rejetParChemin = $derived(new Map(rejets.map((r) => [r.path, r.raison])));
+
+  // Index inverse : sous un fichier de `shared/`, savoir quels agents le lisent
+  // evite de modifier une regle sans voir qui elle touche.
+  const utilisePar = $derived.by(() => {
+    const index = new Map<string, string[]>();
+    for (const agent of definitions) {
+      for (const chemin of agent.context) {
+        index.set(chemin, [...(index.get(chemin) ?? []), agent.name]);
+      }
+    }
+    return index;
+  });
 
   let creationOuverte = $state(false);
   let nouveauChemin = $state('');
@@ -38,6 +63,7 @@
   }
 
   const sections = $derived.by<Section[]>(() => {
+    const agents: WorkspaceTreeEntry[] = [];
     const routing: WorkspaceTreeEntry[] = [];
     const references: WorkspaceTreeEntry[] = [];
     const modeles: WorkspaceTreeEntry[] = [];
@@ -47,7 +73,10 @@
 
     for (const e of entrees) {
       if (e.type !== 'file') continue;
-      if (e.layer === 'L0' || e.layer === 'L1') routing.push(e);
+      // Avant le test sur `layer` : un agent declare le sien, il finirait
+      // sinon melange aux contrats de stage qui portent la meme valeur.
+      if (e.path.startsWith('agents/')) agents.push(e);
+      else if (e.layer === 'L0' || e.layer === 'L1') routing.push(e);
       else if (e.layer === 'L2') pipeline.push(e);
       else if (e.path.startsWith('_core/templates/')) modeles.push(e);
       else if (e.path.startsWith('shared/') || e.layer === 'L3') references.push(e);
@@ -56,6 +85,12 @@
     }
 
     const out: Section[] = [
+      {
+        slug: 'agents',
+        titre: 'Agents',
+        aide: "Un fichier par agent du chat : les outils qu'il peut appeler, les fichiers qu'il lit d'office et son rôle. Éditer le fichier suffit, il n'y a pas d'autre endroit où le déclarer.",
+        fichiers: agents,
+      },
       {
         slug: 'routing',
         titre: 'Routing (L0, L1)',
@@ -103,10 +138,18 @@
   async function chargerArbre() {
     chargementArbre = true;
     try {
-      entrees = await agentApi.workspace.tree();
+      const [arbre, liste] = await Promise.all([
+        agentApi.workspace.tree(),
+        agentApi.definitions.list(),
+      ]);
+      entrees = arbre;
+      definitions = liste.agents;
+      rejets = liste.rejected;
     } catch (e) {
       toast.danger(e instanceof ApiError ? e.message : 'Impossible de lire le workspace.');
       entrees = [];
+      definitions = [];
+      rejets = [];
     } finally {
       chargementArbre = false;
     }
@@ -261,6 +304,9 @@
             <p class="mt-1 text-xs text-ink-secondary">{section.aide}</p>
             <ul class="mt-2 space-y-1.5">
               {#each section.fichiers as f (f.path)}
+                {@const agent = agentParChemin.get(f.path)}
+                {@const rejet = rejetParChemin.get(f.path)}
+                {@const lecteurs = utilisePar.get(f.path)}
                 <li>
                   <div class="flex items-start gap-1">
                     <button
@@ -269,16 +315,52 @@
                       class:bg-surface-tertiary={cheminActif === f.path}
                       onclick={() => ouvrir(f.path)}
                     >
+                      {#if agent}
+                        <span class="flex items-center gap-1.5">
+                          <span class="truncate text-xs font-medium text-ink-primary"
+                            >{agent.name}</span
+                          >
+                          <span
+                            class="shrink-0 rounded px-1 py-0.5 text-[10px] text-ink-tertiary"
+                            class:bg-surface-tertiary={agent.builtin}
+                            title={agent.builtin
+                              ? 'Fourni avec Philum. « Restaurer template » le recrée si vous le supprimez.'
+                              : 'Ajouté par vous.'}
+                          >
+                            {agent.builtin ? 'Livré avec Philum' : 'Personnalisé'}
+                          </span>
+                        </span>
+                      {/if}
                       <span
                         class="block truncate font-mono text-xs"
-                        class:font-medium={cheminActif === f.path}
-                        class:text-ink-primary={cheminActif === f.path}
-                        class:text-ink-secondary={cheminActif !== f.path}
+                        class:font-medium={cheminActif === f.path && !agent}
+                        class:text-ink-primary={cheminActif === f.path && !agent}
+                        class:text-ink-secondary={cheminActif !== f.path || agent}
                       >
                         {f.path}
                       </span>
                       {#if f.contract}
                         <span class="mt-0.5 block text-xs text-ink-tertiary">{f.contract}</span>
+                      {/if}
+                      {#if agent}
+                        <span class="mt-0.5 block text-xs text-ink-tertiary">
+                          {agent.tools.length} outils · {agent.context.length} fichiers de contexte
+                        </span>
+                        {#if agent.tools_absents.length > 0}
+                          <span class="mt-0.5 block text-xs text-warning">
+                            Indisponible sur ce serveur : {agent.tools_absents.join(', ')}
+                          </span>
+                        {/if}
+                      {/if}
+                      {#if rejet}
+                        <span class="mt-0.5 block text-xs text-danger">
+                          Agent non chargé : {rejet}
+                        </span>
+                      {/if}
+                      {#if lecteurs && lecteurs.length > 0}
+                        <span class="mt-0.5 block text-xs text-ink-tertiary">
+                          Lu par : {lecteurs.join(', ')}
+                        </span>
                       {/if}
                     </button>
                     <button
