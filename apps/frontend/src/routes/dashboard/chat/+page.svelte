@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { goto } from '$app/navigation';
   import { agentApi, type AgentSession, type AgentProvider } from '$lib/api/agent';
   import { ApiError } from '$lib/api';
   import { Button, ConfirmDialog, toast } from '$lib/components';
@@ -96,7 +95,13 @@
       </div>
       <ChatPanel
         titreInitial={titreNouveau}
-        onsession={(id) => goto(`/dashboard/chat/${id}`, { replaceState: true })}
+        onsession={(id) => {
+          // On met à jour l'URL sans naviguer : goto() démonte ChatPanel et
+          // coupe le flux SSE en cours, ce qui fait "tomber dans le vide" le
+          // premier message d'une nouvelle conversation. history.replaceState()
+          // change l'URL sans toucher au composant.
+          history.replaceState(history.state, '', `/dashboard/chat/${id}`);
+        }}
       />
     {:else if providers.length === 0}
       <div class="rounded-lg border border-subtle bg-surface-secondary px-4 py-5 text-sm">

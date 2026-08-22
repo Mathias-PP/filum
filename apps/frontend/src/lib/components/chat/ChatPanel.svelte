@@ -8,6 +8,7 @@
   import ApprovalCard from './ApprovalCard.svelte';
   import ToolCard from './ToolCard.svelte';
   import AgentMarkdown from './AgentMarkdown.svelte';
+  import LogoLoader from '../LogoLoader.svelte';
 
   interface Props {
     sessionId?: string | null;
@@ -97,11 +98,30 @@
 
   onMount(async () => {
     const taches: Promise<unknown>[] = [agentApi.providers.list().catch(() => [])];
-    if (sessionId) taches.push(agentApi.sessions.messages(sessionId).catch(() => []));
+    if (sessionId) {
+      taches.push(agentApi.sessions.messages(sessionId).catch(() => []));
+      // Restaurer la clé et le modèle utilisés dans cette session : sans ça
+      // on tomberait toujours sur la clé par défaut, ce qui casse la continuité
+      // (une conversation démarrée sur Claude repart sur Gemini au reload).
+      taches.push(agentApi.sessions.get(sessionId).catch(() => null));
+    }
 
-    const [clesRes, messagesRes] = await Promise.allSettled(taches);
+    const [clesRes, messagesRes, sessionRes] = await Promise.allSettled(taches);
     if (clesRes.status === 'fulfilled') {
       cles = clesRes.value as AgentProvider[];
+    }
+    // Restauration : d'abord la clé enregistrée sur la session, sinon la clé
+    // par défaut du créateur.
+    const sessionSauvegardee =
+      sessionRes && sessionRes.status === 'fulfilled'
+        ? (sessionRes.value as Awaited<ReturnType<typeof agentApi.sessions.get>> | null)
+        : null;
+    if (
+      sessionSauvegardee?.provider_id &&
+      cles.some((c) => c.id === sessionSauvegardee.provider_id)
+    ) {
+      cleChoisie = sessionSauvegardee.provider_id;
+    } else {
       const defaut = cles.find((p) => p.is_default);
       if (defaut) cleChoisie = defaut.id;
     }
@@ -114,6 +134,11 @@
       chargement = false;
     }
     if (cleChoisie) await chargerModeles();
+    // Restauration du modèle : la liste des modèles doit être chargée avant
+    // pour que le <select> puisse le sélectionner.
+    if (sessionSauvegardee?.model_override) {
+      modeleChoisi = sessionSauvegardee.model_override;
+    }
   });
 
   async function envoyer(event: SubmitEvent) {
@@ -247,6 +272,7 @@
         <ApprovalCard
           tool={item.tool}
           args={item.args}
+          resume={item.resume}
           approved={item.approved}
           onrespond={(approuve) => repondreApprobation(item.requestId, approuve)}
         />
@@ -256,6 +282,16 @@
         </p>
       {/if}
     {/each}
+
+    {#if enCours}
+      <!-- Signal visuel : le logo Philum en noir & blanc tourne tant que le
+           modèle réfléchit ou qu'un outil s'exécute. Rassure sur le fait que
+           quelque chose se passe, même si aucun token n'est encore arrivé. -->
+      <div class="flex items-center gap-2 text-xs text-ink-tertiary">
+        <LogoLoader size={20} />
+        <span>Philum réfléchit…</span>
+      </div>
+    {/if}
   </div>
 
   <!-- Bouton "nouveaux messages" quand l'utilisateur a remonte -->

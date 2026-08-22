@@ -25,10 +25,10 @@ import json
 import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent_tools.philum import est_sensible
@@ -36,6 +36,9 @@ from app.agent_tools.registry import construire_registre, executer, registre_api
 from app.agent_tools.tool import AgentTool, ToolContext
 from app.core.config import get_settings
 from app.models.agent_provider import AgentProvider
+from app.models.biblio_card import BiblioCard
+from app.models.source import Source
+from app.models.source_excerpt import SourceExcerpt
 from app.models.user import User
 from app.models.workspace_file import WorkspaceFile
 from app.services.agent_providers import _decrypt
@@ -109,6 +112,84 @@ async def _priming_workspace(db: AsyncSession, creator_id: Any) -> str:
         parties.append(bloc)
         total += len(bloc)
     return "".join(parties)
+
+
+async def _titre_source(db: AsyncSession, source_id: str) -> tuple[str, int]:
+    """Rend (titre, nombre d'extraits) pour une source. Fallback : identifiant tronqué."""
+    try:
+        uid = UUID(source_id)
+    except (ValueError, TypeError, AttributeError):
+        return str(source_id)[:12] or "source", 0
+    source = await db.get(Source, uid)
+    if source is None:
+        return f"source {str(uid)[:8]}", 0
+    r = await db.execute(
+        select(func.count()).select_from(SourceExcerpt).where(SourceExcerpt.source_id == uid)
+    )
+    total = int(r.scalar_one_or_none() or 0)
+    titre = source.title or source.url or f"source {str(uid)[:8]}"
+    return titre, total
+
+
+async def _titre_fiche(db: AsyncSession, user: User, slug: str) -> str:
+    """Rend le titre d'une fiche du créateur ; fallback : le slug lui-même."""
+    if not slug:
+        return "fiche inconnue"
+    r = await db.execute(
+        select(BiblioCard).where(BiblioCard.slug == slug, BiblioCard.user_id == user.id)
+    )
+    card = r.scalar_one_or_none()
+    return card.title if card else slug
+
+
+async def _resume_approbation(
+    db: AsyncSession,
+    user: User,
+    tool_name: str,
+    args: dict[str, Any],
+) -> str:
+    """Décrit en une phrase ce que l'utilisateur autorise, en résolvant UUIDs et slugs.
+
+    Une approbation sur ``delete_source(source_id="uuid...")`` est un chèque en
+    blanc si on n'affiche pas le titre réel de la source. Ce résumé est calculé
+    ici parce que seul le serveur peut lire la base ; le front n'a que l'UUID.
+    """
+    try:
+        if tool_name == "delete_source":
+            titre, n = await _titre_source(db, str(args.get("source_id", "")))
+            if n > 0:
+                return f"Supprimer la source « {titre} » et ses {n} extrait{'s' if n > 1 else ''} ?"
+            return f"Supprimer la source « {titre} » ?"
+        if tool_name == "delete_excerpt":
+            titre, _ = await _titre_source(db, str(args.get("source_id", "")))
+            return f"Supprimer un extrait de la source « {titre} » ?"
+        if tool_name == "verify_excerpts":
+            titre, n = await _titre_source(db, str(args.get("source_id", "")))
+            if args.get("provided_text"):
+                return (
+                    f"Attester {n or 'les'} extrait{'s' if n != 1 else ''} de « {titre} » "
+                    "à partir d'un texte que vous fournissez ?"
+                )
+            return f"Relire et attester les extraits de la source « {titre} » ?"
+        if tool_name == "delete_card":
+            titre = await _titre_fiche(db, user, str(args.get("slug", "")))
+            return f"Envoyer la fiche « {titre} » et toutes ses sources à la corbeille ?"
+        if tool_name == "publish_card":
+            titre = await _titre_fiche(db, user, str(args.get("slug", "")))
+            return f"Publier la fiche « {titre} » et la rendre visible publiquement ?"
+        if tool_name == "update_card" and args.get("visibility") == "public":
+            titre = await _titre_fiche(db, user, str(args.get("slug", "")))
+            return f"Publier la fiche « {titre} » (rendre publique) ?"
+        if tool_name == "create_content_attestation":
+            titre = await _titre_fiche(db, user, str(args.get("card_slug", "")))
+            return f"Signer cryptographiquement le contenu de la fiche « {titre} » ?"
+        if tool_name == "archive_sources":
+            ids = args.get("source_ids") or []
+            n = len(ids) if isinstance(ids, list) else 0
+            return f"Déclencher l'archivage Wayback de {n} source{'s' if n > 1 else ''} ?"
+    except Exception:  # noqa: BLE001 — un résumé raté ne doit pas bloquer l'approbation
+        logger.exception("resume_approbation a échoué pour %s", tool_name)
+    return f"Exécuter l'action sensible {tool_name} ?"
 
 
 #: Type du callback d'approbation : (id de la demande, nom de l'outil,
@@ -604,6 +685,7 @@ async def _executer_tour(
         )
         if est_sensible(nom, args):
             request_id = str(uuid4())
+            resume = await _resume_approbation(db, user, nom, args)
             await emit(
                 {
                     "type": "approval_request",
@@ -611,6 +693,7 @@ async def _executer_tour(
                         "request_id": request_id,
                         "tool": nom,
                         "arguments": args,
+                        "resume": resume,
                         "tour": tour,
                     },
                 }

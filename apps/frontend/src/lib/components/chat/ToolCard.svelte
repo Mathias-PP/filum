@@ -19,7 +19,7 @@
     if (typeof err === 'string') return err;
     return JSON.stringify(err);
   });
-  const rendu = $derived(rendreOutil(name, args));
+  const rendu = $derived(rendreOutil(name, args, result));
 </script>
 
 <div class="rounded-lg border border-subtle bg-surface-secondary px-3 py-2 text-sm">
