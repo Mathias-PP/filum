@@ -15,7 +15,7 @@ Passer une check-list qualité complète sur la fiche, rendre un verdict `go` ou
 | Productions de toutes les étapes | `../0[1-5]-*/output/` | Full files | Tout ce qui va être publié |
 | Cinq propriétés | `../../shared/principes-editoriaux.md` | « Les cinq propriétés d'une fiche parfaite » | Grille de lecture |
 | Garde-fous complets | `../../shared/garde-fous.md` | Full file | Ce qui bloque la publication |
-| Règles typographiques | `../../shared/voix-createur.md` | « Règles typographiques » et « Longueurs cibles » | Vérifications finales |
+| Règles typographiques | `../../shared/style-redactionnel.md` | « Règles typographiques » et « Longueurs cibles » | Vérifications finales |
 
 ## Process
 

@@ -104,7 +104,7 @@ async def test_lister_arborescence(db_session, test_user):
     await agent_workspace.ecrire(
         db_session, test_user.id, "stages/02-sources-collectees/CONTEXT.md", "b"
     )
-    await agent_workspace.ecrire(db_session, test_user.id, "shared/voix-createur.md", "c")
+    await agent_workspace.ecrire(db_session, test_user.id, "shared/style-redactionnel.md", "c")
     await db_session.commit()
 
     arbre = await agent_workspace.lister(db_session, test_user.id)
@@ -112,7 +112,7 @@ async def test_lister_arborescence(db_session, test_user):
     assert "stages/01-brief/CONTEXT.md" in chemins
     assert "stages/01-brief" in chemins
     assert "stages" in chemins
-    assert "shared/voix-createur.md" in chemins
+    assert "shared/style-redactionnel.md" in chemins
 
     sous = await agent_workspace.lister(db_session, test_user.id, "stages/")
     assert {e["path"] for e in sous} == {
@@ -200,7 +200,7 @@ class TestFrontmatterParser:
             "---\n"
             "# La voix\n\nUn paragraphe qui ne devrait pas etre lu.\n"
         )
-        c, layer = agent_workspace.extraire_meta("shared/voix-createur.md", content)
+        c, layer = agent_workspace.extraire_meta("shared/style-redactionnel.md", content)
         assert c == "Style et longueurs."
         assert layer == "L3"
 
@@ -215,7 +215,7 @@ class TestFrontmatterParser:
         assert agent_workspace._deduire_layer("CONTEXT.md") == "L1"
         assert agent_workspace._deduire_layer("stages/01-brief/CONTEXT.md") == "L2"
         assert agent_workspace._deduire_layer("stages/07-publication/CONTEXT.md") == "L2"
-        assert agent_workspace._deduire_layer("shared/voix-createur.md") == "L3"
+        assert agent_workspace._deduire_layer("shared/style-redactionnel.md") == "L3"
         assert agent_workspace._deduire_layer("_core/templates/brief.md") == "L3"
         assert (
             agent_workspace._deduire_layer("stages/04-extraits/references/verification-doi.md")

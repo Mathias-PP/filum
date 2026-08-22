@@ -22,4 +22,4 @@ archive_url:
 
 <!-- 1 à 3 phrases : ce que cette source apporte au propos.
      Ni résumé de la source, ni éloge. Ce qu'on en a pris pour construire.
-     Voir shared/principes-editoriaux.md et shared/voix-createur.md. -->
+     Voir shared/principes-editoriaux.md et shared/style-redactionnel.md. -->

@@ -38,7 +38,7 @@ Cinq PRs, une par chantier, mergées et déployées en série pour éviter les c
 
 - **`workspaces/createur-de-fiches/AGENTS.md`** : ajouter une section « Démarrer une fiche » en tête (avant la routing table). Trois lignes actionnables : `cp -r runs/_example runs/<slug>` → remplir `00-brief.md` → lancer `stages/01-brief/`. Sans cette section, un agent doit lire quatre fichiers pour trouver son point d'entrée.
 
-- **`workspaces/createur-de-fiches/shared/voix-createur.md`** : trancher la règle des tirets cadratins. Formulation retenue :
+- **`workspaces/createur-de-fiches/shared/style-redactionnel.md`** : trancher la règle des tirets cadratins. Formulation retenue :
   > Pas de cadratins (`—`), sauf s'il y en a dans le verbatim exact. Autrement dit : interdits dans toute prose éditoriale (titre, description, annotation, titre d'extrait, `context`, commentaires), préservés dans le champ `text` d'un extrait quand la source les utilise. Remplacer un cadratin par une virgule dans un verbatim falsifie ce que la source a écrit.
 
 - **`workspaces/createur-de-fiches/shared/philum-mcp.md`** : enrichir la section « Ce que les tools MCP NE FONT PAS » avec les vrais endpoints REST à appeler manuellement (jusqu'à ce que le chantier B/C/D les wrappe). Ajouter une nouvelle section « Gotchas » listant : URL immuable après `add_source`, DELETE retourne 204 sans corps JSON, position des sources = ordre d'insertion (pas de reorder), `text` d'extrait plafonné à 1000 caractères, la dédup par URL/DOI de `add_source` (un second appel avec les mêmes URL/DOI met à jour la source existante au lieu d'en créer une).
@@ -47,7 +47,7 @@ Cinq PRs, une par chantier, mergées et déployées en série pour éviter les c
   1. URL d'IOP ne correspond pas au DOI (coquille inventée par le fetch d'origine) → toujours vérifier `URL contient DOI` ou faire un HEAD sur l'URL avant `add_source`.
   2. 403 anti-bot sur ScienceDirect / IOP → utiliser l'endpoint `verify` avec `ProvidedText` en payload (l'agent atteste que le texte fourni est celui de la source).
   3. `add_excerpt` refuse un texte > 1000 caractères → couper au niveau d'une phrase (jamais en milieu), poser plusieurs extraits si nécessaire.
-  4. Extrait posé avec cadratins remplacés par virgules → falsification du verbatim. Voir `voix-createur.md` § « Cadratins et verbatim ».
+  4. Extrait posé avec cadratins remplacés par virgules → falsification du verbatim. Voir `style-redactionnel.md` § « Cadratins et verbatim ».
   5. `add_source` appelé deux fois avec la même URL ne double pas la source, il la met à jour → utiliser ce comportement volontairement pour poser l'annotation après le premier passage.
 
 - **`workspaces/createur-de-fiches/stages/03-annotations/CONTEXT.md`** : préciser à l'étape 3 du Process que le second `add_source` (avec `annotation` et `stance`) exploite la dédup par URL/DOI et met à jour la source existante ; aucun doublon créé. Sans cette précision, un agent peut soit hésiter soit passer par `update_source` (qui n'existe pas encore en MCP à ce stade).

@@ -154,7 +154,7 @@ createur-de-fiches/
   AGENTS.md, CLAUDE.md, CONTEXT.md        # règles + contexte du processus
   shared/                                 # principes transverses
     garde-fous.md  pieges-vecus.md  principes-editoriaux.md
-    voix-createur.md  philum-mcp.md
+    style-redactionnel.md  philum-mcp.md
   stages/                                 # les 7 étapes du pipeline
     01-brief/ 02-sources-collectees/ 03-annotations/ 04-extraits/
     05-connexions/ 06-relecture/ 07-publication/

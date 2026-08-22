@@ -14,7 +14,7 @@ Transformer le brief rempli par l'utilisateur en un contrat de fiche stable, et 
 |---|---|---|---|
 | Brief utilisateur | `../../runs/<slug>/00-brief.md` | Full file | Thèse, sources connues, droits |
 | Squelette du brief | `../../_core/templates/brief.md` | Full file | Structure attendue |
-| Règles typographiques | `../../shared/voix-createur.md` | « Règles typographiques » et « Longueurs cibles » | Titre et description conformes |
+| Règles typographiques | `../../shared/style-redactionnel.md` | « Règles typographiques » et « Longueurs cibles » | Titre et description conformes |
 | Signature des tools MCP | `../../shared/philum-mcp.md` | « Écriture » ligne `create_card`, ligne `set_content_text` | Appels stricts |
 
 ## Process

@@ -16,7 +16,7 @@ Rédiger la note du créateur et déclarer la position (`stance`) pour chaque so
 | Mapping UUID | `../02-sources-collectees/output/<slug>-ids.json` | Full file | `source_id` pour rappeler `add_source` |
 | Brief propre | `../01-brief/output/<slug>-brief.md` | Section « Thèse en une phrase » | Contre quoi on positionne |
 | Règles d'annotation | `../../shared/principes-editoriaux.md` | « L'annotation d'une source » | Ni résumé, ni éloge |
-| Mots interdits | `../../shared/voix-createur.md` | « Ce qu'on écrit et ce qu'on n'écrit pas » | Éviter les adjectifs vides |
+| Mots interdits | `../../shared/style-redactionnel.md` | « Ce qu'on écrit et ce qu'on n'écrit pas » | Éviter les adjectifs vides |
 | Règles de stance | `../../shared/garde-fous.md` | « Sur la position déclarée » | Pas de défaut `appuie` |
 
 ## Process
