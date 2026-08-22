@@ -63,6 +63,9 @@ dev = [
     "passlib[bcrypt]>=1.7.4",
     "bandit>=1.7.0",
     "safety>=3.0.0",
+    # Stubs de typage pour PyYAML : sans eux, mypy refuse le
+    # `import yaml` de `agent_workspace.py` en CI.
+    "types-PyYAML>=6.0",
 ]
 analytics = [
     "duckdb>=1.5.0",
