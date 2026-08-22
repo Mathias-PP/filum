@@ -149,6 +149,21 @@ export type AgentEvent =
     }
   | { type: 'error'; payload: { message: string } };
 
+export interface WorkspaceTreeEntry {
+  path: string;
+  type: 'file' | 'directory';
+  sha256?: string | null;
+  updated_at?: string | null;
+}
+
+export interface WorkspaceFile {
+  path: string;
+  sha256: string;
+  content: string;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
 export interface ChatInput {
   message: string;
   session_id?: string;
@@ -201,6 +216,24 @@ export const agentApi = {
       method: 'POST',
       body: JSON.stringify({ request_id: requestId, approved }),
     }),
+
+  /** Workspace ICM du créateur : arbre, lecture, écriture, suppression, re-seed. */
+  workspace: {
+    tree: (prefix?: string) =>
+      request<WorkspaceTreeEntry[]>(
+        `/agent/workspace/tree${prefix ? `?prefix=${encodeURIComponent(prefix)}` : ''}`
+      ),
+    read: (path: string) =>
+      request<WorkspaceFile>(`/agent/workspace/file?path=${encodeURIComponent(path)}`),
+    write: (path: string, content: string) =>
+      request<WorkspaceFile>(`/agent/workspace/file?path=${encodeURIComponent(path)}`, {
+        method: 'PUT',
+        body: JSON.stringify({ content }),
+      }),
+    remove: (path: string) =>
+      request<void>(`/agent/workspace/file?path=${encodeURIComponent(path)}`, { method: 'DELETE' }),
+    seed: () => request<{ seeded: number }>('/agent/workspace/seed', { method: 'POST' }),
+  },
 
   streamChat,
 };
