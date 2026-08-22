@@ -165,6 +165,25 @@ async def test_ecrire_chemin_invalide_leve_erreur(db_session, test_user):
         await agent_workspace.ecrire(db_session, test_user.id, "hors/racine.md", "x")
 
 
+@pytest.mark.asyncio
+async def test_seed_insertmany_ne_viole_pas_not_null(db_session, test_user):
+    """Bug prod 2026-08-22 : le bouton « Restaurer template » declenchait un
+    INSERT batch de 18 fichiers via `seed()`. Le modele Python declarait
+    `updated_at: Mapped[datetime | None] = mapped_column(default=None)`
+    alors que la migration DB imposait `NOT NULL server_default=now()`.
+    En insertmany asyncpg, SQLAlchemy poussait `NULL` explicite au lieu de
+    laisser la DB appliquer le default → NotNullViolationError → 500.
+    """
+    count = await agent_workspace.seed(db_session, test_user.id)
+    await db_session.commit()
+    assert count >= 15  # les 18 fichiers du seed courant, marge safe
+    arbre = await agent_workspace.lister(db_session, test_user.id)
+    fichiers = [e for e in arbre if e["type"] == "file"]
+    assert all(e["updated_at"] is not None for e in fichiers), (
+        "chaque fichier insere doit avoir un updated_at non-null"
+    )
+
+
 class TestFrontmatterParser:
     """Ce que le frontend affiche sous chaque fichier vient de ce parseur.
 
