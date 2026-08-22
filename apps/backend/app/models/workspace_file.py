@@ -39,7 +39,16 @@ class WorkspaceFile(Base):
         default=None,
         server_default=func.now(),
     )
-    updated_at: Mapped[datetime | None] = mapped_column(default=None, onupdate=func.now())
+    #: NOT NULL en base (voir migration 041) avec `server_default=func.now()`.
+    #: Le modele doit refleter ce contrat, sinon SQLAlchemy pousse `NULL`
+    #: explicite lors d'un INSERT batch (`db.add()` en boucle → insertmany
+    #: asyncpg → violation NOT NULL). Bug prod 2026-08-22 sur le bouton
+    #: « Restaurer template » qui appelait `seed()`.
+    updated_at: Mapped[datetime] = mapped_column(
+        default=None,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
 
     __table_args__ = (
         UniqueConstraint("creator_id", "path", name="uq_workspace_files_creator_path"),
