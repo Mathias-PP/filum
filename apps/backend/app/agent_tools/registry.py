@@ -8,6 +8,7 @@ crash de la boucle.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from typing import Any
 
 from app.agent_tools.fiche import fiche_tools
@@ -23,6 +24,33 @@ def construire_registre() -> dict[str, AgentTool]:
     for outil in workspace_tools() + philum_tools() + web_tools() + fiche_tools():
         outils[outil.name] = outil
     return outils
+
+
+#: Outils que le code sait produire mais qu'une configuration serveur absente
+#: n'expose pas. Une definition d'agent a le droit de les citer : l'agent
+#: fonctionne sans, et retrouve l'outil le jour ou la cle est posee.
+NOMS_CONDITIONNELS: frozenset[str] = frozenset({"web_search"})
+
+
+def noms_outils_connus(*, exposes_seulement: bool = False) -> frozenset[str]:
+    """Noms d'outils acceptables dans une definition d'agent.
+
+    Par defaut inclut les outils conditionnels ; avec ``exposes_seulement``,
+    ne rend que ce que la configuration courante expose reellement.
+    """
+    exposes = frozenset(construire_registre())
+    return exposes if exposes_seulement else exposes | NOMS_CONDITIONNELS
+
+
+def filtrer(outils: dict[str, AgentTool], autorises: Iterable[str]) -> dict[str, AgentTool]:
+    """Restreint le registre aux outils d'un agent, en preservant l'ordre du registre.
+
+    Un nom autorise mais non expose (``web_search`` sans cle) est ignore
+    silencieusement : c'est une absence de configuration serveur, pas une
+    erreur de la definition.
+    """
+    permis = set(autorises)
+    return {nom: outil for nom, outil in outils.items() if nom in permis}
 
 
 def registre_api(outils: dict[str, AgentTool]) -> list[dict[str, Any]]:

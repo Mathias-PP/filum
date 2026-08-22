@@ -44,6 +44,69 @@
         }
       }
     },
+    "/api/v1/agent/definitions": {
+      "get": {
+        "tags": [
+          "agent-definitions"
+        ],
+        "summary": "Lister Agents",
+        "operationId": "lister_agents_api_v1_agent_definitions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentDefinitionList"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent/definitions/{slug}": {
+      "get": {
+        "tags": [
+          "agent-definitions"
+        ],
+        "summary": "Obtenir Agent",
+        "operationId": "obtenir_agent_api_v1_agent_definitions__slug__get",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Slug"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentDefinitionRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/agent/fiche/{slug}": {
       "get": {
         "tags": [
@@ -522,7 +585,7 @@
           "agent-sessions"
         ],
         "summary": "Mettre A Jour Session",
-        "description": "Renomme la conversation et/ou change sa cle provider ou son modele.",
+        "description": "Renomme la conversation, ou change sa cle provider, son modele ou son agent.",
         "operationId": "mettre_a_jour_session_api_v1_agent_sessions__session_id__patch",
         "parameters": [
           {
@@ -4206,6 +4269,20 @@
             ],
             "title": "Model Override",
             "description": "Modèle à utiliser à la place de provider.model pour cette session."
+          },
+          "agent_slug": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80,
+                "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Slug",
+            "description": "Agent nommé à utiliser (fichier `agents/<slug>.yaml`). Null : l'agent déjà attaché à la session, sinon l'assistant généraliste."
           }
         },
         "additionalProperties": false,
@@ -4214,6 +4291,135 @@
           "message"
         ],
         "title": "AgentChatRequest"
+      },
+      "AgentDefinitionList": {
+        "properties": {
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/AgentDefinitionRead"
+            },
+            "type": "array",
+            "title": "Agents"
+          },
+          "rejected": {
+            "items": {
+              "$ref": "#/components/schemas/AgentDefinitionRejected"
+            },
+            "type": "array",
+            "title": "Rejected"
+          }
+        },
+        "type": "object",
+        "required": [
+          "agents",
+          "rejected"
+        ],
+        "title": "AgentDefinitionList"
+      },
+      "AgentDefinitionRead": {
+        "properties": {
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "contract": {
+            "type": "string",
+            "title": "Contract"
+          },
+          "system_prompt": {
+            "type": "string",
+            "title": "System Prompt"
+          },
+          "tools": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tools"
+          },
+          "context": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Context"
+          },
+          "layer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Layer"
+          },
+          "model_hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Hint"
+          },
+          "builtin": {
+            "type": "boolean",
+            "title": "Builtin"
+          },
+          "tools_absents": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tools Absents"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          }
+        },
+        "type": "object",
+        "required": [
+          "slug",
+          "name",
+          "contract",
+          "system_prompt",
+          "tools",
+          "context",
+          "layer",
+          "model_hint",
+          "builtin",
+          "tools_absents",
+          "path"
+        ],
+        "title": "AgentDefinitionRead"
+      },
+      "AgentDefinitionRejected": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "raison": {
+            "type": "string",
+            "title": "Raison"
+          }
+        },
+        "type": "object",
+        "required": [
+          "path",
+          "raison"
+        ],
+        "title": "AgentDefinitionRejected",
+        "description": "Un fichier de `agents/` qui ne decrit pas un agent exploitable."
       },
       "AgentFicheRequest": {
         "properties": {
@@ -4612,6 +4818,18 @@
               }
             ],
             "title": "Provider Id"
+          },
+          "agent_slug": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Slug"
           }
         },
         "additionalProperties": false,
@@ -4652,6 +4870,17 @@
             ],
             "title": "Model Override"
           },
+          "agent_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Slug"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -4676,6 +4905,7 @@
           "title",
           "provider_id",
           "model_override",
+          "agent_slug",
           "created_at",
           "last_message_at"
         ],
@@ -4719,6 +4949,18 @@
               }
             ],
             "title": "Model Override"
+          },
+          "agent_slug": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Slug"
           }
         },
         "additionalProperties": false,

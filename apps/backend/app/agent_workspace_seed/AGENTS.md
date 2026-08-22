@@ -24,6 +24,9 @@ workspaces/createur-de-fiches/
 ├── CLAUDE.md                    (pointeur vers AGENTS.md)
 ├── CONTEXT.md                   (routing task-type -> stage)
 ├── setup/questionnaire.md       (config par run)
+├── agents/                      (agents nommés du chat, un fichier par agent)
+│   ├── CONTEXT.md               (format d'un fichier d'agent)
+│   └── <slug>.yaml              (outils, contexte et rôle d'un agent)
 ├── shared/                      (Layer 3 : références stables)
 │   ├── philum-mcp.md            (inventaire des tools MCP)
 │   ├── principes-editoriaux.md  (ce qui fait une bonne fiche)
@@ -56,6 +59,7 @@ workspaces/createur-de-fiches/
 | Vérifier ce qu'on ne fait jamais | `shared/garde-fous.md` |
 | Écrire un titre, une annotation, un extrait | `shared/style-redactionnel.md` |
 | Auditer titre/date d'une fiche (alertes) | `_core/audit/audit_fiche.py <slug>` |
+| Restreindre un agent du chat à une étape | `agents/CONTEXT.md` |
 | Voir le pipeline en un coup d'œil | `CONTEXT.md` |
 
 ## Triggers

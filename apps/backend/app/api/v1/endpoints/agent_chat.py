@@ -34,7 +34,7 @@ from app.core.rate_limit import limiter
 from app.db.database import get_db
 from app.models.user import User
 from app.schemas.agent_chat import AgentChatRequest
-from app.services import agent_approvals, agent_sessions
+from app.services import agent_approvals, agent_definitions, agent_sessions
 from app.services.agent import boucle
 from app.services.agent_discovery import (
     ErreurQuota,
@@ -86,6 +86,7 @@ async def chat_agent(
             db,
             current_user.id,
             title=agent_sessions.titre_depuis_message(body.message),
+            agent_slug=body.agent_slug,
         )
         messages: list[dict[str, Any]] = [
             {"role": m.role, "content": m.content} for m in body.history
@@ -101,6 +102,17 @@ async def chat_agent(
         # L'historique persisté fait autorité : ce que le client renvoie
         # pourrait avoir été retouché en route.
         messages = await agent_sessions.historique_pour_modele(db, current_user.id, session.id)
+
+    # Changer d'agent en cours de conversation vaut pour la suite : la session
+    # porte le dernier choix, le client n'a pas a le repeter a chaque message.
+    # Ecrit sans commit propre, le message utilisateur juste apres le persiste.
+    if body.agent_slug:
+        session.agent_slug = body.agent_slug
+    # Un slug qui ne resout rien (fichier supprime, renomme) degrade vers le
+    # generaliste plutot que de casser la conversation.
+    agent_def = await agent_definitions.obtenir(
+        db, current_user.id, session.agent_slug or agent_definitions.SLUG_DEFAUT
+    )
 
     # Provider explicite du corps de la requete, sinon provider par defaut.
     provider = None
@@ -189,6 +201,7 @@ async def chat_agent(
                     approuver,
                     transport=transport,
                     modele=body.model_override or session.model_override or None,
+                    agent_def=agent_def,
                 )
             finally:
                 await queue.put(None)

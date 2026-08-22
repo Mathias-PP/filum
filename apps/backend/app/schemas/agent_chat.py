@@ -49,6 +49,13 @@ class AgentChatRequest(BaseModel):
         max_length=120,
         description="Modèle à utiliser à la place de provider.model pour cette session.",
     )
+    agent_slug: str | None = Field(
+        default=None,
+        max_length=80,
+        pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$",
+        description="Agent nommé à utiliser (fichier `agents/<slug>.yaml`). "
+        "Null : l'agent déjà attaché à la session, sinon l'assistant généraliste.",
+    )
 
     @field_validator("message")
     @classmethod
@@ -64,6 +71,7 @@ class AgentSessionCreate(BaseModel):
 
     title: str = Field(default="", max_length=200)
     provider_id: UUID | None = None
+    agent_slug: str | None = Field(default=None, max_length=80)
 
 
 class AgentSessionUpdate(BaseModel):
@@ -72,6 +80,7 @@ class AgentSessionUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=0, max_length=200)
     provider_id: UUID | None = None
     model_override: str | None = Field(default=None, max_length=120)
+    agent_slug: str | None = Field(default=None, max_length=80)
 
 
 class AgentSessionRead(BaseModel):
@@ -81,6 +90,7 @@ class AgentSessionRead(BaseModel):
     title: str
     provider_id: UUID | None
     model_override: str | None
+    agent_slug: str | None
     created_at: datetime
     last_message_at: datetime | None
 

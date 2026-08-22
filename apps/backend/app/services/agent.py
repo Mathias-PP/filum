@@ -23,7 +23,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -32,7 +32,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent_tools.philum import est_sensible
-from app.agent_tools.registry import construire_registre, executer, registre_api
+from app.agent_tools.registry import construire_registre, executer, filtrer, registre_api
 from app.agent_tools.tool import AgentTool, ToolContext
 from app.core.config import get_settings
 from app.models.agent_provider import AgentProvider
@@ -41,6 +41,7 @@ from app.models.source import Source
 from app.models.source_excerpt import SourceExcerpt
 from app.models.user import User
 from app.models.workspace_file import WorkspaceFile
+from app.services.agent_definitions import AgentDefinition
 from app.services.agent_providers import _decrypt
 from app.services.llm_adapters import (
     format_chat_payload,
@@ -87,19 +88,28 @@ _SYSTEME = (
 _PRIMING_MAX = 40_000
 
 
-async def _priming_workspace(db: AsyncSession, creator_id: Any) -> str:
-    """Charge les fichiers shared/ du workspace du créateur pour le prompt système.
+async def _priming_workspace(
+    db: AsyncSession, creator_id: Any, chemins: Sequence[str] | None = None
+) -> str:
+    """Charge des fichiers du workspace du créateur pour le prompt système.
+
+    Sans ``chemins``, injecte tout `shared/` : c'est le comportement de
+    l'assistant généraliste. Avec, n'injecte que ce que l'agent demande, ce
+    qui divise le contexte par cinq à dix sur un agent d'étape.
+
+    Un chemin absent est ignoré : supprimer un fichier de référence ne doit
+    pas empêcher les agents qui le citaient de démarrer.
 
     Renvoie une chaîne vide si le workspace n'est pas encore amorcé.
     """
-    result = await db.execute(
-        select(WorkspaceFile)
-        .where(
-            WorkspaceFile.creator_id == creator_id,
-            WorkspaceFile.path.startswith("shared/"),
-        )
-        .order_by(WorkspaceFile.path)
-    )
+    stmt = select(WorkspaceFile).where(WorkspaceFile.creator_id == creator_id)
+    if chemins is None:
+        stmt = stmt.where(WorkspaceFile.path.startswith("shared/"))
+    elif chemins:
+        stmt = stmt.where(WorkspaceFile.path.in_(list(chemins)))
+    else:
+        return ""
+    result = await db.execute(stmt.order_by(WorkspaceFile.path))
     fichiers = result.scalars().all()
     if not fichiers:
         return ""
@@ -839,6 +849,7 @@ async def boucle(
     transport: httpx.AsyncBaseTransport | None = None,
     registre: dict[str, AgentTool] | None = None,
     modele: str | None = None,
+    agent_def: AgentDefinition | None = None,
 ) -> None:
     """Exécute la boucle jusqu'à ``done`` ou à la borne dure.
 
@@ -846,11 +857,21 @@ async def boucle(
     tour ajoute l'assistant et les résultats d'outils. L'appelant fournit
     ``approuver`` (Phase 3 : refus par défaut, Phase 4 : approbation humaine
     réelle) et ``transport`` pour les tests.
+
+    ``agent_def`` restreint les outils visibles et le contexte injecté. Sans
+    lui, tous les outils et tout `shared/` partent au modèle.
     """
     registre = registre or construire_registre()
+    if agent_def is not None:
+        registre = filtrer(registre, agent_def.tools)
     outils_api = registre_api(registre)
-    workspace_ctx = await _priming_workspace(db, user.id)
-    messages.insert(0, {"role": "system", "content": _SYSTEME + workspace_ctx})
+    workspace_ctx = await _priming_workspace(
+        db, user.id, agent_def.context if agent_def is not None else None
+    )
+    systeme = _SYSTEME
+    if agent_def is not None:
+        systeme += f"\n\n---\n## Ton rôle : {agent_def.name}\n{agent_def.system_prompt.strip()}\n"
+    messages.insert(0, {"role": "system", "content": systeme + workspace_ctx})
     usage_total: dict[str, int] = {"prompt_tokens": 0, "completion_tokens": 0}
     try:
         for tour in range(1, MAX_TOURS + 1):
