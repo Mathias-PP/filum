@@ -44,7 +44,7 @@ class TestIsolationWorkspace:
         self, db_session, test_user, autre_user
     ):
         registre = construire_registre()
-        chemin = "shared/voix-createur.md"
+        chemin = "shared/style-redactionnel.md"
         await executer(
             registre,
             "fs_write",

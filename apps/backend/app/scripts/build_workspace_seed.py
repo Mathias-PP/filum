@@ -39,7 +39,7 @@ def main() -> None:
     if not WORKSPACE.is_dir():
         raise SystemExit(f"Workspace introuvable : {WORKSPACE}")
 
-    written = 0
+    attendus: set[str] = set()
     for source in sorted(WORKSPACE.rglob("*")):
         if not source.is_file():
             continue
@@ -49,10 +49,22 @@ def main() -> None:
         dest = SEED_DIR / rel
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(source.read_bytes())
-        written += 1
+        attendus.add(rel)
         print(f"  [ok] {rel}")
 
-    print(f"\nSnapshot gelé : {written} fichiers -> {SEED_DIR}")
+    # Sans cette purge, un fichier renomme dans la source laisse son ancien
+    # nom dans le seed : `test_workspace_seed_sync` casse et relancer le
+    # script ne repare rien.
+    for existant in sorted(SEED_DIR.rglob("*"), reverse=True):
+        if existant.is_file():
+            rel = existant.relative_to(SEED_DIR).as_posix()
+            if rel not in attendus:
+                existant.unlink()
+                print(f"  [supprime] {rel}")
+        elif existant.is_dir() and not any(existant.iterdir()):
+            existant.rmdir()
+
+    print(f"\nSnapshot gelé : {len(attendus)} fichiers -> {SEED_DIR}")
 
 
 if __name__ == "__main__":

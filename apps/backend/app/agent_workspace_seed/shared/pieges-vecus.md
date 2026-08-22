@@ -48,7 +48,7 @@ Chaque entrée : le symptôme visible, la cause profonde, la résolution. Object
 
 **Cause.** La règle éditoriale « pas de cadratins » a été appliquée AU VERBATIM par erreur. Un extrait est du verbatim : sa typographie doit rester celle de la source.
 
-**Résolution.** Cadratins interdits dans la prose éditoriale (titre, description, annotation, titre d'extrait, `context`) ; **préservés dans le `text` d'un extrait** quand la source les utilise. Voir `voix-createur.md`. Repost de l'extrait avec les cadratins exacts.
+**Résolution.** Cadratins interdits dans la prose éditoriale (titre, description, annotation, titre d'extrait, `context`) ; **préservés dans le `text` d'un extrait** quand la source les utilise. Voir `style-redactionnel.md`. Repost de l'extrait avec les cadratins exacts.
 
 ---
 

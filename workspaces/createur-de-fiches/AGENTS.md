@@ -28,7 +28,7 @@ workspaces/createur-de-fiches/
 │   ├── philum-mcp.md            (inventaire des tools MCP)
 │   ├── principes-editoriaux.md  (ce qui fait une bonne fiche)
 │   ├── garde-fous.md            (ce que l'agent refuse)
-│   └── voix-createur.md         (style, longueurs, mots interdits)
+│   └── style-redactionnel.md         (style, longueurs, mots interdits)
 ├── _core/templates/             (squelettes copiables)
 │   ├── brief.md, source.md, extrait.md
 ├── _core/audit/                 (audit de fiche : titre + dates, alertes non bloquantes)
@@ -54,7 +54,7 @@ workspaces/createur-de-fiches/
 | Comprendre ce qu'est une bonne fiche | `shared/principes-editoriaux.md` |
 | Savoir quel tool MCP appeler quand | `shared/philum-mcp.md` |
 | Vérifier ce qu'on ne fait jamais | `shared/garde-fous.md` |
-| Écrire un titre, une annotation, un extrait | `shared/voix-createur.md` |
+| Écrire un titre, une annotation, un extrait | `shared/style-redactionnel.md` |
 | Auditer titre/date d'une fiche (alertes) | `_core/audit/audit_fiche.py <slug>` |
 | Voir le pipeline en un coup d'œil | `CONTEXT.md` |
 

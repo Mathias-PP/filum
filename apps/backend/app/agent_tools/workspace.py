@@ -53,13 +53,13 @@ def workspace_tools() -> list[AgentTool]:
             name="fs_read",
             description=(
                 "Lit un fichier du workspace de configuration ICM. Avant d'écrire quoi que ce "
-                "soit, lis shared/principes-editoriaux.md, shared/garde-fous.md et shared/voix-createur.md, "
+                "soit, lis shared/principes-editoriaux.md, shared/garde-fous.md et shared/style-redactionnel.md, "
                 "et le CONTEXT.md de l'étage en cours (ex. stages/01-brief/CONTEXT.md)."
             ),
             parameters=_props(
                 path={
                     "type": "string",
-                    "description": "Chemin relatif du fichier (ex. shared/voix-createur.md).",
+                    "description": "Chemin relatif du fichier (ex. shared/style-redactionnel.md).",
                 }
             ),
             output="found, path, content, sha256",

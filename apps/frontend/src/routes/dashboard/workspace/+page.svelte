@@ -22,6 +22,11 @@
 
   const modifie = $derived(contenu !== contenuOriginal);
 
+  // Le workspace vide et le workspace peuple appellent le meme endpoint mais
+  // ne racontent pas la meme chose : « Initialiser » cree tout, « Restaurer »
+  // ne recolle que les fichiers effaces sans toucher aux modifications.
+  const vide = $derived(!chargementArbre && entrees.length === 0);
+
   // Regroupement par section ICM. On garde le vocabulaire ICM (Layer 0..3)
   // avec un titre court, sobre, non-marketing. Les fichiers utilisateurs
   // hors racines conventionnelles tombent dans "Autre".
@@ -171,13 +176,27 @@
     }
   }
 
+  let seedEnCours = $state(false);
+
   async function reSeed() {
+    const etaitVide = vide;
+    seedEnCours = true;
     try {
       const res = await agentApi.workspace.seed();
-      toast.success(`${res.seeded} fichier${res.seeded > 1 ? 's' : ''} réinitialisé(s).`);
+      if (res.seeded === 0) {
+        toast.success('Aucun fichier manquant : la configuration est complète.');
+      } else if (etaitVide) {
+        toast.success(`Configuration initialisée : ${res.seeded} fichiers créés.`);
+      } else {
+        toast.success(
+          `${res.seeded} fichier${res.seeded > 1 ? 's' : ''} manquant${res.seeded > 1 ? 's' : ''} restauré${res.seeded > 1 ? 's' : ''}.`
+        );
+      }
       await chargerArbre();
     } catch (e) {
-      toast.danger(e instanceof ApiError ? e.message : 'Seed impossible.');
+      toast.danger(e instanceof ApiError ? e.message : 'Opération impossible.');
+    } finally {
+      seedEnCours = false;
     }
   }
 
@@ -202,13 +221,18 @@
     <div class="flex gap-2">
       <Button
         size="sm"
-        variant="ghost"
+        variant={vide ? 'primary' : 'ghost'}
+        disabled={seedEnCours || chargementArbre}
         onclick={reSeed}
-        title="Réinsère les fichiers du template ICM qui manquent"
+        title={vide
+          ? 'Crée les fichiers de configuration fournis avec Philum'
+          : 'Recrée les fichiers fournis qui ont été supprimés. Vos modifications ne sont jamais écrasées.'}
       >
-        Restaurer template
+        {seedEnCours ? 'En cours…' : vide ? 'Initialiser la configuration' : 'Restaurer template'}
       </Button>
-      <Button size="sm" onclick={() => (creationOuverte = true)}>Nouveau fichier</Button>
+      {#if !vide}
+        <Button size="sm" onclick={() => (creationOuverte = true)}>Nouveau fichier</Button>
+      {/if}
     </div>
   </div>
 
@@ -217,11 +241,17 @@
       {#if chargementArbre}
         <p class="p-2 text-sm text-ink-tertiary">Chargement…</p>
       {:else if sections.length === 0}
-        <p
-          class="rounded-lg border border-subtle bg-surface-secondary p-3 text-sm text-ink-tertiary"
-        >
-          Workspace vide. Cliquez « Restaurer template » pour insérer le seed ICM.
-        </p>
+        <div class="rounded-lg border border-subtle bg-surface-secondary p-4">
+          <p class="text-sm font-medium text-ink-primary">Aucun fichier de configuration</p>
+          <p class="mt-1 text-sm text-ink-secondary">
+            Philum fournit un jeu de fichiers prêts à l'emploi : règles de rédaction, garde-fous,
+            contrats de chaque étape de construction d'une fiche. Ils sont à vous : modifiez-les,
+            supprimez-en, ajoutez les vôtres.
+          </p>
+          <p class="mt-2 text-sm text-ink-tertiary">
+            Utilisez « Initialiser la configuration » en haut de page.
+          </p>
+        </div>
       {:else}
         {#each sections as section (section.slug)}
           <div class="rounded-lg border border-subtle bg-surface-secondary p-3">
