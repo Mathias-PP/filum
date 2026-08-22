@@ -404,6 +404,118 @@ class TestBoucle:
         assert "{'error'" not in msg
 
     @pytest.mark.asyncio
+    async def test_gemini_thought_signature_preserve_vers_gemini(self, db_session, test_user):
+        """Gemini 3.7-flash signe ses tool_calls avec
+        `extra_content.google.thought_signature`. Ce champ DOIT revenir dans
+        l'historique au tour suivant, sinon Gemini refuse HTTP 400 :
+        « Function call is missing a thought_signature ». Bug prod 2026-08-22
+        sur le compte de test."""
+        provider = AgentProvider(
+            creator_id=test_user.id,
+            provider="gemini",
+            display_name="gemini",
+            base_url="https://generativelanguage.googleapis.com",
+            model="gemini-3.7-flash",
+            api_key_enc=KeyManager(get_settings().master_encryption_key).encrypt_private_key(
+                "AQ.test"
+            ),
+            is_default=True,
+        )
+        db_session.add(provider)
+        await db_session.commit()
+
+        corps_recus: list[dict] = []
+
+        def handler(request):
+            corps_recus.append(json.loads(request.content))
+            return httpx.Response(200, json=_mock_texte("Ok."))
+
+        transport = httpx.MockTransport(handler)
+        # Historique avec un tool_call Gemini signe
+        messages = [
+            {"role": "user", "content": "cherche"},
+            {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": "call_gem_1",
+                        "type": "function",
+                        "function": {"name": "web_search", "arguments": '{"query": "x"}'},
+                        "extra_content": {"google": {"thought_signature": "EpoFCpcF..."}},
+                    }
+                ],
+            },
+            {
+                "role": "tool",
+                "tool_call_id": "call_gem_1",
+                "content": '{"results": []}',
+            },
+            {"role": "user", "content": "et maintenant ?"},
+        ]
+        await _collect(
+            db_session, test_user, provider, messages, _refuse, transport, _registre_fake([])
+        )
+        envoyes = corps_recus[0]["messages"]
+        assistant = next(m for m in envoyes if m.get("role") == "assistant" and m.get("tool_calls"))
+        tc = assistant["tool_calls"][0]
+        assert "extra_content" in tc, "sur Gemini, thought_signature doit revenir au tour suivant"
+        assert tc["extra_content"]["google"]["thought_signature"] == "EpoFCpcF..."
+
+    @pytest.mark.asyncio
+    async def test_thought_signature_retiree_vers_provider_strict(self, db_session, test_user):
+        """Sur un provider strict (Mistral), `extra_content` doit disparaitre :
+        Mistral refuse 422 `extra_forbidden`. Une session ouverte sur Gemini
+        puis continuee sur Mistral doit pouvoir passer."""
+        provider = AgentProvider(
+            creator_id=test_user.id,
+            provider="mistral",
+            display_name="mistral",
+            base_url="https://api.mistral.ai",
+            model="mistral-medium",
+            api_key_enc=KeyManager(get_settings().master_encryption_key).encrypt_private_key(
+                "sk-test"
+            ),
+            is_default=True,
+        )
+        db_session.add(provider)
+        await db_session.commit()
+
+        corps_recus: list[dict] = []
+
+        def handler(request):
+            corps_recus.append(json.loads(request.content))
+            return httpx.Response(200, json=_mock_texte("Ok."))
+
+        transport = httpx.MockTransport(handler)
+        messages = [
+            {"role": "user", "content": "x"},
+            {
+                "role": "assistant",
+                "content": None,
+                "tool_calls": [
+                    {
+                        "id": "c1",
+                        "type": "function",
+                        "function": {"name": "web_search", "arguments": "{}"},
+                        "extra_content": {"google": {"thought_signature": "abc"}},
+                    }
+                ],
+            },
+            {"role": "tool", "tool_call_id": "c1", "content": "{}"},
+            {"role": "user", "content": "next"},
+        ]
+        await _collect(
+            db_session, test_user, provider, messages, _refuse, transport, _registre_fake([])
+        )
+        envoyes = corps_recus[0]["messages"]
+        assistant = next(m for m in envoyes if m.get("role") == "assistant" and m.get("tool_calls"))
+        tc = assistant["tool_calls"][0]
+        assert "extra_content" not in tc, (
+            "Mistral refuse 422 extra_forbidden si extra_content est present"
+        )
+
+    @pytest.mark.asyncio
     async def test_historique_avec_tool_call_orphelin_filtre_avant_envoi(
         self, db_session, test_user
     ):

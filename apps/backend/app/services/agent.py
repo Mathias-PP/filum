@@ -413,6 +413,22 @@ async def _parse_sse_stream(
                         existing["function"]["name"] = nom_nouveau
                     if fn_delta.get("arguments"):
                         existing["function"]["arguments"] += fn_delta["arguments"]
+                    # Gemini thinking (3.7-flash) signe ses tool_calls avec
+                    # `extra_content.google.thought_signature`. Ce champ DOIT
+                    # revenir dans le message assistant au tour suivant, sinon
+                    # Gemini refuse HTTP 400 « Function call is missing a
+                    # thought_signature ». On le preserve ici ; le filtrage
+                    # selon le provider destinataire se fait dans
+                    # `_nettoyer_messages`.
+                    extra = tc_delta.get("extra_content")
+                    if isinstance(extra, dict):
+                        # Fusion recursive superficielle : plusieurs chunks
+                        # peuvent enrichir `extra_content` (rare mais safe).
+                        current = existing.get("extra_content")
+                        if isinstance(current, dict):
+                            current.update(extra)
+                        else:
+                            existing["extra_content"] = dict(extra)
     except httpx.StreamError as exc:
         return f"Erreur réseau vers le provider : {exc}"
 
@@ -533,6 +549,7 @@ _CHAMPS_MESSAGE_STANDARDS = ("role", "content", "tool_calls", "tool_call_id", "n
 def _nettoyer_messages(
     messages: list[dict[str, Any]],
     noms_outils_valides: set[str] | None = None,
+    provider_kind: str | None = None,
 ) -> list[dict[str, Any]]:
     """Ne renvoie au provider que le contrat OpenAI commun.
 
@@ -577,16 +594,23 @@ def _nettoyer_messages(
                 tc_id = tc.get("id") or ""
                 if tc_id:
                     ids_valides.add(tc_id)
-                nettoyes.append(
-                    {
-                        "id": tc_id,
-                        "type": tc.get("type") or "function",
-                        "function": {
-                            "name": nom,
-                            "arguments": fn.get("arguments") or "",
-                        },
-                    }
-                )
+                tc_nettoye: dict[str, Any] = {
+                    "id": tc_id,
+                    "type": tc.get("type") or "function",
+                    "function": {
+                        "name": nom,
+                        "arguments": fn.get("arguments") or "",
+                    },
+                }
+                # Gemini thinking (3.7-flash) exige que
+                # `extra_content.google.thought_signature` revienne au tour
+                # suivant, sinon HTTP 400. Les autres providers (Mistral en
+                # particulier) refusent ce champ (422 extra_forbidden). On le
+                # preserve donc uniquement quand on repart sur Gemini.
+                extra = tc.get("extra_content")
+                if provider_kind == "gemini" and isinstance(extra, dict):
+                    tc_nettoye["extra_content"] = extra
+                nettoyes.append(tc_nettoye)
             # Message assistant vide de tool_calls valides ET sans contenu
             # texte : on le drop plutot que d'envoyer un fantome.
             if not nettoyes and not (propre.get("content") or "").strip():
@@ -640,7 +664,7 @@ async def _appel_provider(
     payload = format_chat_payload(
         provider.provider,
         modele or provider.model,
-        _nettoyer_messages(messages, noms_valides or None),
+        _nettoyer_messages(messages, noms_valides or None, provider.provider),
         outils_api,
         MAX_TURN_TOKENS,
     )

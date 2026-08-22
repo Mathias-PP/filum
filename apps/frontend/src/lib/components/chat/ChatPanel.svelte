@@ -47,6 +47,59 @@
   // Autoscroll
   let fil = $state<HTMLDivElement | null>(null);
   let auBas = $state(true);
+  // Selection en cours : l'utilisateur maintient le bouton et etire la
+  // selection. On desactive l'autoscroll de fin de fil (sinon un nouveau
+  // token pendant le streaming casse la selection) et on scrolle a la main
+  // quand la souris approche les bords du fil (le navigateur ne le fait
+  // pas nativement pour un conteneur overflow-y-auto).
+  let selectionEnCours = $state(false);
+  let intervalleScroll: ReturnType<typeof setInterval> | null = null;
+
+  function arreterScrollSelection() {
+    if (intervalleScroll !== null) {
+      clearInterval(intervalleScroll);
+      intervalleScroll = null;
+    }
+  }
+
+  function onMouseDownFil() {
+    selectionEnCours = true;
+  }
+
+  function onMouseUpGlobal() {
+    // Le mouseup peut arriver hors du fil : ecoute globale obligatoire.
+    if (selectionEnCours) {
+      selectionEnCours = false;
+      arreterScrollSelection();
+    }
+  }
+
+  function onMouseMoveFil(e: MouseEvent) {
+    if (!selectionEnCours || !fil) return;
+    const rect = fil.getBoundingClientRect();
+    const zone = 60; // pixels depuis le bord ou l'auto-scroll se declenche
+    const vitesse = 18;
+    const distanceBas = rect.bottom - e.clientY;
+    const distanceHaut = e.clientY - rect.top;
+    arreterScrollSelection();
+    if (distanceBas < zone && distanceBas > -zone * 2) {
+      intervalleScroll = setInterval(() => {
+        if (fil) fil.scrollTop += vitesse;
+      }, 30);
+    } else if (distanceHaut < zone && distanceHaut > -zone * 2) {
+      intervalleScroll = setInterval(() => {
+        if (fil) fil.scrollTop -= vitesse;
+      }, 30);
+    }
+  }
+
+  $effect(() => {
+    window.addEventListener('mouseup', onMouseUpGlobal);
+    return () => {
+      window.removeEventListener('mouseup', onMouseUpGlobal);
+      arreterScrollSelection();
+    };
+  });
 
   // Derive un "fingerprint" du dernier contenu assistant pour declencher l'autoscroll
   // meme pendant le streaming token par token.
@@ -107,7 +160,10 @@
 
   $effect(() => {
     void empreinte; // lire la derivee pour que l'effet se rejoue
-    if (auBas && fil) {
+    // Ne pas forcer le scroll pendant une selection en cours : chaque
+    // nouveau token pendant le streaming pousserait la page et casserait
+    // la selection de l'utilisateur.
+    if (auBas && fil && !selectionEnCours) {
       tick().then(() => {
         if (fil) fil.scrollTop = fil.scrollHeight;
       });
@@ -400,7 +456,16 @@
   <!-- Fil de conversation : un seul fil vertical, pas de bulles. Les tours
        utilisateur sont marques par une barre laterale plutot qu'une bulle
        flottante (standard 2026 : ChatGPT, Claude, Cursor). -->
-  <div bind:this={fil} class="flex-1 space-y-4 overflow-y-auto px-1 py-2" onscroll={surDefilement}>
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+  <div
+    bind:this={fil}
+    class="flex-1 space-y-4 overflow-y-auto px-1 py-2"
+    onscroll={surDefilement}
+    onmousedown={onMouseDownFil}
+    onmousemove={onMouseMoveFil}
+    role="log"
+    aria-live="polite"
+  >
     {#if chargement}
       <p class="text-sm text-ink-tertiary">Chargement de la conversation...</p>
     {:else if items.length === 0}
