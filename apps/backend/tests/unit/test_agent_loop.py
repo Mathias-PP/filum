@@ -404,6 +404,85 @@ class TestBoucle:
         assert "{'error'" not in msg
 
     @pytest.mark.asyncio
+    async def test_gemini_streaming_tool_calls_sans_index_ne_fusionnent_pas(
+        self, db_session, test_user
+    ):
+        """Gemini fragmente les tool_calls en streaming sans envoyer d'``index``
+        et empile plusieurs appels distincts sur la meme position ordinale.
+        Sans traitement special, les 4 noms d'outils fusionnaient en un nom
+        inexistant (bug prod 2026-08-22 : `fs_readfs_readfs_readfiche_etapes`).
+        """
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+
+        def handler(request):
+            # Simule un flux SSE avec 4 tool_calls distincts sans `index`,
+            # tous emis dans un seul chunk delta.
+            chunks = [
+                {
+                    "choices": [
+                        {
+                            "delta": {
+                                "tool_calls": [
+                                    {
+                                        "function": {
+                                            "name": "fs_read",
+                                            "arguments": '{"path": "a"}',
+                                        }
+                                    },
+                                    {
+                                        "function": {
+                                            "name": "fs_read",
+                                            "arguments": '{"path": "b"}',
+                                        }
+                                    },
+                                    {
+                                        "function": {
+                                            "name": "fs_read",
+                                            "arguments": '{"path": "c"}',
+                                        }
+                                    },
+                                    {
+                                        "function": {
+                                            "name": "fiche_etapes",
+                                            "arguments": "{}",
+                                        }
+                                    },
+                                ]
+                            },
+                            "finish_reason": "tool_calls",
+                        }
+                    ]
+                }
+            ]
+            corps = "".join(f"data: {json.dumps(c)}\n\n" for c in chunks) + "data: [DONE]\n\n"
+            return httpx.Response(200, content=corps, headers={"content-type": "text/event-stream"})
+
+        # Second appel apres execution : simple texte pour terminer la boucle
+        appels = {"n": 0}
+        handler_seq = handler
+
+        def handler_multi(request):
+            appels["n"] += 1
+            if appels["n"] == 1:
+                return handler_seq(request)
+            return httpx.Response(200, json=_mock_texte("Ok."))
+
+        transport = httpx.MockTransport(handler_multi)
+        messages = [{"role": "user", "content": "fais une fiche"}]
+        events = await _collect(
+            db_session, test_user, provider, messages, _refuse, transport, _registre_fake([])
+        )
+        appels_outils = [e for e in events if e["type"] == "tool_call"]
+        noms = [e["payload"]["name"] for e in appels_outils]
+        assert noms == ["fs_read", "fs_read", "fs_read", "fiche_etapes"], (
+            f"les 4 tool_calls Gemini doivent rester distincts, obtenu : {noms!r}"
+        )
+        # Aucun nom fusionne ne doit apparaitre
+        for nom in noms:
+            assert nom in {"fs_read", "fiche_etapes"}, f"nom fusionne detecte : {nom!r}"
+
+    @pytest.mark.asyncio
     async def test_message_tool_porte_tool_call_id(self, db_session, test_user):
         """Sans ``tool_call_id``, Gemini rejette le tour suivant avec HTTP 400
         INVALID_ARGUMENT. La spec OpenAI l'exige aussi ; OpenAI est juste
