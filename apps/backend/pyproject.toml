@@ -43,6 +43,11 @@ dependencies = [
     # les ecrire a la main reviendrait a recopier un UserDefinedType et les
     # trois operateurs de distance sans rien y gagner.
     "pgvector>=0.3.6",
+    # Parseur YAML pour les frontmatters ICM des fichiers de workspace
+    # (contract, layer). PyYAML est deja tire transitivement mais on le
+    # declare explicitement : dependre du hasard d'une resolution transitive
+    # casse silencieusement en cas de deprecation amont.
+    "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]
@@ -58,6 +63,9 @@ dev = [
     "passlib[bcrypt]>=1.7.4",
     "bandit>=1.7.0",
     "safety>=3.0.0",
+    # Stubs de typage pour PyYAML : sans eux, mypy refuse le
+    # `import yaml` de `agent_workspace.py` en CI.
+    "types-PyYAML>=6.0",
 ]
 analytics = [
     "duckdb>=1.5.0",

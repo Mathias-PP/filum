@@ -163,3 +163,64 @@ async def test_ecrire_chemin_invalide_leve_erreur(db_session, test_user):
         await agent_workspace.ecrire(db_session, test_user.id, "../../etc/passwd", "x")
     with pytest.raises(WorkspaceError):
         await agent_workspace.ecrire(db_session, test_user.id, "hors/racine.md", "x")
+
+
+class TestFrontmatterParser:
+    """Ce que le frontend affiche sous chaque fichier vient de ce parseur.
+
+    Un yaml invalide, absent, ou avec des champs manquants ne doit jamais
+    faire lever d'exception : un fichier utilisateur mal forme ne peut pas
+    casser la liste du workspace.
+    """
+
+    def test_frontmatter_explicite_prime_sur_fallback(self):
+        content = (
+            "---\n"
+            'contract: "Style et longueurs."\n'
+            "layer: L3\n"
+            "---\n"
+            "# La voix\n\nUn paragraphe qui ne devrait pas etre lu.\n"
+        )
+        c, layer = agent_workspace.extraire_meta("shared/voix-createur.md", content)
+        assert c == "Style et longueurs."
+        assert layer == "L3"
+
+    def test_sans_frontmatter_fallback_premier_paragraphe(self):
+        content = "# Un titre\n\nCeci est le premier paragraphe utile.\n"
+        c, layer = agent_workspace.extraire_meta("shared/x.md", content)
+        assert c == "Ceci est le premier paragraphe utile."
+        assert layer == "L3"
+
+    def test_layer_deduit_du_chemin(self):
+        assert agent_workspace._deduire_layer("AGENTS.md") == "L0"
+        assert agent_workspace._deduire_layer("CONTEXT.md") == "L1"
+        assert agent_workspace._deduire_layer("stages/01-brief/CONTEXT.md") == "L2"
+        assert agent_workspace._deduire_layer("stages/07-publication/CONTEXT.md") == "L2"
+        assert agent_workspace._deduire_layer("shared/voix-createur.md") == "L3"
+        assert agent_workspace._deduire_layer("_core/templates/brief.md") == "L3"
+        assert (
+            agent_workspace._deduire_layer("stages/04-extraits/references/verification-doi.md")
+            == "L3"
+        )
+        assert agent_workspace._deduire_layer("runs/ma-fiche/00-brief.md") is None
+
+    def test_yaml_invalide_ne_leve_pas(self):
+        # Un frontmatter pourri renvoie ({}, contenu entier).
+        content = "---\n{ceci n'est pas du yaml valide\n---\nBody"
+        c, layer = agent_workspace.extraire_meta("shared/x.md", content)
+        # Pas d'exception ; fallback sur premier paragraphe.
+        assert c == "Body"
+        assert layer == "L3"
+
+    def test_contract_tronque_a_240_caracteres(self):
+        long_body = "A" * 500
+        c, _ = agent_workspace.extraire_meta("shared/x.md", long_body)
+        assert c is not None and len(c) <= 240
+        assert c.endswith("…")
+
+    def test_titres_ignores_pour_le_fallback(self):
+        # `# Titre` seul ne doit pas devenir le contract : on cherche un
+        # paragraphe reel.
+        content = "# Titre\n## Sous-titre\n\nLe vrai paragraphe.\n"
+        c, _ = agent_workspace.extraire_meta("shared/x.md", content)
+        assert c == "Le vrai paragraphe."

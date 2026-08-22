@@ -1,4 +1,6 @@
 ---
+contract: "Squelette de brief a copier pour demarrer une nouvelle fiche."
+layer: L3
 slug:
 title:
 titre_contenu:

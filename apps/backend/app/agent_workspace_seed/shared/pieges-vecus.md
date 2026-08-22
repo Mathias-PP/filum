@@ -1,3 +1,7 @@
+---
+contract: "Erreurs passees a ne pas repeter, documentees a partir de conversations reelles."
+layer: L3
+---
 # Pièges déjà payés
 
 Chaque entrée : le symptôme visible, la cause profonde, la résolution. Objectif : qu'aucun agent ne les redécouvre.

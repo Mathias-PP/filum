@@ -1,3 +1,7 @@
+---
+contract: "Point d'entree du workspace : identite, folder map, routing des taches."
+layer: L0
+---
 # Créateur de fiches Philum
 
 Un seul agent. Il fabrique une fiche bibliographique Philum publiable, du brief à la publication, en n'utilisant que le MCP `philum` et un navigateur pour vérifier les sources qu'il retient.

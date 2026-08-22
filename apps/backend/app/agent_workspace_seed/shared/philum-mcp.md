@@ -1,3 +1,7 @@
+---
+contract: "Inventaire des outils MCP Philum et regles d'utilisation."
+layer: L3
+---
 # Outils MCP Philum : inventaire et quand les utiliser
 
 Tous les outils sont préfixés `mcp__philum__`.

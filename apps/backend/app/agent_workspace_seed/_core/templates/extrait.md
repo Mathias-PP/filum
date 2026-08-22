@@ -1,4 +1,6 @@
 ---
+contract: "Squelette d'un extrait verifie d'une source."
+layer: L3
 source_id:
 title:
 verified: false

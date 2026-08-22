@@ -27,3 +27,11 @@ class WorkspaceTreeEntry(BaseModel):
     type: Literal["file", "directory"]
     sha256: str | None = None
     updated_at: datetime | None = None
+    #: Layer ICM du fichier : L0 routing racine, L1 routing pipeline, L2
+    #: contrat de stage, L3 factory (reference stable). None pour un dossier
+    #: ou un fichier utilisateur hors des racines conventionnelles.
+    layer: str | None = None
+    #: Phrase de contrat : ce que ce fichier fait. Extrait du frontmatter YAML
+    #: `contract:`, ou a defaut du premier paragraphe du fichier tronque.
+    #: None pour un dossier.
+    contract: str | None = None

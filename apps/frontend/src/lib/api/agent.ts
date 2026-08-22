@@ -154,6 +154,12 @@ export interface WorkspaceTreeEntry {
   type: 'file' | 'directory';
   sha256?: string | null;
   updated_at?: string | null;
+  /** Layer ICM : L0/L1 routing, L2 contrat de stage, L3 factory. Null pour
+   * un dossier ou un fichier utilisateur hors racines conventionnelles. */
+  layer?: string | null;
+  /** Phrase de contrat extraite du frontmatter YAML `contract:` ou du
+   * premier paragraphe. Null pour un dossier. */
+  contract?: string | null;
 }
 
 export interface WorkspaceFile {

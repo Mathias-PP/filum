@@ -1,3 +1,7 @@
+---
+contract: "Contrat de l'etape 02 : collecter et enrichir les sources de la fiche."
+layer: L2
+---
 # 02-sources-collectees
 
 ## Scope

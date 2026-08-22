@@ -1,4 +1,6 @@
 ---
+contract: "Squelette d'une entree source d'une fiche."
+layer: L3
 url:
 title:
 authors:

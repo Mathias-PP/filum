@@ -1,3 +1,7 @@
+---
+contract: "Contrat de l'etape 03 : rediger les annotations et positions par source."
+layer: L2
+---
 # 03-annotations
 
 ## Scope

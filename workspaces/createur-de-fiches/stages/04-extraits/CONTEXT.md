@@ -1,3 +1,7 @@
+---
+contract: "Contrat de l'etape 04 : extraire les verbatim et les ancrer aux sources."
+layer: L2
+---
 # 04-extraits
 
 ## Scope
