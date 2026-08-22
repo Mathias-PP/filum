@@ -3216,6 +3216,18 @@ export interface components {
       context_after: string;
     };
     /**
+     * TestProviderBody
+     * @description Corps optionnel pour ``POST /agent/providers/{id}/test``.
+     *
+     *     ``model`` teste un modele specifique (typiquement l'override de session) au
+     *     lieu du modele par defaut du provider. Utile pour verifier a la volee qu'un
+     *     couple cle+modele choisi dans le chat est bien compatible.
+     */
+    TestProviderBody: {
+      /** Model */
+      model?: string | null;
+    };
+    /**
      * TokenResponse
      * @description OAuth 2.0 token response (RFC 6749 § 5.1).
      */
@@ -3628,7 +3640,11 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: never;
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['TestProviderBody'] | null;
+      };
+    };
     responses: {
       /** @description Successful Response */
       200: {

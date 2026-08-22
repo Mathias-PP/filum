@@ -36,6 +36,13 @@
   let cleChoisie = $state('');
   let modeles = $state<string[]>([]);
   let modeleChoisi = $state('');
+  // Etat de compatibilite du couple cle+modele : 'idle' avant test, 'testing'
+  // pendant, 'ok'/'ko' apres, 'incompat' si le modele choisi n'appartient meme
+  // pas a la liste des modeles du provider (evite de payer un appel API pour
+  // rien).
+  let etatTest = $state<'idle' | 'testing' | 'ok' | 'ko' | 'incompat'>('idle');
+  let messageTest = $state('');
+  let jetonTest = 0; // sert a annuler un test devenu obsolete
 
   // Autoscroll
   let fil = $state<HTMLDivElement | null>(null);
@@ -82,19 +89,73 @@
     }
   }
 
+  /** Teste le couple cle+modele en cours et met a jour l'indicateur.
+   *
+   * Le test appelle l'API du provider avec un « ping » (1 token). L'utilisateur
+   * voit tout de suite si sa cle refuse le modele choisi, sans devoir envoyer
+   * un vrai message et attendre l'erreur en pleine conversation.
+   */
+  async function testerCombo() {
+    if (!cleChoisie) {
+      etatTest = 'idle';
+      messageTest = '';
+      return;
+    }
+    // Modele sur override actif : il doit appartenir a la liste de la cle.
+    // Sans ca l'API renverra une erreur systematiquement, autant l'eviter.
+    if (modeleChoisi && modeles.length > 0 && !modeles.includes(modeleChoisi)) {
+      etatTest = 'incompat';
+      const cle = cles.find((c) => c.id === cleChoisie);
+      messageTest = `Le modele « ${modeleChoisi} » n'existe pas chez ${cle?.display_name ?? 'ce provider'}.`;
+      return;
+    }
+    const jeton = ++jetonTest;
+    etatTest = 'testing';
+    messageTest = '';
+    try {
+      const res = await agentApi.providers.test(cleChoisie, modeleChoisi || null);
+      if (jeton !== jetonTest) return; // resultat obsolete, l'utilisateur a change de nouveau
+      etatTest = res.ok ? 'ok' : 'ko';
+      messageTest = res.provider_message ?? res.message ?? '';
+    } catch (e) {
+      if (jeton !== jetonTest) return;
+      etatTest = 'ko';
+      messageTest = e instanceof ApiError ? e.message : 'Test impossible.';
+    }
+  }
+
   async function changerCle() {
     modeleChoisi = '';
+    etatTest = 'idle';
+    messageTest = '';
     await chargerModeles();
     if (sessionId && cleChoisie) {
       await agentApi.sessions.update(sessionId, { provider_id: cleChoisie }).catch(() => null);
     }
+    void testerCombo();
   }
 
   async function changerModele() {
-    if (!sessionId || !modeleChoisi) return;
-    // Ecrit l'override par session, ne mute jamais le provider global.
-    await agentApi.sessions.update(sessionId, { model_override: modeleChoisi }).catch(() => null);
+    if (sessionId) {
+      // Ecrit l'override par session, ne mute jamais le provider global.
+      await agentApi.sessions
+        .update(sessionId, { model_override: modeleChoisi || null })
+        .catch(() => null);
+    }
+    void testerCombo();
   }
+
+  const libelleTest = $derived(
+    etatTest === 'testing'
+      ? 'Test…'
+      : etatTest === 'ok'
+        ? 'OK'
+        : etatTest === 'ko'
+          ? 'Echec'
+          : etatTest === 'incompat'
+            ? 'Incompatible'
+            : ''
+  );
 
   onMount(async () => {
     const taches: Promise<unknown>[] = [agentApi.providers.list().catch(() => [])];
@@ -139,6 +200,10 @@
     if (sessionSauvegardee?.model_override) {
       modeleChoisi = sessionSauvegardee.model_override;
     }
+    // Test discret du couple cle+modele au chargement : si le modele
+    // enregistre en session n'existe plus (compte migre, plan degrade),
+    // l'utilisateur le voit avant d'envoyer un message.
+    if (cleChoisie) void testerCombo();
   });
 
   async function envoyer(event: SubmitEvent) {
@@ -242,7 +307,44 @@
           </select>
         </label>
       {/if}
+      <!-- Indicateur du dernier test cle+modele. Le bouton relance le test a
+           la demande ; le point coloré resume l'etat sans se disputer la
+           largeur avec les selecteurs. -->
+      <span class="flex items-center gap-1.5">
+        <span
+          aria-hidden="true"
+          class="inline-block h-2 w-2 rounded-full"
+          class:bg-emerald-500={etatTest === 'ok'}
+          class:bg-red-500={etatTest === 'ko' || etatTest === 'incompat'}
+          class:bg-amber-400={etatTest === 'testing'}
+          class:bg-ink-tertiary={etatTest === 'idle'}
+          class:animate-pulse={etatTest === 'testing'}
+        ></span>
+        {#if libelleTest}
+          <span
+            class="text-xs"
+            class:text-emerald-600={etatTest === 'ok'}
+            class:text-danger={etatTest === 'ko' || etatTest === 'incompat'}
+            class:text-ink-tertiary={etatTest === 'testing' || etatTest === 'idle'}
+            title={messageTest}
+          >
+            {libelleTest}
+          </span>
+        {/if}
+        <button
+          type="button"
+          class="text-xs text-ink-tertiary underline hover:text-ink-primary disabled:opacity-50"
+          onclick={testerCombo}
+          disabled={enCours || etatTest === 'testing' || !cleChoisie}
+          title="Tester le couple clé + modèle"
+        >
+          Tester
+        </button>
+      </span>
     </div>
+    {#if messageTest && (etatTest === 'ko' || etatTest === 'incompat')}
+      <p class="mb-2 text-xs text-danger">{messageTest}</p>
+    {/if}
   {/if}
 
   <!-- Fil de conversation -->

@@ -169,8 +169,11 @@ export const agentApi = {
         body: JSON.stringify(body),
       }),
     remove: (id: string) => request<void>(`/agent/providers/${id}`, { method: 'DELETE' }),
-    test: (id: string) =>
-      request<AgentProviderTestResult>(`/agent/providers/${id}/test`, { method: 'POST' }),
+    test: (id: string, model?: string | null) =>
+      request<AgentProviderTestResult>(`/agent/providers/${id}/test`, {
+        method: 'POST',
+        body: JSON.stringify(model ? { model } : {}),
+      }),
     models: (id: string) => request<AgentProviderModels>(`/agent/providers/${id}/models`),
   },
 
