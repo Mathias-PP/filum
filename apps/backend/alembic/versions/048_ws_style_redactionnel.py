@@ -7,7 +7,7 @@ modifications resteraient dans celui que plus aucun contexte ne cite.
 Un createur qui possede deja les deux (cas theorique) garde le nouveau :
 la mise a jour est filtree pour ne pas violer `uq_workspace_files_creator_path`.
 
-Revision ID: 048_workspace_rename_style_redactionnel
+Revision ID: 048_ws_style_redactionnel
 Revises: 047_agent_session_model_override
 """
 
@@ -17,7 +17,7 @@ from collections.abc import Sequence
 
 from alembic import op
 
-revision: str = "048_workspace_rename_style_redactionnel"
+revision: str = "048_ws_style_redactionnel"
 down_revision: str | None = "047_agent_session_model_override"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
