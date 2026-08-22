@@ -360,13 +360,40 @@ async def _parse_sse_stream(
                 text_parts.append(content)
                 if on_delta is not None:
                     await on_delta(content)
-            # Tool calls fragmentés : réassembler par index (pas par id)
+            # Tool calls fragmentés : réassembler par index (pas par id).
+            # Deux protocoles observes :
+            # - OpenAI/Anthropic standard : chaque delta porte `index`, le
+            #   `name` vient dans le premier chunk et est absent apres,
+            #   seuls `arguments` s'accumulent.
+            # - Gemini via l'adapter OpenAI-compat : n'envoie PAS d'`index`
+            #   et empile plusieurs `tool_calls` distincts sur le meme
+            #   position ordinale. Sans traitement special, les noms de 4
+            #   appels distincts se retrouvaient concatenes en un nom
+            #   inexistant (bug prod 2026-08-22 : `fs_readfs_readfs_readfiche_etapes`
+            #   avec Gemini demandant 4 appels d'outils).
+            # Reglestrangement conservatrices :
+            # - `name` est ATOMIQUE : on affecte, jamais on concatene.
+            # - `arguments` est un flux JSON : on concatene.
+            # - Sans `index` explicite, l'apparition d'un nouveau `name`
+            #   non-vide different du precedent signale un nouveau tool_call.
             tc_list = delta.get("tool_calls")
             if isinstance(tc_list, list):
-                for tc_delta in tc_list:
+                # Cas Gemini : quand aucun tool_call du chunk n'a d'`index`, on
+                # traite tous les elements de la liste comme des appels distincts
+                # ranges apres les precedents. Sinon deux `fs_read` successifs
+                # sans index seraient vus comme un seul appel.
+                sans_index = all(isinstance(tc, dict) and tc.get("index") is None for tc in tc_list)
+                base_position = (
+                    (max(tool_calls_par_index.keys()) + 1) if tool_calls_par_index else 0
+                )
+                for position, tc_delta in enumerate(tc_list):
                     if not isinstance(tc_delta, dict):
                         continue
-                    idx = tc_delta.get("index", 0)
+                    fn_delta = tc_delta.get("function") or {}
+                    nom_nouveau = fn_delta.get("name") or ""
+                    idx = tc_delta.get("index")
+                    if idx is None:
+                        idx = base_position + position if sans_index else 0
                     if idx not in tool_calls_par_index:
                         tool_calls_par_index[idx] = {
                             "id": "",
@@ -378,9 +405,12 @@ async def _parse_sse_stream(
                         existing["id"] = tc_delta["id"]
                     if tc_delta.get("type"):
                         existing["type"] = tc_delta["type"]
-                    fn_delta = tc_delta.get("function") or {}
-                    if fn_delta.get("name"):
-                        existing["function"]["name"] += fn_delta["name"]
+                    if nom_nouveau:
+                        # Affecter, pas concatener : le nom d'outil est
+                        # atomique. Un `+=` ecrase la valeur precedente si le
+                        # provider repete le nom, mais surtout empeche le
+                        # scenario prod ou 4 noms distincts fusionnaient.
+                        existing["function"]["name"] = nom_nouveau
                     if fn_delta.get("arguments"):
                         existing["function"]["arguments"] += fn_delta["arguments"]
     except httpx.StreamError as exc:
