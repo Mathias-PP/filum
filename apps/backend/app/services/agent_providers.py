@@ -334,19 +334,26 @@ async def tester(
     creator_id: UUID,
     provider_id: UUID,
     transport: httpx.AsyncBaseTransport | None = None,
+    *,
+    model: str | None = None,
 ) -> AgentProviderTestResult:
     """Un appel minimal (1 token, prompt « ping ») avec la cle du createur.
 
     ``transport`` est injectable pour les tests (``httpx.MockTransport``) :
     aucun appel reseau dans les tests. Ne leve jamais : retourne un resultat
     classifiable.
+
+    ``model`` permet de tester un modele specifique (override de session) plutot
+    que le modele par defaut du provider. Sans ca l'UI ne sait pas si le couple
+    cle+modele choisi par l'utilisateur est compatible.
     """
     provider = await _get_owned(db, creator_id, provider_id)
     key = _decrypt(provider.api_key_enc)
     url, headers = url_et_headers(provider.provider, provider.base_url, key)
+    modele_teste = (model or provider.model).strip() or provider.model
     payload = format_chat_payload(
         provider.provider,
-        provider.model,
+        modele_teste,
         [{"role": "user", "content": "ping"}],
         [],
         1,
@@ -358,12 +365,12 @@ async def tester(
         async with httpx.AsyncClient(timeout=_TIMEOUT, transport=transport) as client:
             r = await client.post(url, json=payload, headers=headers)
         latency_ms = int((monotonic() - t0) * 1000)
-        result = _classify(provider.model, url, r)
+        result = _classify(modele_teste, url, r)
     except httpx.HTTPError as exc:
         return AgentProviderTestResult(
             ok=False,
             http_status=None,
-            model_resolved=provider.model,
+            model_resolved=modele_teste,
             url=url,
             message=f"Impossible de joindre l'endpoint : {exc}",
         )

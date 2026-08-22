@@ -318,6 +318,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/TestProviderBody"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -9127,6 +9144,25 @@
           "context_after"
         ],
         "title": "SuggestedExcerpt"
+      },
+      "TestProviderBody": {
+        "properties": {
+          "model": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          }
+        },
+        "type": "object",
+        "title": "TestProviderBody",
+        "description": "Corps optionnel pour ``POST /agent/providers/{id}/test``.\n\n``model`` teste un modele specifique (typiquement l'override de session) au\nlieu du modele par defaut du provider. Utile pour verifier a la volee qu'un\ncouple cle+modele choisi dans le chat est bien compatible."
       },
       "TokenResponse": {
         "properties": {

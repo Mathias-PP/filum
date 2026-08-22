@@ -9,7 +9,8 @@ from __future__ import annotations
 from uuid import UUID
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.endpoints.auth import get_current_user
@@ -126,17 +127,35 @@ async def supprimer_provider(
         ) from exc
 
 
+class TestProviderBody(BaseModel):
+    """Corps optionnel pour ``POST /agent/providers/{id}/test``.
+
+    ``model`` teste un modele specifique (typiquement l'override de session) au
+    lieu du modele par defaut du provider. Utile pour verifier a la volee qu'un
+    couple cle+modele choisi dans le chat est bien compatible.
+    """
+
+    model: str | None = Field(default=None, max_length=200)
+
+
 @router.post("/{provider_id}/test", response_model=AgentProviderTestResult)
 @limiter.limit(f"{settings.rate_limit_per_minute}/minute")
 async def tester_provider(
     provider_id: UUID,
     request: Request,
+    body: TestProviderBody | None = Body(default=None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     transport: httpx.AsyncBaseTransport | None = Depends(get_http_client),
 ):
     try:
-        return await tester(db, current_user.id, provider_id, transport=transport)
+        return await tester(
+            db,
+            current_user.id,
+            provider_id,
+            transport=transport,
+            model=body.model if body else None,
+        )
     except AgentProviderNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
