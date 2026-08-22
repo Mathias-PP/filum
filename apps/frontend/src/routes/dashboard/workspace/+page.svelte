@@ -4,9 +4,9 @@
   import { ApiError } from '$lib/api';
   import { Button, ConfirmDialog, toast } from '$lib/components';
 
-  // Etat de l'arbre : liste plate ordonnee par path, aplatie pour l'affichage.
-  // Le serveur renvoie deja fichiers et dossiers ; on utilise le path pour
-  // deriver la profondeur (indentation).
+  // Etat de l'arbre : liste plate ordonnee par path. Le serveur envoie
+  // `contract` (phrase de contrat) et `layer` (L0/L1/L2/L3) pour chaque
+  // fichier, deduits du frontmatter YAML ou fallback conventionnel.
   let entrees = $state<WorkspaceTreeEntry[]>([]);
   let chargementArbre = $state(true);
   let chargementFichier = $state(false);
@@ -15,15 +15,85 @@
   let contenuOriginal = $state('');
   let messageErr = $state('');
 
-  // Nouveau fichier
   let creationOuverte = $state(false);
   let nouveauChemin = $state('');
-
-  // Suppression
   let suppressionOuverte = $state(false);
   let cibleSuppression = $state<string | null>(null);
 
   const modifie = $derived(contenu !== contenuOriginal);
+
+  // Regroupement par section ICM. On garde le vocabulaire ICM (Layer 0..3)
+  // avec un titre court, sobre, non-marketing. Les fichiers utilisateurs
+  // hors racines conventionnelles tombent dans "Autre".
+  interface Section {
+    slug: string;
+    titre: string;
+    aide: string;
+    fichiers: WorkspaceTreeEntry[];
+  }
+
+  const sections = $derived.by<Section[]>(() => {
+    const routing: WorkspaceTreeEntry[] = [];
+    const references: WorkspaceTreeEntry[] = [];
+    const modeles: WorkspaceTreeEntry[] = [];
+    const pipeline: WorkspaceTreeEntry[] = [];
+    const runs: WorkspaceTreeEntry[] = [];
+    const autre: WorkspaceTreeEntry[] = [];
+
+    for (const e of entrees) {
+      if (e.type !== 'file') continue;
+      if (e.layer === 'L0' || e.layer === 'L1') routing.push(e);
+      else if (e.layer === 'L2') pipeline.push(e);
+      else if (e.path.startsWith('_core/templates/')) modeles.push(e);
+      else if (e.path.startsWith('shared/') || e.layer === 'L3') references.push(e);
+      else if (e.path.startsWith('runs/')) runs.push(e);
+      else autre.push(e);
+    }
+
+    const out: Section[] = [
+      {
+        slug: 'routing',
+        titre: 'Routing (L0, L1)',
+        aide: "Points d'entrée que l'agent lit d'abord pour savoir où aller.",
+        fichiers: routing,
+      },
+      {
+        slug: 'references',
+        titre: 'Références (L3 factory)',
+        aide: 'Règles stables lues à chaque conversation. Modifier ici change le comportement de tout agent qui inclut ces fichiers dans son contexte.',
+        fichiers: references,
+      },
+      {
+        slug: 'modeles',
+        titre: 'Modèles (L3 factory)',
+        aide: 'Squelettes copiés dans les runs pour démarrer une fiche, une source ou un extrait.',
+        fichiers: modeles,
+      },
+      {
+        slug: 'pipeline',
+        titre: 'Pipeline (L2 contrats de stage)',
+        aide: 'Contrat de chaque étape : inputs, process, outputs. Suivis en séquence pour construire une fiche du brief à la publication.',
+        fichiers: pipeline,
+      },
+    ];
+    if (runs.length > 0) {
+      out.push({
+        slug: 'runs',
+        titre: 'Runs (L4 product)',
+        aide: 'Fiches en cours de construction. Un dossier par fiche, écrasé à chaque étape.',
+        fichiers: runs,
+      });
+    }
+    if (autre.length > 0) {
+      out.push({
+        slug: 'autre',
+        titre: 'Autre',
+        aide: 'Fichiers ajoutés en dehors des racines conventionnelles ICM.',
+        fichiers: autre,
+      });
+    }
+    return out.filter((s) => s.fichiers.length > 0);
+  });
 
   async function chargerArbre() {
     chargementArbre = true;
@@ -64,7 +134,6 @@
       await agentApi.workspace.write(cheminActif, contenu);
       contenuOriginal = contenu;
       toast.success(`« ${cheminActif} » enregistré.`);
-      // Rafraichir l'arbre pour recuperer sha256/updated_at a jour.
       void chargerArbre();
     } catch (e) {
       messageErr = e instanceof ApiError ? e.message : 'Écriture impossible.';
@@ -112,15 +181,6 @@
     }
   }
 
-  function profondeur(path: string): number {
-    return Math.max(0, path.split('/').length - 1);
-  }
-
-  function nomCourt(path: string): string {
-    const parts = path.split('/');
-    return parts[parts.length - 1] || path;
-  }
-
   onMount(() => {
     void chargerArbre();
   });
@@ -135,8 +195,8 @@
     <div>
       <h1 class="font-serif text-2xl text-ink-primary">Workspace</h1>
       <p class="mt-1 text-sm text-ink-secondary">
-        Fichiers Markdown lus par l'agent avant chaque conversation. Servent de contexte éditorial
-        partagé.
+        Configuration ICM de l'agent. Chaque fichier est lu à un moment précis d'une conversation
+        pour orienter les réponses.
       </p>
     </div>
     <div class="flex gap-2">
@@ -144,7 +204,7 @@
         size="sm"
         variant="ghost"
         onclick={reSeed}
-        title="Restaurer les fichiers manquants du template"
+        title="Réinsère les fichiers du template ICM qui manquent"
       >
         Restaurer template
       </Button>
@@ -152,49 +212,62 @@
     </div>
   </div>
 
-  <div class="grid gap-4 lg:grid-cols-[18rem_1fr]">
-    <aside class="rounded-lg border border-subtle bg-surface-secondary p-2">
+  <div class="grid gap-4 lg:grid-cols-[22rem_1fr]">
+    <aside class="space-y-4">
       {#if chargementArbre}
         <p class="p-2 text-sm text-ink-tertiary">Chargement…</p>
-      {:else if entrees.length === 0}
-        <p class="p-2 text-sm text-ink-tertiary">Workspace vide.</p>
+      {:else if sections.length === 0}
+        <p
+          class="rounded-lg border border-subtle bg-surface-secondary p-3 text-sm text-ink-tertiary"
+        >
+          Workspace vide. Cliquez « Restaurer template » pour insérer le seed ICM.
+        </p>
       {:else}
-        <ul class="space-y-0.5 text-sm">
-          {#each entrees as e (e.path)}
-            {#if e.type === 'directory'}
-              <li
-                class="px-2 py-1 text-xs uppercase tracking-wider text-ink-tertiary"
-                style="padding-left: {profondeur(e.path) * 0.75 + 0.5}rem;"
-              >
-                {nomCourt(e.path)}/
-              </li>
-            {:else}
-              <li class="flex items-center gap-1">
-                <button
-                  type="button"
-                  class="flex-1 truncate rounded px-2 py-1 text-left hover:bg-surface-tertiary"
-                  class:bg-surface-tertiary={cheminActif === e.path}
-                  class:font-medium={cheminActif === e.path}
-                  style="padding-left: {profondeur(e.path) * 0.75 + 0.5}rem;"
-                  onclick={() => ouvrir(e.path)}
-                >
-                  {nomCourt(e.path)}
-                </button>
-                <button
-                  type="button"
-                  class="px-1 text-ink-tertiary hover:text-danger"
-                  title="Supprimer"
-                  onclick={() => {
-                    cibleSuppression = e.path;
-                    suppressionOuverte = true;
-                  }}
-                >
-                  ×
-                </button>
-              </li>
-            {/if}
-          {/each}
-        </ul>
+        {#each sections as section (section.slug)}
+          <div class="rounded-lg border border-subtle bg-surface-secondary p-3">
+            <h2 class="text-xs font-medium uppercase tracking-wider text-ink-tertiary">
+              {section.titre}
+            </h2>
+            <p class="mt-1 text-xs text-ink-secondary">{section.aide}</p>
+            <ul class="mt-2 space-y-1.5">
+              {#each section.fichiers as f (f.path)}
+                <li>
+                  <div class="flex items-start gap-1">
+                    <button
+                      type="button"
+                      class="flex-1 rounded px-2 py-1 text-left hover:bg-surface-tertiary"
+                      class:bg-surface-tertiary={cheminActif === f.path}
+                      onclick={() => ouvrir(f.path)}
+                    >
+                      <span
+                        class="block truncate font-mono text-xs"
+                        class:font-medium={cheminActif === f.path}
+                        class:text-ink-primary={cheminActif === f.path}
+                        class:text-ink-secondary={cheminActif !== f.path}
+                      >
+                        {f.path}
+                      </span>
+                      {#if f.contract}
+                        <span class="mt-0.5 block text-xs text-ink-tertiary">{f.contract}</span>
+                      {/if}
+                    </button>
+                    <button
+                      type="button"
+                      class="px-1 text-ink-tertiary hover:text-danger"
+                      title="Supprimer"
+                      onclick={() => {
+                        cibleSuppression = f.path;
+                        suppressionOuverte = true;
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                </li>
+              {/each}
+            </ul>
+          </div>
+        {/each}
       {/if}
     </aside>
 
@@ -226,7 +299,6 @@
   </div>
 </div>
 
-<!-- Modale de creation : simple form ; le path est libre, le serveur valide -->
 {#if creationOuverte}
   <div
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"

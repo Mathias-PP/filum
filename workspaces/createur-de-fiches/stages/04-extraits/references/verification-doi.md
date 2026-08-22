@@ -1,3 +1,7 @@
+---
+contract: "Reference de verification des DOI et metadonnees d'articles scientifiques."
+layer: L3
+---
 # Vérification DOI et texte plein
 
 Sources d'autorité pour vérifier un DOI et retrouver le texte plein d'un article.

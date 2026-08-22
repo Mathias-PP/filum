@@ -3346,6 +3346,10 @@ export interface components {
       sha256?: string | null;
       /** Updated At */
       updated_at?: string | null;
+      /** Layer */
+      layer?: string | null;
+      /** Contract */
+      contract?: string | null;
     };
     /** YoutubeTranscriptRequest */
     YoutubeTranscriptRequest: {

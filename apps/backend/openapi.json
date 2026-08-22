@@ -9486,6 +9486,28 @@
               }
             ],
             "title": "Updated At"
+          },
+          "layer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Layer"
+          },
+          "contract": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contract"
           }
         },
         "type": "object",

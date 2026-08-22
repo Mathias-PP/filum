@@ -15,8 +15,10 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
+from typing import Any
 from uuid import UUID
 
+import yaml
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -81,6 +83,105 @@ def calculer_sha256(content: str) -> str:
     return HashService.sha256(content.encode("utf-8"))
 
 
+#: Longueur max de la phrase de contrat renvoyee au frontend. Au-dela on
+#: tronque : c'est un descripteur, pas la doc complete.
+_CONTRACT_MAX = 240
+
+_FRONTMATTER_RE = re.compile(r"^---\n(.*?)\n---\n?", re.DOTALL)
+
+
+def _parse_frontmatter(content: str) -> tuple[dict[str, Any], str]:
+    """Extrait le frontmatter YAML d'un fichier Markdown.
+
+    Rend (meta, body). Jamais d'exception : un frontmatter absent, mal
+    delimite ou avec un YAML invalide rend ``({}, body_apres_bloc)`` ou
+    ``({}, content)`` selon les cas. Un frontmatter invalide est skipe du
+    body pour ne pas polluer le fallback ``_premier_paragraphe``.
+    """
+    if not content.startswith("---\n"):
+        return {}, content
+    match = _FRONTMATTER_RE.match(content)
+    if match is None:
+        # Delimiteur d'ouverture sans fermeture : on laisse tout tel quel.
+        return {}, content
+    body_apres = content[match.end() :]
+    try:
+        meta = yaml.safe_load(match.group(1)) or {}
+    except yaml.YAMLError:
+        # YAML pourri : on skip quand meme le bloc pour que le fallback
+        # premier paragraphe n'attrape pas les `---` en tete de fichier.
+        return {}, body_apres
+    if not isinstance(meta, dict):
+        return {}, body_apres
+    return meta, body_apres
+
+
+def _deduire_layer(path: str) -> str | None:
+    """Layer ICM deduit du chemin, quand absent du frontmatter.
+
+    - `AGENTS.md` racine        -> L0 (routing racine)
+    - `CONTEXT.md` racine        -> L1 (routing pipeline)
+    - `stages/*/CONTEXT.md`      -> L2 (contrat de stage)
+    - `shared/`, `_core/`,
+      `stages/**/references/`    -> L3 (factory)
+    - autre                       -> None
+    """
+    if path == "AGENTS.md":
+        return "L0"
+    if path == "CONTEXT.md":
+        return "L1"
+    if path.startswith("stages/") and path.endswith("/CONTEXT.md") and path.count("/") == 2:
+        return "L2"
+    if path.startswith(("shared/", "_core/")):
+        return "L3"
+    if path.startswith("stages/") and "/references/" in path:
+        return "L3"
+    return None
+
+
+def _premier_paragraphe(body: str) -> str | None:
+    """Premier paragraphe non-titre du body, tronque, comme fallback contract.
+
+    Ignore les lignes vides, les titres Markdown (`#`), les blocs de code
+    (\\`\\`\\`), les frontmatter residuels.
+    """
+    for bloc in re.split(r"\n\s*\n", body.strip()):
+        ligne = bloc.strip()
+        if not ligne:
+            continue
+        if ligne.startswith("#") or ligne.startswith("```"):
+            # Passer au bloc suivant, mais si c'est un titre, chercher le
+            # paragraphe apres.
+            continue
+        if len(ligne) > _CONTRACT_MAX:
+            return ligne[: _CONTRACT_MAX - 1].rstrip() + "…"
+        return ligne
+    # Aucun paragraphe : essayer le premier titre.
+    for ligne in body.splitlines():
+        propre = ligne.lstrip("# ").strip()
+        if propre:
+            return propre[:_CONTRACT_MAX]
+    return None
+
+
+def extraire_meta(path: str, content: str) -> tuple[str | None, str | None]:
+    """Rend (contract, layer) pour un fichier du workspace.
+
+    Priorite : frontmatter YAML explicite > deduction par convention (path,
+    premier paragraphe). Ce fallback assure que les workspaces existants
+    (crees avant l'ajout du frontmatter au seed) affichent quand meme
+    quelque chose d'utile dans l'UI, sans migration destructrice.
+    """
+    meta, body = _parse_frontmatter(content)
+    contract_yaml = meta.get("contract") if isinstance(meta.get("contract"), str) else None
+    layer_yaml = meta.get("layer") if isinstance(meta.get("layer"), str) else None
+    contract = contract_yaml or _premier_paragraphe(body)
+    if contract and len(contract) > _CONTRACT_MAX:
+        contract = contract[: _CONTRACT_MAX - 1].rstrip() + "…"
+    layer = layer_yaml or _deduire_layer(path)
+    return contract, layer
+
+
 async def _get(
     db: AsyncSession,
     creator_id: UUID,
@@ -142,11 +243,14 @@ async def lister(
 
     entries: dict[str, dict[str, object]] = {}
     for f in fichiers:
+        contract, layer = extraire_meta(f.path, f.content)
         entries[f.path] = {
             "path": f.path,
             "type": "file",
             "sha256": f.sha256,
             "updated_at": f.updated_at,
+            "contract": contract,
+            "layer": layer,
         }
         parts = f.path.split("/")
         for i in range(1, len(parts)):

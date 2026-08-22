@@ -1,3 +1,7 @@
+---
+contract: "Style, longueurs et regles typographiques de tout texte que l'agent ecrit."
+layer: L3
+---
 # La voix : ce qu'un texte Philum sonne
 
 Les textes générés par l'agent (titre, description, annotation, titre d'extrait, mise en situation) suivent ces règles pour ne pas se distinguer d'un texte écrit à la main.

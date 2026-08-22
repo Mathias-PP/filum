@@ -1,3 +1,7 @@
+---
+contract: "Contrat de l'etape 06 : relecture qualite et emission du verdict de publication."
+layer: L2
+---
 # 06-relecture
 
 ## Scope

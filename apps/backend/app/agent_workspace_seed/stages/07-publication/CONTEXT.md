@@ -1,3 +1,7 @@
+---
+contract: "Contrat de l'etape 07 : publication de la fiche et verifications post-publish."
+layer: L2
+---
 # 07-publication
 
 ## Scope

@@ -1,3 +1,7 @@
+---
+contract: "Definition du pipeline et routing task-type vers stage."
+layer: L1
+---
 # Pipeline
 
 **Forme ICM** : Pipeline. Une fiche entre au `stages/01-brief`, sort publiée au `stages/07-publication`. Chaque étape lit le dossier `output/` précédent et écrit dans le sien.

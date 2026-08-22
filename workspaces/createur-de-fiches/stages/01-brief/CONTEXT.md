@@ -1,3 +1,7 @@
+---
+contract: "Contrat de l'etape 01 : transformer le brief en fiche brouillon cote Philum."
+layer: L2
+---
 # 01-brief
 
 ## Scope

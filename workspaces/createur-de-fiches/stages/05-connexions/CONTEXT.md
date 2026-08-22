@@ -1,3 +1,7 @@
+---
+contract: "Contrat de l'etape 05 : confirmer les connexions au graphe des fiches."
+layer: L2
+---
 # 05-connexions
 
 ## Scope

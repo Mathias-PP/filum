@@ -1,3 +1,7 @@
+---
+contract: "Cinq proprietes d'une fiche Philum reussie."
+layer: L3
+---
 # Ce qui fait une bonne fiche Philum
 
 Une fiche Philum n'est pas une bibliographie. C'est un **lien de confiance** entre un contenu (vidéo, article, podcast) et ses fondations. Chaque source y a un rôle nommé, pas juste une existence.
