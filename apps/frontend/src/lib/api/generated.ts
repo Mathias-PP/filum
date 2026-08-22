@@ -21,6 +21,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/agent/definitions': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Lister Agents */
+    get: operations['lister_agents_api_v1_agent_definitions_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/agent/definitions/{slug}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Obtenir Agent */
+    get: operations['obtenir_agent_api_v1_agent_definitions__slug__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/agent/fiche/{slug}': {
     parameters: {
       query?: never;
@@ -192,7 +226,7 @@ export interface paths {
     head?: never;
     /**
      * Mettre A Jour Session
-     * @description Renomme la conversation et/ou change sa cle provider ou son modele.
+     * @description Renomme la conversation, ou change sa cle provider, son modele ou son agent.
      */
     patch: operations['mettre_a_jour_session_api_v1_agent_sessions__session_id__patch'];
     trace?: never;
@@ -1593,6 +1627,53 @@ export interface components {
        * @description Modèle à utiliser à la place de provider.model pour cette session.
        */
       model_override?: string | null;
+      /**
+       * Agent Slug
+       * @description Agent nommé à utiliser (fichier `agents/<slug>.yaml`). Null : l'agent déjà attaché à la session, sinon l'assistant généraliste.
+       */
+      agent_slug?: string | null;
+    };
+    /** AgentDefinitionList */
+    AgentDefinitionList: {
+      /** Agents */
+      agents: components['schemas']['AgentDefinitionRead'][];
+      /** Rejected */
+      rejected: components['schemas']['AgentDefinitionRejected'][];
+    };
+    /** AgentDefinitionRead */
+    AgentDefinitionRead: {
+      /** Slug */
+      slug: string;
+      /** Name */
+      name: string;
+      /** Contract */
+      contract: string;
+      /** System Prompt */
+      system_prompt: string;
+      /** Tools */
+      tools: string[];
+      /** Context */
+      context: string[];
+      /** Layer */
+      layer: string | null;
+      /** Model Hint */
+      model_hint: string | null;
+      /** Builtin */
+      builtin: boolean;
+      /** Tools Absents */
+      tools_absents: string[];
+      /** Path */
+      path: string;
+    };
+    /**
+     * AgentDefinitionRejected
+     * @description Un fichier de `agents/` qui ne decrit pas un agent exploitable.
+     */
+    AgentDefinitionRejected: {
+      /** Path */
+      path: string;
+      /** Raison */
+      raison: string;
     };
     /**
      * AgentFicheRequest
@@ -1728,6 +1809,8 @@ export interface components {
       title: string;
       /** Provider Id */
       provider_id?: string | null;
+      /** Agent Slug */
+      agent_slug?: string | null;
     };
     /** AgentSessionRead */
     AgentSessionRead: {
@@ -1742,6 +1825,8 @@ export interface components {
       provider_id: string | null;
       /** Model Override */
       model_override: string | null;
+      /** Agent Slug */
+      agent_slug: string | null;
       /**
        * Created At
        * Format: date-time
@@ -1758,6 +1843,8 @@ export interface components {
       provider_id?: string | null;
       /** Model Override */
       model_override?: string | null;
+      /** Agent Slug */
+      agent_slug?: string | null;
     };
     /** AgentSessionUsage */
     AgentSessionUsage: {
@@ -3419,6 +3506,57 @@ export interface operations {
         };
         content: {
           'application/json': unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  lister_agents_api_v1_agent_definitions_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AgentDefinitionList'];
+        };
+      };
+    };
+  };
+  obtenir_agent_api_v1_agent_definitions__slug__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        slug: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['AgentDefinitionRead'];
         };
       };
       /** @description Validation Error */

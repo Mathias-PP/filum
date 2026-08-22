@@ -4,8 +4,8 @@
 (`workspaces/createur-de-fiches/`) pour répercuter le template servi aux
 nouveaux créateurs (le seed idempotent de la Phase 2 le copie en base).
 
-N'inclut que la **configuration** : AGENTS.md, CONTEXT.md, `shared/`,
-`stages/`, `_core/templates/`, `_core/audit/audit_fiche.py`. Exclut les
+N'inclut que la **configuration** : AGENTS.md, CONTEXT.md, `agents/`,
+`shared/`, `stages/`, `_core/templates/`, `_core/audit/audit_fiche.py`. Exclut les
 placeholder `.gitkeep`, le questionnaire de dev (`setup/`), les runs et
 CLAUDE.md.
 
@@ -23,6 +23,7 @@ SEED_DIR = BACKEND_ROOT / "app" / "agent_workspace_seed"
 INCLUDED_PREFIXES: tuple[str, ...] = (
     "AGENTS.md",
     "CONTEXT.md",
+    "agents/",
     "shared/",
     "stages/",
     "_core/templates/",

@@ -34,6 +34,9 @@ class AgentSession(Base):
         nullable=True,
     )
     model_override: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    #: Slug de l'agent nommé de cette session (fichier `agents/<slug>.yaml` du
+    #: workspace). NULL = assistant généraliste, tous outils, tout `shared/`.
+    agent_slug: Mapped[str | None] = mapped_column(String(80), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()

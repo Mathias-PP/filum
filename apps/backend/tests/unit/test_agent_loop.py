@@ -1181,3 +1181,105 @@ class TestSystemeAgent:
         ctx = ToolContext(db=None, user=None, creator_id=None)
         result = await _execute_web_search(ctx, {"query": "test"})
         assert "mémoire d'entraînement" in result["error"]
+
+
+@pytest.mark.asyncio
+class TestAgentNomme:
+    """Un agent nomme restreint les outils envoyes et le contexte injecte."""
+
+    @staticmethod
+    def _definition(**kwargs):
+        from app.services.agent_definitions import AgentDefinition
+
+        defauts = dict(
+            slug="publicateur",
+            name="Publicateur",
+            contract="Publie une fiche prete.",
+            system_prompt="Tu publies, tu ne rediges pas.",
+            tools=("publish_card",),
+            context=(),
+        )
+        defauts.update(kwargs)
+        return AgentDefinition(**defauts)
+
+    async def _corps_envoye(self, db_session, test_user, agent_def):
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+        corps: list[dict] = []
+
+        def handler(request):
+            corps.append(json.loads(request.content))
+            return httpx.Response(200, json=_mock_texte("ok"))
+
+        events = []
+
+        async def emit(event):
+            events.append(event)
+
+        await agent_svc.boucle(
+            db_session,
+            test_user,
+            provider,
+            [{"role": "user", "content": "vas-y"}],
+            emit,
+            _refuse,
+            transport=httpx.MockTransport(handler),
+            registre=_registre_fake([]),
+            agent_def=agent_def,
+        )
+        return corps[0]
+
+    async def test_seuls_les_outils_de_l_agent_sont_envoyes(self, db_session, test_user):
+        corps = await self._corps_envoye(db_session, test_user, self._definition())
+        noms = {o["function"]["name"] for o in corps["tools"]}
+        assert noms == {"publish_card"}
+
+    async def test_le_prompt_systeme_porte_le_role(self, db_session, test_user):
+        corps = await self._corps_envoye(db_session, test_user, self._definition())
+        systeme = next(m for m in corps["messages"] if m["role"] == "system")
+        # Le prompt general reste : le role s'ajoute, il ne remplace pas.
+        assert "Agis, ne planifie pas" in systeme["content"]
+        assert "Publicateur" in systeme["content"]
+        assert "Tu publies, tu ne rediges pas." in systeme["content"]
+
+    async def test_le_contexte_se_limite_aux_fichiers_nommes(self, db_session, test_user):
+        from hashlib import sha256
+
+        for chemin, contenu in (
+            ("shared/garde-fous.md", "Le garde-fou attendu."),
+            ("shared/style-redactionnel.md", "Le style non demande."),
+        ):
+            db_session.add(
+                WorkspaceFile(
+                    creator_id=test_user.id,
+                    path=chemin,
+                    content=contenu,
+                    sha256=sha256(contenu.encode()).hexdigest(),
+                )
+            )
+        await db_session.commit()
+
+        corps = await self._corps_envoye(
+            db_session, test_user, self._definition(context=("shared/garde-fous.md",))
+        )
+        systeme = next(m for m in corps["messages"] if m["role"] == "system")
+        assert "Le garde-fou attendu." in systeme["content"]
+        assert "Le style non demande." not in systeme["content"]
+
+    async def test_agent_sans_contexte_n_injecte_rien(self, db_session, test_user):
+        from hashlib import sha256
+
+        contenu = "Le style non demande."
+        db_session.add(
+            WorkspaceFile(
+                creator_id=test_user.id,
+                path="shared/style-redactionnel.md",
+                content=contenu,
+                sha256=sha256(contenu.encode()).hexdigest(),
+            )
+        )
+        await db_session.commit()
+
+        corps = await self._corps_envoye(db_session, test_user, self._definition())
+        systeme = next(m for m in corps["messages"] if m["role"] == "system")
+        assert contenu not in systeme["content"]

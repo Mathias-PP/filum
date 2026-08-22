@@ -164,6 +164,19 @@ def _premier_paragraphe(body: str) -> str | None:
     return None
 
 
+def _meta_yaml(content: str) -> dict[str, Any]:
+    """Metadonnees d'un fichier entierement YAML, comme une definition d'agent.
+
+    Sans ce cas, le fallback ``_premier_paragraphe`` afficherait la premiere
+    ligne du document (« slug: assistant ») en guise de contrat.
+    """
+    try:
+        charge = yaml.safe_load(content)
+    except yaml.YAMLError:
+        return {}
+    return charge if isinstance(charge, dict) else {}
+
+
 def extraire_meta(path: str, content: str) -> tuple[str | None, str | None]:
     """Rend (contract, layer) pour un fichier du workspace.
 
@@ -172,7 +185,10 @@ def extraire_meta(path: str, content: str) -> tuple[str | None, str | None]:
     (crees avant l'ajout du frontmatter au seed) affichent quand meme
     quelque chose d'utile dans l'UI, sans migration destructrice.
     """
-    meta, body = _parse_frontmatter(content)
+    if path.endswith((".yaml", ".yml")):
+        meta, body = _meta_yaml(content), ""
+    else:
+        meta, body = _parse_frontmatter(content)
     contract_yaml = meta.get("contract") if isinstance(meta.get("contract"), str) else None
     layer_yaml = meta.get("layer") if isinstance(meta.get("layer"), str) else None
     contract = contract_yaml or _premier_paragraphe(body)

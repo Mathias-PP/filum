@@ -50,7 +50,11 @@ async def creer_session(
     db: AsyncSession = Depends(get_db),
 ):
     return await agent_sessions.creer(
-        db, current_user.id, title=body.title, provider_id=body.provider_id
+        db,
+        current_user.id,
+        title=body.title,
+        provider_id=body.provider_id,
+        agent_slug=body.agent_slug,
     )
 
 
@@ -78,7 +82,7 @@ async def mettre_a_jour_session(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Renomme la conversation et/ou change sa cle provider ou son modele."""
+    """Renomme la conversation, ou change sa cle provider, son modele ou son agent."""
     try:
         return await agent_sessions.mettre_a_jour(
             db,
@@ -87,6 +91,7 @@ async def mettre_a_jour_session(
             title=body.title,
             provider_id=body.provider_id,
             model_override=body.model_override,
+            agent_slug=body.agent_slug,
         )
     except agent_sessions.AgentSessionNotFoundError as exc:
         raise HTTPException(

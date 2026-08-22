@@ -48,11 +48,13 @@ async def creer(
     *,
     title: str = "",
     provider_id: UUID | None = None,
+    agent_slug: str | None = None,
 ) -> AgentSession:
     session = AgentSession(
         creator_id=creator_id,
         title=title or "Nouvelle conversation",
         provider_id=provider_id,
+        agent_slug=agent_slug,
     )
     db.add(session)
     await db.commit()
@@ -172,8 +174,9 @@ async def mettre_a_jour(
     title: str | None = None,
     provider_id: UUID | None = None,
     model_override: str | None = None,
+    agent_slug: str | None = None,
 ) -> AgentSession:
-    """Met à jour le titre, la clé provider et/ou le modèle d'une session.
+    """Met à jour le titre, la clé provider, le modèle et/ou l'agent d'une session.
 
     Seuls les champs explicitement passes (non None) sont modifies.
     Un titre vide est normalise en 'Nouvelle conversation'.
@@ -186,6 +189,8 @@ async def mettre_a_jour(
         session.provider_id = provider_id
     if model_override is not None:
         session.model_override = model_override if model_override.strip() else None
+    if agent_slug is not None:
+        session.agent_slug = agent_slug if agent_slug.strip() else None
     await db.commit()
     await db.refresh(session)
     return session
