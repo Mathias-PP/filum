@@ -486,6 +486,50 @@ class TestBoucle:
         assert "champ_etranger" not in tool_msg
 
     @pytest.mark.asyncio
+    async def test_approval_request_contient_resume_lisible(self, db_session, test_user):
+        """L'événement approval_request porte une phrase lisible qui résout le
+        slug/UUID en titre réel. Sans ça, l'utilisateur voit un JSON opaque et
+        l'approbation devient un chèque en blanc."""
+        from app.models.biblio_card import BiblioCard, CardStatus
+        from app.schemas.biblio_card import ContentType, Platform
+
+        card = BiblioCard(
+            user_id=test_user.id,
+            slug="ma-fiche",
+            title="Les mitochondries expliquées",
+            platform=Platform.BLOG,
+            content_type=ContentType.ARTICLE,
+            status=CardStatus.DRAFT,
+        )
+        db_session.add(card)
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+
+        appels = {"n": 0}
+
+        def handler(request):
+            appels["n"] += 1
+            if appels["n"] == 1:
+                return httpx.Response(
+                    200, json=_mock_tool_call("publish_card", {"slug": "ma-fiche"})
+                )
+            return httpx.Response(200, json=_mock_texte("ok."))
+
+        transport = httpx.MockTransport(handler)
+        messages = [{"role": "user", "content": "publie"}]
+        events = await _collect(
+            db_session, test_user, provider, messages, _refuse, transport, _registre_fake([])
+        )
+        demandes = [e for e in events if e["type"] == "approval_request"]
+        assert len(demandes) == 1
+        payload = demandes[0]["payload"]
+        assert "resume" in payload, "l'événement doit porter un résumé lisible"
+        resume = payload["resume"]
+        assert "Les mitochondries" in resume, (
+            f"le résumé doit citer le titre réel de la fiche, pas le slug ; obtenu : {resume!r}"
+        )
+
+    @pytest.mark.asyncio
     async def test_action_sensible_refusee_sans_execution(self, db_session, test_user):
         provider = _provider(db_session, test_user)
         await db_session.commit()

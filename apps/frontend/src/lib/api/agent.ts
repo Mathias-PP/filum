@@ -136,6 +136,9 @@ export type AgentEvent =
         request_id: string;
         tool: string;
         arguments: Record<string, unknown>;
+        /** Phrase lisible qui décrit ce que l'utilisateur autorise, calculée
+         * côté serveur qui seul peut résoudre les UUIDs en titres réels. */
+        resume?: string;
         tour: number;
       };
     }

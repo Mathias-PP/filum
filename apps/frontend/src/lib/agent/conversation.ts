@@ -24,6 +24,8 @@ export type ChatItem =
       requestId: string;
       tool: string;
       args: Record<string, unknown>;
+      /** Résumé lisible calculé par le serveur (résout UUIDs → titres). */
+      resume?: string;
       approved: boolean | null;
     }
   | { kind: 'error'; text: string };
@@ -80,6 +82,7 @@ export function appliquer(items: ChatItem[], event: AgentEvent): ChatItem[] {
           requestId: event.payload.request_id,
           tool: event.payload.tool,
           args: event.payload.arguments,
+          resume: event.payload.resume,
           approved: null,
         },
       ];
