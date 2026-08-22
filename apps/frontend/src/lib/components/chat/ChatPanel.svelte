@@ -1,6 +1,11 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import { agentApi, type AgentProvider, type AgentSessionUsage } from '$lib/api/agent';
+  import {
+    agentApi,
+    type AgentDefinition,
+    type AgentProvider,
+    type AgentSessionUsage,
+  } from '$lib/api/agent';
   import { ApiError } from '$lib/api';
   import { appliquer, depuisMessages, type ChatItem } from '$lib/agent/conversation';
   import Button from '../Button.svelte';
@@ -43,6 +48,12 @@
   let etatTest = $state<'idle' | 'testing' | 'ok' | 'ko' | 'incompat'>('idle');
   let messageTest = $state('');
   let jetonTest = 0; // sert a annuler un test devenu obsolete
+
+  // Agents nommes : chaque definition restreint les outils et le contexte. Le
+  // choix vaut pour la session entiere, il est relu au rechargement.
+  let agents = $state<AgentDefinition[]>([]);
+  let agentChoisi = $state('');
+  const agentActif = $derived(agents.find((a) => a.slug === agentChoisi) ?? null);
 
   // Autoscroll
   let fil = $state<HTMLDivElement | null>(null);
@@ -251,6 +262,14 @@
     void testerCombo();
   }
 
+  async function changerAgent() {
+    if (sessionId) {
+      await agentApi.sessions
+        .update(sessionId, { agent_slug: agentChoisi || null })
+        .catch(() => null);
+    }
+  }
+
   const libelleTest = $derived(
     etatTest === 'testing'
       ? 'Test…'
@@ -264,7 +283,10 @@
   );
 
   onMount(async () => {
-    const taches: Promise<unknown>[] = [agentApi.providers.list().catch(() => [])];
+    const taches: Promise<unknown>[] = [
+      agentApi.providers.list().catch(() => []),
+      agentApi.definitions.list().catch(() => ({ agents: [], rejected: [] })),
+    ];
     if (sessionId) {
       taches.push(agentApi.sessions.messages(sessionId).catch(() => []));
       // Restaurer la clé et le modèle utilisés dans cette session : sans ça
@@ -273,9 +295,12 @@
       taches.push(agentApi.sessions.get(sessionId).catch(() => null));
     }
 
-    const [clesRes, messagesRes, sessionRes] = await Promise.allSettled(taches);
+    const [clesRes, agentsRes, messagesRes, sessionRes] = await Promise.allSettled(taches);
     if (clesRes.status === 'fulfilled') {
       cles = clesRes.value as AgentProvider[];
+    }
+    if (agentsRes.status === 'fulfilled') {
+      agents = (agentsRes.value as Awaited<ReturnType<typeof agentApi.definitions.list>>).agents;
     }
     // Restauration : d'abord la clé enregistrée sur la session, sinon la clé
     // par défaut du créateur.
@@ -306,6 +331,16 @@
     if (sessionSauvegardee?.model_override) {
       modeleChoisi = sessionSauvegardee.model_override;
     }
+    // Un slug dont le fichier a disparu depuis retombe sur le generaliste,
+    // comme le fait le serveur : le <select> ne montre pas un choix mort.
+    if (
+      sessionSauvegardee?.agent_slug &&
+      agents.some((a) => a.slug === sessionSauvegardee.agent_slug)
+    ) {
+      agentChoisi = sessionSauvegardee.agent_slug;
+    } else if (agents.length > 0) {
+      agentChoisi = agents.some((a) => a.slug === 'assistant') ? 'assistant' : agents[0].slug;
+    }
     // Test discret du couple cle+modele au chargement : si le modele
     // enregistre en session n'existe plus (compte migre, plan degrade),
     // l'utilisateur le voit avant d'envoyer un message.
@@ -331,6 +366,7 @@
         session_id: sessionId ?? undefined,
         provider_id: cleChoisie || undefined,
         model_override: modeleChoisi || undefined,
+        agent_slug: agentChoisi || undefined,
         signal: controleur.signal,
       })) {
         if (evenement.type === 'session' && !sessionId) {
@@ -381,22 +417,39 @@
 </script>
 
 <div class="flex h-[calc(100dvh-12rem)] flex-col">
-  <!-- Selectors provider + modele -->
-  {#if cles.length > 0}
+  <!-- Selectors agent, provider et modele -->
+  {#if cles.length > 0 || agents.length > 0}
     <div class="mb-2 flex flex-wrap gap-3 border-b border-subtle pb-2 text-sm">
-      <label class="flex items-center gap-1.5">
-        <span class="text-xs text-ink-tertiary">Cle</span>
-        <select
-          bind:value={cleChoisie}
-          onchange={changerCle}
-          disabled={enCours}
-          class="rounded border border-subtle bg-surface-primary px-2 py-1 text-xs"
-        >
-          {#each cles as cle (cle.id)}
-            <option value={cle.id}>{cle.display_name} ({cle.api_key_masked})</option>
-          {/each}
-        </select>
-      </label>
+      {#if agents.length > 0}
+        <label class="flex items-center gap-1.5">
+          <span class="text-xs text-ink-tertiary">Agent</span>
+          <select
+            bind:value={agentChoisi}
+            onchange={changerAgent}
+            disabled={enCours}
+            class="rounded border border-subtle bg-surface-primary px-2 py-1 text-xs"
+          >
+            {#each agents as a (a.slug)}
+              <option value={a.slug}>{a.name}</option>
+            {/each}
+          </select>
+        </label>
+      {/if}
+      {#if cles.length > 0}
+        <label class="flex items-center gap-1.5">
+          <span class="text-xs text-ink-tertiary">Cle</span>
+          <select
+            bind:value={cleChoisie}
+            onchange={changerCle}
+            disabled={enCours}
+            class="rounded border border-subtle bg-surface-primary px-2 py-1 text-xs"
+          >
+            {#each cles as cle (cle.id)}
+              <option value={cle.id}>{cle.display_name} ({cle.api_key_masked})</option>
+            {/each}
+          </select>
+        </label>
+      {/if}
       {#if modeles.length > 0}
         <label class="flex items-center gap-1.5">
           <span class="text-xs text-ink-tertiary">Modele</span>
@@ -448,6 +501,19 @@
         </button>
       </span>
     </div>
+    {#if agentActif}
+      <p class="mb-2 text-xs text-ink-tertiary">
+        {agentActif.contract}
+        <span class="text-ink-tertiary">({agentActif.tools.length} outils)</span>
+      </p>
+      {#if agentActif.tools_absents.length > 0}
+        <p class="mb-2 text-xs text-warning">
+          Outils demandés mais non disponibles sur ce serveur : {agentActif.tools_absents.join(
+            ', '
+          )}
+        </p>
+      {/if}
+    {/if}
     {#if messageTest && (etatTest === 'ko' || etatTest === 'incompat')}
       <p class="mb-2 text-xs text-danger">{messageTest}</p>
     {/if}

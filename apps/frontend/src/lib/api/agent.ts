@@ -90,8 +90,39 @@ export interface AgentSession {
   title: string;
   provider_id: string | null;
   model_override: string | null;
+  /** Slug de l'agent nommé de cette session. Null = assistant généraliste. */
+  agent_slug: string | null;
   created_at: string;
   last_message_at: string | null;
+}
+
+/** Un agent nommé, défini par un fichier `agents/<slug>.yaml` du workspace. */
+export interface AgentDefinition {
+  slug: string;
+  name: string;
+  contract: string;
+  system_prompt: string;
+  tools: string[];
+  context: string[];
+  layer: string | null;
+  model_hint: string | null;
+  /** Livré avec Philum : « Restaurer template » le recrée s'il est supprimé. */
+  builtin: boolean;
+  /** Outils demandés que la configuration serveur n'expose pas aujourd'hui. */
+  tools_absents: string[];
+  /** Chemin du fichier qui porte cette définition, pour ouvrir l'éditeur. */
+  path: string;
+}
+
+/** Un fichier de `agents/` qui ne décrit pas un agent exploitable. */
+export interface AgentDefinitionRejected {
+  path: string;
+  raison: string;
+}
+
+export interface AgentDefinitionList {
+  agents: AgentDefinition[];
+  rejected: AgentDefinitionRejected[];
 }
 
 export interface AgentMessage {
@@ -175,6 +206,7 @@ export interface ChatInput {
   session_id?: string;
   provider_id?: string;
   model_override?: string;
+  agent_slug?: string;
   signal?: AbortSignal;
 }
 
@@ -198,16 +230,28 @@ export const agentApi = {
     models: (id: string) => request<AgentProviderModels>(`/agent/providers/${id}/models`),
   },
 
+  /** Agents nommés du créateur. En lecture seule : un agent s'écrit en écrivant
+   * son fichier via `workspace.write`, il n'a pas de second chemin d'écriture. */
+  definitions: {
+    list: () => request<AgentDefinitionList>('/agent/definitions'),
+    get: (slug: string) => request<AgentDefinition>(`/agent/definitions/${slug}`),
+  },
+
   sessions: {
     list: () => request<AgentSession[]>('/agent/sessions'),
-    create: (body: { title?: string; provider_id?: string | null } = {}) =>
+    create: (body: { title?: string; provider_id?: string | null; agent_slug?: string } = {}) =>
       request<AgentSession>('/agent/sessions', { method: 'POST', body: JSON.stringify(body) }),
     get: (id: string) => request<AgentSession>(`/agent/sessions/${id}`),
     messages: (id: string) => request<AgentMessage[]>(`/agent/sessions/${id}/messages`),
     usage: (id: string) => request<AgentSessionUsage>(`/agent/sessions/${id}/usage`),
     update: (
       id: string,
-      body: { title?: string; provider_id?: string | null; model_override?: string | null }
+      body: {
+        title?: string;
+        provider_id?: string | null;
+        model_override?: string | null;
+        agent_slug?: string | null;
+      }
     ) =>
       request<AgentSession>(`/agent/sessions/${id}`, {
         method: 'PATCH',
@@ -249,12 +293,14 @@ async function* streamChat({
   session_id,
   provider_id,
   model_override,
+  agent_slug,
   signal,
 }: ChatInput): AsyncGenerator<AgentEvent> {
   const body: Record<string, unknown> = { message };
   if (session_id) body.session_id = session_id;
   if (provider_id) body.provider_id = provider_id;
   if (model_override) body.model_override = model_override;
+  if (agent_slug) body.agent_slug = agent_slug;
   const response = await fetch(`${API_BASE}/agent/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
