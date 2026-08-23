@@ -325,7 +325,20 @@
               class="text-base sm:text-base font-serif text-ink-primary line-clamp-2 sm:truncate"
               title={card.title}
             >
-              {card.title}
+              <!--
+                Dire ce que la fiche documente evite au lecteur de chercher un
+                contenu source qui n'existe pas : une fiche sujet est une
+                bibliographie ecrite par son createur, pas la documentation
+                d'une video ou d'un article publie ailleurs.
+              -->
+              {#if card.card_kind === 'sujet'}
+                <span
+                  class="align-middle mr-1.5 text-[0.65rem] uppercase tracking-wide font-sans font-medium text-ink-tertiary border border-border rounded px-1.5 py-0.5"
+                  title="Bibliographie sur une question, écrite par son créateur"
+                >
+                  Sujet
+                </span>
+              {/if}{card.title}
             </h1>
             <!-- COinS : invisible, lu par le connecteur Zotero sans extension ni compte. -->
             <span class="Z3988" title={coinsTitle(card)}></span>

@@ -33,8 +33,11 @@ export interface Card {
    * son créateur Philum.
    */
   content_authors: string | null;
-  platform: Platform;
-  content_type: ContentType;
+  /** Ce que la fiche documente. Cf. `CardKind`. */
+  card_kind: CardKind;
+  /** null sur une fiche sujet : elle ne documente aucun contenu. */
+  platform: Platform | null;
+  content_type: ContentType | null;
   status: CardStatus;
   is_seed: boolean;
   visibility: Visibility;
@@ -93,8 +96,10 @@ export interface CardCreate {
   /** Texte intégral du contenu (max 500 000 caractères). Cf. Card.content_text. */
   content_text?: string;
   content_authors?: string;
-  platform: Platform;
-  content_type: ContentType;
+  /** Ce que la fiche documente. Défaut serveur : `contenu`. */
+  card_kind?: CardKind;
+  platform?: Platform;
+  content_type?: ContentType;
   /**
    * Fiche « seed » = créée pour un contenu dont je ne suis pas l'auteur.
    * L'auteur réel pourra la revendiquer via /cards/{id}/claim-requests.
@@ -414,6 +419,16 @@ export interface AttestationVerifyResponse {
   canonicalization: string;
   reason: string | null;
 }
+
+/**
+ * Ce qu'une fiche documente, et donc qui en est l'auteur.
+ *
+ * `contenu` : une vidéo, un article, un post qui existe ailleurs. La fiche
+ * porte son URL et ses auteurs, qui ne sont pas son créateur Philum.
+ * `sujet` : une bibliographie sur une question. Il n'y a pas de contenu
+ * source, donc ni URL ni auteurs tiers : la synthèse est du créateur.
+ */
+export type CardKind = 'contenu' | 'sujet';
 
 export type Platform =
   'youtube' | 'podcast' | 'blog' | 'x' | 'bluesky' | 'revue-scientifique' | 'other';

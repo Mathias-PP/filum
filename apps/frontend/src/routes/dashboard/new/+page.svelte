@@ -8,6 +8,7 @@
   import { guessPlatform } from '$lib/utils/platform-guess';
   import type {
     AuthorKind,
+    CardKind,
     Platform,
     ContentType,
     SourceCategory,
@@ -20,7 +21,7 @@
   const editCardId = $derived($page.url.searchParams.get('card_id'));
 
   const steps = $derived([
-    { label: 'Informations', description: 'Titre, plateforme' },
+    { label: 'Informations', description: 'Nature, titre' },
     { label: 'Sources', description: 'Ajouter et publier', clickable: Boolean(editCardId) },
   ]);
 
@@ -42,6 +43,11 @@
   let contentTextFileInput = $state<HTMLInputElement | null>(null);
   let platform = $state<Platform>('other');
   let contentType = $state<ContentType>('other');
+  // Ce que la fiche documente. Premier choix du formulaire : il decide quels
+  // champs ont un sens. Une fiche sujet n'a ni URL, ni auteurs tiers, ni
+  // plateforme, ni type de contenu, parce qu'elle ne documente aucun contenu.
+  let cardKind = $state<CardKind>('contenu');
+  const estContenu = $derived(cardKind === 'contenu');
   let isAuthor = $state(false);
   let visibility = $state<Visibility>('public');
   let cardFormat = $state<SourceFormat | ''>('');
@@ -71,8 +77,9 @@
       // on ne le fait pas repasser la case a cocher pour un texte deja publie.
       contentTextConfirmedRights = Boolean(card.content_text);
       lastSuggestedUrl = contentUrl;
-      platform = card.platform;
-      contentType = card.content_type;
+      cardKind = card.card_kind;
+      platform = card.platform ?? 'other';
+      contentType = card.content_type ?? 'other';
       isAuthor = !card.is_seed;
       visibility = card.visibility;
       cardFormat = (card.format ?? '') as SourceFormat | '';
@@ -97,9 +104,14 @@
   let suggestNotice = $state<string | null>(null);
   const hasFieldsToOverwrite = $derived(
     Boolean(title.trim() || description.trim() || contentAuthors.trim()) ||
-      platform !== 'other' ||
-      contentType !== 'other'
+      (estContenu && (platform !== 'other' || contentType !== 'other'))
   );
+
+  // Passer une fiche en « sujet » efface tout ce qui décrivait le contenu.
+  // L'URL et les auteurs se retrouvent, le texte intégral non : il vient d'un
+  // copier-coller ou d'une extraction de fichier. On refuse d'enregistrer tant
+  // qu'il est là, pour que sa destruction reste un geste voulu.
+  const texteIntegralABandonner = $derived(!estContenu && contentText.trim().length > 0);
 
   // Fichier bibliographique déposé — transmis à la page Sources via le store.
   let droppedFile = $state<File | null>(null);
@@ -219,45 +231,49 @@
     error = null;
     loading = true;
     try {
+      // Une fiche sujet ne documente aucun contenu : lui envoyer une URL, des
+      // auteurs ou une plateforme reviendrait à inventer un contenu source, et
+      // le serveur le refuse. En édition, la chaîne vide est transmise à
+      // dessein : c'est elle qui efface ce qui avait été saisi.
+      const champsDuContenu = !estContenu
+        ? { content_text: '' }
+        : editCardId
+          ? {
+              content_url: contentUrl || undefined,
+              content_authors: contentAuthors.trim(),
+              content_text: contentTextConfirmedRights ? contentText : '',
+              platform,
+              content_type: contentType,
+              is_seed: !isAuthor,
+            }
+          : {
+              content_url: contentUrl || undefined,
+              content_authors: contentAuthors.trim() || undefined,
+              content_text:
+                contentTextConfirmedRights && contentText.trim() ? contentText : undefined,
+              platform,
+              content_type: contentType,
+              is_seed: !isAuthor,
+            };
+
+      const commun = {
+        title,
+        description: description || undefined,
+        card_kind: cardKind,
+        ...champsDuContenu,
+        visibility,
+        format: cardFormat || null,
+        category: cardCategory || null,
+        author_kind: cardAuthorKind || null,
+      };
+
       let cardId: string;
       if (editCardId) {
         // Le slug n'est pas modifiable : il porte l'URL publique de la fiche.
-        await api.cards.update(editCardId, {
-          title,
-          description: description || undefined,
-          content_url: contentUrl || undefined,
-          // Chaîne vide transmise à dessein : elle efface les auteurs et rend
-          // la main à la reconstitution depuis les fiches citantes.
-          content_authors: contentAuthors.trim(),
-          // Meme regle : chaine vide efface le texte pose (l'utilisateur a
-          // decoche la case des droits ou a retire son texte).
-          content_text: contentTextConfirmedRights ? contentText : '',
-          platform,
-          content_type: contentType,
-          is_seed: !isAuthor,
-          visibility,
-          format: cardFormat || null,
-          category: cardCategory || null,
-          author_kind: cardAuthorKind || null,
-        });
+        await api.cards.update(editCardId, commun);
         cardId = editCardId;
       } else {
-        const card = await api.cards.create({
-          title,
-          slug,
-          description: description || undefined,
-          content_url: contentUrl || undefined,
-          content_authors: contentAuthors.trim() || undefined,
-          content_text: contentTextConfirmedRights && contentText.trim() ? contentText : undefined,
-          platform,
-          content_type: contentType,
-          is_seed: !isAuthor,
-          visibility,
-          format: cardFormat || null,
-          category: cardCategory || null,
-          author_kind: cardAuthorKind || null,
-        });
-        cardId = card.id;
+        cardId = (await api.cards.create({ ...commun, slug })).id;
       }
       pendingImportFile.set(droppedFile);
       goto(`/dashboard/new/${cardId}/sources`);
@@ -356,9 +372,12 @@
     {#if editCardId}
       Modifiez les informations de la fiche, puis cliquez sur « Sources » ou sur le bouton pour
       enregistrer et revenir aux sources.
-    {:else}
+    {:else if estContenu}
       Collez l'URL du contenu : Philum suggère automatiquement les informations. Vous pourrez
       extraire les sources citées à l'étape suivante.
+    {:else}
+      Donnez la question traitée : la fiche est votre bibliographie sur ce sujet. Vous en
+      rassemblerez les sources à l'étape suivante.
     {/if}
   </p>
 
@@ -371,66 +390,123 @@
       </div>
     {/if}
 
-    <div class="space-y-1.5">
-      <label for="content-url" class="block text-sm font-medium text-ink-secondary">
-        URL du contenu
-      </label>
-      <div class="flex items-center gap-2">
-        <div class="relative flex-1">
-          <input
-            id="content-url"
-            type="url"
-            value={contentUrl}
-            oninput={(e) => (contentUrl = (e.target as HTMLInputElement).value)}
-            onblur={() => suggestFromUrl()}
-            placeholder="https://youtube.com/watch?v=… ou https://…/article"
-            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
-          />
-          {#if suggesting}
-            <div
-              class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-info border-t-transparent rounded-full animate-spin"
-            ></div>
-          {/if}
-        </div>
+    <fieldset class="space-y-2">
+      <legend class="block text-sm font-medium text-ink-secondary"
+        >Que documente cette fiche ?</legend
+      >
+      <div class="grid sm:grid-cols-2 gap-2">
+        <label
+          class="flex items-start gap-3 border rounded-lg p-3 cursor-pointer transition-colors {estContenu
+            ? 'bg-info/10 border-info'
+            : 'border-border hover:bg-surface-secondary'}"
+        >
+          <input type="radio" bind:group={cardKind} value="contenu" class="mt-0.5" />
+          <span class="text-sm">
+            <span class="font-medium text-ink-primary block">Un contenu</span>
+            <span class="text-xs text-ink-tertiary">
+              Une vidéo, un article, un podcast, un post qui existe ailleurs. La fiche donne son
+              lien et cite ses sources.
+            </span>
+          </span>
+        </label>
+        <label
+          class="flex items-start gap-3 border rounded-lg p-3 cursor-pointer transition-colors {!estContenu
+            ? 'bg-info/10 border-info'
+            : 'border-border hover:bg-surface-secondary'}"
+        >
+          <input type="radio" bind:group={cardKind} value="sujet" class="mt-0.5" />
+          <span class="text-sm">
+            <span class="font-medium text-ink-primary block">Un sujet</span>
+            <span class="text-xs text-ink-tertiary">
+              Une question, sans contenu source. La fiche est votre bibliographie sur ce sujet, et
+              vous en êtes l'auteur·ice.
+            </span>
+          </span>
+        </label>
+      </div>
+    </fieldset>
+
+    {#if texteIntegralABandonner}
+      <div class="rounded-lg border border-warning bg-warning-subtle px-4 py-3 text-sm space-y-2">
+        <p class="text-ink-primary">
+          Cette fiche porte le texte intégral d'un contenu ({contentText.length.toLocaleString(
+            'fr-FR'
+          )} caractères). Une fiche sujet ne documente aucun contenu : ce texte sera perdu.
+        </p>
         <button
           type="button"
-          onclick={() => suggestFromUrl(true)}
-          disabled={suggesting || !contentUrl.trim()}
-          class="p-2 rounded-lg border border-border-strong text-ink-secondary hover:text-info hover:border-info transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          aria-label="Relancer la suggestion de métadonnées"
-          title="Relancer la suggestion de métadonnées"
+          onclick={() => (contentText = '')}
+          class="px-3 py-1.5 rounded-md border border-danger text-xs text-danger hover:bg-danger-bg transition-colors"
         >
-          <svg
-            viewBox="0 0 24 24"
-            class="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M21 12a9 9 0 1 1-3-6.7" />
-            <polyline points="21 3 21 9 15 9" />
-          </svg>
+          Effacer le texte intégral
         </button>
       </div>
-      {#if suggestNotice}
-        <p class="text-xs text-warning bg-warning-bg border border-warning/30 rounded-md px-3 py-2">
-          {suggestNotice}
-        </p>
-      {/if}
-      <!--
+    {/if}
+
+    {#if estContenu}
+      <div class="space-y-1.5">
+        <label for="content-url" class="block text-sm font-medium text-ink-secondary">
+          URL du contenu
+        </label>
+        <div class="flex items-center gap-2">
+          <div class="relative flex-1">
+            <input
+              id="content-url"
+              type="url"
+              value={contentUrl}
+              oninput={(e) => (contentUrl = (e.target as HTMLInputElement).value)}
+              onblur={() => suggestFromUrl()}
+              placeholder="https://youtube.com/watch?v=… ou https://…/article"
+              class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
+            />
+            {#if suggesting}
+              <div
+                class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-info border-t-transparent rounded-full animate-spin"
+              ></div>
+            {/if}
+          </div>
+          <button
+            type="button"
+            onclick={() => suggestFromUrl(true)}
+            disabled={suggesting || !contentUrl.trim()}
+            class="p-2 rounded-lg border border-border-strong text-ink-secondary hover:text-info hover:border-info transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            aria-label="Relancer la suggestion de métadonnées"
+            title="Relancer la suggestion de métadonnées"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              class="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M21 12a9 9 0 1 1-3-6.7" />
+              <polyline points="21 3 21 9 15 9" />
+            </svg>
+          </button>
+        </div>
+        {#if suggestNotice}
+          <p
+            class="text-xs text-warning bg-warning-bg border border-warning/30 rounded-md px-3 py-2"
+          >
+            {suggestNotice}
+          </p>
+        {/if}
+        <!--
         Ne s'affiche que lorsqu'il y a quelque chose à écraser : sur un
         formulaire vierge, cette case ne change rien et n'occupe l'attention
         que pour poser une question qui ne se pose pas encore.
       -->
-      {#if hasFieldsToOverwrite}
-        <label class="flex items-center gap-2 cursor-pointer text-xs text-ink-tertiary">
-          <input type="checkbox" bind:checked={overwriteOnSuggest} class="rounded" />
-          Écraser les champs déjà remplis lors de la suggestion
-        </label>
-      {/if}
-    </div>
+        {#if hasFieldsToOverwrite}
+          <label class="flex items-center gap-2 cursor-pointer text-xs text-ink-tertiary">
+            <input type="checkbox" bind:checked={overwriteOnSuggest} class="rounded" />
+            Écraser les champs déjà remplis lors de la suggestion
+          </label>
+        {/if}
+      </div>
+    {/if}
 
     <div
       role="button"
@@ -483,7 +559,8 @@
 
     <div class="space-y-1.5">
       <label for="title" class="block text-sm font-medium text-ink-secondary">
-        Titre du contenu <span class="text-danger">*</span>
+        {estContenu ? 'Titre du contenu' : 'Question traitée'}
+        <span class="text-danger">*</span>
       </label>
       <input
         id="title"
@@ -491,101 +568,107 @@
         value={title}
         oninput={onTitleInput}
         required
-        placeholder="Ex: La mémoire et le cerveau, ce que dit la science"
+        placeholder={estContenu
+          ? 'Ex: La mémoire et le cerveau, ce que dit la science'
+          : 'Ex: Que sait-on des effets du sommeil sur la mémoire ?'}
         class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
       />
     </div>
 
-    <div class="space-y-1.5">
-      <label for="content-authors" class="block text-sm font-medium text-ink-secondary">
-        Auteurs du contenu
-      </label>
-      <input
-        id="content-authors"
-        type="text"
-        value={contentAuthors}
-        oninput={(e) => (contentAuthors = (e.target as HTMLInputElement).value)}
-        maxlength={500}
-        placeholder="Ex: Diamond A., Ling D.S."
-        class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
-      />
-      <p class="text-xs text-ink-tertiary">
-        Qui a écrit ou réalisé le contenu documenté, pas qui publie la fiche. C'est ce nom qui
-        identifie la fiche dans le graphe des sources.
-      </p>
-    </div>
-
-    <details class="border border-border rounded-lg bg-surface-primary">
-      <summary class="cursor-pointer px-4 py-3 text-sm font-medium text-ink-secondary select-none">
-        Texte intégral du contenu <span class="text-ink-tertiary font-normal">(optionnel)</span>
-      </summary>
-      <div class="px-4 pb-4 pt-2 space-y-3">
-        <p class="text-xs text-ink-tertiary">
-          Collez le texte du contenu ou déposez un fichier (PDF, Word, ODT, TXT, Markdown). Utile
-          quand vous avez le droit de publier ce texte : votre propre article, un contenu libre de
-          droit, une retranscription que vous avez faite, ou un extrait sous droit de citation.
-        </p>
-
-        <label
-          class="flex items-start gap-2 rounded-md border border-warning bg-warning-subtle p-3 text-xs text-ink-primary cursor-pointer"
-        >
-          <input
-            type="checkbox"
-            bind:checked={contentTextConfirmedRights}
-            class="mt-0.5 accent-warning"
-          />
-          <span>
-            Je certifie avoir le droit de publier ce texte sur ma fiche publique (contenu propre,
-            libre de droit, ou extrait dans la limite du droit de citation). Sans cette case cochée,
-            le texte n'est ni envoyé ni sauvegardé.
-          </span>
+    {#if estContenu}
+      <div class="space-y-1.5">
+        <label for="content-authors" class="block text-sm font-medium text-ink-secondary">
+          Auteurs du contenu
         </label>
-
-        {#if contentTextConfirmedRights}
-          <textarea
-            bind:value={contentText}
-            rows="8"
-            maxlength={500000}
-            placeholder="Collez ici le texte du contenu (jusqu'à 500 000 caractères)…"
-            class="w-full px-3 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary font-mono text-xs focus:outline-hidden focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
-          ></textarea>
-
-          <div class="flex items-center gap-3">
-            {#if editCardId}
-              <button
-                type="button"
-                onclick={() => contentTextFileInput?.click()}
-                disabled={contentTextUploading}
-                class="px-3 py-1.5 rounded-md border border-border-strong bg-surface-primary text-xs text-ink-secondary hover:bg-surface-tertiary disabled:opacity-50"
-              >
-                {contentTextUploading
-                  ? 'Extraction en cours…'
-                  : 'Déposer un fichier (PDF, Word, ODT, TXT, MD)'}
-              </button>
-              <input
-                bind:this={contentTextFileInput}
-                type="file"
-                accept=".pdf,.docx,.odt,.txt,.md,.markdown"
-                class="hidden"
-                onchange={(e) => uploadContentTextFile((e.target as HTMLInputElement).files?.[0])}
-              />
-            {:else}
-              <p class="text-xs text-ink-tertiary">
-                Le dépôt de fichier sera possible après avoir enregistré la fiche une première fois
-                (le fichier a besoin d'un identifiant où déposer son texte).
-              </p>
-            {/if}
-            <span class="text-xs text-ink-tertiary">
-              {contentText.length.toLocaleString('fr-FR')} / 500 000 caractères
-            </span>
-          </div>
-
-          {#if contentTextError}
-            <p class="text-xs text-danger">{contentTextError}</p>
-          {/if}
-        {/if}
+        <input
+          id="content-authors"
+          type="text"
+          value={contentAuthors}
+          oninput={(e) => (contentAuthors = (e.target as HTMLInputElement).value)}
+          maxlength={500}
+          placeholder="Ex: Diamond A., Ling D.S."
+          class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
+        />
+        <p class="text-xs text-ink-tertiary">
+          Qui a écrit ou réalisé le contenu documenté, pas qui publie la fiche. C'est ce nom qui
+          identifie la fiche dans le graphe des sources.
+        </p>
       </div>
-    </details>
+
+      <details class="border border-border rounded-lg bg-surface-primary">
+        <summary
+          class="cursor-pointer px-4 py-3 text-sm font-medium text-ink-secondary select-none"
+        >
+          Texte intégral du contenu <span class="text-ink-tertiary font-normal">(optionnel)</span>
+        </summary>
+        <div class="px-4 pb-4 pt-2 space-y-3">
+          <p class="text-xs text-ink-tertiary">
+            Collez le texte du contenu ou déposez un fichier (PDF, Word, ODT, TXT, Markdown). Utile
+            quand vous avez le droit de publier ce texte : votre propre article, un contenu libre de
+            droit, une retranscription que vous avez faite, ou un extrait sous droit de citation.
+          </p>
+
+          <label
+            class="flex items-start gap-2 rounded-md border border-warning bg-warning-subtle p-3 text-xs text-ink-primary cursor-pointer"
+          >
+            <input
+              type="checkbox"
+              bind:checked={contentTextConfirmedRights}
+              class="mt-0.5 accent-warning"
+            />
+            <span>
+              Je certifie avoir le droit de publier ce texte sur ma fiche publique (contenu propre,
+              libre de droit, ou extrait dans la limite du droit de citation). Sans cette case
+              cochée, le texte n'est ni envoyé ni sauvegardé.
+            </span>
+          </label>
+
+          {#if contentTextConfirmedRights}
+            <textarea
+              bind:value={contentText}
+              rows="8"
+              maxlength={500000}
+              placeholder="Collez ici le texte du contenu (jusqu'à 500 000 caractères)…"
+              class="w-full px-3 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary font-mono text-xs focus:outline-hidden focus:ring-2 focus:ring-info focus:border-info placeholder:text-ink-placeholder"
+            ></textarea>
+
+            <div class="flex items-center gap-3">
+              {#if editCardId}
+                <button
+                  type="button"
+                  onclick={() => contentTextFileInput?.click()}
+                  disabled={contentTextUploading}
+                  class="px-3 py-1.5 rounded-md border border-border-strong bg-surface-primary text-xs text-ink-secondary hover:bg-surface-tertiary disabled:opacity-50"
+                >
+                  {contentTextUploading
+                    ? 'Extraction en cours…'
+                    : 'Déposer un fichier (PDF, Word, ODT, TXT, MD)'}
+                </button>
+                <input
+                  bind:this={contentTextFileInput}
+                  type="file"
+                  accept=".pdf,.docx,.odt,.txt,.md,.markdown"
+                  class="hidden"
+                  onchange={(e) => uploadContentTextFile((e.target as HTMLInputElement).files?.[0])}
+                />
+              {:else}
+                <p class="text-xs text-ink-tertiary">
+                  Le dépôt de fichier sera possible après avoir enregistré la fiche une première
+                  fois (le fichier a besoin d'un identifiant où déposer son texte).
+                </p>
+              {/if}
+              <span class="text-xs text-ink-tertiary">
+                {contentText.length.toLocaleString('fr-FR')} / 500 000 caractères
+              </span>
+            </div>
+
+            {#if contentTextError}
+              <p class="text-xs text-danger">{contentTextError}</p>
+            {/if}
+          {/if}
+        </div>
+      </details>
+    {/if}
 
     <div class="space-y-1.5">
       <label for="slug" class="block text-sm font-medium text-ink-secondary">
@@ -627,38 +710,41 @@
       ></textarea>
     </div>
 
-    <div class="grid grid-cols-2 gap-4">
-      <div class="space-y-1.5">
-        <label for="platform" class="block text-sm font-medium text-ink-secondary">Plateforme</label
-        >
-        <select
-          id="platform"
-          value={platform}
-          onchange={(e) => (platform = (e.target as HTMLSelectElement).value as Platform)}
-          class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info"
-        >
-          {#each platforms as p (p.value)}
-            <option value={p.value}>{p.label}</option>
-          {/each}
-        </select>
-      </div>
+    {#if estContenu}
+      <div class="grid grid-cols-2 gap-4">
+        <div class="space-y-1.5">
+          <label for="platform" class="block text-sm font-medium text-ink-secondary"
+            >Plateforme</label
+          >
+          <select
+            id="platform"
+            value={platform}
+            onchange={(e) => (platform = (e.target as HTMLSelectElement).value as Platform)}
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info"
+          >
+            {#each platforms as p (p.value)}
+              <option value={p.value}>{p.label}</option>
+            {/each}
+          </select>
+        </div>
 
-      <div class="space-y-1.5">
-        <label for="content-type" class="block text-sm font-medium text-ink-secondary"
-          >Type de contenu</label
-        >
-        <select
-          id="content-type"
-          value={contentType}
-          onchange={(e) => (contentType = (e.target as HTMLSelectElement).value as ContentType)}
-          class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info"
-        >
-          {#each contentTypes as ct (ct.value)}
-            <option value={ct.value}>{ct.label}</option>
-          {/each}
-        </select>
+        <div class="space-y-1.5">
+          <label for="content-type" class="block text-sm font-medium text-ink-secondary"
+            >Type de contenu</label
+          >
+          <select
+            id="content-type"
+            value={contentType}
+            onchange={(e) => (contentType = (e.target as HTMLSelectElement).value as ContentType)}
+            class="w-full px-4 py-2 rounded-lg border border-border-strong bg-surface-primary text-ink-primary focus:outline-hidden focus:ring-2 focus:ring-info"
+          >
+            {#each contentTypes as ct (ct.value)}
+              <option value={ct.value}>{ct.label}</option>
+            {/each}
+          </select>
+        </div>
       </div>
-    </div>
+    {/if}
 
     <div class="grid grid-cols-3 gap-4">
       <div class="space-y-1.5">
@@ -712,27 +798,33 @@
       </div>
     </div>
 
-    <div class="rounded-lg border border-border bg-surface-secondary/40 p-4">
-      <label class="flex items-start gap-3 cursor-pointer">
-        <input
-          type="checkbox"
-          bind:checked={isAuthor}
-          class="mt-0.5 shrink-0"
-          aria-describedby="author-hint"
-        />
-        <span class="text-sm">
-          <span class="font-medium text-ink-primary">
-            Je suis l'auteur·ice de ce contenu et je souhaite le revendiquer
+    <!--
+      Revendiquer n'a de sens que face à un contenu tiers. Une fiche sujet est
+      écrite par son créateur Philum : il n'y a personne d'autre à qui la rendre.
+    -->
+    {#if estContenu}
+      <div class="rounded-lg border border-border bg-surface-secondary/40 p-4">
+        <label class="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            bind:checked={isAuthor}
+            class="mt-0.5 shrink-0"
+            aria-describedby="author-hint"
+          />
+          <span class="text-sm">
+            <span class="font-medium text-ink-primary">
+              Je suis l'auteur·ice de ce contenu et je souhaite le revendiquer
+            </span>
+            <span id="author-hint" class="block text-xs text-ink-tertiary mt-0.5">
+              Cochez uniquement si vous pouvez prouver que vous êtes l'auteur·ice : la fiche sera
+              attestée cryptographiquement en votre nom. Sinon, la fiche est créée comme
+              <em>non revendiquée</em> et le ou la véritable auteur·ice pourra la revendiquer depuis la
+              page publique.
+            </span>
           </span>
-          <span id="author-hint" class="block text-xs text-ink-tertiary mt-0.5">
-            Cochez uniquement si vous pouvez prouver que vous êtes l'auteur·ice : la fiche sera
-            attestée cryptographiquement en votre nom. Sinon, la fiche est créée comme
-            <em>non revendiquée</em> et le ou la véritable auteur·ice pourra la revendiquer depuis la
-            page publique.
-          </span>
-        </span>
-      </label>
-    </div>
+        </label>
+      </div>
+    {/if}
 
     <fieldset class="space-y-2">
       <legend class="block text-sm font-medium text-ink-secondary">Visibilité</legend>
@@ -769,7 +861,11 @@
     </fieldset>
 
     <div class="flex justify-end pt-4">
-      <Button type="submit" {loading} disabled={!title || !slug || loading || loadingCard}>
+      <Button
+        type="submit"
+        {loading}
+        disabled={!title || !slug || loading || loadingCard || texteIntegralABandonner}
+      >
         {#if editCardId}
           {loading ? 'Enregistrement…' : 'Enregistrer et revenir aux sources →'}
         {:else if droppedFile}

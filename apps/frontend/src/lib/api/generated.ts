@@ -2459,6 +2459,8 @@ export interface components {
     DiscoverFacets: {
       /** Total */
       total: number;
+      /** Card Kinds */
+      card_kinds: components['schemas']['Facet'][];
       /** Platforms */
       platforms: components['schemas']['Facet'][];
       /** Content Types */
@@ -2493,14 +2495,16 @@ export interface components {
       creator_slug: string;
       /** Creator Name */
       creator_name: string | null;
+      /** Card Kind */
+      card_kind: string;
       /** Content Url */
       content_url: string | null;
       /** Content Authors */
       content_authors: string | null;
       /** Content Type */
-      content_type: string;
+      content_type: string | null;
       /** Platform */
-      platform: string;
+      platform: string | null;
       /** Published At */
       published_at: string | null;
       /** Source Count */
@@ -5062,6 +5066,7 @@ export interface operations {
         q?: string;
         creator?: string | null;
         content_author?: string | null;
+        card_kind?: string | null;
         platform?: string | null;
         content_type?: string | null;
         published_after?: string | null;

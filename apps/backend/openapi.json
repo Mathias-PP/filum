@@ -2334,6 +2334,23 @@
             }
           },
           {
+            "name": "card_kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Card Kind"
+            }
+          },
+          {
             "name": "platform",
             "in": "query",
             "required": false,
@@ -6725,6 +6742,13 @@
             "type": "integer",
             "title": "Total"
           },
+          "card_kinds": {
+            "items": {
+              "$ref": "#/components/schemas/Facet"
+            },
+            "type": "array",
+            "title": "Card Kinds"
+          },
           "platforms": {
             "items": {
               "$ref": "#/components/schemas/Facet"
@@ -6750,6 +6774,7 @@
         "type": "object",
         "required": [
           "total",
+          "card_kinds",
           "platforms",
           "content_types",
           "creators"
@@ -6831,6 +6856,10 @@
             ],
             "title": "Creator Name"
           },
+          "card_kind": {
+            "type": "string",
+            "title": "Card Kind"
+          },
           "content_url": {
             "anyOf": [
               {
@@ -6854,11 +6883,25 @@
             "title": "Content Authors"
           },
           "content_type": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Content Type"
           },
           "platform": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Platform"
           },
           "published_at": {
@@ -6887,6 +6930,7 @@
           "url",
           "creator_slug",
           "creator_name",
+          "card_kind",
           "content_url",
           "content_authors",
           "content_type",
