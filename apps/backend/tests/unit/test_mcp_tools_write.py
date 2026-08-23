@@ -18,6 +18,7 @@ import pytest_asyncio
 from fastmcp.exceptions import ToolError
 
 from app.mcp_server.tools_write import (
+    CONTENU_MAX,
     add_excerpt,
     add_source,
     add_sources_batch,
@@ -29,6 +30,7 @@ from app.mcp_server.tools_write import (
     delete_card,
     delete_excerpt,
     delete_source,
+    get_my_card,
     list_connections,
     list_deleted_cards,
     list_incoming_citations,
@@ -1011,6 +1013,59 @@ async def test_list_my_cards_isole_par_user(db_session, test_user, autre_utilisa
     slugs = {c["slug"] for c in mine["cards"]}
     assert "a-moi" in slugs
     assert "a-lui" not in slugs
+
+
+@pytest.mark.asyncio
+async def test_get_my_card_lit_un_brouillon(db_session, test_user, fiche_brouillon):
+    """`get_card` filtre sur publie ET public : un brouillon lui est invisible.
+
+    Sans `get_my_card`, un agent a qui on demande de relire une fiche en cours
+    n'avait aucun outil pour en obtenir la description ou le transcript, et
+    repondait sincerement qu'il n'y avait pas acces.
+    """
+    await set_content_text(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        text="Le transcript complet.",
+        confirm_publication_rights=True,
+    )
+    await add_source(db_session, test_user, card_slug="fiche-en-cours", url="https://a.org")
+    fiche = await get_my_card(db_session, test_user, card_slug="fiche-en-cours")
+    assert fiche["status"] == "draft"
+    assert fiche["title"] == "Fiche en cours"
+    assert fiche["content_text"] == "Le transcript complet."
+    assert fiche["content_text_tronque"] is False
+    assert fiche["sources_count"] == 1
+    assert fiche["sources"][0]["excerpts_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_get_my_card_tronque_un_transcript_long(db_session, test_user, fiche_brouillon):
+    """Une fiche video porte parfois des centaines de milliers de caracteres.
+
+    Les rendre entiers ferait sauter la fenetre du modele des le premier appel :
+    la troncature doit se dire, et la taille reelle rester lisible.
+    """
+    await set_content_text(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        text="a" * (CONTENU_MAX + 500),
+        confirm_publication_rights=True,
+    )
+    fiche = await get_my_card(db_session, test_user, card_slug="fiche-en-cours")
+    assert len(fiche["content_text"]) == CONTENU_MAX
+    assert fiche["content_text_tronque"] is True
+    assert fiche["content_text_longueur"] == CONTENU_MAX + 500
+
+
+@pytest.mark.asyncio
+async def test_get_my_card_refuse_non_proprietaire(
+    db_session, test_user, fiche_brouillon, autre_utilisateur
+):
+    with pytest.raises(ToolError, match="Aucune fiche"):
+        await get_my_card(db_session, autre_utilisateur, card_slug="fiche-en-cours")
 
 
 @pytest.mark.asyncio

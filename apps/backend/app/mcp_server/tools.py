@@ -56,6 +56,14 @@ def _arete_vers_une_fiche(source: Source) -> dict[str, str] | None:
 
 
 async def search_cards(db: AsyncSession, query: str, limit: int = 10) -> list[dict[str, Any]]:
+    """Cherche des fiches PUBLIEES ET PUBLIQUES, de n'importe quel createur.
+
+    Ne voit aucun brouillon, y compris ceux de l'utilisateur courant : pour les
+    fiches de l'utilisateur, utilisez `list_my_cards` puis `get_my_card`. Cherche
+    dans le titre, la description et les sources, accents replies. Rend
+    `[{creator, slug, title}]` : `creator` et `slug` sont ce que `get_card`
+    attend.
+    """
     stmt = (
         select(BiblioCard)
         .join(User, BiblioCard.user_id == User.id)
@@ -81,6 +89,14 @@ async def search_cards(db: AsyncSession, query: str, limit: int = 10) -> list[di
 
 
 async def get_card(db: AsyncSession, creator: str, slug: str) -> dict[str, Any] | None:
+    """Lit une fiche PUBLIEE ET PUBLIQUE et la liste de ses sources.
+
+    `creator` est le nom d'utilisateur du createur, `slug` l'identifiant de la
+    fiche : les deux sortent de `search_cards`. Rend `null` si la fiche n'existe
+    pas ou n'est pas publique, ce qui est le cas de tout brouillon. Pour une
+    fiche de l'utilisateur courant, brouillon compris, utilisez `get_my_card`.
+    Les sources arrivent sans leurs extraits : `get_source` les donne.
+    """
     stmt = (
         select(BiblioCard)
         .join(User, BiblioCard.user_id == User.id)
@@ -120,6 +136,13 @@ async def get_card(db: AsyncSession, creator: str, slug: str) -> dict[str, Any] 
 
 
 async def get_source(db: AsyncSession, source_id: str) -> dict[str, Any] | None:
+    """Lit une source d'une fiche PUBLIQUE avec tous ses extraits verbatim.
+
+    `source_id` est l'UUID rendu par `get_card` ou `list_sources`. C'est le seul
+    outil qui donne le texte des extraits, leur contexte et leur etat de
+    verification. Rend `null` si la source est supprimee ou si sa fiche n'est pas
+    publique.
+    """
     try:
         sid = UUID(source_id)
     except ValueError:
@@ -186,6 +209,12 @@ async def get_source(db: AsyncSession, source_id: str) -> dict[str, Any] | None:
 
 
 async def find_cards_citing(db: AsyncSession, url: str, limit: int = 10) -> list[dict[str, Any]]:
+    """Fiches publiques qui citent cette URL ou ce DOI en source.
+
+    Sert a savoir qui s'appuie deja sur une reference avant de l'ajouter. Les
+    variantes d'ecriture (`www.`, `http`, barre finale, parametres de campagne)
+    sont repliees : inutile de normaliser l'URL avant l'appel.
+    """
     # Le meme critere d'identite que le reste du produit (`content_identity`) :
     # une arete du graphe ne peut pas dependre de l'ecriture de l'URL. Un agent
     # recopie ce qu'il a lu, avec ou sans `www.`, en `http`, avec la barre

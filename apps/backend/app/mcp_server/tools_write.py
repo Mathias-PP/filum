@@ -1095,6 +1095,68 @@ async def remove_connection(
 # ---------------------------------------------------------------------------
 
 
+#: Plafond du transcript rendu par `get_my_card`. Une fiche video porte parfois
+#: plusieurs centaines de milliers de caracteres : les rendre entiers ferait
+#: sauter la fenetre du modele des le premier appel.
+CONTENU_MAX = 20_000
+
+
+async def get_my_card(db: AsyncSession, user: User, *, card_slug: str) -> dict[str, Any]:
+    """Lit une fiche de l'utilisateur EN ENTIER, brouillon compris.
+
+    C'est l'outil pour relire, auditer ou corriger sa propre fiche : `get_card`
+    ne voit que les fiches publiees et publiques, donc aucun brouillon. Rend la
+    nature du contenu, la description, le transcript et le recapitulatif des
+    sources avec leur nombre d'extraits. `content_text` est tronque a 20 000
+    caracteres, `content_text_tronque` le dit et `content_text_longueur` donne la
+    taille reelle. Pour le detail d'une source et le verbatim de ses extraits,
+    enchainez sur `list_sources` puis `get_source`.
+    """
+    card = await _fiche_du_createur(db, user, card_slug)
+    sources = (
+        await db.scalars(
+            select(Source)
+            .where(Source.biblio_card_id == card.id, Source.deleted_at.is_(None))
+            .options(selectinload(Source.excerpts))
+            .order_by(Source.position)
+        )
+    ).all()
+    contenu = card.content_text or ""
+    return {
+        "slug": card.slug,
+        "title": card.title,
+        "status": card.status,
+        "visibility": card.visibility,
+        "card_kind": card.card_kind,
+        "content_type": card.content_type,
+        "content_url": card.content_url,
+        "content_authors": card.content_authors,
+        "platform": card.platform,
+        "category": card.category,
+        "author_kind": card.author_kind,
+        "format": card.format,
+        "description": card.description,
+        "content_text": contenu[:CONTENU_MAX],
+        "content_text_longueur": len(contenu),
+        "content_text_tronque": len(contenu) > CONTENU_MAX,
+        "published_at": card.published_at.isoformat() if card.published_at else None,
+        "sources": [
+            {
+                "id": str(s.id),
+                "position": s.position,
+                "title": s.title,
+                "url": s.url,
+                "category": s.category,
+                "author_kind": s.author_kind,
+                "stance": s.stance,
+                "excerpts_count": len(s.excerpts),
+            }
+            for s in sources
+        ],
+        "sources_count": len(sources),
+    }
+
+
 async def list_my_cards(
     db: AsyncSession, user: User, *, status: str | None = None, limit: int = 20
 ) -> dict[str, Any]:
@@ -1103,7 +1165,9 @@ async def list_my_cards(
     `status` optionnel : `draft` ou `published`. Absent = les deux. `limit`
     plafonne le nombre d'entrees rendues (max 200). Retourne `{cards, total, truncated}` :
     `total` est le nombre reel de fiches (avant troncature), `truncated` indique
-    si `limit` a coupe la liste -- augmenter `limit` pour tout voir.
+    si `limit` a coupe la liste -- augmenter `limit` pour tout voir. Chaque
+    entree porte le `slug` : c'est ce que `get_my_card` attend pour lire une
+    fiche en entier.
     """
     plafond = max(1, min(limit, 200))
     stmt_base = select(BiblioCard).where(

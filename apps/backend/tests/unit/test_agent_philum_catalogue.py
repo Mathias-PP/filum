@@ -61,6 +61,45 @@ class TestDescriptions:
         desc = _description(fn_sans_doc)
         assert desc == "fn_sans_doc"
 
+    def test_aucun_outil_ne_se_presente_par_son_seul_nom(self):
+        """Un outil sans docstring retombe sur `__name__` et devient muet.
+
+        `search_cards`, `get_card`, `get_source` et `find_cards_citing` ont vecu
+        ainsi : le modele voyait `"description": "get_card"` et ne pouvait pas
+        deviner que cet outil lit une fiche. En conversation reelle il repondait
+        « je n'ai pas acces a la fiche » alors que l'outil etait dans son
+        catalogue. Le repli sur le nom reste un filet utile, mais aucun outil
+        livre ne doit s'en contenter.
+        """
+        muets = [t.name for t in philum_tools() if t.description.strip() == t.name]
+        assert muets == [], f"outils sans description : {muets}"
+
+    def test_toute_description_livree_est_substantielle(self):
+        """Une description doit dire ce que fait l'outil et ce qu'il rend."""
+        courtes = [(t.name, t.description) for t in philum_tools() if len(t.description) < 60]
+        assert courtes == [], f"descriptions trop courtes : {courtes}"
+
+    def test_get_my_card_dans_le_catalogue(self):
+        """Lire sa propre fiche, brouillon compris, doit etre outille.
+
+        `get_card` filtre sur publie ET public : sans `get_my_card`, aucun outil
+        ne rendait la description ni le transcript d'un brouillon, et l'agent
+        concluait sincerement qu'il n'y avait pas acces.
+        """
+        outils = {t.name: t for t in philum_tools()}
+        assert "get_my_card" in outils
+        assert "brouillon" in outils["get_my_card"].description
+
+    def test_get_card_annonce_qu_il_ignore_les_brouillons(self):
+        """La distinction corpus public / fiches du createur vit dans le schema.
+
+        C'est elle qui evite que le modele appelle `get_card` sur un brouillon,
+        recoive `null` et en deduise que la fiche n'existe pas.
+        """
+        outils = {t.name: t for t in philum_tools()}
+        assert "get_my_card" in outils["get_card"].description
+        assert "get_my_card" in outils["search_cards"].description
+
     def test_create_card_description_contient_publication(self):
         """create_card doit mentionner que la publication est distincte."""
         from app.mcp_server.tools_write import create_card
