@@ -303,6 +303,74 @@
         }
       }
     },
+    "/api/v1/agent/mode-gratuit/modeles": {
+      "get": {
+        "tags": [
+          "agent"
+        ],
+        "summary": "Lister Modeles Gratuits",
+        "description": "Catalogue des modeles gratuits, avec role primaire/secours de chacun.",
+        "operationId": "lister_modeles_gratuits_api_v1_agent_mode_gratuit_modeles_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Lister Modeles Gratuits Api V1 Agent Mode Gratuit Modeles Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent/mode-gratuit/modele": {
+      "put": {
+        "tags": [
+          "agent"
+        ],
+        "summary": "Definir Modele Gratuit",
+        "description": "Choisit le modele primaire du mode gratuit (toute l'instance).\n\nLe secours n'est pas touche : la rotation s'en sert automatiquement\nquand le primaire repond 429/surcharge.",
+        "operationId": "definir_modele_gratuit_api_v1_agent_mode_gratuit_modele_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChoixModele"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Definir Modele Gratuit Api V1 Agent Mode Gratuit Modele Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/agent/providers/meta": {
       "get": {
         "tags": [
@@ -6427,6 +6495,21 @@
         "additionalProperties": false,
         "type": "object",
         "title": "CardUpdate"
+      },
+      "ChoixModele": {
+        "properties": {
+          "model": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Model"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model"
+        ],
+        "title": "ChoixModele"
       },
       "ChunkOut": {
         "properties": {

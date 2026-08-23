@@ -194,6 +194,35 @@ class TestChoisirLane:
         choisi = await agent_gratuit.choisir_lane(db_session)
         assert choisi is not None and choisi.lane.id == lane_zai.id
 
+    async def test_bascule_sur_la_lane_de_secours_en_cooldown(
+        self, db_session, lane_zai, settings_actives
+    ):
+        """Le primaire sature (429) : les tours partent sur le secours."""
+        lane_alt = AgentLane(
+            id=uuid4(),
+            slug="zai-alt",
+            label_public="GLM · Z.ai (secours)",
+            provider_kind="custom",
+            base_url="https://api.z.ai/api/paas/v4",
+            model="glm-4.5-flash",
+            rpm_cap=3,
+            rpd_cap=900,
+            actif=True,
+            position=10,
+        )
+        db_session.add(lane_alt)
+        await agent_gratuit.signaler_echec(db_session, lane_zai)
+        choisi = await agent_gratuit.choisir_lane(db_session)
+        assert choisi is not None
+        assert choisi.lane.slug == "zai-alt"
+        # La cle du secours se resolve comme celle du primaire (meme compte).
+        from app.crypto.keygen import KeyManager
+
+        cle = KeyManager(get_settings().master_encryption_key).decrypt_private_key(
+            choisi.provider.api_key_enc
+        )
+        assert cle == "zai-key-test"
+
     async def test_saute_la_lane_saturee(self, db_session, lane_zai, settings_actives):
         from datetime import date
 
@@ -333,3 +362,57 @@ class TestTesterLane:
             (await db_session.execute(select(AgentLaneUsage))).scalars().all()
         )
         assert lignes == []
+
+
+# ---------------------------------------------------------------------------
+# Catalogue de modeles + choix manuel du primaire
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+class TestModeles:
+    async def test_cle_lane_resout_les_lanes_zai(self, settings_actives):
+        assert agent_gratuit.cle_lane("zai", settings_actives) == "zai-key-test"
+        assert agent_gratuit.cle_lane("zai-alt", settings_actives) == "zai-key-test"
+        assert agent_gratuit.cle_lane("autre", settings_actives) == ""
+
+    async def test_liste_modeles_annote_le_role(
+        self, db_session, lane_zai, settings_actives
+    ):
+        lane_alt = AgentLane(
+            id=uuid4(),
+            slug="zai-alt",
+            label_public="GLM · Z.ai (secours)",
+            provider_kind="custom",
+            base_url="https://api.z.ai/api/paas/v4",
+            model="glm-4.5-flash",
+            actif=True,
+            position=10,
+        )
+        db_session.add(lane_alt)
+        await db_session.commit()
+        modeles = await agent_gratuit.liste_modeles(db_session)
+        par_id = {m["model"]: m for m in modeles}
+        assert set(par_id) == {"glm-4.7-flash", "glm-4.5-flash"}
+        assert par_id["glm-4.7-flash"]["role"] == "primaire"
+        assert par_id["glm-4.5-flash"]["role"] == "secours"
+        assert all(m["actif"] for m in par_id.values())
+
+    async def test_definir_primaire_change_la_lane_zai(
+        self, db_session, lane_zai, settings_actives
+    ):
+        r = await agent_gratuit.definir_modele_primaire(db_session, "glm-4.5-flash")
+        assert r["model"] == "glm-4.5-flash" and r["slug"] == "zai"
+        await db_session.refresh(lane_zai)
+        assert lane_zai.model == "glm-4.5-flash"
+
+    async def test_definir_primaire_refuse_hors_catalogue(self, db_session, lane_zai):
+        with pytest.raises(ValueError):
+            await agent_gratuit.definir_modele_primaire(db_session, "glm-5.2")
+        # La lane n'a pas bouge.
+        await db_session.refresh(lane_zai)
+        assert lane_zai.model == "glm-4.7-flash"
+
+    async def test_definir_primaire_sans_lane_leve(self, db_session):
+        with pytest.raises(ValueError):
+            await agent_gratuit.definir_modele_primaire(db_session, "glm-4.7-flash")

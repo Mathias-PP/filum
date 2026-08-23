@@ -152,6 +152,36 @@ async def test_testeur_renvoie_ok_ou_echec(
     assert lignes == []
 
 
+@pytest.mark.asyncio
+async def test_modeles_catalogue_et_bascule_manuelle(
+    client, session_token, settings_actives, lane_zai
+):
+    """GET /modeles liste le catalogue ; PUT /modele pointe la lane primaire."""
+    client.cookies.set("filum_session", session_token)
+    # Consentement : l'etat n'expose modele_actuel qu'en mode actif.
+    r = await client.put(
+        "/api/v1/agent/mode-gratuit", json={"version": agent_gratuit.VERSION_WARNING}
+    )
+    assert r.status_code == 200
+
+    r = await client.get("/api/v1/agent/mode-gratuit/modeles")
+    assert r.status_code == 200
+    modeles = {m["model"]: m for m in r.json()["modeles"]}
+    assert set(modeles) == {"glm-4.7-flash", "glm-4.5-flash"}
+    assert modeles["glm-4.7-flash"]["role"] == "primaire"
+
+    # Bascule manuelle : le primaire passe sur l'autre modele du catalogue.
+    r = await client.put("/api/v1/agent/mode-gratuit/modele", json={"model": "glm-4.5-flash"})
+    assert r.status_code == 200 and r.json()["model"] == "glm-4.5-flash"
+    etat = (await client.get("/api/v1/agent/mode-gratuit")).json()
+    assert etat["modele_actuel"] == "glm-4.5-flash"
+
+    # Hors catalogue : refuse (handler global -> {"error": ...}), lane intacte.
+    r = await client.put("/api/v1/agent/mode-gratuit/modele", json={"model": "glm-5.2"})
+    assert r.status_code == 400
+    assert r.json()["error"]["code"] == "modele_inconnu"
+
+
 # ---------------------------------------------------------------------------
 # Chat : la lane sert le tour quand l'utilisateur a consenti
 # ---------------------------------------------------------------------------

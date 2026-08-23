@@ -70,3 +70,39 @@ async def tester_mode_gratuit(
 ) -> dict:
     """Ping la lane qui servirait le prochain tour (diagnostic, hors quota)."""
     return await agent_gratuit.tester_lane(db)
+
+
+class ChoixModele(BaseModel):
+    model: str = Field(min_length=1, max_length=120)
+
+
+@router.get("/modeles")
+async def lister_modeles_gratuits(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Catalogue des modeles gratuits, avec role primaire/secours de chacun."""
+    return {"modeles": await agent_gratuit.liste_modeles(db)}
+
+
+@router.put("/modele")
+async def definir_modele_gratuit(
+    body: ChoixModele,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Choisit le modele primaire du mode gratuit (toute l'instance).
+
+    Le secours n'est pas touche : la rotation s'en sert automatiquement
+    quand le primaire repond 429/surcharge.
+    """
+    try:
+        return await agent_gratuit.definir_modele_primaire(db, body.model)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": str(exc),
+                "message": "Modèle inconnu du catalogue gratuit ou lane primaire absente.",
+            },
+        ) from exc

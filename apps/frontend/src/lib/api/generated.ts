@@ -140,6 +140,49 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/agent/mode-gratuit/modeles': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Lister Modeles Gratuits
+     * @description Catalogue des modeles gratuits, avec role primaire/secours de chacun.
+     */
+    get: operations['lister_modeles_gratuits_api_v1_agent_mode_gratuit_modeles_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/agent/mode-gratuit/modele': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Definir Modele Gratuit
+     * @description Choisit le modele primaire du mode gratuit (toute l'instance).
+     *
+     *     Le secours n'est pas touche : la rotation s'en sert automatiquement
+     *     quand le primaire repond 429/surcharge.
+     */
+    put: operations['definir_modele_gratuit_api_v1_agent_mode_gratuit_modele_put'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/agent/providers/meta': {
     parameters: {
       query?: never;
@@ -2361,6 +2404,11 @@ export interface components {
       category?: components['schemas']['SourceCategory'] | null;
       author_kind?: components['schemas']['AuthorKind'] | null;
     };
+    /** ChoixModele */
+    ChoixModele: {
+      /** Model */
+      model: string;
+    };
     /** ChunkOut */
     ChunkOut: {
       /** Text */
@@ -3807,6 +3855,63 @@ export interface operations {
           'application/json': {
             [key: string]: unknown;
           };
+        };
+      };
+    };
+  };
+  lister_modeles_gratuits_api_v1_agent_mode_gratuit_modeles_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  definir_modele_gratuit_api_v1_agent_mode_gratuit_modele_put: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ChoixModele'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
         };
       };
     };

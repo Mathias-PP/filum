@@ -37,6 +37,14 @@ VERSION_WARNING = "2026-08-23-v1"
 #: Duree du cooldown pose quand une lane renvoie un 429.
 COOLDOWN_MINUTES = 10
 
+#: Modeles gratuits proposables, par fournisseur. Le choix manuel (PUT
+#: /modeles) et la validation du seed s'y restreignent : pas de modele payant
+#: accessible par erreur sur la cle gratuite.
+MODELES_GRATUITS: dict[str, dict[str, str]] = {
+    "glm-4.7-flash": {"fournisseur": "zai", "label": "GLM 4.7 Flash"},
+    "glm-4.5-flash": {"fournisseur": "zai", "label": "GLM 4.5 Flash"},
+}
+
 
 def _maintenant() -> datetime:
     """L'instant courant en UTC, sans fuseau attache.
@@ -65,9 +73,16 @@ class LaneActive(NamedTuple):
 
 
 def cle_lane(slug: str, settings: Settings | None = None) -> str:
-    """Cle API d'une lane depuis les settings (jamais en base)."""
+    """Cle API d'une lane depuis les settings (jamais en base).
+
+    Toutes les lanes Z.ai (`zai`, `zai-alt`, ...) partagent la meme cle :
+    le slug ne fait que distinguer les couples (endpoint, modele) que la
+    rotation parcourt.
+    """
     s = settings or get_settings()
-    return {"zai": s.agent_gratuit_zai_api_key}.get(slug, "")
+    if slug == "zai" or slug.startswith("zai-"):
+        return s.agent_gratuit_zai_api_key
+    return ""
 
 
 def mode_disponible(settings: Settings | None = None) -> bool:
@@ -135,6 +150,57 @@ async def etat_consentement(
 async def est_consentant(db: AsyncSession, creator_id: uuid.UUID) -> bool:
     row = await db.get(AgentGratuitConsent, str(creator_id))
     return bool(row and row.version == VERSION_WARNING)
+
+
+# ---------------------------------------------------------------------------
+# Choix manuel du modele (catalogue + lane primaire)
+# ---------------------------------------------------------------------------
+
+
+async def liste_modeles(db: AsyncSession) -> list[dict]:
+    """Catalogue proposable, annote de l'etat des lanes connues.
+
+    Un modele du catalogue sans lane en base reste listable (l'UI peut le
+    proposer ; il sera servi si une lane le porte) mais marque non actif.
+    Le role primaire/secours suit le slug (`zai` vs `zai-*`).
+    """
+    lignes = (
+        (await db.execute(select(AgentLane).where(AgentLane.slug.like("zai%")))).scalars().all()
+    )
+    par_modele = {lane.model: lane for lane in lignes}
+    sortie: list[dict] = []
+    for model, meta in MODELES_GRATUITS.items():
+        if meta["fournisseur"] != "zai":
+            continue
+        lane = par_modele.get(model)
+        sortie.append(
+            {
+                "model": model,
+                "label": meta["label"],
+                "role": "primaire" if lane and lane.slug == "zai" else "secours",
+                "actif": lane is not None,
+                "slug": lane.slug if lane else None,
+            }
+        )
+    return sortie
+
+
+async def definir_modele_primaire(db: AsyncSession, model: str) -> dict:
+    """Pointe la lane primaire (`zai`) sur un modele du catalogue.
+
+    Le secours (`zai-alt`) n'est pas touche : c'est lui qui prend les tours
+    quand le primaire repond 429/surcharge. ValueError si le modele est
+    inconnu du catalogue — jamais de modele payant sur la cle gratuite.
+    """
+    meta = MODELES_GRATUITS.get(model)
+    if meta is None or meta["fournisseur"] != "zai":
+        raise ValueError("modele_inconnu")
+    lane = (await db.execute(select(AgentLane).where(AgentLane.slug == "zai"))).scalar_one_or_none()
+    if lane is None:
+        raise ValueError("lane_primaire_absente")
+    lane.model = model
+    await db.commit()
+    return {"model": lane.model, "label": meta["label"], "slug": lane.slug}
 
 
 async def donner_consentement(db: AsyncSession, creator_id: uuid.UUID, version: str) -> None:
