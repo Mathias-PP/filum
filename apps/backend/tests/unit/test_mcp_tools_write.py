@@ -337,6 +337,8 @@ async def test_le_parcours_complet_produit_une_fiche_qu_un_agent_peut_relire(db_
         slug="parcours-complet",
         title="Parcours complet du MCP",
         description="Fiche produite par un agent pour valider la chaine.",
+        # Une bibliographie sur une question, sans contenu source a documenter.
+        card_kind="sujet",
     )
     s1 = await add_source(
         db_session,
@@ -828,7 +830,9 @@ async def test_remove_connection_efface_le_lien(db_session, test_user):
     # Deux fiches du meme user : la source de A designe B (linked automatique
     # via effective_linked_card_id lors du add_source).
     await create_card(db_session, test_user, slug="fiche-a", title="A")
-    fiche_b_res = await create_card(db_session, test_user, slug="fiche-b", title="B")
+    fiche_b_res = await create_card(
+        db_session, test_user, slug="fiche-b", title="B", card_kind="sujet"
+    )
     # `fiche-b` publiee pour que effective_linked_card_id la resolve.
     await publish_card(db_session, test_user, slug="fiche-b")
     # Utiliser l'URL publique de fiche-b comme source de fiche-a.

@@ -2108,16 +2108,16 @@ export interface components {
       title: string;
       /** Description */
       description?: string | null;
+      /** @default contenu */
+      card_kind: components['schemas']['CardKind'];
       /** Content Url */
       content_url?: string | null;
       /** Content Text */
       content_text?: string | null;
       /** Content Authors */
       content_authors?: string | null;
-      /** @default other */
-      platform: components['schemas']['Platform'];
-      /** @default video */
-      content_type: components['schemas']['ContentType'];
+      platform?: components['schemas']['Platform'] | null;
+      content_type?: components['schemas']['ContentType'] | null;
       /** @default public */
       visibility: components['schemas']['Visibility'];
       /**
@@ -2142,14 +2142,16 @@ export interface components {
       title: string;
       /** Description */
       description: string | null;
+      /** @default contenu */
+      card_kind: components['schemas']['CardKind'];
       /** Content Url */
       content_url: string | null;
       /** Content Text */
       content_text?: string | null;
       /** Content Authors */
       content_authors?: string | null;
-      platform: components['schemas']['Platform'];
-      content_type: components['schemas']['ContentType'];
+      platform?: components['schemas']['Platform'] | null;
+      content_type?: components['schemas']['ContentType'] | null;
       status: components['schemas']['CardStatus'];
       /**
        * Is Seed
@@ -2189,6 +2191,18 @@ export interface components {
        */
       truncated: boolean;
     };
+    /**
+     * CardKind
+     * @description Ce qu'une fiche documente, et donc qui en est l'auteur.
+     *
+     *     - CONTENU : une video, un article, un post qui existe ailleurs. La fiche
+     *       porte son URL et ses auteurs, qui ne sont pas le createur Philum tant
+     *       qu'il ne s'en declare pas l'auteur (`is_seed`).
+     *     - SUJET : une bibliographie sur une question. Il n'y a pas de contenu
+     *       source, donc pas d'URL ni d'auteurs tiers : la synthese est du createur.
+     * @enum {string}
+     */
+    CardKind: 'contenu' | 'sujet';
     /** CardResponse */
     CardResponse: {
       /**
@@ -2202,14 +2216,16 @@ export interface components {
       title: string;
       /** Description */
       description: string | null;
+      /** @default contenu */
+      card_kind: components['schemas']['CardKind'];
       /** Content Url */
       content_url: string | null;
       /** Content Text */
       content_text?: string | null;
       /** Content Authors */
       content_authors?: string | null;
-      platform: components['schemas']['Platform'];
-      content_type: components['schemas']['ContentType'];
+      platform?: components['schemas']['Platform'] | null;
+      content_type?: components['schemas']['ContentType'] | null;
       status: components['schemas']['CardStatus'];
       /**
        * Is Seed
@@ -2309,6 +2325,7 @@ export interface components {
       title?: string | null;
       /** Description */
       description?: string | null;
+      card_kind?: components['schemas']['CardKind'] | null;
       /** Content Url */
       content_url?: string | null;
       /** Content Text */
@@ -2475,6 +2492,8 @@ export interface components {
     DiscoverFacets: {
       /** Total */
       total: number;
+      /** Card Kinds */
+      card_kinds: components['schemas']['Facet'][];
       /** Platforms */
       platforms: components['schemas']['Facet'][];
       /** Content Types */
@@ -2509,14 +2528,16 @@ export interface components {
       creator_slug: string;
       /** Creator Name */
       creator_name: string | null;
+      /** Card Kind */
+      card_kind: string;
       /** Content Url */
       content_url: string | null;
       /** Content Authors */
       content_authors: string | null;
       /** Content Type */
-      content_type: string;
+      content_type: string | null;
       /** Platform */
-      platform: string;
+      platform: string | null;
       /** Published At */
       published_at: string | null;
       /** Source Count */
@@ -5157,6 +5178,7 @@ export interface operations {
         q?: string;
         creator?: string | null;
         content_author?: string | null;
+        card_kind?: string | null;
         platform?: string | null;
         content_type?: string | null;
         published_after?: string | null;

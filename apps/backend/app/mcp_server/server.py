@@ -123,16 +123,24 @@ async def whoami() -> dict[str, Any] | None:
 async def create_card(
     slug: str,
     title: str,
+    card_kind: str = "contenu",
     content_url: str | None = None,
     description: str | None = None,
     content_authors: str | None = None,
-    platform: str = "other",
-    content_type: str = "article",
+    platform: str | None = None,
+    content_type: str | None = None,
     visibility: str = "public",
 ) -> dict[str, Any]:
     """Cree une fiche brouillon chez l'utilisateur identifie par le token.
 
     `slug` : identifiant public court (lettres, chiffres, tirets ; 3-80).
+    `card_kind` : contenu|sujet, c'est le premier choix a faire.
+      - `contenu` documente une video, un article, un podcast qui existe
+        ailleurs : `content_url` est OBLIGATOIRE et `content_authors` nomme
+        les auteurs de ce contenu, qui ne sont pas le createur de la fiche.
+      - `sujet` porte une bibliographie sur une question, ecrite par le
+        createur : `content_url`, `content_authors`, `platform` et
+        `content_type` sont interdits, il n'y a aucun contenu source.
     `platform` : youtube|podcast|blog|x|bluesky|revue-scientifique|other.
     `content_type` : video|article|post|podcast|other.
     `visibility` : public|private. La fiche naitra en brouillon dans tous les
@@ -145,6 +153,7 @@ async def create_card(
             user,
             slug=slug,
             title=title,
+            card_kind=card_kind,
             content_url=content_url,
             description=description,
             content_authors=content_authors,
@@ -283,6 +292,7 @@ async def update_card(
     slug: str,
     title: str | None = None,
     description: str | None = None,
+    card_kind: str | None = None,
     content_url: str | None = None,
     content_authors: str | None = None,
     platform: str | None = None,
@@ -290,9 +300,13 @@ async def update_card(
     visibility: str | None = None,
 ) -> dict[str, Any]:
     """Corrige les champs edituriaux d'une fiche existante (titre, description,
-    URL du contenu, auteurs, plateforme, type, visibilite). Un champ laisse a
-    `None` reste inchange. Le slug n'est pas modifiable : l'identifiant public
-    fait autorite dans les liens deja emis.
+    nature, URL du contenu, auteurs, plateforme, type, visibilite). Un champ
+    laisse a `None` reste inchange. Le slug n'est pas modifiable : l'identifiant
+    public fait autorite dans les liens deja emis.
+
+    `card_kind='sujet'` efface l'URL, les auteurs, la plateforme et le type du
+    contenu documente : une bibliographie sur une question ne documente aucun
+    contenu source.
     """
     async with _session() as db:
         user = await exiger_utilisateur(db)
@@ -302,6 +316,7 @@ async def update_card(
             slug=slug,
             title=title,
             description=description,
+            card_kind=card_kind,
             content_url=content_url,
             content_authors=content_authors,
             platform=platform,

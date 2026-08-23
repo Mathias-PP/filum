@@ -50,6 +50,7 @@ const baseCard: CardDetail = {
   slug: 'ma-fiche',
   title: 'Ma vidéo sur la mémoire',
   description: null,
+  card_kind: 'contenu',
   content_url: 'https://youtube.com/watch?v=abc',
   content_text: null,
   content_authors: null,

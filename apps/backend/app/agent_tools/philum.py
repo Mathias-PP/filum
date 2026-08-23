@@ -21,13 +21,14 @@ from fastmcp.exceptions import ToolError
 from app.agent_tools.tool import AgentTool, ToolContext
 from app.mcp_server import tools as lecture
 from app.mcp_server import tools_write as ecriture
-from app.models.biblio_card import CardStatus
+from app.models.biblio_card import CardKind, CardStatus
 from app.models.source import AuthorKind, SourceCategory, SourceFormat, SourceStance
 from app.schemas.biblio_card import ContentType, Platform, Visibility
 
 #: Enums par nom de parametre : injectees dans le schema JSON pour que le modele
 #: voie les valeurs acceptees et ne parte pas en boucle sur une valeur inventee.
 _ENUMS_PAR_PARAMETRE: dict[str, list[str]] = {
+    "card_kind": [e.value for e in CardKind],
     "platform": [e.value for e in Platform],
     "content_type": [e.value for e in ContentType],
     "visibility": [e.value for e in Visibility],

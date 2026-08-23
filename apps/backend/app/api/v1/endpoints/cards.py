@@ -12,7 +12,7 @@ from starlette.status import HTTP_401_UNAUTHORIZED
 from app.core.rate_limit import limiter
 from app.db.database import get_db
 from app.db.text_search import contient
-from app.models.biblio_card import BiblioCard
+from app.models.biblio_card import BiblioCard, CardKind
 from app.models.claim_request import ClaimRequest
 from app.models.source import Source
 from app.models.user import User
@@ -262,6 +262,30 @@ async def update_card(
             detail={"code": "forbidden", "message": "Access denied"},
         )
 
+    # La nature resultante se juge sur la fiche stockee plus la modification :
+    # un corps qui ne parle que de `card_kind` doit quand meme etre confronte
+    # a ce que la fiche porte deja.
+    nature = card_data.card_kind or CardKind(card.card_kind)
+    if nature is CardKind.SUJET:
+        # Le texte integral est le seul champ de contenu qui ne se reconstitue
+        # pas : l'effacer en silence detruirait un travail de saisie. Les
+        # autres se redeclarent en un geste. `None` dans le corps veut dire
+        # « ne touche pas », chaine vide veut dire « efface » : les confondre
+        # ferait refuser une conversion pourtant demandee proprement.
+        texte = card.content_text if card_data.content_text is None else card_data.content_text
+        if (texte or "").strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "validation_error",
+                    "message": (
+                        "Cette fiche porte le texte integral d'un contenu. Une fiche "
+                        "sujet ne documente aucun contenu : effacez le texte avant de "
+                        "changer sa nature."
+                    ),
+                },
+            )
+
     # Note (2026-07-21) : les fiches publiees sont editables par leur owner.
     # La *fiche* (vue produit) est mutable ; l'engagement public est porte
     # par l'*attestation Ed25519* dans content_attestations, qui reste
@@ -296,6 +320,16 @@ async def update_card(
         card.category = card_data.category.value
     if card_data.author_kind is not None:
         card.author_kind = card_data.author_kind.value
+
+    card.card_kind = nature.value
+    if nature is CardKind.SUJET:
+        # Devenir une fiche sujet, c'est cesser de documenter un contenu :
+        # garder l'URL et la plateforme laisserait la fiche affirmer les deux.
+        card.content_url = None
+        card.content_authors = None
+        card.platform = None
+        card.content_type = None
+        card.is_seed = False
 
     # The card is already attached to the request session (via CardService);
     # opening a second session here raised InvalidRequestError. Commit in place.
@@ -396,6 +430,21 @@ async def publish_card(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"code": "validation_error", "message": "Cannot publish a card without sources"},
+        )
+
+    # Publier une fiche contenu sans lien vers le contenu, c'est publier une
+    # bibliographie qui affirme documenter quelque chose d'introuvable.
+    if card.card_kind == CardKind.CONTENU.value and not (card.content_url or "").strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "validation_error",
+                "message": (
+                    "Cette fiche annonce documenter un contenu mais n'a pas de lien "
+                    "vers lui. Renseignez l'URL du contenu, ou passez la fiche en "
+                    "nature « sujet » si elle porte une bibliographie sur une question."
+                ),
+            },
         )
 
     # Belt-and-suspenders: any exception raised during publish (MissingGreenlet,
@@ -564,6 +613,7 @@ async def get_public_card(
         slug=card.slug,
         title=card.title,
         description=card.description,
+        card_kind=card.card_kind,
         content_url=card.content_url,
         content_text=card.content_text,
         content_authors=card.content_authors,

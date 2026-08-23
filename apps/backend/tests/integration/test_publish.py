@@ -31,8 +31,12 @@ async def draft_card(db_session, test_user):
         user_id=test_user.id,
         slug="ma-fiche",
         title="Ma fiche",
+        card_kind="contenu",
         content_type="video",
         platform="youtube",
+        # Une fiche qui se dit « video YouTube » sans lien vers la video ne
+        # documente rien : la publication la refuse desormais.
+        content_url="https://www.youtube.com/watch?v=demo",
         status="draft",
     )
     db_session.add(card)

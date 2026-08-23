@@ -29,8 +29,14 @@
     { value: 'title', label: 'Alphabétique' },
   ];
 
+  const KIND_LABELS: Record<string, string> = {
+    contenu: 'Fiches de contenu',
+    sujet: 'Fiches de sujet',
+  };
+
   const params = $derived($page.url.searchParams);
   const q = $derived(params.get('q') ?? '');
+  const activeKind = $derived(params.get('card_kind') ?? '');
   const activePlatform = $derived(params.get('platform') ?? '');
 
   /**
@@ -69,7 +75,7 @@
   const before = $derived(params.get('published_before') ?? '');
 
   const activeCount = $derived(
-    [activePlatform, activeType, activeCreator, after, before].filter(Boolean).length
+    [activeKind, activePlatform, activeType, activeCreator, after, before].filter(Boolean).length
   );
   const lastPage = $derived(Math.max(1, Math.ceil(data.total / PAGE_SIZE)));
 
@@ -185,6 +191,26 @@
   </search>
 
   <div class="flex flex-wrap items-center gap-2 mb-3">
+    <!--
+      La nature vient en premier : elle decide si les facettes suivantes ont un
+      sens. Une fiche sujet n'a ni plateforme ni type de contenu.
+    -->
+    {#each data.facets.card_kinds as f (f.value)}
+      <button
+        type="button"
+        onclick={() => toggle('card_kind', f.value, activeKind)}
+        aria-pressed={activeKind === f.value}
+        class="px-3 py-1.5 text-sm rounded-full border transition-colors {activeKind === f.value
+          ? 'bg-primary-600 border-primary-600 text-white'
+          : 'bg-surface-primary border-border text-ink-secondary hover:border-border-strong hover:text-ink-primary'}"
+      >
+        {KIND_LABELS[f.value] ?? f.value}
+        <span class="opacity-70 tabular-nums">{f.count}</span>
+      </button>
+    {/each}
+    {#if data.facets.card_kinds.length > 0}
+      <span class="w-px h-5 bg-border mx-1" aria-hidden="true"></span>
+    {/if}
     {#each data.facets.platforms as f (f.value)}
       <button
         type="button"
@@ -304,20 +330,31 @@
             class="hover-lift block h-full bg-surface-primary border border-border rounded-xl p-5"
           >
             <div class="flex items-center gap-2 text-xs text-ink-tertiary mb-2">
-              <span>{PLATFORM_LABELS[r.platform] ?? r.platform}</span>
+              <span>
+                {#if r.card_kind === 'sujet'}
+                  Sujet
+                {:else}
+                  {PLATFORM_LABELS[r.platform ?? ''] ?? r.platform}
+                {/if}
+              </span>
               {#if r.published_at}
                 <span aria-hidden="true">·</span>
                 <time datetime={r.published_at}>{formatDate(r.published_at)}</time>
               {/if}
             </div>
             <h2 class="text-lg font-semibold text-ink-primary mb-1.5 leading-snug">{r.title}</h2>
-            <p class="text-sm text-ink-secondary mb-3">
-              {#if r.content_authors}<span class="text-ink-primary">{r.content_authors}</span>{/if}
-              {#if r.content_authors && hostOf(r.content_url)}<span aria-hidden="true">
-                  ·
-                </span>{/if}
-              {#if hostOf(r.content_url)}{hostOf(r.content_url)}{/if}
-            </p>
+            <!-- Sur une fiche sujet, ces deux champs sont vides par nature :
+                 la ligne ne laisserait qu'une marge sans texte. -->
+            {#if r.content_authors || hostOf(r.content_url)}
+              <p class="text-sm text-ink-secondary mb-3">
+                {#if r.content_authors}<span class="text-ink-primary">{r.content_authors}</span
+                  >{/if}
+                {#if r.content_authors && hostOf(r.content_url)}<span aria-hidden="true">
+                    ·
+                  </span>{/if}
+                {#if hostOf(r.content_url)}{hostOf(r.content_url)}{/if}
+              </p>
+            {/if}
             {#if excerpt(r)}
               <p class="text-sm text-ink-secondary mb-4">{excerpt(r)}</p>
             {/if}

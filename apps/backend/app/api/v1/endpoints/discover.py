@@ -46,10 +46,12 @@ class DiscoverResult(BaseModel):
     url: str
     creator_slug: str
     creator_name: str | None
+    card_kind: str
     content_url: str | None
     content_authors: str | None
-    content_type: str
-    platform: str
+    #: Nuls sur une fiche sujet, qui ne documente aucun contenu existant.
+    content_type: str | None
+    platform: str | None
     published_at: datetime | None
     source_count: int
 
@@ -68,6 +70,7 @@ class Facet(BaseModel):
 
 class DiscoverFacets(BaseModel):
     total: int
+    card_kinds: list[Facet]
     platforms: list[Facet]
     content_types: list[Facet]
     creators: list[Facet]
@@ -78,6 +81,7 @@ def _apply_filters(
     q: str,
     creator: str | None,
     content_author: str | None,
+    card_kind: str | None,
     platform: str | None,
     content_type: str | None,
     published_after: date | None,
@@ -96,6 +100,8 @@ def _apply_filters(
         stmt = stmt.where(func.lower(User.username) == creator.strip().lower())
     if content_author:
         stmt = stmt.where(contient(BiblioCard.content_authors, content_author))
+    if card_kind:
+        stmt = stmt.where(BiblioCard.card_kind == card_kind)
     if platform:
         stmt = stmt.where(BiblioCard.platform == platform)
     if content_type:
@@ -116,6 +122,7 @@ async def discover_cards(
     q: str = Query("", max_length=200),
     creator: str | None = Query(None, max_length=100),
     content_author: str | None = Query(None, max_length=200),
+    card_kind: str | None = Query(None, max_length=20),
     platform: str | None = Query(None, max_length=50),
     content_type: str | None = Query(None, max_length=50),
     published_after: date | None = Query(None),
@@ -125,7 +132,16 @@ async def discover_cards(
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ) -> DiscoverResponse:
-    args = (q, creator, content_author, platform, content_type, published_after, published_before)
+    args = (
+        q,
+        creator,
+        content_author,
+        card_kind,
+        platform,
+        content_type,
+        published_after,
+        published_before,
+    )
 
     source_count = (
         select(func.count(Source.id))
@@ -168,6 +184,7 @@ async def discover_cards(
                 url=f"{base_url}/@{username}/{card.slug}",
                 creator_slug=username,
                 creator_name=display_name,
+                card_kind=card.card_kind,
                 content_url=card.content_url,
                 content_authors=card.content_authors,
                 content_type=card.content_type,
@@ -286,6 +303,7 @@ async def discover_facets(db: AsyncSession = Depends(get_db)) -> DiscoverFacets:
     ) or 0
     return DiscoverFacets(
         total=total,
+        card_kinds=await counts(BiblioCard.card_kind),
         platforms=await counts(BiblioCard.platform),
         content_types=await counts(BiblioCard.content_type),
         creators=await counts(User.username),

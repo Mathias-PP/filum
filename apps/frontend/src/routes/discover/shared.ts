@@ -10,10 +10,12 @@ export interface DiscoverResult {
   url: string;
   creator_slug: string;
   creator_name: string | null;
+  card_kind: string;
   content_url: string | null;
   content_authors: string | null;
-  content_type: string;
-  platform: string;
+  /** Nuls sur une fiche sujet, qui ne documente aucun contenu existant. */
+  content_type: string | null;
+  platform: string | null;
   published_at: string | null;
   source_count: number;
 }
@@ -25,6 +27,7 @@ export interface Facet {
 
 export interface DiscoverFacets {
   total: number;
+  card_kinds: Facet[];
   platforms: Facet[];
   content_types: Facet[];
   creators: Facet[];
@@ -41,6 +44,7 @@ export const FILTER_KEYS = [
   'q',
   'creator',
   'content_author',
+  'card_kind',
   'platform',
   'content_type',
   'published_after',

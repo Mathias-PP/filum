@@ -48,6 +48,20 @@ class ContentType(str, Enum):
     OTHER = "other"
 
 
+class CardKind(str, Enum):
+    """Ce qu'une fiche documente, et donc qui en est l'auteur.
+
+    - CONTENU : une video, un article, un post qui existe ailleurs. La fiche
+      porte son URL et ses auteurs, qui ne sont pas le createur Philum tant
+      qu'il ne s'en declare pas l'auteur (`is_seed`).
+    - SUJET : une bibliographie sur une question. Il n'y a pas de contenu
+      source, donc pas d'URL ni d'auteurs tiers : la synthese est du createur.
+    """
+
+    CONTENU = "contenu"
+    SUJET = "sujet"
+
+
 class Visibility(str, Enum):
     """Qui peut voir une fiche une fois publiee.
 
@@ -76,7 +90,14 @@ class BiblioCard(Base):
     )
     slug: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
-    content_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    # Nature de la fiche. NOT NULL avec defaut `contenu` : c'est ce qu'etaient
+    # toutes les fiches avant que la nature existe.
+    card_kind: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="contenu", server_default="contenu"
+    )
+    # `content_type` et `platform` decrivent le contenu documente : NULL sur
+    # une fiche sujet, qui n'en documente aucun.
+    content_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     content_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     # Auteurs du contenu documente, qui ne sont pas ceux de la fiche : publier
     # une fiche n'est pas signer ce qu'elle documente. Sans cette colonne, les
@@ -91,7 +112,7 @@ class BiblioCard(Base):
     format: Mapped[str | None] = mapped_column(String(20), nullable=True)
     category: Mapped[str | None] = mapped_column(String(40), nullable=True)
     author_kind: Mapped[str | None] = mapped_column(String(40), nullable=True)
-    platform: Mapped[str] = mapped_column(String(50), nullable=False, default="other")
+    platform: Mapped[str | None] = mapped_column(String(50), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     #: Texte integral du contenu documente quand le createur en dispose et a
     #: le droit de le publier : son propre article, un contenu libre de droit,
