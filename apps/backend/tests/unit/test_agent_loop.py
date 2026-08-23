@@ -1345,3 +1345,157 @@ class TestAgentNomme:
         corps = await self._corps_envoye(db_session, test_user, self._definition())
         systeme = next(m for m in corps["messages"] if m["role"] == "system")
         assert contenu not in systeme["content"]
+
+
+class TestCompactionContexte:
+    """Une session longue ne doit pas mourir sur la fenêtre du modèle.
+
+    Deux filets : un budget préventif appliqué avant l'appel, et un rejeu
+    unique quand le fournisseur refuse quand même. Le second existe parce que
+    le premier est un pari : on ne connaît pas la fenêtre réelle du modèle.
+    """
+
+    @staticmethod
+    def _refus_contexte() -> httpx.Response:
+        return httpx.Response(
+            400,
+            json={
+                "error": {
+                    "message": (
+                        "This model's maximum context length is 8192 tokens. "
+                        "However, your messages resulted in 20000 tokens."
+                    ),
+                    "code": "context_length_exceeded",
+                }
+            },
+        )
+
+    @pytest.mark.asyncio
+    async def test_rejeu_unique_apres_un_refus_du_fournisseur(self, db_session, test_user):
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+        appels = {"n": 0}
+
+        def handler(request):
+            appels["n"] += 1
+            # Un 400 coûte deux appels : le stream refusé, puis le repli bloquant.
+            if appels["n"] <= 2:
+                return TestCompactionContexte._refus_contexte()
+            return httpx.Response(200, json=_mock_texte("Voilà."))
+
+        messages = [{"role": "user", "content": f"{i}:" + "u" * 1_000} for i in range(40)]
+        events = await _collect(
+            db_session,
+            test_user,
+            provider,
+            messages,
+            _refuse,
+            httpx.MockTransport(handler),
+            _registre_fake([]),
+        )
+        types = [e["type"] for e in events]
+        assert "contexte_compacte" in types
+        assert "error" not in types
+        assert types[-1] == "done"
+
+    @pytest.mark.asyncio
+    async def test_un_second_refus_remonte_l_erreur(self, db_session, test_user):
+        """Deux refus de suite ne viennent plus de la taille : ne pas boucler."""
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+
+        def handler(request):
+            return TestCompactionContexte._refus_contexte()
+
+        messages = [{"role": "user", "content": f"{i}:" + "u" * 1_000} for i in range(40)]
+        events = await _collect(
+            db_session,
+            test_user,
+            provider,
+            messages,
+            _refuse,
+            httpx.MockTransport(handler),
+            _registre_fake([]),
+        )
+        assert [e["type"] for e in events].count("contexte_compacte") == 1
+        assert events[-1]["type"] == "error"
+
+    @pytest.mark.asyncio
+    async def test_une_erreur_ordinaire_ne_declenche_rien(self, db_session, test_user):
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+
+        def handler(request):
+            return httpx.Response(401, json={"error": {"message": "Invalid API key"}})
+
+        messages = [{"role": "user", "content": "bonjour"}]
+        events = await _collect(
+            db_session,
+            test_user,
+            provider,
+            messages,
+            _refuse,
+            httpx.MockTransport(handler),
+            _registre_fake([]),
+        )
+        assert [e["type"] for e in events] == ["error"]
+
+    @pytest.mark.asyncio
+    async def test_compaction_preventive_avant_le_premier_appel(self, db_session, test_user):
+        """Au-dessus du budget, on coupe avant d'envoyer, pas après le refus."""
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+        corps = {}
+
+        def handler(request):
+            corps["envoye"] = json.loads(request.content)
+            return httpx.Response(200, json=_mock_texte("Voilà."))
+
+        gros = "u" * 2_000
+        messages = [{"role": "user", "content": f"{i}:{gros}"} for i in range(250)]
+        events = await _collect(
+            db_session,
+            test_user,
+            provider,
+            messages,
+            _refuse,
+            httpx.MockTransport(handler),
+            _registre_fake([]),
+        )
+        assert [e["type"] for e in events][0] == "contexte_compacte"
+        envoyes = corps["envoye"]["messages"]
+        assert len(envoyes) < 251
+        assert agent_sessions.taille_historique(envoyes) <= agent_sessions.BUDGET_HISTORIQUE
+        assert envoyes[-1]["content"].startswith("249:")
+
+    @pytest.mark.asyncio
+    async def test_la_passe_preventive_ne_consomme_pas_le_rejeu(self, db_session, test_user):
+        """Compacter au départ ne doit pas priver du rattrapage sur refus.
+
+        Les deux filets sont indépendants : le budget préventif est une
+        estimation, le refus du fournisseur est un fait.
+        """
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+        appels = {"n": 0}
+
+        def handler(request):
+            appels["n"] += 1
+            if appels["n"] <= 2:
+                return TestCompactionContexte._refus_contexte()
+            return httpx.Response(200, json=_mock_texte("Voilà."))
+
+        gros = "u" * 2_000
+        messages = [{"role": "user", "content": f"{i}:{gros}"} for i in range(250)]
+        events = await _collect(
+            db_session,
+            test_user,
+            provider,
+            messages,
+            _refuse,
+            httpx.MockTransport(handler),
+            _registre_fake([]),
+        )
+        types = [e["type"] for e in events]
+        assert types.count("contexte_compacte") == 2
+        assert types[-1] == "done"

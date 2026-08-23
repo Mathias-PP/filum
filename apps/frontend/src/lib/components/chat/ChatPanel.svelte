@@ -141,7 +141,7 @@
   // 10 cartes « Lit la source #a1b2c3d4 » qui empilent le meme verbe. Le nom
   // « Lit la source » figure une fois, les entrees s'empilent en dessous.
   type Affichable =
-    | Extract<ChatItem, { kind: 'user' | 'assistant' | 'approval' | 'error' }>
+    | Extract<ChatItem, { kind: 'user' | 'assistant' | 'approval' | 'error' | 'compaction' }>
     | {
         kind: 'group-outils';
         name: string;
@@ -665,6 +665,19 @@
             {/each}
           </div>
         {/if}
+      {:else if item.kind === 'compaction'}
+        <!-- Le debut de la conversation est sorti de la fenetre du modele. Le
+             dire ici, a sa place dans le fil : l'agent qui « oublie » sans
+             prevenir passe pour defaillant alors qu'il subit une limite. -->
+        <div class="flex items-center gap-3 py-1 text-xs text-ink-tertiary">
+          <span class="h-px flex-1 bg-subtle"></span>
+          <span
+            >{item.retires} message{item.retires > 1 ? 's' : ''} du début retiré{item.retires > 1
+              ? 's'
+              : ''} pour tenir dans la fenêtre du modèle</span
+          >
+          <span class="h-px flex-1 bg-subtle"></span>
+        </div>
       {:else if item.kind === 'approval'}
         <ApprovalCard
           tool={item.tool}

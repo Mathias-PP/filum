@@ -185,6 +185,13 @@ export type AgentEvent =
     }
   | { type: 'approval_resolved'; payload: { request_id: string; tool: string; approved: boolean } }
   | {
+      /** Le début de la conversation a été retiré pour tenir dans la fenêtre du
+       * modèle. Le dire : l'agent qui « oublie » sans prévenir passe pour
+       * défaillant alors qu'il subit une limite. */
+      type: 'contexte_compacte';
+      payload: { messages_retires: number };
+    }
+  | {
       type: 'done';
       payload: { reason: string; usage?: { prompt_tokens: number; completion_tokens: number } };
     }
