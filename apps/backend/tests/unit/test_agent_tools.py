@@ -8,6 +8,7 @@ viendrait la chercher.
 
 from __future__ import annotations
 
+import json
 from uuid import uuid4
 
 import pytest
@@ -79,6 +80,32 @@ class TestIsolationWorkspace:
             registre, "fs_list", {"path": "runs/"}, _ctx(db_session, autre_user)
         )
         assert entrees["entries"] == []
+
+    @pytest.mark.asyncio
+    async def test_fs_list_rend_un_resultat_serialisable(self, db_session, test_user):
+        """Le resultat d'un outil part tel quel dans le flux SSE.
+
+        `fs_list` rendait `updated_at` en `datetime` brut : `json.dumps` levait
+        au milieu du stream, la boucle mourait et la carte d'outil restait figee
+        sur « En cours… » sans qu'aucune erreur n'atteigne l'utilisateur. Le test
+        exige le contrat de sortie, pas une implementation.
+        """
+        registre = construire_registre()
+        await executer(
+            registre,
+            "fs_write",
+            {"path": "runs/ma-fiche/00-brief.md", "content": "brief"},
+            _ctx(db_session, test_user),
+        )
+        await db_session.commit()
+
+        entrees = await executer(
+            registre, "fs_list", {"path": "runs/"}, _ctx(db_session, test_user)
+        )
+        # `default` absent : toute valeur non serialisable leve ici.
+        json.dumps(entrees, ensure_ascii=False)
+        fichiers = [e for e in entrees["entries"] if e["type"] == "file"]
+        assert fichiers and isinstance(fichiers[0]["updated_at"], str)
 
     @pytest.mark.asyncio
     async def test_fs_write_nempiete_pas_sur_lautre(self, db_session, test_user, autre_user):

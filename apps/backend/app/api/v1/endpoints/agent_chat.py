@@ -72,7 +72,15 @@ def get_approver():
 
 
 def _sse(event: dict[str, Any]) -> str:
-    return f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+    """Un evenement SSE. `default=str` n'est pas une commodite, c'est un fusible.
+
+    Le resultat d'un outil part tel quel dans le flux. `fs_list` rendait un
+    `datetime` brut : `json.dumps` levait, le generateur mourait au milieu du
+    stream, et la conversation restait figee sur « En cours… » sans qu'aucune
+    erreur n'atteigne l'utilisateur. Un champ mal type doit degrader ce champ,
+    jamais interrompre le tour.
+    """
+    return f"data: {json.dumps(event, ensure_ascii=False, default=str)}\n\n"
 
 
 @router.post("/chat")
