@@ -2080,16 +2080,16 @@ export interface components {
       title: string;
       /** Description */
       description?: string | null;
+      /** @default contenu */
+      card_kind: components['schemas']['CardKind'];
       /** Content Url */
       content_url?: string | null;
       /** Content Text */
       content_text?: string | null;
       /** Content Authors */
       content_authors?: string | null;
-      /** @default other */
-      platform: components['schemas']['Platform'];
-      /** @default video */
-      content_type: components['schemas']['ContentType'];
+      platform?: components['schemas']['Platform'] | null;
+      content_type?: components['schemas']['ContentType'] | null;
       /** @default public */
       visibility: components['schemas']['Visibility'];
       /**
@@ -2114,14 +2114,16 @@ export interface components {
       title: string;
       /** Description */
       description: string | null;
+      /** @default contenu */
+      card_kind: components['schemas']['CardKind'];
       /** Content Url */
       content_url: string | null;
       /** Content Text */
       content_text?: string | null;
       /** Content Authors */
       content_authors?: string | null;
-      platform: components['schemas']['Platform'];
-      content_type: components['schemas']['ContentType'];
+      platform?: components['schemas']['Platform'] | null;
+      content_type?: components['schemas']['ContentType'] | null;
       status: components['schemas']['CardStatus'];
       /**
        * Is Seed
@@ -2161,6 +2163,18 @@ export interface components {
        */
       truncated: boolean;
     };
+    /**
+     * CardKind
+     * @description Ce qu'une fiche documente, et donc qui en est l'auteur.
+     *
+     *     - CONTENU : une video, un article, un post qui existe ailleurs. La fiche
+     *       porte son URL et ses auteurs, qui ne sont pas le createur Philum tant
+     *       qu'il ne s'en declare pas l'auteur (`is_seed`).
+     *     - SUJET : une bibliographie sur une question. Il n'y a pas de contenu
+     *       source, donc pas d'URL ni d'auteurs tiers : la synthese est du createur.
+     * @enum {string}
+     */
+    CardKind: 'contenu' | 'sujet';
     /** CardResponse */
     CardResponse: {
       /**
@@ -2174,14 +2188,16 @@ export interface components {
       title: string;
       /** Description */
       description: string | null;
+      /** @default contenu */
+      card_kind: components['schemas']['CardKind'];
       /** Content Url */
       content_url: string | null;
       /** Content Text */
       content_text?: string | null;
       /** Content Authors */
       content_authors?: string | null;
-      platform: components['schemas']['Platform'];
-      content_type: components['schemas']['ContentType'];
+      platform?: components['schemas']['Platform'] | null;
+      content_type?: components['schemas']['ContentType'] | null;
       status: components['schemas']['CardStatus'];
       /**
        * Is Seed
@@ -2281,6 +2297,7 @@ export interface components {
       title?: string | null;
       /** Description */
       description?: string | null;
+      card_kind?: components['schemas']['CardKind'] | null;
       /** Content Url */
       content_url?: string | null;
       /** Content Text */

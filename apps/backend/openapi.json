@@ -5554,6 +5554,10 @@
             ],
             "title": "Description"
           },
+          "card_kind": {
+            "$ref": "#/components/schemas/CardKind",
+            "default": "contenu"
+          },
           "content_url": {
             "anyOf": [
               {
@@ -5590,12 +5594,24 @@
             "title": "Content Authors"
           },
           "platform": {
-            "$ref": "#/components/schemas/Platform",
-            "default": "other"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Platform"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "content_type": {
-            "$ref": "#/components/schemas/ContentType",
-            "default": "video"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContentType"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "visibility": {
             "$ref": "#/components/schemas/Visibility",
@@ -5670,6 +5686,10 @@
             ],
             "title": "Description"
           },
+          "card_kind": {
+            "$ref": "#/components/schemas/CardKind",
+            "default": "contenu"
+          },
           "content_url": {
             "anyOf": [
               {
@@ -5704,10 +5724,24 @@
             "title": "Content Authors"
           },
           "platform": {
-            "$ref": "#/components/schemas/Platform"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Platform"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "content_type": {
-            "$ref": "#/components/schemas/ContentType"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContentType"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "status": {
             "$ref": "#/components/schemas/CardStatus"
@@ -5801,8 +5835,6 @@
           "title",
           "description",
           "content_url",
-          "platform",
-          "content_type",
           "status",
           "published_at",
           "created_at",
@@ -5847,6 +5879,15 @@
         ],
         "title": "CardGraphResponse"
       },
+      "CardKind": {
+        "type": "string",
+        "enum": [
+          "contenu",
+          "sujet"
+        ],
+        "title": "CardKind",
+        "description": "Ce qu'une fiche documente, et donc qui en est l'auteur.\n\n- CONTENU : une video, un article, un post qui existe ailleurs. La fiche\n  porte son URL et ses auteurs, qui ne sont pas le createur Philum tant\n  qu'il ne s'en declare pas l'auteur (`is_seed`).\n- SUJET : une bibliographie sur une question. Il n'y a pas de contenu\n  source, donc pas d'URL ni d'auteurs tiers : la synthese est du createur."
+      },
       "CardResponse": {
         "properties": {
           "id": {
@@ -5872,6 +5913,10 @@
               }
             ],
             "title": "Description"
+          },
+          "card_kind": {
+            "$ref": "#/components/schemas/CardKind",
+            "default": "contenu"
           },
           "content_url": {
             "anyOf": [
@@ -5907,10 +5952,24 @@
             "title": "Content Authors"
           },
           "platform": {
-            "$ref": "#/components/schemas/Platform"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Platform"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "content_type": {
-            "$ref": "#/components/schemas/ContentType"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContentType"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "status": {
             "$ref": "#/components/schemas/CardStatus"
@@ -5991,8 +6050,6 @@
           "title",
           "description",
           "content_url",
-          "platform",
-          "content_type",
           "status",
           "published_at",
           "created_at",
@@ -6120,6 +6177,16 @@
               }
             ],
             "title": "Description"
+          },
+          "card_kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CardKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "content_url": {
             "anyOf": [

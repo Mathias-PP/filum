@@ -26,7 +26,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.biblio_card import BiblioCard, CardStatus
+from app.models.biblio_card import BiblioCard, CardKind, CardStatus
 from app.models.source import AuthorKind, Source, SourceCategory, SourceFormat, SourceStance
 from app.models.source_excerpt import SourceExcerpt
 from app.models.user import User
@@ -174,23 +174,41 @@ async def create_card(
     *,
     slug: str,
     title: str,
+    card_kind: str = "contenu",
     content_url: str | None = None,
     description: str | None = None,
     content_authors: str | None = None,
-    platform: str = "other",
-    content_type: str = "article",
+    platform: str | None = None,
+    content_type: str | None = None,
     visibility: str = "public",
 ) -> dict[str, Any]:
-    """Cree un brouillon. La publication est un geste distinct (`publish_card`)."""
+    """Cree un brouillon. La publication est un geste distinct (`publish_card`).
+
+    `card_kind` dit ce que la fiche documente, et c'est le premier choix a
+    faire :
+
+    - `contenu` : une video, un article, un podcast, un post qui existe
+      ailleurs. `content_url` est alors OBLIGATOIRE, et `content_authors`
+      nomme les auteurs de ce contenu, qui ne sont pas le createur de la
+      fiche. `platform` et `content_type` decrivent ce contenu.
+    - `sujet` : une bibliographie sur une question, dont le createur Philum
+      est l'auteur. Il n'y a aucun contenu source, donc `content_url`,
+      `content_authors`, `platform` et `content_type` sont interdits :
+      les renseigner reviendrait a inventer un contenu qui n'existe pas.
+
+    Dans le doute, si vous n'avez pas d'URL d'un contenu precis a documenter,
+    c'est une fiche `sujet`.
+    """
     try:
         payload = CardCreate(
             slug=slug,
             title=title,
             description=description,
+            card_kind=CardKind(card_kind),
             content_url=content_url,
             content_authors=content_authors,
-            platform=Platform(platform),
-            content_type=ContentType(content_type),
+            platform=Platform(platform) if platform else None,
+            content_type=ContentType(content_type) if content_type else None,
             visibility=Visibility(visibility),
         )
     except ValueError as exc:
@@ -211,8 +229,9 @@ async def create_card(
         "creator": user.username,
         "slug": card.slug,
         "status": card.status,
+        "card_kind": card.card_kind,
         "public_url_when_published": (
-            f"https://philum-eight.vercel.app/@{user.username}/{card.slug}"
+            f"https://filum-eight.vercel.app/@{user.username}/{card.slug}"
         ),
     }
 
@@ -414,6 +433,12 @@ async def set_content_text(
             "Decoupez le contenu en plusieurs fiches (une par chapitre / episode)."
         )
     card = await _fiche_du_createur(db, user, card_slug)
+    if text and card.card_kind == CardKind.SUJET.value:
+        raise ToolError(
+            f"La fiche {card_slug!r} est une fiche sujet : elle ne documente aucun "
+            "contenu, il n'y a donc pas de texte integral a poser. Pour documenter "
+            "un contenu precis, creez une fiche card_kind='contenu'."
+        )
     card.content_text = text or None
     await db.commit()
     return {
@@ -439,6 +464,12 @@ async def publish_card(db: AsyncSession, user: User, *, slug: str) -> dict[str, 
     card = (await db.execute(stmt)).scalar_one_or_none()
     if card is None:
         raise ToolError(f"Aucune fiche {slug!r} chez {user.username}.")
+    if card.card_kind == CardKind.CONTENU.value and not (card.content_url or "").strip():
+        raise ToolError(
+            f"La fiche {slug!r} annonce documenter un contenu mais n'a pas de lien "
+            "vers lui. Renseignez content_url via `update_card`, ou passez-la en "
+            "card_kind='sujet' si elle porte une bibliographie sur une question."
+        )
     service = CardService(db)
     published = await service.publish_card(card)
     return {
@@ -469,6 +500,7 @@ async def update_card(
     slug: str,
     title: str | None = None,
     description: str | None = None,
+    card_kind: str | None = None,
     content_url: str | None = None,
     content_authors: str | None = None,
     platform: str | None = None,
@@ -481,8 +513,45 @@ async def update_card(
     vide sur `content_authors` retire les auteurs (rend la main a la
     reconstitution depuis les fiches citantes). Le slug ne se change pas ici :
     l'identifiant public d'une fiche fait autorite dans les liens deja emis.
+
+    Passer `card_kind='sujet'` EFFACE l'URL, les auteurs, la plateforme et le
+    type du contenu documente : une bibliographie sur une question ne
+    documente aucun contenu source. L'operation est refusee si la fiche porte
+    le texte integral d'un contenu (`set_content_text`), qui lui ne se
+    reconstitue pas.
     """
     card = await _fiche_du_createur(db, user, slug)
+    nature = CardKind(card.card_kind)
+    if card_kind is not None:
+        try:
+            nature = CardKind(card_kind)
+        except ValueError as exc:
+            raise ToolError(
+                f"{card_kind!r} n'est pas une nature de fiche. Valeurs : "
+                f"{', '.join(k.value for k in CardKind)}."
+            ) from exc
+    if nature is CardKind.SUJET:
+        if (card.content_text or "").strip():
+            raise ToolError(
+                f"La fiche {slug!r} porte le texte integral d'un contenu. Une fiche "
+                "sujet ne documente aucun contenu : effacez le texte "
+                "(`set_content_text` avec une chaine vide) avant de changer sa nature."
+            )
+        interdits = [
+            nom
+            for nom, valeur in (
+                ("content_url", content_url),
+                ("content_authors", content_authors),
+                ("platform", platform),
+                ("content_type", content_type),
+            )
+            if (valeur or "").strip()
+        ]
+        if interdits:
+            raise ToolError(
+                f"Une fiche sujet ne documente aucun contenu existant : "
+                f"{', '.join(interdits)} n'a pas de sens ici."
+            )
     if title is not None:
         card.title = title
     if description is not None:
@@ -506,12 +575,20 @@ async def update_card(
             card.visibility = Visibility(visibility).value
         except ValueError as exc:
             raise ToolError(str(exc)) from exc
+    card.card_kind = nature.value
+    if nature is CardKind.SUJET:
+        card.content_url = None
+        card.content_authors = None
+        card.platform = None
+        card.content_type = None
+        card.is_seed = False
     await db.commit()
     return {
         "creator": user.username,
         "slug": card.slug,
         "title": card.title,
         "description": card.description,
+        "card_kind": card.card_kind,
         "visibility": card.visibility,
     }
 
