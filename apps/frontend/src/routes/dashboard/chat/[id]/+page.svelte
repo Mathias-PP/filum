@@ -64,7 +64,7 @@
         >
           <input
             bind:value={brouillon}
-            class="rounded border border-subtle bg-surface-primary px-2 py-1 text-sm"
+            class="rounded border border-border bg-surface-primary px-2 py-1 text-sm"
             maxlength="200"
             autofocus
             onkeydown={(e) => {

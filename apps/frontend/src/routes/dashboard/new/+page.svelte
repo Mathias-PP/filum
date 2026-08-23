@@ -427,7 +427,7 @@
     </fieldset>
 
     {#if texteIntegralABandonner}
-      <div class="rounded-lg border border-warning bg-warning-subtle px-4 py-3 text-sm space-y-2">
+      <div class="rounded-lg border border-warning bg-warning-bg px-4 py-3 text-sm space-y-2">
         <p class="text-ink-primary">
           Cette fiche porte le texte intégral d'un contenu ({contentText.length.toLocaleString(
             'fr-FR'
@@ -609,7 +609,7 @@
           </p>
 
           <label
-            class="flex items-start gap-2 rounded-md border border-warning bg-warning-subtle p-3 text-xs text-ink-primary cursor-pointer"
+            class="flex items-start gap-2 rounded-md border border-warning bg-warning-bg p-3 text-xs text-ink-primary cursor-pointer"
           >
             <input
               type="checkbox"

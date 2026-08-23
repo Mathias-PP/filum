@@ -92,7 +92,7 @@
       <p class="text-sm text-ink-secondary mb-4">
         Répondra avec <span class="font-mono">{defaut.model}</span> ({defaut.display_name}), votre
         clé, votre facture.
-        <a href="/dashboard/agents" class="text-accent hover:underline">Changer</a>
+        <a href="/dashboard/agents" class="text-info hover:underline">Changer</a>
       </p>
     {:else}
       <!-- Sans clé, le chat reste utilisable : le serveur bascule sur le mode
@@ -102,11 +102,11 @@
       <p class="text-sm text-ink-secondary mb-4">
         {#if gratuitDisponible}
           Aucune clé par défaut. Essayez sans clé avec le bouton « Mode gratuit » ci-dessous, ou
-          <a href="/dashboard/agents" class="text-accent hover:underline">enregistrez la vôtre</a>
+          <a href="/dashboard/agents" class="text-info hover:underline">enregistrez la vôtre</a>
           pour choisir votre modèle et lever les quotas.
         {:else}
           Aucune clé par défaut.
-          <a href="/dashboard/agents" class="text-accent hover:underline">Enregistrez-en une</a>
+          <a href="/dashboard/agents" class="text-info hover:underline">Enregistrez-en une</a>
           pour choisir votre modèle et votre fournisseur.
         {/if}
       </p>
@@ -114,7 +114,7 @@
     <div class="mb-3">
       <input
         bind:value={titreNouveau}
-        class="w-full rounded border border-subtle bg-surface-primary px-3 py-2 text-sm"
+        class="w-full rounded border border-border bg-surface-primary px-3 py-2 text-sm"
         maxlength="200"
         placeholder="Nommer la conversation (optionnel)"
       />

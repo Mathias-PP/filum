@@ -470,7 +470,7 @@
 <div class="flex h-[calc(100dvh-12rem)] flex-col">
   <!-- Selectors agent, provider et modele -->
   {#if cles.length > 0 || agents.length > 0 || (gratuit?.disponible ?? false)}
-    <div class="mb-2 flex flex-wrap gap-3 border-b border-subtle pb-2 text-sm">
+    <div class="mb-2 flex flex-wrap gap-3 border-b border-border pb-2 text-sm">
       {#if agents.length > 0}
         <label class="flex items-center gap-1.5">
           <span class="text-xs text-ink-tertiary">Agent</span>
@@ -478,7 +478,7 @@
             bind:value={agentChoisi}
             onchange={changerAgent}
             disabled={enCours}
-            class="rounded border border-subtle bg-surface-primary px-2 py-1 text-xs"
+            class="rounded border border-border bg-surface-primary px-2 py-1 text-xs"
           >
             {#each agents as a (a.slug)}
               <option value={a.slug}>{a.name}</option>
@@ -510,7 +510,7 @@
               bind:value={cleChoisie}
               onchange={changerCle}
               disabled={enCours}
-              class="rounded border border-subtle bg-surface-primary px-2 py-1 text-xs"
+              class="rounded border border-border bg-surface-primary px-2 py-1 text-xs"
             >
               {#each cles as cle (cle.id)}
                 <option value={cle.id}>{cle.display_name} ({cle.api_key_masked})</option>
@@ -525,7 +525,7 @@
               bind:value={modeleChoisi}
               onchange={changerModele}
               disabled={enCours}
-              class="rounded border border-subtle bg-surface-primary px-2 py-1 text-xs"
+              class="rounded border border-border bg-surface-primary px-2 py-1 text-xs"
             >
               <option value="">Défaut ({cles.find((c) => c.id === cleChoisie)?.model ?? ''})</option
               >
@@ -538,7 +538,7 @@
         {#if gratuit?.disponible}
           <button
             type="button"
-            class="rounded border border-subtle bg-surface-secondary px-2 py-1 text-xs text-ink-secondary hover:border-accent hover:text-ink-primary disabled:opacity-50"
+            class="rounded border border-border bg-surface-secondary px-2 py-1 text-xs text-ink-secondary hover:border-info hover:text-ink-primary disabled:opacity-50"
             onclick={() => (consentOuvert = true)}
             disabled={enCours}
             title="Utiliser l'agent sans clé, via les serveurs Philum"
@@ -627,7 +627,7 @@
             <li>
               <button
                 type="button"
-                class="w-full rounded border border-subtle bg-surface-secondary px-3 py-2 text-left text-sm text-ink-primary hover:border-accent hover:bg-surface-tertiary"
+                class="w-full rounded border border-border bg-surface-secondary px-3 py-2 text-left text-sm text-ink-primary hover:border-info hover:bg-surface-tertiary"
                 onclick={() => {
                   saisie = amorce;
                 }}
@@ -642,7 +642,7 @@
 
     {#each affichables as item, i (i)}
       {#if item.kind === 'user'}
-        <div class="border-l-2 border-accent pl-3 text-sm text-ink-primary">
+        <div class="border-l-2 border-info pl-3 text-sm text-ink-primary">
           {item.text}
         </div>
       {:else if item.kind === 'assistant'}
@@ -656,7 +656,7 @@
         {:else}
           <!-- N cartes consecutives de meme outil : un en-tete compte les
                appels, chaque carte reste consultable en dessous. -->
-          <div class="space-y-1 rounded-lg border border-subtle bg-surface-secondary/40 p-1.5">
+          <div class="space-y-1 rounded-lg border border-border bg-surface-secondary/40 p-1.5">
             <p class="px-1 text-xs text-ink-tertiary">
               {item.entrees.length}× {item.name}
             </p>
@@ -718,7 +718,7 @@
   {#if !auBas && enCours}
     <button
       type="button"
-      class="mx-auto mb-1 rounded-full border border-subtle bg-surface-secondary px-3 py-1 text-xs text-ink-secondary shadow-sm hover:bg-surface-tertiary"
+      class="mx-auto mb-1 rounded-full border border-border bg-surface-secondary px-3 py-1 text-xs text-ink-secondary shadow-sm hover:bg-surface-tertiary"
       onclick={() => {
         auBas = true;
         if (fil) fil.scrollTop = fil.scrollHeight;
@@ -778,13 +778,13 @@
     />
   {/if}
 
-  <form class="flex gap-2 border-t border-subtle pt-3" onsubmit={envoyer}>
+  <form class="flex gap-2 border-t border-border pt-3" onsubmit={envoyer}>
     <textarea
       bind:value={saisie}
       rows="1"
       aria-label="Message à l'agent"
       placeholder="Que doit faire l'agent ?"
-      class="flex-1 resize-none rounded border border-subtle bg-surface-primary px-3 py-2 text-sm"
+      class="flex-1 resize-none rounded border border-border bg-surface-primary px-3 py-2 text-sm"
       style="overflow-y: hidden;"
       oninput={(e) => ajusterHauteur(e.currentTarget)}
       onkeydown={(e) => {
