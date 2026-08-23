@@ -6,6 +6,29 @@
 
 ---
 
+## ADR-034 - Mode gratuit de l'agent : lanes serveur, cle jamais en base, consentement versionne
+
+**Date :** 2026-08-23
+
+**Contexte :** L'agent conversationnel exigeait une cle API personnelle (BYOK), ce qui bloque tout essai avant inscription chez un fournisseur. Le mode decouverte existant (#533) est un fallback passif : il ne s'active qu'en l'absence de provider par defaut et n'est pas active en production (aucune variable `AGENT_DISCOVERY_*` dans le conteneur au 2026-08-23). Il faut un mode gratuit **choisi explicitement**, avec rotation de fournisseurs cote serveur pour tenir sous les quotas gratuits (Z.ai/GLM d'abord : glm-5.2, ~3 req/min, ~900 req/jour par IP).
+
+**Decision :**
+
+1. **Lanes en base, cles hors base.** La table `agent_lanes` porte slug, label public, kind de protocole (`custom` = OpenAI-compatible generique), base_url, model, caps rpm/rpd, position, actif. La cle API ne vit JAMAIS en base : elle est resolue depuis les settings `agent_gratuit_<slug>_api_key` a l'appel. Un dump de base ne divulgue donc rien, et ajouter un lane = une ligne SQL + une variable d'env.
+2. **Consentement versionne.** Table `agent_gratuit_consents` (createur, version du texte de traitement des donnees, date). Le front doit confirmer la version exacte exposee par le backend (`PUT /agent/mode-gratuit {version}`) ; une version perimee n'est plus un consentement. Le texte dit que les echanges transitent par un tiers et peuvent servir a entrainer des modeles.
+3. **Ordre de resolution du provider :** `body.provider_id` explicite > lane gratuite si consenti > provider par defaut > mode decouverte. L'intention explicite prime toujours.
+4. **Quotas a deux niveaux.** Par lane : compteur/jour + cooldown 10 min sur detection de rate-limit (429/"rate limit"/"quota" dans l'erreur). Par utilisateur : reutilise la table `agent_discovery_quota` avec son propre plafond (`agent_gratuit_daily_quota_messages`, defaut 30).
+5. **Evenement SSE dedie** `gratuit_actif` (payload identique a `discovery_active` + notice de retention), pour que la banniere dise « Mode gratuit » et pas « Mode decouverte » ; le front mappe les deux vers la meme banniere avec un libelle different.
+
+**Alternatives ecartees :**
+- **Cle en base chiffree comme les providers BYOK** : un dump/backup exposerait la cle partagee de tous les utilisateurs ; settings-only supprime le risque.
+- **Reutiliser `discovery_active` sans nouvel event** : la banniere aurait menti sur la nature du service et sur le lien « Connecter votre cle » inadapte au mode gratuit.
+- **Rotation cote client** : exiger plusieurs cles gratuites contredit le but (zero cle pour essayer).
+
+**Consequences :** activer en prod demande deux variables (`AGENT_GRATUIT_ENABLED=true`, `AGENT_GRATUIT_ZAI_API_KEY=...`) + migration 050. Sans elles, tout le code est inert : endpoints repondent `disponible=false`, aucun appel sortant. Les tests couvrent consentement, selection de lane, cooldown, quotas, SSE et le chemin HTTP complet via MockTransport.
+
+---
+
 ## ADR-030 — Pipeline d'extraction v2 agnostique (oracle → autoritatif → enrichissement → validation)
 
 **Date :** 2026-07-23

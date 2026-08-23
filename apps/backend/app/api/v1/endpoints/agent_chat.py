@@ -19,6 +19,7 @@ append-only. L'approbation suspend réellement la boucle : elle attend
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 from typing import Any
 
@@ -34,7 +35,7 @@ from app.core.rate_limit import limiter
 from app.db.database import get_db
 from app.models.user import User
 from app.schemas.agent_chat import AgentChatRequest
-from app.services import agent_approvals, agent_definitions, agent_sessions
+from app.services import agent_approvals, agent_definitions, agent_gratuit, agent_sessions
 from app.services.agent import boucle
 from app.services.agent_discovery import (
     ErreurQuota,
@@ -45,6 +46,9 @@ from app.services.agent_discovery import (
     verifier_quota,
 )
 from app.services.agent_providers import obtenir_pour_chat, resoudre_defaut
+
+#: Chaine detectee pour poser un cooldown de lane apres un rate limit.
+_MARQUEURS_RATE_LIMIT = ("429", "rate limit", "quota")
 
 settings = get_settings()
 
@@ -114,7 +118,8 @@ async def chat_agent(
         db, current_user.id, session.agent_slug or agent_definitions.SLUG_DEFAUT
     )
 
-    # Provider explicite du corps de la requete, sinon provider par defaut.
+    # Provider explicite du corps de la requete, sinon mode gratuite consenti,
+    # sinon provider par defaut, sinon decouverte.
     provider = None
     if body.provider_id:
         provider = await obtenir_pour_chat(db, current_user.id, body.provider_id)
@@ -123,10 +128,38 @@ async def chat_agent(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={"code": "provider_not_found", "message": "Cle provider introuvable."},
             )
-    if provider is None:
-        provider = await resoudre_defaut(db, current_user.id)
+    mode_gratuit: agent_gratuit.LaneActive | None = None
     mode_decouverte = False
     remaining_today: int | None = None
+    if provider is None and await agent_gratuit.est_consentant(db, current_user.id):
+        lane_active = await agent_gratuit.choisir_lane(db)
+        try:
+            remaining_today = await agent_gratuit.verifier_quota_utilisateur(db, current_user.id)
+        except agent_gratuit.ErreurQuotaGratuit as exc:
+            quota_msg = (
+                f"Vous avez atteint la limite de {exc.quota} messages par jour en mode "
+                "gratuit. Reessayez demain ou connectez votre propre cle pour continuer "
+                "sans limite."
+            )
+            erreur = {"type": "error", "payload": {"message": quota_msg}}
+            return StreamingResponse(
+                iter(
+                    [
+                        _sse({"type": "session", "payload": {"id": str(session.id)}}),
+                        _sse(erreur),
+                    ]
+                ),
+                media_type="text/event-stream",
+                headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+            )
+        if lane_active is not None:
+            provider = lane_active.provider
+            mode_gratuit = lane_active
+            # Le tour est consomme a l'arrivee : un tour qui echoue a mi-course
+            # a quand meme mobilise la lane.
+            await agent_gratuit.consommer_requete(db, lane_active.lane)
+    if provider is None:
+        provider = await resoudre_defaut(db, current_user.id)
     if provider is None:
         if discovery_est_actif():
             try:
@@ -203,6 +236,17 @@ async def chat_agent(
                     modele=body.model_override or session.model_override or None,
                     agent_def=agent_def,
                 )
+            except Exception as exc:
+                # Un 429/quota provider en pleine conversation : la lane prend
+                # un cooldown, le prochain tour partira sur une autre lane.
+                if mode_gratuit is not None and any(
+                    m in str(exc).lower() for m in _MARQUEURS_RATE_LIMIT
+                ):
+                    # Best-effort : si la session DB est deja fermee (client
+                    # parti), tant pis, le cooldown ratera ce tour-ci.
+                    with contextlib.suppress(Exception):
+                        await agent_gratuit.signaler_echec(db, mode_gratuit.lane)
+                raise
             finally:
                 await queue.put(None)
 
@@ -219,6 +263,20 @@ async def chat_agent(
                     },
                 }
             )
+        if mode_gratuit is not None:
+            yield _sse(
+                {
+                    "type": "gratuit_actif",
+                    "payload": {
+                        "provider_public_name": mode_gratuit.lane.label_public,
+                        "remaining_today": remaining_today,
+                        "retention_notice": (
+                            "Ce fournisseur gratuit peut conserver vos echanges et les "
+                            "utiliser pour entrainer ses modeles."
+                        ),
+                    },
+                }
+            )
         # Sans ce `finally`, un client qui ferme l'onglet laisse la boucle
         # tourner jusqu'a 24 tours : elle continue de facturer le provider et
         # d'ecrire via une session de base que FastAPI a deja fermee.
@@ -231,7 +289,9 @@ async def chat_agent(
             await task
             usage = usage_capture[0] if usage_capture else None
             await _persister_tour(db, session, messages[depart:], "".join(reponse_finale), usage)
-            if mode_decouverte:
+            if mode_gratuit is not None:
+                await agent_gratuit.consommer_message_utilisateur(db, current_user.id)
+            elif mode_decouverte:
                 await consommer_message(db, current_user.id)
         finally:
             task.cancel()

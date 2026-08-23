@@ -92,6 +92,34 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/agent/mode-gratuit': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Etat Mode Gratuit
+     * @description Disponible sur cette instance ? Actif pour cet utilisateur ?
+     */
+    get: operations['etat_mode_gratuit_api_v1_agent_mode_gratuit_get'];
+    /**
+     * Donner Consentement
+     * @description Valide le warning données (version exacte exigée) et active le mode.
+     */
+    put: operations['donner_consentement_api_v1_agent_mode_gratuit_put'];
+    post?: never;
+    /**
+     * Retirer Consentement
+     * @description Désactive le mode : les prochains messages repartent sur la chaîne normale.
+     */
+    delete: operations['retirer_consentement_api_v1_agent_mode_gratuit_delete'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/agent/providers/meta': {
     parameters: {
       query?: never;
@@ -2392,6 +2420,11 @@ export interface components {
       /** Client Secret */
       client_secret?: string | null;
     };
+    /** ConsentementGratuit */
+    ConsentementGratuit: {
+      /** Version */
+      version: string;
+    };
     /**
      * ContentType
      * @enum {string}
@@ -3632,6 +3665,85 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  etat_mode_gratuit_api_v1_agent_mode_gratuit_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  donner_consentement_api_v1_agent_mode_gratuit_put: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ConsentementGratuit'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  retirer_consentement_api_v1_agent_mode_gratuit_delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            [key: string]: unknown;
+          };
         };
       };
     };

@@ -14,6 +14,7 @@
   import ToolCard from './ToolCard.svelte';
   import AgentMarkdown from './AgentMarkdown.svelte';
   import LogoLoader from '../LogoLoader.svelte';
+  import ConsentementGratuit from './ConsentementGratuit.svelte';
 
   interface Props {
     sessionId?: string | null;
@@ -35,6 +36,14 @@
     remaining_today: number | null;
     retention_notice: string;
   } | null>(null);
+  let banniereMode = $state<'decouverte' | 'gratuit'>('decouverte');
+
+  // Mode gratuit : lanes serveur sans clé, derrière consentement versionné.
+  let gratuit = $state<{ disponible: boolean; actif: boolean; version_warning: string } | null>(
+    null
+  );
+  let consentOuvert = $state(false);
+  const gratuitActif = $derived(gratuit?.actif ?? false);
 
   // Selectors provider + modele
   let cles = $state<AgentProvider[]>([]);
@@ -270,6 +279,28 @@
     }
   }
 
+  async function activerGratuit(version: string) {
+    consentOuvert = false;
+    try {
+      await agentApi.gratuit.activer(version);
+      gratuit = { ...(gratuit ?? { disponible: true, version_warning: version }), actif: true };
+      toast.info('Mode gratuit activé. Vous pouvez désactiver à tout moment.');
+    } catch (e) {
+      toast.danger(e instanceof ApiError ? e.message : 'Activation impossible.');
+    }
+  }
+
+  async function desactiverGratuit() {
+    try {
+      await agentApi.gratuit.desactiver();
+      if (gratuit) gratuit = { ...gratuit, actif: false };
+      decouverte = null;
+      toast.info('Mode gratuit désactivé.');
+    } catch (e) {
+      toast.danger(e instanceof ApiError ? e.message : 'Désactivation impossible.');
+    }
+  }
+
   const libelleTest = $derived(
     etatTest === 'testing'
       ? 'Test…'
@@ -302,6 +333,12 @@
     if (agentsRes.status === 'fulfilled') {
       agents = (agentsRes.value as Awaited<ReturnType<typeof agentApi.definitions.list>>).agents;
     }
+    // Etat du mode gratuit : hors du tableau positionnel (backend ancien =
+    // endpoint absent, on ignore silencieusement).
+    agentApi.gratuit
+      .etat()
+      .then((v) => (gratuit = v))
+      .catch(() => null);
     // Restauration : d'abord la clé enregistrée sur la session, sinon la clé
     // par défaut du créateur.
     const sessionSauvegardee =
@@ -364,8 +401,14 @@
       for await (const evenement of agentApi.streamChat({
         message,
         session_id: sessionId ?? undefined,
-        provider_id: cleChoisie || undefined,
-        model_override: modeleChoisi || undefined,
+        // Mode gratuit : la lane serveur décide du provider ET du modèle.
+        // Envoyer un override écraserait le modèle de la lane côté serveur.
+        ...(gratuitActif
+          ? {}
+          : {
+              provider_id: cleChoisie || undefined,
+              model_override: modeleChoisi || undefined,
+            }),
         agent_slug: agentChoisi || undefined,
         signal: controleur.signal,
       })) {
@@ -378,6 +421,11 @@
         }
         if (evenement.type === 'discovery_active') {
           decouverte = evenement.payload;
+          banniereMode = 'decouverte';
+        }
+        if (evenement.type === 'gratuit_actif') {
+          decouverte = evenement.payload;
+          banniereMode = 'gratuit';
         }
         items = appliquer(items, evenement);
       }
@@ -418,7 +466,7 @@
 
 <div class="flex h-[calc(100dvh-12rem)] flex-col">
   <!-- Selectors agent, provider et modele -->
-  {#if cles.length > 0 || agents.length > 0}
+  {#if cles.length > 0 || agents.length > 0 || (gratuit?.disponible ?? false)}
     <div class="mb-2 flex flex-wrap gap-3 border-b border-subtle pb-2 text-sm">
       {#if agents.length > 0}
         <label class="flex items-center gap-1.5">
@@ -435,71 +483,103 @@
           </select>
         </label>
       {/if}
-      {#if cles.length > 0}
-        <label class="flex items-center gap-1.5">
-          <span class="text-xs text-ink-tertiary">Cle</span>
-          <select
-            bind:value={cleChoisie}
-            onchange={changerCle}
+      {#if gratuitActif}
+        <!-- Mode gratuit actif : la lane serveur choisit provider et modele,
+             les selects de cle sont masques pour ne pas suggerer qu'ils comptent. -->
+        <span
+          class="flex items-center gap-1.5 rounded border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-200"
+        >
+          Mode gratuit
+        </span>
+        <button
+          type="button"
+          class="text-xs text-ink-tertiary underline hover:text-ink-primary"
+          onclick={desactiverGratuit}
+          disabled={enCours}
+        >
+          Désactiver
+        </button>
+      {:else}
+        {#if cles.length > 0}
+          <label class="flex items-center gap-1.5">
+            <span class="text-xs text-ink-tertiary">Cle</span>
+            <select
+              bind:value={cleChoisie}
+              onchange={changerCle}
+              disabled={enCours}
+              class="rounded border border-subtle bg-surface-primary px-2 py-1 text-xs"
+            >
+              {#each cles as cle (cle.id)}
+                <option value={cle.id}>{cle.display_name} ({cle.api_key_masked})</option>
+              {/each}
+            </select>
+          </label>
+        {/if}
+        {#if modeles.length > 0}
+          <label class="flex items-center gap-1.5">
+            <span class="text-xs text-ink-tertiary">Modele</span>
+            <select
+              bind:value={modeleChoisi}
+              onchange={changerModele}
+              disabled={enCours}
+              class="rounded border border-subtle bg-surface-primary px-2 py-1 text-xs"
+            >
+              <option value="">Defaut ({cles.find((c) => c.id === cleChoisie)?.model ?? ''})</option
+              >
+              {#each modeles as m (m)}
+                <option value={m}>{m}</option>
+              {/each}
+            </select>
+          </label>
+        {/if}
+        {#if gratuit?.disponible}
+          <button
+            type="button"
+            class="rounded border border-subtle bg-surface-secondary px-2 py-1 text-xs text-ink-secondary hover:border-accent hover:text-ink-primary disabled:opacity-50"
+            onclick={() => (consentOuvert = true)}
             disabled={enCours}
-            class="rounded border border-subtle bg-surface-primary px-2 py-1 text-xs"
+            title="Utiliser l'agent sans clé, via les serveurs Philum"
           >
-            {#each cles as cle (cle.id)}
-              <option value={cle.id}>{cle.display_name} ({cle.api_key_masked})</option>
-            {/each}
-          </select>
-        </label>
-      {/if}
-      {#if modeles.length > 0}
-        <label class="flex items-center gap-1.5">
-          <span class="text-xs text-ink-tertiary">Modele</span>
-          <select
-            bind:value={modeleChoisi}
-            onchange={changerModele}
-            disabled={enCours}
-            class="rounded border border-subtle bg-surface-primary px-2 py-1 text-xs"
-          >
-            <option value="">Defaut ({cles.find((c) => c.id === cleChoisie)?.model ?? ''})</option>
-            {#each modeles as m (m)}
-              <option value={m}>{m}</option>
-            {/each}
-          </select>
-        </label>
+            Mode gratuit…
+          </button>
+        {/if}
       {/if}
       <!-- Indicateur du dernier test cle+modele. Le bouton relance le test a
            la demande ; le point coloré resume l'etat sans se disputer la
            largeur avec les selecteurs. -->
-      <span class="flex items-center gap-1.5">
-        <span
-          aria-hidden="true"
-          class="inline-block h-2 w-2 rounded-full"
-          class:bg-emerald-500={etatTest === 'ok'}
-          class:bg-red-500={etatTest === 'ko' || etatTest === 'incompat'}
-          class:bg-amber-400={etatTest === 'testing'}
-          class:bg-ink-tertiary={etatTest === 'idle'}
-          class:animate-pulse={etatTest === 'testing'}
-        ></span>
-        {#if libelleTest}
+      {#if !gratuitActif}
+        <span class="flex items-center gap-1.5">
           <span
-            class="text-xs"
-            class:text-emerald-600={etatTest === 'ok'}
-            class:text-danger={etatTest === 'ko' || etatTest === 'incompat'}
-            class:text-ink-tertiary={etatTest === 'testing' || etatTest === 'idle'}
-            title={messageTest}
+            aria-hidden="true"
+            class="inline-block h-2 w-2 rounded-full"
+            class:bg-emerald-500={etatTest === 'ok'}
+            class:bg-red-500={etatTest === 'ko' || etatTest === 'incompat'}
+            class:bg-amber-400={etatTest === 'testing'}
+            class:bg-ink-tertiary={etatTest === 'idle'}
+            class:animate-pulse={etatTest === 'testing'}
+          ></span>
+          {#if libelleTest}
+            <span
+              class="text-xs"
+              class:text-emerald-600={etatTest === 'ok'}
+              class:text-danger={etatTest === 'ko' || etatTest === 'incompat'}
+              class:text-ink-tertiary={etatTest === 'testing' || etatTest === 'idle'}
+              title={messageTest}
+            >
+              {libelleTest}
+            </span>
+          {/if}
+          <button
+            type="button"
+            class="text-xs text-ink-tertiary underline hover:text-ink-primary disabled:opacity-50"
+            onclick={testerCombo}
+            disabled={enCours || etatTest === 'testing' || !cleChoisie}
+            title="Tester le couple clé + modèle"
           >
-            {libelleTest}
-          </span>
-        {/if}
-        <button
-          type="button"
-          class="text-xs text-ink-tertiary underline hover:text-ink-primary disabled:opacity-50"
-          onclick={testerCombo}
-          disabled={enCours || etatTest === 'testing' || !cleChoisie}
-          title="Tester le couple clé + modèle"
-        >
-          Tester
-        </button>
-      </span>
+            Tester
+          </button>
+        </span>
+      {/if}
     </div>
     {#if agentActif}
       <p class="mb-2 text-xs text-ink-tertiary">
@@ -647,7 +727,11 @@
     <div
       class="mt-2 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
     >
-      <span class="font-medium">Mode decouverte</span> -- vos echanges transitent par
+      {#if banniereMode === 'gratuit'}
+        <span class="font-medium">Mode gratuit</span> -- vos echanges transitent par
+      {:else}
+        <span class="font-medium">Mode decouverte</span> -- vos echanges transitent par
+      {/if}
       <span class="font-medium">{decouverte.provider_public_name}</span>.
       {decouverte.retention_notice}
       {#if decouverte.remaining_today !== null}
@@ -658,8 +742,22 @@
             : ''} aujourd'hui.</span
         >
       {/if}
-      <a href="/dashboard/agents" class="ml-1 underline">Connecter votre cle</a>
+      {#if banniereMode === 'gratuit'}
+        <button type="button" class="ml-1 underline" onclick={desactiverGratuit} disabled={enCours}>
+          Désactiver le mode gratuit</button
+        >.
+      {:else}
+        <a href="/dashboard/agents" class="ml-1 underline">Connecter votre cle</a>
+      {/if}
     </div>
+  {/if}
+
+  {#if consentOuvert && gratuit}
+    <ConsentementGratuit
+      version={gratuit.version_warning}
+      onvalider={activerGratuit}
+      onfermer={() => (consentOuvert = false)}
+    />
   {/if}
 
   <form class="flex gap-2 border-t border-subtle pt-3" onsubmit={envoyer}>

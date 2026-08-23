@@ -4,6 +4,7 @@ from app.api.v1.endpoints import (
     agent_chat,
     agent_definitions,
     agent_fiche,
+    agent_mode_gratuit,
     agent_providers,
     agent_sessions,
     agent_workspace,
@@ -27,6 +28,7 @@ v1_router = APIRouter()
 v1_router.include_router(agent_chat.router)
 v1_router.include_router(agent_definitions.router)
 v1_router.include_router(agent_fiche.router)
+v1_router.include_router(agent_mode_gratuit.router)
 v1_router.include_router(agent_providers.router)
 v1_router.include_router(agent_sessions.router)
 v1_router.include_router(agent_workspace.router)

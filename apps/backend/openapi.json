@@ -191,6 +191,94 @@
         }
       }
     },
+    "/api/v1/agent/mode-gratuit": {
+      "get": {
+        "tags": [
+          "agent"
+        ],
+        "summary": "Etat Mode Gratuit",
+        "description": "Disponible sur cette instance ? Actif pour cet utilisateur ?",
+        "operationId": "etat_mode_gratuit_api_v1_agent_mode_gratuit_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Etat Mode Gratuit Api V1 Agent Mode Gratuit Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "agent"
+        ],
+        "summary": "Donner Consentement",
+        "description": "Valide le warning données (version exacte exigée) et active le mode.",
+        "operationId": "donner_consentement_api_v1_agent_mode_gratuit_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsentementGratuit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Donner Consentement Api V1 Agent Mode Gratuit Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "agent"
+        ],
+        "summary": "Retirer Consentement",
+        "description": "Désactive le mode : les prochains messages repartent sur la chaîne normale.",
+        "operationId": "retirer_consentement_api_v1_agent_mode_gratuit_delete",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Retirer Consentement Api V1 Agent Mode Gratuit Delete"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/agent/providers/meta": {
       "get": {
         "tags": [
@@ -6491,6 +6579,21 @@
         ],
         "title": "ClientRegistrationResponse",
         "description": "DCR response (RFC 7591 § 3.2.1)."
+      },
+      "ConsentementGratuit": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version"
+        ],
+        "title": "ConsentementGratuit"
       },
       "ContentType": {
         "type": "string",
