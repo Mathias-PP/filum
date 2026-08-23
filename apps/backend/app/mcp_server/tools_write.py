@@ -258,16 +258,34 @@ async def add_source(
     journal: str | None = None,
     published_at: str | None = None,
     archive_url: str | None = None,
+    excerpts: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Ajoute une source a la fiche. Ne declenche pas l'archivage automatique :
-    un agent qui tient une capture Wayback peut la donner via `archive_url`,
-    sinon la source reste `pending` et sera archivee au prochain passage cote UI.
+    """Ajoute une source a la fiche, avec ses extraits si vous en avez.
+
+    `excerpts` evite l'aller-retour par l'identifiant : chaque entree est un
+    objet `{"text": ..., "title": ..., "context": ...}` et suit exactement les
+    regles de `add_excerpt`, relecture de la page comprise. Un extrait refuse
+    n'annule pas la source : la reponse dit lesquels sont passes et pourquoi
+    les autres ont ete ecartes.
+
+    Un `doi` sans `url` donne une source lisible : l'adresse `https://doi.org/...`
+    est deduite, ce qui rend l'archivage et la verification des extraits possibles.
+
+    Ne declenche pas l'archivage automatique : un agent qui tient une capture
+    Wayback peut la donner via `archive_url`, sinon la source reste `pending`
+    et sera archivee au prochain passage cote UI.
 
     `published_at` : date de publication de la source, ``2016``, ``2016-03``
     ou ``2016-03-15``. A renseigner des que la source en porte une : une
     bibliographie sans dates n'est pas une bibliographie.
     """
     card = await _fiche_du_createur(db, user, card_slug)
+
+    # Un DOI seul laissait une source sans adresse : ni archivable, ni relisible,
+    # donc ses extraits partaient tous en `unreadable`. `_identite` donne deja la
+    # priorite au DOI, deduire l'URL ne change donc pas la detection de doublon.
+    if not (url or "").strip() and (identifiant := extract_doi(doi)):
+        url = f"https://doi.org/{identifiant}"
 
     cle = _identite(url, doi)
     if cle and cle in await _identites_deja_citees(db, card.id):
@@ -325,12 +343,58 @@ async def add_source(
     db.add(source)
     await db.commit()
     await db.refresh(source)
-    return {
+    reponse: dict[str, Any] = {
         "id": str(source.id),
         "card_slug": card.slug,
         "position": source.position,
         "linked_card_id": str(source.linked_card_id) if source.linked_card_id else None,
     }
+    if excerpts:
+        reponse |= await _extraits_a_la_volee(db, user, source, excerpts)
+    return reponse
+
+
+async def _extraits_a_la_volee(
+    db: AsyncSession,
+    user: User,
+    source: Source,
+    demandes: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Ajoute les extraits fournis avec la source, et dit lesquels ont echoue.
+
+    Un extrait refuse n'annule pas la source : elle est deja en base et reste
+    utile. Mais l'echec doit revenir a l'appelant nomme et compte, sinon
+    l'agent conclut que ses cinq extraits sont poses alors que trois ont ete
+    ecartes, et l'annonce a l'utilisateur devient fausse.
+    """
+    poses: list[dict[str, Any]] = []
+    refuses: list[dict[str, str]] = []
+    for rang, demande in enumerate(demandes, start=1):
+        if not isinstance(demande, dict):
+            refuses.append(
+                {
+                    "rang": str(rang),
+                    "raison": 'Chaque extrait est un objet {"text": ..., "context": ...}.',
+                }
+            )
+            continue
+        try:
+            poses.append(
+                await add_excerpt(
+                    db,
+                    user,
+                    source_id=str(source.id),
+                    text=str(demande.get("text") or ""),
+                    title=demande.get("title"),
+                    context=demande.get("context"),
+                )
+            )
+        except ToolError as exc:
+            refuses.append({"rang": str(rang), "raison": str(exc)})
+    resultat: dict[str, Any] = {"excerpts": poses}
+    if refuses:
+        resultat["excerpts_refuses"] = refuses
+    return resultat
 
 
 async def _prelever_ou_refuser(url: str | None, corps: str) -> Prelevement:

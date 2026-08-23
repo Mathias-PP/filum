@@ -115,7 +115,31 @@ def _envelopper(fonction, *, avec_utilisateur: bool) -> tuple[dict[str, Any], An
         proprietes[nom] = props
 
     async def _execute(ctx: ToolContext, args: dict[str, Any]) -> dict[str, Any]:
-        kwargs = {k: v for k, v in args.items() if k in proprietes}
+        # Un argument inconnu etait filtre en silence. Le modele qui appelait
+        # `add_source(..., excerpt="...")` recevait un succes et annoncait un
+        # extrait qui n'existait nulle part. Le dire coute un tour, le taire
+        # coute une fausse declaration a l'utilisateur.
+        inconnus = sorted(set(args) - set(proprietes))
+        if inconnus:
+            return {
+                "error": (
+                    f"{fonction.__name__} n'a pas de parametre "
+                    + ", ".join(repr(nom) for nom in inconnus)
+                    + ". Parametres acceptes : "
+                    + ", ".join(sorted(proprietes))
+                    + "."
+                )
+            }
+        manquants = sorted(set(requis) - set(args))
+        if manquants:
+            return {
+                "error": (
+                    f"{fonction.__name__} exige "
+                    + ", ".join(repr(nom) for nom in manquants)
+                    + ", absent{} de l'appel.".format("s" if len(manquants) > 1 else "")
+                )
+            }
+        kwargs = dict(args)
         try:
             resultat = (
                 await fonction(ctx.db, ctx.user, **kwargs)

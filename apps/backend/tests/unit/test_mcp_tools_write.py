@@ -599,6 +599,96 @@ async def test_add_source_pose_published_at(db_session, test_user, fiche_brouill
 
 
 @pytest.mark.asyncio
+async def test_add_source_deduit_l_url_du_doi(db_session, test_user, fiche_brouillon):
+    """Un DOI seul laissait une source sans adresse, donc ni archivable ni relisible."""
+    from app.models.source import Source
+
+    src = await add_source(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        doi="10.1038/nature12373",
+        title="Sommeil et memoire",
+    )
+    lu = await db_session.get(Source, UUID(src["id"]))
+    assert lu is not None
+    assert lu.url == "https://doi.org/10.1038/nature12373"
+    assert lu.doi == "10.1038/nature12373"
+
+
+@pytest.mark.asyncio
+async def test_add_source_url_explicite_prime_sur_le_doi(db_session, test_user, fiche_brouillon):
+    """La deduction ne comble qu'une absence : une URL donnee n'est jamais ecrasee."""
+    from app.models.source import Source
+
+    src = await add_source(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        url="https://www.nature.com/articles/nature12373",
+        doi="10.1038/nature12373",
+    )
+    lu = await db_session.get(Source, UUID(src["id"]))
+    assert lu is not None
+    assert lu.url == "https://www.nature.com/articles/nature12373"
+
+
+@pytest.mark.asyncio
+async def test_add_source_pose_les_extraits_fournis(db_session, test_user, fiche_brouillon):
+    """Les extraits inline evitent l'aller-retour par l'identifiant de la source."""
+    from app.models.source_excerpt import SourceExcerpt
+
+    src = await add_source(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        url="https://example.org/memoire",
+        excerpts=[
+            {"text": "La memoire n'est pas un enregistrement.", "title": "Le point"},
+            {"text": "Le passage exact que la source contient.", "context": "Conclusion"},
+        ],
+    )
+    assert len(src["excerpts"]) == 2
+    assert "excerpts_refuses" not in src
+    assert all(e["verified_status"] == "found" for e in src["excerpts"])
+
+    from sqlalchemy import select
+
+    resultat = await db_session.execute(
+        select(SourceExcerpt).where(SourceExcerpt.source_id == UUID(src["id"]))
+    )
+    assert len(resultat.scalars().all()) == 2
+
+
+@pytest.mark.asyncio
+async def test_add_source_dit_quels_extraits_ont_ete_refuses(
+    db_session, test_user, fiche_brouillon
+):
+    """Un extrait refuse n'annule pas la source, mais il ne disparait pas non plus.
+
+    Taire l'echec ferait annoncer a l'agent deux extraits poses la ou un seul
+    l'est : exactement la fausse declaration que cette couche existe pour
+    empecher.
+    """
+    src = await add_source(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        url="https://example.org/memoire",
+        excerpts=[
+            {"text": "La memoire n'est pas un enregistrement."},
+            {
+                "text": "Une phrase que cette page ne contient nulle part, inventee de toutes pieces."
+            },
+        ],
+    )
+    assert src["id"]
+    assert len(src["excerpts"]) == 1
+    assert len(src["excerpts_refuses"]) == 1
+    assert src["excerpts_refuses"][0]["rang"] == "2"
+
+
+@pytest.mark.asyncio
 async def test_add_source_published_at_formats_souples(db_session, test_user, fiche_brouillon):
     from app.models.source import Source
 

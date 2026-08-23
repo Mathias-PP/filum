@@ -47,7 +47,7 @@
   {#if resume}
     <p class="text-ink-primary font-medium">{resume}</p>
     <p class="mt-1 text-xs text-ink-tertiary">
-      Action sensible <span class="font-mono">{tool}</span> — elle n'est lancée que si vous la validez.
+      Action sensible <span class="font-mono">{tool}</span>, lancée seulement si vous la validez.
     </p>
   {:else}
     <p class="text-ink-primary">
