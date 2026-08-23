@@ -113,18 +113,22 @@ async def etat_consentement(
     s = settings or get_settings()
     row = await db.get(AgentGratuitConsent, str(creator_id))
     actif = bool(row and row.version == VERSION_WARNING)
-    # Le nom du fournisseur qui servirait le prochain tour : l'UI l'affiche a
-    # la place de la cle et du modele pour ne pas suggerer qu'ils comptent.
+    # Le nom du fournisseur (et le modele) qui serviraient le prochain tour :
+    # l'UI les affiche a la place de la cle et du choix de modele pour ne pas
+    # suggerer qu'ils comptent.
     fournisseur = None
+    modele = None
     if actif:
         lane_active = await choisir_lane(db, s)
         if lane_active is not None:
             fournisseur = lane_active.lane.label_public
+            modele = lane_active.lane.model
     return {
         "disponible": mode_disponible(s),
         "actif": actif,
         "version_warning": VERSION_WARNING,
         "fournisseur_actuel": fournisseur,
+        "modele_actuel": modele,
     }
 
 
@@ -292,3 +296,59 @@ async def consommer_message_utilisateur(db: AsyncSession, creator_id: uuid.UUID)
             .values(messages_used=row.messages_used + 1)
         )
     await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Test de la lane (diagnostic, comme « Tester » sur les cles personnelles)
+# ---------------------------------------------------------------------------
+
+
+async def tester_lane(db: AsyncSession, settings: Settings | None = None) -> dict:
+    """Ping minimal de la lane qui servirait le prochain tour.
+
+    N'incremente PAS les compteurs : c'est un diagnostic, pas un tour. Le
+    ping passe par le meme chemin d'appel que le chat (``_appel_provider``),
+    donc il valide aussi le formatage du payload et l'authentification.
+    """
+    import time
+
+    from app.services import agent as agent_module
+
+    s = settings or get_settings()
+    lane_active = await choisir_lane(db, s)
+    if lane_active is None:
+        return {
+            "ok": False,
+            "detail": "aucune lane disponible (cle absente, quota lane epuise ou cooldown)",
+            "modele": None,
+            "latence_ms": None,
+        }
+    debut = time.perf_counter()
+    try:
+        reponse = await agent_module._appel_provider(
+            lane_active.provider,
+            [{"role": "user", "content": "Reponds uniquement : ok"}],
+            [],
+            transport=None,
+        )
+    except Exception as exc:  # erreur reseau brute (DNS, TLS, timeout)
+        return {
+            "ok": False,
+            "detail": str(exc)[:300],
+            "modele": lane_active.lane.model,
+            "latence_ms": int((time.perf_counter() - debut) * 1000),
+        }
+    latence_ms = int((time.perf_counter() - debut) * 1000)
+    if isinstance(reponse, str):
+        return {
+            "ok": False,
+            "detail": reponse[:300],
+            "modele": lane_active.lane.model,
+            "latence_ms": latence_ms,
+        }
+    return {
+        "ok": True,
+        "detail": "reponse recue",
+        "modele": lane_active.lane.model,
+        "latence_ms": latence_ms,
+    }

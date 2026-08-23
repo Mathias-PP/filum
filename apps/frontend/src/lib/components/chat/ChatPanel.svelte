@@ -44,9 +44,14 @@
     actif: boolean;
     version_warning: string;
     fournisseur_actuel: string | null;
+    modele_actuel: string | null;
   } | null>(null);
   let consentOuvert = $state(false);
   const gratuitActif = $derived(gratuit?.actif ?? false);
+  // Test de la lane gratuite (même logique que le testeur des clés perso) :
+  // 'idle' avant, 'testing' pendant, 'ok'/'ko' après avec le détail renvoyé.
+  let etatTestGratuit = $state<'idle' | 'testing' | 'ok' | 'ko'>('idle');
+  let messageTestGratuit = $state('');
 
   // Selectors provider + modele
   let cles = $state<AgentProvider[]>([]);
@@ -287,12 +292,35 @@
     try {
       await agentApi.gratuit.activer(version);
       gratuit = {
-        ...(gratuit ?? { disponible: true, version_warning: version, fournisseur_actuel: null }),
+        ...(gratuit ?? {
+          disponible: true,
+          version_warning: version,
+          fournisseur_actuel: null,
+          modele_actuel: null,
+        }),
         actif: true,
       };
       toast.info('Mode gratuit activé. Vous pouvez désactiver à tout moment.');
     } catch (e) {
       toast.danger(e instanceof ApiError ? e.message : 'Activation impossible.');
+    }
+  }
+
+  async function testerGratuit() {
+    etatTestGratuit = 'testing';
+    messageTestGratuit = '';
+    try {
+      const r = await agentApi.gratuit.tester();
+      if (r.ok) {
+        etatTestGratuit = 'ok';
+        messageTestGratuit = `OK — ${r.modele} en ${((r.latence_ms ?? 0) / 1000).toFixed(1)} s`;
+      } else {
+        etatTestGratuit = 'ko';
+        messageTestGratuit = r.detail || 'Le fournisseur gratuit ne répond pas.';
+      }
+    } catch (e) {
+      etatTestGratuit = 'ko';
+      messageTestGratuit = e instanceof ApiError ? e.message : 'Test impossible.';
     }
   }
 
@@ -499,8 +527,25 @@
         <span
           class="flex items-center gap-1.5 rounded border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-200"
         >
-          Mode gratuit{gratuit?.fournisseur_actuel ? ` · ${gratuit.fournisseur_actuel}` : ''}
+          Mode gratuit{gratuit?.fournisseur_actuel
+            ? ` · ${gratuit.fournisseur_actuel}`
+            : ''}{gratuit?.modele_actuel ? ` · ${gratuit.modele_actuel}` : ''}
         </span>
+        <button
+          type="button"
+          class="rounded border border-border bg-surface-primary px-2 py-1 text-xs hover:border-primary-600 hover:text-primary-700 disabled:opacity-50 dark:hover:border-primary-400 dark:hover:text-primary-300"
+          onclick={testerGratuit}
+          disabled={etatTestGratuit === 'testing'}
+          title="Envoyer un ping au fournisseur gratuit (hors quota) pour vérifier qu'il répond"
+        >
+          {etatTestGratuit === 'testing'
+            ? 'Test…'
+            : etatTestGratuit === 'ok'
+              ? 'OK'
+              : etatTestGratuit === 'ko'
+                ? 'Échec'
+                : 'Tester'}
+        </button>
         <button
           type="button"
           class="rounded border border-border bg-surface-primary px-2 py-1 text-xs text-ink-secondary hover:border-danger hover:text-danger disabled:opacity-50"
@@ -552,6 +597,21 @@
             title="Utiliser l'agent sans clé, via les serveurs Philum"
           >
             Mode gratuit…
+          </button>
+          <button
+            type="button"
+            class="text-xs text-ink-tertiary underline hover:text-ink-primary disabled:opacity-50"
+            onclick={testerGratuit}
+            disabled={etatTestGratuit === 'testing'}
+            title="Vérifier que le fournisseur gratuit répond (sans consommer de quota)"
+          >
+            {etatTestGratuit === 'testing'
+              ? 'Test…'
+              : etatTestGratuit === 'ok'
+                ? 'OK'
+                : etatTestGratuit === 'ko'
+                  ? 'Échec'
+                  : 'Tester'}
           </button>
         {/if}
       {/if}
@@ -607,6 +667,13 @@
     {/if}
     {#if messageTest && (etatTest === 'ko' || etatTest === 'incompat')}
       <p class="mb-2 text-xs text-danger">{messageTest}</p>
+    {/if}
+    {#if messageTestGratuit && etatTestGratuit === 'ko'}
+      <p class="mb-2 text-xs text-danger">Fournisseur gratuit : {messageTestGratuit}</p>
+    {:else if messageTestGratuit && etatTestGratuit === 'ok'}
+      <p class="mb-2 text-xs text-emerald-600 dark:text-emerald-400">
+        Fournisseur gratuit : {messageTestGratuit}
+      </p>
     {/if}
   {/if}
 

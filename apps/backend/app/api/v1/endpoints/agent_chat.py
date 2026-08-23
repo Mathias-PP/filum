@@ -47,8 +47,33 @@ from app.services.agent_discovery import (
 )
 from app.services.agent_providers import obtenir_pour_chat, resoudre_defaut
 
-#: Chaine detectee pour poser un cooldown de lane apres un rate limit.
-_MARQUEURS_RATE_LIMIT = ("429", "rate limit", "quota")
+#: Chaines detectees pour poser un cooldown de lane apres un echec fournisseur.
+#: Les erreurs provider arrivent deja traduites par la couche LLM (« refuse :
+#: quota ou limite de débit », « HTTP 500 ») : on matche le francais ET le brut.
+_MARQUEURS_RATE_LIMIT = (
+    "429",
+    "rate limit",
+    "quota",
+    "débit",
+    "debit",
+    "surcharge",
+    "overloaded",
+    "insufficient",
+    "http 5",
+)
+
+#: Message remplace a l'utilisateur quand la lane gratuite echoue : l'erreur
+#: technique brute (« Le fournisseur (zai) refuse... ») ne dit rien d'actionnable.
+_MESSAGE_SURCHARGE_GRATUIT = (
+    "Le fournisseur gratuit est momentanément indisponible "
+    "(surcharge côté fournisseur). Réessayez dans quelques minutes, "
+    "ou connectez votre clé depuis la page Clés pour reprendre immédiatement."
+)
+
+
+def _echec_fournisseur_gratuit(texte: str) -> bool:
+    return any(m in texte.lower() for m in _MARQUEURS_RATE_LIMIT)
+
 
 settings = get_settings()
 
@@ -232,6 +257,23 @@ async def chat_agent(
                     usage_capture.append(u)
             await queue.put(event)
 
+        # `boucle` ne leve PAS d'exception sur une erreur provider : elle emet
+        # un evenement `error` puis retourne normalement. On surveille donc
+        # l'emission pour poser le cooldown et traduire l'erreur en message
+        # actionnable ; le except ci-dessous reste pour les vraies levées.
+        echecs_gratuit: list[str] = []
+
+        async def emit_surveille(event: dict[str, Any]) -> None:
+            if mode_gratuit is not None and event.get("type") == "error":
+                texte = str(event.get("payload", {}).get("message", ""))
+                if _echec_fournisseur_gratuit(texte):
+                    echecs_gratuit.append(texte)
+                    event = {
+                        **event,
+                        "payload": {"message": _MESSAGE_SURCHARGE_GRATUIT},
+                    }
+            await emit(event)
+
         async def runner() -> None:
             try:
                 await boucle(
@@ -239,18 +281,19 @@ async def chat_agent(
                     current_user,
                     provider,
                     messages,
-                    emit,
+                    emit_surveille,
                     approuver,
                     transport=transport,
                     modele=body.model_override or session.model_override or None,
                     agent_def=agent_def,
                 )
+                if echecs_gratuit and mode_gratuit is not None:
+                    with contextlib.suppress(Exception):
+                        await agent_gratuit.signaler_echec(db, mode_gratuit.lane)
             except Exception as exc:
                 # Un 429/quota provider en pleine conversation : la lane prend
                 # un cooldown, le prochain tour partira sur une autre lane.
-                if mode_gratuit is not None and any(
-                    m in str(exc).lower() for m in _MARQUEURS_RATE_LIMIT
-                ):
+                if mode_gratuit is not None and _echec_fournisseur_gratuit(str(exc)):
                     # Best-effort : si la session DB est deja fermee (client
                     # parti), tant pis, le cooldown ratera ce tour-ci.
                     with contextlib.suppress(Exception):

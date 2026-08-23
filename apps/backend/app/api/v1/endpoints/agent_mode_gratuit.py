@@ -61,3 +61,12 @@ async def retirer_consentement(
     """Désactive le mode : les prochains messages repartent sur la chaîne normale."""
     await agent_gratuit.retirer_consentement(db, current_user.id)
     return {"actif": False}
+
+
+@router.post("/tester")
+async def tester_mode_gratuit(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Ping la lane qui servirait le prochain tour (diagnostic, hors quota)."""
+    return await agent_gratuit.tester_lane(db)

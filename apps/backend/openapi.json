@@ -113,7 +113,7 @@
           "agent-fiche"
         ],
         "summary": "Etat Fiche",
-        "description": "Où en est le run : quels étages ont déposé leur compte rendu.",
+        "description": "O├╣ en est le run : quels ├®tages ont d├®pos├® leur compte rendu.",
         "operationId": "etat_fiche_api_v1_agent_fiche__slug__get",
         "parameters": [
           {
@@ -219,7 +219,7 @@
           "agent"
         ],
         "summary": "Donner Consentement",
-        "description": "Valide le warning données (version exacte exigée) et active le mode.",
+        "description": "Valide le warning donn├®es (version exacte exig├®e) et active le mode.",
         "operationId": "donner_consentement_api_v1_agent_mode_gratuit_put",
         "requestBody": {
           "content": {
@@ -261,7 +261,7 @@
           "agent"
         ],
         "summary": "Retirer Consentement",
-        "description": "Désactive le mode : les prochains messages repartent sur la chaîne normale.",
+        "description": "D├®sactive le mode : les prochains messages repartent sur la cha├«ne normale.",
         "operationId": "retirer_consentement_api_v1_agent_mode_gratuit_delete",
         "responses": {
           "200": {
@@ -279,13 +279,37 @@
         }
       }
     },
+    "/api/v1/agent/mode-gratuit/tester": {
+      "post": {
+        "tags": [
+          "agent"
+        ],
+        "summary": "Tester Mode Gratuit",
+        "description": "Ping la lane qui servirait le prochain tour (diagnostic, hors quota).",
+        "operationId": "tester_mode_gratuit_api_v1_agent_mode_gratuit_tester_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Tester Mode Gratuit Api V1 Agent Mode Gratuit Tester Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/agent/providers/meta": {
       "get": {
         "tags": [
           "agent-providers"
         ],
         "summary": "Provider Meta",
-        "description": "Notice de souveraineté, factuelle et sans discrimination.\n\nL'utilisateur décide, Philum informe : pays d'hébergement connu et périmètre\nprécis des données qui transitent pendant un échange.",
+        "description": "Notice de souverainet├®, factuelle et sans discrimination.\n\nL'utilisateur d├®cide, Philum informe : pays d'h├®bergement connu et p├®rim├¿tre\npr├®cis des donn├®es qui transitent pendant un ├®change.",
         "operationId": "provider_meta_api_v1_agent_providers_meta_get",
         "responses": {
           "200": {
@@ -516,7 +540,7 @@
           "agent-providers"
         ],
         "summary": "Lister Modeles Provider",
-        "description": "Les modèles disponibles pour ce compte, demandés au fournisseur.\n\nCache serveur 15 min. Passer ``?refresh=true`` pour forcer le rappel réseau\n(utile si l'utilisateur vient d'activer un nouveau plan chez le fournisseur).",
+        "description": "Les mod├¿les disponibles pour ce compte, demand├®s au fournisseur.\n\nCache serveur 15 min. Passer ``?refresh=true`` pour forcer le rappel r├®seau\n(utile si l'utilisateur vient d'activer un nouveau plan chez le fournisseur).",
         "operationId": "lister_modeles_provider_api_v1_agent_providers__provider_id__models_get",
         "parameters": [
           {
@@ -851,7 +875,7 @@
           "agent-sessions"
         ],
         "summary": "Repondre Approbation",
-        "description": "Débloque la boucle suspendue sur ``request_id``, pour ce créateur seul.",
+        "description": "D├®bloque la boucle suspendue sur ``request_id``, pour ce cr├®ateur seul.",
         "operationId": "repondre_approbation_api_v1_agent_approve_post",
         "requestBody": {
           "content": {
@@ -2269,10 +2293,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Fiches citees par celle-ci. « 2 » : degres 1 et 2, complets. « 1:excerpts|2: » : un perimetre par degre, meme grammaire qu'`include`. Absent : aucune.",
+              "description": "Fiches citees par celle-ci. ┬½ 2 ┬╗ : degres 1 et 2, complets. ┬½ 1:excerpts|2: ┬╗ : un perimetre par degre, meme grammaire qu'`include`. Absent : aucune.",
               "title": "Cited"
             },
-            "description": "Fiches citees par celle-ci. « 2 » : degres 1 et 2, complets. « 1:excerpts|2: » : un perimetre par degre, meme grammaire qu'`include`. Absent : aucune."
+            "description": "Fiches citees par celle-ci. ┬½ 2 ┬╗ : degres 1 et 2, complets. ┬½ 1:excerpts|2: ┬╗ : un perimetre par degre, meme grammaire qu'`include`. Absent : aucune."
           },
           {
             "name": "citing",
@@ -2871,7 +2895,7 @@
           "excerpts"
         ],
         "summary": "Chunk Uploaded Document",
-        "description": "Le meme decoupage, a partir d'un document depose.\n\nUn chapitre ne se colle pas : au-dela de quelques pages, le collage devient\nla corvee qui fait renoncer. Le fichier est lu puis jete — rien n'en est\nconserve, seul son texte sert d'assise au decoupage.",
+        "description": "Le meme decoupage, a partir d'un document depose.\n\nUn chapitre ne se colle pas : au-dela de quelques pages, le collage devient\nla corvee qui fait renoncer. Le fichier est lu puis jete ÔÇö rien n'en est\nconserve, seul son texte sert d'assise au decoupage.",
         "operationId": "chunk_uploaded_document_api_v1_sources__source_id__excerpts_chunk_file_post",
         "parameters": [
           {
@@ -2925,7 +2949,7 @@
           "excerpts"
         ],
         "summary": "Verify Source Excerpts",
-        "description": "Reancre chaque extrait dans la page telle qu'elle est aujourd'hui.\n\nC'est ce qui fait passer un extrait de *declare* a *verifie* : sans cette\npasse, la fiche affirme qu'une source dit quelque chose sans que rien ne\nl'ait jamais confirme.\n\nSur les cinq sites de la mesure ou la page ne rend rien, cette passe ne\ndisait ni oui ni non. Un texte fourni la debloque : la relecture porte\nalors sur ce que l'auteur·ice atteste etre la source.",
+        "description": "Reancre chaque extrait dans la page telle qu'elle est aujourd'hui.\n\nC'est ce qui fait passer un extrait de *declare* a *verifie* : sans cette\npasse, la fiche affirme qu'une source dit quelque chose sans que rien ne\nl'ait jamais confirme.\n\nSur les cinq sites de la mesure ou la page ne rend rien, cette passe ne\ndisait ni oui ni non. Un texte fourni la debloque : la relecture porte\nalors sur ce que l'auteur┬Àice atteste etre la source.",
         "operationId": "verify_source_excerpts_api_v1_sources__source_id__excerpts_verify_post",
         "parameters": [
           {
@@ -3046,7 +3070,7 @@
           "excerpts"
         ],
         "summary": "Annotate Excerpt",
-        "description": "Propose un intitule et une phrase de mise en situation pour un passage.\n\nNe persiste rien et n'engage a rien : la reponse remplit des champs que\nl'auteur·ice relit, corrige ou vide avant d'ajouter le passage.",
+        "description": "Propose un intitule et une phrase de mise en situation pour un passage.\n\nNe persiste rien et n'engage a rien : la reponse remplit des champs que\nl'auteur┬Àice relit, corrige ou vide avant d'ajouter le passage.",
         "operationId": "annotate_excerpt_api_v1_sources__source_id__excerpts_annotate_post",
         "parameters": [
           {
@@ -3347,7 +3371,7 @@
           "imports"
         ],
         "summary": "Url Metadata",
-        "description": "Metadata legere (titre, description) d'une URL de contenu.\n\nVersion rapide de /import/from-content-url : un seul fetch de page,\npas d'extraction de references ni de LLM. Sert a pre-remplir le\nformulaire « Nouvelle fiche » pendant la saisie.",
+        "description": "Metadata legere (titre, description) d'une URL de contenu.\n\nVersion rapide de /import/from-content-url : un seul fetch de page,\npas d'extraction de references ni de LLM. Sert a pre-remplir le\nformulaire ┬½ Nouvelle fiche ┬╗ pendant la saisie.",
         "operationId": "url_metadata_api_v1_import_url_metadata_post",
         "requestBody": {
           "content": {
@@ -4039,7 +4063,7 @@
           "users"
         ],
         "summary": "Replace My Linked Accounts",
-        "description": "Remplace la liste complète (sémantique PUT — simple pour la v0).",
+        "description": "Remplace la liste compl├¿te (s├®mantique PUT ÔÇö simple pour la v0).",
         "operationId": "replace_my_linked_accounts_api_v1_users_me_linked_accounts_put",
         "requestBody": {
           "content": {
@@ -4223,7 +4247,7 @@
     "/health/llm-diagnose": {
       "get": {
         "summary": "Llm Diagnose",
-        "description": "Dit si la couche LLM est vivante, en faisant vraiment un aller-retour.\n\nTrois fonctionnalités dependent d'un modele et se degradent en silence\nquand il n'y en a pas : suggestion de citations, suggestion d'intitules,\nextraction de metadonnees. Rien dans l'interface ne distingue « le modele\nn'a rien trouve » de « il n'y a pas de modele », d'ou cette sonde.\n\nAccessible sans auth, donc elle ne rend ni la cle, ni de traceback : juste\nde quoi savoir quoi corriger. Le cout d'un appel est negligeable et il est\ndeclenche a la main.",
+        "description": "Dit si la couche LLM est vivante, en faisant vraiment un aller-retour.\n\nTrois fonctionnalit├®s dependent d'un modele et se degradent en silence\nquand il n'y en a pas : suggestion de citations, suggestion d'intitules,\nextraction de metadonnees. Rien dans l'interface ne distingue ┬½ le modele\nn'a rien trouve ┬╗ de ┬½ il n'y a pas de modele ┬╗, d'ou cette sonde.\n\nAccessible sans auth, donc elle ne rend ni la cle, ni de traceback : juste\nde quoi savoir quoi corriger. Le cout d'un appel est negligeable et il est\ndeclenche a la main.",
         "operationId": "llm_diagnose_health_llm_diagnose_get",
         "responses": {
           "200": {
@@ -4347,7 +4371,7 @@
               }
             ],
             "title": "Session Id",
-            "description": "Session à poursuivre. Absente : une session est créée et son id arrive dans l'événement `session`."
+            "description": "Session ├á poursuivre. Absente : une session est cr├®├®e et son id arrive dans l'├®v├®nement `session`."
           },
           "provider_id": {
             "anyOf": [
@@ -4360,7 +4384,7 @@
               }
             ],
             "title": "Provider Id",
-            "description": "Clé provider à utiliser pour ce tour. Null : provider par défaut."
+            "description": "Cl├® provider ├á utiliser pour ce tour. Null : provider par d├®faut."
           },
           "model_override": {
             "anyOf": [
@@ -4373,7 +4397,7 @@
               }
             ],
             "title": "Model Override",
-            "description": "Modèle à utiliser à la place de provider.model pour cette session."
+            "description": "Mod├¿le ├á utiliser ├á la place de provider.model pour cette session."
           },
           "agent_slug": {
             "anyOf": [
@@ -4387,7 +4411,7 @@
               }
             ],
             "title": "Agent Slug",
-            "description": "Agent nommé à utiliser (fichier `agents/<slug>.yaml`). Null : l'agent déjà attaché à la session, sinon l'assistant généraliste."
+            "description": "Agent nomm├® ├á utiliser (fichier `agents/<slug>.yaml`). Null : l'agent d├®j├á attach├® ├á la session, sinon l'assistant g├®n├®raliste."
           }
         },
         "additionalProperties": false,
@@ -4552,7 +4576,7 @@
               }
             ],
             "title": "Depuis",
-            "description": "Reprendre à cet étage. Les comptes rendus déjà écrits servent de contexte."
+            "description": "Reprendre ├á cet ├®tage. Les comptes rendus d├®j├á ├®crits servent de contexte."
           }
         },
         "additionalProperties": false,
@@ -4758,7 +4782,7 @@
           "updated_at"
         ],
         "title": "AgentProviderRead",
-        "description": "Sortie : jamais la clé, toujours sa forme masquée."
+        "description": "Sortie : jamais la cl├®, toujours sa forme masqu├®e."
       },
       "AgentProviderTestResult": {
         "properties": {
@@ -4834,7 +4858,7 @@
           "message"
         ],
         "title": "AgentProviderTestResult",
-        "description": "Résultat du test de clé, avec un message actionnable par statut.\n\n``provider_message`` porte le texte brut renvoyé par le fournisseur. C'est\nsouvent la seule information exploitable de toute la chaine : Gemini y nomme\nle modele de remplacement, OpenAI y distingue un credit epuise d'une limite\nde debit. Ne jamais le remplacer par une reformulation."
+        "description": "R├®sultat du test de cl├®, avec un message actionnable par statut.\n\n``provider_message`` porte le texte brut renvoy├® par le fournisseur. C'est\nsouvent la seule information exploitable de toute la chaine : Gemini y nomme\nle modele de remplacement, OpenAI y distingue un credit epuise d'une limite\nde debit. Ne jamais le remplacer par une reformulation."
       },
       "AgentProviderUpdate": {
         "properties": {
@@ -5207,7 +5231,7 @@
           "already_running"
         ],
         "title": "ArchiveResponse",
-        "description": "Ce que la demande a reellement declenche, poste par poste.\n\nUn seul compteur global mentirait : « 40 » ne dirait pas si les 40 partent\na l'archivage ou si la moitie etait deja archivee. Chaque sort a sa case."
+        "description": "Ce que la demande a reellement declenche, poste par poste.\n\nUn seul compteur global mentirait : ┬½ 40 ┬╗ ne dirait pas si les 40 partent\na l'archivage ou si la moitie etait deja archivee. Chaque sort a sa case."
       },
       "ArchiveStatus": {
         "type": "string",
@@ -6600,7 +6624,7 @@
           "redirect_uris"
         ],
         "title": "ClientRegistrationRequest",
-        "description": "DCR request (RFC 7591 § 2)."
+        "description": "DCR request (RFC 7591 ┬º 2)."
       },
       "ClientRegistrationResponse": {
         "properties": {
@@ -6662,7 +6686,7 @@
           "token_endpoint_auth_method"
         ],
         "title": "ClientRegistrationResponse",
-        "description": "DCR response (RFC 7591 § 3.2.1)."
+        "description": "DCR response (RFC 7591 ┬º 3.2.1)."
       },
       "ConsentementGratuit": {
         "properties": {
@@ -8542,7 +8566,7 @@
         },
         "type": "object",
         "title": "ProvidedText",
-        "description": "Le texte de la source, quand la page ne le rend pas.\n\nColle ou tire d'un document depose : dans les deux cas c'est l'auteur·ice\nqui atteste que ce texte est celui de la source. Le serveur ne le stocke\npas, il s'en sert le temps de l'appel.\n\nLes trois `include_*` (par defaut True) disent ce qu'on autorise le modele\na voir en plus du texte de la source. Une case decochee est une case\nd'auteur·ice qui prefere n'orienter le modele sur rien : la fiche\ngeneraliste dont l'annotation elargit trop, la source dont les extraits\ndeja poses induiraient un doublonnage stylistique, le cas ou l'ecart\nentre le theme de la fiche et le contenu ponctuel de cette source ne\ndoit pas biaiser la selection."
+        "description": "Le texte de la source, quand la page ne le rend pas.\n\nColle ou tire d'un document depose : dans les deux cas c'est l'auteur┬Àice\nqui atteste que ce texte est celui de la source. Le serveur ne le stocke\npas, il s'en sert le temps de l'appel.\n\nLes trois `include_*` (par defaut True) disent ce qu'on autorise le modele\na voir en plus du texte de la source. Une case decochee est une case\nd'auteur┬Àice qui prefere n'orienter le modele sur rien : la fiche\ngeneraliste dont l'annotation elargit trop, la source dont les extraits\ndeja poses induiraient un doublonnage stylistique, le cas ou l'ecart\nentre le theme de la fiche et le contenu ponctuel de cette source ne\ndoit pas biaiser la selection."
       },
       "ProviderKind": {
         "type": "string",
@@ -9653,7 +9677,7 @@
           "expires_in"
         ],
         "title": "TokenResponse",
-        "description": "OAuth 2.0 token response (RFC 6749 § 5.1)."
+        "description": "OAuth 2.0 token response (RFC 6749 ┬º 5.1)."
       },
       "Unite": {
         "type": "string",
