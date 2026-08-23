@@ -102,6 +102,30 @@ class TestConsentement:
         await agent_gratuit.retirer_consentement(db_session, test_user.id)
         assert await agent_gratuit.est_consentant(db_session, test_user.id) is False
 
+    async def test_consentement_ecrit_une_date_sans_fuseau(
+        self, db_session, test_user, settings_actives, monkeypatch
+    ):
+        """`consent_at` est un `TIMESTAMP WITHOUT TIME ZONE`.
+
+        Postgres refuse d'y ecrire un datetime « aware » : le mode gratuit
+        rendait un 500 et etait inactivable. SQLite, lui, accepte l'ecriture et
+        efface le fuseau a la relecture, donc relire la ligne ne prouve rien.
+        On observe l'objet au moment ou il part vers la base : c'est la seule
+        position ou ce test distingue le code correct du code fautif.
+        """
+        vus: list[datetime] = []
+        vrai_merge = db_session.merge
+
+        async def merge_espion(objet, *args, **kwargs):
+            vus.append(objet.consent_at)
+            return await vrai_merge(objet, *args, **kwargs)
+
+        monkeypatch.setattr(db_session, "merge", merge_espion)
+        await agent_gratuit.donner_consentement(
+            db_session, test_user.id, agent_gratuit.VERSION_WARNING
+        )
+        assert vus and vus[0].tzinfo is None
+
     async def test_version_inconnue_refusee(self, db_session, test_user, settings_actives):
         with pytest.raises(ValueError, match="version_warning_inconnue"):
             await agent_gratuit.donner_consentement(db_session, test_user.id, "1999-01-01-v0")

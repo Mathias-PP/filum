@@ -165,6 +165,7 @@ _ECRITURE = (
     "update_card",
     "update_source",
     "list_my_cards",
+    "get_my_card",
     "list_sources",
     "search_my_excerpts",
     "verify_excerpts",

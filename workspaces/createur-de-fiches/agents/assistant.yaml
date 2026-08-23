@@ -12,6 +12,7 @@ tools:
   - search_cards
   - get_card
   - list_my_cards
+  - get_my_card
   - list_sources
   - get_source
   - search_my_excerpts

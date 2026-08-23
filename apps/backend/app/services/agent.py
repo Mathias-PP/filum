@@ -831,7 +831,9 @@ def _message_tool(tool_call_id: str, nom: str, resultat: dict[str, Any]) -> dict
     tour suivant, laissant l'utilisateur devant un chat cassé sans explication.
     Vérifié en prod le 2026-08-21 sur ``gemini-3.7-flash``.
     """
-    contenu = json.dumps(resultat, ensure_ascii=False)[:TOOL_RESULT_MAX]
+    # `default=str` pour la meme raison que dans `_sse` : un champ qui ne sait
+    # pas se serialiser doit degrader, pas faire echouer le tour entier.
+    contenu = json.dumps(resultat, ensure_ascii=False, default=str)[:TOOL_RESULT_MAX]
     return {"role": "tool", "tool_call_id": tool_call_id, "name": nom, "content": contenu}
 
 

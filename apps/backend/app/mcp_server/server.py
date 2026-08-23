@@ -508,6 +508,14 @@ async def list_my_cards(status: str | None = None, limit: int = 20) -> dict[str,
 
 
 @outil()
+async def get_my_card(card_slug: str) -> dict[str, Any]:
+    """Lit une fiche de l'utilisateur en entier, brouillon compris (`get_card` ne voit que le public)."""
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.get_my_card(db, user, card_slug=card_slug)
+
+
+@outil()
 async def list_sources(card_slug: str) -> list[dict[str, Any]]:
     """Liste les sources d'une fiche dans leur ordre d'affichage."""
     async with _session() as db:

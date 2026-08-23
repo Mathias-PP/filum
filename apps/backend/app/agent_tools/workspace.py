@@ -7,6 +7,8 @@ les règles du workspace avant d'écrire — même logique que le MCP.
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from app.agent_tools.tool import AgentTool, ToolContext
 from app.services.agent_workspace import ecrire, lire, lister
 
@@ -43,7 +45,18 @@ async def _execute_lister(ctx: ToolContext, args: dict[str, object]) -> dict[str
     path = args.get("path")
     prefix = path if isinstance(path, str) and path else None
     entries = await lister(ctx.db, ctx.creator_id, prefix)
-    return {"entries": entries}
+    # `lister` sert aussi l'API REST, ou Pydantic se charge des dates. Ici le
+    # resultat part directement en JSON dans le flux SSE : la date doit etre
+    # deja du texte.
+    return {
+        "entries": [
+            {
+                cle: (valeur.isoformat() if isinstance(valeur, datetime) else valeur)
+                for cle, valeur in entree.items()
+            }
+            for entree in entries
+        ]
+    }
 
 
 def workspace_tools() -> list[AgentTool]:

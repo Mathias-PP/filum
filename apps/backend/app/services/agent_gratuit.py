@@ -38,6 +38,17 @@ VERSION_WARNING = "2026-08-23-v1"
 COOLDOWN_MINUTES = 10
 
 
+def _maintenant() -> datetime:
+    """L'instant courant en UTC, sans fuseau attache.
+
+    Les colonnes de ce module sont des `TIMESTAMP WITHOUT TIME ZONE`. Postgres
+    refuse un datetime « aware » sur une telle colonne (`can't subtract
+    offset-naive and offset-aware datetimes`), la ou SQLite l'accepte : le
+    defaut ne se voit qu'en production, jamais dans les tests.
+    """
+    return datetime.now(UTC).replace(tzinfo=None)
+
+
 class ErreurQuotaGratuit(Exception):  # noqa: N818
     """Quota quotidien gratuit de l'utilisateur epuise."""
 
@@ -130,7 +141,7 @@ async def donner_consentement(db: AsyncSession, creator_id: uuid.UUID, version: 
         AgentGratuitConsent(
             creator_id=str(creator_id),
             version=version,
-            consent_at=datetime.now(UTC),
+            consent_at=_maintenant(),
         )
     )
     await db.commit()
@@ -155,7 +166,7 @@ async def choisir_lane(db: AsyncSession, settings: Settings | None = None) -> La
         select(AgentLane).where(AgentLane.actif.is_(True)).order_by(AgentLane.position.asc())
     )
     today = date.today()
-    now = datetime.now(UTC).replace(tzinfo=None)
+    now = _maintenant()
     for lane in result.scalars():
         if not cle_lane(lane.slug, s):
             continue
@@ -207,7 +218,7 @@ async def signaler_echec(
     Le routeur l'ecartera automatiquement pendant la fenetre ; les autres
     lanes prendront le relais sans intervention.
     """
-    echeance = datetime.now(UTC).replace(tzinfo=None) + timedelta(minutes=minutes)
+    echeance = _maintenant() + timedelta(minutes=minutes)
     today = date.today()
     usage = (
         await db.execute(
