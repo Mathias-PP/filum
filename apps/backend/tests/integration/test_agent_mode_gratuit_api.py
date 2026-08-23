@@ -170,4 +170,4 @@ async def test_chat_sans_consentement_nutilise_pas_la_lane(
     r = await client.post("/api/v1/agent/chat", json={"message": "salut"})
     events = _lire_evenements(r.text)
     assert events[-1]["type"] == "error"
-    assert "Aucun provider IA par défaut" in events[-1]["payload"]["message"]
+    assert "Aucune clé IA disponible" in events[-1]["payload"]["message"]
