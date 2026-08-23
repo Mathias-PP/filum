@@ -64,7 +64,7 @@ export interface paths {
         };
         /**
          * Etat Fiche
-         * @description O├╣ en est le run : quels ├®tages ont d├®pos├® leur compte rendu.
+         * @description Où en est le run : quels étages ont déposé leur compte rendu.
          */
         get: operations["etat_fiche_api_v1_agent_fiche__slug__get"];
         put?: never;
@@ -106,13 +106,13 @@ export interface paths {
         get: operations["etat_mode_gratuit_api_v1_agent_mode_gratuit_get"];
         /**
          * Donner Consentement
-         * @description Valide le warning donn├®es (version exacte exig├®e) et active le mode.
+         * @description Valide le warning données (version exacte exigée) et active le mode.
          */
         put: operations["donner_consentement_api_v1_agent_mode_gratuit_put"];
         post?: never;
         /**
          * Retirer Consentement
-         * @description D├®sactive le mode : les prochains messages repartent sur la cha├«ne normale.
+         * @description Désactive le mode : les prochains messages repartent sur la chaîne normale.
          */
         delete: operations["retirer_consentement_api_v1_agent_mode_gratuit_delete"];
         options?: never;
@@ -149,10 +149,10 @@ export interface paths {
         };
         /**
          * Provider Meta
-         * @description Notice de souverainet├®, factuelle et sans discrimination.
+         * @description Notice de souveraineté, factuelle et sans discrimination.
          *
-         *     L'utilisateur d├®cide, Philum informe : pays d'h├®bergement connu et p├®rim├¿tre
-         *     pr├®cis des donn├®es qui transitent pendant un ├®change.
+         *     L'utilisateur décide, Philum informe : pays d'hébergement connu et périmètre
+         *     précis des données qui transitent pendant un échange.
          */
         get: operations["provider_meta_api_v1_agent_providers_meta_get"];
         put?: never;
@@ -225,9 +225,9 @@ export interface paths {
         };
         /**
          * Lister Modeles Provider
-         * @description Les mod├¿les disponibles pour ce compte, demand├®s au fournisseur.
+         * @description Les modèles disponibles pour ce compte, demandés au fournisseur.
          *
-         *     Cache serveur 15 min. Passer ``?refresh=true`` pour forcer le rappel r├®seau
+         *     Cache serveur 15 min. Passer ``?refresh=true`` pour forcer le rappel réseau
          *     (utile si l'utilisateur vient d'activer un nouveau plan chez le fournisseur).
          */
         get: operations["lister_modeles_provider_api_v1_agent_providers__provider_id__models_get"];
@@ -324,7 +324,7 @@ export interface paths {
         put?: never;
         /**
          * Repondre Approbation
-         * @description D├®bloque la boucle suspendue sur ``request_id``, pour ce cr├®ateur seul.
+         * @description Débloque la boucle suspendue sur ``request_id``, pour ce créateur seul.
          */
         post: operations["repondre_approbation_api_v1_agent_approve_post"];
         delete?: never;
@@ -1004,7 +1004,7 @@ export interface paths {
          * @description Le meme decoupage, a partir d'un document depose.
          *
          *     Un chapitre ne se colle pas : au-dela de quelques pages, le collage devient
-         *     la corvee qui fait renoncer. Le fichier est lu puis jete ÔÇö rien n'en est
+         *     la corvee qui fait renoncer. Le fichier est lu puis jete — rien n'en est
          *     conserve, seul son texte sert d'assise au decoupage.
          */
         post: operations["chunk_uploaded_document_api_v1_sources__source_id__excerpts_chunk_file_post"];
@@ -1033,7 +1033,7 @@ export interface paths {
          *
          *     Sur les cinq sites de la mesure ou la page ne rend rien, cette passe ne
          *     disait ni oui ni non. Un texte fourni la debloque : la relecture porte
-         *     alors sur ce que l'auteur┬Àice atteste etre la source.
+         *     alors sur ce que l'auteur·ice atteste etre la source.
          */
         post: operations["verify_source_excerpts_api_v1_sources__source_id__excerpts_verify_post"];
         delete?: never;
@@ -1073,7 +1073,7 @@ export interface paths {
          * @description Propose un intitule et une phrase de mise en situation pour un passage.
          *
          *     Ne persiste rien et n'engage a rien : la reponse remplit des champs que
-         *     l'auteur┬Àice relit, corrige ou vide avant d'ajouter le passage.
+         *     l'auteur·ice relit, corrige ou vide avant d'ajouter le passage.
          */
         post: operations["annotate_excerpt_api_v1_sources__source_id__excerpts_annotate_post"];
         delete?: never;
@@ -1188,7 +1188,7 @@ export interface paths {
          *
          *     Version rapide de /import/from-content-url : un seul fetch de page,
          *     pas d'extraction de references ni de LLM. Sert a pre-remplir le
-         *     formulaire ┬½ Nouvelle fiche ┬╗ pendant la saisie.
+         *     formulaire « Nouvelle fiche » pendant la saisie.
          */
         post: operations["url_metadata_api_v1_import_url_metadata_post"];
         delete?: never;
@@ -1424,7 +1424,7 @@ export interface paths {
         get: operations["get_my_linked_accounts_api_v1_users_me_linked_accounts_get"];
         /**
          * Replace My Linked Accounts
-         * @description Remplace la liste compl├¿te (s├®mantique PUT ÔÇö simple pour la v0).
+         * @description Remplace la liste complète (sémantique PUT — simple pour la v0).
          */
         put: operations["replace_my_linked_accounts_api_v1_users_me_linked_accounts_put"];
         post?: never;
@@ -1568,10 +1568,10 @@ export interface paths {
          * Llm Diagnose
          * @description Dit si la couche LLM est vivante, en faisant vraiment un aller-retour.
          *
-         *     Trois fonctionnalit├®s dependent d'un modele et se degradent en silence
+         *     Trois fonctionnalités dependent d'un modele et se degradent en silence
          *     quand il n'y en a pas : suggestion de citations, suggestion d'intitules,
-         *     extraction de metadonnees. Rien dans l'interface ne distingue ┬½ le modele
-         *     n'a rien trouve ┬╗ de ┬½ il n'y a pas de modele ┬╗, d'ou cette sonde.
+         *     extraction de metadonnees. Rien dans l'interface ne distingue « le modele
+         *     n'a rien trouve » de « il n'y a pas de modele », d'ou cette sonde.
          *
          *     Accessible sans auth, donc elle ne rend ni la cle, ni de traceback : juste
          *     de quoi savoir quoi corriger. Le cout d'un appel est negligeable et il est
@@ -1662,22 +1662,22 @@ export interface components {
             history?: components["schemas"]["AgentChatMessage"][];
             /**
              * Session Id
-             * @description Session ├á poursuivre. Absente : une session est cr├®├®e et son id arrive dans l'├®v├®nement `session`.
+             * @description Session à poursuivre. Absente : une session est créée et son id arrive dans l'événement `session`.
              */
             session_id?: string | null;
             /**
              * Provider Id
-             * @description Cl├® provider ├á utiliser pour ce tour. Null : provider par d├®faut.
+             * @description Clé provider à utiliser pour ce tour. Null : provider par défaut.
              */
             provider_id?: string | null;
             /**
              * Model Override
-             * @description Mod├¿le ├á utiliser ├á la place de provider.model pour cette session.
+             * @description Modèle à utiliser à la place de provider.model pour cette session.
              */
             model_override?: string | null;
             /**
              * Agent Slug
-             * @description Agent nomm├® ├á utiliser (fichier `agents/<slug>.yaml`). Null : l'agent d├®j├á attach├® ├á la session, sinon l'assistant g├®n├®raliste.
+             * @description Agent nommé à utiliser (fichier `agents/<slug>.yaml`). Null : l'agent déjà attaché à la session, sinon l'assistant généraliste.
              */
             agent_slug?: string | null;
         };
@@ -1734,7 +1734,7 @@ export interface components {
             slug: string;
             /**
              * Depuis
-             * @description Reprendre ├á cet ├®tage. Les comptes rendus d├®j├á ├®crits servent de contexte.
+             * @description Reprendre à cet étage. Les comptes rendus déjà écrits servent de contexte.
              */
             depuis?: string | null;
         };
@@ -1782,7 +1782,7 @@ export interface components {
         };
         /**
          * AgentProviderRead
-         * @description Sortie : jamais la cl├®, toujours sa forme masqu├®e.
+         * @description Sortie : jamais la clé, toujours sa forme masquée.
          */
         AgentProviderRead: {
             /**
@@ -1808,9 +1808,9 @@ export interface components {
         };
         /**
          * AgentProviderTestResult
-         * @description R├®sultat du test de cl├®, avec un message actionnable par statut.
+         * @description Résultat du test de clé, avec un message actionnable par statut.
          *
-         *     ``provider_message`` porte le texte brut renvoy├® par le fournisseur. C'est
+         *     ``provider_message`` porte le texte brut renvoyé par le fournisseur. C'est
          *     souvent la seule information exploitable de toute la chaine : Gemini y nomme
          *     le modele de remplacement, OpenAI y distingue un credit epuise d'une limite
          *     de debit. Ne jamais le remplacer par une reformulation.
@@ -1926,7 +1926,7 @@ export interface components {
          * ArchiveResponse
          * @description Ce que la demande a reellement declenche, poste par poste.
          *
-         *     Un seul compteur global mentirait : ┬½ 40 ┬╗ ne dirait pas si les 40 partent
+         *     Un seul compteur global mentirait : « 40 » ne dirait pas si les 40 partent
          *     a l'archivage ou si la moitie etait deja archivee. Chaque sort a sa case.
          */
         ArchiveResponse: {
@@ -2413,7 +2413,7 @@ export interface components {
         };
         /**
          * ClientRegistrationRequest
-         * @description DCR request (RFC 7591 ┬º 2).
+         * @description DCR request (RFC 7591 § 2).
          */
         ClientRegistrationRequest: {
             /** Redirect Uris */
@@ -2428,7 +2428,7 @@ export interface components {
         };
         /**
          * ClientRegistrationResponse
-         * @description DCR response (RFC 7591 ┬º 3.2.1).
+         * @description DCR response (RFC 7591 § 3.2.1).
          */
         ClientRegistrationResponse: {
             /** Client Id */
@@ -3048,13 +3048,13 @@ export interface components {
          * ProvidedText
          * @description Le texte de la source, quand la page ne le rend pas.
          *
-         *     Colle ou tire d'un document depose : dans les deux cas c'est l'auteur┬Àice
+         *     Colle ou tire d'un document depose : dans les deux cas c'est l'auteur·ice
          *     qui atteste que ce texte est celui de la source. Le serveur ne le stocke
          *     pas, il s'en sert le temps de l'appel.
          *
          *     Les trois `include_*` (par defaut True) disent ce qu'on autorise le modele
          *     a voir en plus du texte de la source. Une case decochee est une case
-         *     d'auteur┬Àice qui prefere n'orienter le modele sur rien : la fiche
+         *     d'auteur·ice qui prefere n'orienter le modele sur rien : la fiche
          *     generaliste dont l'annotation elargit trop, la source dont les extraits
          *     deja poses induiraient un doublonnage stylistique, le cas ou l'ecart
          *     entre le theme de la fiche et le contenu ponctuel de cette source ne
@@ -3357,7 +3357,7 @@ export interface components {
         };
         /**
          * TokenResponse
-         * @description OAuth 2.0 token response (RFC 6749 ┬º 5.1).
+         * @description OAuth 2.0 token response (RFC 6749 § 5.1).
          */
         TokenResponse: {
             /** Access Token */
@@ -5112,7 +5112,7 @@ export interface operations {
                 style?: string | null;
                 /** @description Sections a emporter, separees par des virgules. Absent : tout. Vide : les references seules. Ignore par les formats bibliographiques (BibTeX, RIS, CSL, styles de citation). */
                 include?: string | null;
-                /** @description Fiches citees par celle-ci. ┬½ 2 ┬╗ : degres 1 et 2, complets. ┬½ 1:excerpts|2: ┬╗ : un perimetre par degre, meme grammaire qu'`include`. Absent : aucune. */
+                /** @description Fiches citees par celle-ci. « 2 » : degres 1 et 2, complets. « 1:excerpts|2: » : un perimetre par degre, meme grammaire qu'`include`. Absent : aucune. */
                 cited?: string | null;
                 /** @description Fiches qui citent celle-ci. Meme grammaire que `cited`. */
                 citing?: string | null;
