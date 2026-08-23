@@ -9,6 +9,7 @@ tools:
   - set_content_text
   - get_card
   - list_my_cards
+  - get_my_card
   - search_cards
   - find_cards_citing
   - get_url_metadata

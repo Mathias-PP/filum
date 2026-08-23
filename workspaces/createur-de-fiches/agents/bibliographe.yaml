@@ -13,6 +13,7 @@ tools:
   - get_url_metadata
   - fetch_url
   - get_card
+  - get_my_card
   - fs_read
 context:
   - shared/philum-mcp.md

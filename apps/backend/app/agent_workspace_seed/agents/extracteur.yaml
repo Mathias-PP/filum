@@ -14,6 +14,7 @@ tools:
   - search_my_excerpts
   - fetch_url
   - get_card
+  - get_my_card
   - fs_read
 context:
   - shared/garde-fous.md

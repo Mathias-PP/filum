@@ -5,6 +5,7 @@ layer: L2
 model_hint: null
 tools:
   - get_card
+  - get_my_card
   - list_sources
   - verify_excerpts
   - archive_sources
