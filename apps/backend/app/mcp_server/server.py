@@ -222,12 +222,19 @@ async def add_excerpt(
     title: str | None = None,
     context: str | None = None,
 ) -> dict[str, Any]:
-    """Colle un extrait verbatim sur une source (obtenue via `add_source`).
+    """Preleve un verbatim dans une source (obtenue via `add_source`).
 
-    `text` : ce que la source dit exactement. `context` : la mise en
-    situation qui n'appartient pas au verbatim (chapitre, thematique) --
-    stockee separement, jamais recollee au texte pour ne pas attribuer a la
-    source des mots qu'elle n'a pas ecrits. `title` : intitule court.
+    `text` n'est pas le contenu de l'extrait, c'est le passage a retrouver :
+    le serveur relit la page et inscrit **les caracteres de la source**, pas
+    ceux passes ici. Un passage traduit, reformule ou reconstitue de memoire
+    fait echouer l'appel, avec un message qui dit ce que la source porte
+    reellement. Quand la page ne rend rien (PDF sans couche texte, mur
+    anti-bot), l'extrait passe en `verified_status='unreadable'`.
+
+    `context` : la mise en situation qui n'appartient pas au verbatim
+    (chapitre, thematique, traduction) -- stockee separement, jamais recollee
+    au texte pour ne pas attribuer a la source des mots qu'elle n'a pas
+    ecrits. `title` : intitule court.
 
     Les extraits sont marques `suggested_by_ai` et `annotated_by_ai` : le
     lecteur voit que la selection vient d'une IA.
@@ -397,7 +404,12 @@ async def update_excerpt(
     title: str | None = None,
     context: str | None = None,
 ) -> dict[str, Any]:
-    """Corrige le texte, le titre ou le contexte d'un extrait ; modifier le texte annule la verification."""
+    """Corrige le texte, le titre ou le contexte d'un extrait.
+
+    Modifier `text` repasse par la meme relecture de la page que `add_excerpt` :
+    le serveur retrouve le passage et inscrit les caracteres de la source. Un
+    passage absent d'une page lisible fait echouer l'appel.
+    """
     async with _session() as db:
         user = await exiger_utilisateur(db)
         return await tools_write.update_excerpt(

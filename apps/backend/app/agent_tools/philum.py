@@ -39,6 +39,19 @@ _ENUMS_PAR_PARAMETRE: dict[str, list[str]] = {
     "stance": [e.value for e in SourceStance],
 }
 
+#: Paramètres retirés du schéma vu par le modèle.
+#:
+#: `verify_excerpts(provided_text=...)` fait juger un extrait contre un texte
+#: que l'appelant fournit lui-même. Pour un client MCP piloté par une personne,
+#: c'est la porte de sortie légitime quand un éditeur bloque la lecture
+#: automatique. Pour un agent, c'est une boucle : il écrit l'extrait, puis il
+#: écrit le texte qui l'atteste, et la fiche annonce « vérifié » sans que rien
+#: d'extérieur ne l'ait confirmé. Sans ce paramètre, la vérification passe
+#: toujours par la page que le serveur est allé lire.
+_PARAMETRES_MASQUES: dict[str, frozenset[str]] = {
+    "verify_excerpts": frozenset({"provided_text"}),
+}
+
 #: Actions sensibles : toujours soumises à validation humaine (approbation
 #: hybride). Leur exécution ne se fait qu'après un feu vert explicite.
 SENSITIVE_TOOLS: frozenset[str] = frozenset(
@@ -56,12 +69,6 @@ SENSITIVE_TOOLS: frozenset[str] = frozenset(
 def est_sensible(name: str, args: dict[str, Any]) -> bool:
     """L'action demandée doit-elle passer par l'approbation humaine ?"""
     if name in SENSITIVE_TOOLS:
-        return True
-    # verify_excerpts avec un texte fourni atteste un texte que l'agent a
-    # récupéré ailleurs : l'utilisateur doit valider avant que la fiche
-    # n'accuse la source. Sans texte fourni, le serveur relit la page
-    # lui-même : ce n'est pas une action sensible.
-    if name == "verify_excerpts" and args.get("provided_text"):
         return True
     # `update_card(visibility="public")` publie aussi sûrement que
     # `publish_card` : sans cette branche, l'approbation se contourne en
@@ -92,10 +99,11 @@ def _json_schema(tp: Any) -> dict[str, Any]:
 def _envelopper(fonction, *, avec_utilisateur: bool) -> tuple[dict[str, Any], Any]:
     """Schéma JSON des paramètres + execute qui délègue à la fonction MCP."""
     hints = get_type_hints(fonction)
+    masques = _PARAMETRES_MASQUES.get(fonction.__name__, frozenset())
     proprietes: dict[str, Any] = {}
     requis: list[str] = []
     for nom, param in inspect.signature(fonction).parameters.items():
-        if nom in ("db", "user"):
+        if nom in ("db", "user") or nom in masques:
             continue
         props = _json_schema(hints.get(nom, str))
         if nom in _ENUMS_PAR_PARAMETRE and props.get("type") == "string":

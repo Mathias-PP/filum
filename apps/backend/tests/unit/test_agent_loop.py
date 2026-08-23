@@ -95,11 +95,15 @@ class TestSensibilite:
         assert "create_content_attestation" in SENSITIVE_TOOLS
         assert "archive_sources" in SENSITIVE_TOOLS
 
-    def test_verify_excerpts_sensible_seulement_avec_texte_fourni(self):
+    def test_verify_excerpts_non_sensible(self):
+        """La verification relit la page : il n'y a rien a faire valider.
+
+        `provided_text` faisait autrefois basculer l'appel en action sensible,
+        parce qu'il laissait l'agent attester son propre extrait. Le parametre
+        ne lui est plus expose du tout (`_PARAMETRES_MASQUES` dans le catalogue),
+        la question ne se pose plus.
+        """
         assert est_sensible("verify_excerpts", {"source_id": "s"}) is False
-        assert (
-            est_sensible("verify_excerpts", {"source_id": "s", "provided_text": "un texte"}) is True
-        )
 
     def test_lecture_non_sensible(self):
         assert est_sensible("fs_read", {"path": "AGENTS.md"}) is False
