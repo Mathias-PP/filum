@@ -9,8 +9,16 @@ Trois tables :
 Seed : la lane Z.ai (GLM, tier gratuit ~1000 req/jour, OpenAI-compatible).
 Desactivee par defaut au niveau instance (agent_gratuit_enabled=False).
 
-Revision ID: 050_mode_gratuit
-Revises: 049_agent_session_agent_slug
+Cette revision est nee en parallele de `050_card_kind`, sur une branche partie
+du meme parent, et les deux ont ete mergees le meme jour : Alembic s'est
+retrouve avec deux tetes, `upgrade head` a refuse de choisir, et le conteneur a
+redemarre en boucle. Elle est replacee derriere `050_card_kind` plutot que
+rejointe par une revision de jonction, qui aurait rendu `downgrade -1` ambigu
+pour toujours. Les deux migrations touchent des tables disjointes : les
+ordonner ne change rien.
+
+Revision ID: 051_mode_gratuit
+Revises: 050_card_kind
 """
 
 from __future__ import annotations
@@ -22,8 +30,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "050_mode_gratuit"
-down_revision: str | None = "049_agent_session_agent_slug"
+revision: str = "051_mode_gratuit"
+down_revision: str | None = "050_card_kind"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
