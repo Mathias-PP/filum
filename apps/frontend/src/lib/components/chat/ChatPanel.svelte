@@ -670,13 +670,13 @@
              dire ici, a sa place dans le fil : l'agent qui « oublie » sans
              prevenir passe pour defaillant alors qu'il subit une limite. -->
         <div class="flex items-center gap-3 py-1 text-xs text-ink-tertiary">
-          <span class="h-px flex-1 bg-subtle"></span>
+          <span class="h-px flex-1 bg-border"></span>
           <span
             >{item.retires} message{item.retires > 1 ? 's' : ''} du début retiré{item.retires > 1
               ? 's'
               : ''} pour tenir dans la fenêtre du modèle</span
           >
-          <span class="h-px flex-1 bg-subtle"></span>
+          <span class="h-px flex-1 bg-border"></span>
         </div>
       {:else if item.kind === 'approval'}
         <ApprovalCard
