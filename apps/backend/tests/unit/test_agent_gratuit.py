@@ -30,7 +30,7 @@ async def lane_zai(db_session):
         label_public="GLM · Z.ai",
         provider_kind="custom",
         base_url="https://api.z.ai/api/paas/v4",
-        model="glm-5.2",
+        model="glm-4.7-flash",
         rpm_cap=3,
         rpd_cap=900,
         actif=True,
@@ -163,7 +163,7 @@ class TestChoisirLane:
         p = choisi.provider
         assert p.provider == "custom"
         assert p.base_url == "https://api.z.ai/api/paas/v4"
-        assert p.model == "glm-5.2"
+        assert p.model == "glm-4.7-flash"
         cle = KeyManager(get_settings().master_encryption_key).decrypt_private_key(p.api_key_enc)
         assert cle == "zai-key-test"
 
