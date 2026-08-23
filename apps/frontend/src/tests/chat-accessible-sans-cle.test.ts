@@ -26,11 +26,14 @@ describe('page /dashboard/chat', () => {
   it('rend le chat en dehors de la condition sur la clé par défaut', () => {
     const iChat = page.indexOf('<ChatPanel');
     expect(iChat, 'ChatPanel introuvable dans la page').toBeGreaterThan(-1);
-    const iCondition = page.indexOf('{#if defaut}');
+    // La page peut conditionner la ligne d'en-tête à la clé par défaut (avec
+    // une exception pour le mode gratuit), mais le chat, lui, doit toujours
+    // être rendu.
+    const iCondition = page.indexOf('{#if defaut');
     expect(iCondition, 'condition sur la clé par défaut introuvable').toBeGreaterThan(-1);
     // La condition doit être refermée avant que le chat ne soit rendu.
     const avant = page.slice(iCondition, iChat);
-    expect(avant, 'ChatPanel est encore enfermé dans {#if defaut}').toContain('{/if}');
+    expect(avant, 'ChatPanel est encore enfermé dans {#if defaut…}').toContain('{/if}');
   });
 
   it('ne promet le mode gratuit que si l’instance en propose un', () => {

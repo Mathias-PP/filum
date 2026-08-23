@@ -279,6 +279,30 @@
         }
       }
     },
+    "/api/v1/agent/mode-gratuit/tester": {
+      "post": {
+        "tags": [
+          "agent"
+        ],
+        "summary": "Tester Mode Gratuit",
+        "description": "Ping la lane qui servirait le prochain tour (diagnostic, hors quota).",
+        "operationId": "tester_mode_gratuit_api_v1_agent_mode_gratuit_tester_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Tester Mode Gratuit Api V1 Agent Mode Gratuit Tester Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/agent/providers/meta": {
       "get": {
         "tags": [

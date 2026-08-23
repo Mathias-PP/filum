@@ -15,6 +15,7 @@
   // configuree, promettre « activez-le ci-dessous » designerait un bouton
   // absent.
   let gratuitDisponible = $state(false);
+  let gratuitActifIci = $state(false);
 
   const defaut = $derived(providers.find((p) => p.is_default) ?? null);
 
@@ -27,7 +28,10 @@
     providers = p;
     agentApi.gratuit
       .etat()
-      .then((v) => (gratuitDisponible = v.disponible))
+      .then((v) => {
+        gratuitDisponible = v.disponible;
+        gratuitActifIci = v.actif;
+      })
       .catch(() => null);
   });
 
@@ -88,11 +92,18 @@
 
   <section class="min-h-[60vh]">
     <h1 class="font-serif text-3xl text-ink-primary mb-1">Agent</h1>
-    {#if defaut}
+    {#if defaut && !gratuitActifIci}
       <p class="text-sm text-ink-secondary mb-4">
         Répondra avec <span class="font-mono">{defaut.model}</span> ({defaut.display_name}), votre
         clé, votre facture.
         <a href="/dashboard/agents" class="text-info hover:underline">Changer</a>
+      </p>
+    {:else if gratuitActifIci}
+      <!-- Le panneau gere la lane : ne pas suggerer en parallele que la cle
+           par defaut sert encore les messages. -->
+      <p class="text-sm text-ink-secondary mb-4">
+        Répondra via le mode gratuit (fournisseur serveur Philum). Voir la bannière dans le fil de
+        discussion.
       </p>
     {:else}
       <!-- Sans clé, le chat reste utilisable : le serveur bascule sur le mode

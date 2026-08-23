@@ -76,6 +76,7 @@ class TestConsentement:
             "actif": False,
             "version_warning": agent_gratuit.VERSION_WARNING,
             "fournisseur_actuel": None,
+            "modele_actuel": None,
         }
 
     async def test_actif_expose_le_fournisseur_qui_sert_le_prochain_tour(
@@ -87,12 +88,14 @@ class TestConsentement:
         etat = await agent_gratuit.etat_consentement(db_session, test_user.id)
         assert etat["actif"] is True
         assert etat["fournisseur_actuel"] == lane_zai.label_public
+        assert etat["modele_actuel"] == lane_zai.model
 
         # Lane desactivee : plus de fournisseur, le mode ne peut plus servir.
         lane_zai.actif = False
         etat = await agent_gratuit.etat_consentement(db_session, test_user.id)
         assert etat["actif"] is True
         assert etat["fournisseur_actuel"] is None
+        assert etat["modele_actuel"] is None
 
     async def test_donner_puis_retirer(self, db_session, test_user, settings_actives):
         await agent_gratuit.donner_consentement(
@@ -253,3 +256,80 @@ class TestQuotas:
         assert await agent_gratuit.verifier_quota_utilisateur(db_session, test_user.id) == 5
         await agent_gratuit.consommer_message_utilisateur(db_session, test_user.id)
         assert await agent_gratuit.verifier_quota_utilisateur(db_session, test_user.id) == 4
+
+
+# ---------------------------------------------------------------------------
+# Testeur de lane (diagnostic)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+class TestTesterLane:
+    async def test_sans_lane_disponible(self, db_session, lane_zai):
+        # Instance « activee » mais aucune cle configuree : aucune lane.
+        r = await agent_gratuit.tester_lane(db_session)
+        assert r["ok"] is False
+        assert r["modele"] is None
+        assert r["latence_ms"] is None
+
+    async def test_ok_renvoie_modele_et_latence(
+        self, db_session, lane_zai, settings_actives, monkeypatch
+    ):
+        from app.services import agent as agent_module
+
+        async def faux_appel(provider, messages, outils, transport, **kw):
+            assert transport is None
+            return ({"role": "assistant", "content": "ok"}, "stop", {})
+
+        monkeypatch.setattr(agent_module, "_appel_provider", faux_appel)
+        r = await agent_gratuit.tester_lane(db_session)
+        assert r["ok"] is True
+        assert r["detail"] == "reponse recue"
+        assert r["modele"] == "glm-4.7-flash"
+        assert isinstance(r["latence_ms"], int)
+
+    async def test_echec_provider_renvoie_le_detail(
+        self, db_session, lane_zai, settings_actives, monkeypatch
+    ):
+        from app.services import agent as agent_module
+
+        async def faux_appel(provider, messages, outils, transport, **kw):
+            return "Le fournisseur (custom) refuse : quota ou limite de débit atteinte."
+
+        monkeypatch.setattr(agent_module, "_appel_provider", faux_appel)
+        r = await agent_gratuit.tester_lane(db_session)
+        assert r["ok"] is False
+        assert "quota" in r["detail"]
+        assert r["modele"] == "glm-4.7-flash"
+
+    async def test_erreur_reseau_capturee(
+        self, db_session, lane_zai, settings_actives, monkeypatch
+    ):
+        from app.services import agent as agent_module
+
+        async def faux_appel(provider, messages, outils, transport, **kw):
+            raise RuntimeError("connect timeout")
+
+        monkeypatch.setattr(agent_module, "_appel_provider", faux_appel)
+        r = await agent_gratuit.tester_lane(db_session)
+        assert r["ok"] is False
+        assert "timeout" in r["detail"]
+
+    async def test_nincremente_pas_les_compteurs(
+        self, db_session, lane_zai, settings_actives, monkeypatch
+    ):
+        from datetime import date
+
+        from sqlalchemy import select
+
+        from app.services import agent as agent_module
+
+        async def faux_appel(provider, messages, outils, transport, **kw):
+            return ({"role": "assistant", "content": "ok"}, "stop", {})
+
+        monkeypatch.setattr(agent_module, "_appel_provider", faux_appel)
+        await agent_gratuit.tester_lane(db_session)
+        lignes = (
+            (await db_session.execute(select(AgentLaneUsage))).scalars().all()
+        )
+        assert lignes == []

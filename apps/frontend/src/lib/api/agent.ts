@@ -294,6 +294,8 @@ export const agentApi = {
         version_warning: string;
         /** Nom public du fournisseur qui sert le mode actif, null sinon. */
         fournisseur_actuel: string | null;
+        /** Modèle exact qui servirait le prochain tour (affichage/diagnostic). */
+        modele_actuel: string | null;
       }>('/agent/mode-gratuit'),
     activer: (version: string) =>
       request<{ actif: boolean; version_warning: string }>('/agent/mode-gratuit', {
@@ -301,6 +303,14 @@ export const agentApi = {
         body: JSON.stringify({ version }),
       }),
     desactiver: () => request<{ actif: boolean }>('/agent/mode-gratuit', { method: 'DELETE' }),
+    /** Ping la lane active sans consommer de quota : même chemin d'appel que le chat. */
+    tester: () =>
+      request<{
+        ok: boolean;
+        detail: string;
+        modele: string | null;
+        latence_ms: number | null;
+      }>('/agent/mode-gratuit/tester', { method: 'POST' }),
   },
 
   /** Workspace ICM du créateur : arbre, lecture, écriture, suppression, re-seed. */

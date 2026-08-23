@@ -120,6 +120,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/agent/mode-gratuit/tester': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Tester Mode Gratuit
+     * @description Ping la lane qui servirait le prochain tour (diagnostic, hors quota).
+     */
+    post: operations['tester_mode_gratuit_api_v1_agent_mode_gratuit_tester_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/agent/providers/meta': {
     parameters: {
       query?: never;
@@ -3748,6 +3768,28 @@ export interface operations {
     };
   };
   retirer_consentement_api_v1_agent_mode_gratuit_delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            [key: string]: unknown;
+          };
+        };
+      };
+    };
+  };
+  tester_mode_gratuit_api_v1_agent_mode_gratuit_tester_post: {
     parameters: {
       query?: never;
       header?: never;
