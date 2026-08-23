@@ -196,7 +196,7 @@
 </script>
 
 <svelte:head>
-  <title>Providers IA · Philum</title>
+  <title>Clés IA · Philum</title>
 </svelte:head>
 
 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -209,7 +209,7 @@
 
   <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
     <div>
-      <h1 class="font-serif text-3xl text-ink-primary mb-1">Providers IA</h1>
+      <h1 class="font-serif text-3xl text-ink-primary mb-1">Clés IA</h1>
       <p class="text-sm text-ink-secondary">
         Votre clé, votre modèle, votre facture. Philum ne fournit aucun accès IA et ne relit jamais
         vos clés : elles sont chiffrées et n'apparaissent plus jamais en clair.

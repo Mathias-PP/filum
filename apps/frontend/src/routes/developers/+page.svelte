@@ -256,7 +256,7 @@
     </div>
     <p class="text-sm text-ink-secondary mb-6" use:reveal>
       C'est l'adresse a coller dans le champ MCP server URL de ChatGPT ou d'un connecteur Claude.
-      Garder la barre finale : sans elle le serveur repond une redirection que tous les clients ne
+      Garder la barre finale : sans elle le serveur répond une redirection que tous les clients ne
       suivent pas sur un POST.
     </p>
 
@@ -272,7 +272,7 @@
       <div class="bg-surface-secondary border border-border rounded-xl p-5" use:reveal>
         <p class="text-sm font-semibold text-ink-primary mb-1">Claude (application) et ChatGPT</p>
         <p class="text-sm text-ink-secondary">
-          Ajouter un connecteur, coller l'URL de votre choix ci-dessus. Rien d'autre a saisir.
+          Ajouter un connecteur, coller l'URL de votre choix ci-dessus. Rien d'autre à saisir.
         </p>
       </div>
       <div class="bg-surface-secondary border border-border rounded-xl p-5" use:reveal>
@@ -357,18 +357,18 @@
         </ul>
       </li>
       <li>
-        <span class="text-ink-primary font-medium">Recuperer l'URL publique HTTPS</span> (ex. :
+        <span class="text-ink-primary font-medium">Récupérer l'URL publique HTTPS</span> (ex. :
         <code>https://mon-tunnel.example.com</code>).
       </li>
       <li>
         <span class="text-ink-primary font-medium"
-          >Dans Philum : Agent &rarr; Providers &rarr; Ajouter.</span
+          >Dans Philum : Agent &rarr; Clés &rarr; Ajouter.</span
         >
         <ul class="list-disc pl-5 mt-1 space-y-1">
-          <li>Fournisseur : <code>Autre (URL a saisir)</code></li>
+          <li>Fournisseur : <code>Autre (URL à saisir)</code></li>
           <li>URL de base : <code>https://mon-tunnel.example.com/v1</code></li>
-          <li>Cle API : <code>ollama</code> (Ollama l'ignore, mais le champ est requis)</li>
-          <li>Modele : nom local, ex. <code>llama3.2</code></li>
+          <li>Clé API : <code>ollama</code> (Ollama l'ignore, mais le champ est requis)</li>
+          <li>Modèle : nom local, ex. <code>llama3.2</code></li>
         </ul>
       </li>
     </ol>
@@ -377,7 +377,7 @@
       class="mt-4 rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
     >
       <span class="font-medium">Avertissements :</span> l'URL du tunnel est accessible sur Internet
-      pendant toute sa duree de vie. Activez l'authentification (Access ou Tailscale ACL). Les quick
+      pendant toute sa durée de vie. Activez l'authentification (Access ou Tailscale ACL). Les quick
       tunnels ngrok/Cloudflare ont une URL changeante a chaque redemarrage. Ajoutez
       <code>OLLAMA_KEEP_ALIVE=24h</code> pour eviter qu'Ollama decharge le modele entre deux messages.
     </div>

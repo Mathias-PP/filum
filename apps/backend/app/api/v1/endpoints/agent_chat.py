@@ -188,7 +188,8 @@ async def chat_agent(
             erreur = {
                 "type": "error",
                 "payload": {
-                    "message": "Aucun provider IA par défaut configuré. Définis-en un dans Agent -> Providers."
+                    "message": "Aucune clé IA disponible. Enregistrez-en une dans Agent > Clés, "
+                    "ou activez le mode gratuit si cette instance en propose un."
                 },
             }
             return StreamingResponse(

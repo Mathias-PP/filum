@@ -232,7 +232,7 @@
     if (modeleChoisi && modeles.length > 0 && !modeles.includes(modeleChoisi)) {
       etatTest = 'incompat';
       const cle = cles.find((c) => c.id === cleChoisie);
-      messageTest = `Le modele « ${modeleChoisi} » n'existe pas chez ${cle?.display_name ?? 'ce provider'}.`;
+      messageTest = `Le modèle « ${modeleChoisi} » n'existe pas chez ${cle?.display_name ?? 'ce provider'}.`;
       return;
     }
     const jeton = ++jetonTest;
@@ -307,7 +307,7 @@
       : etatTest === 'ok'
         ? 'OK'
         : etatTest === 'ko'
-          ? 'Echec'
+          ? 'Échec'
           : etatTest === 'incompat'
             ? 'Incompatible'
             : ''
@@ -351,7 +351,10 @@
     ) {
       cleChoisie = sessionSauvegardee.provider_id;
     } else {
-      const defaut = cles.find((p) => p.is_default);
+      // A defaut de cle marquee par defaut, prendre la premiere : envoyer un
+      // `provider_id` vide alors que le createur a des cles le renvoyait vers
+      // le mode gratuit ou une erreur, sans qu'il comprenne pourquoi.
+      const defaut = cles.find((p) => p.is_default) ?? cles[0];
       if (defaut) cleChoisie = defaut.id;
     }
     if (sessionId && messagesRes && messagesRes.status === 'fulfilled') {
@@ -502,7 +505,7 @@
       {:else}
         {#if cles.length > 0}
           <label class="flex items-center gap-1.5">
-            <span class="text-xs text-ink-tertiary">Cle</span>
+            <span class="text-xs text-ink-tertiary">Clé</span>
             <select
               bind:value={cleChoisie}
               onchange={changerCle}
@@ -517,14 +520,14 @@
         {/if}
         {#if modeles.length > 0}
           <label class="flex items-center gap-1.5">
-            <span class="text-xs text-ink-tertiary">Modele</span>
+            <span class="text-xs text-ink-tertiary">Modèle</span>
             <select
               bind:value={modeleChoisi}
               onchange={changerModele}
               disabled={enCours}
               class="rounded border border-subtle bg-surface-primary px-2 py-1 text-xs"
             >
-              <option value="">Defaut ({cles.find((c) => c.id === cleChoisie)?.model ?? ''})</option
+              <option value="">Défaut ({cles.find((c) => c.id === cleChoisie)?.model ?? ''})</option
               >
               {#each modeles as m (m)}
                 <option value={m}>{m}</option>
@@ -686,9 +689,11 @@
       </div>
     {/if}
 
-    {#if enCours}
-      <!-- Logo Philum anime : rassure sur le travail en cours meme apres le
-           premier token (recherche web, appel d'outil, etc.). -->
+    {#if enCours && !attentePremierToken}
+      <!-- Logo Philum anime : rassure sur le travail en cours apres le premier
+           token (recherche web, appel d'outil, etc.). Avant le premier token,
+           le curseur clignotant tient deja ce role : afficher les deux ferait
+           deux signaux pour un seul etat. -->
       <div class="flex items-center gap-2 text-xs text-ink-tertiary">
         <LogoLoader size={20} />
         <span>Philum réfléchit…</span>
@@ -728,9 +733,9 @@
       class="mt-2 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
     >
       {#if banniereMode === 'gratuit'}
-        <span class="font-medium">Mode gratuit</span> -- vos echanges transitent par
+        <span class="font-medium">Mode gratuit</span> : vos échanges transitent par
       {:else}
-        <span class="font-medium">Mode decouverte</span> -- vos echanges transitent par
+        <span class="font-medium">Mode découverte</span> : vos échanges transitent par
       {/if}
       <span class="font-medium">{decouverte.provider_public_name}</span>.
       {decouverte.retention_notice}
@@ -747,7 +752,7 @@
           Désactiver le mode gratuit</button
         >.
       {:else}
-        <a href="/dashboard/agents" class="ml-1 underline">Connecter votre cle</a>
+        <a href="/dashboard/agents" class="ml-1 underline">Connecter votre clé</a>
       {/if}
     </div>
   {/if}
@@ -764,6 +769,7 @@
     <textarea
       bind:value={saisie}
       rows="1"
+      aria-label="Message à l'agent"
       placeholder="Que doit faire l'agent ?"
       class="flex-1 resize-none rounded border border-subtle bg-surface-primary px-3 py-2 text-sm"
       style="overflow-y: hidden;"
@@ -777,7 +783,7 @@
         }
       }}></textarea>
     {#if enCours}
-      <Button variant="ghost" onclick={interrompre}>Arreter</Button>
+      <Button variant="ghost" onclick={interrompre}>Arrêter</Button>
     {:else}
       <Button type="submit">Envoyer</Button>
     {/if}
