@@ -68,13 +68,39 @@ def upgrade() -> None:
     # Lane Z.ai : GLM en tier gratuit (~1000 req/jour), endpoint OpenAI-
     # compatible. rpd_cap volontairement sous le plafond reel pour garder une
     # marge ; la cle vient de AGENT_GRATUIT_ZAI_API_KEY.
-    op.execute(
-        sa.text(
-            "INSERT INTO agent_lanes "
-            "(id, slug, label_public, provider_kind, base_url, model, rpm_cap, rpd_cap, actif, position) "
-            "VALUES (:id, 'zai', 'GLM · Z.ai', 'custom', "
-            "'https://api.z.ai/api/paas/v4', 'glm-5.2', 3, 900, true, 0)"
-        ).bindparams(id=str(uuid.uuid4()))
+    #
+    # `bulk_insert` et pas un INSERT en texte : PostgreSQL refuse une chaine
+    # dans une colonne `uuid`, la ou SQLite l'accepte. Declarer les types laisse
+    # SQLAlchemy adapter la valeur au dialecte, et la migration passe des deux
+    # cotes.
+    op.bulk_insert(
+        sa.table(
+            "agent_lanes",
+            sa.column("id", sa.Uuid()),
+            sa.column("slug", sa.String),
+            sa.column("label_public", sa.String),
+            sa.column("provider_kind", sa.String),
+            sa.column("base_url", sa.String),
+            sa.column("model", sa.String),
+            sa.column("rpm_cap", sa.Integer),
+            sa.column("rpd_cap", sa.Integer),
+            sa.column("actif", sa.Boolean),
+            sa.column("position", sa.Integer),
+        ),
+        [
+            {
+                "id": uuid.uuid4(),
+                "slug": "zai",
+                "label_public": "GLM · Z.ai",
+                "provider_kind": "custom",
+                "base_url": "https://api.z.ai/api/paas/v4",
+                "model": "glm-5.2",
+                "rpm_cap": 3,
+                "rpd_cap": 900,
+                "actif": True,
+                "position": 0,
+            }
+        ],
     )
 
 
