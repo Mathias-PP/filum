@@ -164,3 +164,47 @@ def test_l_agent_ne_voit_pas_provided_text():
 
     outil = next(o for o in philum_tools() if o.name == "verify_excerpts")
     assert "provided_text" not in outil.parameters["properties"]
+
+
+def _outil(nom: str):
+    from app.agent_tools.philum import philum_tools
+
+    return next(o for o in philum_tools() if o.name == nom)
+
+
+@pytest.mark.asyncio
+async def test_un_parametre_inconnu_est_dit_et_non_avale(db_session, test_user):
+    """Filtrer en silence faisait annoncer a l'agent un extrait qui n'existait pas.
+
+    `add_source(..., excerpt="...")` rendait un succes : le parametre inconnu
+    partait a la poubelle, la source naissait nue, et le modele declarait a
+    l'utilisateur un verbatim que la fiche ne portait pas.
+    """
+    from app.agent_tools.tool import ToolContext
+
+    outil = _outil("add_source")
+    resultat = await outil.execute(
+        ToolContext(db=db_session, user=test_user, creator_id=test_user.id),
+        {"card_slug": "peu-importe", "excerpt": "un verbatim"},
+    )
+    assert "excerpt" in resultat["error"]
+    assert "Parametres acceptes" in resultat["error"]
+
+
+@pytest.mark.asyncio
+async def test_un_parametre_obligatoire_absent_est_nomme(db_session, test_user):
+    """Sans cette garde, le modele recevait un TypeError Python brut."""
+    from app.agent_tools.tool import ToolContext
+
+    outil = _outil("add_source")
+    resultat = await outil.execute(
+        ToolContext(db=db_session, user=test_user, creator_id=test_user.id), {}
+    )
+    assert "card_slug" in resultat["error"]
+
+
+def test_add_source_expose_les_extraits_inline():
+    """L'aller-retour par l'identifiant de source coutait un tour a chaque source."""
+    schema = _outil("add_source").parameters["properties"]
+    assert schema["excerpts"]["type"] == "array"
+    assert schema["excerpts"]["items"]["type"] == "object"

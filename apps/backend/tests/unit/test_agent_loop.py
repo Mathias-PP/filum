@@ -786,6 +786,64 @@ class TestBoucle:
         assert "Les mitochondries" in resume, (
             f"le résumé doit citer le titre réel de la fiche, pas le slug ; obtenu : {resume!r}"
         )
+        assert "aucune source" in resume, (
+            "publier une fiche vide doit se voir avant, pas se découvrir en ligne ; "
+            f"obtenu : {resume!r}"
+        )
+
+    @pytest.mark.asyncio
+    async def test_resume_de_publication_dit_l_etat_reel(self, db_session, test_user):
+        """« Publier la fiche X ? » n'apprend rien : le titre, l'utilisateur le connaît.
+
+        Ce qu'il ne connaît pas, c'est ce que l'agent vient de construire. Le
+        résumé compte les sources et distingue les extraits retrouvés dans leur
+        page de ceux qui ne l'ont pas été.
+        """
+        from app.models.biblio_card import BiblioCard, CardStatus
+        from app.models.source import Source
+        from app.models.source_excerpt import SourceExcerpt
+        from app.schemas.biblio_card import ContentType, Platform
+        from app.services.agent import _etat_avant_publication
+
+        card = BiblioCard(
+            user_id=test_user.id,
+            slug="fiche-garnie",
+            title="Sommeil et mémoire",
+            platform=Platform.BLOG,
+            content_type=ContentType.ARTICLE,
+            status=CardStatus.DRAFT,
+        )
+        db_session.add(card)
+        await db_session.flush()
+        source = Source(
+            biblio_card_id=card.id,
+            position=1,
+            url="https://example.org/a",
+            format="texte",
+            category="article-scientifique",
+            author_kind="chercheur",
+        )
+        db_session.add(source)
+        await db_session.flush()
+        db_session.add_all(
+            [
+                SourceExcerpt(
+                    source_id=source.id, position=1, text="retrouvé", verified_status="found"
+                ),
+                SourceExcerpt(
+                    source_id=source.id,
+                    position=2,
+                    text="page muette",
+                    verified_status="unreadable",
+                ),
+            ]
+        )
+        await db_session.commit()
+
+        resume = await _etat_avant_publication(db_session, test_user, "fiche-garnie")
+        assert "Sommeil et mémoire" in resume
+        assert "1 source" in resume
+        assert "2 extraits dont 1 retrouvé" in resume
 
     @pytest.mark.asyncio
     async def test_action_sensible_refusee_sans_execution(self, db_session, test_user):

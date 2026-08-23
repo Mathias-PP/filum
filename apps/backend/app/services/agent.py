@@ -152,6 +152,62 @@ async def _titre_fiche(db: AsyncSession, user: User, slug: str) -> str:
     return card.title if card else slug
 
 
+async def _etat_avant_publication(db: AsyncSession, user: User, slug: str) -> str:
+    """Décrit ce que la fiche porte réellement, au moment où on demande à publier.
+
+    « Publier la fiche X ? » n'apprend rien : l'utilisateur voit le titre qu'il
+    connaît déjà et pas ce que l'agent a effectivement construit. Une fiche sans
+    source ou dont aucun extrait n'a été retrouvé dans sa page est publiable,
+    mais il faut le dire avant, pas le découvrir en ligne.
+    """
+    r = await db.execute(
+        select(BiblioCard).where(BiblioCard.slug == slug, BiblioCard.user_id == user.id)
+    )
+    card = r.scalar_one_or_none()
+    if card is None:
+        return f"Publier la fiche « {slug} » et la rendre visible publiquement ?"
+
+    sources = int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(Source)
+                .where(Source.biblio_card_id == card.id, Source.deleted_at.is_(None))
+            )
+        ).scalar_one_or_none()
+        or 0
+    )
+    extraits, verifies = (
+        await db.execute(
+            select(
+                func.count(),
+                func.count().filter(SourceExcerpt.verified_status == "found"),
+            )
+            .select_from(SourceExcerpt)
+            .join(Source, SourceExcerpt.source_id == Source.id)
+            .where(Source.biblio_card_id == card.id, Source.deleted_at.is_(None))
+        )
+    ).one()
+
+    if sources == 0:
+        etat = "Elle ne porte aucune source."
+    else:
+        etat = f"{sources} source{'s' if sources > 1 else ''}"
+        if extraits == 0:
+            etat += ", aucun extrait."
+        elif verifies == extraits:
+            etat += (
+                f", {extraits} extrait{'s' if extraits > 1 else ''} "
+                f"retrouvé{'s' if extraits > 1 else ''} dans leur source."
+            )
+        else:
+            etat += (
+                f", {extraits} extrait{'s' if extraits > 1 else ''} dont "
+                f"{verifies} retrouvé{'s' if verifies > 1 else ''} dans leur source."
+            )
+    return f"Publier « {card.title} » et la rendre visible publiquement ? {etat}"
+
+
 async def _resume_approbation(
     db: AsyncSession,
     user: User,
@@ -173,20 +229,11 @@ async def _resume_approbation(
         if tool_name == "delete_excerpt":
             titre, _ = await _titre_source(db, str(args.get("source_id", "")))
             return f"Supprimer un extrait de la source « {titre} » ?"
-        if tool_name == "verify_excerpts":
-            titre, n = await _titre_source(db, str(args.get("source_id", "")))
-            if args.get("provided_text"):
-                return (
-                    f"Attester {n or 'les'} extrait{'s' if n != 1 else ''} de « {titre} » "
-                    "à partir d'un texte que vous fournissez ?"
-                )
-            return f"Relire et attester les extraits de la source « {titre} » ?"
         if tool_name == "delete_card":
             titre = await _titre_fiche(db, user, str(args.get("slug", "")))
             return f"Envoyer la fiche « {titre} » et toutes ses sources à la corbeille ?"
         if tool_name == "publish_card":
-            titre = await _titre_fiche(db, user, str(args.get("slug", "")))
-            return f"Publier la fiche « {titre} » et la rendre visible publiquement ?"
+            return await _etat_avant_publication(db, user, str(args.get("slug", "")))
         if tool_name == "update_card" and args.get("visibility") == "public":
             titre = await _titre_fiche(db, user, str(args.get("slug", "")))
             return f"Publier la fiche « {titre} » (rendre publique) ?"

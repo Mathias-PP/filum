@@ -178,9 +178,15 @@ async def add_source(
     journal: str | None = None,
     published_at: str | None = None,
     archive_url: str | None = None,
+    excerpts: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Ajoute une source citee a la fiche `card_slug`.
+    """Ajoute une source citee a la fiche `card_slug`, avec ses extraits si vous en avez.
 
+    `excerpts` : liste d'objets `{"text": ..., "title": ..., "context": ...}`.
+      Evite l'aller-retour par l'identifiant de la source. Chaque entree suit
+      les regles de `add_excerpt`, relecture de la page comprise. Un extrait
+      refuse n'annule pas la source : la reponse dit ce qui est passe et ce
+      qui ne l'est pas.
     `category` : article-scientifique|preprint|article-presse|communique|
       documentaire|interview|podcast|blog|post-social|livre|page-web|notes.
     `author_kind` : chercheur|media|institution-publique|gouvernement|ecole|
@@ -190,9 +196,10 @@ async def add_source(
     `published_at` : date de publication, ``2016``, ``2016-03`` ou
       ``2016-03-15``. A renseigner des que la source en porte une.
 
+    Un `doi` sans `url` suffit : l'adresse `https://doi.org/...` en est deduite,
+    ce qui rend la source archivable et ses extraits verifiables.
     La meme reference dans deux ecritures d'URL est refusee : l'identite est
-    calculee sur le DOI ou l'URL normalisee. Enchaine `add_excerpt` pour
-    coller un verbatim.
+    calculee sur le DOI ou l'URL normalisee.
     """
     async with _session() as db:
         user = await exiger_utilisateur(db)
@@ -212,6 +219,7 @@ async def add_source(
             journal=journal,
             published_at=published_at,
             archive_url=archive_url,
+            excerpts=excerpts,
         )
 
 
