@@ -60,10 +60,13 @@
       <input type="checkbox" bind:checked={lu} class="mt-0.5" />
       <span>J'ai lu et j'accepte que mes échanges soient traités dans ces conditions.</span>
     </label>
-    <div class="flex justify-end gap-2">
+    <!-- Les deux actions sont franchement delimitees : bordure pour annuler,
+         aplat colore pour activer. En clair comme en sombre, les deux se
+         lisent avant de cliquer. -->
+    <div class="flex justify-end gap-2 border-t border-border pt-3">
       <button
         type="button"
-        class="rounded px-3 py-1.5 text-sm text-ink-secondary hover:bg-surface-secondary"
+        class="rounded border border-border bg-surface-primary px-3 py-1.5 text-sm text-ink-primary hover:bg-surface-secondary"
         onclick={onfermer}
       >
         Annuler
@@ -71,7 +74,7 @@
       <button
         type="button"
         disabled={!lu || enCours}
-        class="rounded bg-primary-600 px-3 py-1.5 text-sm text-white disabled:opacity-40"
+        class="rounded border border-primary-700 bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-40"
         onclick={valider}
       >
         {enCours ? 'Activation…' : 'Activer le mode gratuit'}

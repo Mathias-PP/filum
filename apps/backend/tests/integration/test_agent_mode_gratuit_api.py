@@ -98,26 +98,26 @@ async def test_etat_indisponible_sans_config(client, session_token):
 
 
 @pytest.mark.asyncio
-async def test_consentement_aller_retour(client, session_token, settings_actives):
+async def test_consentement_aller_retour(client, session_token, settings_actives, lane_zai):
     client.cookies.set("filum_session", session_token)
     # Version erronee : refusee (le handler global enveloppe dans {"error": ...}).
-    r = await client.put(
-        "/api/v1/agent/mode-gratuit", json={"version": "mauvaise-version"}
-    )
+    r = await client.put("/api/v1/agent/mode-gratuit", json={"version": "mauvaise-version"})
     assert r.status_code == 400
     assert r.json()["error"]["code"] == "version_warning_inconnue"
-    # Bonne version : active.
+    # Bonne version : active, et l'etat nomme le fournisseur qui sert le tour.
     r = await client.put(
         "/api/v1/agent/mode-gratuit", json={"version": agent_gratuit.VERSION_WARNING}
     )
     assert r.status_code == 200 and r.json()["actif"] is True
     etat = (await client.get("/api/v1/agent/mode-gratuit")).json()
     assert etat["actif"] is True
+    assert etat["fournisseur_actuel"] == lane_zai.label_public
     # Retrait.
     r = await client.delete("/api/v1/agent/mode-gratuit")
     assert r.status_code == 200
     etat = (await client.get("/api/v1/agent/mode-gratuit")).json()
     assert etat["actif"] is False
+    assert etat["fournisseur_actuel"] is None
 
 
 # ---------------------------------------------------------------------------
@@ -133,9 +133,7 @@ def _mock_reponse_glm(texte: str) -> dict:
 async def test_chat_mode_gratuit_emet_la_banniere(
     client, session_token, db_session, test_user, settings_actives, lane_zai
 ):
-    await agent_gratuit.donner_consentement(
-        db_session, test_user.id, agent_gratuit.VERSION_WARNING
-    )
+    await agent_gratuit.donner_consentement(db_session, test_user.id, agent_gratuit.VERSION_WARNING)
 
     def handler(request):
         assert str(request.url).startswith("https://api.z.ai/api/paas/v4/chat/completions")

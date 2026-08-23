@@ -102,10 +102,18 @@ async def etat_consentement(
     s = settings or get_settings()
     row = await db.get(AgentGratuitConsent, str(creator_id))
     actif = bool(row and row.version == VERSION_WARNING)
+    # Le nom du fournisseur qui servirait le prochain tour : l'UI l'affiche a
+    # la place de la cle et du modele pour ne pas suggerer qu'ils comptent.
+    fournisseur = None
+    if actif:
+        lane_active = await choisir_lane(db, s)
+        if lane_active is not None:
+            fournisseur = lane_active.lane.label_public
     return {
         "disponible": mode_disponible(s),
         "actif": actif,
         "version_warning": VERSION_WARNING,
+        "fournisseur_actuel": fournisseur,
     }
 
 

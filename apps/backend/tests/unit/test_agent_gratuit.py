@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
@@ -75,7 +75,24 @@ class TestConsentement:
             "disponible": True,
             "actif": False,
             "version_warning": agent_gratuit.VERSION_WARNING,
+            "fournisseur_actuel": None,
         }
+
+    async def test_actif_expose_le_fournisseur_qui_sert_le_prochain_tour(
+        self, db_session, test_user, settings_actives, lane_zai
+    ):
+        await agent_gratuit.donner_consentement(
+            db_session, test_user.id, agent_gratuit.VERSION_WARNING
+        )
+        etat = await agent_gratuit.etat_consentement(db_session, test_user.id)
+        assert etat["actif"] is True
+        assert etat["fournisseur_actuel"] == lane_zai.label_public
+
+        # Lane desactivee : plus de fournisseur, le mode ne peut plus servir.
+        lane_zai.actif = False
+        etat = await agent_gratuit.etat_consentement(db_session, test_user.id)
+        assert etat["actif"] is True
+        assert etat["fournisseur_actuel"] is None
 
     async def test_donner_puis_retirer(self, db_session, test_user, settings_actives):
         await agent_gratuit.donner_consentement(
@@ -94,7 +111,7 @@ class TestConsentement:
             AgentGratuitConsent(
                 creator_id=str(test_user.id),
                 version="ancienne-v1",
-                consent_at=datetime.now(timezone.utc),
+                consent_at=datetime.now(UTC),
             )
         )
         await db_session.commit()
@@ -142,11 +159,9 @@ class TestChoisirLane:
     async def test_le_cooldown_expire(self, db_session, lane_zai, settings_actives):
         from datetime import date
 
-        passe = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=1)
+        passe = datetime.now(UTC).replace(tzinfo=None) - timedelta(minutes=1)
         db_session.add(
-            AgentLaneUsage(
-                id=uuid4(), lane_id=lane_zai.id, date=date.today(), cooldown_until=passe
-            )
+            AgentLaneUsage(id=uuid4(), lane_id=lane_zai.id, date=date.today(), cooldown_until=passe)
         )
         await db_session.commit()
         choisi = await agent_gratuit.choisir_lane(db_session)
@@ -161,9 +176,7 @@ class TestChoisirLane:
         await db_session.commit()
         assert await agent_gratuit.choisir_lane(db_session) is None
 
-    async def test_ordre_de_position_respecte(
-        self, db_session, lane_zai, settings_actives
-    ):
+    async def test_ordre_de_position_respecte(self, db_session, lane_zai, settings_actives):
         seconde = AgentLane(
             id=uuid4(),
             slug="autre",
@@ -191,8 +204,9 @@ class TestQuotas:
     async def test_consommer_requete_increment(self, db_session, lane_zai):
         await agent_gratuit.consommer_requete(db_session, lane_zai)
         await agent_gratuit.consommer_requete(db_session, lane_zai)
-        from sqlalchemy import select
         from datetime import date
+
+        from sqlalchemy import select
 
         row = (
             await db_session.execute(
@@ -201,9 +215,7 @@ class TestQuotas:
         ).scalar_one()
         assert row.requests_used == 2 and row.date == date.today()
 
-    async def test_quota_utilisateur_bloque_a_epuisement(
-        self, db_session, test_user, monkeypatch
-    ):
+    async def test_quota_utilisateur_bloque_a_epuisement(self, db_session, test_user, monkeypatch):
         s = get_settings()
         monkeypatch.setattr(s, "agent_gratuit_daily_quota_messages", 2)
         await agent_gratuit.consommer_message_utilisateur(db_session, test_user.id)
