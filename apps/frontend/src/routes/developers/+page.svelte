@@ -186,7 +186,7 @@
         href="https://philum-api.duckdns.org/api/v1/docs"
         target="_blank"
         rel="noopener"
-        class="text-accent hover:underline">philum-api.duckdns.org/api/v1/docs</a
+        class="text-info hover:underline">philum-api.duckdns.org/api/v1/docs</a
       >
     </p>
   </section>
@@ -233,7 +233,7 @@
         href="https://modelcontextprotocol.io"
         target="_blank"
         rel="noopener"
-        class="text-accent hover:underline">Model Context Protocol</a
+        class="text-info hover:underline">Model Context Protocol</a
       >
       : un assistant IA (Claude, Cursor, Gemini…) peut interroger les bibliographies publiées, citer ses
       sources, et construire des fiches à votre place. Deux adresses, selon ce que vous voulez faire.
@@ -246,7 +246,7 @@
           <code class="block text-sm break-all text-ink-primary mb-2">{adresse}</code>
           <button
             type="button"
-            class="text-xs text-accent hover:underline"
+            class="text-xs text-info hover:underline"
             onclick={() => copier(adresse, cle)}
           >
             {copie === cle ? 'Copie' : "Copier l'adresse"}
@@ -341,7 +341,7 @@
               href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/get-started/create-remote-tunnel/"
               target="_blank"
               rel="noopener"
-              class="text-accent hover:underline">Guide Cloudflare</a
+              class="text-info hover:underline">Guide Cloudflare</a
             >
           </li>
           <li>
@@ -351,7 +351,7 @@
               href="https://tailscale.com/kb/1223/funnel"
               target="_blank"
               rel="noopener"
-              class="text-accent hover:underline">Guide Tailscale Funnel</a
+              class="text-info hover:underline">Guide Tailscale Funnel</a
             >
           </li>
         </ul>

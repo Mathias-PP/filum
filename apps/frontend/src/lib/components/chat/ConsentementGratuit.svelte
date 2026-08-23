@@ -31,7 +31,7 @@
     role="dialog"
     aria-modal="true"
     aria-labelledby="titre-consentement"
-    class="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-lg border border-subtle bg-surface-primary p-5"
+    class="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-lg border border-border bg-surface-primary p-5"
   >
     <h2 id="titre-consentement" class="mb-2 font-serif text-lg text-ink-primary">
       Activer le mode gratuit ?
@@ -71,7 +71,7 @@
       <button
         type="button"
         disabled={!lu || enCours}
-        class="rounded bg-accent px-3 py-1.5 text-sm text-white disabled:opacity-40"
+        class="rounded bg-primary-600 px-3 py-1.5 text-sm text-white disabled:opacity-40"
         onclick={valider}
       >
         {enCours ? 'Activation…' : 'Activer le mode gratuit'}

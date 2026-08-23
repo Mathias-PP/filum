@@ -408,7 +408,9 @@
       </svg>
       On vous cite{citations.length > 0 ? ` (${citations.length})` : ''}
       {#if citationsNewCount > 0}
-        <span class="rounded-full bg-accent px-2 py-0.5 text-[0.65rem] font-semibold text-white">
+        <span
+          class="rounded-full bg-primary-600 px-2 py-0.5 text-[0.65rem] font-semibold text-white"
+        >
           {citationsNewCount} nouveau{citationsNewCount > 1 ? 'x' : ''}
         </span>
       {/if}
@@ -432,7 +434,7 @@
                 <p class="font-medium text-ink-primary">
                   {#if citation.is_new}
                     <span
-                      class="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-accent align-middle"
+                      class="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-primary-600 align-middle"
                       title="Nouveau depuis votre dernière consultation"
                     ></span>
                   {/if}

@@ -339,7 +339,7 @@
     tabindex="0"
     class="rounded-lg border border-dashed px-3 py-2 text-xs text-ink-secondary transition-colors"
     class:border-border-strong={!survol}
-    class:border-accent={survol}
+    class:border-info={survol}
     class:bg-surface-primary={survol}
     ondragover={(e) => {
       e.preventDefault();

@@ -220,14 +220,14 @@
 
   {#if meta}
     <p
-      class="rounded-lg border border-subtle bg-surface-secondary px-4 py-3 text-sm text-ink-secondary mb-6"
+      class="rounded-lg border border-border bg-surface-secondary px-4 py-3 text-sm text-ink-secondary mb-6"
     >
       {meta.data_scope}
     </p>
   {/if}
 
   {#if !loading && providers.length === 0}
-    <div class="rounded-lg border border-subtle bg-surface-secondary px-4 py-4 mb-6 text-sm">
+    <div class="rounded-lg border border-border bg-surface-secondary px-4 py-4 mb-6 text-sm">
       <p class="text-ink-primary font-medium mb-1">Vous n'avez pas encore de clé ?</p>
       <p class="text-ink-secondary">
         Philum n'héberge aucun modèle : vous branchez le vôtre, vous gardez la main sur vos données
@@ -236,7 +236,7 @@
       <ul class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-ink-secondary">
         <li>
           <a
-            class="text-accent hover:underline"
+            class="text-info hover:underline"
             href="https://console.mistral.ai"
             target="_blank"
             rel="noopener">Mistral (France)</a
@@ -244,7 +244,7 @@
         </li>
         <li>
           <a
-            class="text-accent hover:underline"
+            class="text-info hover:underline"
             href="https://aistudio.google.com/apikey"
             target="_blank"
             rel="noopener">Google AI Studio</a
@@ -252,7 +252,7 @@
         </li>
         <li>
           <a
-            class="text-accent hover:underline"
+            class="text-info hover:underline"
             href="https://console.groq.com/keys"
             target="_blank"
             rel="noopener">Groq</a
@@ -260,7 +260,7 @@
         </li>
         <li>
           <a
-            class="text-accent hover:underline"
+            class="text-info hover:underline"
             href="https://openrouter.ai/keys"
             target="_blank"
             rel="noopener">OpenRouter</a
@@ -268,7 +268,7 @@
         </li>
         <li>
           <a
-            class="text-accent hover:underline"
+            class="text-info hover:underline"
             href="https://cloud.cerebras.ai"
             target="_blank"
             rel="noopener">Cerebras</a
@@ -280,7 +280,7 @@
 
   {#if formOpen}
     <form
-      class="rounded-lg border border-subtle bg-surface-secondary p-4 mb-6 space-y-3"
+      class="rounded-lg border border-border bg-surface-secondary p-4 mb-6 space-y-3"
       onsubmit={submit}
     >
       <div class="grid gap-3 sm:grid-cols-2">
@@ -289,7 +289,7 @@
           <select
             bind:value={kind}
             disabled={editing !== null}
-            class="mt-1 w-full rounded border border-subtle bg-surface-primary px-3 py-2 disabled:opacity-50"
+            class="mt-1 w-full rounded border border-border bg-surface-primary px-3 py-2 disabled:opacity-50"
           >
             {#each kinds as k (k.value)}
               <option value={k.value}>{k.label}</option>
@@ -303,13 +303,13 @@
               bind:value={model}
               required
               placeholder="nom exact du modèle"
-              class="mt-1 w-full rounded border border-subtle bg-surface-primary px-3 py-2 font-mono"
+              class="mt-1 w-full rounded border border-border bg-surface-primary px-3 py-2 font-mono"
             />
           {:else}
             <select
               bind:value={model}
               required
-              class="mt-1 w-full rounded border border-subtle bg-surface-primary px-3 py-2 font-mono"
+              class="mt-1 w-full rounded border border-border bg-surface-primary px-3 py-2 font-mono"
             >
               <option value="" disabled>Choisir un modèle</option>
               {#each modelesProposes as m (m)}
@@ -320,13 +320,13 @@
           <div class="mt-1 flex flex-wrap gap-3 text-xs">
             <button
               type="button"
-              class="text-accent hover:underline"
+              class="text-info hover:underline"
               onclick={() => (modeleLibre = !modeleLibre)}
             >
               {modeleLibre ? 'Choisir dans la liste' : 'Saisir un autre nom'}
             </button>
             {#if editing}
-              <button type="button" class="text-accent hover:underline" onclick={chargerModeles}>
+              <button type="button" class="text-info hover:underline" onclick={chargerModeles}>
                 Lister les modèles de mon compte
               </button>
             {/if}
@@ -342,7 +342,7 @@
           type="password"
           autocomplete="off"
           placeholder={kind === 'custom' ? 'ollama (ou toute valeur non vide)' : 'sk-…'}
-          class="mt-1 w-full rounded border border-subtle bg-surface-primary px-3 py-2 font-mono"
+          class="mt-1 w-full rounded border border-border bg-surface-primary px-3 py-2 font-mono"
         />
         {#if editing}
           <span class="mt-1 block text-xs text-ink-tertiary">
@@ -358,7 +358,7 @@
             bind:value={baseUrl}
             required={kind === 'custom' && !editing}
             placeholder="https://mon-serveur.example/v1"
-            class="mt-1 w-full rounded border border-subtle bg-surface-primary px-3 py-2"
+            class="mt-1 w-full rounded border border-border bg-surface-primary px-3 py-2"
           />
         </label>
       {/if}
@@ -367,7 +367,7 @@
         <span class="text-ink-secondary">Nom affiché (optionnel)</span>
         <input
           bind:value={displayName}
-          class="mt-1 w-full rounded border border-subtle bg-surface-primary px-3 py-2"
+          class="mt-1 w-full rounded border border-border bg-surface-primary px-3 py-2"
         />
       </label>
 
@@ -409,7 +409,7 @@
     {/if}
     <ul class="space-y-3">
       {#each providers as provider (provider.id)}
-        <li class="rounded-lg border border-subtle bg-surface-secondary px-4 py-3">
+        <li class="rounded-lg border border-border bg-surface-secondary px-4 py-3">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div class="min-w-0">
               <p class="font-medium text-ink-primary">

@@ -284,7 +284,7 @@
       {#if chargementArbre}
         <p class="p-2 text-sm text-ink-tertiary">Chargement…</p>
       {:else if sections.length === 0}
-        <div class="rounded-lg border border-subtle bg-surface-secondary p-4">
+        <div class="rounded-lg border border-border bg-surface-secondary p-4">
           <p class="text-sm font-medium text-ink-primary">Aucun fichier de configuration</p>
           <p class="mt-1 text-sm text-ink-secondary">
             Philum fournit un jeu de fichiers prêts à l'emploi : règles de rédaction, garde-fous,
@@ -297,7 +297,7 @@
         </div>
       {:else}
         {#each sections as section (section.slug)}
-          <div class="rounded-lg border border-subtle bg-surface-secondary p-3">
+          <div class="rounded-lg border border-border bg-surface-secondary p-3">
             <h2 class="text-xs font-medium uppercase tracking-wider text-ink-tertiary">
               {section.titre}
             </h2>
@@ -383,7 +383,7 @@
       {/if}
     </aside>
 
-    <section class="rounded-lg border border-subtle bg-surface-primary p-3">
+    <section class="rounded-lg border border-border bg-surface-primary p-3">
       {#if !cheminActif}
         <p class="text-sm text-ink-tertiary">Choisissez un fichier à gauche pour l'éditer.</p>
       {:else if chargementFichier}
@@ -401,7 +401,7 @@
         <textarea
           bind:value={contenu}
           spellcheck="false"
-          class="min-h-[24rem] w-full resize-y rounded border border-subtle bg-surface-primary p-3 font-mono text-sm text-ink-primary"
+          class="min-h-[24rem] w-full resize-y rounded border border-border bg-surface-primary p-3 font-mono text-sm text-ink-primary"
         ></textarea>
         {#if messageErr}
           <p class="mt-2 text-xs text-danger">{messageErr}</p>
@@ -417,7 +417,7 @@
     role="dialog"
     aria-modal="true"
   >
-    <div class="w-full max-w-md rounded-lg border border-subtle bg-surface-primary p-4 shadow-lg">
+    <div class="w-full max-w-md rounded-lg border border-border bg-surface-primary p-4 shadow-lg">
       <h2 class="mb-2 font-serif text-lg text-ink-primary">Nouveau fichier</h2>
       <p class="mb-3 text-xs text-ink-tertiary">
         Chemin relatif au workspace (ex. <code>shared/style.md</code>). Le fichier est créé vide.
@@ -431,7 +431,7 @@
         <!-- svelte-ignore a11y_autofocus -->
         <input
           bind:value={nouveauChemin}
-          class="w-full rounded border border-subtle bg-surface-secondary px-3 py-2 font-mono text-sm"
+          class="w-full rounded border border-border bg-surface-secondary px-3 py-2 font-mono text-sm"
           placeholder="shared/mon-fichier.md"
           autofocus
         />

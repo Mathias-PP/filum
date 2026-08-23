@@ -49,14 +49,14 @@
         </ul>
       {/if}
     {:else if bloc.t === 'citation'}
-      <blockquote class="border-l-2 border-subtle pl-3 text-ink-secondary italic">
+      <blockquote class="border-l-2 border-border pl-3 text-ink-secondary italic">
         {#each bloc.segments as s}{@render segment(s)}{/each}
       </blockquote>
     {:else if bloc.t === 'code'}
       <pre
         class="overflow-x-auto rounded bg-surface-tertiary p-2 font-mono text-xs text-ink-secondary">{bloc.texte}</pre>
     {:else if bloc.t === 'separateur'}
-      <hr class="border-subtle" />
+      <hr class="border-border" />
     {/if}
   {/each}
 </div>

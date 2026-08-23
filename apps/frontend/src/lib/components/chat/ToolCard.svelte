@@ -52,7 +52,7 @@
   });
 </script>
 
-<div class="rounded-lg border border-subtle bg-surface-secondary px-3 py-2 text-sm">
+<div class="rounded-lg border border-border bg-surface-secondary px-3 py-2 text-sm">
   <button
     type="button"
     class="flex w-full items-center justify-between gap-2 text-left"
@@ -70,7 +70,7 @@
     <p class="mt-1 text-xs text-danger">{raison}</p>
   {/if}
   {#if extrait}
-    <blockquote class="mt-2 border-l-2 border-subtle pl-2 text-xs text-ink-secondary italic">
+    <blockquote class="mt-2 border-l-2 border-border pl-2 text-xs text-ink-secondary italic">
       {extrait.texte}
     </blockquote>
     {#if verdict}
