@@ -288,9 +288,13 @@ export const agentApi = {
    * consentement versionné au traitement des données par le fournisseur. */
   gratuit: {
     etat: () =>
-      request<{ disponible: boolean; actif: boolean; version_warning: string }>(
-        '/agent/mode-gratuit'
-      ),
+      request<{
+        disponible: boolean;
+        actif: boolean;
+        version_warning: string;
+        /** Nom public du fournisseur qui sert le mode actif, null sinon. */
+        fournisseur_actuel: string | null;
+      }>('/agent/mode-gratuit'),
     activer: (version: string) =>
       request<{ actif: boolean; version_warning: string }>('/agent/mode-gratuit', {
         method: 'PUT',

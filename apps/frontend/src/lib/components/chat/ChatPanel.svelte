@@ -39,9 +39,12 @@
   let banniereMode = $state<'decouverte' | 'gratuit'>('decouverte');
 
   // Mode gratuit : lanes serveur sans clé, derrière consentement versionné.
-  let gratuit = $state<{ disponible: boolean; actif: boolean; version_warning: string } | null>(
-    null
-  );
+  let gratuit = $state<{
+    disponible: boolean;
+    actif: boolean;
+    version_warning: string;
+    fournisseur_actuel: string | null;
+  } | null>(null);
   let consentOuvert = $state(false);
   const gratuitActif = $derived(gratuit?.actif ?? false);
 
@@ -283,7 +286,10 @@
     consentOuvert = false;
     try {
       await agentApi.gratuit.activer(version);
-      gratuit = { ...(gratuit ?? { disponible: true, version_warning: version }), actif: true };
+      gratuit = {
+        ...(gratuit ?? { disponible: true, version_warning: version, fournisseur_actuel: null }),
+        actif: true,
+      };
       toast.info('Mode gratuit activé. Vous pouvez désactiver à tout moment.');
     } catch (e) {
       toast.danger(e instanceof ApiError ? e.message : 'Activation impossible.');
@@ -487,20 +493,22 @@
         </label>
       {/if}
       {#if gratuitActif}
-        <!-- Mode gratuit actif : la lane serveur choisit provider et modele,
-             les selects de cle sont masques pour ne pas suggerer qu'ils comptent. -->
+        <!-- Mode gratuit actif : la lane serveur choisit provider et modele.
+             Les selects sont remplaces par ce libelle pour ne pas suggerer
+             que la cle et le modele affiches ailleurs comptent encore. -->
         <span
-          class="flex items-center gap-1.5 rounded border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-200"
+          class="flex items-center gap-1.5 rounded border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-200"
         >
-          Mode gratuit
+          Mode gratuit{gratuit?.fournisseur_actuel ? ` · ${gratuit.fournisseur_actuel}` : ''}
         </span>
         <button
           type="button"
-          class="text-xs text-ink-tertiary underline hover:text-ink-primary"
+          class="rounded border border-border bg-surface-primary px-2 py-1 text-xs text-ink-secondary hover:border-danger hover:text-danger disabled:opacity-50"
           onclick={desactiverGratuit}
           disabled={enCours}
+          title="Revenir à votre clé personnelle pour les nouveaux messages"
         >
-          Désactiver
+          Quitter le mode gratuit
         </button>
       {:else}
         {#if cles.length > 0}

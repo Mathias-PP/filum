@@ -3,15 +3,12 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date
-from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
-from app.models.agent_discovery_quota import AgentDiscoveryQuota
 from app.services.agent_discovery import (
     ErreurQuota,
     consommer_message,
