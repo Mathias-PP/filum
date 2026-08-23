@@ -116,3 +116,107 @@ class TestApprobations:
         request_id = str(uuid4())
         await agent_approvals.attendre(request_id, uuid4(), delai=0.05)
         assert request_id not in agent_approvals._EN_ATTENTE
+
+
+def _systeme(taille: int = 40) -> dict:
+    return {"role": "system", "content": "S" * taille}
+
+
+def _user(n: int, taille: int = 400) -> dict:
+    return {"role": "user", "content": f"{n}:" + "u" * taille}
+
+
+def _paire_outil(n: int, taille: int = 400) -> list[dict]:
+    """Un assistant qui appelle un outil, suivi de la reponse de l'outil."""
+    return [
+        {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [
+                {
+                    "id": f"call_{n}",
+                    "type": "function",
+                    "function": {"name": "list_my_cards", "arguments": "{}"},
+                }
+            ],
+        },
+        {
+            "role": "tool",
+            "tool_call_id": f"call_{n}",
+            "name": "list_my_cards",
+            "content": "r" * taille,
+        },
+    ]
+
+
+class TestCompaction:
+    def test_historique_sous_le_budget_reste_intact(self):
+        messages = [_systeme(), _user(1), {"role": "assistant", "content": "ok"}]
+        compacte, retires = agent_sessions.compacter(messages, 10_000)
+        assert retires == 0
+        assert compacte is messages
+
+    def test_les_plus_anciens_partent_en_premier(self):
+        messages = [_systeme(), *[_user(i) for i in range(1, 21)]]
+        compacte, retires = agent_sessions.compacter(messages, 400)
+        assert retires > 0
+        # Le dernier message survit toujours, le premier du corps disparait.
+        assert compacte[-1] == messages[-1]
+        assert messages[1] not in compacte
+        assert agent_sessions.taille_historique(compacte) <= 400
+
+    def test_le_prompt_systeme_de_tete_est_conserve(self):
+        systeme = _systeme(2_000)
+        messages = [systeme, *[_user(i) for i in range(1, 21)]]
+        compacte, retires = agent_sessions.compacter(messages, 700)
+        assert retires > 0
+        assert compacte[0] is systeme
+
+    def test_une_paire_assistant_outil_n_est_jamais_separee(self):
+        messages = [_systeme()]
+        for i in range(1, 11):
+            messages.extend(_paire_outil(i))
+        compacte, retires = agent_sessions.compacter(messages, 500)
+        assert retires > 0
+        corps = [m for m in compacte if m.get("role") in ("assistant", "tool")]
+        ids_assistant = {tc["id"] for m in corps if m.get("tool_calls") for tc in m["tool_calls"]}
+        ids_tool = {m["tool_call_id"] for m in corps if m.get("role") == "tool"}
+        assert ids_tool <= ids_assistant, "un message tool a survecu sans son assistant"
+
+    def test_un_message_de_synthese_remplace_le_troncon(self):
+        messages = [_systeme(), *[_user(i) for i in range(1, 21)]]
+        compacte, retires = agent_sessions.compacter(messages, 400)
+        synthese = compacte[1]
+        assert synthese["role"] == "system"
+        assert str(retires) in synthese["content"]
+        assert "demandez-le au créateur" in synthese["content"]
+
+    def test_le_dernier_bloc_survit_meme_seul_trop_gros(self):
+        messages = [_systeme(), _user(1), _user(2, taille=40_000)]
+        compacte, retires = agent_sessions.compacter(messages, 100)
+        assert retires == 1
+        assert compacte[-1] == messages[-1]
+
+    def test_un_corps_d_un_seul_bloc_n_est_pas_coupe(self):
+        messages = [_systeme(), _user(1, taille=40_000)]
+        compacte, retires = agent_sessions.compacter(messages, 100)
+        assert retires == 0
+        assert compacte is messages
+
+    def test_les_arguments_d_outil_comptent_dans_la_taille(self):
+        nu = {"role": "assistant", "content": None}
+        charge = {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [
+                {
+                    "id": "call_1",
+                    "type": "function",
+                    "function": {"name": "add_source", "arguments": "x" * 4_000},
+                }
+            ],
+        }
+        assert (
+            agent_sessions.taille_historique([charge])
+            > agent_sessions.taille_historique([nu]) + 900
+        )

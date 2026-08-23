@@ -205,6 +205,22 @@ describe('rehydratation d’une session persistée', () => {
     });
   });
 
+  it('marque la coupure quand le contexte est compacte', () => {
+    const items = replier([
+      { type: 'message_delta', payload: { delta: 'Bonjour.', tour: 1 } },
+      { type: 'contexte_compacte', payload: { messages_retires: 12 } },
+    ]);
+    expect(items[1]).toEqual({ kind: 'compaction', retires: 12 });
+  });
+
+  it('ne pose qu’une seule marque quand la compaction est rejouee', () => {
+    const items = replier([
+      { type: 'contexte_compacte', payload: { messages_retires: 4 } },
+      { type: 'contexte_compacte', payload: { messages_retires: 30 } },
+    ]);
+    expect(items).toEqual([{ kind: 'compaction', retires: 30 }]);
+  });
+
   it('ne fabrique pas de bulle vide pour un assistant sans texte ni outil', () => {
     expect(depuisMessages([message({ role: 'assistant', content: '' })])).toEqual([]);
   });

@@ -28,7 +28,8 @@ export type ChatItem =
       resume?: string;
       approved: boolean | null;
     }
-  | { kind: 'error'; text: string };
+  | { kind: 'error'; text: string }
+  | { kind: 'compaction'; retires: number };
 
 /** Rend une nouvelle liste : jamais de mutation, pour que Svelte voie le changement. */
 export function appliquer(items: ChatItem[], event: AgentEvent): ChatItem[] {
@@ -95,6 +96,19 @@ export function appliquer(items: ChatItem[], event: AgentEvent): ChatItem[] {
       if (cible < 0) return items;
       const item = items[cible] as Extract<ChatItem, { kind: 'approval' }>;
       return remplacer(items, cible, { ...item, approved: event.payload.approved });
+    }
+
+    case 'contexte_compacte': {
+      // Une seule marque par tour : le rejeu après refus du fournisseur peut
+      // rejouer l'événement, deux séparateurs collés ne diraient rien de plus.
+      const dernier = items[items.length - 1];
+      if (dernier?.kind === 'compaction') {
+        return [
+          ...items.slice(0, -1),
+          { kind: 'compaction', retires: event.payload.messages_retires },
+        ];
+      }
+      return [...items, { kind: 'compaction', retires: event.payload.messages_retires }];
     }
 
     case 'discovery_active':

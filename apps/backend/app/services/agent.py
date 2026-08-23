@@ -43,6 +43,7 @@ from app.models.user import User
 from app.models.workspace_file import WorkspaceFile
 from app.services.agent_definitions import AgentDefinition
 from app.services.agent_providers import _decrypt
+from app.services.agent_sessions import BUDGET_APRES_REFUS, BUDGET_HISTORIQUE, compacter
 from app.services.llm_adapters import (
     format_chat_payload,
     parse_sse_stream_anthropic,
@@ -86,6 +87,26 @@ _SYSTEME = (
 
 #: Taille max du contexte workspace injecté dans le prompt système.
 _PRIMING_MAX = 40_000
+
+#: Marqueurs d'un refus pour fenêtre de contexte saturée. La boucle de chat ne
+#: passe pas par les cadrages de ``agent_providers`` : elle rend le message brut
+#: du fournisseur, donc en anglais. Chacun de ces fragments a été relevé dans
+#: une réponse réelle (OpenAI, Anthropic, Google, Mistral, llama.cpp).
+_MARQUEURS_CONTEXTE_SATURE = (
+    "context_length_exceeded",
+    "maximum context length",
+    "context window",
+    "context length",
+    "too many tokens",
+    "prompt is too long",
+    "reduce the length of the messages",
+)
+
+
+def _est_contexte_sature(erreur: str) -> bool:
+    """L'erreur du fournisseur dit-elle que la fenêtre de contexte a débordé ?"""
+    minuscule = erreur.lower()
+    return any(marqueur in minuscule for marqueur in _MARQUEURS_CONTEXTE_SATURE)
 
 
 async def _priming_workspace(
@@ -919,6 +940,18 @@ async def boucle(
     if agent_def is not None:
         systeme += f"\n\n---\n## Ton rôle : {agent_def.name}\n{agent_def.system_prompt.strip()}\n"
     messages.insert(0, {"role": "system", "content": systeme + workspace_ctx})
+
+    # Compaction préventive, prompt système et contexte workspace compris : ce
+    # sont eux qui pèsent le plus lourd au départ d'une session.
+    compactes, retires = compacter(messages, BUDGET_HISTORIQUE)
+    # Compteur du seul rejeu réactif : la passe préventive ci-dessus ne doit pas
+    # le consommer, sinon un refus survenant plus tard dans la même session ne
+    # serait plus rattrapé.
+    rejeu_fait = False
+    if retires:
+        messages[:] = compactes
+        await emit({"type": "contexte_compacte", "payload": {"messages_retires": retires}})
+
     usage_total: dict[str, int] = {"prompt_tokens": 0, "completion_tokens": 0}
     try:
         for tour in range(1, MAX_TOURS + 1):
@@ -930,6 +963,22 @@ async def boucle(
                 provider, messages, outils_api, transport, on_delta=_on_delta, modele=modele
             )
             if isinstance(reponse, str):
+                # Le budget préventif est un pari : le fournisseur, lui, connaît
+                # sa fenêtre. Quand il refuse pour cette raison, on le croit et
+                # on retente une fois, beaucoup plus bas. Une seule fois : deux
+                # refus de suite ne viennent plus de la taille.
+                if not rejeu_fait and _est_contexte_sature(reponse):
+                    reduits, retires = compacter(messages, BUDGET_APRES_REFUS)
+                    rejeu_fait = True
+                    if retires:
+                        messages[:] = reduits
+                        await emit(
+                            {
+                                "type": "contexte_compacte",
+                                "payload": {"messages_retires": retires},
+                            }
+                        )
+                        continue
                 await emit({"type": "error", "payload": {"message": reponse}})
                 return
             message, finish_reason, usage = reponse

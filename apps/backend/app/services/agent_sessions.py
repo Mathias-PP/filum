@@ -7,6 +7,7 @@ tiers qu'elle existe.
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -19,9 +20,118 @@ from app.models.agent_session import AgentMessage, AgentSession
 #: Longueur du titre dérivé du premier message.
 TITRE_MAX = 80
 
+#: Budget laissé à l'historique avant l'appel. Aucune table de fenêtres par
+#: modèle : elle vieillirait plus vite qu'on ne la relit, et se tromper d'un
+#: facteur deux coûte exactement ce qu'on cherche à éviter. 96 000 tient dans
+#: les 128 000 devenus courants tout en laissant place au prompt système, au
+#: contexte du workspace et à la réponse.
+BUDGET_HISTORIQUE = 96_000
+
+#: Budget de repli après un refus explicite du fournisseur pour cause de
+#: fenêtre saturée. Assez petit pour passer chez un modèle local à 8 000, ce
+#: qui évite d'avoir à connaître sa fenêtre à l'avance.
+BUDGET_APRES_REFUS = 6_000
+
 
 class AgentSessionNotFoundError(LookupError):
     """Aucune session de ce créateur sous cet identifiant."""
+
+
+def _taille(message: dict[str, Any]) -> int:
+    """Coût approximatif d'un message, en tokens.
+
+    Quatre caractères pour un token : la moyenne des tokeniseurs BPE sur du
+    texte occidental. On sérialise le message entier plutôt que son seul
+    ``content``, sinon les arguments d'appels d'outils, souvent les plus longs,
+    ne compteraient pour rien. Huit tokens de marge couvrent l'encadrement de
+    rôle que le protocole ajoute autour de chaque message.
+    """
+    try:
+        brut = json.dumps(message, ensure_ascii=False, default=str)
+    except (TypeError, ValueError):
+        brut = str(message)
+    return len(brut) // 4 + 8
+
+
+def taille_historique(messages: list[dict[str, Any]]) -> int:
+    """Coût approximatif d'un historique entier, en tokens."""
+    return sum(_taille(m) for m in messages)
+
+
+def _debuts_de_blocs(messages: list[dict[str, Any]]) -> list[int]:
+    """Indices auxquels on peut couper sans casser une paire d'outil.
+
+    Un message ``tool`` détaché de l'``assistant`` qui l'a demandé est rejeté
+    par tous les fournisseurs. Un assistant porteur de ``tool_calls`` et les
+    ``tool`` qui lui répondent forment donc un bloc indivisible.
+    """
+    debuts: list[int] = []
+    i = 0
+    n = len(messages)
+    while i < n:
+        debuts.append(i)
+        if messages[i].get("role") == "assistant" and messages[i].get("tool_calls"):
+            j = i + 1
+            while j < n and messages[j].get("role") == "tool":
+                j += 1
+            i = j
+        else:
+            i += 1
+    return debuts
+
+
+def _message_synthese(retires: int) -> dict[str, Any]:
+    """Le message qui remplace le tronçon retiré.
+
+    Il dit au modèle qu'il lui manque quelque chose. Sans lui, le modèle
+    comblerait le trou par déduction, ce qui est exactement la fabrication
+    qu'on cherche à empêcher partout ailleurs.
+    """
+    return {
+        "role": "system",
+        "content": (
+            f"[{retires} message(s) plus anciens de cette conversation ont été retirés "
+            "pour tenir dans la fenêtre du modèle. Si un élément de ce début vous "
+            "manque, demandez-le au créateur plutôt que de le supposer.]"
+        ),
+    }
+
+
+def compacter(
+    messages: list[dict[str, Any]], budget_tokens: int
+) -> tuple[list[dict[str, Any]], int]:
+    """Ramène l'historique sous ``budget_tokens``, du plus ancien au plus récent.
+
+    Les ``system`` de tête sont gardés : ils portent le prompt et le contexte du
+    workspace, les retirer changerait le comportement de l'agent plutôt que sa
+    mémoire. Le dernier bloc est gardé aussi, même s'il dépasse à lui seul :
+    couper la demande en cours rendrait la réponse absurde, là où le
+    dépassement, lui, reste explicable à l'utilisateur.
+
+    Rend la liste compactée et le nombre de messages retirés, 0 si rien.
+    """
+    if taille_historique(messages) <= budget_tokens:
+        return messages, 0
+
+    tete = 0
+    while tete < len(messages) and messages[tete].get("role") == "system":
+        tete += 1
+    systeme, corps = messages[:tete], messages[tete:]
+
+    # Un ``tool`` en tête de bloc trahit un historique déjà bancal (lignes
+    # anciennes, flux SSE interrompu) : couper là fabriquerait précisément
+    # l'orphelin qu'on veut éviter.
+    coupes = [i for i in _debuts_de_blocs(corps)[1:] if corps[i].get("role") != "tool"]
+    if not coupes:
+        return messages, 0
+
+    for coupe in coupes:
+        reste = [*systeme, _message_synthese(coupe), *corps[coupe:]]
+        if taille_historique(reste) <= budget_tokens:
+            return reste, coupe
+
+    coupe = coupes[-1]
+    return [*systeme, _message_synthese(coupe), *corps[coupe:]], coupe
 
 
 def titre_depuis_message(message: str) -> str:
