@@ -102,7 +102,7 @@ def upgrade() -> None:
                 "label_public": "GLM · Z.ai",
                 "provider_kind": "custom",
                 "base_url": "https://api.z.ai/api/paas/v4",
-                "model": "glm-5.2",
+                "model": "glm-4.7-flash",
                 "rpm_cap": 3,
                 "rpd_cap": 900,
                 "actif": True,

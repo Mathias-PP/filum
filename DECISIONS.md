@@ -10,7 +10,7 @@
 
 **Date :** 2026-08-23
 
-**Contexte :** L'agent conversationnel exigeait une cle API personnelle (BYOK), ce qui bloque tout essai avant inscription chez un fournisseur. Le mode decouverte existant (#533) est un fallback passif : il ne s'active qu'en l'absence de provider par defaut et n'est pas active en production (aucune variable `AGENT_DISCOVERY_*` dans le conteneur au 2026-08-23). Il faut un mode gratuit **choisi explicitement**, avec rotation de fournisseurs cote serveur pour tenir sous les quotas gratuits (Z.ai/GLM d'abord : glm-5.2, ~3 req/min, ~900 req/jour par IP).
+**Contexte :** L'agent conversationnel exigeait une cle API personnelle (BYOK), ce qui bloque tout essai avant inscription chez un fournisseur. Le mode decouverte existant (#533) est un fallback passif : il ne s'active qu'en l'absence de provider par defaut et n'est pas active en production (aucune variable `AGENT_DISCOVERY_*` dans le conteneur au 2026-08-23). Il faut un mode gratuit **choisi explicitement**, avec rotation de fournisseurs cote serveur pour tenir sous les quotas gratuits (Z.ai/GLM d'abord : glm-4.7-flash (offre gratuite, 1 req/s), ~3 req/min, ~900 req/jour par IP).
 
 **Decision :**
 
