@@ -11,6 +11,11 @@
   let cible = $state<AgentSession | null>(null);
   let titreNouveau = $state('');
 
+  // Le mode gratuit n'existe pas sur toutes les instances : sans lane
+  // configuree, promettre « activez-le ci-dessous » designerait un bouton
+  // absent.
+  let gratuitDisponible = $state(false);
+
   const defaut = $derived(providers.find((p) => p.is_default) ?? null);
 
   onMount(async () => {
@@ -20,6 +25,10 @@
     ]);
     sessions = s;
     providers = p;
+    agentApi.gratuit
+      .etat()
+      .then((v) => (gratuitDisponible = v.disponible))
+      .catch(() => null);
   });
 
   async function supprimer() {
@@ -91,9 +100,15 @@
            nouvel arrivant, puisque le bouton d'activation du mode gratuit vit
            dans le chat lui-même. -->
       <p class="text-sm text-ink-secondary mb-4">
-        Aucune clé par défaut. Activez le mode gratuit ci-dessous pour essayer sans clé, ou
-        <a href="/dashboard/agents" class="text-accent hover:underline">enregistrez la vôtre</a>
-        pour choisir votre modèle et lever les quotas.
+        {#if gratuitDisponible}
+          Aucune clé par défaut. Essayez sans clé avec le bouton « Mode gratuit » ci-dessous, ou
+          <a href="/dashboard/agents" class="text-accent hover:underline">enregistrez la vôtre</a>
+          pour choisir votre modèle et lever les quotas.
+        {:else}
+          Aucune clé par défaut.
+          <a href="/dashboard/agents" class="text-accent hover:underline">Enregistrez-en une</a>
+          pour choisir votre modèle et votre fournisseur.
+        {/if}
       </p>
     {/if}
     <div class="mb-3">
