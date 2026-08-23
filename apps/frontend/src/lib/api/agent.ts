@@ -303,6 +303,23 @@ export const agentApi = {
         body: JSON.stringify({ version }),
       }),
     desactiver: () => request<{ actif: boolean }>('/agent/mode-gratuit', { method: 'DELETE' }),
+    /** Catalogue des modèles gratuits, avec leur rôle primaire/secours. */
+    modeles: () =>
+      request<{
+        modeles: Array<{
+          model: string;
+          label: string;
+          role: 'primaire' | 'secours';
+          actif: boolean;
+          slug: string | null;
+        }>;
+      }>('/agent/mode-gratuit/modeles'),
+    /** Pointe la lane primaire sur un modèle du catalogue (toute l'instance). */
+    definirModele: (model: string) =>
+      request<{ model: string; label: string; slug: string }>('/agent/mode-gratuit/modele', {
+        method: 'PUT',
+        body: JSON.stringify({ model }),
+      }),
     /** Ping la lane active sans consommer de quota : même chemin d'appel que le chat. */
     tester: () =>
       request<{

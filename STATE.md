@@ -6,6 +6,17 @@
 
 ---
 
+## Session 2026-08-23 (suite) : rotation automatique inter-modèles + choix manuel du gratuit
+
+**Branche `feat/gratuit-rotation-auto-modeles`** (suite de #552, même jour). Constat : le tier gratuit `glm-4.7-flash` sature aux heures de pointe (429/1305 en continu l'après-midi), alors que `glm-4.5-flash` répond.
+
+- **Lane de secours** (**migration `052_lane_zai_secours`**) : seconde lane `zai-alt` sur `glm-4.5-flash`, même clé settings (`cle_lane` résout désormais tout slug `zai*`). La rotation existante (cooldown 10 min sur échec fournisseur, #552) bascule les tours suivants sur le secours sans intervention.
+- **Choix manuel** : catalogue `MODELES_GRATUITS` dans `agent_gratuit.py` (uniquement des modèles gratuits — jamais un payant sur la clé), endpoints `GET /agent/mode-gratuit/modeles` et `PUT /agent/mode-gratuit/modele` (pointe la lane primaire `zai`, refuse hors catalogue), dropdown « Modèle » dans la barre du chat quand le mode est actif.
+- **Prod** : lane primaire basculée à chaud sur `glm-4.5-flash` le 2026-08-23 soir (SQL direct, effet immédiat) ; la migration ajoutera le secours au prochain déploiement.
+- Vérifié localement : 37 tests verts (fichiers touchés), openapi sync OK, ruff/mypy OK, frontend lint/check/vitest 239 OK.
+
+---
+
 ## Session 2026-08-23 : mode gratuit de l'agent (lanes serveur, Z.ai d'abord)
 
 **Branche `feat/mode-gratuit-rotation-zai`** (décision ADR-034). Objectif : utiliser l'agent **sans aucune clé API**, derrière un consentement explicite au traitement des données, avec rotation de fournisseurs gratuits côté serveur pour tenir sous les quotas.

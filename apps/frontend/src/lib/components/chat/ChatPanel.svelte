@@ -52,6 +52,9 @@
   // 'idle' avant, 'testing' pendant, 'ok'/'ko' après avec le détail renvoyé.
   let etatTestGratuit = $state<'idle' | 'testing' | 'ok' | 'ko'>('idle');
   let messageTestGratuit = $state('');
+  // Catalogue des modèles gratuits (primaire + secours) et choix en cours.
+  let modelesGratuit = $state<Array<{ model: string; label: string; role: string }>>([]);
+  let modelePrimaire = $state('');
 
   // Selectors provider + modele
   let cles = $state<AgentProvider[]>([]);
@@ -335,6 +338,21 @@
     }
   }
 
+  async function changerModeleGratuit() {
+    if (!modelePrimaire) return;
+    try {
+      const r = await agentApi.gratuit.definirModele(modelePrimaire);
+      if (gratuit) gratuit = { ...gratuit, modele_actuel: r.model };
+      modelesGratuit = modelesGratuit.map((m) => ({
+        ...m,
+        role: m.model === r.model ? 'primaire' : 'secours',
+      }));
+      toast.info(`Modèle gratuit : ${r.label}. L'ancien reste en secours (rotation auto).`);
+    } catch (e) {
+      toast.danger(e instanceof ApiError ? e.message : 'Changement impossible.');
+    }
+  }
+
   const libelleTest = $derived(
     etatTest === 'testing'
       ? 'Test…'
@@ -371,7 +389,14 @@
     // endpoint absent, on ignore silencieusement).
     agentApi.gratuit
       .etat()
-      .then((v) => (gratuit = v))
+      .then((v) => {
+        gratuit = v;
+        modelePrimaire = v.modele_actuel ?? '';
+      })
+      .catch(() => null);
+    agentApi.gratuit
+      .modeles()
+      .then((r) => (modelesGratuit = r.modeles))
       .catch(() => null);
     // Restauration : d'abord la clé enregistrée sur la session, sinon la clé
     // par défaut du créateur.
@@ -521,16 +546,36 @@
         </label>
       {/if}
       {#if gratuitActif}
-        <!-- Mode gratuit actif : la lane serveur choisit provider et modele.
-             Les selects sont remplaces par ce libelle pour ne pas suggerer
-             que la cle et le modele affiches ailleurs comptent encore. -->
+        <!-- Mode gratuit actif : la lane serveur porte la cle ; le modele
+             primaire se choisit dans le catalogue gratuit, le secours prend
+             le relais automatiquement quand le primaire sature. -->
         <span
           class="flex items-center gap-1.5 rounded border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-200"
         >
-          Mode gratuit{gratuit?.fournisseur_actuel
-            ? ` · ${gratuit.fournisseur_actuel}`
-            : ''}{gratuit?.modele_actuel ? ` · ${gratuit.modele_actuel}` : ''}
+          Mode gratuit{gratuit?.fournisseur_actuel ? ` · ${gratuit.fournisseur_actuel}` : ''}
         </span>
+        {#if modelesGratuit.length > 0}
+          <label class="flex items-center gap-1.5">
+            <span class="text-xs text-ink-tertiary">Modèle</span>
+            <select
+              bind:value={modelePrimaire}
+              onchange={changerModeleGratuit}
+              disabled={enCours}
+              class="rounded border border-border bg-surface-primary px-2 py-1 text-xs"
+              title="Modèle principal du mode gratuit pour toute l'instance ; l'autre modèle du catalogue sert de secours en cas de surcharge"
+            >
+              {#each modelesGratuit as m (m.model)}
+                <option value={m.model}>
+                  {m.label}{m.role === 'secours' ? ' (secours)' : ''}
+                </option>
+              {/each}
+            </select>
+          </label>
+        {:else if gratuit?.modele_actuel}
+          <span class="text-xs text-ink-tertiary" title="Modèle qui sert les messages">
+            {gratuit.modele_actuel}
+          </span>
+        {/if}
         <button
           type="button"
           class="rounded border border-border bg-surface-primary px-2 py-1 text-xs hover:border-primary-600 hover:text-primary-700 disabled:opacity-50 dark:hover:border-primary-400 dark:hover:text-primary-300"
