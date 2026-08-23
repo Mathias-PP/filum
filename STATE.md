@@ -2,7 +2,19 @@
 
 > Snapshot vivant, 1 page max. **Pour l'historique détaillé** : voir [`CHANGELOG.md`](./CHANGELOG.md). **Pour les items long terme** : voir [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md).
 
-**Dernière mise à jour : 2026-08-21**
+**Dernière mise à jour : 2026-08-23**
+
+---
+
+## Session 2026-08-23 : mode gratuit de l'agent (lanes serveur, Z.ai d'abord)
+
+**Branche `feat/mode-gratuit-rotation-zai`** (décision ADR-034). Objectif : utiliser l'agent **sans aucune clé API**, derrière un consentement explicite au traitement des données, avec rotation de fournisseurs gratuits côté serveur pour tenir sous les quotas.
+
+- **Backend** : tables `agent_lanes` / `agent_lane_usage` / `agent_gratuit_consents` (**migration 050**, seed lane zai = `glm-5.2` sur `https://api.z.ai/api/paas/v4`). Les clés ne vivent jamais en base : résolues depuis les settings `agent_gratuit_<slug>_api_key`. Service `agent_gratuit.py` (consentement versionné `2026-08-23-v1`, sélection de lane, cooldown 10 min sur rate-limit, quotas lane + utilisateur), endpoints GET/PUT/DELETE `/agent/mode-gratuit`, intégration dans le chat SSE (ordre de résolution : provider explicite > gratuit > défaut > découverte) avec événement dédié `gratuit_actif`.
+- **Frontend** : modal de consentement (`ConsentementGratuit.svelte`), bouton « Mode gratuit… » dans la barre du chat quand disponible, chip émeraude « Mode gratuit » + désactivation quand actif (les sélecteurs clé/modèle se masquent), bannière commune découverte/gratuit avec notice de rétention.
+- **Inertie par défaut** : sans `AGENT_GRATUIT_ENABLED=true` + `AGENT_GRATUIT_ZAI_API_KEY=...` en env, tout est inactif (`disponible=false`, aucun appel sortant). **Pas encore déployé ni activé en prod.**
+- **Constat prod au passage** : le mode découverte (#533) est déployé mais **inactif** (aucune var `AGENT_DISCOVERY_*` dans le conteneur).
+- Vérifié localement : 22 tests nouveaux verts, suite backend complète 1755 passed, ruff/format/mypy OK, openapi.json régénéré, frontend lint/test/check/build OK.
 
 ---
 

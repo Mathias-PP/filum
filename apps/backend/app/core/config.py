@@ -96,6 +96,15 @@ class Settings(BaseSettings):
     agent_discovery_provider: str = "deepseek"
     agent_discovery_model: str = "deepseek-chat"
     agent_discovery_api_key: str = ""
+
+    # Mode gratuit (rotation de lanes serveur, Z.ai pour commencer) : contrairement
+    # au mode decouverte il exige un consentement explicite de l'utilisateur, car
+    # les fournisseurs gratuits peuvent conserver les echanges et les utiliser
+    # pour entrainer leurs modeles. Les cles vivent dans l'environnement, jamais
+    # en base ; une lane dont la cle est absente est ignoree par le routeur.
+    agent_gratuit_enabled: bool = False
+    agent_gratuit_daily_quota_messages: int = 30
+    agent_gratuit_zai_api_key: str = ""
     # Self-hosted uniquement : autorise localhost comme base_url de provider.
     # Ne jamais mettre a True sur le SaaS Philum (VM distante != loopback user).
     agent_allow_local_providers: bool = False

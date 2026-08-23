@@ -147,6 +147,16 @@ export type AgentEvent =
         retention_notice: string;
       };
     }
+  | {
+      /** Mode gratuit : une lane serveur sert le tour. Même bannière que la
+       * découverte, texte de rétention propre au fournisseur gratuit. */
+      type: 'gratuit_actif';
+      payload: {
+        provider_public_name: string;
+        remaining_today: number | null;
+        retention_notice: string;
+      };
+    }
   | { type: 'message_delta'; payload: { delta: string; tour: number } }
   | {
       type: 'tool_call';
@@ -266,6 +276,21 @@ export const agentApi = {
       method: 'POST',
       body: JSON.stringify({ request_id: requestId, approved }),
     }),
+
+  /** Mode gratuit : lanes serveur sans clé utilisateur, derrière un
+   * consentement versionné au traitement des données par le fournisseur. */
+  gratuit: {
+    etat: () =>
+      request<{ disponible: boolean; actif: boolean; version_warning: string }>(
+        '/agent/mode-gratuit'
+      ),
+    activer: (version: string) =>
+      request<{ actif: boolean; version_warning: string }>('/agent/mode-gratuit', {
+        method: 'PUT',
+        body: JSON.stringify({ version }),
+      }),
+    desactiver: () => request<{ actif: boolean }>('/agent/mode-gratuit', { method: 'DELETE' }),
+  },
 
   /** Workspace ICM du créateur : arbre, lecture, écriture, suppression, re-seed. */
   workspace: {

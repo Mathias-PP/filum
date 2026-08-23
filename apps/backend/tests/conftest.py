@@ -31,6 +31,7 @@ Settings.model_config["case_sensitive"] = False
 get_settings.cache_clear()
 
 import app.models.agent_discovery_quota  # noqa: E402, F401
+import app.models.agent_lane  # noqa: E402, F401
 import app.models.agent_provider  # noqa: E402, F401
 import app.models.agent_session  # noqa: E402, F401
 import app.models.audit_event  # noqa: E402, F401

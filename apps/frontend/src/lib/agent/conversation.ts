@@ -100,6 +100,11 @@ export function appliquer(items: ChatItem[], event: AgentEvent): ChatItem[] {
     case 'discovery_active':
       return items;
 
+    case 'gratuit_actif':
+      // La bannière est gérée par ChatPanel (etat decouverte/banniereMode) ;
+      // ici on ne modifie pas le fil de conversation.
+      return items;
+
     case 'error':
       return cloturerSansReponse([...items, { kind: 'error', text: event.payload.message }]);
 

@@ -1,3 +1,4 @@
+from app.models.agent_lane import AgentGratuitConsent, AgentLane, AgentLaneUsage
 from app.models.agent_provider import AgentProvider
 from app.models.agent_session import AgentMessage, AgentSession
 from app.models.audit_event import AuditEvent
@@ -16,6 +17,9 @@ from app.models.workspace_file import WorkspaceFile
 __all__ = [
     "User",
     "AgentProvider",
+    "AgentGratuitConsent",
+    "AgentLane",
+    "AgentLaneUsage",
     "AgentMessage",
     "AgentSession",
     "BiblioCard",
