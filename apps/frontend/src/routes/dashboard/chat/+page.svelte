@@ -11,6 +11,11 @@
   let cible = $state<AgentSession | null>(null);
   let titreNouveau = $state('');
 
+  // Le mode gratuit n'existe pas sur toutes les instances : sans lane
+  // configuree, promettre « activez-le ci-dessous » designerait un bouton
+  // absent.
+  let gratuitDisponible = $state(false);
+
   const defaut = $derived(providers.find((p) => p.is_default) ?? null);
 
   onMount(async () => {
@@ -20,6 +25,10 @@
     ]);
     sessions = s;
     providers = p;
+    agentApi.gratuit
+      .etat()
+      .then((v) => (gratuitDisponible = v.disponible))
+      .catch(() => null);
   });
 
   async function supprimer() {
@@ -45,7 +54,7 @@
       <h2 class="text-xs font-medium uppercase tracking-wider text-ink-tertiary">Conversations</h2>
       <div class="flex gap-1">
         <Button size="sm" variant="ghost" href="/dashboard/chat">Nouvelle</Button>
-        <Button size="sm" variant="ghost" href="/dashboard/agents">Cles</Button>
+        <Button size="sm" variant="ghost" href="/dashboard/agents">Clés</Button>
       </div>
     </div>
     {#if sessions.length === 0}
@@ -85,41 +94,41 @@
         clé, votre facture.
         <a href="/dashboard/agents" class="text-accent hover:underline">Changer</a>
       </p>
-      <div class="mb-3">
-        <input
-          bind:value={titreNouveau}
-          class="w-full rounded border border-subtle bg-surface-primary px-3 py-2 text-sm"
-          maxlength="200"
-          placeholder="Nommer la conversation (optionnel)"
-        />
-      </div>
-      <ChatPanel
-        titreInitial={titreNouveau}
-        onsession={(id) => {
-          // On met à jour l'URL sans naviguer : goto() démonte ChatPanel et
-          // coupe le flux SSE en cours, ce qui fait "tomber dans le vide" le
-          // premier message d'une nouvelle conversation. history.replaceState()
-          // change l'URL sans toucher au composant.
-          history.replaceState(history.state, '', `/dashboard/chat/${id}`);
-        }}
-      />
-    {:else if providers.length === 0}
-      <div class="rounded-lg border border-subtle bg-surface-secondary px-4 py-5 text-sm">
-        <p class="text-ink-primary font-medium mb-1">Aucune clé enregistrée.</p>
-        <p class="text-ink-secondary mb-3">
-          Philum n'héberge aucun modèle : l'agent a besoin de la clé d'un fournisseur pour répondre.
-        </p>
-        <Button href="/dashboard/agents">Enregistrer une clé</Button>
-      </div>
     {:else}
-      <div class="rounded-lg border border-subtle bg-surface-secondary px-4 py-5 text-sm">
-        <p class="text-ink-primary font-medium mb-1">Aucun provider par défaut.</p>
-        <p class="text-ink-secondary mb-3">
-          Le chat ne sait pas quel provider utiliser. Désignez-en un par défaut.
-        </p>
-        <Button href="/dashboard/agents">Gérer les providers</Button>
-      </div>
+      <!-- Sans clé, le chat reste utilisable : le serveur bascule sur le mode
+           gratuit ou le mode découverte. Masquer le chat ici enfermait le
+           nouvel arrivant, puisque le bouton d'activation du mode gratuit vit
+           dans le chat lui-même. -->
+      <p class="text-sm text-ink-secondary mb-4">
+        {#if gratuitDisponible}
+          Aucune clé par défaut. Essayez sans clé avec le bouton « Mode gratuit » ci-dessous, ou
+          <a href="/dashboard/agents" class="text-accent hover:underline">enregistrez la vôtre</a>
+          pour choisir votre modèle et lever les quotas.
+        {:else}
+          Aucune clé par défaut.
+          <a href="/dashboard/agents" class="text-accent hover:underline">Enregistrez-en une</a>
+          pour choisir votre modèle et votre fournisseur.
+        {/if}
+      </p>
     {/if}
+    <div class="mb-3">
+      <input
+        bind:value={titreNouveau}
+        class="w-full rounded border border-subtle bg-surface-primary px-3 py-2 text-sm"
+        maxlength="200"
+        placeholder="Nommer la conversation (optionnel)"
+      />
+    </div>
+    <ChatPanel
+      titreInitial={titreNouveau}
+      onsession={(id) => {
+        // On met à jour l'URL sans naviguer : goto() démonte ChatPanel et
+        // coupe le flux SSE en cours, ce qui fait "tomber dans le vide" le
+        // premier message d'une nouvelle conversation. history.replaceState()
+        // change l'URL sans toucher au composant.
+        history.replaceState(history.state, '', `/dashboard/chat/${id}`);
+      }}
+    />
   </section>
 </div>
 

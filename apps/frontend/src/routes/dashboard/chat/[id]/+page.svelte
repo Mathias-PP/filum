@@ -86,7 +86,7 @@
         </button>
       {/if}
     </div>
-    <Button size="sm" variant="ghost" href="/dashboard/agents">Cles</Button>
+    <Button size="sm" variant="ghost" href="/dashboard/agents">Clés</Button>
   </div>
   <div>
     {#key sessionId}

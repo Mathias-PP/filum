@@ -145,11 +145,11 @@
         apiKey = '';
         providers = await agentApi.providers.list();
         formOpen = false;
-        toast.success(`${cree.display_name} enregistre.`);
+        toast.success(`Clé « ${cree.display_name} » enregistrée.`);
       }
     } catch (e) {
       formError =
-        e instanceof ApiError ? e.message : "Impossible d'enregistrer ce provider. Reessayez.";
+        e instanceof ApiError ? e.message : "Impossible d'enregistrer cette clé. Réessayez.";
     } finally {
       saving = false;
     }
@@ -196,7 +196,7 @@
 </script>
 
 <svelte:head>
-  <title>Providers IA · Philum</title>
+  <title>Clés IA · Philum</title>
 </svelte:head>
 
 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -209,7 +209,7 @@
 
   <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
     <div>
-      <h1 class="font-serif text-3xl text-ink-primary mb-1">Providers IA</h1>
+      <h1 class="font-serif text-3xl text-ink-primary mb-1">Clés IA</h1>
       <p class="text-sm text-ink-secondary">
         Votre clé, votre modèle, votre facture. Philum ne fournit aucun accès IA et ne relit jamais
         vos clés : elles sont chiffrées et n'apparaissent plus jamais en clair.
@@ -394,7 +394,7 @@
     </div>
   {:else if loadFailed}
     <div class="rounded-lg bg-danger-bg border border-danger/30 px-4 py-4 text-sm text-danger">
-      Impossible de charger vos providers. Rechargez la page.
+      Impossible de charger vos clés. Rechargez la page.
     </div>
   {:else if providers.length === 0}
     <EmptyState
@@ -404,7 +404,7 @@
   {:else}
     {#if aucunDefaut}
       <p class="mb-3 text-sm text-ink-secondary">
-        Aucun provider n'est marqué par défaut : le chat ne saura pas lequel utiliser.
+        Aucune clé n'est marquée par défaut : le chat prendra la première de la liste.
       </p>
     {/if}
     <ul class="space-y-3">
@@ -473,7 +473,7 @@
 
 <ConfirmDialog
   bind:open={confirmOpen}
-  title="Supprimer ce provider ?"
+  title="Supprimer cette clé ?"
   message={confirmTarget
     ? `La clé de ${confirmTarget.display_name} sera effacée. Les conversations déjà tenues restent lisibles.`
     : ''}

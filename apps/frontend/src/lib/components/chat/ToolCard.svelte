@@ -12,7 +12,7 @@
   let ouvert = $state(false);
 
   const echoue = $derived(Boolean(result && 'error' in result));
-  const etat = $derived(result === null ? 'En cours...' : echoue ? 'Echec' : 'Termine');
+  const etat = $derived(result === null ? 'En cours…' : echoue ? 'Échec' : 'Terminé');
   const raison = $derived.by(() => {
     if (!result || !('error' in result)) return null;
     const err = result.error;

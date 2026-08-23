@@ -116,7 +116,7 @@ async def test_chat_sans_provider_defaut(client, session_token):
     assert response.status_code == 200
     events = _lire_evenements(response.text)
     assert events[-1]["type"] == "error"
-    assert "Aucun provider IA par défaut" in events[-1]["payload"]["message"]
+    assert "Aucune clé IA disponible" in events[-1]["payload"]["message"]
 
 
 @pytest.mark.asyncio
@@ -203,4 +203,4 @@ async def test_chat_nemprunte_pas_le_provider_dun_autre(
     events = _lire_evenements(response.text)
     # L'autre créateur n'a pas de provider : erreur, jamais l'accès à celui du premier.
     assert events[-1]["type"] == "error"
-    assert "Aucun provider" in events[-1]["payload"]["message"]
+    assert "Aucune clé IA disponible" in events[-1]["payload"]["message"]
