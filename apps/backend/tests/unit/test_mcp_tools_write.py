@@ -46,6 +46,35 @@ from app.mcp_server.tools_write import (
     verify_excerpts,
 )
 
+#: Page servie a la place du web pendant ces tests. `add_excerpt` va desormais
+#: relire la source avant d'ecrire : sans cette page, chaque test d'extrait
+#: partirait telecharger `https://example.org/...`. Elle porte mot pour mot tous
+#: les passages que ce fichier cite, pour que ces tests continuent d'eprouver ce
+#: qu'ils eprouvent (position, garde-fous, propriete) et rien d'autre.
+_PAGE_DE_TEST = """
+La memoire n'est pas un enregistrement. Le protocole de re-consolidation
+apres apprentissage etudie ici porte sur le sommeil lent. Cela ameliore la
+memoire de 12 %. Cela ameliore la memoire declarative chez les participants
+ayant beneficie d'une re-consolidation nocturne, comparativement au groupe
+temoin sans re-consolidation.
+
+Ce que la premiere source dit exactement. Un passage suffisamment long pour
+passer le garde-fou. Le passage exact que la source contient. Une affirmation
+precise avec le mot cle magique.
+"""
+
+
+@pytest.fixture(autouse=True)
+def _source_lisible(monkeypatch):
+    """Toute source repond `_PAGE_DE_TEST`, en entier et sans reseau."""
+    from app.services import excerpt_insertion
+
+    async def _page(_url: str | None) -> tuple[str, bool, bool]:
+        return _PAGE_DE_TEST, False, True
+
+    excerpt_insertion.vider_le_cache()
+    monkeypatch.setattr(excerpt_insertion, "texte_de_page", _page)
+
 
 @pytest.mark.asyncio
 async def test_creer_une_fiche_donne_un_brouillon(db_session, test_user):

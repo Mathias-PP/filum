@@ -15,7 +15,7 @@ detail complet gaspille sa fenetre de tokens.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 from uuid import UUID
@@ -36,6 +36,11 @@ from app.services.card_link import effective_linked_card_id
 from app.services.content_identity import extract_doi, normalize_url
 from app.services.excerpt_guards import LONGUEUR_MIN_AUTONOME_MOTS, passage_a_besoin_de_contexte
 from app.services.excerpt_indexing import indexer_sans_bruit
+from app.services.excerpt_insertion import (
+    PassageIntrouvableError,
+    Prelevement,
+    prelever_dans_la_source,
+)
 from app.services.wayback import horodatage_wayback
 
 # Meme limite que l'endpoint REST : au dela, l'agent noie sa fenetre et le
@@ -328,6 +333,30 @@ async def add_source(
     }
 
 
+async def _prelever_ou_refuser(url: str | None, corps: str) -> Prelevement:
+    """Le passage tel que la source le porte, ou un refus lisible par le modele."""
+    try:
+        return await prelever_dans_la_source(url, corps)
+    except PassageIntrouvableError as exc:
+        raise ToolError(exc.message) from exc
+
+
+def _poser_le_verdict(excerpt: SourceExcerpt, preleve: Prelevement) -> None:
+    """Inscrit sur l'extrait la preuve du prelevement qui vient d'avoir lieu.
+
+    Le verdict est pose ici et pas laisse a `verify_excerpts` : un extrait qui
+    naitrait sans statut serait rendu « non verifie » sur la fiche publique,
+    alors que le serveur vient justement de le retrouver dans la page.
+    """
+    excerpt.verified_at = datetime.now(UTC).replace(tzinfo=None)
+    excerpt.verified_status = preleve.statut
+    excerpt.verified_text_source = "fetched"
+    sel = preleve.selecteurs
+    excerpt.anchor_prefix = sel.prefix if sel else None
+    excerpt.anchor_suffix = sel.suffix if sel else None
+    excerpt.anchor_offset = sel.offset if sel else None
+
+
 async def add_excerpt(
     db: AsyncSession,
     user: User,
@@ -337,9 +366,22 @@ async def add_excerpt(
     title: str | None = None,
     context: str | None = None,
 ) -> dict[str, Any]:
-    """Ajoute un verbatim a une source. Marque `annotated_by_ai=True` : cette
-    reponse porte les extraits qu'un modele a produits, le distinguer preserve
-    la separation entre ce que la source dit et ce qu'une IA en dit."""
+    """Preleve un verbatim dans la source. Le serveur relit la page et refuse un passage qui n'y figure pas.
+
+    `text` n'est pas le contenu de l'extrait, c'est le passage a retrouver : le
+    serveur va chercher le texte de la source lui-meme et inscrit **les
+    caracteres de la page**, pas ceux fournis ici. Un passage traduit, reformule
+    ou reconstitue de memoire fait echouer l'appel. La traduction et la mise en
+    situation vont dans `context`, qui est libre.
+
+    Quand la page ne rend rien (PDF sans couche texte, mur anti-bot, paywall),
+    l'extrait est accepte en `verified_status='unreadable'` : le site est en
+    cause, pas la citation.
+
+    Marque `annotated_by_ai=True` : cette reponse porte les extraits qu'un
+    modele a produits, le distinguer preserve la separation entre ce que la
+    source dit et ce qu'une IA en dit.
+    """
     source = await _source_du_createur(db, user, source_id)
 
     corps = (text or "").strip()
@@ -372,19 +414,22 @@ async def add_excerpt(
     if (count or 0) >= _EXTRAITS_MAX_PAR_SOURCE:
         raise ToolError(f"Une source ne porte pas plus de {_EXTRAITS_MAX_PAR_SOURCE} extraits.")
 
+    preleve = await _prelever_ou_refuser(source.url, corps)
+
     max_pos = await db.scalar(
         select(func.max(SourceExcerpt.position)).where(SourceExcerpt.source_id == source.id)
     )
     excerpt = SourceExcerpt(
         source_id=source.id,
         position=(max_pos or 0) + 1,
-        text=corps,
+        text=preleve.texte,
         title=(title or "").strip() or None,
         context=(context or "").strip() or None,
         # L'agent qui appelle ce tool est une IA : le dire au consommateur.
         suggested_by_ai=True,
         annotated_by_ai=True,
     )
+    _poser_le_verdict(excerpt, preleve)
     db.add(excerpt)
     await db.commit()
     await db.refresh(excerpt)
@@ -393,6 +438,8 @@ async def add_excerpt(
         "id": str(excerpt.id),
         "source_id": str(source.id),
         "position": excerpt.position,
+        "text": excerpt.text,
+        "verified_status": excerpt.verified_status,
     }
 
 
@@ -721,11 +768,15 @@ async def update_excerpt(
     title: str | None = None,
     context: str | None = None,
 ) -> dict[str, Any]:
-    """Corrige le texte, le titre ou le contexte d'un extrait ; modifier le texte annule la verification.
+    """Corrige le texte, le titre ou le contexte d'un extrait ; le nouveau texte est reverifie contre la source.
 
-    Modifier `text` remet verified_at, verified_text_source et les ancres a zero :
-    le passage verifie n'est plus le meme. Relancer `verify_excerpts` apres
-    modification pour reetablir le verdict. Un champ laisse a None reste inchange.
+    Modifier `text` passe par la meme relecture de la page que `add_excerpt` :
+    le serveur retrouve le passage et inscrit les caracteres de la source. Un
+    passage absent d'une page lisible fait echouer l'appel. Sans cette regle,
+    corriger un extrait serait la porte de sortie qui rendrait la verification
+    a l'insertion sans effet.
+
+    Un champ laisse a None reste inchange.
     """
     try:
         eid = UUID(excerpt_id)
@@ -737,24 +788,17 @@ async def update_excerpt(
     )
     if excerpt is None:
         raise ToolError(f"Aucun extrait {excerpt_id!r} sur la source {source_id!r}.")
-    text_modifie = False
     if text is not None:
         corps = text.strip()
         if not corps:
             raise ToolError("Un extrait vide ne cite rien.")
-        excerpt.text = corps
-        text_modifie = True
+        preleve = await _prelever_ou_refuser(source.url, corps)
+        excerpt.text = preleve.texte
+        _poser_le_verdict(excerpt, preleve)
     if title is not None:
         excerpt.title = title.strip() or None
     if context is not None:
         excerpt.context = context.strip() or None
-    if text_modifie:
-        excerpt.verified_at = None
-        excerpt.verified_status = None
-        excerpt.verified_text_source = None
-        excerpt.anchor_prefix = None
-        excerpt.anchor_suffix = None
-        excerpt.anchor_offset = None
     await db.commit()
     await db.refresh(excerpt)
     return {
