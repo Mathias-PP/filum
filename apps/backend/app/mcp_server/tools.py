@@ -198,7 +198,6 @@ async def get_source(db: AsyncSession, source_id: str) -> dict[str, Any] | None:
                 #: dedans : le confondre attribuerait a la source des mots
                 #: qu'elle n'a pas ecrits.
                 "context": e.context,
-                "id": str(e.id),
                 "suggested_by_ai": e.suggested_by_ai,
                 "annotated_by_ai": e.annotated_by_ai,
                 #: `null` = jamais relu, ce qui n'est pas « relu et introuvable ».
