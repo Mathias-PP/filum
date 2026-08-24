@@ -78,7 +78,9 @@ const ACTIONS: Record<
     objet: (a, r) => {
       const src = titreDepuisResultat(r) ?? null;
       const txt = (r?.text as string) ?? (a.text as string) ?? (a.title as string) ?? '';
-      const extrait = txt ? `« ${txt.slice(0, 48).replace(/\s+/g, ' ')}${txt.length > 48 ? '…' : ''} »` : null;
+      const extrait = txt
+        ? `« ${txt.slice(0, 48).replace(/\s+/g, ' ')}${txt.length > 48 ? '…' : ''} »`
+        : null;
       if (src && extrait) return `${extrait} → ${src}`;
       if (extrait) return extrait;
       return src ?? 'cette source';
@@ -89,7 +91,9 @@ const ACTIONS: Record<
     objet: (a, r) => {
       const src = titreDepuisResultat(r) ?? null;
       const txt = (r?.text as string) ?? (a.text as string) ?? '';
-      const extrait = txt ? `« ${txt.slice(0, 40)}… »` : `#${String(a.excerpt_id ?? '').slice(0, 8)}`;
+      const extrait = txt
+        ? `« ${txt.slice(0, 40)}… »`
+        : `#${String(a.excerpt_id ?? '').slice(0, 8)}`;
       return src ? `${extrait} dans ${src}` : extrait;
     },
   },

@@ -13,21 +13,21 @@ export type ChatItem =
   | { kind: 'user'; text: string }
   | { kind: 'assistant'; text: string }
   | {
-       kind: 'tool';
-       id: string;
-       name: string;
-       args: Record<string, unknown>;
-       result: Record<string, unknown> | null;
-     }
+      kind: 'tool';
+      id: string;
+      name: string;
+      args: Record<string, unknown>;
+      result: Record<string, unknown> | null;
+    }
   | {
-       kind: 'approval';
-       requestId: string;
-       tool: string;
-       args: Record<string, unknown>;
-       /** Résumé lisible calculé par le serveur (résout UUIDs → titres). */
-       resume?: string;
-       approved: boolean | null;
-     }
+      kind: 'approval';
+      requestId: string;
+      tool: string;
+      args: Record<string, unknown>;
+      /** Résumé lisible calculé par le serveur (résout UUIDs → titres). */
+      resume?: string;
+      approved: boolean | null;
+    }
   | { kind: 'error'; text: string }
   | { kind: 'compaction'; retires: number }
   | { kind: 'continuation'; message: string; tours: number };

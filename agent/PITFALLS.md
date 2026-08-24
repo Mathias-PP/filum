@@ -235,6 +235,20 @@
 - **Cause** : `|| true` pour contourner un échec en CI cache la cause racine.
 - **Prévention** : pas de `|| true` en CI. Si une étape échoue légitimement, soit on la fixe, soit on la retire.
 
+### 3.5 `prettier --check` oublié sur le frontend (2026-08-24)
+
+- **Symptôme** : CI `Lint Frontend` rouge `Code style issues found in 3 files. Run Prettier with --write to fix.` alors que `Lint Backend` est vert. Log : `[warn] src/lib/agent/conversation.ts` / `toolLabels.ts` / `ChatPanel.svelte`.
+- **Cause** : `apps/frontend` lance `eslint . && prettier --check .` (`package.json:lint`). Éditer un `.ts`/`.svelte` sans `prettier --write` laisse le fichier non formaté. Contrairement au backend (`uv run ruff format`), le frontend n'a pas de format auto en CI — `prettier --check` est strict.
+- **Prévention** : après chaque édition frontend, lancer depuis `apps/frontend` : `npx prettier --write <fichiers>` ou `pnpm exec prettier --write src/lib/...`. Vérifier en local avec `pnpm run lint` (doit sortir 0). Ne jamais `git add` un `.svelte` modifié sans ce passage. CI exacte : `pnpm run lint` = `eslint . && prettier --check .`.
+- **Vécu** : PR #564 `fix/agent-fidelite-thrips` — 3 fichiers modifiés (`conversation.ts`, `toolLabels.ts`, `ChatPanel.svelte`) commit sans prettier → CI rouge 28s.
+
+### 3.6 Test d'intégration qui fige le contrat d'erreur de la boucle agent (2026-08-24)
+
+- **Symptôme** : CI `Test Backend` rouge `FAILED tests/unit/test_agent_loop.py::TestBoucle::test_borne_max_tours - AssertionError: assert 'continuation' == 'error'` — 1821 passed, 1 failed.
+- **Cause** : `apps/backend/app/services/agent.py:1054` est passé de `{"type":"error","Maximum de 24 tours"}` à `{"type":"continuation","Pause après 48 actions..."}` (fix harness : 24 arbitraire → 48 + reprise). Le test `test_borne_max_tours` `apps/backend/tests/unit/test_agent_loop.py:923` assert `error` + `"3 tours"` — contrat obsolète. Ne pas mettre à jour le test quand on change le contrat = CI rouge systématique.
+- **Prévention** : à chaque changement de `agent.py` (type d'événement SSE, message de borne, `MAX_TOURS`), `grep -rn "test_borne_max_tours\|continuation\|Maximum de" apps/backend/tests --include="*.py"` et mettre à jour l'assertion (nouveau type `continuation` + payload `tours`). Lancer en local `uv run pytest tests/unit/test_agent_loop.py::TestBoucle::test_borne_max_tours -v` avant push. Si le changement est voulu, le test est la doc du contrat — le mettre à jour fait partie de la PR.
+- **Vécu** : PR #564 — même commit, même cause que 3.5 : deux checks rouges pour une seule PR, 1 skipped, 15 passés.
+
 ---
 
 ## 4. Git / déploiement / process

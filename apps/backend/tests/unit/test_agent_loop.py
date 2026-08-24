@@ -920,8 +920,9 @@ class TestBoucle:
         events = await _collect(
             db_session, test_user, provider, messages, _refuse, transport, _registre_fake([])
         )
-        assert events[-1]["type"] == "error"
-        assert "3 tours" in events[-1]["payload"]["message"]
+        assert events[-1]["type"] == "continuation"
+        assert "3" in events[-1]["payload"]["message"]
+        assert events[-1]["payload"]["tours"] == 3
 
     @pytest.mark.asyncio
     async def test_erreur_provider_http(self, db_session, test_user):

@@ -152,7 +152,10 @@
   // 10 cartes « Lit la source #a1b2c3d4 » qui empilent le meme verbe. Le nom
   // « Lit la source » figure une fois, les entrees s'empilent en dessous.
   type Affichable =
-    | Extract<ChatItem, { kind: 'user' | 'assistant' | 'approval' | 'error' | 'compaction' | 'continuation' }>
+    | Extract<
+        ChatItem,
+        { kind: 'user' | 'assistant' | 'approval' | 'error' | 'compaction' | 'continuation' }
+      >
     | {
         kind: 'group-outils';
         name: string;
@@ -565,7 +568,11 @@
     } finally {
       enCours = false;
       controleur = null;
-      if (sessionId) agentApi.sessions.usage(sessionId).then((u) => (usage = u)).catch(() => null);
+      if (sessionId)
+        agentApi.sessions
+          .usage(sessionId)
+          .then((u) => (usage = u))
+          .catch(() => null);
     }
   }
 </script>
@@ -851,7 +858,9 @@
           onrespond={(approuve) => repondreApprobation(item.requestId, approuve)}
         />
       {:else if item.kind === 'continuation'}
-        <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-700 dark:bg-amber-950">
+        <div
+          class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-700 dark:bg-amber-950"
+        >
           <p class="text-sm text-amber-800 dark:text-amber-200">{item.message}</p>
           <Button variant="ghost" onclick={continuer} disabled={enCours}>Continuer</Button>
         </div>
