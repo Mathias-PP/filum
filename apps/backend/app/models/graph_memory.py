@@ -26,10 +26,15 @@ class GraphEntity(Base):
     type: Mapped[str] = mapped_column(String(30), nullable=False, index=True)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     source_card_id: Mapped[UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("biblio_cards.id", ondelete="SET NULL"), nullable=True, index=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("biblio_cards.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
     embedding: Mapped[list[float] | None] = mapped_column(EMBEDDING_TYPE, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=sa.func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=sa.func.now()
+    )
 
 
 class GraphRelation(Base):
@@ -38,11 +43,18 @@ class GraphRelation(Base):
     __tablename__ = "graph_relations"
 
     id: Mapped[int] = mapped_column(sa.Integer, primary_key=True, autoincrement=True)
-    source_id: Mapped[str] = mapped_column(String(36), ForeignKey("graph_entities.id", ondelete="CASCADE"), nullable=False, index=True)
-    target_id: Mapped[str] = mapped_column(String(36), ForeignKey("graph_entities.id", ondelete="CASCADE"), nullable=False, index=True)
+    source_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("graph_entities.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    target_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("graph_entities.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     predicate: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
     source_card_id: Mapped[UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("biblio_cards.id", ondelete="SET NULL"), nullable=True, index=True
+        PG_UUID(as_uuid=True),
+        ForeignKey("biblio_cards.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
 
 
@@ -52,5 +64,7 @@ class GraphAlias(Base):
     __tablename__ = "graph_aliases"
 
     id: Mapped[int] = mapped_column(sa.Integer, primary_key=True, autoincrement=True)
-    entity_id: Mapped[str] = mapped_column(String(36), ForeignKey("graph_entities.id", ondelete="CASCADE"), nullable=False, index=True)
+    entity_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("graph_entities.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     alias: Mapped[str] = mapped_column(String(300), nullable=False, index=True)

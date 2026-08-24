@@ -14,7 +14,19 @@ from app.models.source import Source
 
 # Ontologie fermée Philum (STARTER: 5 types → Philum 7)
 ENTITY_TYPES = {"PERSON", "ROLE", "CARD", "SOURCE", "CONCEPT", "POLICY", "PROCESS"}
-PREDICATES = {"authored_by", "created_by", "cites", "supports", "contradicts", "part_of", "held_by", "delegates_to", "references", "attests", "mentions"}
+PREDICATES = {
+    "authored_by",
+    "created_by",
+    "cites",
+    "supports",
+    "contradicts",
+    "part_of",
+    "held_by",
+    "delegates_to",
+    "references",
+    "attests",
+    "mentions",
+}
 
 WALK_SQL = """
 WITH RECURSIVE walk(entity_id, depth) AS (
@@ -55,7 +67,7 @@ class Facts:
         header = f"memory: {len(self.triples)} facts recalled in {self.ms:.0f} ms"
         if not self.triples:
             return header + "\n(no memory matches for this prompt)"
-        width = max(len(f"{s} --[{p}]--> {t}") for s, p, _, _ in self.triples)
+        width = max(len(f"{s} --[{p}]--> {t}") for s, p, t, _ in self.triples)
         lines = [f"{f'{s} --[{p}]--> {t}':<{width}}   ({doc})" for s, p, t, doc in self.triples]
         text = header + "\n\n" + "\n".join(lines)
         if self.notes:
@@ -76,13 +88,35 @@ async def build_graph(db: AsyncSession) -> dict:
     await db.execute(text("DELETE FROM graph_entities"))
     await db.flush()
 
-    cards = (await db.execute(select(BiblioCard).where(BiblioCard.status == "published", BiblioCard.visibility == "public", BiblioCard.deleted_at.is_(None)))).scalars().all()
+    cards = (
+        (
+            await db.execute(
+                select(BiblioCard).where(
+                    BiblioCard.status == "published",
+                    BiblioCard.visibility == "public",
+                    BiblioCard.deleted_at.is_(None),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
     # preload sources
     card_ids = [c.id for c in cards]
-    sources = []
+    sources: list[Source] = []
     if card_ids:
-        sources = (await db.execute(select(Source).where(Source.biblio_card_id.in_(card_ids), Source.deleted_at.is_(None)))).scalars().all()
-    by_card = {}
+        sources = list(
+            (
+                await db.execute(
+                    select(Source).where(
+                        Source.biblio_card_id.in_(card_ids), Source.deleted_at.is_(None)
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+    by_card: dict = {}
     for s in sources:
         by_card.setdefault(s.biblio_card_id, []).append(s)
 
@@ -117,11 +151,12 @@ async def build_graph(db: AsyncSession) -> dict:
 
     # flush nodes
     for eid, (name, type_, desc, cid) in nodes.items():
-        db.add(GraphEntity(id=eid, name=name, type=type_, description=desc or "", source_card_id=cid))
+        db.add(
+            GraphEntity(id=eid, name=name, type=type_, description=desc or "", source_card_id=cid)
+        )
     await db.flush()
 
     # Pass 2 : arêtes résolues par nom normalisé
-    by_name = {_normalise(name): eid for eid, (name, _, _, _) in nodes.items()}
     rel_count = 0
 
     for card in cards:
@@ -131,14 +166,28 @@ async def build_graph(db: AsyncSession) -> dict:
             sname = (src.title or src.url or str(src.id))[:300]
             src_eid = entity_id("SOURCE", sname)
             if card_eid in nodes and src_eid in nodes:
-                db.add(GraphRelation(source_id=card_eid, target_id=src_eid, predicate="cites", source_card_id=card.id))
+                db.add(
+                    GraphRelation(
+                        source_id=card_eid,
+                        target_id=src_eid,
+                        predicate="cites",
+                        source_card_id=card.id,
+                    )
+                )
                 rel_count += 1
             # SOURCE authored_by PERSON
             if src.authors:
                 for a in [x.strip() for x in src.authors.split(",") if x.strip()][:4]:
                     pid = entity_id("PERSON", a)
                     if pid in nodes and src_eid in nodes:
-                        db.add(GraphRelation(source_id=src_eid, target_id=pid, predicate="authored_by", source_card_id=card.id))
+                        db.add(
+                            GraphRelation(
+                                source_id=src_eid,
+                                target_id=pid,
+                                predicate="authored_by",
+                                source_card_id=card.id,
+                            )
+                        )
                         rel_count += 1
             # SOURCE references CARD via linked_card_id
             if src.linked_card_id:
@@ -147,7 +196,14 @@ async def build_graph(db: AsyncSession) -> dict:
                 if linked:
                     linked_eid = entity_id("CARD", linked.slug)
                     if linked_eid in nodes and src_eid in nodes:
-                        db.add(GraphRelation(source_id=src_eid, target_id=linked_eid, predicate="references", source_card_id=card.id))
+                        db.add(
+                            GraphRelation(
+                                source_id=src_eid,
+                                target_id=linked_eid,
+                                predicate="references",
+                                source_card_id=card.id,
+                            )
+                        )
                         rel_count += 1
 
     for eid_str, alias in aliases:
@@ -155,7 +211,12 @@ async def build_graph(db: AsyncSession) -> dict:
             db.add(GraphAlias(entity_id=eid_str, alias=alias))
 
     await db.commit()
-    return {"entities": len(nodes), "relations": rel_count, "aliases": len(aliases), "cards": len(cards)}
+    return {
+        "entities": len(nodes),
+        "relations": rel_count,
+        "aliases": len(aliases),
+        "cards": len(cards),
+    }
 
 
 def _seeds_lexical(db_sync, question: str) -> list[str]:
@@ -171,11 +232,7 @@ def _seeds_lexical(db_sync, question: str) -> list[str]:
 
 async def recall(db: AsyncSession, question: str, hops: int = 3, top_k: int = 8) -> Facts:
     t0 = time.perf_counter()
-    # use sync connection for raw SQL walk (async session underlying sync)
-    # fallback lexical only v1 — vector hybrid en 053b
-    result = await db.execute(text("SELECT id, name FROM graph_entities"))
-    # we need sync walk via text with seeds; use async execute
-    seeds = []
+    seeds: list[str] = []
     # lexical seeds via async queries
     q = question.lower()
     ents = (await db.execute(select(GraphEntity.id, GraphEntity.name))).all()
@@ -189,8 +246,8 @@ async def recall(db: AsyncSession, question: str, hops: int = 3, top_k: int = 8)
 
     # build IN clause safely
     marks = ",".join(f":s{i}" for i in range(len(seeds)))
-    sql = WALK_SQL.format(seeds=marks)
-    params = {f"s{i}": sid for i, sid in enumerate(seeds)}
+    sql = WALK_SQL.format(seeds=marks)  # nosec B608 - marks are placeholders, values bound
+    params: dict = {f"s{i}": sid for i, sid in enumerate(seeds)}
     params["hops"] = hops
     rows = (await db.execute(text(sql), params)).fetchall()
     triples = [(r[0], r[1], r[2], str(r[3]) if r[3] else "") for r in rows[:top_k]]
@@ -200,7 +257,14 @@ async def recall(db: AsyncSession, question: str, hops: int = 3, top_k: int = 8)
         # fetch descriptions
         placeholders = ",".join(f":n{i}" for i in range(len(names)))
         nparams = {f"n{i}": n for i, n in enumerate(names)}
-        note_rows = (await db.execute(text(f"SELECT name, description FROM graph_entities WHERE name IN ({placeholders}) AND description != ''"), nparams)).fetchall()
+        note_rows = (
+            await db.execute(
+                text(
+                    f"SELECT name, description FROM graph_entities WHERE name IN ({placeholders}) AND description != ''"  # nosec B608
+                ),
+                nparams,
+            )
+        ).fetchall()
         notes = [(r[0], r[1]) for r in note_rows]
 
     return Facts(triples, notes, (time.perf_counter() - t0) * 1000)

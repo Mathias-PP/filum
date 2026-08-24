@@ -45,25 +45,57 @@ def upgrade() -> None:
         sa.Column("name", sa.String(300), nullable=False),
         sa.Column("type", sa.String(30), nullable=False, index=True),
         sa.Column("description", sa.Text(), nullable=False, server_default=""),
-        sa.Column("source_card_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("biblio_cards.id", ondelete="SET NULL"), nullable=True, index=True),
+        sa.Column(
+            "source_card_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("biblio_cards.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
         sa.Column("embedding", postgresql.ARRAY(sa.Float()), nullable=True),
         sa.Column("created_at", sa.DateTime(), nullable=False, server_default=sa.func.now()),
     )
-    op.execute(f"ALTER TABLE graph_entities ALTER COLUMN embedding TYPE {schema}.vector({EMBEDDING_DIM})")
+    op.execute(
+        f"ALTER TABLE graph_entities ALTER COLUMN embedding TYPE {schema}.vector({EMBEDDING_DIM})"
+    )
 
     op.create_table(
         "graph_relations",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column("source_id", sa.String(36), sa.ForeignKey("graph_entities.id", ondelete="CASCADE"), nullable=False, index=True),
-        sa.Column("target_id", sa.String(36), sa.ForeignKey("graph_entities.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "source_id",
+            sa.String(36),
+            sa.ForeignKey("graph_entities.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
+        sa.Column(
+            "target_id",
+            sa.String(36),
+            sa.ForeignKey("graph_entities.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("predicate", sa.String(40), nullable=False, index=True),
-        sa.Column("source_card_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("biblio_cards.id", ondelete="SET NULL"), nullable=True, index=True),
+        sa.Column(
+            "source_card_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("biblio_cards.id", ondelete="SET NULL"),
+            nullable=True,
+            index=True,
+        ),
     )
 
     op.create_table(
         "graph_aliases",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column("entity_id", sa.String(36), sa.ForeignKey("graph_entities.id", ondelete="CASCADE"), nullable=False, index=True),
+        sa.Column(
+            "entity_id",
+            sa.String(36),
+            sa.ForeignKey("graph_entities.id", ondelete="CASCADE"),
+            nullable=False,
+            index=True,
+        ),
         sa.Column("alias", sa.String(300), nullable=False, index=True),
     )
 
