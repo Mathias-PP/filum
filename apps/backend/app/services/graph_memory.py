@@ -37,8 +37,8 @@ WITH RECURSIVE walk(entity_id, depth) AS (
   WHERE w.depth < :hops
 )
 SELECT e1.name, r.predicate, e2.name, r.source_card_id,
-       MIN((SELECT MIN(depth) FROM walk WHERE entity_id = r.source_id),
-           (SELECT MIN(depth) FROM walk WHERE entity_id = r.target_id)) AS near
+       LEAST((SELECT MIN(depth) FROM walk WHERE entity_id = r.source_id),
+             (SELECT MIN(depth) FROM walk WHERE entity_id = r.target_id)) AS near
 FROM graph_relations r
 JOIN graph_entities e1 ON e1.id = r.source_id
 JOIN graph_entities e2 ON e2.id = r.target_id
