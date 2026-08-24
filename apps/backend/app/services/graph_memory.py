@@ -238,8 +238,17 @@ async def recall(db: AsyncSession, question: str, hops: int = 3, top_k: int = 8)
     ents = (await db.execute(select(GraphEntity.id, GraphEntity.name))).all()
     aliases = (await db.execute(select(GraphAlias.entity_id, GraphAlias.alias))).all()
     for eid, txt in list(ents) + list(aliases):
-        if txt and re.search(rf"\b{re.escape(txt.lower())}\b", q):
+        if not txt:
+            continue
+        t = txt.lower()
+        if re.search(rf"\b{re.escape(t)}\b", q):
             seeds.append(str(eid))
+            continue
+        # token fallback: long titles like "L'effet Warburg : ..." doivent matcher "Warburg"
+        for w in re.findall(r"\w{4,}", t):
+            if re.search(rf"\b{re.escape(w)}\b", q):
+                seeds.append(str(eid))
+                break
     seeds = list(dict.fromkeys(seeds))
     if not seeds:
         return Facts([], [], (time.perf_counter() - t0) * 1000)
