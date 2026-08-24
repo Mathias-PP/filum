@@ -39,7 +39,7 @@ L'ancien flow (`POST /api/v1/auth/mcp-token` puis header manuel) reste supporté
 | `update_card(slug, title?, description?, content_url?, content_authors?, platform?, content_type?, visibility?)` | 01, 06 | Corrige les champs éditoriaux après création. Slug immuable (identifiant public). |
 | `update_source(source_id, title?, authors?, doi?, journal?, category?, author_kind?, format?, stance?, annotation?, is_pivot?, archive_url?)` | 03, 06 | Corrige une source après création. URL immuable : pour la changer, `delete_source` puis `add_source`. |
 | `delete_source(source_id)` | 06 | Soft-delete d'une source. La ligne reste en base pour préserver les références historiques. |
-| `delete_excerpt(source_id, excerpt_id)` | 06 | Supprime physiquement un extrait. |
+| `delete_excerpt(source_id, excerpt_id)` | 06 | Supprime physiquement un extrait. `excerpt_id` = UUID du champ `id` renvoyé par `get_source` ou `add_excerpt` (jamais la position). |
 | `verify_excerpts(source_id, provided_text?)` | 04, 06 | Relit chaque extrait vs le texte de la page et pose `verified_status` (`found`/`moved`/`missing`/`unreadable`). `provided_text` obligatoire quand la page est bloquée anti-bot. |
 | `list_connections(card_slug)` | 05 | Rend `outgoing` (fiches que celle-ci cite) et `incoming` (fiches qui la citent). |
 | `confirm_connection(card_slug, source_id)` | 05 | Confirme qu'une source pointe bien vers la fiche Philum désignée. |

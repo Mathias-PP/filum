@@ -140,8 +140,10 @@ async def get_source(db: AsyncSession, source_id: str) -> dict[str, Any] | None:
 
     `source_id` est l'UUID rendu par `get_card` ou `list_sources`. C'est le seul
     outil qui donne le texte des extraits, leur contexte et leur etat de
-    verification. Rend `null` si la source est supprimee ou si sa fiche n'est pas
-    publique.
+    verification. Chaque extrait porte son UUID dans `id` : c'est la valeur a
+    passer en `excerpt_id` a `update_excerpt` ou `delete_excerpt` (jamais la
+    position, qui n'est qu'un ordre d'affichage). Rend `null` si la source est
+    supprimee ou si sa fiche n'est pas publique.
     """
     try:
         sid = UUID(source_id)
@@ -196,6 +198,7 @@ async def get_source(db: AsyncSession, source_id: str) -> dict[str, Any] | None:
                 #: dedans : le confondre attribuerait a la source des mots
                 #: qu'elle n'a pas ecrits.
                 "context": e.context,
+                "id": str(e.id),
                 "suggested_by_ai": e.suggested_by_ai,
                 "annotated_by_ai": e.annotated_by_ai,
                 #: `null` = jamais relu, ce qui n'est pas « relu et introuvable ».
