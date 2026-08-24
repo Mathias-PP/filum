@@ -724,4 +724,35 @@ async def parse_biblio(text: str) -> dict[str, Any]:
         return await tools_write.parse_biblio(db, user, text=text)
 
 
+@outil()
+async def recall_memory(query: str, hops: int = 3) -> dict[str, Any]:
+    """Rappel graphe memoire : 3 tables, 1 requete recursive (STARTER).
+
+    Seed les entites dont le nom/alias apparait dans `query`, marche `hops`
+    arêtes et rend les triples + leur fiche source. 2 ms, 400 tok fixes,
+    0 appel modele — le walk est fait en SQL avant l'invocation.
+    Echec bruyant `no memory matches` si hors vocabulaire (ne devine jamais).
+    Preferer a `search_cards` quand la question chaine des faits.
+    """
+    from app.services.graph_memory import recall
+
+    async with _session() as db:
+        facts = await recall(db, question=query, hops=hops)
+        return {"text": facts.as_text(), "triples": facts.triples, "ms": facts.ms}
+
+
+@outil()
+async def rebuild_graph() -> dict[str, Any]:
+    """Reconstruit le graphe memoire depuis les fiches publiques (déterministe).
+
+    A appeler apres avoir publie/modifie des fiches si le rappel doit voir
+    les nouvelles aretes. Sans LLM, sans cout.
+    """
+    from app.services.graph_memory import build_graph
+
+    async with _session() as db:  # auth not required but keep session pattern
+        # lecture publique : pas d'utilisateur requis
+        return await build_graph(db)
+
+
 mcp_http_app = mcp.http_app(path="/")
