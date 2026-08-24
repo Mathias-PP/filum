@@ -980,7 +980,9 @@ async def boucle(
 
     usage_total: dict[str, int] = {"prompt_tokens": 0, "completion_tokens": 0}
     try:
-        for tour in range(1, MAX_TOURS + 1):
+        # Utiliser le quota_tours si défini dans agent_def, sinon utiliser MAX_TOURS
+        quota_tours = agent_def.quota_tours if agent_def else MAX_TOURS
+        for tour in range(1, quota_tours + 1):
 
             async def _on_delta(content: str, _t: int = tour) -> None:
                 await emit({"type": "message_delta", "payload": {"delta": content, "tour": _t}})

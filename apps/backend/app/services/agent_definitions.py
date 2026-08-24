@@ -57,6 +57,8 @@ class AgentDefinition:
     quota_tours: int = 24
     #: Nombre maximal de tours autorisés pour cet agent. Par défaut, 24 tours.
     quota_tours: int = 24
+    #: Nombre maximal de tours autorisés pour cet agent. Par défaut, 24 tours.
+    quota_tours: int = 24
     #: Vrai si le slug fait partie des agents livrés avec Philum. Sert à
     #: distinguer « recréé par Restaurer template » de « le vôtre ».
     builtin: bool = False
