@@ -806,11 +806,18 @@ async def delete_excerpt(
     aucune reference externe. La suppression est physique (pas de corbeille).
     Pour corriger le texte, utiliser `update_excerpt` qui remet la verification
     a zero sans perdre l'historique de la source.
+
+    `excerpt_id` doit être l'UUID du champ `id` retourné par `get_source` ou
+    `add_excerpt` — jamais la position d'affichage.
     """
     try:
         eid = UUID(excerpt_id)
     except ValueError as exc:
-        raise ToolError(f"Identifiant d'extrait invalide : {excerpt_id!r}.") from exc
+        raise ToolError(
+            f"Identifiant d'extrait invalide : {excerpt_id!r}. "
+            "L'excerpt_id attend l'UUID du champ `id` (voir get_source ou add_excerpt), "
+            "pas la position numérique."
+        ) from exc
     source = await _source_du_createur(db, user, source_id)
     excerpt = await db.scalar(
         select(SourceExcerpt).where(SourceExcerpt.id == eid, SourceExcerpt.source_id == source.id)
@@ -841,11 +848,18 @@ async def update_excerpt(
     a l'insertion sans effet.
 
     Un champ laisse a None reste inchange.
+
+    `excerpt_id` doit être l'UUID du champ `id` retourné par `get_source` ou
+    `add_excerpt` — jamais la position d'affichage.
     """
     try:
         eid = UUID(excerpt_id)
     except ValueError as exc:
-        raise ToolError(f"Identifiant d'extrait invalide : {excerpt_id!r}.") from exc
+        raise ToolError(
+            f"Identifiant d'extrait invalide : {excerpt_id!r}. "
+            "L'excerpt_id attend l'UUID du champ `id` (voir get_source ou add_excerpt), "
+            "pas la position numérique."
+        ) from exc
     source = await _source_du_createur(db, user, source_id)
     excerpt = await db.scalar(
         select(SourceExcerpt).where(SourceExcerpt.id == eid, SourceExcerpt.source_id == source.id)

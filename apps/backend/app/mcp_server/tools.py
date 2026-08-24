@@ -140,8 +140,10 @@ async def get_source(db: AsyncSession, source_id: str) -> dict[str, Any] | None:
 
     `source_id` est l'UUID rendu par `get_card` ou `list_sources`. C'est le seul
     outil qui donne le texte des extraits, leur contexte et leur etat de
-    verification. Rend `null` si la source est supprimee ou si sa fiche n'est pas
-    publique.
+    verification. Chaque extrait porte son UUID dans `id` : c'est la valeur a
+    passer en `excerpt_id` a `update_excerpt` ou `delete_excerpt` (jamais la
+    position, qui n'est qu'un ordre d'affichage). Rend `null` si la source est
+    supprimee ou si sa fiche n'est pas publique.
     """
     try:
         sid = UUID(source_id)
@@ -189,6 +191,7 @@ async def get_source(db: AsyncSession, source_id: str) -> dict[str, Any] | None:
         # d'une source par MCP que n'importe qui en telechargeant le CSV.
         "excerpts": [
             {
+                "id": str(e.id),
                 "position": e.position,
                 "title": e.title,
                 "text": e.text,
