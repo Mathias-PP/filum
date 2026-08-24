@@ -948,13 +948,21 @@ async def boucle(
         from app.services.graph_memory import recall as graph_recall
 
         q = next(
-            (m["content"] for m in reversed(messages) if m.get("role") == "user" and isinstance(m.get("content"), str)),
+            (
+                m["content"]
+                for m in reversed(messages)
+                if m.get("role") == "user" and isinstance(m.get("content"), str)
+            ),
             "",
         )
         if q:
             facts = await graph_recall(db, q, hops=3)
             if facts.triples:
-                graph_ctx = "\n\n---\n## Mémoire graphe (rappel automatique, 2 ms)\n" + facts.as_text() + "\n"
+                graph_ctx = (
+                    "\n\n---\n## Mémoire graphe (rappel automatique, 2 ms)\n"
+                    + facts.as_text()
+                    + "\n"
+                )
     except Exception:
         pass
     messages.insert(0, {"role": "system", "content": systeme + workspace_ctx + graph_ctx})

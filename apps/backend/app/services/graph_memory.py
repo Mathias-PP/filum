@@ -246,7 +246,7 @@ async def recall(db: AsyncSession, question: str, hops: int = 3, top_k: int = 8)
 
     # build IN clause safely
     marks = ",".join(f":s{i}" for i in range(len(seeds)))
-    sql = WALK_SQL.format(seeds=marks)  # nosec B608 - marks are placeholders, values bound
+    sql = WALK_SQL.format(seeds=marks)  # nosec
     params: dict = {f"s{i}": sid for i, sid in enumerate(seeds)}
     params["hops"] = hops
     rows = (await db.execute(text(sql), params)).fetchall()
@@ -260,7 +260,7 @@ async def recall(db: AsyncSession, question: str, hops: int = 3, top_k: int = 8)
         note_rows = (
             await db.execute(
                 text(
-                    f"SELECT name, description FROM graph_entities WHERE name IN ({placeholders}) AND description != ''"  # nosec B608
+                    f"SELECT name, description FROM graph_entities WHERE name IN ({placeholders}) AND description != ''"
                 ),
                 nparams,
             )
