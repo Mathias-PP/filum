@@ -228,12 +228,14 @@ async def _seeds_lexical_sql(db: AsyncSession, question: str) -> list[str]:
     conds = " OR ".join(f"lower(name) LIKE :w{i}" for i in range(len(words)))
     params = {f"w{i}": f"%{w}%" for i, w in enumerate(words)}
     ents = (
-        await db.execute(text(f"SELECT id FROM graph_entities WHERE {conds}"), params)
-    ).fetchall()  # nosec
+        await db.execute(text(f"SELECT id FROM graph_entities WHERE {conds}"  # nosec B608
+        ), params)
+    ).fetchall()
     conds_a = " OR ".join(f"lower(alias) LIKE :w{i}" for i in range(len(words)))
     aliases = (
-        await db.execute(text(f"SELECT entity_id FROM graph_aliases WHERE {conds_a}"), params)
-    ).fetchall()  # nosec
+        await db.execute(text(f"SELECT entity_id FROM graph_aliases WHERE {conds_a}"  # nosec B608
+        ), params)
+    ).fetchall()
     seeds = [str(r[0]) for r in ents] + [str(r[0]) for r in aliases]
     return list(dict.fromkeys(seeds))
 
@@ -256,7 +258,7 @@ async def recall(db: AsyncSession, question: str, hops: int = 3, top_k: int = 8)
                 rows = (
                     await db.execute(
                         text(
-                            f"SELECT id FROM graph_entities WHERE embedding IS NOT NULL ORDER BY embedding OPERATOR({schema}.<=>) CAST(:v AS {schema}.vector) LIMIT 8"  # nosec
+                            f"SELECT id FROM graph_entities WHERE embedding IS NOT NULL ORDER BY embedding OPERATOR({schema}.<=>) CAST(:v AS {schema}.vector) LIMIT 8"  # nosec B608
                         ),
                         {"v": v},
                     )
@@ -270,7 +272,7 @@ async def recall(db: AsyncSession, question: str, hops: int = 3, top_k: int = 8)
 
     # build IN clause safely
     marks = ",".join(f":s{i}" for i in range(len(seeds)))
-    sql = WALK_SQL.format(seeds=marks)  # nosec
+    sql = WALK_SQL.format(seeds=marks)  # nosec B608
     params: dict = {f"s{i}": sid for i, sid in enumerate(seeds)}
     params["hops"] = hops
     rows = (await db.execute(text(sql), params)).fetchall()
@@ -284,7 +286,7 @@ async def recall(db: AsyncSession, question: str, hops: int = 3, top_k: int = 8)
         note_rows = (
             await db.execute(
                 text(
-                    f"SELECT name, description FROM graph_entities WHERE name IN ({placeholders}) AND description != ''"  # nosec
+                    f"SELECT name, description FROM graph_entities WHERE name IN ({placeholders}) AND description != ''"  # nosec B608
                 ),
                 nparams,
             )
