@@ -7,6 +7,7 @@ from app.models.claim_request import ClaimRequest
 from app.models.content_attestation import ContentAttestation
 from app.models.excerpt_embedding import EMBEDDING_DIM, ExcerptEmbedding
 from app.models.feed_event import FeedEvent, FeedEventKind
+from app.models.graph_memory import GraphAlias, GraphEntity, GraphRelation
 from app.models.linked_account import LinkedAccount
 from app.models.oauth import OAuthAuthorizationCode, OAuthClient
 from app.models.source import Source
@@ -29,6 +30,9 @@ __all__ = [
     "ExcerptEmbedding",
     "FeedEvent",
     "FeedEventKind",
+    "GraphAlias",
+    "GraphEntity",
+    "GraphRelation",
     "LinkedAccount",
     "OAuthAuthorizationCode",
     "OAuthClient",

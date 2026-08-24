@@ -941,7 +941,23 @@ async def boucle(
     systeme = _SYSTEME
     if agent_def is not None:
         systeme += f"\n\n---\n## Ton rôle : {agent_def.name}\n{agent_def.system_prompt.strip()}\n"
-    messages.insert(0, {"role": "system", "content": systeme + workspace_ctx})
+    # Graphe memoire STARTER : 3 tables, 1 requete recursive, 2 ms, 400 tok fixes.
+    # Le walk est fait en SQL avant l'appel — 0 tool call, 0 hops par le modele.
+    graph_ctx = ""
+    try:
+        from app.services.graph_memory import recall as graph_recall
+
+        q = next(
+            (m["content"] for m in reversed(messages) if m.get("role") == "user" and isinstance(m.get("content"), str)),
+            "",
+        )
+        if q:
+            facts = await graph_recall(db, q, hops=3)
+            if facts.triples:
+                graph_ctx = "\n\n---\n## Mémoire graphe (rappel automatique, 2 ms)\n" + facts.as_text() + "\n"
+    except Exception:
+        pass
+    messages.insert(0, {"role": "system", "content": systeme + workspace_ctx + graph_ctx})
 
     # Compaction préventive, prompt système et contexte workspace compris : ce
     # sont eux qui pèsent le plus lourd au départ d'une session.
