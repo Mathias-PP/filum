@@ -228,13 +228,21 @@ async def _seeds_lexical_sql(db: AsyncSession, question: str) -> list[str]:
     conds = " OR ".join(f"lower(name) LIKE :w{i}" for i in range(len(words)))
     params = {f"w{i}": f"%{w}%" for i, w in enumerate(words)}
     ents = (
-        await db.execute(text(f"SELECT id FROM graph_entities WHERE {conds}"  # nosec B608
-        ), params)
+        await db.execute(
+            text(
+                f"SELECT id FROM graph_entities WHERE {conds}"  # nosec B608
+            ),
+            params,
+        )
     ).fetchall()
     conds_a = " OR ".join(f"lower(alias) LIKE :w{i}" for i in range(len(words)))
     aliases = (
-        await db.execute(text(f"SELECT entity_id FROM graph_aliases WHERE {conds_a}"  # nosec B608
-        ), params)
+        await db.execute(
+            text(
+                f"SELECT entity_id FROM graph_aliases WHERE {conds_a}"  # nosec B608
+            ),
+            params,
+        )
     ).fetchall()
     seeds = [str(r[0]) for r in ents] + [str(r[0]) for r in aliases]
     return list(dict.fromkeys(seeds))
@@ -265,7 +273,7 @@ async def recall(db: AsyncSession, question: str, hops: int = 3, top_k: int = 8)
                 ).fetchall()
                 # filtrer par similarité >0.35 (approx 1-distance), sinon bruit
                 seeds = [str(r[0]) for r in rows]
-        except Exception:
+        except Exception:  # nosec B110
             pass
     if not seeds:
         return Facts([], [], (time.perf_counter() - t0) * 1000)
