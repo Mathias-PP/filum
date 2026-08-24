@@ -862,7 +862,15 @@
           class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-700 dark:bg-amber-950"
         >
           <p class="text-sm text-amber-800 dark:text-amber-200">{item.message}</p>
-          <Button variant="ghost" onclick={continuer} disabled={enCours}>Continuer</Button>
+          <Button
+  variant="ghost"
+  onclick={() => {
+    continuer();
+    setEnCours(true);
+    setTimeout(() => setEnCours(false), 5000);
+  }}
+  disabled={enCours}
+>Continuer</Button>
         </div>
       {:else}
         <p class="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">

@@ -1419,29 +1419,29 @@
             <div class="node-row">
               <div class="node-hdr"><strong>Twin {tw.key}</strong></div>
               <div class="slider">
-                <label>Angle <span class="val">{tw.t.angle.toFixed(0)}°</span></label>
-                <input type="range" min="-180" max="180" step="1" bind:value={tw.t.angle} />
+                <label for="angle-slider">Angle <span class="val">{tw.t.angle.toFixed(0)}°</span></label>
+                <input id="angle-slider" type="range" min="-180" max="180" step="1" bind:value={tw.t.angle} />
               </div>
               <div class="slider">
-                <label>Distance <span class="val">{tw.t.distance.toFixed(2)}</span></label>
-                <input type="range" min="1" max="10" step="0.1" bind:value={tw.t.distance} />
+                <label for="distance-slider">Distance <span class="val">{tw.t.distance.toFixed(2)}</span></label>
+                <input id="distance-slider" type="range" min="1" max="10" step="0.1" bind:value={tw.t.distance} />
               </div>
               <div class="slider">
-                <label>Taille <span class="val">{tw.t.size.toFixed(2)}</span></label>
-                <input type="range" min="0.3" max="4" step="0.05" bind:value={tw.t.size} />
+                <label for="size-slider">Taille <span class="val">{tw.t.size.toFixed(2)}</span></label>
+                <input id="size-slider" type="range" min="0.3" max="4" step="0.05" bind:value={tw.t.size} />
               </div>
               <div class="row">
-                <label>Fill</label>
-                <input type="color" bind:value={tw.t.fill} />
+                <label for="fill-label">Fill</label>
+                <input type="color" id="fill-label" bind:value={tw.t.fill} />
                 <input type="text" bind:value={tw.t.fill} class="hex" />
               </div>
               <div class="row">
-                <label>Rim</label>
-                <input type="color" bind:value={tw.t.rim} />
+                <label for="rim-label">Rim</label>
+                <input id="rim-label" type="color" bind:value={tw.t.rim} />
                 <input type="text" bind:value={tw.t.rim} class="hex" />
               </div>
               <div class="slider">
-                <label>Épaisseur rim <span class="val">{tw.t.rimWidth.toFixed(2)}</span></label>
+                <label for="rim-width-slider">Épaisseur rim <span class="val">{tw.t.rimWidth.toFixed(2)}</span></label>
                 <input type="range" min="0" max="2" step="0.05" bind:value={tw.t.rimWidth} />
               </div>
             </div>
