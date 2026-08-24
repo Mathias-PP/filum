@@ -191,6 +191,7 @@ async def get_source(db: AsyncSession, source_id: str) -> dict[str, Any] | None:
         # d'une source par MCP que n'importe qui en telechargeant le CSV.
         "excerpts": [
             {
+                "id": str(e.id),
                 "position": e.position,
                 "title": e.title,
                 "text": e.text,
