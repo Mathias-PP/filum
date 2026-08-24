@@ -58,6 +58,7 @@ Le développeur peut interrompre. Silence prolongé = aller-y prudemment.
 ### 2.1 Journal de bord en cours de session
 
 L'agent maintient, pour son propre suivi pendant la session :
+
 - Une **liste de tâches courantes** (via l'outil TaskList si disponible, sinon dans un commentaire de PR draft).
 - L'**état de chaque tâche** : `pending`, `in_progress`, `done`, `blocked`.
 - Pour `blocked` : décrire le blocage et ce qui le débloquerait.
@@ -214,6 +215,7 @@ Ne pas perdre le travail déjà fait sans le commit, même sur une branche desti
 ## 6. Indicateurs de qualité d'une session
 
 Une bonne session laisse derrière elle :
+
 - 1 (ou max 2) branches avec des PR claires
 - `STATE.md` à jour
 - 0 fichier non-commité orphelin
@@ -222,6 +224,7 @@ Une bonne session laisse derrière elle :
 - Un rapport clair dans la conversation finale
 
 Une mauvaise session laisse :
+
 - 3+ branches abandonnées
 - `STATE.md` désynchronisé
 - des `// TODO: comprendre ça` dans le code
@@ -230,4 +233,4 @@ Une mauvaise session laisse :
 
 ---
 
-*Ce protocole est la colonne vertébrale de l'autonomie. Sans lui, l'agent devient un assistant qui demande tout, plus qu'un pair qui exécute.*
+_Ce protocole est la colonne vertébrale de l'autonomie. Sans lui, l'agent devient un assistant qui demande tout, plus qu'un pair qui exécute._

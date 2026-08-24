@@ -22,6 +22,7 @@ Chaque item a un **trigger** : la condition concrète qui doit faire passer l'it
 **Trigger** : prochaine évolution du modèle de source ou ajout d'une nouvelle entité côté backend (donc : très bientôt, dès qu'on ajoute un nouveau type d'auteur ou un nouveau format).
 
 **Options**
+
 - `pydantic2ts` (mature, mais sort du Pydantic → JSON Schema → TS) — coût d'intégration ~2h
 - `openapi-typescript` lit le `/openapi.json` déjà servi par FastAPI — plus standard, pas besoin d'installer un nouveau outil Python — coût ~3h avec le pipeline CI
 - Garder la duplication + ajouter un test qui compare les valeurs d'enum (test simple, mais ne rattrape pas les divergences structurelles)
@@ -45,6 +46,7 @@ Chaque item a un **trigger** : la condition concrète qui doit faire passer l'it
 **Trigger** : quand on ajoute un index partial / une contrainte conditionnelle / une colonne JSON. Aujourd'hui le risque est faible (rien de tout ça), mais devient critique dès la première fois.
 
 **Options**
+
 - `testcontainers-python` : démarre un container Postgres au début de la suite. ~5s d'overhead par run CI, simple.
 - Garder SQLite par défaut + un job CI séparé `test-backend-postgres` optionnel qui n'est run que sur la branche `main` et sur les PR taggées `db-change`. Compromis acceptable.
 
@@ -52,7 +54,7 @@ Chaque item a un **trigger** : la condition concrète qui doit faire passer l'it
 
 ### F4. Endpoint admin `POST /cards/{id}/restore` pour annuler un soft-delete
 
-**Constat code** : PR #81 introduit le soft-delete. Il n'y a actuellement aucun moyen pour un user de *revenir en arrière* sur une suppression. Soit on contacte le support (= toi avec un `UPDATE biblio_cards SET deleted_at = NULL WHERE id = ...`), soit la card reste à jamais cachée.
+**Constat code** : PR #81 introduit le soft-delete. Il n'y a actuellement aucun moyen pour un user de _revenir en arrière_ sur une suppression. Soit on contacte le support (= toi avec un `UPDATE biblio_cards SET deleted_at = NULL WHERE id = ...`), soit la card reste à jamais cachée.
 
 **Trigger** : le premier user qui clique "Supprimer" par erreur et qui demande à restaurer. Ça arrivera. À traiter avant que le support manuel devienne un coût.
 
@@ -69,6 +71,7 @@ Chaque item a un **trigger** : la condition concrète qui doit faire passer l'it
 **Trigger** : quand on a > 50 sources créées par jour OU quand un user signale qu'une de ses sources reste éternellement `pending`.
 
 **Options**
+
 - `arq` (Redis-based, ~150 lignes pour un worker, intégration FastAPI standard)
 - Postgres-backed queue avec `SELECT ... FOR UPDATE SKIP LOCKED` — pas besoin d'infra supplémentaire
 - Worker Railway séparé qui lit une table `pending_archive_jobs`
@@ -90,6 +93,7 @@ Chaque item a un **trigger** : la condition concrète qui doit faire passer l'it
 **Trigger** : si on voit des spikes anormaux dans les logs Railway, ou si la facture sortante augmente. Pas urgent aujourd'hui.
 
 **Options**
+
 - Baisser à `3/minute` par IP
 - Exiger l'auth (et casse le pré-remplissage côté landing — pas idéal pour la conv)
 - Cacher les résultats par URL (TTL 24h) — réduit la charge sortante de 80%+
@@ -143,4 +147,4 @@ Chaque item a un **trigger** : la condition concrète qui doit faire passer l'it
 
 ---
 
-*Document créé suite à l'audit du 26 mai 2026 (cf. STATE.md). Mettre à jour quand un item est traité ou quand son trigger se réalise.*
+_Document créé suite à l'audit du 26 mai 2026 (cf. STATE.md). Mettre à jour quand un item est traité ou quand son trigger se réalise._

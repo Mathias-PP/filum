@@ -59,12 +59,12 @@ Deux méthodes complémentaires, aucune app review requise :
 
 ### v2 — OAuth complet (effort : L, dépendances externes)
 
-| Plateforme | Mécanisme | Prérequis | Difficulté |
-|---|---|---|---|
-| **YouTube** | Google OAuth existant + scope `youtube.readonly` | Aucun nouveau client — on étend le client OAuth déjà en prod | **Faible** — à faire en premier |
-| **X** | OAuth 2.0 PKCE, scope `users.read` | Compte développeur (free tier très limité) | Moyenne |
-| **TikTok** | Login Kit (`user.info.basic`) | App review TikTok (délai en semaines) | Moyenne-haute |
-| **Instagram** | Meta Graph API (Business/Creator account requis) | App review Meta + business verification | **Haute** |
+| Plateforme    | Mécanisme                                        | Prérequis                                                    | Difficulté                      |
+| ------------- | ------------------------------------------------ | ------------------------------------------------------------ | ------------------------------- |
+| **YouTube**   | Google OAuth existant + scope `youtube.readonly` | Aucun nouveau client — on étend le client OAuth déjà en prod | **Faible** — à faire en premier |
+| **X**         | OAuth 2.0 PKCE, scope `users.read`               | Compte développeur (free tier très limité)                   | Moyenne                         |
+| **TikTok**    | Login Kit (`user.info.basic`)                    | App review TikTok (délai en semaines)                        | Moyenne-haute                   |
+| **Instagram** | Meta Graph API (Business/Creator account requis) | App review Meta + business verification                      | **Haute**                       |
 
 - **Tokens** : chiffrés AES-GCM avec la `master_encryption_key` existante
   (même mécanique que les clés privées Ed25519). Refresh tokens en base,

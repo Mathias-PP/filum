@@ -89,4 +89,4 @@ Si ces deux hypothèses sont validées, le projet a sa trajectoire. Sinon, il fa
 
 ---
 
-*Pour la suite, voir [`01-product-spec.md`](./01-product-spec.md).*
+_Pour la suite, voir [`01-product-spec.md`](./01-product-spec.md)._

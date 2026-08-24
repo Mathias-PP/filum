@@ -5,11 +5,12 @@
 > ⚠️ **Refonte taxonomie ADR-020 (2026-05-14)** : les payloads `Source` n'utilisent plus `source_type` ni `authority_level`. Les exemples JSON dans ce document sont **obsolètes** : remplacer par `format` (texte/video/image/audio/data), `category` (12 valeurs) et `author_kind` (9 valeurs, colore le graphe). `POST /cards/{id}/sources` accepte désormais `parent_source_id` (corrigé — auparavant silencieusement ignoré). Les endpoints sources autorisent ajout/édition/suppression sur fiches `published` (cohérent avec ADR-019). Voir `DECISIONS.md` ADR-020.
 
 > ℹ️ **Imports (2026-07)** : trois endpoints d'import ajoutés, tous auth-only, SSRF-safe pour ceux qui font du fetch réseau. Ils ne créent rien en base — renvoient des drafts que le frontend valide avant création.
+>
 > - `POST /api/v1/import/parse` — upload fichier (BibTeX / CSL-JSON / Markdown / PDF, cap 5 MB).
 > - `POST /api/v1/import/paste` — coller un texte brut de bibliographie (regex + LLM), cap 100 kB.
 > - `POST /api/v1/import/from-content-url` — URL d'un contenu → draft de fiche complète (titre/description extraits + section References passée au LLM). Body `{url}`, réponse `{card, sources, skipped, references_section_found, fetch_status: "ok"|"unreachable"|"not_html"}`. Cap HTML 3 MB, cap texte LLM 60 kB.
-> Les rate-limits sur ces 3 endpoints ont été retirés (phase test/pré-produit). À réintroduire quand une métrique de coût LLM/Crossref le justifiera.
-> Dédup DOI-aware via `_dedupe_key(url)` (extrait le DOI de tout URL éditeur et l'utilise comme clé canonique — `doi.org/10.xxx` et `frontiersin.org/…/10.xxx/full` collapsent).
+>   Les rate-limits sur ces 3 endpoints ont été retirés (phase test/pré-produit). À réintroduire quand une métrique de coût LLM/Crossref le justifiera.
+>   Dédup DOI-aware via `_dedupe_key(url)` (extrait le DOI de tout URL éditeur et l'utilise comme clé canonique — `doi.org/10.xxx` et `frontiersin.org/…/10.xxx/full` collapsent).
 
 > ℹ️ **Rate-limit `/mcp/` (2026-07)** : le mount ASGI `/mcp` bypassait slowapi (les décorateurs `@limiter.limit` n'attrapent que les routes FastAPI). Middleware HTTP dédié dans `app/main.py` applique un moving-window **60/minute par IP** via la lib `limits`. Dépassé → 429 + `Retry-After: 60`.
 
@@ -55,10 +56,12 @@ Toutes les routes mutables nécessitent l'authentification.
 Récupère une fiche bibliographique publique.
 
 **Paramètres** :
+
 - `creator_slug` : slug du créateur (ex: `lea-c`)
 - `card_slug` : slug de la fiche (ex: `arctique-2026`)
 
 **Réponse 200** :
+
 ```json
 {
   "id": "uuid",
@@ -106,6 +109,7 @@ Récupère une fiche bibliographique publique.
 ```
 
 **Réponses d'erreur** :
+
 - 404 si fiche inexistante ou non publiée
 
 **Cache** : `Cache-Control: public, max-age=60, s-maxage=300`
@@ -117,6 +121,7 @@ Récupère une fiche bibliographique publique.
 Récupère la page-identité publique d'un créateur.
 
 **Réponse 200** :
+
 ```json
 {
   "slug": "lea-c",
@@ -149,6 +154,7 @@ Récupère la page-identité publique d'un créateur.
 Vérification cryptographique de la signature d'une fiche.
 
 **Réponse 200** :
+
 ```json
 {
   "valid": true,
@@ -166,6 +172,7 @@ Vérification cryptographique de la signature d'une fiche.
 ```
 
 Si invalide :
+
 ```json
 {
   "valid": false,
@@ -181,6 +188,7 @@ Si invalide :
 Génère dynamiquement une image OpenGraph (1200x630) pour le partage social.
 
 **Contenu de l'image** :
+
 - Titre de la fiche
 - Nom du créateur + avatar
 - Statistiques principales (4 chiffres)
@@ -198,6 +206,7 @@ Génère dynamiquement une image OpenGraph (1200x630) pour le partage social.
 ### `POST /api/v1/cards` — créer une fiche en brouillon
 
 **Body** :
+
 ```json
 {
   "slug": "arctique-2026",
@@ -211,6 +220,7 @@ Génère dynamiquement une image OpenGraph (1200x630) pour le partage social.
 **Réponse 201** : la fiche en brouillon, sans sources
 
 **Validations** :
+
 - `slug` matche la regex
 - `slug` unique pour ce créateur
 - `title` 1-200 chars
@@ -225,6 +235,7 @@ Modifie les métadonnées d'une fiche (avant publication).
 **Réponse 200** : la fiche mise à jour
 
 **Restrictions** :
+
 - Une fiche `published` ne peut plus être modifiée (sauf passage à `archived`)
 - Seul le créateur peut modifier sa fiche
 
@@ -233,6 +244,7 @@ Modifie les métadonnées d'une fiche (avant publication).
 ### `POST /api/v1/cards/{id}/sources` — ajouter une source
 
 **Body** :
+
 ```json
 {
   "url": "https://www.nature.com/articles/...",
@@ -268,6 +280,7 @@ Modifie les métadonnées d'une fiche (avant publication).
 Calcule le hash, signe, et passe le status à `published`.
 
 **Réponse 200** :
+
 ```json
 {
   "id": "uuid",
@@ -281,10 +294,12 @@ Calcule le hash, signe, et passe le status à `published`.
 ```
 
 **Validations** :
+
 - Au moins 1 source dans la fiche
 - Toutes les sources ont `archive_status` IN (`archived`, `failed`) — pas de `pending` (sinon attendre)
 
 **Side-effects** :
+
 - Génération de l'image OpenGraph
 - Enregistrement d'un audit event
 
@@ -295,6 +310,7 @@ Calcule le hash, signe, et passe le status à `published`.
 **Réponse 200** : liste paginée des fiches.
 
 **Query params** :
+
 - `status` (optionnel) : filtre par statut
 - `limit` : 1-100, défaut 20
 - `cursor` : pour pagination cursor-based
@@ -334,6 +350,7 @@ Réservés à l'admin Philum en phase 2 (à protéger par scope).
 ```
 
 **Codes d'erreur définis** :
+
 - `validation_error` (400/422)
 - `unauthorized` (401)
 - `forbidden` (403)
@@ -348,6 +365,7 @@ Réservés à l'admin Philum en phase 2 (à protéger par scope).
 ## Validation stricte
 
 Toutes les entrées sont validées par Pydantic v2 schemas avec :
+
 - Length min/max sur les strings
 - Regex sur les slugs
 - Enum sur les types
@@ -373,4 +391,4 @@ En production, ces routes peuvent être protégées ou désactivées (à arbitre
 
 ---
 
-*Pour le design visuel des écrans qui consomment cette API, voir [`05-design-system.md`](./05-design-system.md).*
+_Pour le design visuel des écrans qui consomment cette API, voir [`05-design-system.md`](./05-design-system.md)._

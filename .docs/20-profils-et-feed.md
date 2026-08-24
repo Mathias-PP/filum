@@ -12,6 +12,7 @@ Deux surfaces publiques existent déjà :
 - `/discover` : liste de fiches récentes, cherchables par texte libre.
 
 Ce qui manque :
+
 - La recherche de **créateurs** (pas seulement de fiches).
 - Un **feed chronologique public** des publications.
 
@@ -84,6 +85,7 @@ feed_events (
 ```
 
 Types prévus pour les versions suivantes, sans les ouvrir :
+
 - `card_updated` : modification d'une fiche publiée.
 - `claim_verified` : rattachement d'un canal vérifié à un compte.
 

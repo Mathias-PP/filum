@@ -75,7 +75,7 @@
 
 ### 1.8 Cookies session non envoyés cross-origin (mis à jour 2026-05-26)
 
-- **Symptôme initial** : `auth/me` retourne 401 alors que le cookie est posé, *uniquement sur mobile*.
+- **Symptôme initial** : `auth/me` retourne 401 alors que le cookie est posé, _uniquement sur mobile_.
 - **Cause profonde** : `SameSite=None; Secure` est correctement set côté backend, MAIS Safari iOS / WebKit Chrome iOS bloquent les cookies tiers par défaut via ITP. Vercel et Railway étant deux origines différentes du point de vue du navigateur, le cookie posé par Railway est traité comme un cookie tiers et droppé silencieusement. Desktop est plus permissif et masque le bug.
 - **Solution architecturale (ADR-025)** : proxy SvelteKit `src/routes/api/[...path]/+server.ts` qui forwarde `/api/*` vers `BACKEND_URL` côté serveur. Le navigateur ne voit qu'une seule origine → cookies first-party. Voir aussi pitfalls §1.16, §2.10, §2.11 pour les sous-problèmes rencontrés.
 - **Diagnostic** : si la conn marche sur PC et pas sur mobile, c'est presque certainement un cookie tiers. Tester en dev en utilisant deux ports différents (frontend `:5173`, backend `:8000`) reproduit le problème.
@@ -98,7 +98,7 @@
 - **Symptôme** : tests qui créent un `BiblioCard` via `Base.metadata.create_all` (conftest SQLite) reçoivent `IntegrityError: NOT NULL constraint failed: biblio_cards.canonical_hash` alors qu'on tente d'insérer un draft. Aurait aussi cassé `POST /cards` en prod pour tout user tiers (cas pas encore exercé puisque OAuth pas branché).
 - **Cause** : `BiblioCard.canonical_hash` et `BiblioCard.signature` étaient déclarés `nullable=False` dans `apps/backend/app/models/biblio_card.py`, et la migration 001 créait les colonnes NOT NULL aussi. Mais `CardService.create_card()` les laisse `None`. La seule raison que la démo marche : le seed enchaîne immédiatement avec `publish_card()` qui remplit les champs.
 - **Statut : FIXED dans PR #24** — modèle passé à `Mapped[str | None]` + `nullable=True` + migration `005_nullable_card_hash_sig.py`. Test de régression : la fixture `published_card` de `tests/unit/test_canonical_hash.py` crée un draft sans canonical_hash et passe.
-- **Prévention future** : à chaque ajout de colonne `nullable=False`, vérifier qu'au moins un test crée la ligne sans setter ce champ (preuve que c'est *vraiment* requis dans tous les chemins).
+- **Prévention future** : à chaque ajout de colonne `nullable=False`, vérifier qu'au moins un test crée la ligne sans setter ce champ (preuve que c'est _vraiment_ requis dans tous les chemins).
 
 ### 1.12 Field constraints Pydantic perdus par redéfinition de champ en sous-classe
 
@@ -367,4 +367,4 @@
 
 ---
 
-*Ce fichier grossit à chaque session significative. C'est sain. Un fichier `PITFALLS.md` qui ne grossit jamais, c'est un projet qui réinvente les mêmes bugs.*
+_Ce fichier grossit à chaque session significative. C'est sain. Un fichier `PITFALLS.md` qui ne grossit jamais, c'est un projet qui réinvente les mêmes bugs._

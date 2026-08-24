@@ -4,22 +4,22 @@ contract: "Publie une fiche, archive ses sources et crée l'attestation de conte
 layer: L2
 model_hint: null
 tools:
-  - get_card
-  - get_my_card
-  - list_sources
-  - verify_excerpts
-  - archive_sources
-  - publish_card
-  - create_content_attestation
-  - fiche_state
-  - fs_read
+    - get_card
+    - get_my_card
+    - list_sources
+    - verify_excerpts
+    - archive_sources
+    - publish_card
+    - create_content_attestation
+    - fiche_state
+    - fs_read
 context:
-  - stages/07-publication/CONTEXT.md
-  - shared/garde-fous.md
+    - stages/07-publication/CONTEXT.md
+    - shared/garde-fous.md
 system_prompt: |
-  Tu publies. Chacune de tes actions est irréversible ou visible publiquement,
-  donc chacune demande une validation explicite du créateur.
+    Tu publies. Chacune de tes actions est irréversible ou visible publiquement,
+    donc chacune demande une validation explicite du créateur.
 
-  Avant de publier, tu vérifies dans cet ordre : les extraits sont vérifiés, les
-  sources pivots sont archivées, la fiche a une description. Tu annonces ce qui
-  manque au lieu de publier une fiche incomplète.
+    Avant de publier, tu vérifies dans cet ordre : les extraits sont vérifiés, les
+    sources pivots sont archivées, la fiche a une description. Tu annonces ce qui
+    manque au lieu de publier une fiche incomplète.

@@ -28,8 +28,8 @@ LLM BYOK dans l'UI web Philum** qui permet aux créateurs :
 4. et en bénéficiant des **capacités natives du provider** (web search, skills) quand le
    provider les expose dans son API.
 
-L'accroche publique de Philum promet déjà : *« interrogez une IA sur ces sources et rien
-d'autre »* (STATE.md, session 2026-08-14/15, PR #383). La fonctionnalité BYOK concrétise
+L'accroche publique de Philum promet déjà : _« interrogez une IA sur ces sources et rien
+d'autre »_ (STATE.md, session 2026-08-14/15, PR #383). La fonctionnalité BYOK concrétise
 et dépasse cette promesse : un agent conversationnel complet, dans l'interface Philum,
 qui tourne sur le compte IA de l'utilisateur.
 
@@ -39,14 +39,14 @@ Le **web search et les skills du provider suivent le compte de l'utilisateur** q
 provider les expose via API (Gemini : grounding Google Search natif ; OpenAI/Anthropic :
 outil `web_search`). Mais ce n'est ni universel, ni suffisant :
 
-| Réserve | Conséquence pour l'architecture |
-|---|---|
+| Réserve                                                                                                                                                             | Conséquence pour l'architecture                                                                                                             |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Pas universel** — DeepSeek n'a pas de web search natif ; pas tous les providers exposent leurs « skills » via API (certains ne vivent que dans l'UI du provider). | Philum ne peut pas dépendre du web search natif : il faut un web search **Philum** (API dédiée) uniforme, en plus du natif quand il existe. |
-| **Pas toujours dans le free tier** — le web search natif est souvent réservé aux plans payants (Anthropic/OpenAI). | Sur un compte free tier, le web search Philum reste disponible. |
-| **Boîte noire** — le natif renvoie une réponse synthétisée, pas les URLs brutes vérifiables. | Pour l'exactitude Philum, la **découverte** d'URLs peut être native, la **vérification** passe toujours par les oracles + pipeline maison. |
+| **Pas toujours dans le free tier** — le web search natif est souvent réservé aux plans payants (Anthropic/OpenAI).                                                  | Sur un compte free tier, le web search Philum reste disponible.                                                                             |
+| **Boîte noire** — le natif renvoie une réponse synthétisée, pas les URLs brutes vérifiables.                                                                        | Pour l'exactitude Philum, la **découverte** d'URLs peut être native, la **vérification** passe toujours par les oracles + pipeline maison.  |
 
-**Principe retenu** : *« le provider = le cerveau (le LLM que l'utilisateur choisit),
-Philum = les mains et la preuve (outils MCP + oracles + vérification verbatim) »*. Le
+**Principe retenu** : _« le provider = le cerveau (le LLM que l'utilisateur choisit),
+Philum = les mains et la preuve (outils MCP + oracles + vérification verbatim) »_. Le
 web search natif du provider est un bonus quand il existe ; les agents de création de
 fiche reposent sur les outils Philum, qui garantissent le niveau d'exactitude — quel que
 soit le LLM connecté.
@@ -71,19 +71,19 @@ soit le LLM connecté.
 ## 2. Ce qu'est `deepseek-harness` (dsh) et ce qu'il apporte
 
 Repo : `https://github.com/deepseek-ai/deepseek-harness` (MIT, developer preview).
-Harness d'agent construit sur Cordis : *« everything is a plugin »*.
+Harness d'agent construit sur Cordis : _« everything is a plugin »_.
 
 ### 2.1 Capacités pertinentes
 
-| Capacité | Détail vérifié | Pertinence Philum |
-|---|---|---|
-| **Multi-provider LLM** | Provider natif DeepSeek ; OpenAI et Anthropic au catalogue ; **custom provider OpenAI-compatible** (Gemini, tout endpoint) ; auth native Bedrock/Vertex/Azure/Codex. | C'est exactement le besoin BYOK : un routeur vers OpenAI, Anthropic, DeepSeek, Gemini. |
-| **Gestion des compat provider** | Module `llm-pi-ai` : `max_tokens` vs `max_completion_tokens`, `supportsDeveloperRole`, formats de « thinking », catalogues de modèles, endpoints custom, fallbacks. | Valeur réutilisable en inspiration : ce sont les pièges exacts que Philum contourne déjà dans `app/services/llm.py`. |
-| **Clés write-only** | Stockées dans `$DSH_HOME/.credentials.yaml`, jamais renvoyées à l'UI. | Modèle de référence pour la sécurité des clés utilisateur. |
-| **Registre d'outils** | `ctx.tools.register(defineTool({name, description, parameters, output, execute}))`. | Equivalent Philum : le serveur MCP existant. |
-| **Journal de session** | Log de session append-only. | Réutilisable comme modèle pour l'historique de conversation. |
-| **Boucle d'agent** | Agent loop Cordis avec politiques d'approbation (« the Web UI asks before operations that require approval »). | C'est le moteur à construire. |
-| **UI web locale** | `npx @deepseek-ai/dsh web` → UI sur `127.0.0.1:3080`, Settings → Models, choix de workspace, approbation. | Local-first, pas multi-tenant web : à ré-imaginer dans l'UI Philum. |
+| Capacité                        | Détail vérifié                                                                                                                                                       | Pertinence Philum                                                                                                    |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **Multi-provider LLM**          | Provider natif DeepSeek ; OpenAI et Anthropic au catalogue ; **custom provider OpenAI-compatible** (Gemini, tout endpoint) ; auth native Bedrock/Vertex/Azure/Codex. | C'est exactement le besoin BYOK : un routeur vers OpenAI, Anthropic, DeepSeek, Gemini.                               |
+| **Gestion des compat provider** | Module `llm-pi-ai` : `max_tokens` vs `max_completion_tokens`, `supportsDeveloperRole`, formats de « thinking », catalogues de modèles, endpoints custom, fallbacks.  | Valeur réutilisable en inspiration : ce sont les pièges exacts que Philum contourne déjà dans `app/services/llm.py`. |
+| **Clés write-only**             | Stockées dans `$DSH_HOME/.credentials.yaml`, jamais renvoyées à l'UI.                                                                                                | Modèle de référence pour la sécurité des clés utilisateur.                                                           |
+| **Registre d'outils**           | `ctx.tools.register(defineTool({name, description, parameters, output, execute}))`.                                                                                  | Equivalent Philum : le serveur MCP existant.                                                                         |
+| **Journal de session**          | Log de session append-only.                                                                                                                                          | Réutilisable comme modèle pour l'historique de conversation.                                                         |
+| **Boucle d'agent**              | Agent loop Cordis avec politiques d'approbation (« the Web UI asks before operations that require approval »).                                                       | C'est le moteur à construire.                                                                                        |
+| **UI web locale**               | `npx @deepseek-ai/dsh web` → UI sur `127.0.0.1:3080`, Settings → Models, choix de workspace, approbation.                                                            | Local-first, pas multi-tenant web : à ré-imaginer dans l'UI Philum.                                                  |
 
 ### 2.2 Ce qui ne colle pas tel quel
 
@@ -123,13 +123,14 @@ multi-provider, registre d'outils, journal, approbation), pas le code.
   **pas d'appel LLM synchrone dans une route HTTP**, le LLM propose / la crypto dispose.
 - Piège connu (PR #392) : le quota Gemini se compte par modèle/jour, fallbacks ordonnés
   (`llm_direct_model_fallbacks`) nécessaires.
-- **Le BYOK est orthogonal** : un chemin *par utilisateur* (surface OpenAI-compatible)
-  à côté du chemin *central* (proxy LiteLLM). La couche centrale reste pour les
+- **Le BYOK est orthogonal** : un chemin _par utilisateur_ (surface OpenAI-compatible)
+  à côté du chemin _central_ (proxy LiteLLM). La couche centrale reste pour les
   suggestions internes (extraction, annotation, excerpt-suggest).
 
 ### 3.3 Le serveur MCP est déjà un registre d'outils
 
 `apps/backend/app/mcp_server/server.py` (FastMCP) expose **30 outils** :
+
 - Lecture : `search_cards`, `get_card`, `get_source`, `find_cards_citing`, `whoami`.
 - Écriture : `create_card`, `add_source`, `add_excerpt`, `set_content_text`,
   `publish_card`, `update_card`, `update_source`, `delete_source`, `delete_excerpt`,
@@ -228,7 +229,7 @@ par créateur doit pouvoir lire et écrire** : c'est la « config de l'agent » 
 ### 4.2 Brique 1 — Providers BYOK
 
 - Table `agent_providers` : `(id, creator_id, provider, base_url, model, api_key_enc,
-  is_default, created_at, updated_at)`. Clé chiffrée (le repo a déjà `app/crypto/` et une
+is_default, created_at, updated_at)`. Clé chiffrée (le repo a déjà `app/crypto/` et une
   `master_encryption_key` — cf. STATE.md infra).
 - Service `app/services/agent_providers.py` : CRUD par créateur + **résolution de
   l'endpoint chat** (surface OpenAI-compatible, même logique que `url_chat()` dans
@@ -281,16 +282,16 @@ par créateur doit pouvoir lire et écrire** : c'est la « config de l'agent » 
 
 ## 5. Ce qui existe déjà et se réutilise tel quel
 
-| Besoin | Existant Philum |
-|---|---|
-| Outils de manipulation de fiches/sources/extraits | `apps/backend/app/mcp_server/tools.py` + `tools_write.py` (30 outils, auth créateur) |
-| Point de contact LLM interne | `app/services/llm.py` + proxy LiteLLM (à ne PAS utiliser pour le BYOK) |
-| Chiffrement | `app/crypto/` + `master_encryption_key` |
-| Identité multi-tenant | JWT créateur + `POST /api/v1/auth/mcp-token` |
-| Extraction de texte de pages | `app/services/document_text.py` (anti anti-bot : NCBI API, retry 429, détection de murs, PRs #401-#403, #411) |
-| Recherche par le sens / plein texte | `excerpt_search.py`, `card_search.py` (pgvector + unaccent) |
-| Template de workspace ICM | `workspaces/createur-de-fiches/` (shared/, stages/, _core/, runs/) |
-| Audit scripté non bloquant | `_core/audit/audit_fiche.py` (titre exact, dates, alertes) |
+| Besoin                                            | Existant Philum                                                                                               |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Outils de manipulation de fiches/sources/extraits | `apps/backend/app/mcp_server/tools.py` + `tools_write.py` (30 outils, auth créateur)                          |
+| Point de contact LLM interne                      | `app/services/llm.py` + proxy LiteLLM (à ne PAS utiliser pour le BYOK)                                        |
+| Chiffrement                                       | `app/crypto/` + `master_encryption_key`                                                                       |
+| Identité multi-tenant                             | JWT créateur + `POST /api/v1/auth/mcp-token`                                                                  |
+| Extraction de texte de pages                      | `app/services/document_text.py` (anti anti-bot : NCBI API, retry 429, détection de murs, PRs #401-#403, #411) |
+| Recherche par le sens / plein texte               | `excerpt_search.py`, `card_search.py` (pgvector + unaccent)                                                   |
+| Template de workspace ICM                         | `workspaces/createur-de-fiches/` (shared/, stages/, _core/, runs/)                                            |
+| Audit scripté non bloquant                        | `_core/audit/audit_fiche.py` (titre exact, dates, alertes)                                                    |
 
 ---
 
@@ -311,6 +312,7 @@ par créateur doit pouvoir lire et écrire** : c'est la « config de l'agent » 
 ## 7. Points ouverts à trancher
 
 **Trancés (2026-08-20)** :
+
 - **Web search** : Firecrawl écarté (test exploratoire seulement, aucun avantage en
   exactitude). Source = API dédiée type Tavily/Exa/Brave/Serper (URLs brutes
   vérifiables) **ou** grounding natif du provider quand il existe ; les oracles
@@ -375,8 +377,8 @@ par créateur doit pouvoir lire et écrire** : c'est la « config de l'agent » 
 
 ---
 
-*Sources vérifiées dans le repo : STATE.md, .docs/17-llm-strategy.md, apps/backend/app/services/llm.py,
-apps/backend/app/mcp_server/server.py, infra/litellm/config.yaml, workspaces/createur-de-fiches/*.
+_Sources vérifiées dans le repo : STATE.md, .docs/17-llm-strategy.md, apps/backend/app/services/llm.py,
+apps/backend/app/mcp_server/server.py, infra/litellm/config.yaml, workspaces/createur-de-fiches/_.
 Harness : deepseek-ai/deepseek-harness (README, docs/architecture.md, docs/user/guide/index.md,
 docs/user/guide/providers.md, docs/development.md, packages/bundle/web-app/README.md,
 docs/cookbook/adding-a-tool.md).*

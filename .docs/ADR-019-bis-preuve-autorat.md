@@ -32,11 +32,11 @@ Les trois éléments sont vérifiables indépendamment :
 
 ### Formulations autorisées et interdites dans l'interface
 
-| Situation | Texte autorisé |
-|---|---|
-| Attestation signée + canal vérifié | « Déclaré par le titulaire du canal officiel le {date}. » |
+| Situation                             | Texte autorisé                                                                 |
+| ------------------------------------- | ------------------------------------------------------------------------------ |
+| Attestation signée + canal vérifié    | « Déclaré par le titulaire du canal officiel le {date}. »                      |
 | Attestation signée, canal non vérifié | « Déclaré par {compte} le {date}. Le canal de diffusion n'a pas été vérifié. » |
-| Aucune attestation | « Aucune déclaration d'autorat sur Philum pour ce contenu. » |
+| Aucune attestation                    | « Aucune déclaration d'autorat sur Philum pour ce contenu. »                   |
 
 **Formulations interdites, toujours :** « contenu certifié authentique »,
 « garanti par Philum », « vérifié », « authentifié », « contenu suspect »
@@ -102,12 +102,12 @@ Question ouverte posée par le projet. Points à trancher lors de l'implémentat
 
 Options, sans tranchement :
 
-| Option | Avantage | Coût réel |
-|---|---|---|
-| E-mail + mot de passe | Universel | Hachage, rate limiting, réinitialisation, vérification d'adresse |
-| Lien magique par e-mail | Moins de surface, pas de mot de passe | Dépendance à la délivrabilité |
-| GitHub OAuth | Familier développeurs | Dépendance à GitHub, moins pertinent hors tech |
-| ORCID OAuth | Identité vérifiée de chercheur | Seul OAuth qui apporte une information d'identité exploitable pour la vérification d'autorat académique |
+| Option                  | Avantage                              | Coût réel                                                                                               |
+| ----------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| E-mail + mot de passe   | Universel                             | Hachage, rate limiting, réinitialisation, vérification d'adresse                                        |
+| Lien magique par e-mail | Moins de surface, pas de mot de passe | Dépendance à la délivrabilité                                                                           |
+| GitHub OAuth            | Familier développeurs                 | Dépendance à GitHub, moins pertinent hors tech                                                          |
+| ORCID OAuth             | Identité vérifiée de chercheur        | Seul OAuth qui apporte une information d'identité exploitable pour la vérification d'autorat académique |
 
 ORCID est le seul qui apporte une information d'identité vérifiée directement
 utilisable pour authentifier un chercheur : l'identifiant ORCID est citable

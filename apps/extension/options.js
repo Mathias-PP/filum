@@ -12,8 +12,14 @@ async function load() {
 }
 
 document.getElementById("save-btn").addEventListener("click", async () => {
-  const apiBase = document.getElementById("api-base").value.trim().replace(/\/+$/, "");
-  const frontendBase = document.getElementById("frontend-base").value.trim().replace(/\/+$/, "");
+  const apiBase = document
+    .getElementById("api-base")
+    .value.trim()
+    .replace(/\/+$/, "");
+  const frontendBase = document
+    .getElementById("frontend-base")
+    .value.trim()
+    .replace(/\/+$/, "");
   await chrome.storage.sync.set({
     apiBase: apiBase || DEFAULTS.apiBase,
     frontendBase: frontendBase || DEFAULTS.frontendBase,

@@ -23,7 +23,7 @@ Le frontend est en SvelteKit 2 + Svelte 5 + TS strict + Tailwind. SSR est **off 
 3. Si la route utilise un composant D3 (ou tout code touchant `window`/`document`) : **dynamic-import côté client** :
    ```typescript
    onMount(async () => {
-     const { default: SourceGraph } = await import('$lib/components/SourceGraph.svelte');
+     const { default: SourceGraph } = await import("$lib/components/SourceGraph.svelte");
      // ...
    });
    ```

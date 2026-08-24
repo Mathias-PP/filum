@@ -43,7 +43,12 @@ const AUTHOR_KINDS = [
 const $ = (id) => document.getElementById(id);
 
 function show(stateId) {
-  for (const id of ["state-loading", "state-logged-out", "state-error", "state-form"]) {
+  for (const id of [
+    "state-loading",
+    "state-logged-out",
+    "state-error",
+    "state-form",
+  ]) {
     $(id).classList.toggle("hidden", id !== stateId);
   }
 }
@@ -78,14 +83,30 @@ async function getActiveTab() {
 }
 
 function guessTaxonomy(url) {
-  const guess = { category: "page-web", format: "texte", author_kind: "individu" };
+  const guess = {
+    category: "page-web",
+    format: "texte",
+    author_kind: "individu",
+  };
   try {
     const host = new URL(url).hostname.replace(/^www\./, "");
     if (/youtube\.com|youtu\.be|vimeo\.com/.test(host)) {
-      return { category: "documentaire", format: "video", author_kind: "individu" };
+      return {
+        category: "documentaire",
+        format: "video",
+        author_kind: "individu",
+      };
     }
-    if (/doi\.org|arxiv\.org|pubmed|sciencedirect|springer|nature\.com|wiley/.test(host)) {
-      return { category: "article-scientifique", format: "texte", author_kind: "chercheur" };
+    if (
+      /doi\.org|arxiv\.org|pubmed|sciencedirect|springer|nature\.com|wiley/.test(
+        host,
+      )
+    ) {
+      return {
+        category: "article-scientifique",
+        format: "texte",
+        author_kind: "chercheur",
+      };
     }
   } catch {
     /* URL invalide : défauts */
@@ -96,7 +117,9 @@ function guessTaxonomy(url) {
 async function init() {
   const settings = await getSettings();
   $("login-link").href = settings.frontendBase;
-  $("settings-btn").addEventListener("click", () => chrome.runtime.openOptionsPage());
+  $("settings-btn").addEventListener("click", () =>
+    chrome.runtime.openOptionsPage(),
+  );
 
   let me;
   try {
@@ -142,7 +165,10 @@ async function init() {
   const { lastCardId } = await chrome.storage.sync.get({ lastCardId: null });
   fillSelect(
     $("card-select"),
-    cards.map((c) => [c.id, `${c.title}${c.status === "draft" ? " (brouillon)" : ""}`]),
+    cards.map((c) => [
+      c.id,
+      `${c.title}${c.status === "draft" ? " (brouillon)" : ""}`,
+    ]),
     lastCardId,
   );
 
@@ -163,9 +189,11 @@ async function init() {
       const meta = await r.json();
       if (meta.title) $("title-input").value = meta.title;
       if (meta.authors) $("authors-input").value = meta.authors;
-      if (meta.category) fillSelect($("category-select"), CATEGORIES, meta.category);
+      if (meta.category)
+        fillSelect($("category-select"), CATEGORIES, meta.category);
       if (meta.format) fillSelect($("format-select"), FORMATS, meta.format);
-      if (meta.author_kind) fillSelect($("author-kind-select"), AUTHOR_KINDS, meta.author_kind);
+      if (meta.author_kind)
+        fillSelect($("author-kind-select"), AUTHOR_KINDS, meta.author_kind);
     })
     .catch(() => {});
 

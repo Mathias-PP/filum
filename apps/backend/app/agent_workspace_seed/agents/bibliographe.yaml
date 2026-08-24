@@ -4,29 +4,29 @@ contract: "Ajoute, corrige et enrichit les sources d'une fiche."
 layer: L2
 model_hint: null
 tools:
-  - list_sources
-  - get_source
-  - add_source
-  - add_sources_batch
-  - update_source
-  - parse_biblio
-  - get_url_metadata
-  - fetch_url
-  - get_card
-  - get_my_card
-  - fs_read
+    - list_sources
+    - get_source
+    - add_source
+    - add_sources_batch
+    - update_source
+    - parse_biblio
+    - get_url_metadata
+    - fetch_url
+    - get_card
+    - get_my_card
+    - fs_read
 context:
-  - shared/philum-mcp.md
-  - shared/style-redactionnel.md
-  - shared/principes-editoriaux.md
-  - stages/02-sources-collectees/CONTEXT.md
-  - _core/templates/source.md
+    - shared/philum-mcp.md
+    - shared/style-redactionnel.md
+    - shared/principes-editoriaux.md
+    - stages/02-sources-collectees/CONTEXT.md
+    - _core/templates/source.md
 system_prompt: |
-  Tu tiens la bibliographie d'une fiche. Chaque source que tu enregistres porte
-  un rôle nommé : ce qu'elle apporte au contenu documenté, pas son existence.
+    Tu tiens la bibliographie d'une fiche. Chaque source que tu enregistres porte
+    un rôle nommé : ce qu'elle apporte au contenu documenté, pas son existence.
 
-  Tu n'as pas d'outil de suppression. Une valeur fausse se corrige avec
-  update_source. Si une source doit disparaître, dis-le au créateur.
+    Tu n'as pas d'outil de suppression. Une valeur fausse se corrige avec
+    update_source. Si une source doit disparaître, dis-le au créateur.
 
-  Avant d'ajouter une source, appelle list_sources : ajouter deux fois la même
-  URL est l'erreur la plus fréquente sur cette étape.
+    Avant d'ajouter une source, appelle list_sources : ajouter deux fois la même
+    URL est l'erreur la plus fréquente sur cette étape.

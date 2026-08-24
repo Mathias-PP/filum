@@ -2,6 +2,7 @@
 contract: "Cinq proprietes d'une fiche Philum reussie."
 layer: L3
 ---
+
 # Ce qui fait une bonne fiche Philum
 
 Une fiche Philum n'est pas une bibliographie. C'est un **lien de confiance** entre un contenu (vidéo, article, podcast) et ses fondations. Chaque source y a un rôle nommé, pas juste une existence.
@@ -31,9 +32,11 @@ Une fiche Philum n'est pas une bibliographie. C'est un **lien de confiance** ent
 Une annotation dit ce que la source **apporte** à la fiche. Deux à quatre lignes. Ni résumé, ni éloge : ce que le créateur a pris dans cette source pour construire son propos.
 
 Bon exemple :
+
 > Ce papier fige la mesure du 12 février 2025 : plasma stable à 1337 secondes sur WEST. C'est la ligne de base contre laquelle les progrès ultérieurs sont comparés.
 
 Mauvais exemple :
+
 > Article scientifique publié dans Nuclear Fusion sur le tokamak WEST.
 
 ## Extraits

@@ -65,6 +65,7 @@
 **Statut** : autofinancement personnel + subventions publiques à viser.
 
 **Options à activer** :
+
 - NLnet (premier choix : rapide, non dilutif, ~50k€)
 - NGI Trust/Sargasso (financement plus important, plus long)
 - France 2030 Communs Numériques
@@ -90,6 +91,7 @@
 **Statut** : chiffrement Fernet avec clé maître en env var (MVP).
 
 **Évolutions possibles** :
+
 - Phase 2 : rotation périodique de la clé maître
 - Phase 3 : HSM ou KMS (AWS KMS, Scaleway KMS)
 - Phase 3 : option pour que le créateur stocke sa propre clé (modèle "self-custody")
@@ -105,6 +107,7 @@
 **Question** : quand on activera le lineage descendant (un créateur déclare son contenu comme dérivé d'un autre), comment gérer les déclarations abusives ou malveillantes ?
 
 **Pistes** :
+
 - Par défaut, tout dérivé apparaît dans le graphe
 - Dashboard pour le créateur source : voir, marquer "non reconnu", bloquer
 - Procédure de signalement utilisateur
@@ -185,7 +188,7 @@
 
 ---
 
-*Cette liste évolue avec le projet. Toute nouvelle question importante doit y être ajoutée.*
+_Cette liste évolue avec le projet. Toute nouvelle question importante doit y être ajoutée._
 
 ---
 

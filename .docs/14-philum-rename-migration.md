@@ -1,6 +1,7 @@
 # Renommage Filum → Philum — Plan de migration
 
 > **État (2026-06-02)** :
+>
 > - ✅ **Phase 1 — Texte visible frontend** : MERGÉE (via PR `feat/rename-philum`, complétée par PR #91 logo Philum v1 + étymologie phylum biologique sur `/about`).
 > - ✅ **Bonus** : User-Agent backend `"Filum/0.1"` → `"Philum/0.1"` dans `url_extractor.py` (PR #92 audit-improvements).
 > - ⏳ **Phases 2-4** : non planifiées. **Recommandation** : créer une issue GitHub par phase plutôt qu'attendre un gros chantier coordonné. Triggers naturels :
@@ -24,25 +25,25 @@ La stratégie retenue : **4 phases incrémentales**, mergeables séparément, sa
 
 Renommages appliqués (uniquement le texte visible à l'utilisateur final, jamais d'URL/identifiant/clé) :
 
-| Fichier | Type de changement |
-|---|---|
-| `apps/frontend/src/lib/components/Logo.svelte` | Commentaire JSDoc |
-| `apps/frontend/src/lib/components/HeroPulsar.svelte` | `aria-label` SVG fallback |
-| `apps/frontend/src/routes/+layout.svelte` | Texte header + footer copyright |
-| `apps/frontend/src/routes/+page.svelte` | `<title>`, meta description, body landing |
-| `apps/frontend/src/routes/about/+page.svelte` | Toutes les occurrences visibles (12) |
-| `apps/frontend/src/routes/features/+page.svelte` | Toutes les occurrences visibles (7) |
-| `apps/frontend/src/routes/security/+page.svelte` | Toutes les occurrences visibles (6) |
-| `apps/frontend/src/routes/roadmap/+page.svelte` | Toutes les occurrences visibles (4) |
-| `apps/frontend/src/routes/privacy/+page.svelte` | Toutes les occurrences visibles (3 — URL conservée) |
-| `apps/frontend/src/routes/+error.svelte` | `<title>` (URL issue conservée) |
-| `apps/frontend/src/routes/@[username]/+page.svelte` | `<title>` |
-| `apps/frontend/src/routes/@[creator]/[card]/+page.svelte` | `<title>`, JSON-LD `name`, `og:site_name` |
-| `apps/frontend/src/routes/auth/callback/+page.svelte` | `<title>` |
-| `apps/frontend/src/routes/dashboard/+page.svelte` | `<title>` |
-| `apps/frontend/src/routes/dashboard/new/+page.svelte` | `<title>` |
-| `apps/frontend/src/routes/dashboard/new/[card_id]/sources/+page.svelte` | `<title>` + texte body |
-| `apps/frontend/src/routes/sandbox/logo/+page.svelte` | Comments + sandbox title |
+| Fichier                                                                 | Type de changement                                  |
+| ----------------------------------------------------------------------- | --------------------------------------------------- |
+| `apps/frontend/src/lib/components/Logo.svelte`                          | Commentaire JSDoc                                   |
+| `apps/frontend/src/lib/components/HeroPulsar.svelte`                    | `aria-label` SVG fallback                           |
+| `apps/frontend/src/routes/+layout.svelte`                               | Texte header + footer copyright                     |
+| `apps/frontend/src/routes/+page.svelte`                                 | `<title>`, meta description, body landing           |
+| `apps/frontend/src/routes/about/+page.svelte`                           | Toutes les occurrences visibles (12)                |
+| `apps/frontend/src/routes/features/+page.svelte`                        | Toutes les occurrences visibles (7)                 |
+| `apps/frontend/src/routes/security/+page.svelte`                        | Toutes les occurrences visibles (6)                 |
+| `apps/frontend/src/routes/roadmap/+page.svelte`                         | Toutes les occurrences visibles (4)                 |
+| `apps/frontend/src/routes/privacy/+page.svelte`                         | Toutes les occurrences visibles (3 — URL conservée) |
+| `apps/frontend/src/routes/+error.svelte`                                | `<title>` (URL issue conservée)                     |
+| `apps/frontend/src/routes/@[username]/+page.svelte`                     | `<title>`                                           |
+| `apps/frontend/src/routes/@[creator]/[card]/+page.svelte`               | `<title>`, JSON-LD `name`, `og:site_name`           |
+| `apps/frontend/src/routes/auth/callback/+page.svelte`                   | `<title>`                                           |
+| `apps/frontend/src/routes/dashboard/+page.svelte`                       | `<title>`                                           |
+| `apps/frontend/src/routes/dashboard/new/+page.svelte`                   | `<title>`                                           |
+| `apps/frontend/src/routes/dashboard/new/[card_id]/sources/+page.svelte` | `<title>` + texte body                              |
+| `apps/frontend/src/routes/sandbox/logo/+page.svelte`                    | Comments + sandbox title                            |
 
 **Strict no-go pour Phase 1** (occurrences `Filum`/`filum` intentionnellement non touchées) :
 
@@ -100,18 +101,22 @@ agent/*.md
 Renommages qui nécessitent **changements coordonnés** mais sans migration de données :
 
 ### 3a. localStorage key
+
 - `apps/frontend/src/app.html` ligne 15 : `localStorage.getItem('filum-theme')` → `'philum-theme'`
 - `apps/frontend/src/lib/stores/theme.ts` ligne 5 : `STORAGE_KEY = 'filum-theme'` → `'philum-theme'`
 - **Impact** : les préférences thème de tous les users existants sont invalidées (revient à light mode au prochain chargement). À mitiger via lecture compat : essayer d'abord `'philum-theme'`, fallback `'filum-theme'`, et migrer à l'écriture.
 
 ### 3b. Package npm
+
 - `apps/frontend/package.json` : `"name": "filum-frontend"` → `"philum-frontend"`
 - **Impact** : aucun runtime, mais ça touche `pnpm-lock.yaml` (probablement déjà CI-prettier-cassé sur les PRs Dependabot existantes — cf. STATE 2026-05-26 audit).
 
 ### 3c. Comments / variables internes
+
 - `apps/frontend/src/routes/api/[...path]/+server.ts` ligne 61 : commentaire `X-Filum-Public-Origin` peut être renommé en `X-Philum-Public-Origin` **uniquement si on renomme le header dans le backend en même temps** (cf. Phase 4a). Si on garde le header legacy `X-Filum-Public-Origin`, garder le commentaire intact.
 
 ### 3d. Analytics dbt
+
 - `apps/analytics/dbt_project.yml` : `name: 'filum'` → `'philum'`
 - `apps/analytics/profiles.yml` : références au profil `filum`
 - `apps/analytics/models/sources.yml` : références au schéma
@@ -124,6 +129,7 @@ Renommages qui nécessitent **changements coordonnés** mais sans migration de d
 C'est la phase qui demande coordination prod et qui peut casser l'auth/cookies/OAuth si mal exécutée.
 
 ### 4a. Cookies et headers backend
+
 - `filum_session` cookie name (FastAPI session middleware)
 - `filum_oauth_state` cookie name (OAuth flow)
 - `X-Filum-Public-Origin` header (proxy SvelteKit → backend)
@@ -134,15 +140,19 @@ C'est la phase qui demande coordination prod et qui peut casser l'auth/cookies/O
   - Sinon : invalidation forcée de toutes les sessions le jour J (acceptable seulement si user base très petite — c'est le cas en pré-MVP, donc peut-être plus simple)
 
 ### 4b. Env vars backend (`apps/backend/app/core/config.py`)
+
 Liste des env vars contenant "filum" (à vérifier par grep) :
+
 ```
 app_name = "Filum API"  # safe à renommer
 frontend_base_url
 # pas d'env var explicitement "filum_*" je crois — à confirmer
 ```
+
 - **Migration** : revoir `.env.example`, mettre à jour Railway env vars en parallèle du déploiement.
 
 ### 4c. Domain Vercel + Railway
+
 - Vercel subdomain : `filum-eight.vercel.app` → `philum-eight.vercel.app` (ou domaine custom `philum.app`)
 - Railway service : `filum-production-07bb.up.railway.app` → similaire ou domaine custom
 - **Migration** :
@@ -155,22 +165,26 @@ frontend_base_url
   - URLs dans le code frontend (`https://filum-eight.vercel.app/*`) mises à jour en simultané
 
 ### 4d. Repo GitHub
+
 - Renommer `Mathias-PP/filum` → `Mathias-PP/philum` via GitHub UI
 - GitHub crée automatiquement les redirects pour les anciennes URLs
 - Mettre à jour `git remote set-url origin` chez tous les contributeurs
 - Mettre à jour les URLs dans le code (`https://github.com/Mathias-PP/filum/...`)
 
 ### 4e. Backend package
+
 - `apps/backend/pyproject.toml` : `name = "filum"` (ou similaire)
 - `apps/backend/app/` : potentiellement renommer le package Python mais pas obligatoire (le path import est court).
 
 ### 4f. Tests
+
 - `apps/backend/tests/integration/test_oauth_callback.py` (7 occurrences) : asserts sur cookies/headers à mettre à jour
 - `apps/backend/tests/unit/test_auth.py` (6) : idem
 - `apps/backend/tests/integration/test_auth_endpoints.py` (3) : idem
 - À faire en même temps que 4a.
 
 ### 4g. Docker / scripts / Makefile
+
 - `docker-compose.yml`, `docker-compose.dev.yml`, `infra/postgres/docker-compose*.yml` : noms de services/containers
 - `Makefile` : commandes
 - `scripts/*.sh` : URLs Railway, noms de services
@@ -195,6 +209,7 @@ frontend_base_url
 La PR #84 (`feat/hero-design-iter`) en cours touche fortement `apps/frontend/src/routes/sandbox/logo/+page.svelte`. Cette PR (`feat/rename-philum`) modifie le titre et 2 commentaires dans le même fichier sur sa version main.
 
 **Ordre de merge recommandé** :
+
 1. Merger PR #84 d'abord (logo work).
 2. Puis rebaser `feat/rename-philum` sur main.
 3. Conflit attendu uniquement sur la version sandbox/logo : trivial à résoudre (les 3 lignes Filum→Philum à reporter sur la nouvelle version du fichier).

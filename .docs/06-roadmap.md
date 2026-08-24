@@ -35,6 +35,7 @@
 ### Jour 1 — Squelette du projet et base de données
 
 **Matin (3-4h)**
+
 - Initialiser le mono-repo
 - Setup backend FastAPI minimal (`apps/backend/`) avec `uv`
 - Setup frontend SvelteKit minimal (`apps/frontend/`) avec `pnpm`
@@ -43,6 +44,7 @@
 - Configurer `.env.example` complet
 
 **Après-midi (3-4h)**
+
 - Définir les modèles SQLAlchemy : `User`, `BiblioCard`, `Source`, `AuditEvent`
 - Configurer Alembic
 - Créer la première migration
@@ -56,6 +58,7 @@
 ### Jour 2 — OAuth Google et utilisateurs
 
 **Matin (3-4h)**
+
 - Endpoint `GET /api/v1/auth/login` (redirige vers Google)
 - Endpoint `GET /api/v1/auth/callback` (callback Google)
 - Création utilisateur en BDD à la première connexion
@@ -63,6 +66,7 @@
 - Stockage chiffré de la clé privée (Fernet avec clé maître en env var)
 
 **Après-midi (3-4h)**
+
 - Endpoint `GET /api/v1/auth/me` (utilisateur courant)
 - Endpoint `POST /api/v1/auth/logout`
 - Page d'onboarding frontend (`/onboarding`) avec choix du slug
@@ -76,12 +80,14 @@
 ### Jour 3 — CRUD fiches et sources
 
 **Matin (3-4h)**
+
 - Endpoint `POST /api/v1/cards` (créer fiche en brouillon)
 - Endpoint `PATCH /api/v1/cards/{id}` (modifier)
 - Endpoint `GET /api/v1/me/cards` (mes fiches)
 - Validations Pydantic strictes
 
 **Après-midi (3-4h)**
+
 - Endpoint `POST /api/v1/cards/{id}/sources` (ajouter source)
 - Endpoint `PATCH /api/v1/sources/{id}` (modifier)
 - Endpoint `DELETE /api/v1/sources/{id}` (supprimer)
@@ -95,12 +101,14 @@
 ### Jour 4 — Archivage Wayback et signature
 
 **Matin (3-4h)**
+
 - Service `WaybackArchiver` : fonction asynchrone qui appelle l'API Wayback
 - À chaque création de source, lancer le job d'archivage en background (`asyncio.create_task`)
 - Mise à jour de `archive_status` et `archive_url`
 - Frontend : formulaire d'ajout de sources avec indicateur d'archivage en temps réel (polling)
 
 **Après-midi (3-4h)**
+
 - Service `CardSigner` : canonicalisation RFC 8785 + hash SHA-256 + signature Ed25519
 - Endpoint `POST /api/v1/cards/{id}/publish`
 - Endpoint `GET /api/v1/cards/{creator_slug}/{card_slug}/verify`
@@ -113,6 +121,7 @@
 ### Jour 5 — Page publique et graphe interactif
 
 **Journée entière (6-7h)**
+
 - Endpoint `GET /api/v1/cards/{creator_slug}/{card_slug}` (lecture publique)
 - Route SvelteKit `/[creator_slug]/[card_slug]` avec SSR
 - Layout de la page publique selon la maquette validée
@@ -133,12 +142,14 @@
 ### Jour 6 — OpenGraph, page-identité, polish
 
 **Matin (3-4h)**
+
 - Endpoint `GET /api/v1/cards/{creator_slug}/{card_slug}/og.png` (image OpenGraph générée avec Pillow)
 - Meta tags OpenGraph et Twitter Card sur les pages publiques
 - Endpoint `GET /api/v1/users/{slug}` (page-identité)
 - Route SvelteKit `/@[slug]` avec SSR
 
 **Après-midi (3-4h)**
+
 - Endpoint `GET /api/v1/cards/{id}/pdf` (export PDF, génération via Playwright)
 - Page d'accueil publique `/`
 - Polish général : transitions, états de chargement, états vides
@@ -150,6 +161,7 @@
 ### Jour 7 — dbt, déploiement, démo
 
 **Matin (3-4h)**
+
 - Setup dbt project avec quelques modèles
 - Script Python qui charge Postgres → DuckDB
 - Quelques modèles dbt simples (staging + 2-3 marts)
@@ -157,6 +169,7 @@
 - Mise à jour `STATE.md` et `CHANGELOG.md`
 
 **Après-midi (3-4h)**
+
 - Configuration Railway pour le backend
 - Déploiement automatique sur push GitHub
 - Configuration Vercel ou Netlify pour le frontend
@@ -252,4 +265,4 @@ Le plan ci-dessus suppose ~7h de travail focus par jour, soit ~50h sur la semain
 
 ---
 
-*Pour les questions ouvertes, voir [`07-open-questions.md`](./07-open-questions.md).*
+_Pour les questions ouvertes, voir [`07-open-questions.md`](./07-open-questions.md)._

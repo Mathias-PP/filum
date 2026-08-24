@@ -24,16 +24,16 @@ Quatre principes de référence :
 
 ## Inspirations directes
 
-| Source | Ce qu'on en prend |
-|---|---|
-| **Obsidian Graph View** | Vue graphique des sources, navigation, halo sur les nœuds principaux |
-| **Pappers.fr** | Cartographie des relations entre entités, sobriété visuelle, densité informationnelle maîtrisée |
-| **Are.na** | Esthétique éditoriale, sobriété, valorisation des références |
-| **Stratechery / Aeon** | Typographie éditoriale, serif sur les titres, hiérarchie classique |
-| **Linear** | Sobriété de l'UI, minimalisme assumé (pour les écrans applicatifs) |
-| **Notion** | Densité agréable, dépliage in-place pour la liste de sources |
-| **Perma.cc** | Référence académique pour la pérennité des liens, mais Philum est plus contemporain visuellement |
-| **Reuters Institute / journalism.org** | Esthétique sérieuse et institutionnelle pour le badge "vérifié" |
+| Source                                 | Ce qu'on en prend                                                                                |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| **Obsidian Graph View**                | Vue graphique des sources, navigation, halo sur les nœuds principaux                             |
+| **Pappers.fr**                         | Cartographie des relations entre entités, sobriété visuelle, densité informationnelle maîtrisée  |
+| **Are.na**                             | Esthétique éditoriale, sobriété, valorisation des références                                     |
+| **Stratechery / Aeon**                 | Typographie éditoriale, serif sur les titres, hiérarchie classique                               |
+| **Linear**                             | Sobriété de l'UI, minimalisme assumé (pour les écrans applicatifs)                               |
+| **Notion**                             | Densité agréable, dépliage in-place pour la liste de sources                                     |
+| **Perma.cc**                           | Référence académique pour la pérennité des liens, mais Philum est plus contemporain visuellement |
+| **Reuters Institute / journalism.org** | Esthétique sérieuse et institutionnelle pour le badge "vérifié"                                  |
 
 ---
 
@@ -126,6 +126,7 @@ Pas d'ombres portées. La séparation se fait par la bordure fine.
 Trois variants seulement :
 
 **Primary** :
+
 ```
 background: var(--text-primary)  (presque noir)
 color: white
@@ -136,6 +137,7 @@ font-size: 14px
 ```
 
 **Secondary** :
+
 ```
 background: transparent
 border: 0.5px solid var(--border-strong)
@@ -144,6 +146,7 @@ color: var(--text-primary)
 ```
 
 **Tertiary** (link-like) :
+
 ```
 background: transparent
 border: none
@@ -194,18 +197,21 @@ Numérotation en serif, point coloré par type, titre en sans-serif weight 500.
 **Lib** : D3.js pour le calcul du layout (force simulation), SVG natif pour le rendu, pas de canvas.
 
 **Layout** : force-directed avec :
+
 - Force de répulsion entre nœuds
 - Force d'attraction sur les liens
 - Force de centrage faible
 - Nœud central (la vidéo) ancré au milieu, taille la plus grande
 
 **Interactions** :
+
 - Drag pour repositionner un nœud
 - Click pour ouvrir la fiche compacte
 - Hover pour highlight les liens connectés
 - Boutons zoom + / - / recentrer
 
 **Animations** :
+
 - Au chargement : nœuds apparaissent en cascade (50ms entre chacun) pour effet "constellation qui s'illumine"
 - À l'ouverture d'une fiche compacte : transition douce
 - Pas d'animations gratuites
@@ -223,43 +229,43 @@ Configuration de base :
 ```js
 // tailwind.config.js
 export default {
-  content: ['./src/**/*.{html,js,svelte,ts}'],
+  content: ["./src/**/*.{html,js,svelte,ts}"],
   theme: {
     extend: {
       colors: {
         bg: {
-          primary: '#FFFFFF',
-          secondary: '#FAFAF7',
-          tertiary: '#F1EFE8',
+          primary: "#FFFFFF",
+          secondary: "#FAFAF7",
+          tertiary: "#F1EFE8",
         },
         text: {
-          primary: '#1A1A1A',
-          secondary: '#555555',
-          tertiary: '#888888',
+          primary: "#1A1A1A",
+          secondary: "#555555",
+          tertiary: "#888888",
         },
         border: {
-          DEFAULT: '#E8E6DE',
-          strong: '#CFCDC4',
+          DEFAULT: "#E8E6DE",
+          strong: "#CFCDC4",
         },
-        peer: { fill: '#C0DD97', stroke: '#639922', text: '#173404' },
-        inst: { fill: '#B5D4F4', stroke: '#378ADD', text: '#042C53' },
-        press: { fill: '#FAC775', stroke: '#EF9F27', text: '#412402' },
-        orig: { fill: '#CECBF6', stroke: '#7F77DD', text: '#26215C' },
-        success: { DEFAULT: '#1D9E75', bg: '#E1F5EE' },
-        warning: { DEFAULT: '#BA7517', bg: '#FAEEDA' },
-        danger: { DEFAULT: '#A32D2D', bg: '#FCEBEB' },
-        info: { DEFAULT: '#185FA5', bg: '#E6F1FB' },
+        peer: { fill: "#C0DD97", stroke: "#639922", text: "#173404" },
+        inst: { fill: "#B5D4F4", stroke: "#378ADD", text: "#042C53" },
+        press: { fill: "#FAC775", stroke: "#EF9F27", text: "#412402" },
+        orig: { fill: "#CECBF6", stroke: "#7F77DD", text: "#26215C" },
+        success: { DEFAULT: "#1D9E75", bg: "#E1F5EE" },
+        warning: { DEFAULT: "#BA7517", bg: "#FAEEDA" },
+        danger: { DEFAULT: "#A32D2D", bg: "#FCEBEB" },
+        info: { DEFAULT: "#185FA5", bg: "#E6F1FB" },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        serif: ['"Source Serif 4"', 'Georgia', 'serif'],
-        mono: ['"JetBrains Mono"', 'Consolas', 'monospace'],
+        sans: ["Inter", "system-ui", "sans-serif"],
+        serif: ['"Source Serif 4"', "Georgia", "serif"],
+        mono: ['"JetBrains Mono"', "Consolas", "monospace"],
       },
       borderRadius: {
-        DEFAULT: '6px',
-        md: '8px',
-        lg: '12px',
-        xl: '16px',
+        DEFAULT: "6px",
+        md: "8px",
+        lg: "12px",
+        xl: "16px",
       },
     },
   },
@@ -271,6 +277,7 @@ export default {
 ## Mobile responsive
 
 En MVP, l'objectif est que :
+
 - La page d'accueil est totalement responsive
 - La page publique de fiche est lisible sur mobile, avec le graphe simplifié (mode liste seulement, ou graphe scrollable horizontalement)
 - Le dashboard créateur est responsive mais optimisé pour desktop (la création de fiche est un geste plutôt fait sur ordinateur)
@@ -282,6 +289,7 @@ Breakpoints standards Tailwind : `sm` 640px, `md` 768px, `lg` 1024px, `xl` 1280p
 ## Accessibilité
 
 Engagement minimum WCAG AA :
+
 - Contrastes vérifiés (palette ci-dessus est conçue pour ça)
 - Navigation clavier complète
 - `aria-label` sur les boutons icône
@@ -291,4 +299,4 @@ Engagement minimum WCAG AA :
 
 ---
 
-*Pour le plan de développement détaillé, voir [`06-roadmap.md`](./06-roadmap.md).*
+_Pour le plan de développement détaillé, voir [`06-roadmap.md`](./06-roadmap.md)._

@@ -7,6 +7,7 @@
 ## Vue d'ensemble
 
 Les règles d'autorisation existent **deux fois** :
+
 1. **En clair** dans `PERMISSIONS.md` (pour l'humain et pour l'agent qui lit en début de session)
 2. **En config** dans le fichier propre à chaque agent (pour le runtime qui filtre les actions)
 
@@ -21,6 +22,7 @@ Si l'un dérive de l'autre, c'est `PERMISSIONS.md` qui gagne. Il faut alors mett
 **Format** : JSON. Schéma officiel `https://opencode.ai/config.json`.
 
 **Champs utilisés** :
+
 - `instructions` : liste ordonnée de fichiers chargés au démarrage de session. Place ici les fichiers que l'agent doit voir avant d'agir.
 - `permission.edit` : `allow` | `ask` | `deny` pour les modifications de fichiers
 - `permission.webfetch` : idem pour les fetch HTTP
@@ -28,6 +30,7 @@ Si l'un dérive de l'autre, c'est `PERMISSIONS.md` qui gagne. Il faut alors mett
 - `_comments` : champ libre pour documenter — opencode l'ignore.
 
 **Lancement** :
+
 ```bash
 cd <repo>
 opencode
@@ -35,6 +38,7 @@ opencode
 ```
 
 **Politique appliquée** (résumé) :
+
 - Lecture, lint, format, test, build, fetch d'URLs whitelistées → `allow`
 - Modification du repo → `allow` (l'agent peut éditer librement, le contrôle est sur le push)
 - `git push origin main` (toutes variantes) → `deny`
@@ -62,6 +66,7 @@ opencode
 **Fichier** : `.aider.conf.yml` (à créer si l'agent est utilisé).
 
 **Politique recommandée** :
+
 ```yaml
 # .aider.conf.yml (non commité par défaut, à créer localement si Aider est utilisé)
 read:
@@ -72,7 +77,7 @@ read:
   - agent/PITFALLS.md
   - agent/references/CODING_GUIDE.md
   - STATE.md
-auto-commits: false        # l'humain valide les commits
+auto-commits: false # l'humain valide les commits
 dirty-commits: false
 gitignore: true
 # Pas d'option de filtrage bash dans Aider — l'humain valide chaque commande.
@@ -145,4 +150,4 @@ Pas de fichier de config standard dans le repo. L'agent lit `AGENTS.md` à la ra
 
 ---
 
-*Cette page documente les **traductions techniques** des règles agent. Les **règles elles-mêmes** vivent dans `PERMISSIONS.md`.*
+_Cette page documente les **traductions techniques** des règles agent. Les **règles elles-mêmes** vivent dans `PERMISSIONS.md`._

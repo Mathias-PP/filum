@@ -6,6 +6,7 @@
 > Phase 4+ du harness BYOK Philum (choix de providers, catalogue de modèles, offre « sans clé »).
 >
 > **Projets étudiés** (docs vérifiées au 2026-08-21) :
+>
 > - `anomalyco/opencode` — https://opencode.ai/docs/providers, /docs/zen
 > - `nousresearch/hermes-agent` — https://hermes-agent.nousresearch.com/docs/integrations/providers
 > - `openclaw/openclaw` — https://docs.openclaw.ai/concepts/model-providers
@@ -15,35 +16,40 @@
 
 ## 1. Tableau de synthèse
 
-| Projet | Surface d'intégration | Catalogue de modèles | Auth supportées | Modèles gratuits |
-|---|---|---|---|---|
-| **opencode** | Vercel AI SDK (75+ providers) + registre **models.dev** | Dynamique (registry) + Zen curé | Clé API, OAuth abonnements (Claude Pro/Max, ChatGPT, Copilot, GitLab Duo, DigitalOcean), endpoints custom | Zen : 7 modèles « Free » ; locaux Ollama/LM Studio/llama.cpp ; OpenCode Free (keyless, côté Hermes) |
-| **hermes-agent** | Dossier `providers/`, adaptateurs par provider | Statique par provider + guides | Clé API, OAuth (Nous Portal, Codex, Copilot device-code, Claude Max), OpenRouter, endpoints custom nommés | OpenCode Free (**keyless anonyme**), NVIDIA clé gratuite, HuggingFace 0,10 $/mois offerts, guides « free » |
-| **openclaw** | Plugins `registerProvider(...)` (~30 officiels) | Publié par chaque plugin | Clé API (+ rotation env), OAuth (ChatGPT/Codex, SuperGrok/X Premium, MiniMax, OpenRouter), CLI runtimes | Locaux (Ollama, LM Studio, vLLM, SGLang, llama.cpp managé) ; Zen/Go comme providers |
-| **dsh** | Plugins Cordis, adaptateur sur `ctx.llm` | Défini dans l'adaptateur (V4 Flash/Pro/Vision) | `apiKeyEnv` par route (DeepSeek ou multi via pi-ai) | Aucun propre ; prix DeepSeek off-peak |
+| Projet           | Surface d'intégration                                   | Catalogue de modèles                           | Auth supportées                                                                                           | Modèles gratuits                                                                                           |
+| ---------------- | ------------------------------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| **opencode**     | Vercel AI SDK (75+ providers) + registre **models.dev** | Dynamique (registry) + Zen curé                | Clé API, OAuth abonnements (Claude Pro/Max, ChatGPT, Copilot, GitLab Duo, DigitalOcean), endpoints custom | Zen : 7 modèles « Free » ; locaux Ollama/LM Studio/llama.cpp ; OpenCode Free (keyless, côté Hermes)        |
+| **hermes-agent** | Dossier `providers/`, adaptateurs par provider          | Statique par provider + guides                 | Clé API, OAuth (Nous Portal, Codex, Copilot device-code, Claude Max), OpenRouter, endpoints custom nommés | OpenCode Free (**keyless anonyme**), NVIDIA clé gratuite, HuggingFace 0,10 $/mois offerts, guides « free » |
+| **openclaw**     | Plugins `registerProvider(...)` (~30 officiels)         | Publié par chaque plugin                       | Clé API (+ rotation env), OAuth (ChatGPT/Codex, SuperGrok/X Premium, MiniMax, OpenRouter), CLI runtimes   | Locaux (Ollama, LM Studio, vLLM, SGLang, llama.cpp managé) ; Zen/Go comme providers                        |
+| **dsh**          | Plugins Cordis, adaptateur sur `ctx.llm`                | Défini dans l'adaptateur (V4 Flash/Pro/Vision) | `apiKeyEnv` par route (DeepSeek ou multi via pi-ai)                                                       | Aucun propre ; prix DeepSeek off-peak                                                                      |
 
 ---
 
 ## 2. opencode — registre central + passerelle curée (Zen)
 
 ### 2.1 Architecture providers
+
 - **75+ providers** via l'écosystème Vercel AI SDK ; le catalogue vivant est le registre externe **models.dev** (métadonnées : contexte, prix, capacités). Le binaire n'embarque pas les modèles, il les découvre.
 - Connexion utilisateur : commande `/connect` dans la TUI → la clé est stockée dans `~/.local/share/opencode/auth.json` (jamais dans le projet).
 - **Provider custom universel** : tout endpoint compatible OpenAI s'ajoute en config avec le package npm `@ai-sdk/openai-compatible` + `baseURL` + map de modèles. C'est la porte d'entrée pour Ollama, LM Studio, llama.cpp, vLLM (locaux = gratuits, souvent auto-détectés zéro-config sur localhost).
 - **OpenRouter** supporté nativement avec options de routage provider.
 
 ### 2.2 OAuth « réutilisation d'abonnement »
+
 `/connect` propose des flux OAuth qui réutilisent des abonnements grand public existants :
 Claude Pro/Max, ChatGPT Plus/Pro (OAuth Codex), GitHub Copilot (device flow), GitLab Duo, DigitalOcean. L'utilisateur paie déjà son abonnement → coût marginal nul pour lui.
 
 ### 2.3 OpenCode Zen — la passerelle curée
+
 - Gateway propriétaire optionnel : liste de modèles **testés/benchmarkés** avec leurs équipes et providers, vendus **au coût** (« no markup », « no lock-in », « pas de downgrade vers un provider moins cher »).
 - **Multi-protocole** derrière une seule clé : `/zen/v1/responses` (OpenAI Responses), `/zen/v1/messages` (Anthropic), `/zen/v1/chat/completions` (OpenAI-compatible), `/zen/v1/models/<id>` (Google). Chaque modèle déclare son protocole.
 - Fonctions équipe : rôles admin/member, **limites mensuelles** par workspace/membre, auto-reload du solde, contrôle d'accès par modèle (ex. désactiver un modèle qui collecte les données), **BYOK interne** (utiliser ses propres clés OpenAI/Anthropic pour ces modèles, facturés directement par eux).
 - Cycle de vie explicite : table de **dépréciation** datée par modèle.
 
 ### 2.4 Les modèles gratuits de Zen (7)
+
 `big-pickle`, `x-preview-f-free` (Ox Alpha Free), `mimo-v2.5-free`, `hy3-free`, `nemotron-3-ultra-free`, `nemotron-3.5-lightning-free`, `muse-spark-1.2-contributor-free` — tous gratuits en input/output/cache-read. Trois mécanismes distincts :
+
 1. **Stealth preview / loss-leader** : modèles « stealth » ou en collecte de feedback, gratuits temporairement (données pouvant servir à l'amélioration du modèle — exception à la zero-retention).
 2. **Endpoints d'essai NVIDIA** : usage logged, « trial use only », pas de données confidentielles.
 3. **Contributor tier** : tarif très réduit/gratuit **en échange du droit d'entraîner** sur les prompts/completions (Meta).

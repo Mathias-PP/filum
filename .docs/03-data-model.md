@@ -50,23 +50,24 @@
 
 Représente un créateur Philum.
 
-| Colonne | Type | Description |
-|---|---|---|
-| `id` | `uuid` PK | Identifiant interne |
-| `google_sub` | `text` unique | Identifiant Google OAuth (claim `sub`) |
-| `email` | `text` unique | Email Google (sensible — accès restreint) |
-| `slug` | `text` unique | Identifiant public (`lea-c`, `hugo-decrypte`...) |
-| `display_name` | `text` | Nom affiché (`Léa Caron`) |
-| `description` | `text` nullable | Description courte (max 200 chars) |
-| `avatar_url` | `text` nullable | URL avatar (par défaut généré côté frontend) |
-| `public_key` | `bytea` | Clé publique Ed25519 (32 bytes) |
-| `encrypted_private_key` | `bytea` | Clé privée Ed25519 chiffrée avec la clé maître |
-| `created_at` | `timestamptz` | |
-| `updated_at` | `timestamptz` | |
+| Colonne                 | Type            | Description                                      |
+| ----------------------- | --------------- | ------------------------------------------------ |
+| `id`                    | `uuid` PK       | Identifiant interne                              |
+| `google_sub`            | `text` unique   | Identifiant Google OAuth (claim `sub`)           |
+| `email`                 | `text` unique   | Email Google (sensible — accès restreint)        |
+| `slug`                  | `text` unique   | Identifiant public (`lea-c`, `hugo-decrypte`...) |
+| `display_name`          | `text`          | Nom affiché (`Léa Caron`)                        |
+| `description`           | `text` nullable | Description courte (max 200 chars)               |
+| `avatar_url`            | `text` nullable | URL avatar (par défaut généré côté frontend)     |
+| `public_key`            | `bytea`         | Clé publique Ed25519 (32 bytes)                  |
+| `encrypted_private_key` | `bytea`         | Clé privée Ed25519 chiffrée avec la clé maître   |
+| `created_at`            | `timestamptz`   |                                                  |
+| `updated_at`            | `timestamptz`   |                                                  |
 
 **Index** : `users_slug_idx` sur `slug`, `users_google_sub_idx` sur `google_sub`, `users_email_idx` sur `email`.
 
 **Contraintes** :
+
 - `slug` doit matcher la regex `^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$` (slug URL-friendly, 3-40 chars)
 - `email` non-nullable, format email valide
 - `public_key` exactement 32 bytes
@@ -77,26 +78,27 @@ Représente un créateur Philum.
 
 Représente une fiche bibliographique pour un contenu.
 
-| Colonne | Type | Description |
-|---|---|---|
-| `id` | `uuid` PK | |
-| `creator_id` | `uuid` FK → users.id | Créateur de la fiche |
-| `slug` | `text` | Slug local au créateur (`arctique-2026`) |
-| `title` | `text` | Titre du contenu |
-| `description` | `text` nullable | Description courte (max 500 chars) |
-| `canonical_url` | `text` nullable | URL du contenu original (YouTube, blog...) |
-| `platform` | `text` nullable | `youtube`, `podcast`, `blog`, `x`, `bluesky`, `other` |
-| `status` | `text` | `draft`, `published`, `archived` |
-| `content_hash` | `bytea` nullable | SHA-256 du contenu canonique de la fiche (calculé à la publication) |
-| `signature` | `bytea` nullable | Signature Ed25519 (64 bytes) |
-| `signed_at` | `timestamptz` nullable | Date de signature |
-| `published_at` | `timestamptz` nullable | Date de publication |
-| `created_at` | `timestamptz` | |
-| `updated_at` | `timestamptz` | |
+| Colonne         | Type                   | Description                                                         |
+| --------------- | ---------------------- | ------------------------------------------------------------------- |
+| `id`            | `uuid` PK              |                                                                     |
+| `creator_id`    | `uuid` FK → users.id   | Créateur de la fiche                                                |
+| `slug`          | `text`                 | Slug local au créateur (`arctique-2026`)                            |
+| `title`         | `text`                 | Titre du contenu                                                    |
+| `description`   | `text` nullable        | Description courte (max 500 chars)                                  |
+| `canonical_url` | `text` nullable        | URL du contenu original (YouTube, blog...)                          |
+| `platform`      | `text` nullable        | `youtube`, `podcast`, `blog`, `x`, `bluesky`, `other`               |
+| `status`        | `text`                 | `draft`, `published`, `archived`                                    |
+| `content_hash`  | `bytea` nullable       | SHA-256 du contenu canonique de la fiche (calculé à la publication) |
+| `signature`     | `bytea` nullable       | Signature Ed25519 (64 bytes)                                        |
+| `signed_at`     | `timestamptz` nullable | Date de signature                                                   |
+| `published_at`  | `timestamptz` nullable | Date de publication                                                 |
+| `created_at`    | `timestamptz`          |                                                                     |
+| `updated_at`    | `timestamptz`          |                                                                     |
 
 **Index** : `biblio_cards_creator_slug_idx` unique sur `(creator_id, slug)`, `biblio_cards_status_idx` sur `status`.
 
 **Contraintes** :
+
 - `slug` matche la regex `^[a-z0-9][a-z0-9-]{1,78}[a-z0-9]$` (3-80 chars)
 - Une fiche publiée doit avoir `content_hash`, `signature`, `signed_at`, `published_at` tous renseignés (vérifié au niveau application + check constraint)
 - `status` IN (`draft`, `published`, `archived`)
@@ -109,30 +111,30 @@ Représente une fiche bibliographique pour un contenu.
 
 Représente une source citée dans une fiche.
 
-| Colonne | Type | Description |
-|---|---|---|
-| `id` | `uuid` PK | |
-| `biblio_card_id` | `uuid` FK → biblio_cards.id | |
-| `position` | `int` | Ordre de la source dans la fiche (1, 2, 3...) |
-| `url` | `text` | URL de la source |
-| `title` | `text` | Titre extrait ou saisi manuellement |
-| `authors` | `text` nullable | Auteurs (texte libre) |
-| `published_at` | `date` nullable | Date de publication de la source |
-| `source_type` | `text` | `peer-reviewed`, `institutional`, `press`, `original`, `other` |
-| `annotation` | `text` nullable | "Pourquoi je cite cette source" (max 500 chars) |
-| `is_pivot` | `boolean` default `false` | Source structurante du raisonnement |
-| `parent_source_id` | `uuid` FK → sources.id nullable | Source citée par celle-ci (auto-référence, indexée). Permet de matérialiser le citation graph sans entrer dans le `canonical_hash` signé. |
-| `conflict_of_interest` | `text` nullable | Conflit d'intérêt déclaré (affiché _uniquement_ si présent). Hors `canonical_hash`. |
-| `citations_count` | `integer` nullable | Indicateur peer-reviewed / livres. Hors `canonical_hash`. |
-| `subscribers_count` | `integer` nullable | Indicateur plateforme (YouTube, podcast). Hors `canonical_hash`. |
-| `views_count` | `integer` nullable | Vues vidéo / podcast. Hors `canonical_hash`. |
-| `impact_factor` | `float` nullable | Journal impact factor. Hors `canonical_hash`. |
-| `archive_url` | `text` nullable | URL Wayback Machine de l'archive |
-| `archive_status` | `text` | `pending`, `archived`, `failed` |
-| `archive_attempted_at` | `timestamptz` nullable | |
-| `archive_completed_at` | `timestamptz` nullable | |
-| `created_at` | `timestamptz` | |
-| `updated_at` | `timestamptz` | |
+| Colonne                | Type                            | Description                                                                                                                               |
+| ---------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                   | `uuid` PK                       |                                                                                                                                           |
+| `biblio_card_id`       | `uuid` FK → biblio_cards.id     |                                                                                                                                           |
+| `position`             | `int`                           | Ordre de la source dans la fiche (1, 2, 3...)                                                                                             |
+| `url`                  | `text`                          | URL de la source                                                                                                                          |
+| `title`                | `text`                          | Titre extrait ou saisi manuellement                                                                                                       |
+| `authors`              | `text` nullable                 | Auteurs (texte libre)                                                                                                                     |
+| `published_at`         | `date` nullable                 | Date de publication de la source                                                                                                          |
+| `source_type`          | `text`                          | `peer-reviewed`, `institutional`, `press`, `original`, `other`                                                                            |
+| `annotation`           | `text` nullable                 | "Pourquoi je cite cette source" (max 500 chars)                                                                                           |
+| `is_pivot`             | `boolean` default `false`       | Source structurante du raisonnement                                                                                                       |
+| `parent_source_id`     | `uuid` FK → sources.id nullable | Source citée par celle-ci (auto-référence, indexée). Permet de matérialiser le citation graph sans entrer dans le `canonical_hash` signé. |
+| `conflict_of_interest` | `text` nullable                 | Conflit d'intérêt déclaré (affiché _uniquement_ si présent). Hors `canonical_hash`.                                                       |
+| `citations_count`      | `integer` nullable              | Indicateur peer-reviewed / livres. Hors `canonical_hash`.                                                                                 |
+| `subscribers_count`    | `integer` nullable              | Indicateur plateforme (YouTube, podcast). Hors `canonical_hash`.                                                                          |
+| `views_count`          | `integer` nullable              | Vues vidéo / podcast. Hors `canonical_hash`.                                                                                              |
+| `impact_factor`        | `float` nullable                | Journal impact factor. Hors `canonical_hash`.                                                                                             |
+| `archive_url`          | `text` nullable                 | URL Wayback Machine de l'archive                                                                                                          |
+| `archive_status`       | `text`                          | `pending`, `archived`, `failed`                                                                                                           |
+| `archive_attempted_at` | `timestamptz` nullable          |                                                                                                                                           |
+| `archive_completed_at` | `timestamptz` nullable          |                                                                                                                                           |
+| `created_at`           | `timestamptz`                   |                                                                                                                                           |
+| `updated_at`           | `timestamptz`                   |                                                                                                                                           |
 
 **Index** : `sources_biblio_card_id_idx`, `sources_url_idx` (pour la détection de doublons), `sources_archive_status_idx` (pour les jobs background), `ix_sources_parent_source_id` (pour "qui cite cette source ?").
 
@@ -140,14 +142,14 @@ Représente une source citée dans une fiche.
 
 Une source peut porter plusieurs citations verbatim utilisées par le créateur. Hors `canonical_hash`.
 
-| Colonne | Type | Description |
-|---|---|---|
-| `id` | `uuid` PK | |
-| `source_id` | `uuid` FK → sources.id ON DELETE CASCADE, indexé | |
-| `position` | `integer` default 0 | Ordre d'affichage |
-| `text` | `text` NOT NULL | Citation verbatim |
-| `suggested_by_ai` | `boolean` default false | Future-proof : picker IA d'extraits |
-| `created_at` / `updated_at` | `timestamp` | |
+| Colonne                     | Type                                             | Description                         |
+| --------------------------- | ------------------------------------------------ | ----------------------------------- |
+| `id`                        | `uuid` PK                                        |                                     |
+| `source_id`                 | `uuid` FK → sources.id ON DELETE CASCADE, indexé |                                     |
+| `position`                  | `integer` default 0                              | Ordre d'affichage                   |
+| `text`                      | `text` NOT NULL                                  | Citation verbatim                   |
+| `suggested_by_ai`           | `boolean` default false                          | Future-proof : picker IA d'extraits |
+| `created_at` / `updated_at` | `timestamp`                                      |                                     |
 
 ```
 source_excerpts
@@ -160,6 +162,7 @@ source_excerpts
 ```
 
 **Contraintes** :
+
 - `position` >= 1
 - `source_type` IN (`peer-reviewed`, `institutional`, `press`, `original`, `other`)
 - `archive_status` IN (`pending`, `archived`, `failed`)
@@ -171,15 +174,15 @@ source_excerpts
 
 Log des actions sensibles. Append-only.
 
-| Colonne | Type | Description |
-|---|---|---|
-| `id` | `uuid` PK | |
-| `user_id` | `uuid` FK → users.id, nullable | User qui a déclenché l'événement |
-| `entity_type` | `text` | `biblio_card`, `source`, `user` |
-| `entity_id` | `uuid` | Identifiant de l'entité concernée |
-| `event_type` | `text` | `create`, `update`, `delete`, `publish`, `archive_source`, `login`... |
-| `event_data` | `jsonb` | Détails de l'événement |
-| `created_at` | `timestamptz` | |
+| Colonne       | Type                           | Description                                                           |
+| ------------- | ------------------------------ | --------------------------------------------------------------------- |
+| `id`          | `uuid` PK                      |                                                                       |
+| `user_id`     | `uuid` FK → users.id, nullable | User qui a déclenché l'événement                                      |
+| `entity_type` | `text`                         | `biblio_card`, `source`, `user`                                       |
+| `entity_id`   | `uuid`                         | Identifiant de l'entité concernée                                     |
+| `event_type`  | `text`                         | `create`, `update`, `delete`, `publish`, `archive_source`, `login`... |
+| `event_data`  | `jsonb`                        | Détails de l'événement                                                |
+| `created_at`  | `timestamptz`                  |                                                                       |
 
 **Index** : `audit_events_user_id_idx`, `audit_events_entity_idx` sur `(entity_type, entity_id)`, `audit_events_created_at_idx`.
 
@@ -190,6 +193,7 @@ Log des actions sensibles. Append-only.
 Pour qu'une fiche soit signable, son contenu doit être canonicalisé de manière déterministe avant d'être hashé.
 
 **Algorithme** :
+
 1. Construire un objet JSON avec les champs canoniques (dans cet ordre exact) :
    ```json
    {
@@ -273,11 +277,13 @@ Voir [`06-roadmap.md`](./06-roadmap.md) jour 1 pour les détails d'implémentati
 ## Évolutions prévues du schéma
 
 Pour la phase 2 :
+
 - Ajout d'une table `external_accounts` (un user peut lier plusieurs comptes externes : YouTube, X, ORCID, Mastodon)
 - Ajout d'une table `card_views` pour les analytics simples (anonymisées)
 - Ajout d'une table `source_relationships` pour le lineage descendant (quand un créateur déclare qu'une source en cite une autre)
 
 Pour la phase 3 :
+
 - Intégration de C2PA : ajout de colonnes `c2pa_manifest` et `c2pa_certificate_chain` sur `biblio_cards`
 - Ajout d'une table `time_stamps` pour les horodatages qualifiés eIDAS
 - Ajout d'une table `verifiable_credentials` pour les niveaux d'identité supérieurs
@@ -286,4 +292,4 @@ Toutes ces évolutions sont conçues pour ne pas casser la rétrocompatibilité 
 
 ---
 
-*Pour l'API qui expose ces données, voir [`04-api-design.md`](./04-api-design.md).*
+_Pour l'API qui expose ces données, voir [`04-api-design.md`](./04-api-design.md)._

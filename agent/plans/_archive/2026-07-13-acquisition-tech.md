@@ -36,6 +36,7 @@
 ### Task 1.2 : Modèle + migration
 
 **Files:**
+
 - Create: `apps/backend/app/models/waitlist_entry.py`
 - Modify: `apps/backend/app/models/__init__.py`
 - Create: `apps/backend/alembic/versions/009_waitlist.py`
@@ -111,6 +112,7 @@ def downgrade() -> None:
 ### Task 1.3 : Schema + endpoint (TDD)
 
 **Files:**
+
 - Create: `apps/backend/app/schemas/waitlist.py`
 - Create: `apps/backend/app/api/v1/endpoints/waitlist.py`
 - Modify: `apps/backend/app/api/v1/router.py` (ou fichier équivalent qui définit `create_router()` — le localiser avec `grep -r "create_router" apps/backend/app/api/`)
@@ -238,6 +240,7 @@ async def join_waitlist(
 ### Task 1.4 : Frontend
 
 **Files:**
+
 - Create: `apps/frontend/src/lib/components/WaitlistForm.svelte`
 - Modify: `apps/frontend/src/lib/components/index.ts` (export — vérifier le pattern d'export existant)
 - Modify: `apps/frontend/src/lib/api/client.ts` (ajouter `api.waitlist`)
@@ -331,6 +334,7 @@ waitlist: {
 ### Task 2.2 : Modèle + migration
 
 **Files:**
+
 - Modify: `apps/backend/app/models/biblio_card.py` (champ `is_seed`)
 - Create: `apps/backend/app/models/claim_request.py`
 - Modify: `apps/backend/app/models/__init__.py`
@@ -432,6 +436,7 @@ def downgrade() -> None:
 ### Task 2.3 : Exposer `is_seed` + endpoint claim (TDD)
 
 **Files:**
+
 - Modify: `apps/backend/app/schemas/biblio_card.py` (champ `is_seed` dans `CardResponse`)
 - Modify: `apps/backend/app/api/v1/endpoints/cards.py` (passer `is_seed` dans `get_public_card`, + endpoint claim)
 - Create: `apps/backend/app/schemas/claim.py`
@@ -594,6 +599,7 @@ Imports à ajouter en tête de `cards.py` : `from uuid import UUID`, `from app.m
 ### Task 2.4 : Frontend — bandeau + modal claim
 
 **Files:**
+
 - Create: `apps/frontend/src/lib/components/ClaimBanner.svelte`
 - Modify: exports composants + `client.ts` + types (localiser `CardDetail` TS : `grep -r "interface CardDetail" apps/frontend/src/lib`) + `src/routes/@[creator][card]/+page.svelte`
 
@@ -721,6 +727,7 @@ claims: {
 **But :** monter un serveur MCP Streamable HTTP sur `/mcp` de l'app FastAPI existante, avec 4 tools read-only frugaux en tokens : `search_cards`, `get_card`, `get_source`, `find_cards_citing`. Données publiées uniquement. Pas d'auth en v1.
 
 **⚠️ Nouvelle dépendance : `fastmcp`** (framework MCP standard, gofastmcp.com). Justification : idée E du business plan, brique de distribution IA. Pattern de montage vérifié sur le web le 2026-07-13 ([doc officielle](https://gofastmcp.com/integrations/fastapi)) :
+
 ```python
 mcp_app = mcp.http_app(path="/")
 app = FastAPI(lifespan=mcp_app.lifespan)   # lifespan OBLIGATOIRE sinon session manager non initialisé
@@ -736,6 +743,7 @@ app.mount("/mcp", mcp_app)
 ### Task 3.2 : Tools (fonctions pures, TDD)
 
 **Files:**
+
 - Create: `apps/backend/app/mcp_server/__init__.py` (vide)
 - Create: `apps/backend/app/mcp_server/tools.py` (fonctions pures — testables sans MCP)
 - Create: `apps/backend/tests/unit/test_mcp_tools.py`
@@ -977,6 +985,7 @@ async def find_cards_citing(db: AsyncSession, url: str, limit: int = 10) -> list
 ### Task 3.3 : Serveur FastMCP + montage
 
 **Files:**
+
 - Create: `apps/backend/app/mcp_server/server.py`
 - Modify: `apps/backend/app/main.py` (lifespan combiné + mount)
 - Create: `apps/backend/tests/unit/test_mcp_mount.py`

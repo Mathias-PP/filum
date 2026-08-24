@@ -9,58 +9,58 @@ name: Analytics Pipeline
 # le job `dbt-check` de ci.yml (dbt compile + dbt test sur cible `ci`).
 # Declenchement manuel conserve pour le jour ou l'ETL existera.
 on:
-  workflow_dispatch:
+    workflow_dispatch:
 
 permissions:
-  contents: read
+    contents: read
 
 env:
-  PYTHON_VERSION: "3.12"
+    PYTHON_VERSION: "3.12"
 
 jobs:
-  dbt-run:
-    name: Run dbt Models
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+    dbt-run:
+        name: Run dbt Models
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v6
 
-      - name: Setup Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
+            - name: Setup Python
+              uses: actions/setup-python@v7
+              with:
+                  python-version: ${{ env.PYTHON_VERSION }}
 
-      # `uvx dbt-duckdb` cherchait un executable du meme nom que le paquet :
-      # dbt-duckdb est un adaptateur, l'executable `dbt` vient de dbt-core.
-      # Le job echouait a chaque cron. Meme installation que `dbt-check` dans
-      # ci.yml, qui elle passe.
-      - name: Install dbt
-        run: pip install -r requirements.txt
-        working-directory: apps/analytics
+            # `uvx dbt-duckdb` cherchait un executable du meme nom que le paquet :
+            # dbt-duckdb est un adaptateur, l'executable `dbt` vient de dbt-core.
+            # Le job echouait a chaque cron. Meme installation que `dbt-check` dans
+            # ci.yml, qui elle passe.
+            - name: Install dbt
+              run: pip install -r requirements.txt
+              working-directory: apps/analytics
 
-      - name: Run dbt deps
-        run: dbt deps
-        working-directory: apps/analytics
+            - name: Run dbt deps
+              run: dbt deps
+              working-directory: apps/analytics
 
-      # DuckDB ne cree pas les dossiers parents du fichier de base.
-      - name: Prepare data directory
-        run: mkdir -p "${{ github.workspace }}/data"
+            # DuckDB ne cree pas les dossiers parents du fichier de base.
+            - name: Prepare data directory
+              run: mkdir -p "${{ github.workspace }}/data"
 
-      - name: Run dbt models
-        run: dbt run
-        working-directory: apps/analytics
-        env:
-          DUCKDB_PATH: ${{ github.workspace }}/data/filum_analytics.duckdb
+            - name: Run dbt models
+              run: dbt run
+              working-directory: apps/analytics
+              env:
+                  DUCKDB_PATH: ${{ github.workspace }}/data/filum_analytics.duckdb
 
-      - name: Run dbt tests
-        run: dbt test
-        working-directory: apps/analytics
-        env:
-          DUCKDB_PATH: ${{ github.workspace }}/data/filum_analytics.duckdb
+            - name: Run dbt tests
+              run: dbt test
+              working-directory: apps/analytics
+              env:
+                  DUCKDB_PATH: ${{ github.workspace }}/data/filum_analytics.duckdb
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v7
-        with:
-          name: analytics-output
-          path: apps/analytics/target/
-          retention-days: 7
+            - name: Upload artifacts
+              uses: actions/upload-artifact@v7
+              with:
+                  name: analytics-output
+                  path: apps/analytics/target/
+                  retention-days: 7

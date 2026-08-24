@@ -41,6 +41,7 @@ gh run view <run-id> --log-failed
 ### Pour modifier un workflow
 
 ⚠️ Tout changement de workflow est sensible. Avant de pousser :
+
 - `gh workflow view <name>` après push pour vérifier que les jobs sont parsés (cf. `PITFALLS.md` 3.1 : YAML invalide donne 0 jobs).
 - Vérifier qu'aucune action référencée n'est fictive (cf. `PITFALLS.md` 3.2).
 - Préférer pinner les actions à un SHA plutôt qu'à un tag (`actions/checkout@v4` OK, `actions/checkout@main` ❌).

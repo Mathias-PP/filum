@@ -8,17 +8,17 @@
 
 ## Quand lire ce dossier
 
-| Situation | Lire |
-|---|---|
-| Première fois sur le projet | `agent/README.md` (ce fichier) → puis suivre le protocole ci-dessous |
-| Reprise d'une session | `agent/TASK_PROTOCOL.md` (chapitre « Reprise ») |
-| Question de permission | `agent/PERMISSIONS.md` |
-| Question de git workflow | `agent/GIT_WORKFLOW.md` |
-| Question de sécurité | `agent/SECURITY.md` |
-| Avant tout commit | `agent/PITFALLS.md` (erreurs vécues à ne pas reproduire) |
-| Tâche spécialisée (Alembic, OAuth, SvelteKit…) | `agent/skills/<nom>.md` |
-| Règles techniques stables (stack, principes, nommage) | `agent/references/CODING_GUIDE.md` |
-| Créer une fiche Philum de bout en bout | `workspaces/createur-de-fiches/AGENTS.md` (workspace ICM 7 étapes, à la racine du repo) |
+| Situation                                             | Lire                                                                                    |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Première fois sur le projet                           | `agent/README.md` (ce fichier) → puis suivre le protocole ci-dessous                    |
+| Reprise d'une session                                 | `agent/TASK_PROTOCOL.md` (chapitre « Reprise »)                                         |
+| Question de permission                                | `agent/PERMISSIONS.md`                                                                  |
+| Question de git workflow                              | `agent/GIT_WORKFLOW.md`                                                                 |
+| Question de sécurité                                  | `agent/SECURITY.md`                                                                     |
+| Avant tout commit                                     | `agent/PITFALLS.md` (erreurs vécues à ne pas reproduire)                                |
+| Tâche spécialisée (Alembic, OAuth, SvelteKit…)        | `agent/skills/<nom>.md`                                                                 |
+| Règles techniques stables (stack, principes, nommage) | `agent/references/CODING_GUIDE.md`                                                      |
+| Créer une fiche Philum de bout en bout                | `workspaces/createur-de-fiches/AGENTS.md` (workspace ICM 7 étapes, à la racine du repo) |
 
 ---
 
@@ -123,7 +123,7 @@ Ces règles ne peuvent JAMAIS être contournées, même si le développeur sembl
 5. **Jamais de migration Alembic destructive** sans plan de rollback documenté dans la PR.
 6. **Jamais de changement du `canonical_hash` payload** des fiches signées (cf. `PITFALLS.md`).
 7. **Jamais d'ajout de dépendance** sans justification dans la conversation.
-8. **Jamais de modification de `.docs/00` à `.docs/09`** sans demande explicite. Ce sont des spécifications de référence figées. Les documents `10-…md` et au-delà (créés *par* l'agent et le dev) sont éditables.
+8. **Jamais de modification de `.docs/00` à `.docs/09`** sans demande explicite. Ce sont des spécifications de référence figées. Les documents `10-…md` et au-delà (créés _par_ l'agent et le dev) sont éditables.
 
 ---
 
@@ -136,4 +136,4 @@ Ces règles ne peuvent JAMAIS être contournées, même si le développeur sembl
 
 ---
 
-*Ce dossier `agent/` évolue avec le projet. Toute amélioration de procédure découverte au fil du travail doit être consignée ici (par l'agent lui-même si pertinent, via une PR de type `docs:`).*
+_Ce dossier `agent/` évolue avec le projet. Toute amélioration de procédure découverte au fil du travail doit être consignée ici (par l'agent lui-même si pertinent, via une PR de type `docs:`)._

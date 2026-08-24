@@ -19,26 +19,26 @@
 
 ## 1. Panorama des 18 produits étudiés
 
-| Produit | Modèle d'accès | Modèles servis | Prix principal | Marge connue / signal |
-|---|---|---|---|---|
-| **Cursor Pro** | Forfait + pool d'usage à prix API pass-through | Composer/Grok maison + Claude, GPT, Gemini | 20 $/mois (20 $ d'API inclus) | Marge fine sur inclus |
-| **Cursor Teams** | Seat + overage prix API + « Cursor Token Rate » 0.25 $/M tok | Idem | 40 $/seat (Premium 120 $) | Frais 0.25 $/M sur toute requête tierce, y compris BYOK |
-| **GitHub Copilot Business** | Seat + AI Credits (1 crédit = 0.01 $) | GPT-5, Claude, Gemini via multi-model | 19 $/user, 1 900 crédits inclus | Historique WSJ 2023 : perte ~20 $/user ; pivot 2026 vers crédits |
-| **GitHub Copilot Pro** | Seat plat, quota | Idem | 10 $/mois | Perte documentée (WSJ) |
-| **Windsurf Pro** | Quota rechargeable (Flow Actions) | GPT-5, Claude Sonnet 4.6, Gemini 3.1, SWE-1 maison | 20 $/mois | Non publié ; quota abaisse le risque |
-| **Zed Pro** | BYOK gratuit + hosted en overage +10 % | Claude Sonnet 5 promo, autres via provider | 10 $/mois (5 $ de crédit hosted) | Marge nette 10 % sur hosted, zéro sur BYOK |
-| **Replit Core** | Effort-based, crédits mesurés | Anthropic majoritaire | 20 $/mois (20 $ inclus) | Marge cachée dans le « effort » auto |
-| **Notion AI (Business)** | Bundlé au seat | 12 modèles (Anthropic, OpenAI, Google, xAI, Moonshot, DeepSeek) | 20 $/seat | Custom Agents facturés 10 $/1 000 crédits (l'inclus a une limite) |
-| **Linear** | Seat + BYO AI credits séparés | Agents multi-provider | 16 $/user Business | Ne prend pas la marge IA, la refile |
-| **Slack AI** | Bundlé Business+ (add-on 20 $ retiré Q2 2025) | Stack Salesforce/Anthropic | 15 $/user Business+ | Retrait de l'add-on = signal d'échec |
-| **M365 Copilot** | Add-on plat sur licence M365 | GPT-5, Anthropic | 30 $/user (SMB 21 $) | Adoption 2-3 % de la base 450 M ; ROI contesté (Forbes) |
-| **ChatGPT Plus** | Forfait plat + caps | GPT-5.x propriétaire | 20 $/mois, ~160 msg/3h | Altman : Pro perd de l'argent (déclaration publique) |
-| **ChatGPT Business** | Forfait plat, soft caps | GPT-5.x | 20 $/seat annuel | Baisse de -5 $ en avril 2026 = pression concurrentielle |
-| **Claude Pro/Max** | Forfait + session cap + weekly cap | Sonnet/Opus/Haiku/Fable | 17-200 $/mois | Caps hebdo introduits 2025 = surcoût inférence |
-| **Perplexity Pro** | Forfait + 5 $ API credit Sonar (supprimé 2026) | Sonar maison + frontier | 20 $/mois, 20 Deep Research/j | Cap Deep Research = coût plafonné |
-| **Poe** | Points multi-modèles, 6 paliers | Tout catalogue via APIs | 5 → 249.99 $/mois | Pass-through mesuré, marge sur volume |
-| **OpenRouter** | BYOK pass-through, fee 5.5 % sur recharge crédits | Tout catalogue | Gratuit ; 5.5 % achat carte, 5 % BYOK au-delà 25 k$/mo | Marge visible et cadrée : 5-5.5 % |
-| **Jasper** | Forfait plat, output « illimité » | GPT/Claude/Gemini | 39-59 $/mois | Guardrails fair-use ; marge sur volume rédactionnel |
+| Produit                     | Modèle d'accès                                               | Modèles servis                                                  | Prix principal                                         | Marge connue / signal                                             |
+| --------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------- | ------------------------------------------------------ | ----------------------------------------------------------------- |
+| **Cursor Pro**              | Forfait + pool d'usage à prix API pass-through               | Composer/Grok maison + Claude, GPT, Gemini                      | 20 $/mois (20 $ d'API inclus)                          | Marge fine sur inclus                                             |
+| **Cursor Teams**            | Seat + overage prix API + « Cursor Token Rate » 0.25 $/M tok | Idem                                                            | 40 $/seat (Premium 120 $)                              | Frais 0.25 $/M sur toute requête tierce, y compris BYOK           |
+| **GitHub Copilot Business** | Seat + AI Credits (1 crédit = 0.01 $)                        | GPT-5, Claude, Gemini via multi-model                           | 19 $/user, 1 900 crédits inclus                        | Historique WSJ 2023 : perte ~20 $/user ; pivot 2026 vers crédits  |
+| **GitHub Copilot Pro**      | Seat plat, quota                                             | Idem                                                            | 10 $/mois                                              | Perte documentée (WSJ)                                            |
+| **Windsurf Pro**            | Quota rechargeable (Flow Actions)                            | GPT-5, Claude Sonnet 4.6, Gemini 3.1, SWE-1 maison              | 20 $/mois                                              | Non publié ; quota abaisse le risque                              |
+| **Zed Pro**                 | BYOK gratuit + hosted en overage +10 %                       | Claude Sonnet 5 promo, autres via provider                      | 10 $/mois (5 $ de crédit hosted)                       | Marge nette 10 % sur hosted, zéro sur BYOK                        |
+| **Replit Core**             | Effort-based, crédits mesurés                                | Anthropic majoritaire                                           | 20 $/mois (20 $ inclus)                                | Marge cachée dans le « effort » auto                              |
+| **Notion AI (Business)**    | Bundlé au seat                                               | 12 modèles (Anthropic, OpenAI, Google, xAI, Moonshot, DeepSeek) | 20 $/seat                                              | Custom Agents facturés 10 $/1 000 crédits (l'inclus a une limite) |
+| **Linear**                  | Seat + BYO AI credits séparés                                | Agents multi-provider                                           | 16 $/user Business                                     | Ne prend pas la marge IA, la refile                               |
+| **Slack AI**                | Bundlé Business+ (add-on 20 $ retiré Q2 2025)                | Stack Salesforce/Anthropic                                      | 15 $/user Business+                                    | Retrait de l'add-on = signal d'échec                              |
+| **M365 Copilot**            | Add-on plat sur licence M365                                 | GPT-5, Anthropic                                                | 30 $/user (SMB 21 $)                                   | Adoption 2-3 % de la base 450 M ; ROI contesté (Forbes)           |
+| **ChatGPT Plus**            | Forfait plat + caps                                          | GPT-5.x propriétaire                                            | 20 $/mois, ~160 msg/3h                                 | Altman : Pro perd de l'argent (déclaration publique)              |
+| **ChatGPT Business**        | Forfait plat, soft caps                                      | GPT-5.x                                                         | 20 $/seat annuel                                       | Baisse de -5 $ en avril 2026 = pression concurrentielle           |
+| **Claude Pro/Max**          | Forfait + session cap + weekly cap                           | Sonnet/Opus/Haiku/Fable                                         | 17-200 $/mois                                          | Caps hebdo introduits 2025 = surcoût inférence                    |
+| **Perplexity Pro**          | Forfait + 5 $ API credit Sonar (supprimé 2026)               | Sonar maison + frontier                                         | 20 $/mois, 20 Deep Research/j                          | Cap Deep Research = coût plafonné                                 |
+| **Poe**                     | Points multi-modèles, 6 paliers                              | Tout catalogue via APIs                                         | 5 → 249.99 $/mois                                      | Pass-through mesuré, marge sur volume                             |
+| **OpenRouter**              | BYOK pass-through, fee 5.5 % sur recharge crédits            | Tout catalogue                                                  | Gratuit ; 5.5 % achat carte, 5 % BYOK au-delà 25 k$/mo | Marge visible et cadrée : 5-5.5 %                                 |
+| **Jasper**                  | Forfait plat, output « illimité »                            | GPT/Claude/Gemini                                               | 39-59 $/mois                                           | Guardrails fair-use ; marge sur volume rédactionnel               |
 
 ## 2. Cinq patterns économiques observés
 
@@ -140,7 +140,7 @@ Free (25 Cascade actions/mois), Perplexity Free (3 Pro/jour).
 Un utilisateur qui n'a jamais essayé un agent BYOK ne saura pas configurer une clé.
 Sponsoriser **10-20 tours d'agent gratuits par nouveau compte**, sur un modèle bon marché
 (Haiku, Gemini Flash, DeepSeek), coûte 0.05-0.20 $ par onboarding, mesurable et budgétable.
-Après le plafond, message clair : *« collez votre clé, on garantit zéro markup »*.
+Après le plafond, message clair : _« collez votre clé, on garantit zéro markup »_.
 
 Décision déjà tracée dans [a-copier-adapter-ameliorer-harness](2026-08-21-a-copier-adapter-ameliorer-harness.md)
 sous l'item A11 (P1-P2) ; cette étude la confirme.
@@ -151,8 +151,8 @@ sous l'item A11 (P1-P2) ; cette étude la confirme.
 hosted), Linear (dit explicitement « no plan includes AI credits »).
 
 C'est un **différenciateur défendable** : le marché est fatigué des add-ons opaques (WSJ
-Copilot, backlash Replit effort-based, retrait add-on Slack). Le positionnement *« votre
-clé, votre facture chez OpenAI/Anthropic, nous ne prenons rien dessus »* est rare chez les
+Copilot, backlash Replit effort-based, retrait add-on Slack). Le positionnement _« votre
+clé, votre facture chez OpenAI/Anthropic, nous ne prenons rien dessus »_ est rare chez les
 CMS et cohérent avec la mission Philum (confiance créateur-audience, [mémoire mission](../memory/INDEX.md)).
 
 ## 5. À éviter explicitement

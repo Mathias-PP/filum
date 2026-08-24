@@ -37,6 +37,7 @@ MVP minimaliste : logs Railway/Vercel uniquement, pas de Sentry ni Plausible (pa
 ### Capturer les erreurs frontend (sans Sentry)
 
 Pattern proposé pour MVP :
+
 1. Backend : nouvel endpoint `POST /api/v1/_log/client-error` (no-auth, rate-limited à 60/h/IP).
 2. Body : `{ message: string, stack?: string, url: string, user_agent: string }`.
 3. Le endpoint loggue côté backend avec niveau `warning`.
@@ -46,6 +47,7 @@ Pattern proposé pour MVP :
 ### Healthcheck enrichi
 
 `/health` actuel retourne `{status, version}`. Possible d'enrichir avec :
+
 - `/health/database` (existe déjà)
 - `/health/wayback` — ping `https://archive.org/wayback/available?url=https://example.com` avec timeout 5s
 - `/health/google` — ping `https://accounts.google.com/.well-known/openid-configuration` avec timeout 5s
@@ -55,6 +57,7 @@ Mais : pas d'urgence MVP. À ajouter quand un problème prod réel sera survenu.
 ### Métriques business simples
 
 Sans Plausible, on peut quand même mesurer :
+
 - Compteur de vues par fiche (incrément côté backend dans la route SSR)
 - Compteur de fiches créées / publiées (déjà en table)
 - Endpoint admin (auth required) `/api/v1/_metrics` qui retourne ces compteurs en JSON
@@ -62,6 +65,7 @@ Sans Plausible, on peut quand même mesurer :
 ### Uptime monitoring externe (gratuit)
 
 Options gratuites :
+
 - **UptimeRobot** : 50 monitors gratuits, check toutes les 5 min, notif email
 - **Better Stack** (Logtail) : free tier 10 monitors
 - **Cron-job.org** : pour pings réguliers

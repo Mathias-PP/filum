@@ -7,9 +7,7 @@
   "paths": {
     "/api/v1/agent/chat": {
       "post": {
-        "tags": [
-          "agent-chat"
-        ],
+        "tags": ["agent-chat"],
         "summary": "Chat Agent",
         "operationId": "chat_agent_api_v1_agent_chat_post",
         "requestBody": {
@@ -46,9 +44,7 @@
     },
     "/api/v1/agent/definitions": {
       "get": {
-        "tags": [
-          "agent-definitions"
-        ],
+        "tags": ["agent-definitions"],
         "summary": "Lister Agents",
         "operationId": "lister_agents_api_v1_agent_definitions_get",
         "responses": {
@@ -67,9 +63,7 @@
     },
     "/api/v1/agent/definitions/{slug}": {
       "get": {
-        "tags": [
-          "agent-definitions"
-        ],
+        "tags": ["agent-definitions"],
         "summary": "Obtenir Agent",
         "operationId": "obtenir_agent_api_v1_agent_definitions__slug__get",
         "parameters": [
@@ -109,9 +103,7 @@
     },
     "/api/v1/agent/fiche/{slug}": {
       "get": {
-        "tags": [
-          "agent-fiche"
-        ],
+        "tags": ["agent-fiche"],
         "summary": "Etat Fiche",
         "description": "Où en est le run : quels étages ont déposé leur compte rendu.",
         "operationId": "etat_fiche_api_v1_agent_fiche__slug__get",
@@ -154,9 +146,7 @@
     },
     "/api/v1/agent/fiche": {
       "post": {
-        "tags": [
-          "agent-fiche"
-        ],
+        "tags": ["agent-fiche"],
         "summary": "Lancer Fiche",
         "operationId": "lancer_fiche_api_v1_agent_fiche_post",
         "requestBody": {
@@ -193,9 +183,7 @@
     },
     "/api/v1/agent/mode-gratuit": {
       "get": {
-        "tags": [
-          "agent"
-        ],
+        "tags": ["agent"],
         "summary": "Etat Mode Gratuit",
         "description": "Disponible sur cette instance ? Actif pour cet utilisateur ?",
         "operationId": "etat_mode_gratuit_api_v1_agent_mode_gratuit_get",
@@ -215,9 +203,7 @@
         }
       },
       "put": {
-        "tags": [
-          "agent"
-        ],
+        "tags": ["agent"],
         "summary": "Donner Consentement",
         "description": "Valide le warning données (version exacte exigée) et active le mode.",
         "operationId": "donner_consentement_api_v1_agent_mode_gratuit_put",
@@ -257,9 +243,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "agent"
-        ],
+        "tags": ["agent"],
         "summary": "Retirer Consentement",
         "description": "Désactive le mode : les prochains messages repartent sur la chaîne normale.",
         "operationId": "retirer_consentement_api_v1_agent_mode_gratuit_delete",
@@ -281,9 +265,7 @@
     },
     "/api/v1/agent/mode-gratuit/tester": {
       "post": {
-        "tags": [
-          "agent"
-        ],
+        "tags": ["agent"],
         "summary": "Tester Mode Gratuit",
         "description": "Ping la lane qui servirait le prochain tour (diagnostic, hors quota).",
         "operationId": "tester_mode_gratuit_api_v1_agent_mode_gratuit_tester_post",
@@ -305,9 +287,7 @@
     },
     "/api/v1/agent/mode-gratuit/modeles": {
       "get": {
-        "tags": [
-          "agent"
-        ],
+        "tags": ["agent"],
         "summary": "Lister Modeles Gratuits",
         "description": "Catalogue des modeles gratuits, avec role primaire/secours de chacun.",
         "operationId": "lister_modeles_gratuits_api_v1_agent_mode_gratuit_modeles_get",
@@ -329,9 +309,7 @@
     },
     "/api/v1/agent/mode-gratuit/modele": {
       "put": {
-        "tags": [
-          "agent"
-        ],
+        "tags": ["agent"],
         "summary": "Definir Modele Gratuit",
         "description": "Choisit le modele primaire du mode gratuit (toute l'instance).\n\nLe secours n'est pas touche : la rotation s'en sert automatiquement\nquand le primaire repond 429/surcharge.",
         "operationId": "definir_modele_gratuit_api_v1_agent_mode_gratuit_modele_put",
@@ -373,9 +351,7 @@
     },
     "/api/v1/agent/providers/meta": {
       "get": {
-        "tags": [
-          "agent-providers"
-        ],
+        "tags": ["agent-providers"],
         "summary": "Provider Meta",
         "description": "Notice de souveraineté, factuelle et sans discrimination.\n\nL'utilisateur décide, Philum informe : pays d'hébergement connu et périmètre\nprécis des données qui transitent pendant un échange.",
         "operationId": "provider_meta_api_v1_agent_providers_meta_get",
@@ -393,9 +369,7 @@
     },
     "/api/v1/agent/providers": {
       "get": {
-        "tags": [
-          "agent-providers"
-        ],
+        "tags": ["agent-providers"],
         "summary": "Lister Mes Providers",
         "operationId": "lister_mes_providers_api_v1_agent_providers_get",
         "responses": {
@@ -416,9 +390,7 @@
         }
       },
       "post": {
-        "tags": [
-          "agent-providers"
-        ],
+        "tags": ["agent-providers"],
         "summary": "Creer Provider",
         "operationId": "creer_provider_api_v1_agent_providers_post",
         "requestBody": {
@@ -457,9 +429,7 @@
     },
     "/api/v1/agent/providers/{provider_id}": {
       "patch": {
-        "tags": [
-          "agent-providers"
-        ],
+        "tags": ["agent-providers"],
         "summary": "Mettre A Jour Provider",
         "operationId": "mettre_a_jour_provider_api_v1_agent_providers__provider_id__patch",
         "parameters": [
@@ -508,9 +478,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "agent-providers"
-        ],
+        "tags": ["agent-providers"],
         "summary": "Supprimer Provider",
         "operationId": "supprimer_provider_api_v1_agent_providers__provider_id__delete",
         "parameters": [
@@ -544,9 +512,7 @@
     },
     "/api/v1/agent/providers/{provider_id}/test": {
       "post": {
-        "tags": [
-          "agent-providers"
-        ],
+        "tags": ["agent-providers"],
         "summary": "Tester Provider",
         "operationId": "tester_provider_api_v1_agent_providers__provider_id__test_post",
         "parameters": [
@@ -604,9 +570,7 @@
     },
     "/api/v1/agent/providers/{provider_id}/models": {
       "get": {
-        "tags": [
-          "agent-providers"
-        ],
+        "tags": ["agent-providers"],
         "summary": "Lister Modeles Provider",
         "description": "Les modèles disponibles pour ce compte, demandés au fournisseur.\n\nCache serveur 15 min. Passer ``?refresh=true`` pour forcer le rappel réseau\n(utile si l'utilisateur vient d'activer un nouveau plan chez le fournisseur).",
         "operationId": "lister_modeles_provider_api_v1_agent_providers__provider_id__models_get",
@@ -656,9 +620,7 @@
     },
     "/api/v1/agent/sessions": {
       "get": {
-        "tags": [
-          "agent-sessions"
-        ],
+        "tags": ["agent-sessions"],
         "summary": "Lister Sessions",
         "operationId": "lister_sessions_api_v1_agent_sessions_get",
         "responses": {
@@ -679,9 +641,7 @@
         }
       },
       "post": {
-        "tags": [
-          "agent-sessions"
-        ],
+        "tags": ["agent-sessions"],
         "summary": "Creer Session",
         "operationId": "creer_session_api_v1_agent_sessions_post",
         "requestBody": {
@@ -720,9 +680,7 @@
     },
     "/api/v1/agent/sessions/{session_id}": {
       "get": {
-        "tags": [
-          "agent-sessions"
-        ],
+        "tags": ["agent-sessions"],
         "summary": "Lire Session",
         "operationId": "lire_session_api_v1_agent_sessions__session_id__get",
         "parameters": [
@@ -761,9 +719,7 @@
         }
       },
       "patch": {
-        "tags": [
-          "agent-sessions"
-        ],
+        "tags": ["agent-sessions"],
         "summary": "Mettre A Jour Session",
         "description": "Renomme la conversation, ou change sa cle provider, son modele ou son agent.",
         "operationId": "mettre_a_jour_session_api_v1_agent_sessions__session_id__patch",
@@ -813,9 +769,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "agent-sessions"
-        ],
+        "tags": ["agent-sessions"],
         "summary": "Supprimer Session",
         "operationId": "supprimer_session_api_v1_agent_sessions__session_id__delete",
         "parameters": [
@@ -849,9 +803,7 @@
     },
     "/api/v1/agent/sessions/{session_id}/messages": {
       "get": {
-        "tags": [
-          "agent-sessions"
-        ],
+        "tags": ["agent-sessions"],
         "summary": "Lister Messages",
         "operationId": "lister_messages_api_v1_agent_sessions__session_id__messages_get",
         "parameters": [
@@ -896,9 +848,7 @@
     },
     "/api/v1/agent/sessions/{session_id}/usage": {
       "get": {
-        "tags": [
-          "agent-sessions"
-        ],
+        "tags": ["agent-sessions"],
         "summary": "Usage Session",
         "operationId": "usage_session_api_v1_agent_sessions__session_id__usage_get",
         "parameters": [
@@ -939,9 +889,7 @@
     },
     "/api/v1/agent/approve": {
       "post": {
-        "tags": [
-          "agent-sessions"
-        ],
+        "tags": ["agent-sessions"],
         "summary": "Repondre Approbation",
         "description": "Débloque la boucle suspendue sur ``request_id``, pour ce créateur seul.",
         "operationId": "repondre_approbation_api_v1_agent_approve_post",
@@ -974,9 +922,7 @@
     },
     "/api/v1/agent/workspace/tree": {
       "get": {
-        "tags": [
-          "agent-workspace"
-        ],
+        "tags": ["agent-workspace"],
         "summary": "Arbre Workspace",
         "operationId": "arbre_workspace_api_v1_agent_workspace_tree_get",
         "parameters": [
@@ -1027,9 +973,7 @@
     },
     "/api/v1/agent/workspace/file": {
       "get": {
-        "tags": [
-          "agent-workspace"
-        ],
+        "tags": ["agent-workspace"],
         "summary": "Lire Fichier",
         "operationId": "lire_fichier_api_v1_agent_workspace_file_get",
         "parameters": [
@@ -1067,9 +1011,7 @@
         }
       },
       "put": {
-        "tags": [
-          "agent-workspace"
-        ],
+        "tags": ["agent-workspace"],
         "summary": "Ecrire Fichier",
         "operationId": "ecrire_fichier_api_v1_agent_workspace_file_put",
         "parameters": [
@@ -1117,9 +1059,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "agent-workspace"
-        ],
+        "tags": ["agent-workspace"],
         "summary": "Supprimer Fichier",
         "operationId": "supprimer_fichier_api_v1_agent_workspace_file_delete",
         "parameters": [
@@ -1152,9 +1092,7 @@
     },
     "/api/v1/agent/workspace/seed": {
       "post": {
-        "tags": [
-          "agent-workspace"
-        ],
+        "tags": ["agent-workspace"],
         "summary": "Re Seed Workspace",
         "operationId": "re_seed_workspace_api_v1_agent_workspace_seed_post",
         "responses": {
@@ -1171,9 +1109,7 @@
     },
     "/api/v1/attestations/content": {
       "post": {
-        "tags": [
-          "attestations"
-        ],
+        "tags": ["attestations"],
         "summary": "Create Attestation",
         "operationId": "create_attestation_api_v1_attestations_content_post",
         "requestBody": {
@@ -1212,9 +1148,7 @@
     },
     "/api/v1/attestations/{attestation_id}": {
       "get": {
-        "tags": [
-          "attestations"
-        ],
+        "tags": ["attestations"],
         "summary": "Get Attestation",
         "operationId": "get_attestation_api_v1_attestations__attestation_id__get",
         "parameters": [
@@ -1255,9 +1189,7 @@
     },
     "/api/v1/attestations/{attestation_id}/verify": {
       "get": {
-        "tags": [
-          "attestations"
-        ],
+        "tags": ["attestations"],
         "summary": "Verify Attestation",
         "operationId": "verify_attestation_api_v1_attestations__attestation_id__verify_get",
         "parameters": [
@@ -1298,9 +1230,7 @@
     },
     "/api/v1/auth/google/login": {
       "get": {
-        "tags": [
-          "auth"
-        ],
+        "tags": ["auth"],
         "summary": "Google Login",
         "operationId": "google_login_api_v1_auth_google_login_get",
         "responses": {
@@ -1317,9 +1247,7 @@
     },
     "/api/v1/auth/google/callback": {
       "get": {
-        "tags": [
-          "auth"
-        ],
+        "tags": ["auth"],
         "summary": "Google Callback",
         "operationId": "google_callback_api_v1_auth_google_callback_get",
         "parameters": [
@@ -1396,9 +1324,7 @@
     },
     "/api/v1/auth/logout": {
       "post": {
-        "tags": [
-          "auth"
-        ],
+        "tags": ["auth"],
         "summary": "Logout",
         "operationId": "logout_api_v1_auth_logout_post",
         "responses": {
@@ -1415,9 +1341,7 @@
     },
     "/api/v1/auth/me": {
       "get": {
-        "tags": [
-          "auth"
-        ],
+        "tags": ["auth"],
         "summary": "Get Me",
         "operationId": "get_me_api_v1_auth_me_get",
         "responses": {
@@ -1436,9 +1360,7 @@
     },
     "/api/v1/auth/mcp-token": {
       "post": {
-        "tags": [
-          "auth"
-        ],
+        "tags": ["auth"],
         "summary": "Create Mcp Token",
         "description": "Un jeton porteur pour parler au MCP au nom de l'utilisateur connecte.\n\nLe meme mecanisme que la session web : JWT signe par le meme secret, meme\nduree de vie (sept jours). L'agent le copie une fois dans son client MCP\net le passe en en-tete Authorization. Aucun droit particulier n'est\naccorde : le jeton porte l'identite du createur, rien de plus.",
         "operationId": "create_mcp_token_api_v1_auth_mcp_token_post",
@@ -1460,9 +1382,7 @@
     },
     "/api/v1/cards/{card_id}/connections": {
       "get": {
-        "tags": [
-          "connections"
-        ],
+        "tags": ["connections"],
         "summary": "List Connections",
         "operationId": "list_connections_api_v1_cards__card_id__connections_get",
         "parameters": [
@@ -1503,9 +1423,7 @@
     },
     "/api/v1/cards/{card_id}/connections/{source_id}/confirm": {
       "post": {
-        "tags": [
-          "connections"
-        ],
+        "tags": ["connections"],
         "summary": "Confirm Connection",
         "operationId": "confirm_connection_api_v1_cards__card_id__connections__source_id__confirm_post",
         "parameters": [
@@ -1556,9 +1474,7 @@
     },
     "/api/v1/cards/{card_id}/connections/{source_id}": {
       "delete": {
-        "tags": [
-          "connections"
-        ],
+        "tags": ["connections"],
         "summary": "Remove Connection",
         "operationId": "remove_connection_api_v1_cards__card_id__connections__source_id__delete",
         "parameters": [
@@ -1602,9 +1518,7 @@
     },
     "/api/v1/cards/citations": {
       "get": {
-        "tags": [
-          "cards"
-        ],
+        "tags": ["cards"],
         "summary": "List Incoming Citations Endpoint",
         "description": "Qui s'appuie sur mes fiches.\n\nComme /cards/deleted, cette route DOIT preceder /cards/{card_id} : sinon\nFastAPI lirait 'citations' comme un UUID et repondrait 422.",
         "operationId": "list_incoming_citations_endpoint_api_v1_cards_citations_get",
@@ -1624,9 +1538,7 @@
     },
     "/api/v1/cards/citations/seen": {
       "post": {
-        "tags": [
-          "cards"
-        ],
+        "tags": ["cards"],
         "summary": "Mark Incoming Citations Seen",
         "description": "Marque les citations entrantes comme vues et renvoie la liste a jour.\n\nOn renvoie la liste plutot qu'un 204 : le frontend doit pouvoir afficher\nd'un seul coup ce qui vient d'etre marque, sans re-interroger et sans\nreconstruire l'etat de son cote.",
         "operationId": "mark_incoming_citations_seen_api_v1_cards_citations_seen_post",
@@ -1646,9 +1558,7 @@
     },
     "/api/v1/cards/deleted": {
       "get": {
-        "tags": [
-          "cards"
-        ],
+        "tags": ["cards"],
         "summary": "List My Deleted Cards",
         "description": "Liste les fiches soft-deletees de l'utilisateur (corbeille).\n\nChaque fiche est restaurable via POST /cards/{id}/restore. IMPORTANT :\ncette route DOIT etre declaree AVANT /cards/{card_id} pour que FastAPI\nne matche pas 'deleted' comme un UUID (retournerait 422 sinon).",
         "operationId": "list_my_deleted_cards_api_v1_cards_deleted_get",
@@ -1707,9 +1617,7 @@
     },
     "/api/v1/cards/search": {
       "get": {
-        "tags": [
-          "cards"
-        ],
+        "tags": ["cards"],
         "summary": "Search Cards",
         "description": "Fiches selectionnables comme parent : celles de l'user + les publiques.\n\nSert le picker de meta-fiches. Comme /cards/deleted, DOIT etre declaree\navant /cards/{card_id} sinon FastAPI matche 'search' comme un UUID.",
         "operationId": "search_cards_api_v1_cards_search_get",
@@ -1768,9 +1676,7 @@
     },
     "/api/v1/cards": {
       "get": {
-        "tags": [
-          "cards"
-        ],
+        "tags": ["cards"],
         "summary": "List My Cards",
         "operationId": "list_my_cards_api_v1_cards_get",
         "parameters": [
@@ -1842,9 +1748,7 @@
         }
       },
       "post": {
-        "tags": [
-          "cards"
-        ],
+        "tags": ["cards"],
         "summary": "Create Card",
         "operationId": "create_card_api_v1_cards_post",
         "requestBody": {
@@ -1883,9 +1787,7 @@
     },
     "/api/v1/cards/{card_id}": {
       "get": {
-        "tags": [
-          "cards"
-        ],
+        "tags": ["cards"],
         "summary": "Get Card",
         "operationId": "get_card_api_v1_cards__card_id__get",
         "parameters": [
@@ -1924,9 +1826,7 @@
         }
       },
       "patch": {
-        "tags": [
-          "cards"
-        ],
+        "tags": ["cards"],
         "summary": "Update Card",
         "operationId": "update_card_api_v1_cards__card_id__patch",
         "parameters": [
@@ -1975,9 +1875,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "cards"
-        ],
+        "tags": ["cards"],
         "summary": "Delete Card",
         "operationId": "delete_card_api_v1_cards__card_id__delete",
         "parameters": [
@@ -2011,9 +1909,7 @@
     },
     "/api/v1/cards/{card_id}/content-text/upload": {
       "post": {
-        "tags": [
-          "cards"
-        ],
+        "tags": ["cards"],
         "summary": "Upload Content Text",
         "description": "Depose un document (PDF, DOCX, ODT, TXT, MD) et remplit content_text.\n\nLe fichier est lu, son texte extrait, puis jete : rien du fichier lui-meme\nn'est conserve. Seul le texte l'est. Meme borne de taille et memes formats\nque /excerpts/chunk-file.\n\nL'utilisateur est cense avoir le droit de publier ce texte (contenu propre,\nlibre de droit, ou extrait sous droit de citation) ; l'UI l'en avertit\nexplicitement avant l'upload, le backend fait confiance.",
         "operationId": "upload_content_text_api_v1_cards__card_id__content_text_upload_post",
@@ -2065,9 +1961,7 @@
     },
     "/api/v1/cards/{card_id}/publish": {
       "post": {
-        "tags": [
-          "cards"
-        ],
+        "tags": ["cards"],
         "summary": "Publish Card",
         "operationId": "publish_card_api_v1_cards__card_id__publish_post",
         "parameters": [
@@ -2110,9 +2004,7 @@
     },
     "/api/v1/cards/{card_id}/restore": {
       "post": {
-        "tags": [
-          "cards"
-        ],
+        "tags": ["cards"],
         "summary": "Restore Card",
         "operationId": "restore_card_api_v1_cards__card_id__restore_post",
         "parameters": [
@@ -2153,9 +2045,7 @@
     },
     "/api/v1/@{creator_slug}/{card_slug}": {
       "get": {
-        "tags": [
-          "cards"
-        ],
+        "tags": ["cards"],
         "summary": "Get Public Card",
         "operationId": "get_public_card_api_v1___creator_slug___card_slug__get",
         "parameters": [
@@ -2204,9 +2094,7 @@
     },
     "/api/v1/@{creator_slug}/{card_slug}/graph": {
       "get": {
-        "tags": [
-          "cards"
-        ],
+        "tags": ["cards"],
         "summary": "Get Public Card Graph",
         "description": "Meta-graphe autour d'une fiche : ses sources et les fiches qu'elles citent.\n\n``include_sources=false`` renvoie le graphe fiches-seules (constellation).\nLe parcours ne traverse que des fiches publiees et publiques.",
         "operationId": "get_public_card_graph_api_v1___creator_slug___card_slug__graph_get",
@@ -2278,9 +2166,7 @@
     },
     "/api/v1/@{creator_slug}/{card_slug}/export": {
       "get": {
-        "tags": [
-          "cards"
-        ],
+        "tags": ["cards"],
         "summary": "Export Public Card",
         "operationId": "export_public_card_api_v1___creator_slug___card_slug__export_get",
         "parameters": [
@@ -2409,9 +2295,7 @@
     },
     "/api/v1/cards/{card_id}/claim-requests": {
       "post": {
-        "tags": [
-          "cards"
-        ],
+        "tags": ["cards"],
         "summary": "Create Claim Request",
         "operationId": "create_claim_request_api_v1_cards__card_id__claim_requests_post",
         "parameters": [
@@ -2462,9 +2346,7 @@
     },
     "/api/v1/discover": {
       "get": {
-        "tags": [
-          "discover"
-        ],
+        "tags": ["discover"],
         "summary": "Discover Cards",
         "operationId": "discover_cards_api_v1_discover_get",
         "parameters": [
@@ -2659,9 +2541,7 @@
     },
     "/api/v1/discover/creators": {
       "get": {
-        "tags": [
-          "discover"
-        ],
+        "tags": ["discover"],
         "summary": "Discover Creators",
         "description": "Recherche de createurs qui ont au moins une fiche publique publiee.\n\nIndexe uniquement ce que le createur a rendu public : `username`,\n`display_name`, `bio`. Ne remonte jamais un compte qui n'a publie\naucune fiche : sans corpus, un profil n'a rien a offrir a la recherche.",
         "operationId": "discover_creators_api_v1_discover_creators_get",
@@ -2727,9 +2607,7 @@
     },
     "/api/v1/discover/facets": {
       "get": {
-        "tags": [
-          "discover"
-        ],
+        "tags": ["discover"],
         "summary": "Discover Facets",
         "description": "Ce qui existe reellement dans le corpus public.\n\nL'interface n'invente pas ses filtres a partir des enums du modele : une\ncase a cocher qui ne ramene jamais rien est une promesse non tenue.",
         "operationId": "discover_facets_api_v1_discover_facets_get",
@@ -2749,9 +2627,7 @@
     },
     "/api/v1/excerpts/search": {
       "get": {
-        "tags": [
-          "excerpts"
-        ],
+        "tags": ["excerpts"],
         "summary": "Search Excerpts",
         "description": "Les extraits de la personne connectee les plus proches de `q`.",
         "operationId": "search_excerpts_api_v1_excerpts_search_get",
@@ -2806,9 +2682,7 @@
     },
     "/api/v1/sources/{source_id}/excerpts": {
       "post": {
-        "tags": [
-          "excerpts"
-        ],
+        "tags": ["excerpts"],
         "summary": "Create Excerpt",
         "operationId": "create_excerpt_api_v1_sources__source_id__excerpts_post",
         "parameters": [
@@ -2859,9 +2733,7 @@
     },
     "/api/v1/sources/{source_id}/excerpts/{excerpt_id}": {
       "delete": {
-        "tags": [
-          "excerpts"
-        ],
+        "tags": ["excerpts"],
         "summary": "Delete Excerpt",
         "operationId": "delete_excerpt_api_v1_sources__source_id__excerpts__excerpt_id__delete",
         "parameters": [
@@ -2905,9 +2777,7 @@
     },
     "/api/v1/sources/{source_id}/excerpts/chunk": {
       "post": {
-        "tags": [
-          "excerpts"
-        ],
+        "tags": ["excerpts"],
         "summary": "Chunk Source Text",
         "description": "Propose un decoupage du texte de la source, colle ou recupere.\n\nLe collage prime : c'est le seul chemin qui marche sur les cinq sites de la\nmesure ou la recuperation ne rend rien. Sans collage on tente le site, et\nune page illisible rend un decoupage vide plutot qu'une erreur.",
         "operationId": "chunk_source_text_api_v1_sources__source_id__excerpts_chunk_post",
@@ -2959,9 +2829,7 @@
     },
     "/api/v1/sources/{source_id}/excerpts/chunk-file": {
       "post": {
-        "tags": [
-          "excerpts"
-        ],
+        "tags": ["excerpts"],
         "summary": "Chunk Uploaded Document",
         "description": "Le meme decoupage, a partir d'un document depose.\n\nUn chapitre ne se colle pas : au-dela de quelques pages, le collage devient\nla corvee qui fait renoncer. Le fichier est lu puis jete — rien n'en est\nconserve, seul son texte sert d'assise au decoupage.",
         "operationId": "chunk_uploaded_document_api_v1_sources__source_id__excerpts_chunk_file_post",
@@ -3013,9 +2881,7 @@
     },
     "/api/v1/sources/{source_id}/excerpts/verify": {
       "post": {
-        "tags": [
-          "excerpts"
-        ],
+        "tags": ["excerpts"],
         "summary": "Verify Source Excerpts",
         "description": "Reancre chaque extrait dans la page telle qu'elle est aujourd'hui.\n\nC'est ce qui fait passer un extrait de *declare* a *verifie* : sans cette\npasse, la fiche affirme qu'une source dit quelque chose sans que rien ne\nl'ait jamais confirme.\n\nSur les cinq sites de la mesure ou la page ne rend rien, cette passe ne\ndisait ni oui ni non. Un texte fourni la debloque : la relecture porte\nalors sur ce que l'auteur·ice atteste etre la source.",
         "operationId": "verify_source_excerpts_api_v1_sources__source_id__excerpts_verify_post",
@@ -3074,9 +2940,7 @@
     },
     "/api/v1/sources/{source_id}/excerpts/suggest": {
       "post": {
-        "tags": [
-          "excerpts"
-        ],
+        "tags": ["excerpts"],
         "summary": "Suggest Source Excerpts",
         "operationId": "suggest_source_excerpts_api_v1_sources__source_id__excerpts_suggest_post",
         "parameters": [
@@ -3134,9 +2998,7 @@
     },
     "/api/v1/sources/{source_id}/excerpts/annotate": {
       "post": {
-        "tags": [
-          "excerpts"
-        ],
+        "tags": ["excerpts"],
         "summary": "Annotate Excerpt",
         "description": "Propose un intitule et une phrase de mise en situation pour un passage.\n\nNe persiste rien et n'engage a rien : la reponse remplit des champs que\nl'auteur·ice relit, corrige ou vide avant d'ajouter le passage.",
         "operationId": "annotate_excerpt_api_v1_sources__source_id__excerpts_annotate_post",
@@ -3188,9 +3050,7 @@
     },
     "/api/v1/feed": {
       "get": {
-        "tags": [
-          "feed"
-        ],
+        "tags": ["feed"],
         "summary": "Read Feed",
         "operationId": "read_feed_api_v1_feed_get",
         "parameters": [
@@ -3252,9 +3112,7 @@
     },
     "/api/v1/import/parse": {
       "post": {
-        "tags": [
-          "imports"
-        ],
+        "tags": ["imports"],
         "summary": "Parse Import File",
         "operationId": "parse_import_file_api_v1_import_parse_post",
         "parameters": [
@@ -3311,9 +3169,7 @@
     },
     "/api/v1/import/paste": {
       "post": {
-        "tags": [
-          "imports"
-        ],
+        "tags": ["imports"],
         "summary": "Parse Pasted Bibliography",
         "operationId": "parse_pasted_bibliography_api_v1_import_paste_post",
         "requestBody": {
@@ -3352,9 +3208,7 @@
     },
     "/api/v1/import/youtube-transcript": {
       "post": {
-        "tags": [
-          "imports"
-        ],
+        "tags": ["imports"],
         "summary": "Suggest From Youtube Transcript",
         "operationId": "suggest_from_youtube_transcript_api_v1_import_youtube_transcript_post",
         "requestBody": {
@@ -3393,9 +3247,7 @@
     },
     "/api/v1/import/from-content-url": {
       "post": {
-        "tags": [
-          "imports"
-        ],
+        "tags": ["imports"],
         "summary": "Parse Content Url",
         "description": "URL d'un contenu -> draft de fiche complet (titre + sources citees).\n\nRate-limit 5/heure (extraction LLM + fetch reseau). Auth requise.\nSSRF-safe via assert_url_is_safe.",
         "operationId": "parse_content_url_api_v1_import_from_content_url_post",
@@ -3435,9 +3287,7 @@
     },
     "/api/v1/import/url-metadata": {
       "post": {
-        "tags": [
-          "imports"
-        ],
+        "tags": ["imports"],
         "summary": "Url Metadata",
         "description": "Metadata legere (titre, description) d'une URL de contenu.\n\nVersion rapide de /import/from-content-url : un seul fetch de page,\npas d'extraction de references ni de LLM. Sert a pre-remplir le\nformulaire « Nouvelle fiche » pendant la saisie.",
         "operationId": "url_metadata_api_v1_import_url_metadata_post",
@@ -3477,9 +3327,7 @@
     },
     "/api/v1/oauth/register": {
       "post": {
-        "tags": [
-          "oauth"
-        ],
+        "tags": ["oauth"],
         "summary": "Oauth Register",
         "description": "Dynamic Client Registration (RFC 7591). Aucune auth requise.\n\nC'est ce qui distingue OAuth 2.1 pour MCP de l'OAuth classique : chaque\nclient s'enregistre lui-meme au moment de sa premiere connexion, l'user\nn'a jamais a copier un client_id.",
         "operationId": "oauth_register_api_v1_oauth_register_post",
@@ -3519,9 +3367,7 @@
     },
     "/api/v1/oauth/authorize": {
       "get": {
-        "tags": [
-          "oauth"
-        ],
+        "tags": ["oauth"],
         "summary": "Oauth Authorize",
         "description": "Point d'entree du flow d'autorisation.\n\nSi l'user n'est pas connecte a Philum, redirige vers Google OAuth avec un\n`state` qui memorise la requete originale ; le callback Google reviendra\nici avec la session posee. Sinon rend une page HTML de consentement.",
         "operationId": "oauth_authorize_api_v1_oauth_authorize_get",
@@ -3629,9 +3475,7 @@
     },
     "/api/v1/oauth/consent": {
       "post": {
-        "tags": [
-          "oauth"
-        ],
+        "tags": ["oauth"],
         "summary": "Oauth Consent",
         "description": "Recoit le POST de la page consent, cree le code et redirige.",
         "operationId": "oauth_consent_api_v1_oauth_consent_post",
@@ -3669,9 +3513,7 @@
     },
     "/api/v1/oauth/token": {
       "post": {
-        "tags": [
-          "oauth"
-        ],
+        "tags": ["oauth"],
         "summary": "Oauth Token",
         "description": "Echange un code d'autorisation contre un access token JWT.\n\nSans auth : le client public est identifie par `client_id`, l'authenticite\ndu porteur du code par PKCE (`code_verifier`).",
         "operationId": "oauth_token_api_v1_oauth_token_post",
@@ -3711,9 +3553,7 @@
     },
     "/api/v1/og": {
       "get": {
-        "tags": [
-          "og"
-        ],
+        "tags": ["og"],
         "summary": "Og Image",
         "operationId": "og_image_api_v1_og_get",
         "parameters": [
@@ -3771,9 +3611,7 @@
     },
     "/api/v1/sources/extract": {
       "get": {
-        "tags": [
-          "sources"
-        ],
+        "tags": ["sources"],
         "summary": "Extract Url Metadata",
         "description": "Extract title, authors, date, citations from a URL (best-effort, no auth required).\n\nProtected against SSRF: the URL is resolved and any non-public IP\n(loopback, private RFC1918, link-local, cloud-metadata 169.254.169.254,\netc.) is rejected up-front. See `app.core.url_safety`.",
         "operationId": "extract_url_metadata_api_v1_sources_extract_get",
@@ -3819,9 +3657,7 @@
     },
     "/api/v1/sources": {
       "get": {
-        "tags": [
-          "sources"
-        ],
+        "tags": ["sources"],
         "summary": "List Sources",
         "operationId": "list_sources_api_v1_sources_get",
         "parameters": [
@@ -3866,9 +3702,7 @@
         }
       },
       "post": {
-        "tags": [
-          "sources"
-        ],
+        "tags": ["sources"],
         "summary": "Create Source",
         "operationId": "create_source_api_v1_sources_post",
         "parameters": [
@@ -3919,9 +3753,7 @@
     },
     "/api/v1/sources/batch": {
       "post": {
-        "tags": [
-          "sources"
-        ],
+        "tags": ["sources"],
         "summary": "Create Sources Batch",
         "description": "Cree N sources en une transaction. Ce qui echoue est retourne dans\n``failed`` avec la raison, ce qui reussit dans ``created``.\n\nImpact archives Wayback : chaque source non-manuellement-archivee\ndeclenche une tache de fond apres commit (idem POST individuel).",
         "operationId": "create_sources_batch_api_v1_sources_batch_post",
@@ -3975,9 +3807,7 @@
     },
     "/api/v1/sources/archive": {
       "post": {
-        "tags": [
-          "sources"
-        ],
+        "tags": ["sources"],
         "summary": "Archive Sources",
         "description": "Relance l'archivage des sources demandees, une ou plusieurs.\n\nL'archivage automatique est cadence et peut prendre des heures sur une\ngrosse fiche. Cette route permet de designer ce qui presse, sans attendre\nle tour de role.",
         "operationId": "archive_sources_api_v1_sources_archive_post",
@@ -4017,9 +3847,7 @@
     },
     "/api/v1/sources/{source_id}": {
       "patch": {
-        "tags": [
-          "sources"
-        ],
+        "tags": ["sources"],
         "summary": "Update Source",
         "operationId": "update_source_api_v1_sources__source_id__patch",
         "parameters": [
@@ -4068,9 +3896,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "sources"
-        ],
+        "tags": ["sources"],
         "summary": "Delete Source",
         "operationId": "delete_source_api_v1_sources__source_id__delete",
         "parameters": [
@@ -4104,9 +3930,7 @@
     },
     "/api/v1/users/me/linked-accounts": {
       "get": {
-        "tags": [
-          "users"
-        ],
+        "tags": ["users"],
         "summary": "Get My Linked Accounts",
         "operationId": "get_my_linked_accounts_api_v1_users_me_linked_accounts_get",
         "responses": {
@@ -4127,9 +3951,7 @@
         }
       },
       "put": {
-        "tags": [
-          "users"
-        ],
+        "tags": ["users"],
         "summary": "Replace My Linked Accounts",
         "description": "Remplace la liste complète (sémantique PUT — simple pour la v0).",
         "operationId": "replace_my_linked_accounts_api_v1_users_me_linked_accounts_put",
@@ -4173,9 +3995,7 @@
     },
     "/api/v1/users/@{slug}": {
       "get": {
-        "tags": [
-          "users"
-        ],
+        "tags": ["users"],
         "summary": "Get User Profile",
         "operationId": "get_user_profile_api_v1_users___slug__get",
         "parameters": [
@@ -4381,20 +4201,14 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "required": [
-          "request_id",
-          "approved"
-        ],
+        "required": ["request_id", "approved"],
         "title": "AgentApprovalDecision"
       },
       "AgentChatMessage": {
         "properties": {
           "role": {
             "type": "string",
-            "enum": [
-              "user",
-              "assistant"
-            ],
+            "enum": ["user", "assistant"],
             "title": "Role"
           },
           "content": {
@@ -4406,10 +4220,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "required": [
-          "role",
-          "content"
-        ],
+        "required": ["role", "content"],
         "title": "AgentChatMessage"
       },
       "AgentChatRequest": {
@@ -4484,9 +4295,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "required": [
-          "message"
-        ],
+        "required": ["message"],
         "title": "AgentChatRequest"
       },
       "AgentDefinitionList": {
@@ -4507,10 +4316,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "agents",
-          "rejected"
-        ],
+        "required": ["agents", "rejected"],
         "title": "AgentDefinitionList"
       },
       "AgentDefinitionRead": {
@@ -4611,10 +4417,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "path",
-          "raison"
-        ],
+        "required": ["path", "raison"],
         "title": "AgentDefinitionRejected",
         "description": "Un fichier de `agents/` qui ne decrit pas un agent exploitable."
       },
@@ -4649,10 +4452,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "required": [
-          "content_url",
-          "slug"
-        ],
+        "required": ["content_url", "slug"],
         "title": "AgentFicheRequest",
         "description": "Lancement d'un run de fiche : quel contenu, sous quel slug."
       },
@@ -4775,11 +4575,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "required": [
-          "provider",
-          "model",
-          "api_key"
-        ],
+        "required": ["provider", "model", "api_key"],
         "title": "AgentProviderCreate"
       },
       "AgentProviderRead": {
@@ -4919,12 +4715,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "ok",
-          "model_resolved",
-          "url",
-          "message"
-        ],
+        "required": ["ok", "model_resolved", "url", "message"],
         "title": "AgentProviderTestResult",
         "description": "Résultat du test de clé, avec un message actionnable par statut.\n\n``provider_message`` porte le texte brut renvoyé par le fournisseur. C'est\nsouvent la seule information exploitable de toute la chaine : Gemini y nomme\nle modele de remplacement, OpenAI y distingue un credit epuise d'une limite\nde debit. Ne jamais le remplacer par une reformulation."
       },
@@ -5187,10 +4978,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "total_prompt_tokens",
-          "total_completion_tokens"
-        ],
+        "required": ["total_prompt_tokens", "total_completion_tokens"],
         "title": "AgentSessionUsage"
       },
       "AnnotationRequest": {
@@ -5215,9 +5003,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "text"
-        ],
+        "required": ["text"],
         "title": "AnnotationRequest"
       },
       "AnnotationResponse": {
@@ -5250,9 +5036,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "llm_enabled"
-        ],
+        "required": ["llm_enabled"],
         "title": "AnnotationResponse"
       },
       "ArchiveRequest": {
@@ -5267,9 +5051,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "source_ids"
-        ],
+        "required": ["source_ids"],
         "title": "ArchiveRequest"
       },
       "ArchiveResponse": {
@@ -5303,12 +5085,7 @@
       },
       "ArchiveStatus": {
         "type": "string",
-        "enum": [
-          "pending",
-          "archived",
-          "failed",
-          "not_applicable"
-        ],
+        "enum": ["pending", "archived", "failed", "not_applicable"],
         "title": "ArchiveStatus"
       },
       "AttestationCreate": {
@@ -5321,9 +5098,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "content_url"
-        ],
+        "required": ["content_url"],
         "title": "AttestationCreate"
       },
       "AttestationResponse": {
@@ -5459,9 +5234,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "valid"
-        ],
+        "required": ["valid"],
         "title": "AttestationVerifyResponse"
       },
       "AuthorKind": {
@@ -5508,9 +5281,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "file"
-        ],
+        "required": ["file"],
         "title": "Body_chunk_uploaded_document_api_v1_sources__source_id__excerpts_chunk_file_post"
       },
       "Body_oauth_consent_api_v1_oauth_consent_post": {
@@ -5548,12 +5319,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "decision",
-          "client_id",
-          "redirect_uri",
-          "code_challenge"
-        ],
+        "required": ["decision", "client_id", "redirect_uri", "code_challenge"],
         "title": "Body_oauth_consent_api_v1_oauth_consent_post"
       },
       "Body_oauth_token_api_v1_oauth_token_post": {
@@ -5598,9 +5364,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "file"
-        ],
+        "required": ["file"],
         "title": "Body_parse_import_file_api_v1_import_parse_post"
       },
       "Body_upload_content_text_api_v1_cards__card_id__content_text_upload_post": {
@@ -5612,9 +5376,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "file"
-        ],
+        "required": ["file"],
         "title": "Body_upload_content_text_api_v1_cards__card_id__content_text_upload_post"
       },
       "CardConnection": {
@@ -5719,10 +5481,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "outgoing",
-          "incoming"
-        ],
+        "required": ["outgoing", "incoming"],
         "title": "CardConnections"
       },
       "CardCreate": {
@@ -5851,10 +5610,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "slug",
-          "title"
-        ],
+        "required": ["slug", "title"],
         "title": "CardCreate"
       },
       "CardDetail": {
@@ -6069,19 +5825,12 @@
           }
         },
         "type": "object",
-        "required": [
-          "root_id",
-          "nodes",
-          "edges"
-        ],
+        "required": ["root_id", "nodes", "edges"],
         "title": "CardGraphResponse"
       },
       "CardKind": {
         "type": "string",
-        "enum": [
-          "contenu",
-          "sujet"
-        ],
+        "enum": ["contenu", "sujet"],
         "title": "CardKind",
         "description": "Ce qu'une fiche documente, et donc qui en est l'auteur.\n\n- CONTENU : une video, un article, un post qui existe ailleurs. La fiche\n  porte son URL et ses auteurs, qui ne sont pas le createur Philum tant\n  qu'il ne s'en declare pas l'auteur (`is_seed`).\n- SUJET : une bibliographie sur une question. Il n'y a pas de contenu\n  source, donc pas d'URL ni d'auteurs tiers : la synthese est du createur."
       },
@@ -6283,14 +6032,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "id",
-          "title",
-          "slug",
-          "creator_slug",
-          "status",
-          "is_own"
-        ],
+        "required": ["id", "title", "slug", "creator_slug", "status", "is_own"],
         "title": "CardSearchResult",
         "description": "Fiche selectionnable comme parent (meta-fiches).\n\nVolontairement minimal : le picker n'a besoin que de quoi identifier une\nfiche et construire son URL publique."
       },
@@ -6342,11 +6084,7 @@
       },
       "CardStatus": {
         "type": "string",
-        "enum": [
-          "draft",
-          "published",
-          "archived"
-        ],
+        "enum": ["draft", "published", "archived"],
         "title": "CardStatus"
       },
       "CardUpdate": {
@@ -6506,9 +6244,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "model"
-        ],
+        "required": ["model"],
         "title": "ChoixModele"
       },
       "ChunkOut": {
@@ -6542,12 +6278,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "text",
-          "start",
-          "end",
-          "size"
-        ],
+        "required": ["text", "start", "end", "size"],
         "title": "ChunkOut"
       },
       "ChunkRequest": {
@@ -6656,10 +6387,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "email",
-          "channel_url"
-        ],
+        "required": ["email", "channel_url"],
         "title": "ClaimRequestCreate"
       },
       "ClaimRequestResponse": {
@@ -6703,9 +6431,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "redirect_uris"
-        ],
+        "required": ["redirect_uris"],
         "title": "ClientRegistrationRequest",
         "description": "DCR request (RFC 7591 § 2)."
       },
@@ -6781,20 +6507,12 @@
           }
         },
         "type": "object",
-        "required": [
-          "version"
-        ],
+        "required": ["version"],
         "title": "ConsentementGratuit"
       },
       "ContentType": {
         "type": "string",
-        "enum": [
-          "video",
-          "article",
-          "post",
-          "podcast",
-          "other"
-        ],
+        "enum": ["video", "article", "post", "podcast", "other"],
         "title": "ContentType"
       },
       "CreatorInfo": {
@@ -6842,13 +6560,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "slug",
-          "display_name",
-          "bio",
-          "avatar_url",
-          "public_key"
-        ],
+        "required": ["slug", "display_name", "bio", "avatar_url", "public_key"],
         "title": "CreatorInfo"
       },
       "CreatorResult": {
@@ -6938,12 +6650,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "total",
-          "limit",
-          "offset",
-          "results"
-        ],
+        "required": ["total", "limit", "offset", "results"],
         "title": "CreatorSearchResponse"
       },
       "DiscoverFacets": {
@@ -7014,12 +6721,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "total",
-          "limit",
-          "offset",
-          "results"
-        ],
+        "required": ["total", "limit", "offset", "results"],
         "title": "DiscoverResponse"
       },
       "DiscoverResult": {
@@ -7207,10 +6909,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "excerpt_id",
-          "status"
-        ],
+        "required": ["excerpt_id", "status"],
         "title": "ExcerptCheck"
       },
       "ExcerptCreate": {
@@ -7293,9 +6992,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "text"
-        ],
+        "required": ["text"],
         "title": "ExcerptCreate"
       },
       "ExcerptSearchHit": {
@@ -7404,11 +7101,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "query",
-          "results",
-          "available"
-        ],
+        "required": ["query", "results", "available"],
         "title": "ExcerptSearchResponse"
       },
       "ExcerptSuggestResponse": {
@@ -7435,11 +7128,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "suggestions",
-          "page_text_length",
-          "llm_enabled"
-        ],
+        "required": ["suggestions", "page_text_length", "llm_enabled"],
         "title": "ExcerptSuggestResponse"
       },
       "ExcerptVerifyResponse": {
@@ -7467,10 +7156,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "checks",
-          "page_text_length"
-        ],
+        "required": ["checks", "page_text_length"],
         "title": "ExcerptVerifyResponse"
       },
       "ExtractResponse": {
@@ -7641,10 +7327,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "value",
-          "count"
-        ],
+        "required": ["value", "count"],
         "title": "Facet"
       },
       "FeedEntry": {
@@ -7762,12 +7445,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "limit",
-          "before",
-          "next_before",
-          "entries"
-        ],
+        "required": ["limit", "before", "next_before", "entries"],
         "title": "FeedResponse"
       },
       "GraphEdgeResponse": {
@@ -7797,11 +7475,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "source",
-          "target",
-          "kind"
-        ],
+        "required": ["source", "target", "kind"],
         "title": "GraphEdgeResponse"
       },
       "GraphNodeResponse": {
@@ -8030,11 +7704,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "id",
-          "kind",
-          "depth"
-        ],
+        "required": ["id", "kind", "depth"],
         "title": "GraphNodeResponse",
         "description": "Noeud du meta-graphe : soit une fiche, soit une de ses sources."
       },
@@ -8061,9 +7731,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "url"
-        ],
+        "required": ["url"],
         "title": "ImportFromUrlRequest"
       },
       "ImportFromUrlResponse": {
@@ -8161,11 +7829,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "sources",
-          "skipped",
-          "format_detected"
-        ],
+        "required": ["sources", "skipped", "format_detected"],
         "title": "ImportParseResponse"
       },
       "ImportPasteRequest": {
@@ -8178,9 +7842,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "text"
-        ],
+        "required": ["text"],
         "title": "ImportPasteRequest"
       },
       "ImportedCardDraft": {
@@ -8224,9 +7886,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "content_url"
-        ],
+        "required": ["content_url"],
         "title": "ImportedCardDraft"
       },
       "ImportedSourceDraft": {
@@ -8351,9 +8011,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "url"
-        ],
+        "required": ["url"],
         "title": "ImportedSourceDraft"
       },
       "IncomingCitationResponse": {
@@ -8473,19 +8131,12 @@
           }
         },
         "type": "object",
-        "required": [
-          "citations",
-          "new_count"
-        ],
+        "required": ["citations", "new_count"],
         "title": "IncomingCitationsResponse"
       },
       "LinkOrigin": {
         "type": "string",
-        "enum": [
-          "manuel",
-          "url",
-          "contenu"
-        ],
+        "enum": ["manuel", "url", "contenu"],
         "title": "LinkOrigin",
         "description": "D'ou vient le lien d'une source vers une fiche Philum.\n\nMANUEL et URL sont des gestes du createur : ils valent confirmation.\nCONTENU est une hypothese de la machine (meme DOI, meme URL normalisee) :\nelle vaut proposition, pas declaration. Les confondre ferait porter au\ncreateur une affirmation qu'il n'a pas faite."
       },
@@ -8514,10 +8165,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "platform",
-          "url"
-        ],
+        "required": ["platform", "url"],
         "title": "LinkedAccountIn"
       },
       "LinkedAccountOut": {
@@ -8552,12 +8200,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "id",
-          "platform",
-          "url",
-          "handle"
-        ],
+        "required": ["id", "platform", "url", "handle"],
         "title": "LinkedAccountOut"
       },
       "LinkedAccountsUpdate": {
@@ -8572,21 +8215,12 @@
           }
         },
         "type": "object",
-        "required": [
-          "accounts"
-        ],
+        "required": ["accounts"],
         "title": "LinkedAccountsUpdate"
       },
       "LinkedPlatform": {
         "type": "string",
-        "enum": [
-          "youtube",
-          "instagram",
-          "x",
-          "tiktok",
-          "twitch",
-          "site"
-        ],
+        "enum": ["youtube", "instagram", "x", "tiktok", "twitch", "site"],
         "title": "LinkedPlatform"
       },
       "OpenAccessStatus": {
@@ -8668,13 +8302,7 @@
       },
       "RetractionStatus": {
         "type": "string",
-        "enum": [
-          "none",
-          "retracted",
-          "concern",
-          "corrected",
-          "unverifiable"
-        ],
+        "enum": ["none", "retracted", "concern", "corrected", "unverifiable"],
         "title": "RetractionStatus",
         "description": "Etat de l'article aux yeux de Crossref / Retraction Watch.\n\n`NONE` (aucun avis, verifie) et `UNVERIFIABLE` (verification impossible)\nsont deux affirmations differentes ; les confondre reviendrait a rassurer\nle lecteur sans avoir rien verifie."
       },
@@ -8702,10 +8330,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "index",
-          "url"
-        ],
+        "required": ["index", "url"],
         "title": "SourceBatchDuplicate",
         "description": "Reference deja presente dans la fiche, ecartee sans etre une erreur."
       },
@@ -8725,11 +8350,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "index",
-          "url",
-          "error"
-        ],
+        "required": ["index", "url", "error"],
         "title": "SourceBatchError"
       },
       "SourceBatchRequest": {
@@ -8745,9 +8366,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "sources"
-        ],
+        "required": ["sources"],
         "title": "SourceBatchRequest"
       },
       "SourceBatchResponse": {
@@ -8776,10 +8395,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "created",
-          "failed"
-        ],
+        "required": ["created", "failed"],
         "title": "SourceBatchResponse"
       },
       "SourceCategory": {
@@ -8978,11 +8594,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "format",
-          "category",
-          "author_kind"
-        ],
+        "required": ["format", "category", "author_kind"],
         "title": "SourceCreate"
       },
       "SourceExcerptResponse": {
@@ -9067,23 +8679,12 @@
           }
         },
         "type": "object",
-        "required": [
-          "id",
-          "position",
-          "text",
-          "suggested_by_ai"
-        ],
+        "required": ["id", "position", "text", "suggested_by_ai"],
         "title": "SourceExcerptResponse"
       },
       "SourceFormat": {
         "type": "string",
-        "enum": [
-          "texte",
-          "video",
-          "image",
-          "audio",
-          "data"
-        ],
+        "enum": ["texte", "video", "image", "audio", "data"],
         "title": "SourceFormat"
       },
       "SourceResponse": {
@@ -9472,12 +9073,7 @@
       },
       "SourceStance-Input": {
         "type": "string",
-        "enum": [
-          "appuie",
-          "nuance-contredit",
-          "mentionne",
-          "contexte"
-        ],
+        "enum": ["appuie", "nuance-contredit", "mentionne", "contexte"],
         "title": "SourceStance",
         "description": "Rapport declare entre le propos du contenu et ce que dit la source.\n\nDeclaratif, jamais infere. `None` (non declare) n'est pas `MENTIONNE` :\nl'un est un silence, l'autre une reponse."
       },
@@ -9700,12 +9296,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "text",
-          "char_offset",
-          "context_before",
-          "context_after"
-        ],
+        "required": ["text", "char_offset", "context_before", "context_after"],
         "title": "SuggestedExcerpt"
       },
       "TestProviderBody": {
@@ -9755,20 +9346,13 @@
           }
         },
         "type": "object",
-        "required": [
-          "access_token",
-          "expires_in"
-        ],
+        "required": ["access_token", "expires_in"],
         "title": "TokenResponse",
         "description": "OAuth 2.0 token response (RFC 6749 § 5.1)."
       },
       "Unite": {
         "type": "string",
-        "enum": [
-          "caracteres",
-          "mots",
-          "tokens"
-        ],
+        "enum": ["caracteres", "mots", "tokens"],
         "title": "Unite",
         "description": "L'unite dans laquelle la taille cible est exprimee."
       },
@@ -9782,9 +9366,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "url"
-        ],
+        "required": ["url"],
         "title": "UrlMetadataRequest"
       },
       "UrlMetadataResponse": {
@@ -9936,19 +9518,12 @@
           }
         },
         "type": "object",
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
+        "required": ["loc", "msg", "type"],
         "title": "ValidationError"
       },
       "Visibility": {
         "type": "string",
-        "enum": [
-          "public",
-          "private"
-        ],
+        "enum": ["public", "private"],
         "title": "Visibility"
       },
       "WorkspaceFileRead": {
@@ -9991,11 +9566,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "path",
-          "sha256",
-          "content"
-        ],
+        "required": ["path", "sha256", "content"],
         "title": "WorkspaceFileRead"
       },
       "WorkspaceFileWrite": {
@@ -10008,9 +9579,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "required": [
-          "content"
-        ],
+        "required": ["content"],
         "title": "WorkspaceFileWrite"
       },
       "WorkspaceTreeEntry": {
@@ -10021,10 +9590,7 @@
           },
           "type": {
             "type": "string",
-            "enum": [
-              "file",
-              "directory"
-            ],
+            "enum": ["file", "directory"],
             "title": "Type"
           },
           "sha256": {
@@ -10074,10 +9640,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "path",
-          "type"
-        ],
+        "required": ["path", "type"],
         "title": "WorkspaceTreeEntry"
       },
       "YoutubeTranscriptRequest": {
@@ -10090,9 +9653,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "url"
-        ],
+        "required": ["url"],
         "title": "YoutubeTranscriptRequest"
       },
       "YoutubeTranscriptResponse": {
@@ -10116,30 +9677,18 @@
           }
         },
         "type": "object",
-        "required": [
-          "available"
-        ],
+        "required": ["available"],
         "title": "YoutubeTranscriptResponse"
       },
       "app__models__source__SourceStance": {
         "type": "string",
-        "enum": [
-          "appuie",
-          "nuance-contredit",
-          "mentionne",
-          "contexte"
-        ],
+        "enum": ["appuie", "nuance-contredit", "mentionne", "contexte"],
         "title": "SourceStance",
         "description": "Rapport declare entre le propos du contenu et ce que dit la source.\n\nDeclaratif, jamais infere : c'est l'auteur de la fiche qui l'affirme et en\nrepond. NULL reste la valeur normale -- une bibliographie non annotee vaut\nmieux qu'une bibliographie annotee au hasard."
       },
       "app__schemas__source__SourceStance": {
         "type": "string",
-        "enum": [
-          "appuie",
-          "nuance-contredit",
-          "mentionne",
-          "contexte"
-        ],
+        "enum": ["appuie", "nuance-contredit", "mentionne", "contexte"],
         "title": "SourceStance",
         "description": "Rapport declare entre le propos du contenu et ce que dit la source.\n\nDeclaratif, jamais infere. `None` (non declare) n'est pas `MENTIONNE` :\nl'un est un silence, l'autre une reponse."
       }

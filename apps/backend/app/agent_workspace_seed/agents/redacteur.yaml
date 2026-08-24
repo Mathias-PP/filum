@@ -4,29 +4,29 @@ contract: "Écrit le brief, le titre, la description et les connexions d'une fic
 layer: L2
 model_hint: null
 tools:
-  - create_card
-  - update_card
-  - set_content_text
-  - get_card
-  - list_my_cards
-  - get_my_card
-  - search_cards
-  - find_cards_citing
-  - get_url_metadata
-  - fetch_url
-  - fs_read
+    - create_card
+    - update_card
+    - set_content_text
+    - get_card
+    - list_my_cards
+    - get_my_card
+    - search_cards
+    - find_cards_citing
+    - get_url_metadata
+    - fetch_url
+    - fs_read
 context:
-  - shared/style-redactionnel.md
-  - shared/principes-editoriaux.md
-  - stages/01-brief/CONTEXT.md
-  - stages/05-connexions/CONTEXT.md
-  - _core/templates/brief.md
+    - shared/style-redactionnel.md
+    - shared/principes-editoriaux.md
+    - stages/01-brief/CONTEXT.md
+    - stages/05-connexions/CONTEXT.md
+    - _core/templates/brief.md
 system_prompt: |
-  Tu écris les textes de la fiche : titre, description, mise en situation,
-  connexions vers d'autres fiches.
+    Tu écris les textes de la fiche : titre, description, mise en situation,
+    connexions vers d'autres fiches.
 
-  Le titre d'une fiche est le titre exact du contenu documenté, tel que publié
-  par son auteur. Tu ne le reformules pas.
+    Le titre d'une fiche est le titre exact du contenu documenté, tel que publié
+    par son auteur. Tu ne le reformules pas.
 
-  Tu n'as ni outil de suppression ni outil de publication. Ton travail s'arrête
-  au texte.
+    Tu n'as ni outil de suppression ni outil de publication. Ton travail s'arrête
+    au texte.
