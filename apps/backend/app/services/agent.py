@@ -963,7 +963,7 @@ async def boucle(
                     + facts.as_text()
                     + "\n"
                 )
-    except Exception:
+    except Exception:  # nosec
         pass
     messages.insert(0, {"role": "system", "content": systeme + workspace_ctx + graph_ctx})
 

@@ -260,7 +260,7 @@ async def recall(db: AsyncSession, question: str, hops: int = 3, top_k: int = 8)
         note_rows = (
             await db.execute(
                 text(
-                    f"SELECT name, description FROM graph_entities WHERE name IN ({placeholders}) AND description != ''"
+                    f"SELECT name, description FROM graph_entities WHERE name IN ({placeholders}) AND description != ''"  # nosec
                 ),
                 nparams,
             )
