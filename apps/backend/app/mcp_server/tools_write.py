@@ -503,7 +503,9 @@ async def add_excerpt(
         "source_id": str(source.id),
         "position": excerpt.position,
         "text": excerpt.text,
+        "title": excerpt.title,
         "verified_status": excerpt.verified_status,
+        "source_title": source.title or source.url or str(source.id)[:8],
     }
 
 
@@ -886,6 +888,7 @@ async def update_excerpt(
         "title": excerpt.title,
         "context": excerpt.context,
         "verified_status": excerpt.verified_status,
+        "source_title": source.title or source.url or str(source.id)[:8],
     }
 
 
@@ -991,6 +994,7 @@ async def verify_excerpts(
     await db.commit()
     return {
         "source_id": source_id,
+        "title": source.title or source.url,
         "checks": checks,
         "page_text_length": len(page_text),
         "text_source": provenance,
@@ -1164,6 +1168,10 @@ async def get_my_card(db: AsyncSession, user: User, *, card_slug: str) -> dict[s
                 "author_kind": s.author_kind,
                 "stance": s.stance,
                 "excerpts_count": len(s.excerpts),
+                "excerpts_verified": sum(1 for e in s.excerpts if e.verified_status == "found"),
+                "excerpts_unreadable": sum(
+                    1 for e in s.excerpts if e.verified_status == "unreadable"
+                ),
             }
             for s in sources
         ],
@@ -1400,6 +1408,7 @@ async def suggest_excerpts(
             continue
         suggestions.append({"text": m.group(0), "char_offset": m.start()})
     return {
+        "title": source.title or source.url,
         "suggestions": suggestions,
         "page_text_length": len(page_text),
         "llm_enabled": True,

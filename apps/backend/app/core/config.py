@@ -79,8 +79,10 @@ class Settings(BaseSettings):
     duckdb_path: str = "/data/filum_analytics.duckdb"
 
     # --- Harness agent BYOK (chat + outils) --------------------------------
-    # Boucle de l'agent : bornes dures contre les boucles infinies et les coûts.
-    agent_max_tours: int = 24
+    # Boucle de l'agent : garde-fou coût, pas limite métier. 24 était arbitraire
+    # et coupait les audits type thrips (16 get_my_card + deletes). 48 couvre
+    # 95% des tâches, au-delà on compacte et propose une continuation.
+    agent_max_tours: int = 48
     agent_max_turn_tokens: int = 8192
     # Recherche web dédiée (utilisée quand le provider courant n'expose pas de
     # grounding natif). `agent_web_search_provider` : tavily | exa | brave |

@@ -18,6 +18,8 @@ function titreDepuisResultat(result: ArgMap | null, cle = 'title'): string | nul
   if (!result) return null;
   const v = result[cle];
   if (typeof v === 'string' && v.trim()) return v;
+  const st = result.source_title;
+  if (typeof st === 'string' && st.trim()) return st;
   const src = result.source;
   if (src && typeof src === 'object') {
     const t = (src as ArgMap).title;
@@ -72,24 +74,39 @@ const ACTIONS: Record<
     objet: (a) => (a.card_slug as string) ?? null,
   },
   add_excerpt: {
-    action: 'Ajoute un extrait à',
-    objet: (a, r) => titreDepuisResultat(r) ?? (a.source_id as string) ?? null,
+    action: 'Ajoute un extrait',
+    objet: (a, r) => {
+      const src = titreDepuisResultat(r) ?? null;
+      const txt = (r?.text as string) ?? (a.text as string) ?? (a.title as string) ?? '';
+      const extrait = txt ? `« ${txt.slice(0, 48).replace(/\s+/g, ' ')}${txt.length > 48 ? '…' : ''} »` : null;
+      if (src && extrait) return `${extrait} → ${src}`;
+      if (extrait) return extrait;
+      return src ?? 'cette source';
+    },
   },
   update_excerpt: {
-    action: 'Modifie un extrait',
-    objet: (a, r) => titreDepuisResultat(r) ?? (a.excerpt_id as string) ?? null,
+    action: 'Modifie l’extrait',
+    objet: (a, r) => {
+      const src = titreDepuisResultat(r) ?? null;
+      const txt = (r?.text as string) ?? (a.text as string) ?? '';
+      const extrait = txt ? `« ${txt.slice(0, 40)}… »` : `#${String(a.excerpt_id ?? '').slice(0, 8)}`;
+      return src ? `${extrait} dans ${src}` : extrait;
+    },
   },
   delete_excerpt: {
     action: 'Supprime un extrait',
-    objet: (a) => (a.excerpt_id as string) ?? null,
+    objet: (a, r) => {
+      const src = titreDepuisResultat(r) ?? null;
+      return src ? `dans ${src}` : null;
+    },
   },
   verify_excerpts: {
-    action: 'Verifie les extraits de',
-    objet: (a, r) => titreDepuisResultat(r) ?? (a.source_id as string) ?? null,
+    action: 'Vérifie les extraits de',
+    objet: (a, r) => titreDepuisResultat(r) ?? 'cette source',
   },
   suggest_excerpts: {
-    action: 'Suggere des extraits depuis',
-    objet: (a, r) => titreDepuisResultat(r) ?? (a.source_id as string) ?? null,
+    action: 'Suggère des extraits depuis',
+    objet: (a, r) => titreDepuisResultat(r) ?? 'cette source',
   },
   annotate_excerpt: {
     action: 'Annote un extrait',

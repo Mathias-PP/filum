@@ -13,23 +13,24 @@ export type ChatItem =
   | { kind: 'user'; text: string }
   | { kind: 'assistant'; text: string }
   | {
-      kind: 'tool';
-      id: string;
-      name: string;
-      args: Record<string, unknown>;
-      result: Record<string, unknown> | null;
-    }
+       kind: 'tool';
+       id: string;
+       name: string;
+       args: Record<string, unknown>;
+       result: Record<string, unknown> | null;
+     }
   | {
-      kind: 'approval';
-      requestId: string;
-      tool: string;
-      args: Record<string, unknown>;
-      /** Résumé lisible calculé par le serveur (résout UUIDs → titres). */
-      resume?: string;
-      approved: boolean | null;
-    }
+       kind: 'approval';
+       requestId: string;
+       tool: string;
+       args: Record<string, unknown>;
+       /** Résumé lisible calculé par le serveur (résout UUIDs → titres). */
+       resume?: string;
+       approved: boolean | null;
+     }
   | { kind: 'error'; text: string }
-  | { kind: 'compaction'; retires: number };
+  | { kind: 'compaction'; retires: number }
+  | { kind: 'continuation'; message: string; tours: number };
 
 /** Rend une nouvelle liste : jamais de mutation, pour que Svelte voie le changement. */
 export function appliquer(items: ChatItem[], event: AgentEvent): ChatItem[] {
@@ -121,6 +122,12 @@ export function appliquer(items: ChatItem[], event: AgentEvent): ChatItem[] {
 
     case 'error':
       return cloturerSansReponse([...items, { kind: 'error', text: event.payload.message }]);
+
+    case 'continuation':
+      return [
+        ...cloturerSansReponse(items),
+        { kind: 'continuation', message: event.payload.message, tours: event.payload.tours },
+      ];
 
     case 'done':
       // Un appel resté sans résultat à la fin du flux est une anomalie : le
