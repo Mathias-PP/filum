@@ -2,41 +2,33 @@
 
 > **Fiche du lot 5.** [CONTEXT.md](CONTEXT.md) · [Retour au plan](../../plans/2026-08-25-revue-code-agent.md) · **Porte de sortie : G5**.
 > **Fichier :** `apps/backend/app/services/agent_discovery.py` (142 l., 8 symboles).
+> **SHA256 :** `7fba2a223658c059d98b54f6eebafdeeac5f8a572cdbf9f87caf01342b15cdf6`
 
 ## Rôle
 
 Mode découverte : clé serveur DeepSeek sponsorisée, quota quotidien, provider transient (non persisté). Permet de tester l'agent sans clé personnelle.
 
-## Architecture
-
-- `AgentDiscoveryQuota` : modèle de quota (clé serveur, quota restant, date de réinitialisation).
-- `_QUOTA_KEY` : clé Redis pour le quota découverte.
-- `_QUOTA_MAX` : quota max configurable (défaut 50).
-- `_QUOTA_RESET_HOUR` : heure de réinitialisation du quota (00:00 UTC).
-
-## Symboles clés
+## Symboles
 
 | Symbole | Ligne | Rôle |
 |---|---|---|
-| `AgentDiscoveryQuota` | 12 | Modèle quota |
-| `_QUOTA_KEY` | 22 | Clé Redis |
-| `_QUOTA_MAX` | 25 | Quota max (50) |
-| `_QUOTA_RESET_HOUR` | 28 | Heure reset (00:00) |
-| `DiscoveryError` | 33 | Exception métier |
-| `resoudre_discovery` | 40 | Orchestrateur principal |
-| `_decremente_quota` | 80 | Décrémente quota |
-| `_quota_restant` | 100 | Calcule quota restant |
+| `ErreurQuota` | `apps/backend/app/services/agent_discovery.py:27` | Exception quand le quota quotidien est épuisé |
+| `discovery_est_actif` | `apps/backend/app/services/agent_discovery.py:36` | Vérifie si le mode découverte est activé ET a une clé |
+| `_provider_base_url` | `apps/backend/app/services/agent_discovery.py:41` | Rend l'URL de base d'un provider depuis les constantes |
+| `_chiffrer_cle_placeholder` | `apps/backend/app/services/agent_discovery.py:45` | Chiffre la clé serveur pour construire un provider transient |
+| `resoudre_provider_decouverte` | `apps/backend/app/services/agent_discovery.py:54` | Construit un `AgentProvider` transient portant la clé serveur |
+| `nom_public_provider` | `apps/backend/app/services/agent_discovery.py:75` | Rend le nom d'affichage du provider de découverte |
+| `verifier_quota` | `apps/backend/app/services/agent_discovery.py:88` | Vérifie le quota du jour, lève `ErreurQuota` si dépassé |
+| `consommer_message` | `apps/backend/app/services/agent_discovery.py:109` | Incrémente atomiquement le compteur quotidien |
 
-## Flux typique (resolution discovery)
+## Invariants
 
-1. `resoudre_discovery` → vérifie si la clé serveur DeepSeek est configurée.
-2. Si oui : vérifie le quota restant → si quota > 0 : retourne le provider transient avec la clé serveur.
-3. Si quota = 0 : lève `DiscoveryError` avec un message explicite.
-4. `_decremente_quota` → incrémente le compteur Redis.
+- `AgentDiscoveryQuota` (`apps/backend/app/models/agent_discovery_quota.py:21`) : modèle de la table du quota.
+- `discovery_est_actif()` (`apps/backend/app/services/agent_discovery.py:36`) : doit être `True` ET avoir une clé serveur configurée.
+- `resoudre_provider_decouverte()` (`apps/backend/app/services/agent_discovery.py:54`) : NE PAS insérer en base — provider valable le temps d'un seul appel.
+- `verifier_quota()` (`apps/backend/app/services/agent_discovery.py:88`) : SELECT + UPDATE/UPDATE séquentiel, compatible SQLite (tests) et Postgres (prod).
 
-## Dettes et pièges
+## Dettes
 
-- `_QUOTA_MAX=50` (`apps/backend/app/services/agent_discovery.py:25`) : quota par défaut — configurable via settings, ne pas modifier sans test.
-- `_QUOTA_RESET_HOUR=0` (`apps/backend/app/services/agent_discovery.py:28`) : réinitialisation à 00:00 UTC — ne pas modifier sans impact timezone.
+- `consommer_message()` (`apps/backend/app/services/agent_discovery.py:109`) : pas de vrai atomique cross-process, le quota est indicatif.
 - Le mode découverte partage le compteur `AgentDiscoveryQuota` avec le mode gratuit mais a des plafonds distincts dans les settings.
-- `resoudre_discovery` (`apps/backend/app/services/agent_discovery.py:40`) : ne lève jamais sur succès — retourne un provider transient non persisté.

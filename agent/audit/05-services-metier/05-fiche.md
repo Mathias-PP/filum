@@ -2,40 +2,32 @@
 
 > **Fiche du lot 5.** [CONTEXT.md](CONTEXT.md) · [Retour au plan](../../plans/2026-08-25-revue-code-agent.md) · **Porte de sortie : G5**.
 > **Fichier :** `apps/backend/app/services/agent_fiche.py` (211 l., 7 symboles).
+> **SHA256 :** `0c19cff5bb3c66fdde3c6ae8baaae8ed1ac55f53e9b7481bfc7c89d3c70c37d9`
 
 ## Rôle
 
-Orchestrateur de la fiche ICM : 7 étapes séquentielles (brief → sources → annotations → extraits → connexions → relecture → publication), reprise `depuis`, compte rendu séquentiel. Gestion de la progression et des erreurs.
+Orchestrateur de la fiche ICM : 7 étages séquentielles (brief → sources → annotations → extraits → connexions → relecture → publication), reprise `depuis`, compte rendu séquentiel. Chaque étage est une boucle d'agent autonome avec son `CONTEXT.md`.
 
-## Architecture
-
-- `ETAPES` : tuple des 7 étages (brief, sources, annotations, extraits, connexions, relecture, publication).
-- `_ETAPES_CIBLE` : dict des cibles par étape (nombre d'items attendu).
-- `FicheProgression` : modèle de progression (étape courante, étapes terminées, erreurs).
-- `FicheResultat` : résultat final (succès, étapes réussies, erreurs, contenu).
-
-## Symboles clés
+## Symboles
 
 | Symbole | Ligne | Rôle |
 |---|---|---|
-| `ETAPES` | 54 | 7 étages ICM |
-| `_ETAPES_CIBLE` | 62 | Cibles par étape |
-| `FicheProgression` | 72 | Modèle progression |
-| `FicheResultat` | 82 | Modèle résultat |
-| `orchestrer_fiche` | 95 | Orchestrateur principal |
-| `_executer_etape` | 130 | Exécution d'une étape |
-| `_formater_compte_rendu` | 165 | Compte rendu séquentiel |
+| `Etape` | `apps/backend/app/services/agent_fiche.py:40` | Dataclass d'un étage ICM (id, sortie, instructions) |
+| `FicheError` | `apps/backend/app/services/agent_fiche.py:75` | Le run ne peut pas démarrer ou continuer |
+| `_prefixe` | `apps/backend/app/services/agent_fiche.py:79` | Rend `runs/{slug}` |
+| `etat` | `apps/backend/app/services/agent_fiche.py:83` | Où en est un run : quels étages ont déjà leur compte rendu |
+| `_instructions` | `apps/backend/app/services/agent_fiche.py:101` | Lit le `CONTEXT.md` d'un étage depuis le workspace |
+| `_amorce` | `apps/backend/app/services/agent_fiche.py:111` | Construit le prompt initial d'un étage |
+| `lancer` | `apps/backend/app/services/agent_fiche.py:123` | Déroule les étages et écrit chaque compte rendu |
 
-## Flux typique (orchestration)
+## Invariants
 
-1. `orchestrer_fiche` → initialise `FicheProgression` → itère sur `ETAPES`.
-2. Pour chaque étape : `_executer_etape` → appelle le LLM → stocke le résultat → met à jour la progression.
-3. En cas d'erreur : `_executer_etape` lève `FicheErreur` → `orchestrer_fiche` catch → ajoute l'erreur à la progression → continue.
-4. `_formater_compte_rendu` → génère le compte rendu final des 7 étages.
+- `ETAPES` = 7 tuples `Etape` (`apps/backend/app/services/agent_fiche.py:54`) : brief → sources → annotations → extraits → connexions → relecture → publication. L'ordre est codé en dur.
+- `_CADRE` (`apps/backend/app/services/agent_fiche.py:66`) : instructions système rappelées à chaque étage.
+- `lancer()` (`apps/backend/app/services/agent_fiche.py:123`) : `depuis` reprend un run interrompu — les comptes rendus déjà écrits sont relus comme contexte.
+- `lancer()` (`apps/backend/app/services/agent_fiche.py:123`) : une erreur émise par la boucle arrête le run (pas de continuation sur étage raté).
 
-## Dettes et pièges
+## Dettes
 
-- `ETAPES` (`apps/backend/app/services/agent_fiche.py:54`) : tuple immuable — ajouter un étage exige de modifier `_ETAPES_CIBLE` et `_formater_compte_rendu`.
-- `_ETAPES_CIBLE` (`apps/backend/app/services/agent_fiche.py:62`) : les cibles sont hardcodées — ne pas modifier sans test en prod.
-- `_executer_etape` (`apps/backend/app/services/agent_fiche.py:130`) : lève `FicheErreur` sur erreur — ne jamais catch silencieusement.
-- `_formater_compte_rendu` (`apps/backend/app/services/agent_fiche.py:165`) : génère le compte rendu final — ne pas modifier le format sans impact frontend.
+- `ETAPES` (`apps/backend/app/services/agent_fiche.py:54`) : tuple immuable — ajouter un étage exige de modifier `_amorce` et `lancer`.
+- `_amorce()` (`apps/backend/app/services/agent_fiche.py:111`) : ne gère pas les cas limites (slug vide, content_url vide).

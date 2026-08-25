@@ -2,43 +2,35 @@
 
 > **Fiche du lot 5.** [CONTEXT.md](CONTEXT.md) · [Retour au plan](../../plans/2026-08-25-revue-code-agent.md) · **Porte de sortie : G5**.
 > **Fichier :** `apps/backend/app/services/agent_definitions.py` (192 l., 10 symboles).
+> **SHA256 :** `d46d5c009b4711b0053a1a3158a617ff0ef67f818aae4464cc55ccaa1ce725df`
 
 ## Rôle
 
 Chargement et validation des agents nommés depuis des fichiers YAML du workspace. Tri par nature (builtin vs user-defined), validation des champs requis, gestion des outils absents.
 
-## Architecture
-
-- `AgentDefinition` : modèle Pydantic d'un agent nommé (id, nom, description, system_prompt, tools, metadata).
-- `_REQUIRED_FIELDS` : champs requis pour un agent valide (id, nom, system_prompt).
-- `_BUILTIN_NATURES` : natures builtin (ne peuvent pas être supprimées).
-- `tools_absents` : vérifie que les outils référencés existent dans le registry MCP.
-
-## Symboles clés
+## Symboles
 
 | Symbole | Ligne | Rôle |
 |---|---|---|
-| `AgentDefinitionError` | 12 | Exception métier |
-| `AgentDefinition` | 18 | Modèle Pydantic |
-| `_REQUIRED_FIELDS` | 38 | Champs requis |
-| `_BUILTIN_NATURES` | 41 | Natures builtin |
-| `valider_definition` | 46 | Validation complète |
-| `tools_absents` | 72 | Vérifie outils MCP |
-| `lister_definitions` | 88 | Listage par workspace |
-| `lire_definition` | 112 | Lecture fichier YAML |
-| `sauvegarder_definition` | 132 | Écriture fichier YAML |
-| `supprimer_definition` | 160 | Suppression fichier YAML |
-| `trier_par_nature` | 178 | Tri builtin/user |
+| `DefinitionInvalideError` | `apps/backend/app/services/agent_definitions.py:40` | Le fichier existe mais ne décrit pas un agent exploitable |
+| `AgentDefinition` | `apps/backend/app/services/agent_definitions.py:45` | Dataclass d'un agent chargé et validé (slug, name, contract, system_prompt, tools, context, layer, model_hint, quota_tours, builtin, tools_absents) |
+| `chemin_de` | `apps/backend/app/services/agent_definitions.py:67` | Rend le chemin `agents/{slug}.yaml` |
+| `_texte` | `apps/backend/app/services/agent_definitions.py:71` | Valide qu'un champ YAML est une chaîne non vide |
+| `parser` | `apps/backend/app/services/agent_definitions.py:79` | Parse un fichier YAML en `AgentDefinition`, lève `DefinitionInvalideError` |
+| `DefinitionRejetee` | `apps/backend/app/services/agent_definitions.py:134` | Dataclass d'un fichier rejeté avec sa raison |
+| `_fichiers_agents` | `apps/backend/app/services/agent_definitions.py:140` | Récupère les fichiers YAML du workspace pour un créateur |
+| `_slugs_livres` | `apps/backend/app/services/agent_definitions.py:152` | Slugs des agents fournis avec Philum (seed) |
+| `lister` | `apps/backend/app/services/agent_definitions.py:160` | Rend (agents valides, fichiers rejetés) |
+| `obtenir` | `apps/backend/app/services/agent_definitions.py:187` | Rend l'agent de ce slug, ou None |
 
-## Flux typique (lecture)
+## Invariants
 
-1. `lire_definition` → lit le fichier YAML du workspace → parse → valide avec `valider_definition`.
-2. `valider_definition` → vérifie `_REQUIRED_FIELDS` → vérifie `tools_absents` → retourne `AgentDefinition`.
-3. `lister_definitions` → list tous les fichiers YAML du dossier `agents/` → trie avec `trier_par_nature`.
+- `DOSSIER = "agents/"` (`apps/backend/app/services/agent_definitions.py:29`) : racine des définitions.
+- `SLUG_DEFAUT = "assistant"` (`apps/backend/app/services/agent_definitions.py:34`) : slug par défaut quand la session n'en désigne aucun.
+- `_SLUG_RE` (`apps/backend/app/services/agent_definitions.py:36`) : kebab-case obligatoire.
+- `_LAYERS = ("L0", "L1", "L2", "L3", "L4")` (`apps/backend/app/services/agent_definitions.py:37`) : layers ICM autorisés.
 
-## Dettes et pièges
+## Dettes
 
-- `_BUILTIN_NATURES` (`apps/backend/app/services/agent_definitions.py:41`) : ne peut pas être modifié sans changement de code — les agents builtin ne sont pas supprimables.
-- `tools_absents` (`apps/backend/app/services/agent_definitions.py:72`) : vérifie l'existence des outils dans le registry MCP au moment de la validation — si un outil est ajouté au YAML mais pas enregistré, la validation échoue.
-- `valider_definition` (`apps/backend/app/services/agent_definitions.py:46`) : ne lève pas sur tools absents — retourne une liste vide si tous les outils existent.
-- Les agents nommés sont stockés en YAML dans le workspace, pas en base — si le workspace est réinitialisé, les agents sont perdus.
+- `_slugs_livres()` (`apps/backend/app/services/agent_definitions.py:152`) : lit le snapshot du seed au moment de l'appel — si le seed change, les slugs changent sans migration.
+- `lister()` (`apps/backend/app/services/agent_definitions.py:160`) : appelle `parser()` pour chaque fichier YAML — O(n) sur le nombre de fichiers, acceptable car n est petit.
