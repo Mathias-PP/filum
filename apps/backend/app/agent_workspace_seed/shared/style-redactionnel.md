@@ -2,7 +2,6 @@
 contract: "Style, longueurs et regles typographiques de tout texte que l'agent ecrit."
 layer: L3
 ---
-
 # Style rédactionnel : comment l'agent écrit
 
 Les textes générés par l'agent (titre, description, annotation, titre d'extrait, mise en situation) suivent ces règles pour ne pas se distinguer d'un texte écrit à la main.
@@ -16,25 +15,23 @@ Les textes générés par l'agent (titre, description, annotation, titre d'extra
 
 ## Longueurs cibles
 
-| Élément                                    | Longueur                                                                                      |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------- |
-| Titre de fiche                             | **Titre exact du contenu documenté**, tel que publié par son auteur (aucune longueur imposée) |
-| Description de fiche                       | 2 à 4 phrases, ~250 à 500 caractères                                                          |
-| Annotation d'une source                    | 1 à 3 phrases, ~100 à 300 caractères                                                          |
-| Titre d'un extrait                         | 2 à 6 mots, dit ce qu'on trouve dedans                                                        |
-| Mise en situation (`context`) d'un extrait | 1 phrase, nomme les référents                                                                 |
-| Commentaire de code                        | Une ligne max, le WHY seulement                                                               |
+| Élément | Longueur |
+|---|---|
+| Titre de fiche | **Titre exact du contenu documenté**, tel que publié par son auteur (aucune longueur imposée) |
+| Description de fiche | 2 à 4 phrases, ~250 à 500 caractères |
+| Annotation d'une source | 1 à 3 phrases, ~100 à 300 caractères |
+| Titre d'un extrait | 2 à 6 mots, dit ce qu'on trouve dedans |
+| Mise en situation (`context`) d'un extrait | 1 phrase, nomme les référents |
+| Commentaire de code | Une ligne max, le WHY seulement |
 
 ## Ce qu'on écrit et ce qu'on n'écrit pas
 
 **On écrit** :
-
 - Ce que la source apporte au propos.
 - Ce qu'un lecteur peut vérifier (« Trois expériences successives, N=48, effet significatif à p<0.01 »).
 - La position déclarée en français simple, pas de jargon.
 
 **On n'écrit pas** :
-
 - « intéressant », « important », « essentiel », « incontournable ». Ces adjectifs affirment sans prouver.
 - Des paraphrases du titre (« Article sur la mémoire » pour « Sleep and memory consolidation »).
 - Des tournures marketing (« découvrez », « explorez », « une plongée dans »).
@@ -51,7 +48,6 @@ Les textes générés par l'agent (titre, description, annotation, titre d'extra
 ## Test avant d'écrire
 
 Trois questions avant de sortir un texte :
-
 1. Est-ce que cette phrase dit une chose précise que le lecteur peut vérifier ?
 2. Est-ce qu'un humain écrirait cette phrase sans se corriger ensuite ?
 3. Est-ce qu'un tiret cadratin s'y est glissé ?

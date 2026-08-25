@@ -2,7 +2,6 @@
 contract: "Contrat de l'etape 01 : transformer le brief en fiche brouillon cote Philum."
 layer: L2
 ---
-
 # 01-brief
 
 ## Scope
@@ -11,12 +10,12 @@ Transformer le brief rempli par l'utilisateur en un contrat de fiche stable, et 
 
 ## Inputs
 
-| Source                  | File                                 | Section                                                    | Why                            |
-| ----------------------- | ------------------------------------ | ---------------------------------------------------------- | ------------------------------ |
-| Brief utilisateur       | `../../runs/<slug>/00-brief.md`      | Full file                                                  | Thèse, sources connues, droits |
-| Squelette du brief      | `../../_core/templates/brief.md`     | Full file                                                  | Structure attendue             |
-| Règles typographiques   | `../../shared/style-redactionnel.md` | « Règles typographiques » et « Longueurs cibles »          | Titre et description conformes |
-| Signature des tools MCP | `../../shared/philum-mcp.md`         | « Écriture » ligne `create_card`, ligne `set_content_text` | Appels stricts                 |
+| Source | File | Section | Why |
+|---|---|---|---|
+| Brief utilisateur | `../../runs/<slug>/00-brief.md` | Full file | Thèse, sources connues, droits |
+| Squelette du brief | `../../_core/templates/brief.md` | Full file | Structure attendue |
+| Règles typographiques | `../../shared/style-redactionnel.md` | « Règles typographiques » et « Longueurs cibles » | Titre et description conformes |
+| Signature des tools MCP | `../../shared/philum-mcp.md` | « Écriture » ligne `create_card`, ligne `set_content_text` | Appels stricts |
 
 ## Process
 
@@ -28,24 +27,24 @@ Transformer le brief rempli par l'utilisateur en un contrat de fiche stable, et 
 
 ## Outputs
 
-| Artifact                     | Location                  | Format                          |
-| ---------------------------- | ------------------------- | ------------------------------- |
-| Brief propre                 | `output/<slug>-brief.md`  | Markdown avec frontmatter YAML  |
+| Artifact | Location | Format |
+|---|---|---|
+| Brief propre | `output/<slug>-brief.md` | Markdown avec frontmatter YAML |
 | Preuve d'existence côté prod | `output/<slug>-card.json` | JSON (réponse de `create_card`) |
 
 ## Checkpoints
 
-| After Step | Agent Presents                                                | Human Decides                                      |
-| ---------- | ------------------------------------------------------------- | -------------------------------------------------- |
-| 3          | `brief.md` propre : slug, titre, description                  | Signer le titre, corriger la description si besoin |
-| 5          | `card.json` + lien `https://filum-eight.vercel.app/dashboard` | Vérifier que la fiche brouillon est bien là        |
+| After Step | Agent Presents | Human Decides |
+|---|---|---|
+| 3 | `brief.md` propre : slug, titre, description | Signer le titre, corriger la description si besoin |
+| 5 | `card.json` + lien `https://filum-eight.vercel.app/dashboard` | Vérifier que la fiche brouillon est bien là |
 
 ## Audit
 
-| Check                          | Pass Condition                                                                                                             |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
-| Slug unique                    | `search_cards("<slug>")` ne retourne aucune fiche du même slug chez le même auteur                                         |
+| Check | Pass Condition |
+|---|---|
+| Slug unique | `search_cards("<slug>")` ne retourne aucune fiche du même slug chez le même auteur |
 | Titre = titre exact du contenu | `titre_contenu` du brief == titre du contenu vérifié (Crossref pour les articles) ; `title` de la fiche == `titre_contenu` |
-| Date du contenu tracée         | `date_contenu` renseignée dans le brief si la date existe (sinon noté « pas de date trouvée »)                             |
-| Aucun tiret cadratin           | `grep "—"` sur `brief.md` retourne 0                                                                                       |
-| Description conforme           | Description 2 à 4 phrases (~250-500 car)                                                                                   |
+| Date du contenu tracée | `date_contenu` renseignée dans le brief si la date existe (sinon noté « pas de date trouvée ») |
+| Aucun tiret cadratin | `grep "—"` sur `brief.md` retourne 0 |
+| Description conforme | Description 2 à 4 phrases (~250-500 car) |

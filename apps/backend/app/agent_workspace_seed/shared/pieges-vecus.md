@@ -2,7 +2,6 @@
 contract: "Erreurs passees a ne pas repeter, documentees a partir de conversations reelles."
 layer: L3
 ---
-
 # Pièges déjà payés
 
 Chaque entrée : le symptôme visible, la cause profonde, la résolution. Objectif : qu'aucun agent ne les redécouvre.
@@ -18,7 +17,6 @@ Chaque entrée : le symptôme visible, la cause profonde, la résolution. Object
 **Cause.** Le fetch d'origine (extraction automatique ou saisie manuelle) a associé le mauvais lien. Personne ne recoupe URL et DOI après coup.
 
 **Résolution.**
-
 - Avant `add_source`, vérifier que l'URL contient le DOI (ou, pour les pages non-DOI, faire un HEAD sur l'URL et lire la vraie destination).
 - Si détecté après coup : `DELETE /sources/{id}` puis nouveau `add_source` avec la bonne URL. `PATCH url` est refusé par l'API (URL immuable).
 
@@ -71,7 +69,6 @@ Chaque entrée : le symptôme visible, la cause profonde, la résolution. Object
 **Cause.** RFC 7231 : un 204 No Content **ne doit pas** avoir de body. Le client HTTP doit tester le status code avant de tenter un `.json()`.
 
 **Résolution.** Dans le helper Python :
-
 ```python
 if response.status_code == 204:
     return None
@@ -87,7 +84,6 @@ return response.json()
 **Cause.** Pas de champ `position` mutable côté serveur. L'ordre affiché est l'ordre d'insertion (`created_at`).
 
 **Résolution.** Deux options :
-
 1. **Vivre avec** : les pivots portent une étoile visible dans la fiche publique, l'ordre est peu critique.
 2. **Rebuild manuel** : `DELETE` toutes les sources dans l'ordre, puis les recréer dans l'ordre voulu. Coûteux (perte des UUID, perte des connexions entrantes). N'y aller que si vraiment nécessaire.
 
@@ -100,7 +96,6 @@ return response.json()
 **Cause.** L'ancienne règle éditoriale « le titre de la fiche ≠ le titre du contenu » poussait à reformuler. Cette règle est **abrogée** (directive utilisateur 2026-08-19).
 
 **Résolution.**
-
 - Règle actuelle : **titre de la fiche = titre exact du contenu**, quel que soit le type (article, blog, vidéo…).
 - Vérifier le titre du contenu sur une source d'autorité (Crossref pour les articles) avant de créer la fiche.
 - Si détecté après coup : `PATCH /cards/{id}` avec `title` corrigé, puis relire l'export publié.
@@ -114,7 +109,6 @@ return response.json()
 **Cause.** `add_source` a été appelé sans `published_at`. Les dates existaient pourtant (Crossref/éditeur), personne ne les a renseignées.
 
 **Résolution.**
-
 - Au moment d'ajouter une source, lancer l'extraction de métadonnées (`GET /sources/extract?url=...`) et poser `published_at` avec la date trouvée (Crossref `published` pour les articles).
 - Si détecté après coup : `PATCH /sources/{id}` avec `{"published_at": "YYYY-MM-DDT00:00:00Z"}`.
 - Règle actuelle : une date connue doit figurer ; une date introuvable se trace (« pas de date trouvée » dans l'audit).
@@ -128,7 +122,6 @@ return response.json()
 **Cause.** La carte n'a pas de métadonnées de date de contenu renseignées : le nœud carte du graphe a `published_at: null` et l'interface retombe sur la date de publication de la fiche.
 
 **Résolution.**
-
 - La date affichée pour le contenu doit être celle du contenu, pas l'horodatage de publication Philum (deux notions distinctes, directive utilisateur).
 - Renseigner la date de publication du contenu sur la fiche au moment de sa création (via l'extraction du `content_url`), et vérifier à l'étape 07 que la page affiche l'année du contenu.
 - Un correctif serveur propre (exposer/remplir une métadonnée de date de contenu distincte de `published_at`) reste à faire ; à ce stade, noter l'écart en alerte d'audit tant que le mécanisme n'est pas exposé par l'API.

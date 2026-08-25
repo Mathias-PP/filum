@@ -2,7 +2,6 @@
 contract: "Contrat de l'etape 02 : collecter et enrichir les sources de la fiche."
 layer: L2
 ---
-
 # 02-sources-collectees
 
 ## Scope
@@ -11,13 +10,13 @@ Collecter, enrichir et poser les sources de la fiche, sans les annoter (annotati
 
 ## Inputs
 
-| Source                 | File                                  | Section                                        | Why                                   |
-| ---------------------- | ------------------------------------- | ---------------------------------------------- | ------------------------------------- |
-| Brief propre           | `../01-brief/output/<slug>-brief.md`  | Full file                                      | Thèse, sources connues, `content_url` |
-| Preuve d'existence     | `../01-brief/output/<slug>-card.json` | Champ `slug`                                   | Cible des `add_source`                |
-| Squelette d'une source | `../../_core/templates/source.md`     | Full file                                      | Structure                             |
-| Signature `add_source` | `../../shared/philum-mcp.md`          | Ligne `add_source` de la table Écriture        | Champs autorisés                      |
-| Garde-fous             | `../../shared/garde-fous.md`          | « Sur les auteurs » et « Sur les métadonnées » | Pas d'invention                       |
+| Source | File | Section | Why |
+|---|---|---|---|
+| Brief propre | `../01-brief/output/<slug>-brief.md` | Full file | Thèse, sources connues, `content_url` |
+| Preuve d'existence | `../01-brief/output/<slug>-card.json` | Champ `slug` | Cible des `add_source` |
+| Squelette d'une source | `../../_core/templates/source.md` | Full file | Structure |
+| Signature `add_source` | `../../shared/philum-mcp.md` | Ligne `add_source` de la table Écriture | Champs autorisés |
+| Garde-fous | `../../shared/garde-fous.md` | « Sur les auteurs » et « Sur les métadonnées » | Pas d'invention |
 
 ## Process
 
@@ -34,25 +33,25 @@ Collecter, enrichir et poser les sources de la fiche, sans les annoter (annotati
 
 ## Outputs
 
-| Artifact              | Location                    | Format                                               |
-| --------------------- | --------------------------- | ---------------------------------------------------- |
-| Catalogue des sources | `output/<slug>-sources.md`  | Markdown (une entrée par source, format template)    |
-| Mapping index -> UUID | `output/<slug>-ids.json`    | JSON `{ "1": "<uuid>", "2": "<uuid>", ... }`         |
-| Sources écartées      | `output/<slug>-rejetees.md` | Markdown (une entrée par source retirée avec raison) |
+| Artifact | Location | Format |
+|---|---|---|
+| Catalogue des sources | `output/<slug>-sources.md` | Markdown (une entrée par source, format template) |
+| Mapping index -> UUID | `output/<slug>-ids.json` | JSON `{ "1": "<uuid>", "2": "<uuid>", ... }` |
+| Sources écartées | `output/<slug>-rejetees.md` | Markdown (une entrée par source retirée avec raison) |
 
 ## Checkpoints
 
-| After Step | Agent Presents                                              | Human Decides                                                                                          |
-| ---------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| 2          | Liste enrichie complète, mise en évidence des DOI manquants | Compléter à la main les DOI que l'agent n'a pas trouvés                                                |
-| 3          | `<slug>-rejetees.md` : sources écartées avec raison         | Confirmer les rejets ou réintégrer                                                                     |
-| 5          | Liste des sources marquées `is_pivot=True`                  | Ajuster : celles qui portent réellement la thèse, autant qu'il en faut pour couvrir ses pans distincts |
+| After Step | Agent Presents | Human Decides |
+|---|---|---|
+| 2 | Liste enrichie complète, mise en évidence des DOI manquants | Compléter à la main les DOI que l'agent n'a pas trouvés |
+| 3 | `<slug>-rejetees.md` : sources écartées avec raison | Confirmer les rejets ou réintégrer |
+| 5 | Liste des sources marquées `is_pivot=True` | Ajuster : celles qui portent réellement la thèse, autant qu'il en faut pour couvrir ses pans distincts |
 
 ## Audit
 
-| Check                           | Pass Condition                                                                                  |
-| ------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Métadonnées non inventées       | Chaque DOI présent est vérifié dans Crossref ; chaque date vient de la source                   |
+| Check | Pass Condition |
+|---|---|
+| Métadonnées non inventées | Chaque DOI présent est vérifié dans Crossref ; chaque date vient de la source |
 | Auteurs institutionnels intacts | Une institution (« American Nuclear Society ») figure telle quelle, pas décomposée en initiales |
-| Au moins un pivot               | pivots ≥ 1 (une fiche sans aucun pivot n'assume pas ce qu'elle affirme)                         |
-| Cohérence UUID                  | Chaque source retenue a une entrée dans `<slug>-ids.json`                                       |
+| Au moins un pivot | pivots ≥ 1 (une fiche sans aucun pivot n'assume pas ce qu'elle affirme) |
+| Cohérence UUID | Chaque source retenue a une entrée dans `<slug>-ids.json` |

@@ -2,7 +2,6 @@
 contract: "Contrat de l'etape 03 : rediger les annotations et positions par source."
 layer: L2
 ---
-
 # 03-annotations
 
 ## Scope
@@ -11,14 +10,14 @@ Rédiger la note du créateur et déclarer la position (`stance`) pour chaque so
 
 ## Inputs
 
-| Source                | File                                                | Section                                    | Why                                    |
-| --------------------- | --------------------------------------------------- | ------------------------------------------ | -------------------------------------- |
-| Catalogue des sources | `../02-sources-collectees/output/<slug>-sources.md` | Full file                                  | Liste et ordre des sources             |
-| Mapping UUID          | `../02-sources-collectees/output/<slug>-ids.json`   | Full file                                  | `source_id` pour rappeler `add_source` |
-| Brief propre          | `../01-brief/output/<slug>-brief.md`                | Section « Thèse en une phrase »            | Contre quoi on positionne              |
-| Règles d'annotation   | `../../shared/principes-editoriaux.md`              | « L'annotation d'une source »              | Ni résumé, ni éloge                    |
-| Mots interdits        | `../../shared/style-redactionnel.md`                | « Ce qu'on écrit et ce qu'on n'écrit pas » | Éviter les adjectifs vides             |
-| Règles de stance      | `../../shared/garde-fous.md`                        | « Sur la position déclarée »               | Pas de défaut `appuie`                 |
+| Source | File | Section | Why |
+|---|---|---|---|
+| Catalogue des sources | `../02-sources-collectees/output/<slug>-sources.md` | Full file | Liste et ordre des sources |
+| Mapping UUID | `../02-sources-collectees/output/<slug>-ids.json` | Full file | `source_id` pour rappeler `add_source` |
+| Brief propre | `../01-brief/output/<slug>-brief.md` | Section « Thèse en une phrase » | Contre quoi on positionne |
+| Règles d'annotation | `../../shared/principes-editoriaux.md` | « L'annotation d'une source » | Ni résumé, ni éloge |
+| Mots interdits | `../../shared/style-redactionnel.md` | « Ce qu'on écrit et ce qu'on n'écrit pas » | Éviter les adjectifs vides |
+| Règles de stance | `../../shared/garde-fous.md` | « Sur la position déclarée » | Pas de défaut `appuie` |
 
 ## Process
 
@@ -28,23 +27,23 @@ Rédiger la note du créateur et déclarer la position (`stance`) pour chaque so
 
 ## Outputs
 
-| Artifact             | Location                       | Format                                   |
-| -------------------- | ------------------------------ | ---------------------------------------- |
+| Artifact | Location | Format |
+|---|---|---|
 | Annotations rédigées | `output/<slug>-annotations.md` | Markdown (une entrée par source annotée) |
 
 ## Checkpoints
 
-| After Step | Agent Presents                               | Human Decides                                               |
-| ---------- | -------------------------------------------- | ----------------------------------------------------------- |
-| 1          | Annotations rédigées pour les pivots d'abord | Signer, corriger, ou réécrire                               |
-| 2          | Table `source -> stance choisie`             | Confirmer les positions ou signaler celles à laisser `null` |
+| After Step | Agent Presents | Human Decides |
+|---|---|---|
+| 1 | Annotations rédigées pour les pivots d'abord | Signer, corriger, ou réécrire |
+| 2 | Table `source -> stance choisie` | Confirmer les positions ou signaler celles à laisser `null` |
 
 ## Audit
 
-| Check                      | Pass Condition                                                                                                  |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Aucune paraphrase du titre | L'annotation n'est pas une reformulation du titre de la source                                                  |
-| Aucun mot interdit         | Absence de « intéressant », « important », « essentiel », « incontournable », « découvrez », « explorez »       |
-| Stance cohérente           | Une source `stance=nuance-contredit` est adossée à au moins un extrait (posé à l'étape 04) qui montre la nuance |
-| Longueurs                  | Annotations 100 à 300 caractères                                                                                |
-| Aucun tiret cadratin       | `grep "—"` sur `<slug>-annotations.md` retourne 0                                                               |
+| Check | Pass Condition |
+|---|---|
+| Aucune paraphrase du titre | L'annotation n'est pas une reformulation du titre de la source |
+| Aucun mot interdit | Absence de « intéressant », « important », « essentiel », « incontournable », « découvrez », « explorez » |
+| Stance cohérente | Une source `stance=nuance-contredit` est adossée à au moins un extrait (posé à l'étape 04) qui montre la nuance |
+| Longueurs | Annotations 100 à 300 caractères |
+| Aucun tiret cadratin | `grep "—"` sur `<slug>-annotations.md` retourne 0 |

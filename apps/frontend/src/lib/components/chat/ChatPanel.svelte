@@ -866,8 +866,8 @@
             variant="ghost"
             onclick={() => {
               continuer();
-              setEnCours(true);
-              setTimeout(() => setEnCours(false), 5000);
+              enCours = true;
+              setTimeout(() => (enCours = false), 5000);
             }}
             disabled={enCours}>Continuer</Button
           >

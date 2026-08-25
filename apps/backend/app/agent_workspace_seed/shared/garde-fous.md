@@ -2,7 +2,6 @@
 contract: "Actions que l'agent refuse d'executer, avec la raison de chaque refus."
 layer: L3
 ---
-
 # Garde-fous : ce que l'agent refuse de faire
 
 Chaque règle bloque une action, avec la raison. Aucune n'est négociable.

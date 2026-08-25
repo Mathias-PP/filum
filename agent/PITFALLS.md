@@ -249,6 +249,13 @@
 - **Prévention** : à chaque changement de `agent.py` (type d'événement SSE, message de borne, `MAX_TOURS`), `grep -rn "test_borne_max_tours\|continuation\|Maximum de" apps/backend/tests --include="*.py"` et mettre à jour l'assertion (nouveau type `continuation` + payload `tours`). Lancer en local `uv run pytest tests/unit/test_agent_loop.py::TestBoucle::test_borne_max_tours -v` avant push. Si le changement est voulu, le test est la doc du contrat — le mettre à jour fait partie de la PR.
 - **Vécu** : PR #564 — même commit, même cause que 3.5 : deux checks rouges pour une seule PR, 1 skipped, 15 passés.
 
+### 3.7 Nouvel événement SSE sans mise à jour de l'union `AgentEvent` (2026-08-24)
+
+- **Symptôme** : CI `Build Frontend` rouge au step Type check : `Type '"continuation"' is not comparable to type '"error" | "done" | ...'` + `Property 'payload' does not exist on type 'never'` dans `conversation.ts`, alors que `Lint Frontend` et les tests backend sont verts.
+- **Cause** : ajouter un `case 'continuation':` dans `conversation.ts` sans ajouter le membre correspondant à l'union `AgentEvent` de `apps/frontend/src/lib/api/agent.ts`. TypeScript rétrécit alors l'événement à `never` dans le switch. `eslint` ne voit pas l'erreur (pas de type-check cross-fichier) ; seul `svelte-check` (step Type check de `Build Frontend`, ~3 min plus tard) l'attrape.
+- **Prévention** : un nouvel événement SSE se déclare dans **trois** endroits en une PR : (1) union `AgentEvent` dans `agent.ts`, (2) switch de `conversation.ts`, (3) rendu dans `ChatPanel.svelte`. Vérifier en local depuis `apps/frontend` : `npx svelte-kit sync && npx svelte-check --tsconfig ./tsconfig.json` (doit afficher 0 error ; les warnings a11y préexistants ne bloquent pas).
+- **Vécu** : PR #564 commit `9492381` — lint et tests verts, Build Frontend rouge découvert seulement après le second push.
+
 ---
 
 ## 4. Git / déploiement / process

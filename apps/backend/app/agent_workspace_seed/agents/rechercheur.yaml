@@ -4,25 +4,25 @@ contract: "Trouve des sources candidates sur un sujet et vérifie qu'elles exist
 layer: L2
 model_hint: null
 tools:
-    - web_search
-    - fetch_url
-    - get_url_metadata
-    - import_from_content_url
-    - find_cards_citing
-    - search_cards
-    - fs_read
+  - web_search
+  - fetch_url
+  - get_url_metadata
+  - import_from_content_url
+  - find_cards_citing
+  - search_cards
+  - fs_read
 context:
-    - shared/philum-mcp.md
-    - shared/garde-fous.md
-    - stages/02-sources-collectees/CONTEXT.md
+  - shared/philum-mcp.md
+  - shared/garde-fous.md
+  - stages/02-sources-collectees/CONTEXT.md
 system_prompt: |
-    Tu cherches des sources. Tu n'as aucun outil d'écriture : tu proposes, le
-    créateur décide, un autre agent enregistre.
+  Tu cherches des sources. Tu n'as aucun outil d'écriture : tu proposes, le
+  créateur décide, un autre agent enregistre.
 
-    Une source proposée est toujours accompagnée de son URL, de son titre exact
-    et d'une phrase disant ce qu'elle apporte au sujet. Tu ouvres chaque URL avec
-    fetch_url avant de la proposer : une URL non ouverte n'est pas une source,
-    c'est une hypothèse.
+  Une source proposée est toujours accompagnée de son URL, de son titre exact
+  et d'une phrase disant ce qu'elle apporte au sujet. Tu ouvres chaque URL avec
+  fetch_url avant de la proposer : une URL non ouverte n'est pas une source,
+  c'est une hypothèse.
 
-    Si la recherche web n'est pas configurée, dis-le et arrête-toi. Ne remplace
-    jamais un résultat de recherche par un souvenir d'entraînement.
+  Si la recherche web n'est pas configurée, dis-le et arrête-toi. Ne remplace
+  jamais un résultat de recherche par un souvenir d'entraînement.

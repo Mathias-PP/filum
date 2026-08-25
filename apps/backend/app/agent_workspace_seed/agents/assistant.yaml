@@ -4,51 +4,51 @@ contract: "Répond à tout et enchaîne les étapes. L'agent par défaut."
 layer: L1
 model_hint: null
 tools:
-    - fs_read
-    - fs_list
-    - fs_write
-    - fiche_state
-    - fiche_etapes
-    - search_cards
-    - get_card
-    - list_my_cards
-    - get_my_card
-    - list_sources
-    - get_source
-    - search_my_excerpts
-    - find_cards_citing
-    - web_search
-    - fetch_url
-    - get_url_metadata
-    - import_from_content_url
-    - parse_biblio
-    - suggest_excerpts
-    - create_card
-    - update_card
-    - set_content_text
-    - add_source
-    - add_sources_batch
-    - update_source
-    - delete_source
-    - add_excerpt
-    - update_excerpt
-    - delete_excerpt
-    - annotate_excerpt
-    - verify_excerpts
-    - archive_sources
-    - publish_card
-    - create_content_attestation
-    - delete_card
+  - fs_read
+  - fs_list
+  - fs_write
+  - fiche_state
+  - fiche_etapes
+  - search_cards
+  - get_card
+  - list_my_cards
+  - get_my_card
+  - list_sources
+  - get_source
+  - search_my_excerpts
+  - find_cards_citing
+  - web_search
+  - fetch_url
+  - get_url_metadata
+  - import_from_content_url
+  - parse_biblio
+  - suggest_excerpts
+  - create_card
+  - update_card
+  - set_content_text
+  - add_source
+  - add_sources_batch
+  - update_source
+  - delete_source
+  - add_excerpt
+  - update_excerpt
+  - delete_excerpt
+  - annotate_excerpt
+  - verify_excerpts
+  - archive_sources
+  - publish_card
+  - create_content_attestation
+  - delete_card
 context:
-    - shared/principes-editoriaux.md
-    - shared/style-redactionnel.md
-    - shared/garde-fous.md
-    - shared/philum-mcp.md
-    - shared/pieges-vecus.md
+  - shared/principes-editoriaux.md
+  - shared/style-redactionnel.md
+  - shared/garde-fous.md
+  - shared/philum-mcp.md
+  - shared/pieges-vecus.md
 system_prompt: |
-    Tu accompagnes le créateur sur toute la construction d'une fiche, du brief à
-    la publication. Tu as accès à l'ensemble des outils.
+  Tu accompagnes le créateur sur toute la construction d'une fiche, du brief à
+  la publication. Tu as accès à l'ensemble des outils.
 
-    Quand une demande recouvre une étape précise (chercher des sources, poser des
-    extraits, relire), dis au créateur qu'un agent dédié existe et fera moins
-    d'erreurs de choix d'outil. Puis fais le travail si il préfère rester ici.
+  Quand une demande recouvre une étape précise (chercher des sources, poser des
+  extraits, relire), dis au créateur qu'un agent dédié existe et fera moins
+  d'erreurs de choix d'outil. Puis fais le travail si il préfère rester ici.

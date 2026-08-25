@@ -2,7 +2,6 @@
 contract: "Contrat de l'etape 04 : extraire les verbatim et les ancrer aux sources."
 layer: L2
 ---
-
 # 04-extraits
 
 ## Scope
@@ -11,15 +10,15 @@ Extraire et poser les verbatim des sources clés (pivots obligatoires, autres so
 
 ## Inputs
 
-| Source                 | File                                                | Section              | Why                                 |
-| ---------------------- | --------------------------------------------------- | -------------------- | ----------------------------------- |
-| Catalogue des sources  | `../02-sources-collectees/output/<slug>-sources.md` | Full file            | Repérer les pivots                  |
-| Mapping UUID           | `../02-sources-collectees/output/<slug>-ids.json`   | Full file            | `source_id` pour `add_excerpt`      |
-| Annotations            | `../03-annotations/output/<slug>-annotations.md`    | Full file            | Savoir ce que chaque source apporte |
-| Squelette d'un extrait | `../../_core/templates/extrait.md`                  | Full file            | Structure                           |
-| Règles d'extraits      | `../../shared/principes-editoriaux.md`              | « Extraits »         | 3-5 par pivot, verbatim, `context`  |
-| Garde-fous serveur     | `../../shared/garde-fous.md`                        | « Sur les extraits » | Anti hors-contexte                  |
-| Guide DOI/OpenAlex     | `references/verification-doi.md`                    | Full file            | Où chercher un texte plein          |
+| Source | File | Section | Why |
+|---|---|---|---|
+| Catalogue des sources | `../02-sources-collectees/output/<slug>-sources.md` | Full file | Repérer les pivots |
+| Mapping UUID | `../02-sources-collectees/output/<slug>-ids.json` | Full file | `source_id` pour `add_excerpt` |
+| Annotations | `../03-annotations/output/<slug>-annotations.md` | Full file | Savoir ce que chaque source apporte |
+| Squelette d'un extrait | `../../_core/templates/extrait.md` | Full file | Structure |
+| Règles d'extraits | `../../shared/principes-editoriaux.md` | « Extraits » | 3-5 par pivot, verbatim, `context` |
+| Garde-fous serveur | `../../shared/garde-fous.md` | « Sur les extraits » | Anti hors-contexte |
+| Guide DOI/OpenAlex | `references/verification-doi.md` | Full file | Où chercher un texte plein |
 
 ## Process
 
@@ -34,24 +33,24 @@ Extraire et poser les verbatim des sources clés (pivots obligatoires, autres so
 
 ## Outputs
 
-| Artifact       | Location                    | Format                                                           |
-| -------------- | --------------------------- | ---------------------------------------------------------------- |
+| Artifact | Location | Format |
+|---|---|---|
 | Extraits posés | `output/<slug>-extraits.md` | Markdown groupé par source (verbatim + `context` + `excerpt_id`) |
 
 ## Checkpoints
 
-| After Step | Agent Presents                                | Human Decides                        |
-| ---------- | --------------------------------------------- | ------------------------------------ |
-| 2          | Sélection des passages candidats par pivot    | Confirmer, retirer, ajouter          |
-| 4          | Titres et mises en situation rédigés          | Valider ou réécrire                  |
-| 6          | Extraits posés côté prod, liens vers la fiche | Spot-check verbatim sur 2-3 extraits |
+| After Step | Agent Presents | Human Decides |
+|---|---|---|
+| 2 | Sélection des passages candidats par pivot | Confirmer, retirer, ajouter |
+| 4 | Titres et mises en situation rédigés | Valider ou réécrire |
+| 6 | Extraits posés côté prod, liens vers la fiche | Spot-check verbatim sur 2-3 extraits |
 
 ## Audit
 
-| Check                      | Pass Condition                                                                   |
-| -------------------------- | -------------------------------------------------------------------------------- |
-| Pivots couverts            | Chaque source `is_pivot=True` a ≥ 2 extraits posés                               |
-| Vérifiabilité              | Chaque `text` d'extrait apparaît mot pour mot dans la source (grep)              |
-| Pas de hors-contexte court | Aucun extrait court (moins d'une phrase autonome) sans `context` non vide        |
-| Plafond éditorial          | Aucune source > 5 extraits                                                       |
-| Titres descriptifs         | Chaque titre d'extrait fait 2 à 6 mots, sans slogan (« Une découverte majeure ») |
+| Check | Pass Condition |
+|---|---|
+| Pivots couverts | Chaque source `is_pivot=True` a ≥ 2 extraits posés |
+| Vérifiabilité | Chaque `text` d'extrait apparaît mot pour mot dans la source (grep) |
+| Pas de hors-contexte court | Aucun extrait court (moins d'une phrase autonome) sans `context` non vide |
+| Plafond éditorial | Aucune source > 5 extraits |
+| Titres descriptifs | Chaque titre d'extrait fait 2 à 6 mots, sans slogan (« Une découverte majeure ») |

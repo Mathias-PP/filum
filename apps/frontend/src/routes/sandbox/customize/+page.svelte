@@ -816,6 +816,8 @@
                 />
               {/if}
               <circle
+                role="button"
+                tabindex="0"
                 cx={g.pulsar.x}
                 cy={g.pulsar.y}
                 r={c.pulsarSize}
@@ -839,6 +841,8 @@
                   />
                 {/if}
                 <circle
+                  role="button"
+                  tabindex="0"
                   cx={pos.x}
                   cy={pos.y}
                   r={n.size}
@@ -852,6 +856,8 @@
 
               {#if g.forkM && g.twins}
                 <circle
+                  role="button"
+                  tabindex="0"
                   cx={g.forkM.x}
                   cy={g.forkM.y}
                   r="0.7"
@@ -876,6 +882,8 @@
                     />
                   {/if}
                   <circle
+                    role="button"
+                    tabindex="0"
                     cx={pos.x}
                     cy={pos.y}
                     r={t.size}
@@ -900,6 +908,8 @@
                   />
                 {/if}
                 <circle
+                  role="button"
+                  tabindex="0"
                   cx={g.parent.x}
                   cy={g.parent.y}
                   r={c.parent.size}
@@ -922,6 +932,8 @@
                   />
                 {/if}
                 <circle
+                  role="button"
+                  tabindex="0"
                   cx={g.lune.x}
                   cy={g.lune.y}
                   r={c.lune.size}
@@ -1186,36 +1198,44 @@
       <details open>
         <summary>Canvas + stroke fond</summary>
         <div class="row">
-          <label>Fond canvas</label>
-          <input type="color" bind:value={configs[active].bgColor} />
+          <label for="bgColor">Fond canvas</label>
+          <input id="bgColor" type="color" bind:value={configs[active].bgColor} />
           <input type="text" bind:value={configs[active].bgColor} class="hex" />
         </div>
         <div class="row">
-          <label>Stroke fond actif</label>
-          <input type="checkbox" bind:checked={configs[active].fondEnabled} />
+          <label for="fondEnabled">Stroke fond actif</label>
+          <input id="fondEnabled" type="checkbox" bind:checked={configs[active].fondEnabled} />
         </div>
         <div class="row">
-          <label>Couleur fond stroke</label>
-          <input type="color" bind:value={configs[active].fondColor} />
+          <label for="fondColor">Couleur fond stroke</label>
+          <input id="fondColor" type="color" bind:value={configs[active].fondColor} />
           <input type="text" bind:value={configs[active].fondColor} class="hex" />
         </div>
         <div class="slider">
-          <label
-            >Épaisseur fond <span class="val">{configs[active].fondWidth.toFixed(2)}</span></label
+          <label for="fondWidth">
+            Épaisseur fond <span class="val">{configs[active].fondWidth.toFixed(2)}</span></label
           >
-          <input type="range" min="0" max="3" step="0.05" bind:value={configs[active].fondWidth} />
+          <input
+            id="fondWidth"
+            type="range"
+            min="0"
+            max="3"
+            step="0.05"
+            bind:value={configs[active].fondWidth}
+          />
         </div>
       </details>
 
       <details open>
         <summary>Pulsar</summary>
         <div class="slider">
-          <label
-            >🌐 Échelle globale du logo <span class="val"
+          <label for="globalScale">
+            🌐 Échelle globale du logo <span class="val"
               >{Math.round(configs[active].globalScale * 100)}%</span
             ></label
           >
           <input
+            id="globalScale"
             type="range"
             min="0.3"
             max="2"

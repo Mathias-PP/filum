@@ -2,7 +2,6 @@
 contract: "Contrat de l'etape 07 : publication de la fiche et verifications post-publish."
 layer: L2
 ---
-
 # 07-publication
 
 ## Scope
@@ -11,11 +10,11 @@ Publier la fiche et vérifier post-publish que le rendu public, l'export markdow
 
 ## Inputs
 
-| Source               | File                                       | Section                                             | Why                            |
-| -------------------- | ------------------------------------------ | --------------------------------------------------- | ------------------------------ |
-| Verdict de relecture | `../06-relecture/output/<slug>-verdict.md` | Frontmatter `go`                                    | DOIT être `yes`, sinon refuser |
-| Preuve d'existence   | `../01-brief/output/<slug>-card.json`      | Champ `slug`                                        | Cible de `publish_card`        |
-| Signatures tools MCP | `../../shared/philum-mcp.md`               | Lignes `publish_card`, `create_content_attestation` | Appels stricts                 |
+| Source | File | Section | Why |
+|---|---|---|---|
+| Verdict de relecture | `../06-relecture/output/<slug>-verdict.md` | Frontmatter `go` | DOIT être `yes`, sinon refuser |
+| Preuve d'existence | `../01-brief/output/<slug>-card.json` | Champ `slug` | Cible de `publish_card` |
+| Signatures tools MCP | `../../shared/philum-mcp.md` | Lignes `publish_card`, `create_content_attestation` | Appels stricts |
 
 ## Process
 
@@ -32,24 +31,24 @@ Publier la fiche et vérifier post-publish que le rendu public, l'export markdow
 
 ## Outputs
 
-| Artifact               | Location                       | Format                                                                                 |
-| ---------------------- | ------------------------------ | -------------------------------------------------------------------------------------- |
+| Artifact | Location | Format |
+|---|---|---|
 | Rapport de publication | `output/<slug>-publication.md` | Markdown avec frontmatter (`published_at`, `public_url`, `export_check`, `feed_check`) |
 
 ## Checkpoints
 
-| After Step | Agent Presents                                | Human Decides                             |
-| ---------- | --------------------------------------------- | ----------------------------------------- |
-| 3          | Timestamp publication + URL publique          | Ouvrir la fiche, valider le rendu         |
-| 4          | Résultat des trois vérifications post-publish | Signer le rapport ou signaler un incident |
+| After Step | Agent Presents | Human Decides |
+|---|---|---|
+| 3 | Timestamp publication + URL publique | Ouvrir la fiche, valider le rendu |
+| 4 | Résultat des trois vérifications post-publish | Signer le rapport ou signaler un incident |
 
 ## Audit
 
-| Check                         | Pass Condition                                                                                         |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------ |
-| Verdict autorise              | `<slug>-verdict.md` a `go: yes` en frontmatter                                                         |
-| Fiche publique accessible     | `curl -sI` sur `https://filum-eight.vercel.app/@<creator>/<slug>` retourne 200                         |
-| Export markdown fonctionnel   | L'export markdown contient le titre, au moins une source et au moins un extrait                        |
-| Titre exact dans l'export     | Le titre de l'export == titre exact du contenu                                                         |
-| Dates présentes dans l'export | Chaque source a sa date (`published_at`) si elle existe ; la date du contenu est renseignée/affichée   |
-| Feed à jour                   | Une entrée `card_published` pour ce `slug` figure dans `/api/v1/feed` dans les 60 secondes qui suivent |
+| Check | Pass Condition |
+|---|---|
+| Verdict autorise | `<slug>-verdict.md` a `go: yes` en frontmatter |
+| Fiche publique accessible | `curl -sI` sur `https://filum-eight.vercel.app/@<creator>/<slug>` retourne 200 |
+| Export markdown fonctionnel | L'export markdown contient le titre, au moins une source et au moins un extrait |
+| Titre exact dans l'export | Le titre de l'export == titre exact du contenu |
+| Dates présentes dans l'export | Chaque source a sa date (`published_at`) si elle existe ; la date du contenu est renseignée/affichée |
+| Feed à jour | Une entrée `card_published` pour ce `slug` figure dans `/api/v1/feed` dans les 60 secondes qui suivent |

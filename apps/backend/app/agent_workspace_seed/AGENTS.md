@@ -2,7 +2,6 @@
 contract: "Point d'entree du workspace : identite, folder map, routing des taches."
 layer: L0
 ---
-
 # Créateur de fiches Philum
 
 Un seul agent. Il fabrique une fiche bibliographique Philum publiable, du brief à la publication, en n'utilisant que le MCP `philum` et un navigateur pour vérifier les sources qu'il retient.
@@ -51,24 +50,24 @@ workspaces/createur-de-fiches/
 
 ## Routing
 
-| Tu veux…                                    | Va à                                                        |
-| ------------------------------------------- | ----------------------------------------------------------- |
-| Démarrer une nouvelle fiche                 | `setup/questionnaire.md`, puis `stages/01-brief/CONTEXT.md` |
-| Reprendre une fiche en cours                | `runs/<slug>/` puis le premier `stages/0N-*/output/` vide   |
-| Comprendre ce qu'est une bonne fiche        | `shared/principes-editoriaux.md`                            |
-| Savoir quel tool MCP appeler quand          | `shared/philum-mcp.md`                                      |
-| Vérifier ce qu'on ne fait jamais            | `shared/garde-fous.md`                                      |
-| Écrire un titre, une annotation, un extrait | `shared/style-redactionnel.md`                              |
-| Auditer titre/date d'une fiche (alertes)    | `_core/audit/audit_fiche.py <slug>`                         |
-| Restreindre un agent du chat à une étape    | `agents/CONTEXT.md`                                         |
-| Voir le pipeline en un coup d'œil           | `CONTEXT.md`                                                |
+| Tu veux… | Va à |
+|---|---|
+| Démarrer une nouvelle fiche | `setup/questionnaire.md`, puis `stages/01-brief/CONTEXT.md` |
+| Reprendre une fiche en cours | `runs/<slug>/` puis le premier `stages/0N-*/output/` vide |
+| Comprendre ce qu'est une bonne fiche | `shared/principes-editoriaux.md` |
+| Savoir quel tool MCP appeler quand | `shared/philum-mcp.md` |
+| Vérifier ce qu'on ne fait jamais | `shared/garde-fous.md` |
+| Écrire un titre, une annotation, un extrait | `shared/style-redactionnel.md` |
+| Auditer titre/date d'une fiche (alertes) | `_core/audit/audit_fiche.py <slug>` |
+| Restreindre un agent du chat à une étape | `agents/CONTEXT.md` |
+| Voir le pipeline en un coup d'œil | `CONTEXT.md` |
 
 ## Triggers
 
-| Mot      | Action                                                                       |
-| -------- | ---------------------------------------------------------------------------- |
-| `setup`  | Ouvre `setup/questionnaire.md` et démarre l'onboarding d'une nouvelle fiche. |
-| `status` | Scanne `runs/<slug>/stages/0N-*/output/` et affiche l'état du pipeline.      |
+| Mot | Action |
+|---|---|
+| `setup` | Ouvre `setup/questionnaire.md` et démarre l'onboarding d'une nouvelle fiche. |
+| `status` | Scanne `runs/<slug>/stages/0N-*/output/` et affiche l'état du pipeline. |
 
 ## Limites strictes
 
