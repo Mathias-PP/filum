@@ -28,8 +28,8 @@ TOTAL=$(wc -l < /tmp/spots_all.txt)
   echo "> Pour chaque item : comparer l'affirmation de la doc au code réel ci-dessous."
   echo "> Cocher \`[x]\` OK, ou écrire \`CONTRADICTION\` + fichier concerné (il retombera à statut=lu)."
   echo ""
-  # tirage déterministe : tri par hash(seed, ligne)
-  awk -v s="$SEED" '{ print substr($0"     "s,0), "" }' /tmp/spots_all.txt | sort -R --random-source=<(yes "$SEED") | head -n "$NB" | while read -r a; do
+  # tirage déterministe : sort -R alimenté par un flux pseudo-aléatoire dérivé du seed
+  sort -R --random-source=<(yes "$SEED") /tmp/spots_all.txt | head -n "$NB" | while read -r a; do
     p="${a%:*}"; l="${a##*:}"
     echo "## - [ ] $a"
     echo '```'

@@ -1,0 +1,1 @@
+G0 VERTE : inventaire complet et coherent (193 lignes, 24583 LOC perimetre)

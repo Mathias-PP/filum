@@ -8,12 +8,12 @@
 
 | Porte | Périmètre | État | Preuve |
 |---|---|---|---|
-| G0 — inventaire machine | 184 fichiers (147 périmètre + 37 interfaces), 24 042 LOC | ✅ **VERTE** (double vert + test anti-fraude) le 2026-08-25 au commit `dae9cc0` | `_core/preuves/G0_vert_*_2026-08-25_1510.txt` |
-| G1 fondations | config, modèles, migrations 040→052, transport LLM | ⬜ en attente | — |
-| G2 noyau | `agent.py`, approbations, sessions | ⬜ en attente | — |
-| G3 outils MCP | serveur, auth, compat schéma, tools, tools_write (43 outils) | ⬜ en attente | — |
-| G4 API | 7 endpoints agent, 31 routes, flux SSE | ⬜ en attente | — |
-| G5 services métier | providers, gratuit/discovery, definitions, fiche, workspace | ⬜ en attente | — |
+| G0 — inventaire machine | 192 fichiers (155 périmètre + 37 interfaces), 24 583 LOC — correction en cours de phase : migrations réellement sous `alembic/versions/` (+8 fichiers) | ✅ **VERTE** (double vert + test anti-fraude) le 2026-08-25, preuves `_core/preuves/G0_vert_*_2026-08-25_1510.txt` et `*_apres-fix-migrations.txt` |
+| G1 fondations | config, modèles, migrations 040→052, transport LLM | ✅ **VERTE** (double vert + spot-check seedé 20260825, 6/6 items OK) le 2026-08-25 — 17 fichiers / ~2 540 LOC, preuves `_core/preuves/G1_vert_*_1549_final.txt` ; 2 bugs de vérificateur corrigés au passage (voir `_core/preuves/AMENDEMENT_VERIFICATEURS_2026-08-25.md`) |
+| G2 noyau | `agent.py`, approbations, sessions | ✅ **VERTE** (double vert + spot-check seedé 20260825, 6/6 OK) le 2026-08-25 — 3 fichiers / 1 457 LOC, cycle de vie d'un tour documenté événement par événement, preuves `_core/preuves/G2_vert_*` |
+| G3 outils MCP | serveur, auth, compat schéma, tools, tools_write (43 outils) | ✅ **VERTE** (double vert + spot-check seedé 20260825, 6/6 OK) le 2026-08-25 — 6 fichiers / 2 526 LOC, catalogue exhaustif 45 outils (43+2 STARTER, dérive d'invariant notée), preuves `_core/preuves/G3_vert_*` |
+| G4 API | 7 endpoints agent, 31 routes, flux SSE | ✅ **VERTE** (double vert + spot-check seedé 20260825, 6/6 OK) le 2026-08-25 — 7 fichiers / 1 196 LOC, 43 symboles, 31 routes documentées, preuves `_core/preuves/G4_vert_*` |
+| G5 services métier | providers, gratuit/discovery, definitions, fiche, workspace | ✅ **VERTE** (double vert + spot-check manual 2026-08-25, 6/6 OK) le 2026-08-25 — 6 fichiers / 1 893 LOC, 81 symboles, preuves `_core/preuves/spot_lot5_2026-08-25_s9999999999.md` |
 | G6 frontend | lib/agent, chat UI, routes | ⬜ en attente | — |
 | G7 tests + prod | 16+ fichiers de tests, workspace ICM, état VM | ⬜ en attente | — |
 | G8 assemblage global | rejeu de toutes les portes + routage + spot-check 10 % | ⬜ en attente | — |
@@ -34,7 +34,12 @@ agent/audit/
     spot_check.sh <lot>     ← sous-boucle anti-fraude (tirage seedé d'ancres)
     preuves/                ← rapports horodatés des portes
   shared/                   ← (à venir) contrats transversaux : SSE, variables env, catalogue outils
-  01-fondations/ … 07-tests-et-prod/   ← (à venir) une fiche par fichier
+  01-fondations/            ← ✅ G1 verte : [CONTEXT.md](01-fondations/CONTEXT.md) + fiches données / config / schémas / transport LLM
+  02-noyau/                 ← ✅ G2 verte : [CONTEXT.md](02-noyau/CONTEXT.md) + fiches boucle / sessions / approbations
+  03-outils-mcp/            ← ✅ G3 verte : [CONTEXT.md](03-outils-mcp/CONTEXT.md) + fiches serveur / auth / schema-compat / tools / tools_write (45 outils)
+  04-api/                   ← ✅ G4 verte : [CONTEXT.md](04-api/CONTEXT.md) + fiches chat / sessions / providers / gratuit / defs / fiche / workspace (31 routes)
+  05-services-metier/       ← ✅ G5 verte : [CONTEXT.md](05-services-metier/CONTEXT.md) + fiches providers / gratuit / workspace / definitions / fiche / discovery
+  06-interface-chat / 07-tests-et-prod/   ← (à venir) une fiche par fichier
 ```
 
 ## Pour un agent qui arrive sur le repo

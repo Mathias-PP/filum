@@ -24,7 +24,7 @@ symboles() {
 
 # Charge les listes brutes dans $T (migrations, tests, workspace, seed, scripts)
 charger_listes() {
-  git ls-files "apps/backend/migrations/versions/*.py" > "$T/migs.txt" || true
+  git ls-files "apps/backend/alembic/versions/*.py" > "$T/migs.txt" || true
   git ls-files "apps/backend/tests/unit/test_agent*.py" "apps/backend/tests/unit/test_mcp*.py" "apps/backend/tests/unit/test_workspace_seed_sync.py" > "$T/tests.txt" || true
   git ls-files "apps/backend/tests/integration/*" > "$T/integ.txt" || true
   grep -iE 'agent|mcp|chat' "$T/integ.txt" >> "$T/tests.txt" || true

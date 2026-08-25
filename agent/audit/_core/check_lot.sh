@@ -57,8 +57,11 @@ done < <(tail -n +2 "$CSV")
 SPOT=$(ls "$AUDIT"/preuves/spot_lot"${LOT}"_*.md 2>/dev/null | tail -1)
 if [ -z "$SPOT" ]; then note "ECHEC G$LOT(e): aucune fiche spot-check (lancer spot_check.sh $LOT)";
 else
-  OPEN=$(grep -c '^\s*- \[ \]' "$SPOT" || true)
-  BADV=$(grep -c 'CONTRADICTION' "$SPOT" || true)
+  # Les items du gabarit sont des titres « ## - [ ] » : tolérer les # d'en-tête.
+  OPEN=$(grep -cE '^#{0,4}[[:space:]]*-[[:space:]]\[[[:space:]]\]' "$SPOT" || true)
+  # Les lignes d'instruction du gabarit (commençant par '>') mentionnent le mot
+  # CONTRADICTION : ne compter que les constats réels dans les corps d'items.
+  BADV=$(grep -v '^>' "$SPOT" | grep -c 'CONTRADICTION' || true)
   [ "$OPEN" -gt 0 ] && note "ECHEC G$LOT(e): $OPEN item(s) spot-check non vérifié(s) dans $SPOT"
   [ "$BADV" -gt 0 ] && note "ECHEC G$LOT(e): CONTRADICTION consignée dans $SPOT — le(s) fichier(s) repassent à 'lu', doc à réécrire, puis reboucler"
 fi
