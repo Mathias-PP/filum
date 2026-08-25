@@ -2,7 +2,19 @@
 
 > Snapshot vivant, 1 page max. **Pour l'historique détaillé** : voir [`CHANGELOG.md`](./CHANGELOG.md). **Pour les items long terme** : voir [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md).
 
-**Dernière mise à jour : 2026-08-23**
+**Dernière mise à jour : 2026-08-25**
+
+---
+
+## Session 2026-08-24/25 : fidélité de l'agent — borne de tours assumée, outils lisibles
+
+**PR #564 mergée (`66cd653`) et déployée en prod le 2026-08-25** (`/health` OK, aucune migration nouvelle). Née du diagnostic de la séquence `@brunyosorio13/thrips` où l'agent brûlait ses 16 premiers tours en `get_my_card` avant d'être tué par une borne arbitraire :
+
+- **Borne dure 24 tours remplacée** : `agent_max_tours=48`, compaction du contexte au lieu d'une erreur sèche, nouvel événement SSE `continuation` et bouton « Continuer » dans le chat qui renvoie la main à l'agent. Le contrat est figé par `test_borne_max_tours`.
+- **Affichage des outils lisible** : `add_excerpt` / `verify_excerpts` / `suggest_excerpts` renvoient `source_title` depuis le backend (seul à pouvoir résoudre les UUIDs), et l'UI montre « extrait « … » → titre de la source ». Le nom technique (`add_excerpt_a1b2…`) passe en tooltip. Plus jamais un `#fb50401c add_excerpt` illisible.
+- **Audit fiches** : `get_my_card` expose désormais `excerpts_verified` / `excerpts_unreadable` par source, sans quoi `excerpts_count=0` se lisait à tort comme « fiche non vérifiée ».
+- **Coordination multi-agents, encore** : les commits nocturnes d'un second agent sur le même arbre (dsh) ont élargi la PR à 103 fichiers (extension, fixtures, package.json racine) et cassé trois artefacts — `agent.py` amputé puis rétabli, `openapi.json` compacté à la main (drift Contract API Sync), seed workspace non reconstruit, et `setEnCours` appelé sans exister. Leçon du 2026-08-21 réappliquée : un seul pilote à la fois, artefacts générés régénérés par leurs scripts, jamais retouchés à la main.
+- Trois nouveaux pièges CI documentés dans [`agent/PITFALLS.md`](./agent/PITFALLS.md) §3.5-3.7 : prettier --check strict frontend, tests qui figent le contrat SSE, et union `AgentEvent` à mettre à jour pour tout nouvel événement.
 
 ---
 
