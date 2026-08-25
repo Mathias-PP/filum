@@ -26,15 +26,16 @@
 
 ### Application par endpoint
 
-| Endpoint | Limite proposée | Clé |
-|---|---|---|
-| `GET /sources/extract` | 10/min | IP |
-| `POST /cards` | 20/h | user_id (authentifié) |
-| `POST /cards/{id}/publish` | 10/h | user_id |
-| `GET /auth/google/login` | 30/min | IP |
-| `POST /auth/logout` | 60/min | IP |
+| Endpoint                   | Limite proposée | Clé                   |
+| -------------------------- | --------------- | --------------------- |
+| `GET /sources/extract`     | 10/min          | IP                    |
+| `POST /cards`              | 20/h            | user_id (authentifié) |
+| `POST /cards/{id}/publish` | 10/h            | user_id               |
+| `GET /auth/google/login`   | 30/min          | IP                    |
+| `POST /auth/logout`        | 60/min          | IP                    |
 
 Pattern par endpoint :
+
 ```python
 @router.get("/extract")
 @limiter.limit("10/minute")

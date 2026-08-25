@@ -21,12 +21,12 @@ Le fichier `profiles.yml` pointe sur un DuckDB local par défaut.
 
 ## Où vivent les choses
 
-| Sous-dossier | Rôle |
-|---|---|
-| `models/staging/` | Un fichier par table source, renommage/typage, pas de logique métier |
-| `models/marts/` | Modèles orientés use-case (créateur, fiche, source, extrait) |
-| `models/analytics/` | Rollups (nombre de fiches par créateur, sources par catégorie, etc.) |
-| `models/sources.yml` | Déclarations des tables sources et de leurs colonnes |
+| Sous-dossier         | Rôle                                                                 |
+| -------------------- | -------------------------------------------------------------------- |
+| `models/staging/`    | Un fichier par table source, renommage/typage, pas de logique métier |
+| `models/marts/`      | Modèles orientés use-case (créateur, fiche, source, extrait)         |
+| `models/analytics/`  | Rollups (nombre de fiches par créateur, sources par catégorie, etc.) |
+| `models/sources.yml` | Déclarations des tables sources et de leurs colonnes                 |
 
 ## CI
 

@@ -11,6 +11,7 @@
 ## Périmètre du MVP
 
 **Inclus** :
+
 - Authentification OAuth Google
 - Création de fiche bibliographique avec sources entrées manuellement
 - Page publique de fiche avec graphe interactif et liste de sources
@@ -21,6 +22,7 @@
 - Export PDF de la fiche
 
 **Exclus du MVP (prévu phases ultérieures)** :
+
 - OAuth multi-plateforme (YouTube, X, ORCID) — phase 2
 - Extraction automatique de sources depuis du texte par IA — phase 2
 - Import Zotero/BibTeX/RIS — phase 3
@@ -65,6 +67,7 @@ Léa visite `philum.app`. Page d'accueil simple. Bouton "Créer ma première fic
 
 **Étape 2 — Création de fiche, vide**
 Elle arrive sur son tableau de bord, vide. Bouton "Nouvelle fiche". Formulaire en deux étapes :
+
 - Étape A : titre du contenu, plateforme principale (YouTube, blog, podcast, autre), URL canonique du contenu, brève description
 - Étape B : ajout des sources, une par une, via un formulaire (titre, URL, type [peer-reviewed, institutionnel, presse, matériel original], date, annotation contextuelle, indicateur "source pivot" oui/non)
 
@@ -73,6 +76,7 @@ Elle arrive sur son tableau de bord, vide. Bouton "Nouvelle fiche". Formulaire e
 
 **Étape 4 — Génération de la fiche**
 Elle clique "Publier la fiche". Philum génère :
+
 - Hash SHA-256 du contenu de la fiche (sources + métadonnées)
 - Signature Ed25519 avec la clé associée à son compte
 - Horodatage simple en MVP (pas d'horodatage qualifié eIDAS en phase 1)
@@ -80,6 +84,7 @@ Elle clique "Publier la fiche". Philum génère :
 
 **Étape 5 — Partage**
 Sur la page de confirmation, Léa voit :
+
 - Sa page publique avec aperçu
 - Trois boutons : "Copier le lien", "Partager", "Voir l'aperçu OpenGraph"
 - Code embed à venir en phase 2
@@ -93,14 +98,17 @@ Marc clique sur le lien Philum dans la description de la vidéo. La page publiqu
 
 **Étape 2 — Découverte de la fiche**
 Au-dessus de la fold :
+
 - Titre du contenu (en serif, élégant)
 - Identité de Léa (vérifiée Google)
 - Bandeau de statistiques (4 chiffres : nombre de sources, peer-reviewed, archivées, fiches connexes)
 
 Au milieu de la page :
+
 - **Le graphe interactif des sources.** Marc voit immédiatement la structure du raisonnement de Léa. Il peut cliquer sur un nœud, voir s'ouvrir une fiche compacte avec titre, auteur, date, tags. Il glisse, zoome, explore.
 
 En dessous :
+
 - Liste détaillée des sources, triable par centralité/date/type
 - Chaque source est dépliable (annotation contextuelle, extraits utilisés, liens vers snapshot et version vivante)
 
@@ -118,6 +126,7 @@ Sami fait la même chose que Marc, mais en mode plus systématique. Il compare l
 ### E1 — Page d'accueil publique (`/`)
 
 **Contenu**
+
 - Bandeau haut : logo Philum, lien "Découvrir", lien "Se connecter", bouton "Créer une fiche"
 - Hero : pitch en une phrase + sous-pitch en deux lignes + bouton "Voir un exemple"
 - Section "Comment ça marche" : 3 étapes illustrées (sourcer, signer, partager)
@@ -125,12 +134,14 @@ Sami fait la même chose que Marc, mais en mode plus systématique. Il compare l
 - Footer : à propos, code source GitHub, mentions légales, contact
 
 **Comportement**
+
 - Si connecté, "Se connecter" → "Mon tableau de bord"
 - Bouton "Créer une fiche" → flux OAuth si déconnecté
 
 ### E2 — OAuth Google + onboarding
 
 **Contenu**
+
 - Page intermédiaire pendant OAuth Google
 - Après retour Google, formulaire de complétion :
   - Pseudonyme (obligatoire, unique, valide en URL slug)
@@ -139,6 +150,7 @@ Sami fait la même chose que Marc, mais en mode plus systématique. Il compare l
   - Acceptation CGU + politique de confidentialité
 
 **Comportement**
+
 - Validation côté client + serveur du slug
 - Création utilisateur en base
 - Génération de la paire de clés Ed25519 associée
@@ -146,18 +158,21 @@ Sami fait la même chose que Marc, mais en mode plus systématique. Il compare l
 ### E3 — Tableau de bord (`/dashboard`)
 
 **Contenu**
+
 - En-tête : avatar + pseudo + bouton "Nouvelle fiche"
 - Liste des fiches créées (par défaut, vide en MVP)
 - Chaque fiche : titre, URL publique, date de publication, nombre de vues (phase 2), boutons Modifier/Voir/Partager
 - Lien "Ma page-identité publique"
 
 **Comportement**
+
 - Limité à 10 fiches par mois en plan gratuit (mais en MVP, illimité — à instrumenter pour mesurer)
 - Tri par date décroissante
 
 ### E4 — Nouvelle fiche, étape A (`/dashboard/new`)
 
 **Contenu**
+
 - Champ titre du contenu
 - Champ URL canonique du contenu (YouTube, blog, etc.)
 - Sélecteur de plateforme (YouTube, podcast, blog/article, X/Bluesky, autre)
@@ -167,6 +182,7 @@ Sami fait la même chose que Marc, mais en mode plus systématique. Il compare l
 ### E5 — Nouvelle fiche, étape B (`/dashboard/new/sources`)
 
 **Contenu**
+
 - Liste vide initialement, bouton "Ajouter une source"
 - Formulaire d'ajout d'une source :
   - URL (obligatoire)
@@ -180,6 +196,7 @@ Sami fait la même chose que Marc, mais en mode plus systématique. Il compare l
 - Boutons "Précédent", "Publier la fiche"
 
 **Comportement**
+
 - À l'ajout d'une URL, requête asynchrone vers Wayback pour archiver
 - Validation : au moins 1 source pour publier
 - Sauvegarde brouillon automatique toutes les 30 secondes
@@ -189,6 +206,7 @@ Sami fait la même chose que Marc, mais en mode plus systématique. Il compare l
 C'est l'écran le plus important. Voir la maquette visuelle validée précédemment.
 
 **Contenu (de haut en bas)**
+
 - Bandeau supérieur discret : `fiche bibliographique · philum.app/@lea-c/arctique-2026`
 - Titre du contenu en serif, élégant
 - Identité du créateur (avatar, nom, badge "vérifié Google", description courte, date)
@@ -207,6 +225,7 @@ C'est l'écran le plus important. Voir la maquette visuelle validée précédemm
 - Actions : Partager, Embarquer (placeholder phase 2), Exporter PDF
 
 **Comportement**
+
 - Page statique générée côté serveur (SSR) pour SEO et OpenGraph
 - Graphe interactif côté client (Svelte)
 - OpenGraph riche : image dynamique générée à la volée
@@ -214,6 +233,7 @@ C'est l'écran le plus important. Voir la maquette visuelle validée précédemm
 ### E7 — Page-identité du créateur (`/@pseudo`)
 
 **Contenu**
+
 - Avatar grand format, nom, description courte, comptes externes liés (en phase 2 : YouTube, X)
 - Statistiques globales : nombre de fiches publiées, nombre total de sources, nombre total de citations
 - Liste chronologique des fiches publiées
@@ -221,6 +241,7 @@ C'est l'écran le plus important. Voir la maquette visuelle validée précédemm
 - Section "Droit de réponse" (à venir en phase 2)
 
 **Comportement**
+
 - Page statique générée côté serveur
 - Cache invalidé à chaque publication de fiche
 - JSON-LD/Schema.org riche pour l'indexation par les IA
@@ -233,22 +254,22 @@ C'est l'écran le plus important. Voir la maquette visuelle validée précédemm
 
 ## Features priorisées
 
-| ID | Feature | Priorité | Estimation |
-|---|---|---|---|
-| F01 | OAuth Google + création utilisateur | P0 | 0.5j |
-| F02 | Modèle de données + migrations | P0 | 0.5j |
-| F03 | Création de fiche (CRUD basique) | P0 | 1j |
-| F04 | Ajout/suppression de sources | P0 | 0.5j |
-| F05 | Archivage Wayback Machine asynchrone | P0 | 0.5j |
-| F06 | Hash + signature Ed25519 de la fiche | P0 | 0.5j |
-| F07 | Page publique de fiche (statique + graphe) | P0 | 1.5j |
-| F08 | Page-identité créateur (basique) | P1 | 0.5j |
-| F09 | OpenGraph dynamique | P1 | 0.5j |
-| F10 | Export PDF de la fiche | P2 | 0.5j |
-| F11 | Tableau de bord créateur | P1 | 0.5j |
-| F12 | Page d'accueil publique | P1 | 0.5j |
-| F13 | Modèles dbt + analytics | P1 | 0.5j |
-| F14 | Tests et documentation | P0 | 0.5j |
+| ID  | Feature                                    | Priorité | Estimation |
+| --- | ------------------------------------------ | -------- | ---------- |
+| F01 | OAuth Google + création utilisateur        | P0       | 0.5j       |
+| F02 | Modèle de données + migrations             | P0       | 0.5j       |
+| F03 | Création de fiche (CRUD basique)           | P0       | 1j         |
+| F04 | Ajout/suppression de sources               | P0       | 0.5j       |
+| F05 | Archivage Wayback Machine asynchrone       | P0       | 0.5j       |
+| F06 | Hash + signature Ed25519 de la fiche       | P0       | 0.5j       |
+| F07 | Page publique de fiche (statique + graphe) | P0       | 1.5j       |
+| F08 | Page-identité créateur (basique)           | P1       | 0.5j       |
+| F09 | OpenGraph dynamique                        | P1       | 0.5j       |
+| F10 | Export PDF de la fiche                     | P2       | 0.5j       |
+| F11 | Tableau de bord créateur                   | P1       | 0.5j       |
+| F12 | Page d'accueil publique                    | P1       | 0.5j       |
+| F13 | Modèles dbt + analytics                    | P1       | 0.5j       |
+| F14 | Tests et documentation                     | P0       | 0.5j       |
 
 **Total estimé** : 8-9 jours pour un solo développeur assisté IA. **Sur 7 jours, certaines features P2 sont reportées.**
 
@@ -265,4 +286,4 @@ Le MVP est considéré réussi si :
 
 ---
 
-*Pour l'architecture technique, voir [`02-tech-architecture.md`](./02-tech-architecture.md).*
+_Pour l'architecture technique, voir [`02-tech-architecture.md`](./02-tech-architecture.md)._

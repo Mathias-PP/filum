@@ -4,39 +4,39 @@ title: "[DataEng] "
 labels: ["data-engineering", "triage"]
 assignees: []
 body:
-  - type: dropdown
-    id: component
-    attributes:
-      label: Component
-      options:
-        - PostgreSQL (transactional data)
-        - DuckDB (analytics)
-        - dbt models
-        - Data pipeline
-        - ETL/ELT
-        - Data quality
+    - type: dropdown
+      id: component
+      attributes:
+          label: Component
+          options:
+              - PostgreSQL (transactional data)
+              - DuckDB (analytics)
+              - dbt models
+              - Data pipeline
+              - ETL/ELT
+              - Data quality
 
-  - type: textarea
-    id: description
-    attributes:
-      label: Description
-      description: Detailed description of the data engineering task
+    - type: textarea
+      id: description
+      attributes:
+          label: Description
+          description: Detailed description of the data engineering task
 
-    validations:
-      required: true
+      validations:
+          required: true
 
-  - type: textarea
-    id: requirements
-    attributes:
-      label: Requirements
-      description: |
-        - Data sources
-        - transformations needed
-        - Quality checks
-        - SLA/schedule
+    - type: textarea
+      id: requirements
+      attributes:
+          label: Requirements
+          description: |
+              - Data sources
+              - transformations needed
+              - Quality checks
+              - SLA/schedule
 
-  - type: textarea
-    id: acceptance
-    attributes:
-      label: Acceptance Criteria
-      description: What defines a successful implementation?
+    - type: textarea
+      id: acceptance
+      attributes:
+          label: Acceptance Criteria
+          description: What defines a successful implementation?

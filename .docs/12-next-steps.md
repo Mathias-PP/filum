@@ -42,13 +42,13 @@ Avant de coder, **interview 3 créateurs cibles** sur ces points. Sans validatio
 
 ### 2.2 Comparatif fournisseurs (free-tier first, ADR-style)
 
-| Fournisseur | Free tier | Egress | Decentralisé | Verdict pour Philum |
-|---|---|---|---|---|
-| **Cloudflare R2** | 10 GB stockage + 1M ops/mois | **0$ egress** | non | ⭐ recommandé. S3-compatible, zero egress = critique pour servir du contenu. Pas de vendor lock-in. |
-| **Backblaze B2** | 10 GB stockage | 1 GB/jour gratuit puis 0.01$/GB | non | Bon backup secondaire. Plus mature que R2 pour la durabilité. |
-| **AWS S3** | 5 GB 12 mois | 0.09$/GB (cher) | non | À éviter en MVP : payant rapidement, egress prohibitif si Philum prend. |
-| **IPFS public + Pinata/web3.storage** | 1 GB pinning | gratuit | oui | Aligné avec mission Philum (décentralisation), mais latence + complexité opérationnelle élevées. À évaluer en phase 2 comme couche additionnelle, pas remplacement. |
-| **Internet Archive** | illimité | gratuit | partiellement | API d'upload existe (`internetarchive` lib Python). Excellent pour archivage long terme mais pas pour streaming live. À combiner avec R2. |
+| Fournisseur                           | Free tier                    | Egress                          | Decentralisé  | Verdict pour Philum                                                                                                                                                 |
+| ------------------------------------- | ---------------------------- | ------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Cloudflare R2**                     | 10 GB stockage + 1M ops/mois | **0$ egress**                   | non           | ⭐ recommandé. S3-compatible, zero egress = critique pour servir du contenu. Pas de vendor lock-in.                                                                 |
+| **Backblaze B2**                      | 10 GB stockage               | 1 GB/jour gratuit puis 0.01$/GB | non           | Bon backup secondaire. Plus mature que R2 pour la durabilité.                                                                                                       |
+| **AWS S3**                            | 5 GB 12 mois                 | 0.09$/GB (cher)                 | non           | À éviter en MVP : payant rapidement, egress prohibitif si Philum prend.                                                                                             |
+| **IPFS public + Pinata/web3.storage** | 1 GB pinning                 | gratuit                         | oui           | Aligné avec mission Philum (décentralisation), mais latence + complexité opérationnelle élevées. À évaluer en phase 2 comme couche additionnelle, pas remplacement. |
+| **Internet Archive**                  | illimité                     | gratuit                         | partiellement | API d'upload existe (`internetarchive` lib Python). Excellent pour archivage long terme mais pas pour streaming live. À combiner avec R2.                           |
 
 **Reco MVP** : **R2 comme stockage principal**, **Internet Archive comme miroir d'archivage long terme**. Implémentation découplée pour ajouter B2 ou IPFS plus tard sans refonte.
 
@@ -85,11 +85,11 @@ Avant de coder, **interview 3 créateurs cibles** sur ces points. Sans validatio
 
 ### 3.2 Cible
 
-| Service | Rôle | API |
-|---|---|---|
-| Wayback Machine | Source primaire (réseau de confiance, déjà branché) | `GET /save/{url}` |
-| Archive.today (archive.ph) | Backup, capture les JS-heavy pages que Wayback rate | `POST /submit/?url={url}` (rate-limité, headless OK) |
-| Snapshot HTML + screenshot Philum | Dernier recours pour les pages que ni Wayback ni Archive.today ne capturent (paywall, intranet sensible) | Playwright headless dans worker, stocké sur R2 |
+| Service                           | Rôle                                                                                                     | API                                                  |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Wayback Machine                   | Source primaire (réseau de confiance, déjà branché)                                                      | `GET /save/{url}`                                    |
+| Archive.today (archive.ph)        | Backup, capture les JS-heavy pages que Wayback rate                                                      | `POST /submit/?url={url}` (rate-limité, headless OK) |
+| Snapshot HTML + screenshot Philum | Dernier recours pour les pages que ni Wayback ni Archive.today ne capturent (paywall, intranet sensible) | Playwright headless dans worker, stocké sur R2       |
 
 ### 3.3 Découpage
 
@@ -166,9 +166,10 @@ Avant de coder, **interview 3 créateurs cibles** sur ces points. Sans validatio
 Inchangé depuis `10-mvp-completion-plan.md` §5 : pas de Sentry/Plausible avant signal utilisateur, pas de domaine custom avant 5 créateurs actifs, pas de C2PA avant phase 3, pas de MCP server avant API publique stable.
 
 S'ajoute :
+
 - **Pas d'IA générative pour produire des bibliographies** : Philum n'est pas Perplexity. La valeur produit = sourçage humain + traçabilité, pas génération automatique.
 - **Pas de social features** (commentaires, follows, like) : ce n'est pas un réseau social, c'est une infrastructure.
 
 ---
 
-*Document à actualiser après chaque axe livré. Si un axe est invalidé (interview produit négative, blocage technique majeur), le marquer explicitement plutôt que de le laisser en l'état.*
+_Document à actualiser après chaque axe livré. Si un axe est invalidé (interview produit négative, blocage technique majeur), le marquer explicitement plutôt que de le laisser en l'état._

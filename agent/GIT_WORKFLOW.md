@@ -28,6 +28,7 @@ Toute modification qui rentre dans **au moins** une de ces catégories :
 ### Ne pas créer une branche, mais éditer en local + commit sur la branche courante ⚠️
 
 Uniquement si :
+
 - L'agent est explicitement en train de finaliser une branche existante.
 - Le commit corrige un bug qui empêche le test local de la même branche.
 
@@ -39,14 +40,14 @@ Pour de l'exploration brouillon. Mais **ne jamais** laisser une session se termi
 
 ## Nomenclature des branches
 
-| Préfixe | Usage | Exemple |
-|---|---|---|
-| `feat/` | Nouvelle fonctionnalité | `feat/oauth-google-callback` |
-| `fix/` | Correction de bug | `fix/wayback-rate-limit-retry` |
-| `docs/` | Documentation pure (aucun code) | `docs/agent-autonomy-and-mvp-strategy` |
-| `chore/` | Maintenance, deps, CI | `chore/bump-vite-plugin-svelte-vitest` |
-| `refactor/` | Réorganisation sans changement de comportement | `refactor/services-card-split` |
-| `test/` | Ajout de tests uniquement | `test/auth-integration-cookie-flow` |
+| Préfixe     | Usage                                          | Exemple                                |
+| ----------- | ---------------------------------------------- | -------------------------------------- |
+| `feat/`     | Nouvelle fonctionnalité                        | `feat/oauth-google-callback`           |
+| `fix/`      | Correction de bug                              | `fix/wayback-rate-limit-retry`         |
+| `docs/`     | Documentation pure (aucun code)                | `docs/agent-autonomy-and-mvp-strategy` |
+| `chore/`    | Maintenance, deps, CI                          | `chore/bump-vite-plugin-svelte-vitest` |
+| `refactor/` | Réorganisation sans changement de comportement | `refactor/services-card-split`         |
+| `test/`     | Ajout de tests uniquement                      | `test/auth-integration-cookie-flow`    |
 
 **Format** : `<préfixe>/<sujet-court-kebab-case>`. Max 50 caractères au total.
 
@@ -154,16 +155,16 @@ Le `--delete-branch` est obligatoire (anti-multiplication). Le `--squash` est ob
 
 8 jobs sur main, tous doivent rester verts :
 
-| Job | Comment l'anticiper en local |
-|---|---|
-| Security Scan (Trivy + TruffleHog) | `git diff --staged` : aucun token, clé, mot de passe |
-| Lint Backend (ruff) | `cd apps/backend && uv run ruff check .` puis `uv run ruff format .` |
-| Type Check Backend (mypy) | `cd apps/backend && uv run mypy app/ --ignore-missing-imports` |
-| Test Backend (pytest) | `cd apps/backend && uv run pytest tests/ -v` (⚠️ ne passe pas sur Windows — voir `PITFALLS.md`) |
-| Lint Frontend (eslint+prettier) | `cd apps/frontend && pnpm run lint` |
-| Test Frontend (vitest) | `cd apps/frontend && pnpm run test` |
-| Build Frontend (vite, frozen lockfile) | `cd apps/frontend && pnpm install --frozen-lockfile && pnpm run build` |
-| Analytics Check (dbt compile) | `cd apps/analytics && uv run dbt compile` |
+| Job                                    | Comment l'anticiper en local                                                                    |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Security Scan (Trivy + TruffleHog)     | `git diff --staged` : aucun token, clé, mot de passe                                            |
+| Lint Backend (ruff)                    | `cd apps/backend && uv run ruff check .` puis `uv run ruff format .`                            |
+| Type Check Backend (mypy)              | `cd apps/backend && uv run mypy app/ --ignore-missing-imports`                                  |
+| Test Backend (pytest)                  | `cd apps/backend && uv run pytest tests/ -v` (⚠️ ne passe pas sur Windows — voir `PITFALLS.md`) |
+| Lint Frontend (eslint+prettier)        | `cd apps/frontend && pnpm run lint`                                                             |
+| Test Frontend (vitest)                 | `cd apps/frontend && pnpm run test`                                                             |
+| Build Frontend (vite, frozen lockfile) | `cd apps/frontend && pnpm install --frozen-lockfile && pnpm run build`                          |
+| Analytics Check (dbt compile)          | `cd apps/analytics && uv run dbt compile`                                                       |
 
 **Règle** : avant `git push`, lancer au minimum le lint et le format. Idéalement, lancer aussi les tests pertinents au scope de la PR.
 
@@ -192,6 +193,7 @@ Préférer `rebase` à `merge` pour garder un historique linéaire. Préférer `
 ### Migration Alembic en cours dans une PR concurrente
 
 Si une autre PR ajoute une migration `00X_...` et la tienne aussi : conflit logique sur l'ID. Résoudre en :
+
 1. Rebase sur main
 2. Renommer ta migration en `00X+1_...`
 3. Mettre à jour le `down_revision` de ta migration
@@ -200,6 +202,7 @@ Si une autre PR ajoute une migration `00X_...` et la tienne aussi : conflit logi
 ### Branche que tu n'as pas créée
 
 Si tu reprends une branche existante (ex: PR draft du dev) :
+
 1. `git fetch origin && git checkout <branche>`
 2. `git log --oneline -10` pour comprendre l'état
 3. Lire la description de la PR
@@ -256,4 +259,4 @@ git push origin <ma-branche>
 
 ---
 
-*Toute violation de ce workflow constatée doit être consignée dans `PITFALLS.md` avec la cause racine pour ne plus la reproduire.*
+_Toute violation de ce workflow constatée doit être consignée dans `PITFALLS.md` avec la cause racine pour ne plus la reproduire._

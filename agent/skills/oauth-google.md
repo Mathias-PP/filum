@@ -13,6 +13,7 @@ Le projet avait le scaffolding auth (cookies, JWT HS256, endpoint `/me`, `/logou
 ## Pré-requis humain (l'agent ne peut pas faire)
 
 Le développeur doit :
+
 1. Créer un projet OAuth dans Google Cloud Console
 2. Récupérer `client_id` + `client_secret`
 3. Déclarer la redirect URI : `https://filum-production-07bb.up.railway.app/api/v1/auth/google/callback`

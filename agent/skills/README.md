@@ -10,15 +10,15 @@
 
 L'agent ne lit un skill que quand sa tâche en relève. Il **n'ouvre pas** tous les skills systématiquement (coût attention).
 
-| Tâche | Skill |
-|---|---|
-| Toute migration de schéma BDD | [alembic-migrations](./alembic-migrations.md) |
-| Composant Svelte, route, store, SSR | [frontend-svelte](./frontend-svelte.md) |
-| Nouvel endpoint FastAPI, schéma Pydantic, service | [backend-fastapi](./backend-fastapi.md) |
-| OAuth Google (jalon M1) | [oauth-google](./oauth-google.md) |
-| Endpoint public sensible (extracteur, publish) | [rate-limiting](./rate-limiting.md) |
-| Modification CI, déploiement | [ci-cd](./ci-cd.md) |
-| Logs, monitoring, erreurs runtime | [observability](./observability.md) |
+| Tâche                                             | Skill                                         |
+| ------------------------------------------------- | --------------------------------------------- |
+| Toute migration de schéma BDD                     | [alembic-migrations](./alembic-migrations.md) |
+| Composant Svelte, route, store, SSR               | [frontend-svelte](./frontend-svelte.md)       |
+| Nouvel endpoint FastAPI, schéma Pydantic, service | [backend-fastapi](./backend-fastapi.md)       |
+| OAuth Google (jalon M1)                           | [oauth-google](./oauth-google.md)             |
+| Endpoint public sensible (extracteur, publish)    | [rate-limiting](./rate-limiting.md)           |
+| Modification CI, déploiement                      | [ci-cd](./ci-cd.md)                           |
+| Logs, monitoring, erreurs runtime                 | [observability](./observability.md)           |
 
 ---
 
@@ -64,4 +64,4 @@ Pourquoi ce skill existe (1-3 phrases). Quel problème il résout.
 
 ---
 
-*Ce répertoire grossit organiquement. Pas plus d'1 skill par sujet. Pas de skill « divers ».*
+_Ce répertoire grossit organiquement. Pas plus d'1 skill par sujet. Pas de skill « divers »._

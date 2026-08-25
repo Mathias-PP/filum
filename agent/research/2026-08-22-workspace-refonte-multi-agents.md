@@ -3,6 +3,7 @@
 > **Objet** : le workspace `/dashboard/workspace` a été livré en PR #532 comme un
 > éditeur générique de fichiers Markdown adossé aux endpoints `/agent/workspace/*`.
 > Cet audit répond à trois questions posées par l'utilisateur :
+>
 > 1. À quoi sert-il vraiment ? Quelle est sa valeur pour un créateur ?
 > 2. Y a-t-il des fichiers de config d'agent qui devraient exister d'origine ?
 > 3. Le workspace peut-il devenir un espace de choix / personnalisation d'agents
@@ -163,17 +164,17 @@ en français kebab-case. L'UI ne doit **pas les renommer** ; elle doit les
 est le nom dans l'UI. Une fois cette règle posée, la sobriété est mécanique :
 c'est l'auteur du fichier qui l'a nommé, pas la couche présentation.
 
-| Fichier (nom = titre UI) | Une phrase de contrat |
-|---|---|
-| `shared/style-redactionnel.md` | Style, longueurs, typographie de tout texte que l'agent écrit. |
-| `shared/principes-editoriaux.md` | Cinq propriétés d'une fiche que l'agent vise. |
-| `shared/garde-fous.md` | Actions que l'agent refuse d'exécuter. |
-| `shared/philum-mcp.md` | Référence des outils MCP Philum et de leur usage. |
-| `shared/pieges-vecus.md` | Erreurs passées à ne pas répéter. |
-| `_core/templates/brief.md` | Squelette de brief à copier pour démarrer une fiche. |
-| `_core/templates/source.md` | Squelette d'une entrée source. |
-| `_core/templates/extrait.md` | Squelette d'un extrait vérifié. |
-| `stages/01-brief/CONTEXT.md` … `stages/07-publication/CONTEXT.md` | Contrat d'entrée / process / sortie d'une étape du pipeline. |
+| Fichier (nom = titre UI)                                          | Une phrase de contrat                                          |
+| ----------------------------------------------------------------- | -------------------------------------------------------------- |
+| `shared/style-redactionnel.md`                                    | Style, longueurs, typographie de tout texte que l'agent écrit. |
+| `shared/principes-editoriaux.md`                                  | Cinq propriétés d'une fiche que l'agent vise.                  |
+| `shared/garde-fous.md`                                            | Actions que l'agent refuse d'exécuter.                         |
+| `shared/philum-mcp.md`                                            | Référence des outils MCP Philum et de leur usage.              |
+| `shared/pieges-vecus.md`                                          | Erreurs passées à ne pas répéter.                              |
+| `_core/templates/brief.md`                                        | Squelette de brief à copier pour démarrer une fiche.           |
+| `_core/templates/source.md`                                       | Squelette d'une entrée source.                                 |
+| `_core/templates/extrait.md`                                      | Squelette d'un extrait vérifié.                                |
+| `stages/01-brief/CONTEXT.md` … `stages/07-publication/CONTEXT.md` | Contrat d'entrée / process / sortie d'une étape du pipeline.   |
 
 **Organisation UI** : trois sections empilées, chacune n'est qu'un regroupement
 visuel (rien n'est renommé, rien n'est déplacé) :
@@ -210,15 +211,15 @@ workspace à injecter), et un **modèle recommandé**.
 
 **Agents à seeder par défaut** :
 
-| Agent | Rôle | Outils | Contexte |
-|---|---|---|---|
-| **Assistant général** | Répond à tout, celui qu'on a aujourd'hui | Tous | `shared/*` |
-| **Rechercheur** | Trouve des sources sur un sujet, vérifie qu'elles existent | `web_search`, `fetch_url`, `find_cards_citing`, `get_url_metadata`, `import_from_content_url` | `shared/philum-mcp.md`, `stages/02-sources-collectees/*` |
-| **Bibliographe** | Ajoute, valide, enrichit les sources d'une fiche | `add_source`, `update_source`, `add_sources_batch`, `parse_biblio`, `list_sources` | `shared/philum-mcp.md`, `shared/style-redactionnel.md`, `stages/02-sources-collectees/*`, `_core/templates/source.md` |
-| **Extracteur** | Identifie, verbatim, positionne les extraits | `suggest_excerpts`, `add_excerpt`, `verify_excerpts`, `update_excerpt`, `annotate_excerpt` | `shared/garde-fous.md` (bloc « Sur les extraits »), `stages/04-extraits/*`, `_core/templates/extrait.md` |
-| **Rédacteur de fiche** | Écrit brief, description, connexions | `create_card`, `update_card`, `set_content_text` | `shared/style-redactionnel.md`, `shared/principes-editoriaux.md`, `stages/01-brief/CONTEXT.md`, `_core/templates/brief.md` |
-| **Relecteur** | Audit final avant publication | `get_card`, `list_sources`, `search_my_excerpts`, `verify_excerpts` (lecture seule) | `shared/principes-editoriaux.md`, `stages/06-relecture/CONTEXT.md` |
-| **Publicateur** | Valide, publie, atteste | `publish_card`, `create_content_attestation`, `archive_sources` | `stages/07-publication/CONTEXT.md`, `shared/garde-fous.md` |
+| Agent                  | Rôle                                                       | Outils                                                                                        | Contexte                                                                                                                   |
+| ---------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| **Assistant général**  | Répond à tout, celui qu'on a aujourd'hui                   | Tous                                                                                          | `shared/*`                                                                                                                 |
+| **Rechercheur**        | Trouve des sources sur un sujet, vérifie qu'elles existent | `web_search`, `fetch_url`, `find_cards_citing`, `get_url_metadata`, `import_from_content_url` | `shared/philum-mcp.md`, `stages/02-sources-collectees/*`                                                                   |
+| **Bibliographe**       | Ajoute, valide, enrichit les sources d'une fiche           | `add_source`, `update_source`, `add_sources_batch`, `parse_biblio`, `list_sources`            | `shared/philum-mcp.md`, `shared/style-redactionnel.md`, `stages/02-sources-collectees/*`, `_core/templates/source.md`      |
+| **Extracteur**         | Identifie, verbatim, positionne les extraits               | `suggest_excerpts`, `add_excerpt`, `verify_excerpts`, `update_excerpt`, `annotate_excerpt`    | `shared/garde-fous.md` (bloc « Sur les extraits »), `stages/04-extraits/*`, `_core/templates/extrait.md`                   |
+| **Rédacteur de fiche** | Écrit brief, description, connexions                       | `create_card`, `update_card`, `set_content_text`                                              | `shared/style-redactionnel.md`, `shared/principes-editoriaux.md`, `stages/01-brief/CONTEXT.md`, `_core/templates/brief.md` |
+| **Relecteur**          | Audit final avant publication                              | `get_card`, `list_sources`, `search_my_excerpts`, `verify_excerpts` (lecture seule)           | `shared/principes-editoriaux.md`, `stages/06-relecture/CONTEXT.md`                                                         |
+| **Publicateur**        | Valide, publie, atteste                                    | `publish_card`, `create_content_attestation`, `archive_sources`                               | `stages/07-publication/CONTEXT.md`, `shared/garde-fous.md`                                                                 |
 
 **Effets concrets** :
 
@@ -282,7 +283,9 @@ layer: L3
 usedBy: [assistant, redacteur, bibliographe, extracteur, relecteur]
 lastVerified: 2026-08-22
 ---
+
 # La voix : ce qu'un texte Philum sonne
+
 ...
 ```
 
@@ -319,9 +322,9 @@ Exemple `agents/bibliographe.yaml` :
 slug: bibliographe
 name: Bibliographe
 contract: "Ajoute, valide et enrichit les sources d'une fiche."
-layer: L2                              # agent = control point du workflow
+layer: L2 # agent = control point du workflow
 model:
-  hint: gemini-3.6-flash               # plus léger qu'un flagship
+  hint: gemini-3.6-flash # plus léger qu'un flagship
   fallback: [claude-sonnet-4.6, gpt-4o-mini]
 allowed_tools:
   - add_source
@@ -330,7 +333,7 @@ allowed_tools:
   - parse_biblio
   - list_sources
   - get_source
-  - fetch_url                          # pour vérifier une URL avant d'ajouter
+  - fetch_url # pour vérifier une URL avant d'ajouter
 context_paths:
   - shared/philum-mcp.md
   - shared/style-redactionnel.md
@@ -366,15 +369,15 @@ Effets :
 
 **Récapitulatif** :
 
-| Type de contenu | Format | Pourquoi |
-|---|---|---|
-| Prose lue par le LLM (prompt, principes, voix, garde-fous) | Markdown | Densité tokens, structure sémantique |
-| Métadonnées d'un fichier (contract, layer, usedBy) | Frontmatter YAML | Machine-parseable sans casser la lecture |
-| Définition d'agent (outils, contexte, modèle, prompt) | YAML pur | Config structurée, validée, versionnable |
-| Contrat de stage (inputs, process, outputs, human checks) | Markdown + frontmatter YAML | Contrat lu par le LLM + méta indexable |
-| Squelette copié dans un run | Markdown | Édition humaine directe |
-| Payload API externe (MCP, provider LLM) | JSON | Contrat externe imposé |
-| Rendu visuel | HTML | Non applicable ici |
+| Type de contenu                                            | Format                      | Pourquoi                                 |
+| ---------------------------------------------------------- | --------------------------- | ---------------------------------------- |
+| Prose lue par le LLM (prompt, principes, voix, garde-fous) | Markdown                    | Densité tokens, structure sémantique     |
+| Métadonnées d'un fichier (contract, layer, usedBy)         | Frontmatter YAML            | Machine-parseable sans casser la lecture |
+| Définition d'agent (outils, contexte, modèle, prompt)      | YAML pur                    | Config structurée, validée, versionnable |
+| Contrat de stage (inputs, process, outputs, human checks)  | Markdown + frontmatter YAML | Contrat lu par le LLM + méta indexable   |
+| Squelette copié dans un run                                | Markdown                    | Édition humaine directe                  |
+| Payload API externe (MCP, provider LLM)                    | JSON                        | Contrat externe imposé                   |
+| Rendu visuel                                               | HTML                        | Non applicable ici                       |
 
 **Conséquence pratique pour la Phase 1** : ajouter le frontmatter YAML aux 12
 fichiers du seed existant (2 champs minimum : `contract`, `layer`). Le backend
@@ -455,7 +458,7 @@ Deux onglets en tête :
 - Boutons : « Cloner », « Éditer » (sur clones seulement), « Ouvrir une conversation
   avec cet agent » (raccourci vers `/dashboard/chat?agent=rechercheur`).
 - Bouton « Nouvel agent » : formulaire nom + description + prompt + outils cochés
-  + fichiers de contexte cochés.
+  - fichiers de contexte cochés.
 
 **Onglet « Fichiers »** (l'actuel, avancé)
 
@@ -477,22 +480,26 @@ Le nom de l'agent apparaît dans l'en-tête de la conversation à côté du titr
 ## 6. Feuille de route recommandée
 
 **Phase 1 (S)** — Rendre visible ce qui existe déjà :
+
 - Onglet « Fichiers » avec les groupes par fonction (§3.1), sans changer le backend.
 - Header pédagogique + descriptions par fichier.
 - Effort : 1-2 j frontend, 0 backend.
 
 **Phase 2 (M)** — Introduire les agents nommés :
+
 - Modèle `AgentDefinition` + migration + seed 7 builtins.
 - Modification de `boucle()` pour filtrer registre et contexte selon l'agent.
 - Endpoints CRUD + sélecteur frontend.
 - Effort : 4-6 j full-stack.
 
 **Phase 3 (M-L, différée)** — Personnalisation :
+
 - Cloner et éditer des agents.
 - Interpolation `{{path}}` dans les prompts système.
 - Effort : 3-4 j.
 
 **Phase 4 (à évaluer)** — Sous-agents et orchestration :
+
 - Décider seulement après avoir mesuré l'usage réel des agents de la phase 2.
 - Ne pas construire une architecture d'orchestration avant d'avoir la preuve que
   le pipeline manuel « je change d'agent à chaque étape » est insuffisant.

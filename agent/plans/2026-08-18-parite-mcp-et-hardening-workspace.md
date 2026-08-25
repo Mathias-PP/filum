@@ -20,13 +20,13 @@ L'utilisateur a validé : parité totale (P1+P2+P3), avec **le workspace fixé e
 
 Cinq PRs, une par chantier, mergées et déployées en série pour éviter les cascades de conflits.
 
-| PR | Chantier | Fichiers | Poids |
-|---|---|---|---|
-| A | Hardening workspace créateur-de-fiches | 6 fichiers `workspaces/createur-de-fiches/` | Docs |
-| B | MCP P1 — mutations essentielles | `mcp_server/tools_write.py`, `server.py`, tests, `shared/philum-mcp.md` | Backend + tests |
-| C | MCP P2 — extract, suggest, archive, listing | Mêmes fichiers, +10 tools | Backend + tests |
-| D | MCP P3 — attestations, citations, batch | Mêmes fichiers, +10 tools | Backend + tests |
-| E | Consolidation workspace post-parité | `shared/philum-mcp.md` + retrait des workarounds REST des `stages/*/CONTEXT.md` | Docs |
+| PR  | Chantier                                    | Fichiers                                                                        | Poids           |
+| --- | ------------------------------------------- | ------------------------------------------------------------------------------- | --------------- |
+| A   | Hardening workspace créateur-de-fiches      | 6 fichiers `workspaces/createur-de-fiches/`                                     | Docs            |
+| B   | MCP P1 — mutations essentielles             | `mcp_server/tools_write.py`, `server.py`, tests, `shared/philum-mcp.md`         | Backend + tests |
+| C   | MCP P2 — extract, suggest, archive, listing | Mêmes fichiers, +10 tools                                                       | Backend + tests |
+| D   | MCP P3 — attestations, citations, batch     | Mêmes fichiers, +10 tools                                                       | Backend + tests |
+| E   | Consolidation workspace post-parité         | `shared/philum-mcp.md` + retrait des workarounds REST des `stages/*/CONTEXT.md` | Docs            |
 
 ---
 
@@ -39,6 +39,7 @@ Cinq PRs, une par chantier, mergées et déployées en série pour éviter les c
 - **`workspaces/createur-de-fiches/AGENTS.md`** : ajouter une section « Démarrer une fiche » en tête (avant la routing table). Trois lignes actionnables : `cp -r runs/_example runs/<slug>` → remplir `00-brief.md` → lancer `stages/01-brief/`. Sans cette section, un agent doit lire quatre fichiers pour trouver son point d'entrée.
 
 - **`workspaces/createur-de-fiches/shared/style-redactionnel.md`** : trancher la règle des tirets cadratins. Formulation retenue :
+
   > Pas de cadratins (`—`), sauf s'il y en a dans le verbatim exact. Autrement dit : interdits dans toute prose éditoriale (titre, description, annotation, titre d'extrait, `context`, commentaires), préservés dans le champ `text` d'un extrait quand la source les utilise. Remplacer un cadratin par une virgule dans un verbatim falsifie ce que la source a écrit.
 
 - **`workspaces/createur-de-fiches/shared/philum-mcp.md`** : enrichir la section « Ce que les tools MCP NE FONT PAS » avec les vrais endpoints REST à appeler manuellement (jusqu'à ce que le chantier B/C/D les wrappe). Ajouter une nouvelle section « Gotchas » listant : URL immuable après `add_source`, DELETE retourne 204 sans corps JSON, position des sources = ordre d'insertion (pas de reorder), `text` d'extrait plafonné à 1000 caractères, la dédup par URL/DOI de `add_source` (un second appel avec les mêmes URL/DOI met à jour la source existante au lieu d'en créer une).
@@ -116,9 +117,7 @@ Dans `tools_write.py`, `tools.py` ou fichiers dédiés selon regroupement (`tool
 9. `list_sources(db, user, *, card_slug)` : GET /sources?card_id=. Sources d'une fiche.
 10. `search_my_excerpts(db, user, *, query, limit=20)` : GET /excerpts/search. Recherche full-text dans les extraits du user.
 
-Plus deux tools de cycle de vie :
-11. `delete_card(db, user, *, slug)` : soft-delete (rejoint la corbeille).
-12. `restore_card(db, user, *, slug)` : sortir de la corbeille.
+Plus deux tools de cycle de vie : 11. `delete_card(db, user, *, slug)` : soft-delete (rejoint la corbeille). 12. `restore_card(db, user, *, slug)` : sortir de la corbeille.
 
 ### Fichiers modifiés
 

@@ -20,11 +20,13 @@ Lors de l'analyse initiale, plusieurs problèmes ont été identifiés à tort. 
 **Affirmation initiale** : `cards[-1]` lève IndexError si `cards` est vide.
 
 **Vérification code** : La ligne est en fait :
+
 ```python
 "first_published_at": cards[-1].published_at.isoformat()
 if cards and cards[-1].published_at
 else None,
 ```
+
 Le guard `if cards` (truthy check sur liste non-vide) protège l'accès. Aucun bug possible.
 
 ### ❌ CSRF — SameSite=None = vulnérable
@@ -32,6 +34,7 @@ Le guard `if cards` (truthy check sur liste non-vide) protège l'accès. Aucun b
 **Affirmation initiale** : SameSite=None en prod permet des attaques CSRF.
 
 **Vérification architecture** :
+
 - Le cookie de session est posé **via le proxy Vercel** → domaine = Vercel, pas Railway
 - Les appels API passent par le proxy → same-origin → SameSite n'a même pas besoin d'être None
 - SameSite=None n'est nécessaire que pour le flux OAuth (Google redirige vers Vercel → proxy → Railway → set-cookie retour via Vercel)
@@ -107,6 +110,7 @@ Ces problèmes sont réels mais nécessitent plus de design, d'infrastructure, o
 **Problème** : L'archivage automatique de toute URL ajoutée (sauf archive manuelle) expose à un risque si un utilisateur soumet du contenu illicite. Le projet archive et potentiellement distribue ce contenu via Wayback Machine.
 
 **Mitigations recommandées** :
+
 - URL denylist synchrone (hash set de domaines connus) vérifiée AVANT appel Wayback
 - Bouton "Signaler" sur fiches publiques (sans auth)
 - CGU avec clause de non-responsabilité
@@ -130,14 +134,14 @@ Ces problèmes sont réels mais nécessitent plus de design, d'infrastructure, o
 
 Ces points ont été vérifiés et sont corrects :
 
-| Point | Fichier | Verdict |
-|-------|---------|---------|
-| `cors_origins` config | `config.py:39` | Correct — liste d'origines connues |
-| Session JWT expiration | `auth.py:21` | 24h, raisonnable |
-| OAuth state CSRF | `auth.py:173-179` | Oui, state cookie vérifié |
-| SSRF guard | `core/url_safety.py` | Oui, présent et fonctionnel |
-| Signature Ed25519 | `signing.py` | Correcte et cohérente |
-| Rate limiting | `sources.py:44` | 10/min sur endpoint extract |
+| Point                  | Fichier              | Verdict                            |
+| ---------------------- | -------------------- | ---------------------------------- |
+| `cors_origins` config  | `config.py:39`       | Correct — liste d'origines connues |
+| Session JWT expiration | `auth.py:21`         | 24h, raisonnable                   |
+| OAuth state CSRF       | `auth.py:173-179`    | Oui, state cookie vérifié          |
+| SSRF guard             | `core/url_safety.py` | Oui, présent et fonctionnel        |
+| Signature Ed25519      | `signing.py`         | Correcte et cohérente              |
+| Rate limiting          | `sources.py:44`      | 10/min sur endpoint extract        |
 
 ---
 
@@ -146,6 +150,7 @@ Ces points ont été vérifiés et sont corrects :
 Voir `.docs/14-philum-rename-migration.md` pour le plan complet.
 
 **État actuel** :
+
 - Phase 1 (texte frontend visible) : ✅ Réalisée dans `feat/rename-philum`
 - Phases 2-4 (docs, identifiants, backend, infra) : 📝 Documentées, non exécutées
 - Cette PR (`feat/audit-improvements`) : ne touche PAS au rename
@@ -154,4 +159,4 @@ Voir `.docs/14-philum-rename-migration.md` pour le plan complet.
 
 ---
 
-*Document à mettre à jour lors de la prochaine session d'amélioration.*
+_Document à mettre à jour lors de la prochaine session d'amélioration._

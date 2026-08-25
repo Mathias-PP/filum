@@ -30,6 +30,7 @@ la partie `user@host` de la RFC 3986 et bascule en mode recherche.
 #### Couche A — URL alternative sans `@` (implémentée le 2026-08-07)
 
 Nouvelles routes :
+
 - `/c/<createur>/<fiche>.md` → sert le markdown directement, `Link: rel="canonical"` vers `/@<createur>/<fiche>.md`
 - `/c/<createur>/<fiche>` → 301 vers `/@<createur>/<fiche>`
 
@@ -43,8 +44,8 @@ Sur la route canonique `/@<createur>/<fiche>`, respecter `Accept: text/markdown`
 ```ts
 // apps/frontend/src/routes/@[creator]/[card]/+page.server.ts (à créer)
 export const load: PageServerLoad = async ({ fetch, params, request, setHeaders }) => {
-  const accept = request.headers.get('accept') || '';
-  if (accept.includes('text/markdown') && !accept.includes('text/html')) {
+  const accept = request.headers.get("accept") || "";
+  if (accept.includes("text/markdown") && !accept.includes("text/html")) {
     // Servir le markdown depuis l'export API. Retourner un Response direct
     // n'est pas possible depuis load() ; utiliser +server.ts avec dispatch
     // sur la méthode Accept en amont, OU réserver Accept-based à une route
@@ -77,9 +78,13 @@ Format proposé par ChatGPT lui-même dans la conversation :
   "published_at": "...",
   "sources": [
     {
-      "url": "...", "title": "...", "authors": "...",
-      "published_at": "...", "doi": "...",
-      "archive_url": "...", "retracted": false,
+      "url": "...",
+      "title": "...",
+      "authors": "...",
+      "published_at": "...",
+      "doi": "...",
+      "archive_url": "...",
+      "retracted": false,
       "stance": "supports|contextualizes|refutes|null"
     }
   ]
@@ -113,6 +118,7 @@ Ce plan (2026-08-07) le listait par erreur comme « pending » parce que
 plan futur alors qu'il servait de spec au travail déjà réalisé.
 
 État réel en prod :
+
 - 7 étages implémentés dans `apps/backend/app/api/v1/endpoints/imports.py`
 - Modules dédiés : `section_detector.py`, `wikipedia_oracle.py`, `ref_dedup.py`, `ref_scorer.py`
 - Réponse enrichie : `extraction_confidence`, `refs_from_oracle`, `refs_from_enrichment`, `refs_dropped_validation`, `refs_dropped_scoring`, `refs_dropped_s2_hallucination`
@@ -128,6 +134,7 @@ plan futur alors qu'il servait de spec au travail déjà réalisé.
 ### Problème observé (2026-08-07)
 
 Sur `https://www.nature.com/articles/nrn3667` :
+
 - Le pipeline actuel : « Ce site a refusé la lecture automatique de la page. »
 - Copier-coller texte libre : « 0 référence importée » (avant fix du 2026-08-07)
 - Import RIS : fonctionne mais dates masquées (fix déployé 2026-08-07)
@@ -137,9 +144,10 @@ Sur `https://www.nature.com/articles/nrn3667` :
 #### 3a — Détection anti-scraping explicite (à faire)
 
 Améliorer le message d'échec pour distinguer :
+
 - Timeout / DNS → « Le site n'a pas répondu à temps »
 - 403 / 429 / 999 → « Le site a refusé la lecture automatique. Sur Nature,
-  utilisez le bouton *Cite* → *Download citation* pour obtenir un `.ris`. »
+  utilisez le bouton _Cite_ → _Download citation_ pour obtenir un `.ris`. »
 
 Fichier : `apps/backend/app/api/v1/endpoints/imports.py` (fonction
 `parse_content_url`) — remonter le statut HTTP dans le message.
@@ -201,6 +209,7 @@ Effort : 1 j (endpoint + tests + onglet).
 ## Chantier 6 — Audits persona (backlog #74-#77)
 
 Créer et auditer une fiche pour chacun des personas :
+
 - **Journaliste** : article de presse d'investigation (Mediapart, Le Monde, Reuters)
 - **Vulgarisateur** : vidéo YouTube longue avec biblio en description
 - **Écrivain** : essai de blog long format (Substack)
@@ -216,6 +225,7 @@ Effort : 0.5 j par persona.
 ## Chantier 7 — Audit visiteur (backlog #78)
 
 Auditer le parcours d'un visiteur non authentifié :
+
 - Contraste (WCAG AA sur tous les textes et icônes)
 - Lisibilité mobile (portrait 375×667, paysage tablette)
 - Charge cognitive du graphe sur écrans tactiles
@@ -228,14 +238,14 @@ Effort : 0.5 j.
 
 ## Priorisation suggérée
 
-| Ordre | Chantier | État |
-|---|---|---|
-| ~~P0~~ | 1B + 1C (content nego + JSON structuré) | ✅ fait 2026-08-07 (PR #291) |
-| ~~P1~~ | 2 (pipeline extraction v2) | ✅ fait 2026-07-23 (ADR-030) + fix DOI éditeur 2026-08-07 |
-| ~~P2~~ | 3a (détection anti-scraping) | ✅ fait 2026-08-07 (PR #291) |
-| ~~P3~~ | 4 + 5 (feed + recherche créateurs) | ✅ fait 2026-08-07 (PR #291) |
-| P4 | 6 (audits persona) | Pending — nécessite créer du vrai contenu |
-| P5 | 7 (audit visiteur) | Pending — nécessite test mobile |
+| Ordre  | Chantier                                | État                                                      |
+| ------ | --------------------------------------- | --------------------------------------------------------- |
+| ~~P0~~ | 1B + 1C (content nego + JSON structuré) | ✅ fait 2026-08-07 (PR #291)                              |
+| ~~P1~~ | 2 (pipeline extraction v2)              | ✅ fait 2026-07-23 (ADR-030) + fix DOI éditeur 2026-08-07 |
+| ~~P2~~ | 3a (détection anti-scraping)            | ✅ fait 2026-08-07 (PR #291)                              |
+| ~~P3~~ | 4 + 5 (feed + recherche créateurs)      | ✅ fait 2026-08-07 (PR #291)                              |
+| P4     | 6 (audits persona)                      | Pending — nécessite créer du vrai contenu                 |
+| P5     | 7 (audit visiteur)                      | Pending — nécessite test mobile                           |
 
 ## Hors scope de ce plan (par choix explicite)
 

@@ -14,19 +14,19 @@ Pour le détail : [`README.md`](./README.md) → [`.docs/00-vision.md`](.docs/00
 
 ## Où aller selon la question
 
-| Question | Fichier |
-|---|---|
-| Quel est l'état réel de la prod ? | [`STATE.md`](./STATE.md) section « État production vérifié » |
-| Qu'est-ce que je dois faire ensuite ? | [`STATE.md`](./STATE.md) section « Prochaines étapes par priorité » |
-| Stack, principes de code, nommage, structure du repo | [`agent/references/CODING_GUIDE.md`](./agent/references/CODING_GUIDE.md) |
-| Décisions techniques passées (ADRs) | [`DECISIONS.md`](./DECISIONS.md) |
-| Erreurs déjà payées à ne pas reproduire | [`agent/PITFALLS.md`](./agent/PITFALLS.md) |
-| Workflow git, PRs, merges | [`agent/GIT_WORKFLOW.md`](./agent/GIT_WORKFLOW.md) |
-| Permissions et sécurité de l'agent | [`agent/PERMISSIONS.md`](./agent/PERMISSIONS.md), [`agent/SECURITY.md`](./agent/SECURITY.md) |
-| Tâche spécialisée (Alembic, OAuth, Svelte...) | [`agent/skills/`](./agent/skills/) |
-| Session autonome multi-sessions | [`agent/README.md`](./agent/README.md) point d'entrée du système agent |
-| Créer une fiche Philum de bout en bout | [`workspaces/createur-de-fiches/AGENTS.md`](./workspaces/createur-de-fiches/AGENTS.md) workspace ICM 7 étapes |
-| Question produit non tranchée | [`.docs/07-open-questions.md`](.docs/07-open-questions.md) |
+| Question                                             | Fichier                                                                                                       |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Quel est l'état réel de la prod ?                    | [`STATE.md`](./STATE.md) section « État production vérifié »                                                  |
+| Qu'est-ce que je dois faire ensuite ?                | [`STATE.md`](./STATE.md) section « Prochaines étapes par priorité »                                           |
+| Stack, principes de code, nommage, structure du repo | [`agent/references/CODING_GUIDE.md`](./agent/references/CODING_GUIDE.md)                                      |
+| Décisions techniques passées (ADRs)                  | [`DECISIONS.md`](./DECISIONS.md)                                                                              |
+| Erreurs déjà payées à ne pas reproduire              | [`agent/PITFALLS.md`](./agent/PITFALLS.md)                                                                    |
+| Workflow git, PRs, merges                            | [`agent/GIT_WORKFLOW.md`](./agent/GIT_WORKFLOW.md)                                                            |
+| Permissions et sécurité de l'agent                   | [`agent/PERMISSIONS.md`](./agent/PERMISSIONS.md), [`agent/SECURITY.md`](./agent/SECURITY.md)                  |
+| Tâche spécialisée (Alembic, OAuth, Svelte...)        | [`agent/skills/`](./agent/skills/)                                                                            |
+| Session autonome multi-sessions                      | [`agent/README.md`](./agent/README.md) point d'entrée du système agent                                        |
+| Créer une fiche Philum de bout en bout               | [`workspaces/createur-de-fiches/AGENTS.md`](./workspaces/createur-de-fiches/AGENTS.md) workspace ICM 7 étapes |
+| Question produit non tranchée                        | [`.docs/07-open-questions.md`](.docs/07-open-questions.md)                                                    |
 
 ---
 
@@ -56,4 +56,4 @@ C'est ce qui permet à toi-même (ou à un autre agent) de reprendre efficacemen
 
 ---
 
-*Ce fichier évolue avec le projet. Si une règle te paraît dépassée ou bloquante, signale-le.*
+_Ce fichier évolue avec le projet. Si une règle te paraît dépassée ou bloquante, signale-le._

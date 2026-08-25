@@ -2,136 +2,136 @@ name: Security Scan
 run-name: Security Scan
 
 on:
-  push:
-    branches: [main, develop, 'feat/**']
-  pull_request:
+    push:
+        branches: [main, develop, "feat/**"]
+    pull_request:
 
 env:
-  PYTHON_VERSION: "3.12"
+    PYTHON_VERSION: "3.12"
 
 permissions:
-  contents: read
+    contents: read
 
 jobs:
-  bandit:
-    name: Static Analysis (Bandit)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+    bandit:
+        name: Static Analysis (Bandit)
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v6
 
-      - name: Setup Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
+            - name: Setup Python
+              uses: actions/setup-python@v7
+              with:
+                  python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
+            - name: Install uv
+              uses: astral-sh/setup-uv@v7
 
-      - name: Install dependencies
-        run: uv sync --all-extras
-        working-directory: apps/backend
+            - name: Install dependencies
+              run: uv sync --all-extras
+              working-directory: apps/backend
 
-      # Le chemin etait `apps/backend/app/` *avec* `working-directory:
-      # apps/backend`, soit `apps/backend/apps/backend/app/` : inexistant.
-      # Bandit sortait en 0 apres avoir analyse **0 fichier**, et le job
-      # affichait « pass ». Mesure du 2026-08-07 apres correction du chemin :
-      # 77 fichiers, 6 alertes, dont une MEDIUM restee invisible.
-      - name: Run Bandit
-        run: uv run bandit -r app/ -f json -o bandit-results.json
-        working-directory: apps/backend
+            # Le chemin etait `apps/backend/app/` *avec* `working-directory:
+            # apps/backend`, soit `apps/backend/apps/backend/app/` : inexistant.
+            # Bandit sortait en 0 apres avoir analyse **0 fichier**, et le job
+            # affichait « pass ». Mesure du 2026-08-07 apres correction du chemin :
+            # 77 fichiers, 6 alertes, dont une MEDIUM restee invisible.
+            - name: Run Bandit
+              run: uv run bandit -r app/ -f json -o bandit-results.json
+              working-directory: apps/backend
 
-      - name: Upload Bandit results
-        uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: bandit-results
-          path: apps/backend/bandit-results.json
+            - name: Upload Bandit results
+              uses: actions/upload-artifact@v7
+              if: always()
+              with:
+                  name: bandit-results
+                  path: apps/backend/bandit-results.json
 
-  safety:
-    name: Vulnerability Check (Safety)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+    safety:
+        name: Vulnerability Check (Safety)
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v6
 
-      - name: Setup Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
+            - name: Setup Python
+              uses: actions/setup-python@v7
+              with:
+                  python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
+            - name: Install uv
+              uses: astral-sh/setup-uv@v7
 
-      - name: Install dependencies
-        run: uv sync --all-extras
-        working-directory: apps/backend
+            - name: Install dependencies
+              run: uv sync --all-extras
+              working-directory: apps/backend
 
-      # `--output` attend un *format* (screen/text/json/html), pas un chemin :
-      # les deux appels sortaient sur « Invalid value for '--output' » et
-      # n'analysaient rien, sans que le job cesse d'afficher « pass ». Le
-      # chemin de sortie, c'est `--save-json`. Corrige le 2026-08-07.
-      - name: Run Safety check
-        run: uv run safety check --save-json safety-results.json || true
-        working-directory: apps/backend
+            # `--output` attend un *format* (screen/text/json/html), pas un chemin :
+            # les deux appels sortaient sur « Invalid value for '--output' » et
+            # n'analysaient rien, sans que le job cesse d'afficher « pass ». Le
+            # chemin de sortie, c'est `--save-json`. Corrige le 2026-08-07.
+            - name: Run Safety check
+              run: uv run safety check --save-json safety-results.json || true
+              working-directory: apps/backend
 
-      - name: Upload Safety results
-        uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: safety-results
-          path: apps/backend/safety-results.*
+            - name: Upload Safety results
+              uses: actions/upload-artifact@v7
+              if: always()
+              with:
+                  name: safety-results
+                  path: apps/backend/safety-results.*
 
-  secrets-scan:
-    name: Secrets Detection (TruffleHog)
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
+    secrets-scan:
+        name: Secrets Detection (TruffleHog)
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v6
+              with:
+                  fetch-depth: 0
 
-      # `scan` n'est pas une sous-commande de TruffleHog : elle sortait en
-      # erreur d'usage, et `|| true` joint a `continue-on-error` le masquait.
-      # Le job affichait « pass » sans rien analyser. Un scan de secrets qui
-      # ne scanne pas est pire qu'aucun scan : il donne l'assurance sans le
-      # controle. Corrige le 2026-08-07 en `filesystem`.
-      #
-      # `--exclude-detectors=Lob` : le motif d'une cle de test Lob est
-      # `test_` suivi de 35 caracteres, soit n'importe quel nom de test un peu
-      # long — et il se declare « verifie », l'API Lob acceptant toute cle de
-      # test. Mesure du 2026-08-07 : des dizaines de correspondances, toutes
-      # des noms de tests. Philum n'utilise pas Lob : rien de reel n'est perdu.
-      - name: Run TruffleHog
-        run: |
-          docker run --rm -v "$(pwd):/workspace" \
-            trufflesecurity/trufflehog:latest filesystem \
-            /workspace \
-            --no-update \
-            --results=verified \
-            --exclude-detectors=Lob \
-            --json > trufflehog-results.json
-        # Un secret trouve fait sortir en 183 : c'est le job bloquant de
-        # ci.yml qui tranche, celui-ci ne fait qu'archiver le detail. Mais une
-        # commande invalide echoue autrement, et cela doit desormais se voir.
-        continue-on-error: true
+            # `scan` n'est pas une sous-commande de TruffleHog : elle sortait en
+            # erreur d'usage, et `|| true` joint a `continue-on-error` le masquait.
+            # Le job affichait « pass » sans rien analyser. Un scan de secrets qui
+            # ne scanne pas est pire qu'aucun scan : il donne l'assurance sans le
+            # controle. Corrige le 2026-08-07 en `filesystem`.
+            #
+            # `--exclude-detectors=Lob` : le motif d'une cle de test Lob est
+            # `test_` suivi de 35 caracteres, soit n'importe quel nom de test un peu
+            # long — et il se declare « verifie », l'API Lob acceptant toute cle de
+            # test. Mesure du 2026-08-07 : des dizaines de correspondances, toutes
+            # des noms de tests. Philum n'utilise pas Lob : rien de reel n'est perdu.
+            - name: Run TruffleHog
+              run: |
+                  docker run --rm -v "$(pwd):/workspace" \
+                    trufflesecurity/trufflehog:latest filesystem \
+                    /workspace \
+                    --no-update \
+                    --results=verified \
+                    --exclude-detectors=Lob \
+                    --json > trufflehog-results.json
+              # Un secret trouve fait sortir en 183 : c'est le job bloquant de
+              # ci.yml qui tranche, celui-ci ne fait qu'archiver le detail. Mais une
+              # commande invalide echoue autrement, et cela doit desormais se voir.
+              continue-on-error: true
 
-      - name: Upload results
-        uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: secrets-scan-results
-          path: trufflehog-results.json
+            - name: Upload results
+              uses: actions/upload-artifact@v7
+              if: always()
+              with:
+                  name: secrets-scan-results
+                  path: trufflehog-results.json
 
-  dependency-review:
-    name: Dependency Review
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+    dependency-review:
+        name: Dependency Review
+        runs-on: ubuntu-latest
+        if: github.event_name == 'pull_request'
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v6
 
-      - name: Dependency Review
-        uses: actions/dependency-review-action@v5
-        with:
-          fail-on-severity: high
+            - name: Dependency Review
+              uses: actions/dependency-review-action@v5
+              with:
+                  fail-on-severity: high

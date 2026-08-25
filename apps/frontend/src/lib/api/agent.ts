@@ -192,6 +192,11 @@ export type AgentEvent =
       payload: { messages_retires: number };
     }
   | {
+      /** Pause après N tours : pas une erreur dure, l'utilisateur peut continuer. */
+      type: 'continuation';
+      payload: { message: string; tours: number };
+    }
+  | {
       type: 'done';
       payload: { reason: string; usage?: { prompt_tokens: number; completion_tokens: number } };
     }

@@ -7,8 +7,8 @@
 une erreur de périmètre. Philum sert **d'abord les créateurs de contenu et les vulgarisateurs, et
 surtout leur audience** — la personne ordinaire qui veut vérifier une affirmation entendue dans
 une vidéo, le journaliste, le doctorant, l'étudiant. Le chercheur est un utilisateur **secondaire**.
-Chaque recommandation ci-dessous a été rejugée sur une seule question : *est-ce que ça aide
-quelqu'un qui n'est pas expert du domaine à savoir s'il peut faire confiance à ce qu'on lui dit ?*
+Chaque recommandation ci-dessous a été rejugée sur une seule question : _est-ce que ça aide
+quelqu'un qui n'est pas expert du domaine à savoir s'il peut faire confiance à ce qu'on lui dit ?_
 
 Toute affirmation périssable a été revérifiée en source primaire à cette date. Les corrections
 apportées à la v1 sont signalées **[CORRIGÉ]**, les points non recoupés « non vérifié ».
@@ -39,7 +39,7 @@ outil du marché : six papiers remontés sur dix sont du bruit. Philum ne joue p
 catégorie et n'a pas à y jouer : il déclare et signe au lieu d'inférer.
 
 **3. La fonctionnalité la plus différenciante reste la qualification déclarative du lien de
-citation.** scite classe chaque citation en *supporting / contrasting / mentioning* par NLP sur
+citation.** scite classe chaque citation en _supporting / contrasting / mentioning_ par NLP sur
 1,6 md d'énoncés — et publie sa propre distribution : **92,6 % de « mentioning », 6,5 % de
 supporting, 0,8 % de contrasting**. Autrement dit, l'inférence automatique produit 93 % de bruit.
 Le créateur qui déclare lui-même « cette source, je la conteste » produit 100 % de signal
@@ -54,14 +54,14 @@ Unpaywall + badge rétractation en arrière-plan.
 
 ## Pour qui, exactement
 
-| Persona | Ce qu'il fait sur Philum | Ce qui le fait partir |
-|---|---|---|
+| Persona                                                  | Ce qu'il fait sur Philum                                                                           | Ce qui le fait partir                                                               |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | **L'audience** — la personne qui vient de voir une vidéo | Arrive par un lien, veut savoir en 30 s si l'affirmation tient. Ne cherche rien, ne s'inscrit pas. | Un graphe illisible, du jargon, une page qui demande de comprendre la bibliométrie. |
-| **Le vulgarisateur / créateur** | Publie sa bibliographie, veut que ça se voie et que ça le crédibilise. | La saisie manuelle. C'est le point de mortalité n°1 de tous les outils de biblio. |
-| **Le journaliste** | Vérifie une source sous contrainte de temps, veut la version accessible et la date. | Un paywall, une source morte, une absence de trace horodatée. |
-| **Le doctorant** | Utilise déjà Zotero. Veut faire entrer et sortir sa biblio sans ressaisir. | Un format propriétaire, un export absent. |
-| **L'étudiant** | Découvre le sujet, ne sait pas distinguer une revue sérieuse d'une prédatrice. | Aucun signal de qualité. Il ne saura jamais que le papier a été rétracté. |
-| *(secondaire)* Le chercheur | Cas d'usage marginal : il a déjà ses outils. | — |
+| **Le vulgarisateur / créateur**                          | Publie sa bibliographie, veut que ça se voie et que ça le crédibilise.                             | La saisie manuelle. C'est le point de mortalité n°1 de tous les outils de biblio.   |
+| **Le journaliste**                                       | Vérifie une source sous contrainte de temps, veut la version accessible et la date.                | Un paywall, une source morte, une absence de trace horodatée.                       |
+| **Le doctorant**                                         | Utilise déjà Zotero. Veut faire entrer et sortir sa biblio sans ressaisir.                         | Un format propriétaire, un export absent.                                           |
+| **L'étudiant**                                           | Découvre le sujet, ne sait pas distinguer une revue sérieuse d'une prédatrice.                     | Aucun signal de qualité. Il ne saura jamais que le papier a été rétracté.           |
+| _(secondaire)_ Le chercheur                              | Cas d'usage marginal : il a déjà ses outils.                                                       | —                                                                                   |
 
 **Conséquence de tri.** Toute fonctionnalité qui n'améliore la vie que du chercheur passe en
 dernier. Toute fonctionnalité visible par l'audience **sans compte et sans effort** passe devant.
@@ -80,11 +80,11 @@ refonte d'octobre-novembre 2025 en découle directement.
 Le positionnement « gratuit pour toujours » que répètent encore la plupart des blogs est
 **périmé**. Grille actuelle (page `/pricing`, source primaire) :
 
-| Plan | Prix | Graines | Notable |
-|---|---|---|---|
-| **Free** | 0 $ | **50** | Recherches illimitées sur 310 M+ articles, bibliothèque et collections illimitées, partage de collections |
-| **ResearchRabbit+** | **10 $/mois annuel, 12,5 $ mensuel** | **300** | Contrôles de recherche avancés, projets multiples, **alertes Signals**, support prioritaire |
-| **Institution** | sur devis | — | LibKey, stats d'usage |
+| Plan                | Prix                                 | Graines | Notable                                                                                                   |
+| ------------------- | ------------------------------------ | ------- | --------------------------------------------------------------------------------------------------------- |
+| **Free**            | 0 $                                  | **50**  | Recherches illimitées sur 310 M+ articles, bibliothèque et collections illimitées, partage de collections |
+| **ResearchRabbit+** | **10 $/mois annuel, 12,5 $ mensuel** | **300** | Contrôles de recherche avancés, projets multiples, **alertes Signals**, support prioritaire               |
+| **Institution**     | sur devis                            | —       | LibKey, stats d'usage                                                                                     |
 
 Sources de données (convergence de plusieurs évaluations tierces, dont la LibGuide critique de
 Deakin) : **OpenAlex + Semantic Scholar + PubMed**, toutes des API ouvertes — donc techniquement
@@ -97,7 +97,7 @@ Le « Network Graph » force-directed non trié **n'existe plus**. Il a été re
 axes sémantiques : **x = année de publication, y = nombre de citations** (échelle log optionnelle),
 taille de nœud paramétrable (année, citations, nombre de références).
 
-Trois autres décisions de la refonte, toutes dans le même sens — *réduire ce qu'on montre* :
+Trois autres décisions de la refonte, toutes dans le même sens — _réduire ce qu'on montre_ :
 
 - **Plafond d'affichage par défaut à 20 nœuds**, configurable 10/20/40, classés « par leur degré
   de connexion aux papiers-graines ». Une recherche peut matcher des centaines de milliers de
@@ -108,12 +108,12 @@ Trois autres décisions de la refonte, toutes dans le même sens — *réduire c
   les itérations et de brancher. Au lieu d'accumuler N nœuds dans un écran, on montre une tranche
   et on garde un historique navigable.
 - **Les modes ne créent pas d'itération.** Basculer entre Similar / References / Citations change
-  la *lentille* sur le même jeu de nœuds ; seul le bouton *Search* engendre une nouvelle étape.
+  la _lentille_ sur le même jeu de nœuds ; seul le bouton _Search_ engendre une nouvelle étape.
   Ça évite d'exploser la profondeur d'exploration par accident.
 
 **Transposition Philum.** (a) Borner le méta-graphe par degré/profondeur avec un plafond explicite
 et un « + N autres » cliquable, jamais un rendu total. (b) Prévoir un **toggle « graphe /
-chronologie »**. Attention : *ne pas copier l'axe y = citations*, Philum n'a pas de compteur de
+chronologie »**. Attention : _ne pas copier l'axe y = citations_, Philum n'a pas de compteur de
 citations crédible et l'axe serait vide ou faux. Les axes que Philum **possède réellement** sont
 `date de publication`, `nombre de sources`, `part de sources archivées`. (c) Adopter la
 distinction lentille/navigation : changer de filtre ne doit pas empiler une étape.
@@ -121,7 +121,7 @@ distinction lentille/navigation : changer de filtre ne doit pas empiler une éta
 ### 1.3 La boucle d'usage, et l'état vide **[NOUVEAU]**
 
 Le parcours réel est : login → **un seul champ de recherche** → liste de résultats (titre, date,
-nombre de citations) → l'utilisateur coche **1 à 3 papiers-graines** → bouton *Next* → le graphe
+nombre de citations) → l'utilisateur coche **1 à 3 papiers-graines** → bouton _Next_ → le graphe
 se construit.
 
 **L'état vide n'est jamais un graphe vide : c'est un champ de recherche.** Le graphe n'apparaît
@@ -146,7 +146,7 @@ considérée, bleu plus foncé = plus récent. Ce simple binôme fait tout le tr
   février 2026, ils sont **affichés avec un avertissement explicite que les résultats sont
   incomplets**, sauvegardables et éditables à la main, tout en restant inutilisables par
   l'algorithme. C'est exactement l'inverse du `N/A` indifférencié de SciSpace (cf. §2.4), et c'est
-  le bon patron : *dire ce qu'on ne sait pas plutôt que masquer ou mentir par omission*.
+  le bon patron : _dire ce qu'on ne sait pas plutôt que masquer ou mentir par omission_.
 
 - **Signals — l'alerte au risque, inférée du réseau.** Partenariat annoncé en juillet 2026 :
   Signals « cherche les papiers à haut risque d'après leur **comportement de citation et leur
@@ -201,18 +201,18 @@ SLR Data Extraction…).
 Tarifs (page `/pricing`, vérifiée en direct le 2026-08-03, promo « SCI30 » -30 % sur l'annuel
 jusqu'au 3 août 2026) :
 
-| Plan | Crédits/mois | Prix | Requêtes parallèles |
-|---|---|---|---|
-| Basic (gratuit) | **100** | 0 $ | 1 |
-| Premium | 1 200 | **12 $** annuel / 20 $ mensuel | 4 |
-| Advanced | 10 000 | **70 $** / 90 $ | 8 |
-| Max | 40 000 | **160 $** / 200 $ | 16 |
+| Plan            | Crédits/mois | Prix                           | Requêtes parallèles |
+| --------------- | ------------ | ------------------------------ | ------------------- |
+| Basic (gratuit) | **100**      | 0 $                            | 1                   |
+| Premium         | 1 200        | **12 $** annuel / 20 $ mensuel | 4                   |
+| Advanced        | 10 000       | **70 $** / 90 $                | 8                   |
+| Max             | 40 000       | **160 $** / 200 $              | 16                  |
 
 Crédits **non reportables**. Ordres de grandeur donnés par eux : résumer un preprint = 24 crédits ;
 trouver les 3 papiers les plus cités sur un sujet = 186 crédits. **Le gratuit à 100 crédits, c'est
 environ 4 résumés par mois — une démo, pas un outil.**
 
-Corpus revendiqué : **280-285 M de papiers**. Leur whitepaper précise que la couche de *retrieval*
+Corpus revendiqué : **280-285 M de papiers**. Leur whitepaper précise que la couche de _retrieval_
 interroge **Google Scholar + PubMed + arXiv**. L'origine de l'index de 280 M n'est pas documentée
 publiquement — l'attribution à OpenAlex/Semantic Scholar est une inférence tierce, **non vérifiée**.
 
@@ -230,8 +230,8 @@ un corpus PDF uploadé. Trois modes exposés : **Standard / High Quality / Deep 
 **Sortie** : deux blocs empilés — (1) un paragraphe de synthèse avec 5 à 10 citations inline,
 (2) en dessous, un **tableau : 1 ligne = 1 papier, 1 colonne = 1 attribut extrait**.
 
-**Le différenciateur réel** : « Create a New Column » — un formulaire à deux champs, *nom de
-colonne* + *instruction en langue naturelle*, exécuté ensuite sur **tous** les papiers du tableau.
+**Le différenciateur réel** : « Create a New Column » — un formulaire à deux champs, _nom de
+colonne_ + _instruction en langue naturelle_, exécuté ensuite sur **tous** les papiers du tableau.
 À côté, des colonnes préréglées (résumé, conclusions, résultats, limitations, méthodologie).
 Export CSV / BibTeX / RIS / Excel / XML, plus « Show more like selected » (relevance feedback) et
 un bouton pour éjecter un papier.
@@ -255,11 +255,11 @@ retourner sur trois points :
 
 Layout split-pane persistant : PDF à gauche, Copilot à droite.
 
-- **Sélection de texte → barre d'outils flottante** : *Highlight*, *Explain*, *Summarize*, et
-  *Get related papers* — des recommandations rattachées **au passage surligné**, pas au document.
+- **Sélection de texte → barre d'outils flottante** : _Highlight_, _Explain_, _Summarize_, et
+  _Get related papers_ — des recommandations rattachées **au passage surligné**, pas au document.
   Élégant, et conceptuellement transposable à un graphe ancré sur un extrait.
 - **« Explain Math and Table »** : on trace une **zone rectangulaire** sur la page. Sélection
-  *spatiale*, donc pipeline vision/OCR côté serveur — hors de portée de Philum.
+  _spatiale_, donc pipeline vision/OCR côté serveur — hors de portée de Philum.
 - **Le ton de la réponse est un paramètre**, pas un bouton : longueur, ton, format réglables.
   C'est leur « explain like I'm five », et c'est exactement ce dont l'audience de Philum a besoin.
 - 75+ langues en entrée comme en sortie — on peut converser en français sur un PDF anglais.
@@ -284,8 +284,8 @@ PDF uploadé ou à leur index. Leur marketing attaque frontalement ChatGPT et Cl
   « source inaccessible » de « source morte ».
 - **Aucun score de confiance affiché.** Le seul signal est tarifaire : « Standard Report » vs
   **« Verified Report »** réservé au plan à 70 $/mois, dont la nature de vérification n'est pas
-  documentée publiquement. *De la confiance vendue comme un palier de prix, pas comme une propriété
-  du contenu.*
+  documentée publiquement. _De la confiance vendue comme un palier de prix, pas comme une propriété
+  du contenu._
 - **Non-reproductibilité** assumée : les résultats de recherche ne sont pas stables d'une
   exécution à l'autre.
 - **Précision ~0,40.** Leur propre benchmark (200 requêtes, jugement par vote majoritaire de trois
@@ -326,7 +326,7 @@ Deux observations qui, mises côte à côte, définissent la relation entre les 
 
 ### 3.1 Qualifier le lien de citation (scite) — **toujours la piste la plus forte** **[CORRIGÉ]**
 
-scite affiche la phrase citante exacte et la classe en *supporting / contrasting / mentioning*.
+scite affiche la phrase citante exacte et la classe en _supporting / contrasting / mentioning_.
 Couverture actuelle : **1,6 md d'énoncés de citation** et 300 M d'articles en texte intégral —
 et non 1,2 md comme l'indiquait la v1, chiffre qui circule encore dans des tutoriels de 2024-2025.
 **scite a été racheté par Research Solutions, Inc. le 27 novembre 2023** et est commercialisé sous
@@ -386,12 +386,12 @@ Narratif, partageable, compréhensible sans expertise. Recherche bidirectionnell
 Les trois sélecteurs sont confirmés : **RangeSelector** (XPath + offsets), **TextPositionSelector**
 (offsets caractères), **TextQuoteSelector** (texte exact + préfixe + suffixe). Le **fuzzy
 anchoring** est un concept officiel documenté, conçu pour survivre aux changements de structure
-*et* de contenu. Le compromis est explicite dans leur doc — position = rapide et fragile, quote =
+_et_ de contenu. Le compromis est explicite dans leur doc — position = rapide et fragile, quote =
 lent et robuste — et la stratégie recommandée est de **stocker plusieurs sélecteurs pour la même
 cible**.
 
-Transposé, c'est ce qui ferait passer les extraits cités de Philum de *déclaratifs* à
-*vérifiables* : stocker le texte exact + un offset approximatif, et se rattacher au snapshot
+Transposé, c'est ce qui ferait passer les extraits cités de Philum de _déclaratifs_ à
+_vérifiables_ : stocker le texte exact + un offset approximatif, et se rattacher au snapshot
 Wayback si l'original a bougé. C'est la brique qui rend le clic « voir la phrase exacte » possible,
 et donc la promesse tenable pour l'audience.
 
@@ -407,16 +407,16 @@ HTML + parsing suffit pour ~90 % des cas ; **pas de Playwright** (contrainte e2-
 
 ### 3.7 Ce qu'il ne faut PAS copier
 
-| À éviter | Pourquoi |
-|---|---|
+| À éviter                                                          | Pourquoi                                                                                                                                            |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Recommandation « contenus similaires » par co-citation / PageRank | Suppose un corpus dense que Philum n'aura jamais. Recommander plutôt par **co-occurrence exacte de sources** — signal réel, calculable, explicable. |
-| Chaînage avant (« qui cite cette fiche ») exposé comme un bouton | Renverra vide pendant des mois. Un bouton vide coûte plus cher que son absence. |
-| Collections / dossiers privés (Zotero, Mendeley) | Philum n'est pas une bibliothèque personnelle. Diluerait le positionnement public. |
-| Synthèse rédigée multi-documents par LLM (Deep Review, Elicit) | C'est exactement là où SciSpace se fait démolir (§2.4). Coûteuse, non reproductible, et elle détruit la proposition de valeur. |
-| Classification automatique des citations par NLP (scite) | Dépend d'un plein texte absent, et produit 93 % de « mentioning ». Le déclaratif humain est **supérieur**, pas un pis-aller. |
-| Lecteur / annotateur PDF intégré | Philum indexe des vidéos, podcasts, blogs — pas des PDF. |
-| Discussion post-publication façon PubPeer | Modération, abus, anonymat. Direction, pas chantier. |
-| Force-directed non filtré au-delà de ~150 nœuds | Le leader du secteur l'a **supprimé** (§1.2). |
+| Chaînage avant (« qui cite cette fiche ») exposé comme un bouton  | Renverra vide pendant des mois. Un bouton vide coûte plus cher que son absence.                                                                     |
+| Collections / dossiers privés (Zotero, Mendeley)                  | Philum n'est pas une bibliothèque personnelle. Diluerait le positionnement public.                                                                  |
+| Synthèse rédigée multi-documents par LLM (Deep Review, Elicit)    | C'est exactement là où SciSpace se fait démolir (§2.4). Coûteuse, non reproductible, et elle détruit la proposition de valeur.                      |
+| Classification automatique des citations par NLP (scite)          | Dépend d'un plein texte absent, et produit 93 % de « mentioning ». Le déclaratif humain est **supérieur**, pas un pis-aller.                        |
+| Lecteur / annotateur PDF intégré                                  | Philum indexe des vidéos, podcasts, blogs — pas des PDF.                                                                                            |
+| Discussion post-publication façon PubPeer                         | Modération, abus, anonymat. Direction, pas chantier.                                                                                                |
+| Force-directed non filtré au-delà de ~150 nœuds                   | Le leader du secteur l'a **supprimé** (§1.2).                                                                                                       |
 
 ---
 
@@ -438,24 +438,24 @@ page-web→`webpage`, notes→`document`. Table de correspondance explicite, et 
 au retour.
 
 **Champs propriétaires — précision importante [CORRIGÉ].** La v1 affirmait que Zotero et
-citeproc-js « exploitent » une *cheater syntax* `clé: valeur` dans le champ `note` / « Extra ».
+citeproc-js « exploitent » une _cheater syntax_ `clé: valeur` dans le champ `note` / « Extra ».
 C'est inexact : seules les **variables CSL valides** y sont interprétées. Les préfixes
 `philum-conflict:`, `philum-archive:`, `philum-card:` ne seront **jamais** reconnus comme des
 variables — ils resteront du texte libre. C'est précisément ce qu'on veut (ils **survivent intacts
-à un aller-retour** Philum→Zotero→Philum), mais il faut le formuler comme tel : *préservés, pas
-interprétés*. Le choix d'écarter la syntaxe `{:var:val}` de citeproc-js reste bon.
+à un aller-retour** Philum→Zotero→Philum), mais il faut le formuler comme tel : _préservés, pas
+interprétés_. Le choix d'écarter la syntaxe `{:var:val}` de citeproc-js reste bon.
 
 ### 4.2 Meta tags Highwire + COinS — **le meilleur levier, de loin** (vérifié intégralement)
 
 La doc Zotero « Exposing Your Metadata » liste : **Embedded Metadata, tags Highwire/Google Scholar,
 Dublin Core, COinS, unAPI** (+ MODS/MARC/RIS/BibTeX via unAPI). **Aucune mention de JSON-LD ni de
-microdata.** La citation est exacte : *« the best translator is no translator at all »*.
+microdata.** La citation est exacte : _« the best translator is no translator at all »_.
 
 **Hiérarchie de résolution du connecteur**, utile pour le piège ci-dessous :
 `translator spécifique > unAPI > COinS > DOI > Embedded Metadata`.
 
-Google Scholar, guidelines officielles : *« supports Highwire Press tags…, BE Press tags…, and
-PRISM tags…. Use Dublin Core tags as a last resort »*, avec un minimum de **trois champs** — titre,
+Google Scholar, guidelines officielles : _« supports Highwire Press tags…, BE Press tags…, and
+PRISM tags…. Use Dublin Core tags as a last resort »_, avec un minimum de **trois champs** — titre,
 nom complet du premier auteur, année de publication.
 
 Effort : quelques dizaines de lignes de `<svelte:head>`. Aucune dépendance, aucune auth, aucun
@@ -470,7 +470,7 @@ Solution : Highwire décrit le **contenu de la fiche**, les N sources sont expos
 ### 4.3 Endpoints d'export `?format=csl-json|bibtex|ris`
 
 Génération server-side depuis le pivot. `bibtexparser` et `rispy`, ou 60 lignes de sérialisation
-manuelle — RIS et BibTeX sont triviaux à *écrire*, pénibles à *lire*. « Exporter ma biblio » est
+manuelle — RIS et BibTeX sont triviaux à _écrire_, pénibles à _lire_. « Exporter ma biblio » est
 la demande n°1 du persona doctorant et couvre Zotero, Mendeley, EndNote, Word et LaTeX d'un coup.
 
 À noter : chez SciSpace, l'export Zotero est **payant**. Gratuit chez Philum, c'est un argument.
@@ -510,15 +510,15 @@ pénible : compter 2-3 jours (estimation, non vérifiée).
 
 ### 4.8 Fausses bonnes idées
 
-| À écarter | Raison vérifiée |
-|---|---|
+| À écarter                                              | Raison vérifiée                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Frapper des DOI DataCite pour les fiches **[CORRIGÉ]** | Grille `datacite.org/fees` : adhésion **à partir de 2 000 €/an** + frais d'infrastructure **200-700 €**. La refonte d'avril 2026 a basculé la tarification sur la **géographie et le chiffre d'affaires** (1 000 à 10 000 € pour une organisation à but lucratif) et a **supprimé** le « ~500 €/organisation » qu'annonçait la v1 — une organisation membre d'un consortium est aujourd'hui à **0 € d'adhésion**. Verdict inchangé : injustifiable pré-MVP, et un DOI sur une fiche mutable est conceptuellement douteux. |
-| Héberger le Zotero translation-server sur l'e2-micro | Node + traducteurs sur 1 Go partagé avec Postgres + FastAPI : ne tiendra pas. Le déployer ailleurs ou appeler Crossref/OpenAlex directement. |
-| Miser sur JSON-LD / schema.org pour Zotero | **Ignoré à ce jour, sans évolution annoncée** (dernières discussions forum en 2023, confirmé par des tests de novembre 2025). Bon pour Google et les crawlers LLM, mais ne remplace pas Highwire. |
-| API Mendeley | Produit en déclin, Desktop figé. |
-| API SciSpace ou ResearchRabbit | **Aucune des deux n'existe.** L'intégration ne peut être qu'un lien sortant (§2.1, §5). |
-| Paperpile | API REST publique « en construction », non livrée. Un serveur MCP est annoncé sans calendrier. |
-| unAPI | Élégant et supporté par Zotero, mais moribond. 20 lignes une fois les exports faits, pas avant. |
+| Héberger le Zotero translation-server sur l'e2-micro   | Node + traducteurs sur 1 Go partagé avec Postgres + FastAPI : ne tiendra pas. Le déployer ailleurs ou appeler Crossref/OpenAlex directement.                                                                                                                                                                                                                                                                                                                                                                              |
+| Miser sur JSON-LD / schema.org pour Zotero             | **Ignoré à ce jour, sans évolution annoncée** (dernières discussions forum en 2023, confirmé par des tests de novembre 2025). Bon pour Google et les crawlers LLM, mais ne remplace pas Highwire.                                                                                                                                                                                                                                                                                                                         |
+| API Mendeley                                           | Produit en déclin, Desktop figé.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| API SciSpace ou ResearchRabbit                         | **Aucune des deux n'existe.** L'intégration ne peut être qu'un lien sortant (§2.1, §5).                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Paperpile                                              | API REST publique « en construction », non livrée. Un serveur MCP est annoncé sans calendrier.                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| unAPI                                                  | Élégant et supporté par Zotero, mais moribond. 20 lignes une fois les exports faits, pas avant.                                                                                                                                                                                                                                                                                                                                                                                                                           |
 
 ---
 
@@ -528,27 +528,27 @@ Contrainte transverse : **VM GCP e2-micro, 1 Go de RAM**. Tout enrichissement do
 HTTP à un tiers, jamais un traitement local lourd. Et Philum étant **public**, la licence des
 données conditionne le droit de les réafficher.
 
-| Service | Apport | Quota réel | Licence | Verdict |
-|---|---|---|---|---|
-| **OpenAlex** | Auteurs + ORCID, revue, éditeur, date, nb de citations, statut OA, ROR | Clé gratuite **obligatoire depuis le 13/02/2026** ; $1/jour offert ; **lookup DOI unitaire = $0 et illimité** ; list/filter $0,0001 ; search $0,001 ; **PDF/XML via Content API $0,01** | **CC0** (sauf snapshot format MAG, ODC-BY) | ✅ Pilier n°1 |
-| **Crossref REST** **[CORRIGÉ]** | Titre, auteurs, DOI, revue, dates, refs, licence | **Depuis le 01/12/2025** : public **5 req/s** unitaire / **1 req/s** liste, concurrence 1. Polite (`mailto=`) : **10 / 3**, concurrence 3. Lire `x-rate-limit-limit`, `x-rate-limit-interval`, `x-concurrency-limit` | Ouvertes | ✅ mais **5× moins que ce qu'annonçait la v1** |
-| **Unpaywall** | Version **OA légale** d'un DOI + licence | 100 000 appels/jour, `?email=` obligatoire | CC0 | ✅ Excellent ratio |
-| **OpenCitations** | Citations entrantes/sortantes | Non chiffré ; token gratuit conseillé | **CC0, réutilisable y compris commercialement** | ✅ Complément |
-| **Wayback SPN2 + Availability** | Archive horodatée au moment de la citation | ~15 req/min (au-delà : blocage IP 5 min) ; clés S3 sur `archive.org/account/s3.php` | — | ✅ mais **file async obligatoire** |
-| **Europe PMC** | Biomédical : abstract, refs, MeSH | Non vérifié | Variable | ✅ si corpus bio ; **utile pour les abstracts** (cf. §2.2) |
-| **arXiv** | Preprints | **1 req/3 s, une seule connexion** ; débit supérieur négociable | Métadonnées CC0 ; PDF non redistribuables | ✅ Simple et sûr |
-| **DataCite** (lecture) | Jeux de données, logiciels, thèses | Non vérifié | CC0 | ✅ Complément |
-| **Wikidata** | Entités, désambiguïsation d'auteur | Non vérifié | **CC0** | ✅ (préférer à Wikipédia) |
-| **YouTube Data API** **[CORRIGÉ]** | Métadonnées d'une vidéo source | 10 000 unités/jour. `search.list` = 100 unités → 100 recherches/jour, **mais `videos.list` = 1 unité → 10 000 lookups/jour**. Le cas d'usage réel de Philum (on a déjà l'ID) est donc **beaucoup moins contraint** que ne le disait la v1 | Propriétaire, règles de cache strictes | ✅ moins contraint que prévu |
-| **Semantic Scholar** | Citations, TL;DR, refs | Sans clé : pool de 1000 req/s **partagé mondialement** (donc saturé). Avec clé : **1 req/s dédié, limite « introductive » relevable sur demande** | **Non vérifiée** — ne pas affirmer CC0 | ⚠️ Fallback |
-| **NCBI E-utilities** | PubMed : PMID, abstract, MeSH | 3 req/s sans clé, 10 avec, au-delà sur demande | ⚠️ **Abstracts possiblement sous copyright** | ⚠️ Prudence au réaffichage |
-| **ROR** | Désambiguïser une affiliation | 2000 req/5 min ; **dès Q3 2026, sans client ID : 50 req/5 min**. Enregistrement gratuit sur `ror.org/api-client-id` | CC0 | ⚠️ Enregistrer un client ID |
-| **CORE** | Texte intégral de dépôts | Non pleinement vérifié | Variable | ⚠️ Optionnel |
-| **DOAJ** | Revue prédatrice ou non → signal qualité | Non vérifié (doc 403) | Non vérifié | ⚠️ Signal peu coûteux, **très utile au persona étudiant** |
-| **Open Library** | Livres : ISBN, couverture, éditeur | 1 req/s ; **3 avec User-Agent identifiant + email**. UA absent ou générique = blocage possible | Non explicite | ⚠️ « Backend haut trafic » interdit |
-| **oEmbed / OpenGraph** | Titre, image, auteur d'une page quelconque | Dépend du site | Aucune licence explicite | ⚠️ Faits bruts uniquement |
-| **Crossref Event Data** **[PRÉCISÉ]** | — | Éteint le **23/04/2026**. Données historiques disponibles **sur demande** au support, et Crossref a livré un **endpoint de remplacement dédié aux citations de données** | — | ❌ mais une alternative existe |
-| **Altmetric / PlumX** **[CORRIGÉ]** | Buzz social | Accès gratuit à la Details Page API via le programme **SRAD**, réservé à la recherche scientométrique **non commerciale**. La mention « ≤ 6 mois » de la v1 **n'est attestée nulle part** et est retirée | Propriétaire | ❌ Hors licence pour Philum |
+| Service                               | Apport                                                                 | Quota réel                                                                                                                                                                                                                                | Licence                                         | Verdict                                                    |
+| ------------------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------- |
+| **OpenAlex**                          | Auteurs + ORCID, revue, éditeur, date, nb de citations, statut OA, ROR | Clé gratuite **obligatoire depuis le 13/02/2026** ; $1/jour offert ; **lookup DOI unitaire = $0 et illimité** ; list/filter $0,0001 ; search $0,001 ; **PDF/XML via Content API $0,01**                                                   | **CC0** (sauf snapshot format MAG, ODC-BY)      | ✅ Pilier n°1                                              |
+| **Crossref REST** **[CORRIGÉ]**       | Titre, auteurs, DOI, revue, dates, refs, licence                       | **Depuis le 01/12/2025** : public **5 req/s** unitaire / **1 req/s** liste, concurrence 1. Polite (`mailto=`) : **10 / 3**, concurrence 3. Lire `x-rate-limit-limit`, `x-rate-limit-interval`, `x-concurrency-limit`                      | Ouvertes                                        | ✅ mais **5× moins que ce qu'annonçait la v1**             |
+| **Unpaywall**                         | Version **OA légale** d'un DOI + licence                               | 100 000 appels/jour, `?email=` obligatoire                                                                                                                                                                                                | CC0                                             | ✅ Excellent ratio                                         |
+| **OpenCitations**                     | Citations entrantes/sortantes                                          | Non chiffré ; token gratuit conseillé                                                                                                                                                                                                     | **CC0, réutilisable y compris commercialement** | ✅ Complément                                              |
+| **Wayback SPN2 + Availability**       | Archive horodatée au moment de la citation                             | ~15 req/min (au-delà : blocage IP 5 min) ; clés S3 sur `archive.org/account/s3.php`                                                                                                                                                       | —                                               | ✅ mais **file async obligatoire**                         |
+| **Europe PMC**                        | Biomédical : abstract, refs, MeSH                                      | Non vérifié                                                                                                                                                                                                                               | Variable                                        | ✅ si corpus bio ; **utile pour les abstracts** (cf. §2.2) |
+| **arXiv**                             | Preprints                                                              | **1 req/3 s, une seule connexion** ; débit supérieur négociable                                                                                                                                                                           | Métadonnées CC0 ; PDF non redistribuables       | ✅ Simple et sûr                                           |
+| **DataCite** (lecture)                | Jeux de données, logiciels, thèses                                     | Non vérifié                                                                                                                                                                                                                               | CC0                                             | ✅ Complément                                              |
+| **Wikidata**                          | Entités, désambiguïsation d'auteur                                     | Non vérifié                                                                                                                                                                                                                               | **CC0**                                         | ✅ (préférer à Wikipédia)                                  |
+| **YouTube Data API** **[CORRIGÉ]**    | Métadonnées d'une vidéo source                                         | 10 000 unités/jour. `search.list` = 100 unités → 100 recherches/jour, **mais `videos.list` = 1 unité → 10 000 lookups/jour**. Le cas d'usage réel de Philum (on a déjà l'ID) est donc **beaucoup moins contraint** que ne le disait la v1 | Propriétaire, règles de cache strictes          | ✅ moins contraint que prévu                               |
+| **Semantic Scholar**                  | Citations, TL;DR, refs                                                 | Sans clé : pool de 1000 req/s **partagé mondialement** (donc saturé). Avec clé : **1 req/s dédié, limite « introductive » relevable sur demande**                                                                                         | **Non vérifiée** — ne pas affirmer CC0          | ⚠️ Fallback                                                |
+| **NCBI E-utilities**                  | PubMed : PMID, abstract, MeSH                                          | 3 req/s sans clé, 10 avec, au-delà sur demande                                                                                                                                                                                            | ⚠️ **Abstracts possiblement sous copyright**    | ⚠️ Prudence au réaffichage                                 |
+| **ROR**                               | Désambiguïser une affiliation                                          | 2000 req/5 min ; **dès Q3 2026, sans client ID : 50 req/5 min**. Enregistrement gratuit sur `ror.org/api-client-id`                                                                                                                       | CC0                                             | ⚠️ Enregistrer un client ID                                |
+| **CORE**                              | Texte intégral de dépôts                                               | Non pleinement vérifié                                                                                                                                                                                                                    | Variable                                        | ⚠️ Optionnel                                               |
+| **DOAJ**                              | Revue prédatrice ou non → signal qualité                               | Non vérifié (doc 403)                                                                                                                                                                                                                     | Non vérifié                                     | ⚠️ Signal peu coûteux, **très utile au persona étudiant**  |
+| **Open Library**                      | Livres : ISBN, couverture, éditeur                                     | 1 req/s ; **3 avec User-Agent identifiant + email**. UA absent ou générique = blocage possible                                                                                                                                            | Non explicite                                   | ⚠️ « Backend haut trafic » interdit                        |
+| **oEmbed / OpenGraph**                | Titre, image, auteur d'une page quelconque                             | Dépend du site                                                                                                                                                                                                                            | Aucune licence explicite                        | ⚠️ Faits bruts uniquement                                  |
+| **Crossref Event Data** **[PRÉCISÉ]** | —                                                                      | Éteint le **23/04/2026**. Données historiques disponibles **sur demande** au support, et Crossref a livré un **endpoint de remplacement dédié aux citations de données**                                                                  | —                                               | ❌ mais une alternative existe                             |
+| **Altmetric / PlumX** **[CORRIGÉ]**   | Buzz social                                                            | Accès gratuit à la Details Page API via le programme **SRAD**, réservé à la recherche scientométrique **non commerciale**. La mention « ≤ 6 mois » de la v1 **n'est attestée nulle part** et est retirée                                  | Propriétaire                                    | ❌ Hors licence pour Philum                                |
 
 ### Top 5 à intégrer **[NUANCÉ]**
 
@@ -584,15 +584,15 @@ données conditionne le droit de les réafficher.
 
 ## Lier, copier, ou ignorer — décision par outil
 
-| Outil | Décision | Raison |
-|---|---|---|
-| **ResearchRabbit / Litmaps** | **Ignorer comme partenaire, copier trois patrons UX** | Pas d'API. Copier : le plafond d'affichage, le sas « Recently Found », l'état vide = champ de recherche, la dégradation gracieuse des items pauvres. Ne pas copier : Similar Work, chaînage avant, axe y = citations. |
-| **SciSpace** | **Lien sortant + copier un patron** | Pas d'API ni de MCP. Un bouton « comprendre ce papier » vers leur lecteur est la seule intégration possible. Copier : la colonne custom en langue naturelle, mais sur abstracts, pré-calculée, avec verbatim vérifié serveur. |
-| **Zotero** | **Interopérer, en priorité** | Highwire + COinS (§4.2) puis exports (§4.3) et imports (§4.4). C'est le persona doctorant, et c'est bon marché. |
-| **scite / Consensus** | **S'inspirer, ne pas intégrer** | Propriétaires, pas d'accès gratuit. Le mécanisme (stance, consensus meter) est reproductible en déclaratif, et en mieux. |
-| **Retraction Watch** | **Consommer** | Gratuit via Crossref, couverture ~3/4 sur DOI/PMID. Signal disproportionné au coût. |
-| **Hypothes.is** | **Copier l'architecture d'ancrage** | Spécification publique et documentée. Rend les extraits vérifiables au lieu de déclaratifs. |
-| **Connected Papers** **[CORRIGÉ]** | Ignorer | La v1 écrivait « plafonne délibérément à 40-50 nœuds » : **aucune page officielle ne publie de plafond**, et « délibérément » suppose une intention non documentée. Ce qui est attesté : ils analysent ~50 000 papiers et en retiennent « quelques dizaines » (~25 à 40 observés par des guides tiers). Free tier : 5 graphes/mois. La recommandation de borner reste bonne, elle s'appuie désormais sur ResearchRabbit (§1.2), qui publie son chiffre. |
+| Outil                              | Décision                                              | Raison                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ---------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **ResearchRabbit / Litmaps**       | **Ignorer comme partenaire, copier trois patrons UX** | Pas d'API. Copier : le plafond d'affichage, le sas « Recently Found », l'état vide = champ de recherche, la dégradation gracieuse des items pauvres. Ne pas copier : Similar Work, chaînage avant, axe y = citations.                                                                                                                                                                                                                                   |
+| **SciSpace**                       | **Lien sortant + copier un patron**                   | Pas d'API ni de MCP. Un bouton « comprendre ce papier » vers leur lecteur est la seule intégration possible. Copier : la colonne custom en langue naturelle, mais sur abstracts, pré-calculée, avec verbatim vérifié serveur.                                                                                                                                                                                                                           |
+| **Zotero**                         | **Interopérer, en priorité**                          | Highwire + COinS (§4.2) puis exports (§4.3) et imports (§4.4). C'est le persona doctorant, et c'est bon marché.                                                                                                                                                                                                                                                                                                                                         |
+| **scite / Consensus**              | **S'inspirer, ne pas intégrer**                       | Propriétaires, pas d'accès gratuit. Le mécanisme (stance, consensus meter) est reproductible en déclaratif, et en mieux.                                                                                                                                                                                                                                                                                                                                |
+| **Retraction Watch**               | **Consommer**                                         | Gratuit via Crossref, couverture ~3/4 sur DOI/PMID. Signal disproportionné au coût.                                                                                                                                                                                                                                                                                                                                                                     |
+| **Hypothes.is**                    | **Copier l'architecture d'ancrage**                   | Spécification publique et documentée. Rend les extraits vérifiables au lieu de déclaratifs.                                                                                                                                                                                                                                                                                                                                                             |
+| **Connected Papers** **[CORRIGÉ]** | Ignorer                                               | La v1 écrivait « plafonne délibérément à 40-50 nœuds » : **aucune page officielle ne publie de plafond**, et « délibérément » suppose une intention non documentée. Ce qui est attesté : ils analysent ~50 000 papiers et en retiennent « quelques dizaines » (~25 à 40 observés par des guides tiers). Free tier : 5 graphes/mois. La recommandation de borner reste bonne, elle s'appuie désormais sur ResearchRabbit (§1.2), qui publie son chiffre. |
 
 ---
 
@@ -600,17 +600,17 @@ données conditionne le droit de les réafficher.
 
 Réordonné par utilité pour **l'audience et le créateur**, pas pour le chercheur.
 
-| # | Chantier | Effort | Pour qui | Pourquoi à ce rang |
-|---|---|---|---|---|
-| 1 | Meta tags Highwire + COinS | ½ j | Doctorant, crawlers LLM | Zéro dépendance, débloque Zotero + Scholar + crawlers d'un coup |
-| 2 | Champ `stance` déclaratif + arêtes colorées | 1-2 j | **Audience** | La vraie différenciation, lisible sans expertise, et elle nourrit le graphe existant |
-| 3 | Badge rétractation + DOAJ | ½ j | **Étudiant, audience** | Le trou déclaré des deux leaders. Coût minuscule, signal énorme |
-| 4 | Bornage du graphe + toggle chronologie | 1-2 j | **Audience** | Le marché vient de prouver que c'est nécessaire (§1.2). d3 déjà en place |
-| 5 | Enrichissement OpenAlex + Unpaywall | 2 j | Journaliste, audience | Qualité des métadonnées + « lire en accès libre », la fonction la plus visible |
-| 6 | Pivot CSL-JSON + exports BibTeX/RIS | 1 j | Doctorant | Demande n°1, couvre tout l'écosystème, et c'est payant chez SciSpace |
-| 7 | Import de fichier BibTeX/RIS | 1 j | Créateur | Supprime la friction d'entrée — le point de mortalité n°1 |
-| 8 | Alertes « on vous cite » | 1 j | Créateur | Rétention et viralité. Mensuel gratuit chez Litmaps, hebdo à 10 $/mois |
-| 9 | Colonnes de comparaison sans IA | 1-2 j | Journaliste, doctorant | Année, type, revue, OA, rétracté — la matrice SciSpace sans un seul appel LLM |
+| #   | Chantier                                    | Effort | Pour qui                | Pourquoi à ce rang                                                                   |
+| --- | ------------------------------------------- | ------ | ----------------------- | ------------------------------------------------------------------------------------ |
+| 1   | Meta tags Highwire + COinS                  | ½ j    | Doctorant, crawlers LLM | Zéro dépendance, débloque Zotero + Scholar + crawlers d'un coup                      |
+| 2   | Champ `stance` déclaratif + arêtes colorées | 1-2 j  | **Audience**            | La vraie différenciation, lisible sans expertise, et elle nourrit le graphe existant |
+| 3   | Badge rétractation + DOAJ                   | ½ j    | **Étudiant, audience**  | Le trou déclaré des deux leaders. Coût minuscule, signal énorme                      |
+| 4   | Bornage du graphe + toggle chronologie      | 1-2 j  | **Audience**            | Le marché vient de prouver que c'est nécessaire (§1.2). d3 déjà en place             |
+| 5   | Enrichissement OpenAlex + Unpaywall         | 2 j    | Journaliste, audience   | Qualité des métadonnées + « lire en accès libre », la fonction la plus visible       |
+| 6   | Pivot CSL-JSON + exports BibTeX/RIS         | 1 j    | Doctorant               | Demande n°1, couvre tout l'écosystème, et c'est payant chez SciSpace                 |
+| 7   | Import de fichier BibTeX/RIS                | 1 j    | Créateur                | Supprime la friction d'entrée — le point de mortalité n°1                            |
+| 8   | Alertes « on vous cite »                    | 1 j    | Créateur                | Rétention et viralité. Mensuel gratuit chez Litmaps, hebdo à 10 $/mois               |
+| 9   | Colonnes de comparaison sans IA             | 1-2 j  | Journaliste, doctorant  | Année, type, revue, OA, rétracté — la matrice SciSpace sans un seul appel LLM        |
 
 Restent en réserve, plus lourds : extension navigateur (§3.6), colonnes custom LLM sur abstracts
 (§2.2), ancrage d'extrait fuzzy (§3.5), chemin entre deux nœuds (§3.4), Zotero Web API OAuth 1.0a

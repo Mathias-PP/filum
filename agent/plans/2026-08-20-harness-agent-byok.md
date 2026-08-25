@@ -21,14 +21,14 @@ les outils (MCP + web + filesystem), vérifie verbatim et garde la preuve.
 
 ## Décisions cadrées (2026-08-20, réponses utilisateur)
 
-| Sujet | Décision |
-|---|---|
-| Périmètre MVP | **Complet + fiches automatisées** : les 4 briques + agents de création de fiche configurables dès le départ |
-| Approbation écritures | **Hybride** : lecture + écritures réversibles (brouillon, sources, extraits) automatiques ; écritures sensibles (`publish`, `delete`, attestation, archivage) soumises à validation dans l'UI |
-| Clés API | **Serveur chiffré** (AES-GCM, `master_encryption_key` existante) pour le MVP ; mode navigateur (« confiance zéro ») en itération ultérieure |
-| Web search | **Choix laissé à l'utilisateur** : grounding natif du provider quand il existe, ou API dédiée Philum (Tavily/Exa/Brave/Serper), ou BYOK recherche (clé de l'utilisateur) en option |
-| Configuration des agents | **UI + fichiers** : une UI simple qui lit/écrit des fichiers de config dans le workspace ICM (cohérence entre les deux mondes) |
-| Providers | **4 providers de base** (OpenAI, Anthropic, DeepSeek, Gemini) **+ mode custom** (base_url + modèle + clé libres, endpoint OpenAI-compatible) |
+| Sujet                    | Décision                                                                                                                                                                                      |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Périmètre MVP            | **Complet + fiches automatisées** : les 4 briques + agents de création de fiche configurables dès le départ                                                                                   |
+| Approbation écritures    | **Hybride** : lecture + écritures réversibles (brouillon, sources, extraits) automatiques ; écritures sensibles (`publish`, `delete`, attestation, archivage) soumises à validation dans l'UI |
+| Clés API                 | **Serveur chiffré** (AES-GCM, `master_encryption_key` existante) pour le MVP ; mode navigateur (« confiance zéro ») en itération ultérieure                                                   |
+| Web search               | **Choix laissé à l'utilisateur** : grounding natif du provider quand il existe, ou API dédiée Philum (Tavily/Exa/Brave/Serper), ou BYOK recherche (clé de l'utilisateur) en option            |
+| Configuration des agents | **UI + fichiers** : une UI simple qui lit/écrit des fichiers de config dans le workspace ICM (cohérence entre les deux mondes)                                                                |
+| Providers                | **4 providers de base** (OpenAI, Anthropic, DeepSeek, Gemini) **+ mode custom** (base_url + modèle + clé libres, endpoint OpenAI-compatible)                                                  |
 
 ---
 
@@ -63,13 +63,13 @@ les outils (MCP + web + filesystem), vérifie verbatim et garde la preuve.
 Chaque phase = 1 à 2 PRs, mergées et déployées en série (convention
 `agent/GIT_WORKFLOW.md` : jamais de push direct sur `main`).
 
-| Phase | Contenu | Dépend de | Poids |
-|---|---|---|---|
-| 1 | Providers BYOK (table, service, endpoints, UI réglages) | — | Backend + UI |
-| 2 | Workspace ICM hébergé (table, seed, endpoints, outils fs) | — | Backend |
-| 3 | Moteur d'agent (boucle, streaming SSE, registre d'outils Philum + web + fs, approbation hybride) | 1, 2 | Backend |
-| 4 | Sessions + UI chat + approbation inline + config agents UI↔fichiers | 1, 2, 3 | Backend + UI |
-| 5 | Agents de création de fiche 100 % automatisée (orchestrateur ICM, checkpoints) | 3, 4 | Backend + UI |
+| Phase | Contenu                                                                                          | Dépend de | Poids        |
+| ----- | ------------------------------------------------------------------------------------------------ | --------- | ------------ |
+| 1     | Providers BYOK (table, service, endpoints, UI réglages)                                          | —         | Backend + UI |
+| 2     | Workspace ICM hébergé (table, seed, endpoints, outils fs)                                        | —         | Backend      |
+| 3     | Moteur d'agent (boucle, streaming SSE, registre d'outils Philum + web + fs, approbation hybride) | 1, 2      | Backend      |
+| 4     | Sessions + UI chat + approbation inline + config agents UI↔fichiers                              | 1, 2, 3   | Backend + UI |
+| 5     | Agents de création de fiche 100 % automatisée (orchestrateur ICM, checkpoints)                   | 3, 4      | Backend + UI |
 
 ---
 
@@ -82,17 +82,17 @@ sa clé. Rien d'autre n'en dépend → livrable seul, testable seul.
 
 Table `agent_providers` :
 
-| Colonne | Type | Contrainte |
-|---|---|---|
-| `id` | uuid pk | |
-| `creator_id` | uuid fk → users.id | `ondelete=cascade` |
-| `provider` | str(20) | `openai \| anthropic \| deepseek \| gemini \| custom` |
-| `display_name` | str(80) | défaut = `provider` ; personnalisable pour `custom` |
-| `base_url` | str(300) | requis pour `custom` ; défaut par provider sinon |
-| `model` | str(120) | requis |
-| `api_key_enc` | text | **chiffré AES-GCM** via `KeyManager` (jamais en clair) |
-| `is_default` | bool | un seul défaut par créateur |
-| `created_at`, `updated_at` | timestamptz | |
+| Colonne                    | Type               | Contrainte                                             |
+| -------------------------- | ------------------ | ------------------------------------------------------ |
+| `id`                       | uuid pk            |                                                        |
+| `creator_id`               | uuid fk → users.id | `ondelete=cascade`                                     |
+| `provider`                 | str(20)            | `openai \| anthropic \| deepseek \| gemini \| custom`  |
+| `display_name`             | str(80)            | défaut = `provider` ; personnalisable pour `custom`    |
+| `base_url`                 | str(300)           | requis pour `custom` ; défaut par provider sinon       |
+| `model`                    | str(120)           | requis                                                 |
+| `api_key_enc`              | text               | **chiffré AES-GCM** via `KeyManager` (jamais en clair) |
+| `is_default`               | bool               | un seul défaut par créateur                            |
+| `created_at`, `updated_at` | timestamptz        |                                                        |
 
 Unicité : `(creator_id, provider, base_url, model)` pour éviter les doublons.
 Retrait partiel : `039_oauth_dcr.py` sert de modèle de migration (voir son style).
@@ -130,13 +130,13 @@ Retrait partiel : `039_oauth_dcr.py` sert de modèle de migration (voir son styl
 
 ### 1.4 Endpoints — `app/api/v1/endpoints/agent_providers.py`
 
-| Méthode | Route | Fonction |
-|---|---|---|
-| GET | `/agent/providers` | lister les miens (masqué) |
-| POST | `/agent/providers` | créer |
-| PATCH | `/agent/providers/{id}` | mettre à jour (dont `is_default`) |
-| DELETE | `/agent/providers/{id}` | supprimer |
-| POST | `/agent/providers/{id}/test` | tester la clé |
+| Méthode | Route                        | Fonction                          |
+| ------- | ---------------------------- | --------------------------------- |
+| GET     | `/agent/providers`           | lister les miens (masqué)         |
+| POST    | `/agent/providers`           | créer                             |
+| PATCH   | `/agent/providers/{id}`      | mettre à jour (dont `is_default`) |
+| DELETE  | `/agent/providers/{id}`      | supprimer                         |
+| POST    | `/agent/providers/{id}/test` | tester la clé                     |
 
 Auth : dépendance créateur existante (pattern `users.py`). Rate limit : `rate_limit.py`.
 Router : enregistrer dans `app/api/v1/router.py`.
@@ -170,14 +170,14 @@ Router : enregistrer dans `app/api/v1/router.py`.
 
 Table `workspace_files` :
 
-| Colonne | Type | Contrainte |
-|---|---|---|
-| `id` | uuid pk | |
-| `creator_id` | uuid fk → users.id | cascade |
-| `path` | str(500) | **normalisé** ; `UNIQUE(creator_id, path)` |
-| `content` | text | |
-| `sha256` | str(64) | hash du contenu (traçabilité) |
-| `updated_at` | timestamptz | |
+| Colonne      | Type               | Contrainte                                 |
+| ------------ | ------------------ | ------------------------------------------ |
+| `id`         | uuid pk            |                                            |
+| `creator_id` | uuid fk → users.id | cascade                                    |
+| `path`       | str(500)           | **normalisé** ; `UNIQUE(creator_id, path)` |
+| `content`    | text               |                                            |
+| `sha256`     | str(64)            | hash du contenu (traçabilité)              |
+| `updated_at` | timestamptz        |                                            |
 
 ### 2.2 Service — `app/services/agent_workspace.py`
 
@@ -198,13 +198,13 @@ Table `workspace_files` :
 
 ### 2.3 Endpoints
 
-| Méthode | Route | Fonction |
-|---|---|---|
-| GET | `/agent/workspace/tree` | arborescence (prefix optionnel) |
-| GET | `/agent/workspace/file?path=…` | contenu |
-| PUT | `/agent/workspace/file?path=…` | écrire (corps = contenu) |
-| DELETE | `/agent/workspace/file?path=…` | supprimer |
-| POST | `/agent/workspace/seed` | re-seed idempotent |
+| Méthode | Route                          | Fonction                        |
+| ------- | ------------------------------ | ------------------------------- |
+| GET     | `/agent/workspace/tree`        | arborescence (prefix optionnel) |
+| GET     | `/agent/workspace/file?path=…` | contenu                         |
+| PUT     | `/agent/workspace/file?path=…` | écrire (corps = contenu)        |
+| DELETE  | `/agent/workspace/file?path=…` | supprimer                       |
+| POST    | `/agent/workspace/seed`        | re-seed idempotent              |
 
 Auth créateur + rate limit. Même fichier endpoints `agent_workspace.py`, enregistré au
 router.
@@ -213,6 +213,7 @@ router.
 
 Définis dans `app/agent_tools/workspace.py` (schéma tool dsh-like :
 `name, description, parameters, output, execute`) :
+
 - `fs_read(path)` — lit un fichier du workspace
 - `fs_write(path, content)` — écrit (avec `sha256` retourné)
 - `fs_list(path)` — liste le dossier
@@ -310,20 +311,20 @@ Structure : `registry.py` (déclaration + `execute(name, args, ctx)`), `ctx` por
 Tables :
 
 - `agent_sessions` : `id, creator_id, title, provider_id (nullable), created_at,
-  updated_at, last_message_at`.
+updated_at, last_message_at`.
 - `agent_messages` : `id, session_id, role (user|assistant|tool), content, tool_calls
-  (jsonb), created_at` — **append-only** (jamais de UPDATE).
+(jsonb), created_at` — **append-only** (jamais de UPDATE).
 
 ### 4.2 Endpoints
 
-| Méthode | Route | Fonction |
-|---|---|---|
-| GET | `/agent/sessions` | lister les miennes (titre, date) |
-| POST | `/agent/sessions` | créer (title, provider_id) |
-| GET | `/agent/sessions/{id}/messages` | historique (read-only) |
-| POST | `/agent/chat` | nouveau message + streaming SSE (créer la session si absente) |
-| POST | `/agent/approve` | résoudre une `approval_request` (`{session_id, request_id, approved}`) |
-| DELETE | `/agent/sessions/{id}` | supprimer (logique) |
+| Méthode | Route                           | Fonction                                                               |
+| ------- | ------------------------------- | ---------------------------------------------------------------------- |
+| GET     | `/agent/sessions`               | lister les miennes (titre, date)                                       |
+| POST    | `/agent/sessions`               | créer (title, provider_id)                                             |
+| GET     | `/agent/sessions/{id}/messages` | historique (read-only)                                                 |
+| POST    | `/agent/chat`                   | nouveau message + streaming SSE (créer la session si absente)          |
+| POST    | `/agent/approve`                | résoudre une `approval_request` (`{session_id, request_id, approved}`) |
+| DELETE  | `/agent/sessions/{id}`          | supprimer (logique)                                                    |
 
 ### 4.3 UI
 
@@ -336,7 +337,7 @@ Tables :
   config des agents** — liste des agents configurables (recherche web, création de
   fiche) ; formulaire qui **lit/écrit des fichiers de config dans le workspace ICM**
   (convention : `agents/<slug>.yaml` avec `name, model, instructions, tools,
-  icm_stages`). L'UI est un éditeur de ces fichiers (cohérence UI ↔ fichiers,
+icm_stages`). L'UI est un éditeur de ces fichiers (cohérence UI ↔ fichiers,
   décision actée).
 - Composants : `src/lib/components/chat/` (ChatPanel, ChatMessage, ToolCard,
   ApprovalCard), `src/lib/components/agents/AgentForm.svelte`.
@@ -360,8 +361,8 @@ Fichier `agents/creation-fiche.yaml` dans le workspace (éditable via l'UI) :
 
 ```yaml
 name: creation-fiche
-model: default            # provider défaut du créateur
-instructions: stages/01-brief/CONTEXT.md   # pointeur vers les règles ICM
+model: default # provider défaut du créateur
+instructions: stages/01-brief/CONTEXT.md # pointeur vers les règles ICM
 icm_stages:
   - id: 01-brief
     output: runs/<slug>/00-brief.md
@@ -369,7 +370,7 @@ icm_stages:
     output: runs/<slug>/01-sources.md
   # … 03-annotations, 04-extraits, 05-connexions, 06-relecture, 07-publication
 checkpoints:
-  - stage: 07-publication   # l'approbation humaine est requise ici
+  - stage: 07-publication # l'approbation humaine est requise ici
 ```
 
 ### 5.2 Orchestrateur — `app/services/agent_fiche.py`
@@ -421,13 +422,13 @@ checkpoints:
 
 ## Risques et parades (rappel du rapport §8)
 
-| Risque | Parade |
-|---|---|
-| Vol de la VM → clés exposées | MVP : chiffrement + rotation ; itération suivante : mode navigateur (« confiance zéro ») |
-| Provider natif web search = boîte noire | Retourne des URLs brutes ; la vérification passe par les oracles Philum |
-| Boucle d'agent infinie / coût | Garde-fous (tours, tokens, temps) ; quota provider = compte utilisateur |
-| Developer preview dsh | Aucune dépendance à dsh en dur ; concepts repris, code Philum |
-| Contexte VM e2-micro | Moteur in-process asyncio partagé, pas de process par session |
+| Risque                                  | Parade                                                                                   |
+| --------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Vol de la VM → clés exposées            | MVP : chiffrement + rotation ; itération suivante : mode navigateur (« confiance zéro ») |
+| Provider natif web search = boîte noire | Retourne des URLs brutes ; la vérification passe par les oracles Philum                  |
+| Boucle d'agent infinie / coût           | Garde-fous (tours, tokens, temps) ; quota provider = compte utilisateur                  |
+| Developer preview dsh                   | Aucune dépendance à dsh en dur ; concepts repris, code Philum                            |
+| Contexte VM e2-micro                    | Moteur in-process asyncio partagé, pas de process par session                            |
 
 ---
 

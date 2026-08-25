@@ -34,15 +34,15 @@
 
 ## 2. Free tiers vérifiés (2026-07-16)
 
-| Provider | Modèles utiles | Limites free tier | Pièges connus |
-|---|---|---|---|
-| **Google AI Studio** | Gemini 3 Flash | 1 500 req/j, 10 RPM, sans CB | ⚠️ Activer le billing sur le projet GCP **supprime silencieusement** le free tier. Reset quota à minuit heure Pacifique. |
-| | Gemini 2.5 Pro | 50 req/j, 5 RPM | Réservé au rôle « juge » (fact-signals). |
-| **Mistral La Plateforme** | Mistral Small 3, Mistral Large, Codestral | ~1 Md tokens/mois, tous modèles | Tier « Experiment » : officiellement évaluation, pas production. Limites exactes dans Admin Console → Limits (plus publiées). Hébergé EU 🇪🇺. |
-| **Groq** | Llama 3.3 70B, etc. | 30 RPM, 1 000–14 400 req/j selon modèle, sans CB | Limites au niveau organisation. Developer tier (ajout CB, 0 €) = 10× les limites. |
-| **Cerebras** | Llama 3.3, Qwen3 32B/235B | 1 M tokens/j, 30 RPM, sans CB | ⚠️ **Contexte plafonné à 8 192 tokens** sur le free tier → inutilisable pour du HTML long, OK pour comparaisons courtes. |
-| **OpenRouter** | 23+ modèles `:free` dont GLM-5.2 | 20 RPM ; 50 req/j → **1 000 req/j à vie** après un achat unique de 10 $ | Les 10 $ n'expirent jamais. Le 20 RPM ne se débloque pas. |
-| **Zhipu (z.ai)** | GLM-4.7-Flash, GLM-4.5-Flash | Gratuits (input + output) sur l'API officielle | Provider chinois : réservé aux tâches « public only ». GLM-5.2 lui-même est open-weight MIT et servi par des hébergeurs US/EU via OpenRouter. |
+| Provider                  | Modèles utiles                            | Limites free tier                                                       | Pièges connus                                                                                                                                 |
+| ------------------------- | ----------------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Google AI Studio**      | Gemini 3 Flash                            | 1 500 req/j, 10 RPM, sans CB                                            | ⚠️ Activer le billing sur le projet GCP **supprime silencieusement** le free tier. Reset quota à minuit heure Pacifique.                      |
+|                           | Gemini 2.5 Pro                            | 50 req/j, 5 RPM                                                         | Réservé au rôle « juge » (fact-signals).                                                                                                      |
+| **Mistral La Plateforme** | Mistral Small 3, Mistral Large, Codestral | ~1 Md tokens/mois, tous modèles                                         | Tier « Experiment » : officiellement évaluation, pas production. Limites exactes dans Admin Console → Limits (plus publiées). Hébergé EU 🇪🇺.  |
+| **Groq**                  | Llama 3.3 70B, etc.                       | 30 RPM, 1 000–14 400 req/j selon modèle, sans CB                        | Limites au niveau organisation. Developer tier (ajout CB, 0 €) = 10× les limites.                                                             |
+| **Cerebras**              | Llama 3.3, Qwen3 32B/235B                 | 1 M tokens/j, 30 RPM, sans CB                                           | ⚠️ **Contexte plafonné à 8 192 tokens** sur le free tier → inutilisable pour du HTML long, OK pour comparaisons courtes.                      |
+| **OpenRouter**            | 23+ modèles `:free` dont GLM-5.2          | 20 RPM ; 50 req/j → **1 000 req/j à vie** après un achat unique de 10 $ | Les 10 $ n'expirent jamais. Le 20 RPM ne se débloque pas.                                                                                     |
+| **Zhipu (z.ai)**          | GLM-4.7-Flash, GLM-4.5-Flash              | Gratuits (input + output) sur l'API officielle                          | Provider chinois : réservé aux tâches « public only ». GLM-5.2 lui-même est open-weight MIT et servi par des hébergeurs US/EU via OpenRouter. |
 
 **Dimensionnement MVP** : ~5 000 extractions/mois ≈ 3,5 M tokens. Chaque tier ci-dessus
 suffit **seul**. La cascade sert la résilience (quota épuisé, panne, modèle retiré),
@@ -159,13 +159,13 @@ model_list:
   # ... web-search, wayback-match, fact-signals sur le même modèle
 
 router_settings:
-  routing_strategy: simple-shuffle    # les entrées de même model_name = pool fallback
+  routing_strategy: simple-shuffle # les entrées de même model_name = pool fallback
   num_retries: 2
   timeout: 45
   fallbacks:
-    - { metadata-extract: [] }        # fallback intra-pool automatique
+    - { metadata-extract: [] } # fallback intra-pool automatique
 litellm_settings:
-  drop_params: true                   # tolère les params non supportés par un provider
+  drop_params: true # tolère les params non supportés par un provider
 ```
 
 Le côté appelant ne connaît que l'alias :
@@ -208,14 +208,14 @@ cerebras_api_key, openrouter_api_key, zhipu_api_key
 
 ## 5. Bottlenecks anticipés et seuils de bascule
 
-| Bottleneck | Seuil | Réponse |
-|---|---|---|
-| 10 RPM Gemini (extract + search sur le même quota) | Pics de seed & claim (batch de fiches) | Clés/projets Google séparés par tâche ; lisser via la queue. |
-| Contexte 8 k Cerebras | Structurel | Cerebras cantonné aux tâches à entrées courtes (3.3, 3.4). |
-| Free tier Mistral « pas pour la production » | Croissance ou clarification CGU | Basculer Mistral en payant en premier (~0,2 $/M input Small) : le plus aligné souveraineté EU, coût trivial au volume Philum. |
-| Un tier gratuit disparaît / se dégrade (cf. Big Pickle : stealth temporaire) | Événement externe | C'est la raison d'être de la cascade : retirer une ligne de config, zéro code. |
-| Volume > ~50 k extractions/mois | Traction réelle | À ce stade il y a des revenus (doc 16) ; passer les tâches critiques en payant, garder la cascade gratuite en fallback inversé. |
-| RGPD / données créateur dans les prompts | Dès la vague 1 (analytics premium) | La frontière de sensibilité (§1.3) est déjà dans la config ; ajouter la redaction PII (Portkey open-source Apache 2.0 depuis mars 2026, ou middleware LiteLLM) avant d'envoyer toute donnée non publique. |
+| Bottleneck                                                                   | Seuil                                  | Réponse                                                                                                                                                                                                   |
+| ---------------------------------------------------------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 10 RPM Gemini (extract + search sur le même quota)                           | Pics de seed & claim (batch de fiches) | Clés/projets Google séparés par tâche ; lisser via la queue.                                                                                                                                              |
+| Contexte 8 k Cerebras                                                        | Structurel                             | Cerebras cantonné aux tâches à entrées courtes (3.3, 3.4).                                                                                                                                                |
+| Free tier Mistral « pas pour la production »                                 | Croissance ou clarification CGU        | Basculer Mistral en payant en premier (~0,2 $/M input Small) : le plus aligné souveraineté EU, coût trivial au volume Philum.                                                                             |
+| Un tier gratuit disparaît / se dégrade (cf. Big Pickle : stealth temporaire) | Événement externe                      | C'est la raison d'être de la cascade : retirer une ligne de config, zéro code.                                                                                                                            |
+| Volume > ~50 k extractions/mois                                              | Traction réelle                        | À ce stade il y a des revenus (doc 16) ; passer les tâches critiques en payant, garder la cascade gratuite en fallback inversé.                                                                           |
+| RGPD / données créateur dans les prompts                                     | Dès la vague 1 (analytics premium)     | La frontière de sensibilité (§1.3) est déjà dans la config ; ajouter la redaction PII (Portkey open-source Apache 2.0 depuis mars 2026, ou middleware LiteLLM) avant d'envoyer toute donnée non publique. |
 
 ## 6. Ce qu'on ne fait PAS
 

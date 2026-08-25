@@ -23,21 +23,21 @@ Un MVP est **complet** quand chacune de ces six affirmations est vraie :
 
 ## 2. État courant (synthèse vérifiée)
 
-| Brique | État | Bloque MVP ? |
-|---|---|---|
-| Backend déployé Railway | ✅ live, `/health` OK | — |
-| Frontend déployé Vercel | ✅ live, fiche démo visible | — |
-| Modèles + migrations Alembic 001-004 | ✅ appliquées en prod | — |
-| Signature Ed25519 + canonical hash | ✅ vérifiable sur fiche démo | — |
-| Page publique avec graphe D3 + SSR + JSON-LD | ✅ | — |
-| Extracteur URL backend (`GET /sources/extract`) | ✅ Crossref + HTML scraping | — |
-| Routes `/dashboard/new` + `/dashboard/new/[card_id]/sources` | ✅ scaffold | — |
-| **OAuth Google end-to-end** | ❌ credentials non configurés, cookies en `samesite=lax` | **OUI** |
-| **Auth guard sur `/dashboard*`** | ✅ `+layout.ts` redirige vers `/` si non connecté | — |
-| **Extracteur branché dans le formulaire frontend** | ✅ appel `/sources/extract` au blur de l'URL en étape 2 | — |
-| Rate limiting sur endpoints publics | ❌ slowapi présent mais non câblé | Risque (DoS) |
-| Observabilité (logs, erreurs, uptime) | ⚠️ logs Railway uniquement, pas de Sentry | Recommandé |
-| Test du flow auth end-to-end | ❌ | Recommandé |
+| Brique                                                       | État                                                     | Bloque MVP ? |
+| ------------------------------------------------------------ | -------------------------------------------------------- | ------------ |
+| Backend déployé Railway                                      | ✅ live, `/health` OK                                    | —            |
+| Frontend déployé Vercel                                      | ✅ live, fiche démo visible                              | —            |
+| Modèles + migrations Alembic 001-004                         | ✅ appliquées en prod                                    | —            |
+| Signature Ed25519 + canonical hash                           | ✅ vérifiable sur fiche démo                             | —            |
+| Page publique avec graphe D3 + SSR + JSON-LD                 | ✅                                                       | —            |
+| Extracteur URL backend (`GET /sources/extract`)              | ✅ Crossref + HTML scraping                              | —            |
+| Routes `/dashboard/new` + `/dashboard/new/[card_id]/sources` | ✅ scaffold                                              | —            |
+| **OAuth Google end-to-end**                                  | ❌ credentials non configurés, cookies en `samesite=lax` | **OUI**      |
+| **Auth guard sur `/dashboard*`**                             | ✅ `+layout.ts` redirige vers `/` si non connecté        | —            |
+| **Extracteur branché dans le formulaire frontend**           | ✅ appel `/sources/extract` au blur de l'URL en étape 2  | —            |
+| Rate limiting sur endpoints publics                          | ❌ slowapi présent mais non câblé                        | Risque (DoS) |
+| Observabilité (logs, erreurs, uptime)                        | ⚠️ logs Railway uniquement, pas de Sentry                | Recommandé   |
+| Test du flow auth end-to-end                                 | ❌                                                       | Recommandé   |
 
 Source de vérité unique : [`STATE.md`](../STATE.md) section « Prochaines étapes par priorité ». Ce document doit rester aligné avec lui ; en cas de désaccord, **STATE.md gagne**.
 
@@ -52,6 +52,7 @@ Trois jalons. Chaque jalon = une PR auto-suffisante (mergée avant d'attaquer la
 **Objectif** : un utilisateur tiers peut se connecter, atterrit avec un cookie session valide reconnu par le backend Railway depuis le frontend Vercel.
 
 **Pré-requis humain (le développeur, pas l'agent)** :
+
 - Créer un projet OAuth dans la Google Cloud Console
 - Récupérer `client_id`, `client_secret`
 - Déclarer la redirect URI : `https://filum-production-07bb.up.railway.app/api/v1/auth/google/callback`
@@ -61,6 +62,7 @@ Trois jalons. Chaque jalon = une PR auto-suffisante (mergée avant d'attaquer la
   - `google_redirect_uri`
 
 **Travail agent / dev (FAIT — PR #— `feat/oauth-google-end-to-end`)** :
+
 1. ✅ Vérifié : `authlib` non nécessaire (PyJWT 2.10+ gère JWKS nativement via `PyJWKClient`, httpx + cryptography déjà présents).
 2. ✅ Implémenté :
    - `GET /api/v1/auth/google/login` → redirige vers Google avec `state` token CSRF en cookie HttpOnly
@@ -71,12 +73,14 @@ Trois jalons. Chaque jalon = une PR auto-suffisante (mergée avant d'attaquer la
 6. ✅ `cors_origins` inchangés (déjà OK : `["https://filum-eight.vercel.app","http://localhost:5173"]`).
 
 **Critères de done** :
+
 - `curl -c cookies.txt https://filum-production-07bb.up.railway.app/api/v1/auth/google/login` retourne une 302 vers `accounts.google.com`.
 - Après login réel via le navigateur, `GET /api/v1/auth/me` retourne 200 avec les infos user.
 - Logout fonctionne (`POST /api/v1/auth/logout`).
 - Au moins 1 test d'intégration sur `/auth/me` avec un cookie mocké (déjà partiellement présent, vérifier qu'il passe avec la nouvelle config).
 
 **Risques** :
+
 - `samesite=none, secure=True` plus restrictif → toute origine non-HTTPS casse. **Mitiger** : conditionner sur `settings.debug` (dev = `lax`, prod = `none`).
 - Google rejette les redirect URIs non HTTPS. Ne pas tester via `http://`.
 - Cookie pas envoyé en cross-origin : vérifier `withCredentials: true` ou `credentials: 'include'` dans le client API frontend (`apps/frontend/src/lib/api/`).
@@ -92,6 +96,7 @@ Trois jalons. Chaque jalon = une PR auto-suffisante (mergée avant d'attaquer la
 **Objectif** : un utilisateur connecté peut créer une fiche complète depuis le frontend sans toucher au backend manuellement. Un utilisateur non connecté est redirigé vers la page de login.
 
 **Travail (FAIT — 2026-05-13, commit `132ea13`)** :
+
 1. ✅ **Auth guard `/dashboard*`** : `+layout.ts` dans `apps/frontend/src/routes/dashboard/` — lit `parent().user` et `throw redirect(302, '/')` si non connecté.
 2. ✅ **Branchement extracteur** : dans `dashboard/new/[card_id]/sources/+page.svelte`, sur `onblur` du champ URL, `GET /api/v1/sources/extract?url=...` → pré-remplit titre + auteurs. Silent fail si erreur réseau ou API.
 3. ✅ **UX** : spinner dans le champ URL pendant l'extraction. Les champs titre/auteurs sont réinitialisés si l'URL change.
@@ -99,6 +104,7 @@ Trois jalons. Chaque jalon = une PR auto-suffisante (mergée avant d'attaquer la
 5. ⏳ Test du flow complet — dépend des credentials Google Cloud configurés.
 
 **Critères de done** :
+
 - Visiter `/dashboard/new` non connecté → redirige vers `/`.
 - Visiter `/dashboard/new` connecté → formulaire visible.
 - Coller une URL → 1-3s après, titre/auteur pré-remplis.
@@ -113,6 +119,7 @@ Trois jalons. Chaque jalon = une PR auto-suffisante (mergée avant d'attaquer la
 **Objectif** : ouvrir l'accès à 3-5 premiers créateurs sans risque opérationnel grave.
 
 **Travail** :
+
 1. ✅ **Rate limiting** : `slowapi` branché sur `GET /sources/extract` (10 req/min/IP) et `POST /cards` (20 req/h/IP). `Limiter` défini dans `app/core/rate_limit.py` pour éviter imports circulaires.
 2. ✅ **Logs structurés** : middleware FastAPI qui log chaque requête avec `request_id` (UUID tronqué), méthode, path, status, durée (ms). Header `X-Request-ID` présent sur chaque réponse.
 3. ✅ **Erreurs en prod** : `global_exception_handler` présent avec `exc_info=True`. Alerte email Railway via dashboard (action humaine).
@@ -120,6 +127,7 @@ Trois jalons. Chaque jalon = une PR auto-suffisante (mergée avant d'attaquer la
 5. ✅ **Backup BDD** : procédure documentée dans `.docs/02-tech-architecture.md`.
 
 **Critères de done** :
+
 - Spam `GET /sources/extract` → 429 après 10 req.
 - Logs Railway lisibles, grep-ables.
 - Procédure de backup documentée.
@@ -132,15 +140,15 @@ Trois jalons. Chaque jalon = une PR auto-suffisante (mergée avant d'attaquer la
 
 Le projet doit tourner **gratuitement** jusqu'à validation produit. Limites à surveiller :
 
-| Service | Limite tier gratuit | Risque MVP | Stratégie de mitigation |
-|---|---|---|---|
-| Railway (backend + Postgres) | $5 crédit/mois, sleep si inactivité | Backend qui s'endort → premier hit lent. Postgres limité à ~1 GB | Garder l'instance « hobby » au minimum ($5/mois) si possible ; sinon accepter le cold start. Ne PAS stocker de blobs (PDF, images) en BDD. |
-| Vercel (frontend) | 100 GB BW/mois, builds illimités | OK pour < 100k pageviews | Mettre des `Cache-Control: public, max-age=60` sur les pages publiques. |
-| Wayback Machine API | ~10-15 req/min | Si un utilisateur ajoute 20 sources d'un coup, on dépasse | Queue asynchrone (déjà en place via `asyncio.create_task`) + retry exponentiel. |
-| Google OAuth | Pratiquement illimité gratuit | — | — |
-| Crossref API | Pas de limite stricte, mais courtoisie (`mailto:` requis dans User-Agent) | Faible | Bien renseigner le User-Agent (`Philum/0.1 (mailto:mathias@...)`). |
-| GitHub Actions | 2000 min/mois pour le compte gratuit | OK avec CI actuelle (~5 min/run × ~50 runs/mois) | Si on monte, exclure les chemins doc-only via `paths-ignore`. |
-| Dependabot | Gratuit | — | — |
+| Service                      | Limite tier gratuit                                                       | Risque MVP                                                       | Stratégie de mitigation                                                                                                                    |
+| ---------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Railway (backend + Postgres) | $5 crédit/mois, sleep si inactivité                                       | Backend qui s'endort → premier hit lent. Postgres limité à ~1 GB | Garder l'instance « hobby » au minimum ($5/mois) si possible ; sinon accepter le cold start. Ne PAS stocker de blobs (PDF, images) en BDD. |
+| Vercel (frontend)            | 100 GB BW/mois, builds illimités                                          | OK pour < 100k pageviews                                         | Mettre des `Cache-Control: public, max-age=60` sur les pages publiques.                                                                    |
+| Wayback Machine API          | ~10-15 req/min                                                            | Si un utilisateur ajoute 20 sources d'un coup, on dépasse        | Queue asynchrone (déjà en place via `asyncio.create_task`) + retry exponentiel.                                                            |
+| Google OAuth                 | Pratiquement illimité gratuit                                             | —                                                                | —                                                                                                                                          |
+| Crossref API                 | Pas de limite stricte, mais courtoisie (`mailto:` requis dans User-Agent) | Faible                                                           | Bien renseigner le User-Agent (`Philum/0.1 (mailto:mathias@...)`).                                                                         |
+| GitHub Actions               | 2000 min/mois pour le compte gratuit                                      | OK avec CI actuelle (~5 min/run × ~50 runs/mois)                 | Si on monte, exclure les chemins doc-only via `paths-ignore`.                                                                              |
+| Dependabot                   | Gratuit                                                                   | —                                                                | —                                                                                                                                          |
 
 **Règle d'or** : aucune dépendance payante (Sentry, Plausible, Logflare, AWS) avant validation des hypothèses utilisateurs (cf. `.docs/00-vision.md`).
 
@@ -195,4 +203,4 @@ C'est uniquement à ce stade que les features de phase 2 (OAuth YouTube, extract
 
 ---
 
-*Maintenir ce document à jour. Si un jalon devient obsolète (fait, abandonné, repensé), le marquer explicitement. Ne pas créer un `12-…md` qui parlerait du même sujet ; éditer celui-ci.*
+_Maintenir ce document à jour. Si un jalon devient obsolète (fait, abandonné, repensé), le marquer explicitement. Ne pas créer un `12-…md` qui parlerait du même sujet ; éditer celui-ci._

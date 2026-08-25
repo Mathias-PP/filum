@@ -980,7 +980,9 @@ async def boucle(
 
     usage_total: dict[str, int] = {"prompt_tokens": 0, "completion_tokens": 0}
     try:
-        for tour in range(1, MAX_TOURS + 1):
+        # Utiliser le quota_tours si défini dans agent_def, sinon utiliser MAX_TOURS
+        quota_tours = agent_def.quota_tours if agent_def else MAX_TOURS
+        for tour in range(1, quota_tours + 1):
 
             async def _on_delta(content: str, _t: int = tour) -> None:
                 await emit({"type": "message_delta", "payload": {"delta": content, "tour": _t}})
@@ -1051,10 +1053,20 @@ async def boucle(
                 }
             )
             await _executer_tour(db, user, tour, messages, tool_calls, registre, emit, approuver)
+        # Limite atteinte : pas une erreur dure, mais une pause avec reprise.
+        # Les harness modernes (cordis, opencode) n'ont pas de compteur dur :
+        # seule la fenêtre contexte compte. On compacte et on propose de continuer.
+        compactes, retires = compacter(messages, BUDGET_APRES_REFUS)
+        if retires:
+            messages[:] = compactes
+            await emit({"type": "contexte_compacte", "payload": {"messages_retires": retires}})
         await emit(
             {
-                "type": "error",
-                "payload": {"message": f"Maximum de {MAX_TOURS} tours atteint, arrêt de l'agent."},
+                "type": "continuation",
+                "payload": {
+                    "message": f'Pause après {MAX_TOURS} actions : l\'agent a beaucoup travaillé et peut continuer. Cliquez sur Continuer ou envoyez "continue".',
+                    "tours": MAX_TOURS,
+                },
             }
         )
     except Exception as exc:  # noqa: BLE001 -- un échec de boucle doit être visible, pas silencieux

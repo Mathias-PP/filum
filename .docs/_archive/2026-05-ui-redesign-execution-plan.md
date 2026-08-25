@@ -26,6 +26,7 @@ Ce document est le contrat d'exécution agentique. À chaque session, lire d'abo
 ## Séquence des PRs
 
 ### PR1 — Fix édition sources + bouton retour dashboard (`fix/edit-sources-and-dashboard-link`)
+
 **Petite, mergeable vite, débloque un bug réel.**
 
 - [ ] Tag `pre-redesign` sur `main` (sauvegarde)
@@ -44,6 +45,7 @@ Ce document est le contrat d'exécution agentique. À chaque session, lire d'abo
 - [ ] Push de la branche
 
 ### PR2 — Fondations design system + composants essentiels (`feat/design-system-foundations`)
+
 - [ ] Lot 1 : design tokens CSS (palette `--bg-*`, `--text-*`, `--border*`, sémantiques)
 - [ ] Lot 1 : `tailwind.config.js` (couleurs custom, Source Serif 4, borderRadius, plugin forms+typography)
 - [ ] Lot 1 : `app.css` Google Fonts (Source Serif 4 remplace Merriweather, garde Inter)
@@ -56,6 +58,7 @@ Ce document est le contrat d'exécution agentique. À chaque session, lire d'abo
 - [ ] Commit unique squashable ou série courte
 
 ### PR3 — Hero galaxie 3D animé (`feat/hero-galaxy-3d`)
+
 Lots 5 + 12 fusionnés.
 
 - [ ] Remplacer "Vous" → "Filum" dans le SVG hero
@@ -73,6 +76,7 @@ Lots 5 + 12 fusionnés.
 - [ ] IntersectionObserver reveal sur sections (fade + translateY)
 
 ### PR4 — Layout + dashboard + page publique (`feat/layout-dashboard-public`)
+
 - [ ] Lot 4 : Header sticky `backdrop-blur`, menu mobile animé, dark mode toggle (stubbed pour PR5), avatar dropdown
 - [ ] Lot 4 : Footer compact
 - [ ] Lot 4.5 : page transitions Svelte (`{#key $page.url.pathname}` + `transition:fly`)
@@ -82,6 +86,7 @@ Lots 5 + 12 fusionnés.
 - [ ] Lot 8.3 : graphe D3 — Skeleton placeholder, animation entrée nœuds en cascade, légende AUTHOR_COLORS
 
 ### PR5 — Dark mode complet (`feat/dark-mode`)
+
 - [ ] CSS variables doubles (light + dark)
 - [ ] Classe `.dark` sur `<html>` via store `theme.ts`
 - [ ] Détection `prefers-color-scheme` + toggle manuel persistant (localStorage)
@@ -94,6 +99,7 @@ Lots 5 + 12 fusionnés.
 - [ ] Transition globale `transition-colors duration-300`
 
 ### PR6 — Pages info + animations + responsive + a11y (`feat/polish-and-a11y`)
+
 - [ ] Lot 6 : about, features, roadmap (timeline), security, privacy — layout unifié, composants DS
 - [ ] Lot 9 : micro-interactions (hover scale 1.02, focus-visible rings, prefers-reduced-motion partout)
 - [ ] Lot 10 : responsive 320/375/768/1024/1440, mobile bottom sheets, graphe simplifié mobile
@@ -126,4 +132,5 @@ Lots 5 + 12 fusionnés.
 - [ ] PR6 — non démarrée
 
 **Notes d'exécution** (à enrichir au fil des sessions) :
+
 - _(vide)_

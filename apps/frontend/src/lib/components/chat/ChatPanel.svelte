@@ -152,7 +152,10 @@
   // 10 cartes « Lit la source #a1b2c3d4 » qui empilent le meme verbe. Le nom
   // « Lit la source » figure une fois, les entrees s'empilent en dessous.
   type Affichable =
-    | Extract<ChatItem, { kind: 'user' | 'assistant' | 'approval' | 'error' | 'compaction' }>
+    | Extract<
+        ChatItem,
+        { kind: 'user' | 'assistant' | 'approval' | 'error' | 'compaction' | 'continuation' }
+      >
     | {
         kind: 'group-outils';
         name: string;
@@ -524,6 +527,54 @@
       toast.danger(e instanceof ApiError ? e.message : "Cette demande n'attend plus de reponse.");
     }
   }
+
+  async function continuer() {
+    if (enCours) return;
+    const message = 'continue';
+    auBas = true;
+    items = [...items, { kind: 'user', text: message }];
+    enCours = true;
+    controleur = new AbortController();
+    try {
+      for await (const evenement of agentApi.streamChat({
+        message,
+        session_id: sessionId ?? undefined,
+        ...(gratuitActif
+          ? {}
+          : {
+              provider_id: cleChoisie || undefined,
+              model_override: modeleChoisi || undefined,
+            }),
+        agent_slug: agentChoisi || undefined,
+        signal: controleur.signal,
+      })) {
+        if (evenement.type === 'discovery_active') {
+          decouverte = evenement.payload;
+          banniereMode = 'decouverte';
+        }
+        if (evenement.type === 'gratuit_actif') {
+          decouverte = evenement.payload;
+          banniereMode = 'gratuit';
+        }
+        items = appliquer(items, evenement);
+      }
+    } catch (e) {
+      if ((e as Error)?.name !== 'AbortError') {
+        items = [
+          ...items,
+          { kind: 'error', text: e instanceof ApiError ? e.message : "L'agent s'est interrompu." },
+        ];
+      }
+    } finally {
+      enCours = false;
+      controleur = null;
+      if (sessionId)
+        agentApi.sessions
+          .usage(sessionId)
+          .then((u) => (usage = u))
+          .catch(() => null);
+    }
+  }
 </script>
 
 <div class="flex h-[calc(100dvh-12rem)] flex-col">
@@ -806,6 +857,21 @@
           approved={item.approved}
           onrespond={(approuve) => repondreApprobation(item.requestId, approuve)}
         />
+      {:else if item.kind === 'continuation'}
+        <div
+          class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-700 dark:bg-amber-950"
+        >
+          <p class="text-sm text-amber-800 dark:text-amber-200">{item.message}</p>
+          <Button
+            variant="ghost"
+            onclick={() => {
+              continuer();
+              enCours = true;
+              setTimeout(() => (enCours = false), 5000);
+            }}
+            disabled={enCours}>Continuer</Button
+          >
+        </div>
       {:else}
         <p class="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">
           {item.text}

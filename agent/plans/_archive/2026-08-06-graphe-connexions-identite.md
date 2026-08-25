@@ -29,14 +29,14 @@
 
 ## Sommaire des lots
 
-| Lot | Contenu | Nature | Demandes couvertes |
-|-----|---------|--------|--------------------|
-| A | Épaisseur des liens, légende repliable, purge des em-dashes | Frontend seul | 8, 4 |
-| B | Sens de citation, imbrication des fiches, épinglage, lien Philum dans l'encadré | Frontend + 1 paramètre API | 2, 3, 5 |
-| C | Options de référencement des fiches (format, catégorie, type d'auteur) | Migration + API + UI | 10 |
-| D | Espace de gestion des connexions entre fiches | Migration + API + UI | 1 |
-| E | Interopérabilité issue de l'étude (COinS, Highwire, alertes de citation) | Backend + frontend | conclusions de l'étude |
-| F | Preuve d'autorat, profils publics et feed, garantie d'authenticité | Documentation seule | 6, 7, 9 |
+| Lot | Contenu                                                                         | Nature                     | Demandes couvertes     |
+| --- | ------------------------------------------------------------------------------- | -------------------------- | ---------------------- |
+| A   | Épaisseur des liens, légende repliable, purge des em-dashes                     | Frontend seul              | 8, 4                   |
+| B   | Sens de citation, imbrication des fiches, épinglage, lien Philum dans l'encadré | Frontend + 1 paramètre API | 2, 3, 5                |
+| C   | Options de référencement des fiches (format, catégorie, type d'auteur)          | Migration + API + UI       | 10                     |
+| D   | Espace de gestion des connexions entre fiches                                   | Migration + API + UI       | 1                      |
+| E   | Interopérabilité issue de l'étude (COinS, Highwire, alertes de citation)        | Backend + frontend         | conclusions de l'étude |
+| F   | Preuve d'autorat, profils publics et feed, garantie d'authenticité              | Documentation seule        | 6, 7, 9                |
 
 Les lots A à D sont séquentiels : B touche les mêmes lignes que A, D suppose C mergé. Le lot E est indépendant. Le lot F peut être fait à tout moment, il ne touche aucun code.
 
@@ -51,6 +51,7 @@ Trois corrections indépendantes, sans dépendance backend. Objectif : alléger 
 **Constat utilisateur :** « les liens entre les nœuds sont trop épais quand ils sont caractérisés (mention, nuance/contredit, etc.), ce qui alourdit le graphe. »
 
 **Fichiers :**
+
 - Modifier : `apps/frontend/src/lib/components/SourceGraph.svelte:1310-1316`
 
 - [ ] **Étape 1 : lire le bloc actuel**
@@ -113,9 +114,11 @@ git commit -m "fix: amincir les liens caracterises du graphe"
 **Constat utilisateur :** le bandeau « N fiches Philum reliées… » doit pouvoir être fermé ou réduit.
 
 **Fichiers :**
+
 - Modifier : `apps/frontend/src/lib/components/SourceGraph.svelte:2421-2460` (bloc de légende) et la zone d'état `$state` autour de la ligne 233
 
 **Test :**
+
 - Créer : `apps/frontend/src/lib/components/__tests__/graph-legend.test.ts`
 
 - [ ] **Étape 1 : écrire le test qui échoue**
@@ -123,20 +126,20 @@ git commit -m "fix: amincir les liens caracterises du graphe"
 Créer `apps/frontend/src/lib/components/__tests__/graph-legend.test.ts` :
 
 ```ts
-import { describe, expect, it } from 'vitest';
-import { legendLabel } from '../graph-legend';
+import { describe, expect, it } from "vitest";
+import { legendLabel } from "../graph-legend";
 
-describe('legendLabel', () => {
-  it('accorde le pluriel au-dela d une fiche', () => {
-    expect(legendLabel(2)).toContain('2 fiches Philum reliées');
+describe("legendLabel", () => {
+  it("accorde le pluriel au-dela d une fiche", () => {
+    expect(legendLabel(2)).toContain("2 fiches Philum reliées");
   });
 
-  it('reste au singulier pour une seule fiche', () => {
-    expect(legendLabel(1)).toContain('1 fiche Philum reliée');
+  it("reste au singulier pour une seule fiche", () => {
+    expect(legendLabel(1)).toContain("1 fiche Philum reliée");
   });
 
   it("n'utilise aucun em-dash", () => {
-    expect(legendLabel(3)).not.toContain('—');
+    expect(legendLabel(3)).not.toContain("—");
   });
 });
 ```
@@ -163,7 +166,7 @@ Créer `apps/frontend/src/lib/components/graph-legend.ts` :
  */
 export function legendLabel(count: number): string {
   const plural = count > 1;
-  const fiches = plural ? 'fiches Philum reliées' : 'fiche Philum reliée';
+  const fiches = plural ? "fiches Philum reliées" : "fiche Philum reliée";
   return `${count} ${fiches}. Cliquez la pastille « + » pour déplier ses sources, le nœud pour voir sa référence.`;
 }
 ```
@@ -181,16 +184,16 @@ Attendu : 3 tests passent.
 Dans `apps/frontend/src/lib/components/SourceGraph.svelte`, à côté de la déclaration `let neighborCards = $state(...)` (ligne 233 environ), ajouter :
 
 ```ts
-  // La légende explique un geste qu'on n'apprend qu'une fois. Elle doit donc
-  // pouvoir disparaître, et rester disparue le temps de la session : la
-  // rouvrir à chaque remontage la transformerait en bandeau publicitaire.
-  let legendOpen = $state(true);
+// La légende explique un geste qu'on n'apprend qu'une fois. Elle doit donc
+// pouvoir disparaître, et rester disparue le temps de la session : la
+// rouvrir à chaque remontage la transformerait en bandeau publicitaire.
+let legendOpen = $state(true);
 ```
 
 Et dans le bloc `<script>` du même fichier, importer le libellé (à ajouter aux imports existants en haut de fichier) :
 
 ```ts
-  import { legendLabel } from './graph-legend';
+import { legendLabel } from "./graph-legend";
 ```
 
 - [ ] **Étape 6 : remplacer le bandeau**
@@ -262,19 +265,21 @@ git commit -m "feat: legende du graphe repliable"
 
 **Règle de remplacement, dans cet ordre de préférence :**
 
-| Usage de l'em-dash | Remplacement |
-|---|---|
-| Incise en milieu de phrase (« X — précision — Y ») | Virgules, ou parenthèses si l'incise est longue |
+| Usage de l'em-dash                                              | Remplacement                                         |
+| --------------------------------------------------------------- | ---------------------------------------------------- |
+| Incise en milieu de phrase (« X — précision — Y »)              | Virgules, ou parenthèses si l'incise est longue      |
 | Charnière explicative en fin de phrase (« X — c'est-à-dire Y ») | Point-virgule, ou deux-points, ou une phrase séparée |
-| Juxtaposition d'un libellé et d'une valeur (« Titre — Auteur ») | Deux-points, ou un séparateur `·` |
-| Liste d'apposition (« A — B — C ») | Virgules |
+| Juxtaposition d'un libellé et d'une valeur (« Titre — Auteur ») | Deux-points, ou un séparateur `·`                    |
+| Liste d'apposition (« A — B — C »)                              | Virgules                                             |
 
 **Exceptions légitimes, à conserver :**
+
 1. `<p>—</p>` ou `{value ?? '—'}` comme **marque de valeur absente** dans un tableau ou une fiche (par exemple `apps/frontend/src/routes/@[creator]/[card]/+page.svelte:463` et `:479`). Ce n'est pas de la prose, c'est un glyphe de vide.
 2. Les commentaires de code (`//` et `<!-- -->`) : invisibles pour l'utilisateur, hors périmètre.
 3. `apps/frontend/src/routes/sandbox/**` : pages de travail internes, non publiques.
 
 **Fichiers :**
+
 - Modifier : les 27 fichiers listés par la commande de l'étape 1
 
 - [ ] **Étape 1 : établir la liste de travail**
@@ -309,6 +314,7 @@ Exemples de transformations attendues :
 ```
 
 Traiter dans cet ordre pour pouvoir committer par paquets cohérents :
+
 1. `routes/+page.svelte`, `routes/about/`, `routes/features/`, `routes/roadmap/`, `routes/developers/`, `routes/security/`, `routes/privacy/` (pages vitrine)
 2. `routes/dashboard/**` (parcours créateur)
 3. `routes/@[creator]/[card]/+page.svelte`, `routes/discover/` (pages publiques de fiche)
@@ -334,18 +340,18 @@ Créer `apps/frontend/scripts/check-emdash.mjs` :
  * seule exception tolérée est le glyphe de valeur absente, isolé, qui n'est
  * pas de la prose.
  */
-import { readFileSync } from 'node:fs';
-import { globSync } from 'node:fs';
+import { readFileSync } from "node:fs";
+import { globSync } from "node:fs";
 
-const files = globSync('src/{routes,lib}/**/*.svelte', { exclude: (p) => p.includes('sandbox') });
+const files = globSync("src/{routes,lib}/**/*.svelte", { exclude: (p) => p.includes("sandbox") });
 const offenders = [];
 
 for (const file of files) {
-  const lines = readFileSync(file, 'utf8').split('\n');
+  const lines = readFileSync(file, "utf8").split("\n");
   lines.forEach((line, i) => {
-    if (!line.includes('—')) return;
+    if (!line.includes("—")) return;
     const trimmed = line.trim();
-    if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('<!--')) return;
+    if (trimmed.startsWith("//") || trimmed.startsWith("*") || trimmed.startsWith("<!--")) return;
     // Glyphe de valeur absente : `—` isolé entre balises ou après `??`.
     if (/(\?\?\s*'—')|(>\s*—\s*<)/.test(line)) return;
     offenders.push(`${file}:${i + 1}: ${trimmed}`);
@@ -353,10 +359,10 @@ for (const file of files) {
 }
 
 if (offenders.length > 0) {
-  console.error('Em-dashes interdits dans le texte visible :\n' + offenders.join('\n'));
+  console.error("Em-dashes interdits dans le texte visible :\n" + offenders.join("\n"));
   process.exit(1);
 }
-console.log('Aucun em-dash dans le texte visible.');
+console.log("Aucun em-dash dans le texte visible.");
 ```
 
 Ajouter le script à `apps/frontend/package.json`, dans `"scripts"` :
@@ -395,6 +401,7 @@ C'est le lot le plus important. Il répond à trois demandes liées.
 **Diagnostic préalable, à ne pas refaire :** le backend encode déjà le sens. Dans `apps/backend/app/services/card_graph.py:230-232`, `_record_card_edge(src_id, dst_id, stance)` est appelé avec `(citing_id, cited_id)` ligne 257 pour les citations entrantes et avec `(card_id, target_card)` ligne 289 pour les sortantes. L'arête `is_card` produite ligne 342-349 porte donc `source` = fiche **citante** et `target` = fiche **citée**. Le frontend conserve cet ordre dans `cardLinks` (`SourceGraph.svelte:605-611`) mais l'affiche comme un trait symétrique : c'est là, et là seulement, que le sens est perdu.
 
 **Décision de conception (l'utilisateur a délégué le choix) :** implémenter les deux mécanismes, mais dans cet ordre de priorité.
+
 1. **Toujours** dessiner une flèche sur les arêtes fiche → fiche. C'est peu coûteux, non ambigu, et ça ne surcharge pas : une pointe de 6 px sur un trait de 1.8 px reste discrète.
 2. **En plus**, offrir un sélecteur de sens à trois positions (« Ce que cite cette fiche » / « Ce qui cite cette fiche » / « Les deux »), par défaut sur « Les deux ». Le défaut reste bidirectionnel parce que le sens entrant est la moitié de la valeur du méta-graphe ; il devient lisible grâce aux flèches, ce qui était le vrai problème.
 3. **Le bug signalé** (une fiche qui cite la racine apparaissait comme si la racine la citait) est corrigé par le point 1 seul. Les points 2 et 3 le rendent en plus filtrable.
@@ -402,6 +409,7 @@ C'est le lot le plus important. Il répond à trois demandes liées.
 ### Tâche B1 : marqueurs de flèche sur les arêtes fiche → fiche
 
 **Fichiers :**
+
 - Modifier : `apps/frontend/src/lib/components/SourceGraph.svelte` (définition des `<defs>` SVG, puis le rendu des liens autour de la ligne 1300)
 
 - [ ] **Étape 1 : localiser le conteneur SVG**
@@ -537,6 +545,7 @@ git commit -m "feat: fleches de sens sur les liens fiche a fiche"
 ### Tâche B2 : sélecteur de sens à trois positions
 
 **Fichiers :**
+
 - Modifier : `apps/frontend/src/lib/components/SourceGraph.svelte`
 
 - [ ] **Étape 1 : ajouter l'état**
@@ -544,16 +553,16 @@ git commit -m "feat: fleches de sens sur les liens fiche a fiche"
 À côté de `let legendOpen = $state(true);` (ajouté en tâche A2) :
 
 ```ts
-  /**
-   * Sens de lecture du méta-graphe.
-   *
-   * `sortant` : ce que cette fiche cite. `entrant` : ce qui cite cette fiche.
-   * `deux` : les deux, distingués par la flèche. Le défaut est `deux` parce
-   * que le sens entrant est la moitié de la valeur du graphe ; c'était son
-   * illisibilité, pas sa présence, qui posait problème.
-   */
-  type GraphDirection = 'sortant' | 'entrant' | 'deux';
-  let direction = $state<GraphDirection>('deux');
+/**
+ * Sens de lecture du méta-graphe.
+ *
+ * `sortant` : ce que cette fiche cite. `entrant` : ce qui cite cette fiche.
+ * `deux` : les deux, distingués par la flèche. Le défaut est `deux` parce
+ * que le sens entrant est la moitié de la valeur du graphe ; c'était son
+ * illisibilité, pas sa présence, qui posait problème.
+ */
+type GraphDirection = "sortant" | "entrant" | "deux";
+let direction = $state<GraphDirection>("deux");
 ```
 
 - [ ] **Étape 2 : filtrer les arêtes selon le sens**
@@ -599,13 +608,13 @@ par :
 Ajouter, à côté des autres `$effect` du composant :
 
 ```ts
-  // Changer de sens change la topologie : la simulation doit repartir, sinon
-  // les nœuds retirés laissent un trou et ceux ajoutés apparaissent au centre.
-  $effect(() => {
-    direction;
-    if (!svgEl) return;
-    remount();
-  });
+// Changer de sens change la topologie : la simulation doit repartir, sinon
+// les nœuds retirés laissent un trou et ceux ajoutés apparaissent au centre.
+$effect(() => {
+  direction;
+  if (!svgEl) return;
+  remount();
+});
 ```
 
 Vérifier le nom réel de la référence au nœud SVG dans le composant (`svgEl`, `container`, etc.) avec `grep -n "bind:this" src/lib/components/SourceGraph.svelte` et l'utiliser.
@@ -670,6 +679,7 @@ git commit -m "feat: selecteur de sens du meta-graphe"
 **Attention :** le commentaire actuel des lignes 744-747 justifie explicitement le comportement inverse (« Ne montrer que les fiches atteignables depuis les sources affichées masquait les chaînes A -> B -> C tant que B n'était pas dépliée, et tout le sens entrant »). Le nouveau comportement doit préserver **le sens entrant à un saut** : les fiches qui citent la racine restent visibles d'emblée. Seule la profondeur 2 et au-delà est différée.
 
 **Fichiers :**
+
 - Modifier : `apps/frontend/src/lib/components/SourceGraph.svelte:744-782`
 
 - [ ] **Étape 1 : calculer l'ensemble des fiches visibles**
@@ -677,20 +687,20 @@ git commit -m "feat: selecteur de sens du meta-graphe"
 Dans `buildGraph()`, juste avant la boucle `for (const [cid, meta] of neighborCards)` (ligne 750), insérer :
 
 ```js
-    // Une fiche n'entre dans le graphe que si elle touche une fiche déjà à
-    // l'écran : la racine, une fiche dépliée, ou une fiche épinglée. Afficher
-    // d'emblée toute la constellation à trois sauts produisait un nuage que
-    // personne ne pouvait lire, où la fiche consultée se perdait.
-    //
-    // Le voisinage est calculé dans les deux sens : « qui me cite » à un saut
-    // est aussi informatif que « qui je cite », et le masquer reviendrait à
-    // amputer le graphe de sa moitié entrante.
-    const anchorIds = new Set<string>([card.id, ...expandedCardIds, ...pinnedCardIds]);
-    const visibleCardIds = new Set<string>(anchorIds);
-    for (const [from, to] of cardLinks) {
-      if (anchorIds.has(from)) visibleCardIds.add(to);
-      if (anchorIds.has(to)) visibleCardIds.add(from);
-    }
+// Une fiche n'entre dans le graphe que si elle touche une fiche déjà à
+// l'écran : la racine, une fiche dépliée, ou une fiche épinglée. Afficher
+// d'emblée toute la constellation à trois sauts produisait un nuage que
+// personne ne pouvait lire, où la fiche consultée se perdait.
+//
+// Le voisinage est calculé dans les deux sens : « qui me cite » à un saut
+// est aussi informatif que « qui je cite », et le masquer reviendrait à
+// amputer le graphe de sa moitié entrante.
+const anchorIds = new Set() < string > [card.id, ...expandedCardIds, ...pinnedCardIds];
+const visibleCardIds = new Set() < string > anchorIds;
+for (const [from, to] of cardLinks) {
+  if (anchorIds.has(from)) visibleCardIds.add(to);
+  if (anchorIds.has(to)) visibleCardIds.add(from);
+}
 ```
 
 - [ ] **Étape 2 : restreindre la création des nœuds fiche**
@@ -711,9 +721,9 @@ par :
 Et remplacer le commentaire obsolète des lignes 744-747 par :
 
 ```js
-    // Fiches du voisinage retenues à l'affichage : voir `visibleCardIds`
-    // ci-dessus. Une fiche à deux sauts n'apparaît qu'une fois sa fiche amont
-    // dépliée, ou si le lecteur l'a épinglée.
+// Fiches du voisinage retenues à l'affichage : voir `visibleCardIds`
+// ci-dessus. Une fiche à deux sauts n'apparaît qu'une fois sa fiche amont
+// dépliée, ou si le lecteur l'a épinglée.
 ```
 
 - [ ] **Étape 3 : signaler qu'une fiche en cache d'autres**
@@ -795,6 +805,7 @@ git commit -m "feat: differer l'affichage des fiches a deux sauts"
 **Constat utilisateur :** « un bouton supplémentaire pour "figer" les nœuds fiche malgré l'imbrication. »
 
 **Fichiers :**
+
 - Modifier : `apps/frontend/src/lib/components/SourceGraph.svelte`
 - Modifier : `apps/frontend/src/lib/components/CardDetailPanel.svelte`
 
@@ -803,21 +814,19 @@ git commit -m "feat: differer l'affichage des fiches a deux sauts"
 Dans `SourceGraph.svelte`, à côté de `expandedCardIds` (ligne 240) :
 
 ```ts
-  /**
-   * Fiches maintenues à l'écran quelle que soit la profondeur.
-   *
-   * Épingler est le contrepoids du repli automatique introduit avec
-   * l'affichage différé : un lecteur qui a trouvé une fiche à trois sauts ne
-   * doit pas la perdre parce qu'il replie le chemin qui l'y a mené.
-   */
-  let pinnedCardIds = $state<string[]>([]);
+/**
+ * Fiches maintenues à l'écran quelle que soit la profondeur.
+ *
+ * Épingler est le contrepoids du repli automatique introduit avec
+ * l'affichage différé : un lecteur qui a trouvé une fiche à trois sauts ne
+ * doit pas la perdre parce qu'il replie le chemin qui l'y a mené.
+ */
+let pinnedCardIds = $state<string[]>([]);
 
-  function togglePin(cid: string) {
-    pinnedCardIds = pinnedCardIds.includes(cid)
-      ? pinnedCardIds.filter((id) => id !== cid)
-      : [...pinnedCardIds, cid];
-    remount();
-  }
+function togglePin(cid: string) {
+  pinnedCardIds = pinnedCardIds.includes(cid) ? pinnedCardIds.filter((id) => id !== cid) : [...pinnedCardIds, cid];
+  remount();
+}
 ```
 
 - [ ] **Étape 2 : marquer visuellement une fiche épinglée**
@@ -898,10 +907,12 @@ git commit -m "feat: epingler une fiche sur le graphe"
 **Constat utilisateur :** « "Synaptic tagging during memory allocation" est une fiche et on devrait donc pouvoir accéder au lien Philum de la fiche facilement via le graphe (dans l'encadré). »
 
 **Diagnostic :** deux cas distincts.
+
 - Un nœud fiche cliqué ouvre `CardDetailPanel`, qui possède déjà « Ouvrir la fiche » (`href="/@{info.creatorSlug}/{info.slug}"`). Rien à faire.
 - Un nœud **source** dont `linked_card_id` est renseigné mais dont la fiche cible n'est pas dans le graphe (privée, ou hors profondeur) ouvre `SourceDetailPanel`, qui n'offre que `href={source.url}` (ligne 241) et `href={source.archive_url}` (ligne 261). **C'est ce cas qu'il faut couvrir.**
 
 **Fichiers :**
+
 - Modifier : `apps/frontend/src/lib/components/SourceDetailPanel.svelte`
 - Modifier : `apps/backend/app/services/card_graph.py` (exposer le slug de la fiche liée)
 - Modifier : `apps/backend/app/schemas/card_graph.py` (ou le schéma correspondant)
@@ -1074,6 +1085,7 @@ git commit -m "feat: ouvrir la fiche liee depuis l'encadre source"
 ### Tâche C1 : migration et modèle
 
 **Fichiers :**
+
 - Créer : `apps/backend/alembic/versions/026_card_referencing.py`
 - Modifier : `apps/backend/app/models/biblio_card.py`
 
@@ -1178,6 +1190,7 @@ git commit -m "feat: referencement format/categorie/auteur sur les fiches"
 ### Tâche C2 : exposer et accepter les trois champs dans l'API
 
 **Fichiers :**
+
 - Modifier : `apps/backend/app/schemas/biblio_card.py`
 - Modifier : `apps/backend/app/api/v1/endpoints/cards.py`
 - Modifier : `apps/backend/app/services/card_graph.py`
@@ -1287,6 +1300,7 @@ git commit -m "feat: exposer le referencement des fiches dans l'API"
 ### Tâche C3 : formulaire d'édition et coloration du graphe
 
 **Fichiers :**
+
 - Modifier : `apps/frontend/src/routes/dashboard/new/[card_id]/sources/+page.svelte` (ou l'écran d'édition des métadonnées de fiche, à confirmer)
 - Modifier : `apps/frontend/src/lib/components/SourceGraph.svelte`
 - Modifier : `apps/frontend/src/lib/api` (type de fiche)
@@ -1304,9 +1318,9 @@ Le formulaire qui édite déjà `content_authors` est celui à étendre.
 Dans le type de fiche du client API (`grep -rn "content_authors" src/lib/api`), ajouter :
 
 ```ts
-  format: SourceFormat | null;
-  category: SourceCategory | null;
-  author_kind: AuthorKind | null;
+format: SourceFormat | null;
+category: SourceCategory | null;
+author_kind: AuthorKind | null;
 ```
 
 - [ ] **Étape 3 : ajouter les trois sélecteurs**
@@ -1403,11 +1417,12 @@ git commit -m "feat: declarer et colorer le referencement des fiches"
 
 # LOT D — Espace de gestion des connexions entre fiches
 
-**Constat utilisateur :** « Dans l'espace de création/édition de fiche, un espace de gestion des connexions entre les fiches : visualiser les connexions (suggérées ou déjà validées), en supprimer ou en ajouter facilement. L'interface doit être élégante et *user friendly*, claire, intuitive, facilement compréhensible et utilisable facilement. »
+**Constat utilisateur :** « Dans l'espace de création/édition de fiche, un espace de gestion des connexions entre les fiches : visualiser les connexions (suggérées ou déjà validées), en supprimer ou en ajouter facilement. L'interface doit être élégante et _user friendly_, claire, intuitive, facilement compréhensible et utilisable facilement. »
 
 **Diagnostic :** aujourd'hui, rien ne distingue une connexion **choisie** d'une connexion **devinée**. `effective_linked_card_id` (`apps/backend/app/services/card_link.py:206-228`) suit trois chemins : le sélecteur explicite, l'URL Philum collée, la résolution par contenu (même DOI ou même URL normalisée). Les trois écrivent la même colonne `Source.linked_card_id`, indiscernables ensuite. Pire, `link_sources_designating_card` (ligne 172-203) écrit ce lien **en masse sur les sources d'autres créateurs** quand une fiche est publiée, sans que personne ne l'ait validé. Un espace de gestion sans cette distinction n'aurait rien à montrer.
 
 **Décision :** deux colonnes sur `sources`.
+
 - `link_origin` : `'manuel'` (sélecteur), `'url'` (URL Philum collée), `'contenu'` (déduit d'un DOI ou d'une URL équivalente). `NULL` pour les liens antérieurs à la traçabilité, dont on ne peut rien affirmer.
 - `link_confirmed_at` : horodatage de la validation humaine. `NULL` = jamais confirmé.
 
@@ -1416,6 +1431,7 @@ git commit -m "feat: declarer et colorer le referencement des fiches"
 ### Tâche D1 : migration et modèle
 
 **Fichiers :**
+
 - Créer : `apps/backend/alembic/versions/027_link_provenance.py`
 - Modifier : `apps/backend/app/models/source.py`
 
@@ -1505,6 +1521,7 @@ git commit -m "feat: tracer l'origine des liens fiche a fiche"
 ### Tâche D2 : renseigner l'origine à chaque écriture de lien
 
 **Fichiers :**
+
 - Modifier : `apps/backend/app/services/card_link.py`
 - Test : `apps/backend/tests/unit/test_card_link.py`
 
@@ -1684,11 +1701,13 @@ git commit -m "feat: distinguer lien valide et lien suggere"
 ### Tâche D3 : endpoints de gestion des connexions
 
 **Fichiers :**
+
 - Créer : `apps/backend/app/api/v1/endpoints/card_connections.py`
 - Modifier : `apps/backend/app/api/v1/router.py` (ou l'agrégateur de routes)
 - Test : `apps/backend/tests/integration/test_card_connections.py`
 
 Trois opérations, toutes réservées au propriétaire de la fiche :
+
 - `GET /api/v1/cards/{card_id}/connections` : les connexions sortantes (sources de cette fiche qui désignent une fiche) et entrantes (sources d'autres fiches qui désignent celle-ci), avec leur origine et leur état de confirmation.
 - `POST /api/v1/cards/{card_id}/connections/{source_id}/confirm` : valider une suggestion.
 - `DELETE /api/v1/cards/{card_id}/connections/{source_id}` : retirer le lien (met `linked_card_id` à `NULL`, la source reste).
@@ -1960,6 +1979,7 @@ git commit -m "feat: endpoints de gestion des connexions"
 ### Tâche D4 : l'écran de gestion des connexions
 
 **Exigence explicite de l'utilisateur :** interface élégante, claire, intuitive. Traduction concrète :
+
 - **Deux sections nettes** : « Fiches que vous citez » et « Fiches qui vous citent ». Jamais un tableau unique avec une colonne « sens ».
 - **Les suggestions d'abord**, dans un encart distinct en tête de la section sortante, avec un compteur. Elles sont l'action à faire ; le reste est de la consultation.
 - **Deux boutons par ligne au maximum** : « Confirmer » et « Retirer ». Pas de menu contextuel.
@@ -1967,6 +1987,7 @@ git commit -m "feat: endpoints de gestion des connexions"
 - **Les citations entrantes sont en lecture seule**, avec une mention explicite de la raison, pas des boutons grisés sans explication.
 
 **Fichiers :**
+
 - Créer : `apps/frontend/src/routes/dashboard/new/[card_id]/connexions/+page.svelte`
 - Modifier : `apps/frontend/src/lib/api/` (client)
 - Modifier : `apps/frontend/src/lib/components/ProgressSteps.svelte` (ajouter l'étape)
@@ -2154,6 +2175,7 @@ Dans `apps/frontend/src/lib/components/ProgressSteps.svelte`, ajouter une étape
 - [ ] **Étape 4 : vérifier de bout en bout**
 
 Backend et frontend lancés, avec un compte de dev :
+
 1. Créer une fiche B dont `content_url` est le DOI d'une source déjà citée par une fiche A. À la publication de B, `link_sources_designating_card` doit poser une suggestion sur la source de A.
 2. Ouvrir `/dashboard/new/<id-de-A>/connexions` : l'encart ambre affiche « 1 connexion à vérifier ».
 3. Cliquer « Confirmer » : la ligne passe dans « Fiches que vous citez ».
@@ -2175,6 +2197,7 @@ git commit -m "feat: ecran de gestion des connexions"
 Ce lot applique trois conclusions de l'étude du 2026-08-06. Il est indépendant des lots A à D et peut être fait en parallèle.
 
 **Les trois conclusions opérationnelles retenues :**
+
 1. **COinS + Highwire meta tags, pas JSON-LD.** Le guide CDH Princeton de novembre 2025 a testé cinq mécanismes et retenu COinS, parce que seul `rft.genre` distingue un billet de blog d'un article, et parce que Zotero ignore entièrement JSON-LD. Une fiche Philum exposée en COinS devient sauvegardable dans Zotero en un clic, sans extension, sans compte.
 2. **Les alertes de citation entrante** sont le meilleur crochet de rétention par unité d'effort de tout l'écosystème. `apps/backend/app/services/citations.py` fournit déjà `list_incoming_citations` et `mark_citations_seen` : il ne manque que la surface.
 3. **`llms.txt` est mort** (Ahrefs : 97 % des fichiers de 137 000 sites n'ont reçu aucune requête en mai 2026). Le serveur MCP est le canal sérieux, et il existe déjà. Rien à faire, sinon **ne pas** créer de `llms.txt`.
@@ -2182,6 +2205,7 @@ Ce lot applique trois conclusions de l'étude du 2026-08-06. Il est indépendant
 ### Tâche E1 : exposer chaque fiche en COinS et Highwire
 
 **Fichiers :**
+
 - Créer : `apps/frontend/src/lib/utils/coins.ts`
 - Modifier : `apps/frontend/src/routes/@[creator]/[card]/+page.svelte`
 - Test : `apps/frontend/src/lib/utils/__tests__/coins.test.ts`
@@ -2189,30 +2213,30 @@ Ce lot applique trois conclusions de l'étude du 2026-08-06. Il est indépendant
 - [ ] **Étape 1 : écrire le test qui échoue**
 
 ```ts
-import { describe, expect, it } from 'vitest';
-import { coinsTitle } from '../coins';
+import { describe, expect, it } from "vitest";
+import { coinsTitle } from "../coins";
 
 const carte = {
-  title: 'À quoi sert le sommeil',
-  content_authors: 'Mathias Pinault',
-  published_at: '2026-05-12T10:00:00Z',
-  content_url: 'https://www.youtube.com/watch?v=abc',
-  format: 'video',
+  title: "À quoi sert le sommeil",
+  content_authors: "Mathias Pinault",
+  published_at: "2026-05-12T10:00:00Z",
+  content_url: "https://www.youtube.com/watch?v=abc",
+  format: "video",
 };
 
-describe('coinsTitle', () => {
-  it('declare le contexte OpenURL attendu par Zotero', () => {
+describe("coinsTitle", () => {
+  it("declare le contexte OpenURL attendu par Zotero", () => {
     const t = coinsTitle(carte as never);
-    expect(t).toContain('ctx_ver=Z39.88-2004');
-    expect(t).toContain('rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Adc');
+    expect(t).toContain("ctx_ver=Z39.88-2004");
+    expect(t).toContain("rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Adc");
   });
 
-  it('porte le genre, seul champ qui distingue un billet d un article', () => {
-    expect(coinsTitle(carte as never)).toContain('rft.genre=');
+  it("porte le genre, seul champ qui distingue un billet d un article", () => {
+    expect(coinsTitle(carte as never)).toContain("rft.genre=");
   });
 
-  it('encode le titre sans casser la chaine', () => {
-    expect(coinsTitle(carte as never)).toContain(encodeURIComponent('À quoi sert le sommeil'));
+  it("encode le titre sans casser la chaine", () => {
+    expect(coinsTitle(carte as never)).toContain(encodeURIComponent("À quoi sert le sommeil"));
   });
 });
 ```
@@ -2240,26 +2264,20 @@ Créer `apps/frontend/src/lib/utils/coins.ts` :
  * une fiche documente aussi bien une vidéo qu'un rapport, et forcer un modèle
  * d'article produirait des métadonnées fausses.
  */
-import type { PublicCard } from '$lib/api/types';
+import type { PublicCard } from "$lib/api/types";
 
 const GENRE_PAR_FORMAT: Record<string, string> = {
-  video: 'unknown',
-  audio: 'unknown',
-  texte: 'article',
-  data: 'dataset',
-  image: 'unknown',
+  video: "unknown",
+  audio: "unknown",
+  texte: "article",
+  data: "dataset",
+  image: "unknown",
 };
 
 export function coinsTitle(card: PublicCard): string {
-  const parts: string[] = [
-    'ctx_ver=Z39.88-2004',
-    `rft_val_fmt=${encodeURIComponent('info:ofi/fmt:kev:mtx:dc')}`,
-    `rft.type=${encodeURIComponent(card.format ?? 'webpage')}`,
-    `rft.genre=${encodeURIComponent(GENRE_PAR_FORMAT[card.format ?? ''] ?? 'unknown')}`,
-    `rft.title=${encodeURIComponent(card.title)}`,
-  ];
+  const parts: string[] = ["ctx_ver=Z39.88-2004", `rft_val_fmt=${encodeURIComponent("info:ofi/fmt:kev:mtx:dc")}`, `rft.type=${encodeURIComponent(card.format ?? "webpage")}`, `rft.genre=${encodeURIComponent(GENRE_PAR_FORMAT[card.format ?? ""] ?? "unknown")}`, `rft.title=${encodeURIComponent(card.title)}`];
   if (card.content_authors) {
-    for (const author of card.content_authors.split(',')) {
+    for (const author of card.content_authors.split(",")) {
       const trimmed = author.trim();
       if (trimmed) parts.push(`rft.au=${encodeURIComponent(trimmed)}`);
     }
@@ -2270,7 +2288,7 @@ export function coinsTitle(card: PublicCard): string {
   if (card.content_url) {
     parts.push(`rft_id=${encodeURIComponent(card.content_url)}`);
   }
-  return parts.join('&');
+  return parts.join("&");
 }
 ```
 
@@ -2328,6 +2346,7 @@ git commit -m "feat: exposer les fiches en COinS et Highwire"
 ### Tâche E2 : surface des alertes de citation entrante
 
 **Fichiers :**
+
 - Modifier : `apps/frontend/src/routes/dashboard/+page.svelte`
 - Modifier : `apps/frontend/src/lib/api/`
 
@@ -2423,6 +2442,7 @@ git commit -m "docs: ecarter llms.txt au profit de MCP"
 ### Tâche F1 : ADR sur la preuve d'autorat et l'anti-usurpation
 
 **Fichiers :**
+
 - Créer : `.docs/ADR-019-bis-preuve-autorat.md`
 - Modifier : `agent/DECISIONS.md`
 
@@ -2449,6 +2469,7 @@ Philum peut établir, et signer, ceci et rien de plus :
 Les trois éléments sont vérifiables indépendamment : la date par l'horodatage signé, le contrôle du canal par la méthode de vérification (`backlink`, `bio-code`, `oauth`), la déclaration par la signature de l'attestation (ADR-019 : triplet `(creator_id, content_url, attested_at)`).
 
 Philum **ne peut pas** établir :
+
 - que le contenu est authentique, non modifié, ou non généré ;
 - que le déclarant est réellement l'auteur intellectuel du contenu, seulement qu'il contrôle le canal qui le diffuse ;
 - qu'un contenu **non** attesté est faux.
@@ -2466,6 +2487,7 @@ Un usurpateur qui revendique un contenu avant son auteur légitime obtiendrait l
 **Section 3 : types de compte, individus et organisations.**
 
 Ouvrir explicitement la question posée par l'utilisateur. Points à trancher dans l'ADR :
+
 - une colonne `account_kind` sur `users` (`individu` | `organisation`), nullable, `NULL` = non déclaré ;
 - une organisation peut avoir plusieurs personnes habilitées : cela suppose une table de liaison, hors périmètre immédiat, mais la nommer ;
 - la vérification d'une organisation passe par le contrôle du domaine (`rel=me` sur le site officiel), pas par une pièce d'identité. Philum ne doit **jamais** stocker de document d'identité : c'est une charge réglementaire disproportionnée et un risque de fuite sans contrepartie.
@@ -2490,6 +2512,7 @@ git commit -m "docs: ADR preuve d'autorat et anti-usurpation"
 ### Tâche F2 : spécification des profils publics et du feed
 
 **Fichiers :**
+
 - Créer : `.docs/20-profils-et-feed.md`
 
 **Constat utilisateur :** « des profils publics qui peuvent être cherchés avec l'accès à leurs fiches ; un feed d'actualité public qui annonce les liens et les fiches partagés, un peu comme un réseau social, mais l'objectif est de tracer les dates de publication des fiches sur un feed visible publiquement. »
@@ -2509,6 +2532,7 @@ Points à couvrir :
 **Recherche de profils.** Aujourd'hui `/discover` liste des fiches. Il manque une recherche par créateur. Définir : champs indexés (nom affiché, nom d'utilisateur, description), et surtout **ce qui n'est pas indexé** (les fiches privées, les brouillons).
 
 **Le feed : sa raison d'être n'est pas sociale.** L'utilisateur l'a dit lui-même : « l'objectif est de tracer les dates de publication des fiches sur un feed visible publiquement ». Écrire cette phrase dans la spécification et en tirer les conséquences de conception :
+
 - l'ordre est **chronologique strict**, jamais algorithmique. Un feed classé par engagement cesserait d'être une trace ;
 - pas de compteurs de popularité, pas de « likes », pas de recommandations. Ils transformeraient l'horodatage en concours ;
 - une entrée est **immuable** : elle enregistre qu'une fiche a été publiée à une date. Si la fiche est ensuite modifiée ou dépubliée, l'entrée reste, éventuellement marquée. C'est la même logique que l'attestation de contenu (ADR-019).
@@ -2535,6 +2559,7 @@ git commit -m "docs: spec des profils publics et du feed"
 ### Tâche F3 : la garantie d'authenticité face aux faux et à l'ingérence
 
 **Fichiers :**
+
 - Modifier : `.docs/ADR-019-bis-preuve-autorat.md` (section supplémentaire)
 
 **Constat utilisateur :** un faux reportage attribué à un média (l'exemple donné est une fausse vidéo Blast) doit pouvoir être démenti ; un média doit pouvoir partager sa fiche certifiée, revendiquée avec vérification d'identité ; les générateurs de faux ne doivent pas pouvoir revendiquer un contenu dont ils ne sont pas les auteurs.
@@ -2552,11 +2577,11 @@ Ajouter une section à `.docs/ADR-019-bis-preuve-autorat.md` établissant, dans 
 
 Dresser la liste, à réutiliser telle quelle dans le frontend :
 
-| Situation | Texte autorisé |
-|---|---|
-| Attestation signée + canal vérifié | « Déclaré par le titulaire du canal officiel le {date}. » |
-| Attestation signée, canal non vérifié | « Déclaré par {compte} le {date}. Le canal de diffusion n'a pas été vérifié. » |
-| Aucune attestation | « Aucune déclaration d'autorat sur Philum pour ce contenu. » (jamais « contenu suspect ») |
+| Situation                             | Texte autorisé                                                                            |
+| ------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Attestation signée + canal vérifié    | « Déclaré par le titulaire du canal officiel le {date}. »                                 |
+| Attestation signée, canal non vérifié | « Déclaré par {compte} le {date}. Le canal de diffusion n'a pas été vérifié. »            |
+| Aucune attestation                    | « Aucune déclaration d'autorat sur Philum pour ce contenu. » (jamais « contenu suspect ») |
 
 - [ ] **Étape 3 : croiser avec l'immuabilité du payload**
 
@@ -2601,5 +2626,3 @@ git commit -m "docs: perimetre honnete de la garantie Philum"
 - **Dépréciation de `content_type` et `platform`** sur `BiblioCard` au profit de `format` / `category` / `author_kind` : chantier séparé, avec migration de données.
 - **Table de liaison organisation ↔ personnes habilitées** : nommée dans l'ADR F1, non ouverte.
 - **Reprise du grain `Assertion`** (affirmation ↔ empan verbatim) : suspendue jusqu'à décision explicite de l'utilisateur.
-
-

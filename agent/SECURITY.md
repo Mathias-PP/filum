@@ -7,6 +7,7 @@
 ## 1. Secrets — règle absolue
 
 L'agent ne doit **jamais** :
+
 - Lire `.env` (production ou dev). Lire `.env.example` est OK.
 - Écrire un secret en clair dans le code, les commentaires, les logs, les commit messages, les descriptions de PR.
 - Commit un secret même temporairement. Pas de « je le retire après ».
@@ -27,6 +28,7 @@ Si quelque chose ressort qui n'est pas un placeholder évident (`<your-key-here>
 L'agent opère **strictement** dans le repo Filum (`C:\Users\mathi\Documents\filum_project\filum` côté Windows, ou son équivalent WSL).
 
 Sont interdites sans validation explicite :
+
 - Modification de fichiers hors du repo (`~/.bashrc`, `~/.ssh/`, etc.)
 - Installation de paquets globaux (`pip install --user`, `npm install -g`, `apt install`)
 - Modification de la config système (registry Windows, services)
@@ -39,11 +41,13 @@ Lecture en dehors du repo : autorisée pour `git config --get`, `gh auth status`
 ## 3. Surface réseau
 
 L'agent peut :
+
 - ✅ `curl` vers une URL publique documentée (API Wayback, Crossref, Google docs publics, GitHub raw)
 - ✅ Cloner un repo public via `git clone`
 - ✅ Appeler les endpoints publics de Filum (Railway prod) en lecture seule (`/health`, `/api/v1/@…/…`)
 
 L'agent ne doit pas :
+
 - ❌ Scanner des plages d'IP, faire du fingerprinting
 - ❌ Envoyer des requêtes vers des services internes (RFC1918) sans demande explicite
 - ❌ Faire des requêtes massives qui pourraient ressembler à un DoS
@@ -54,6 +58,7 @@ L'agent ne doit pas :
 ## 4. Validation des entrées (côté code écrit par l'agent)
 
 Toute nouvelle fonction qui reçoit une URL ou un identifiant utilisateur doit :
+
 1. La typer avec Pydantic (`HttpUrl`, `EmailStr`, `constr(...)` selon le cas)
 2. Refuser les schemes non-`https?` ou les hôtes RFC1918 (`127.0.0.1`, `10.*`, `192.168.*`, `169.254.*`)
 3. Logger un warning (pas une erreur) si une entrée a été normalisée
@@ -65,6 +70,7 @@ Cf. la guard SSRF déjà en place sur `GET /sources/extract` (PR2 itération 3) 
 ## 5. Cryptographie — règles strictes
 
 L'agent ne doit **jamais** :
+
 - Réimplémenter un algo crypto à la main (AES, Ed25519, SHA…)
 - Utiliser `os.urandom` directement pour générer une clé (préférer `cryptography.hazmat.primitives.asymmetric.ed25519.Ed25519PrivateKey.generate()`)
 - Stocker une clé privée non chiffrée en base
@@ -72,6 +78,7 @@ L'agent ne doit **jamais** :
 - Modifier le `canonical_hash` payload (cf. `PITFALLS.md` 1.3)
 
 L'agent doit :
+
 - Préférer `cryptography` (déjà dans le projet) à `pycryptodome` (banni implicitement)
 - Utiliser AES-GCM (ADR-009) pas Fernet
 - Utiliser PyJWT (ADR-014) pas `python-jose`
@@ -82,6 +89,7 @@ L'agent doit :
 ## 6. Logs
 
 L'agent ne doit jamais logger :
+
 - Tokens (JWT, OAuth access_token, refresh_token)
 - Cookies session
 - Headers `Authorization` ou `Cookie` complets
@@ -89,6 +97,7 @@ L'agent ne doit jamais logger :
 - PII utilisateur en clair (email, IP, nom)
 
 Pattern recommandé :
+
 ```python
 logger.info("user authenticated", extra={"user_id": user.id})  # OK
 # PAS :
@@ -155,6 +164,7 @@ Si l'agent identifie une vulnérabilité dans le code existant pendant une sessi
 ## 11. Mode dégradé / refus
 
 L'agent doit **refuser** (et expliquer pourquoi) si on lui demande de :
+
 - Désactiver un check de sécurité (CSP, CORS, validation Pydantic) sans justification documentée
 - Ajouter un `--no-verify` à un commit
 - Désactiver un hook pre-commit
@@ -168,4 +178,4 @@ Un refus poli + explication + proposition d'alternative est toujours préférabl
 
 ---
 
-*Cette page complète `../SECURITY.md`. En cas de conflit, c'est cette page-ci qui s'applique pour l'agent autonome (plus restrictive).*
+_Cette page complète `../SECURITY.md`. En cas de conflit, c'est cette page-ci qui s'applique pour l'agent autonome (plus restrictive)._

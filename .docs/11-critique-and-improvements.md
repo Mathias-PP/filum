@@ -1,6 +1,6 @@
 # 11 — Regard critique et améliorations suggérées
 
-> Document de prise de recul. Lu en complément de [`10-mvp-completion-plan.md`](./10-mvp-completion-plan.md) (qui dit *quoi faire* maintenant) — celui-ci dit *ce qu'on pourrait faire mieux* et *quels arbitrages assumer ensuite*.
+> Document de prise de recul. Lu en complément de [`10-mvp-completion-plan.md`](./10-mvp-completion-plan.md) (qui dit _quoi faire_ maintenant) — celui-ci dit _ce qu'on pourrait faire mieux_ et _quels arbitrages assumer ensuite_.
 >
 > Sert au développeur humain pour réviser sa propre vision, et à un agent autonome pour comprendre où il a le droit de suggérer des évolutions et où il doit s'abstenir.
 
@@ -8,16 +8,16 @@
 
 ## 1. Forces du projet — ce qu'il faut préserver
 
-| Force | Pourquoi c'est précieux |
-|---|---|
-| **Vision claire et différenciante** | Philum se positionne comme un *label qualité positif*, pas un détecteur anti-deepfake. C'est rare et défendable. À ne pas diluer. |
-| **Discipline documentaire** | 10 documents `.docs/`, 17 ADRs, `STATE.md` vivant, `DECISIONS.md` historique. C'est ce qui rend possible un dev solo + IA assistante sans perdre le fil. |
-| **Crypto réelle, pas simulée** | Ed25519 + AES-GCM + SHA-256 dès le MVP. Permet une démo crédible auprès d'institutions sans refonte ultérieure. |
-| **Stack cohérente et moderne** | FastAPI async + SvelteKit + DuckDB/dbt forment un signal Data Engineer fort. Pas de tech debt en démarrage. |
-| **CI verte enforced** | 8 jobs verts, aucun `\|\| true`, dependabot actif. Le projet ne se dégrade pas silencieusement. |
-| **MVP backend + frontend déjà déployés** | La plupart des projets meurent avant le déploiement. Philum a passé ce cap. |
-| **Effet wow visuel** | Le graphe D3 sur `/@example/memoire-et-cerveau` justifie à lui seul la démo de 5 min. C'est le hook narratif. |
-| **Sécurité prise au sérieux** | Trivy + TruffleHog + secrets baseline + dependency review. Au-dessus de la moyenne pour un MVP solo. |
+| Force                                    | Pourquoi c'est précieux                                                                                                                                  |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Vision claire et différenciante**      | Philum se positionne comme un _label qualité positif_, pas un détecteur anti-deepfake. C'est rare et défendable. À ne pas diluer.                        |
+| **Discipline documentaire**              | 10 documents `.docs/`, 17 ADRs, `STATE.md` vivant, `DECISIONS.md` historique. C'est ce qui rend possible un dev solo + IA assistante sans perdre le fil. |
+| **Crypto réelle, pas simulée**           | Ed25519 + AES-GCM + SHA-256 dès le MVP. Permet une démo crédible auprès d'institutions sans refonte ultérieure.                                          |
+| **Stack cohérente et moderne**           | FastAPI async + SvelteKit + DuckDB/dbt forment un signal Data Engineer fort. Pas de tech debt en démarrage.                                              |
+| **CI verte enforced**                    | 8 jobs verts, aucun `\|\| true`, dependabot actif. Le projet ne se dégrade pas silencieusement.                                                          |
+| **MVP backend + frontend déjà déployés** | La plupart des projets meurent avant le déploiement. Philum a passé ce cap.                                                                              |
+| **Effet wow visuel**                     | Le graphe D3 sur `/@example/memoire-et-cerveau` justifie à lui seul la démo de 5 min. C'est le hook narratif.                                            |
+| **Sécurité prise au sérieux**            | Trivy + TruffleHog + secrets baseline + dependency review. Au-dessus de la moyenne pour un MVP solo.                                                     |
 
 **À ne pas casser** : la discipline ADR, le SSR sélectif, les variables d'env lowercase, la validation des fiches signées (canonical_hash payload immuable). Toute évolution doit conserver ces invariants.
 
@@ -139,6 +139,7 @@ Faiblesses : très peu nombreux (~quelques dizaines de cibles primaires en Franc
 ### V2 — Le narratif « couche de citation du web » est-il prématuré ?
 
 L'ambition longue (HTTPS de la provenance, fondation, etc.) est belle et juste, mais elle expose à deux risques :
+
 - **Effet vaporware** si le MVP ne suit pas (commune dans le monde Web3/crypto).
 - **Désalignement avec un investisseur ou un partenaire institutionnel** qui voudra du concret court terme.
 
@@ -154,16 +155,16 @@ Le manifeste promet « gratuit pour les créateurs jusqu'à un seuil généreux 
 
 ## 6. Risques à anticiper (qui ne sont pas dans STATE.md)
 
-| Risque | Probabilité | Impact | Mitigation |
-|---|---|---|---|
-| **Railway free tier coupe au bout du crédit** | Moyenne | Backend down | Passer en plan Hobby ($5/mois) dès le 1er utilisateur réel |
-| **Postgres Railway plein (~1 GB)** | Faible court terme | Écriture cassée | Documenter une procédure de vacuum + archivage |
-| **Wayback Machine en panne / rate limit** | Moyenne | Snapshots non créés | Retry exponentiel + fallback : marquer source « archivage en attente » sans bloquer la publication |
-| **Cookie OAuth bloqué par un navigateur strict (Safari ITP)** | Élevée | Login cassé sur certains users | Tester sur Safari iOS dès la PR M1 |
-| **Google révoque le projet OAuth** (TOS, abus) | Très faible | Login universel cassé | Documenter procédure de re-création |
-| **Vercel coupe le free tier** (sortie de l'éducation, etc.) | Très faible | Frontend down | Procédure de bascule vers Netlify documentée |
-| **Mathias-PP repo devient orphelin** (transfert d'org, etc.) | Faible | Liens cassés | Réserver `filum.org` GitHub org dès que possible |
-| **Une fiche signée publiée révèle un bug crypto** | Faible | Crédibilité catastrophique | Le canonical_hash payload est gelé. Ajouter un test de vérification automatique sur la fiche démo dans la CI |
+| Risque                                                        | Probabilité        | Impact                         | Mitigation                                                                                                   |
+| ------------------------------------------------------------- | ------------------ | ------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| **Railway free tier coupe au bout du crédit**                 | Moyenne            | Backend down                   | Passer en plan Hobby ($5/mois) dès le 1er utilisateur réel                                                   |
+| **Postgres Railway plein (~1 GB)**                            | Faible court terme | Écriture cassée                | Documenter une procédure de vacuum + archivage                                                               |
+| **Wayback Machine en panne / rate limit**                     | Moyenne            | Snapshots non créés            | Retry exponentiel + fallback : marquer source « archivage en attente » sans bloquer la publication           |
+| **Cookie OAuth bloqué par un navigateur strict (Safari ITP)** | Élevée             | Login cassé sur certains users | Tester sur Safari iOS dès la PR M1                                                                           |
+| **Google révoque le projet OAuth** (TOS, abus)                | Très faible        | Login universel cassé          | Documenter procédure de re-création                                                                          |
+| **Vercel coupe le free tier** (sortie de l'éducation, etc.)   | Très faible        | Frontend down                  | Procédure de bascule vers Netlify documentée                                                                 |
+| **Mathias-PP repo devient orphelin** (transfert d'org, etc.)  | Faible             | Liens cassés                   | Réserver `filum.org` GitHub org dès que possible                                                             |
+| **Une fiche signée publiée révèle un bug crypto**             | Faible             | Crédibilité catastrophique     | Le canonical_hash payload est gelé. Ajouter un test de vérification automatique sur la fiche démo dans la CI |
 
 ---
 
@@ -175,4 +176,4 @@ Le manifeste promet « gratuit pour les créateurs jusqu'à un seuil généreux 
 
 ---
 
-*Mettre à jour quand un point devient obsolète (résolu, abandonné, repensé). Ne pas créer un `12-…md` parallèle ; éditer celui-ci.*
+_Mettre à jour quand un point devient obsolète (résolu, abandonné, repensé). Ne pas créer un `12-…md` parallèle ; éditer celui-ci._

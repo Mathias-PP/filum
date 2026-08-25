@@ -8,18 +8,18 @@
 
 ## Stack — non négociable sauf ADR explicite
 
-| Couche | Choix | Alternative refusée |
-|---|---|---|
-| Backend | Python 3.12, FastAPI, SQLAlchemy 2.x async, Alembic | pas de blocking I/O en route async |
-| BDD transactionnel | PostgreSQL (Supabase en prod, local en dev) | — |
-| Analytics | DuckDB + dbt-core | — |
-| Crypto | `cryptography` (Ed25519, AES-GCM, SHA-256) | pas de `pycryptodome` |
-| Frontend | SvelteKit 2, Svelte 5, TypeScript strict, Tailwind | pas de CSS-in-JS, pas de MUI, pas de framework UI lourd |
-| Tests | `pytest` (backend), `vitest` (frontend) | — |
-| Lint / format | `ruff` (backend), `prettier` + `eslint 9` (frontend) | — |
-| Package manager | `uv` (Python), `pnpm 10.33.4` pinned (Node) | pnpm 11 casse la CI |
-| Déploiement | VM GCP e2-micro (backend + Postgres via Supabase), Vercel (frontend) | plus de Railway (ADR-028) |
-| LLM | LiteLLM proxy (voir `.docs/17-llm-strategy.md`) | pas d'appel direct provider en dur |
+| Couche             | Choix                                                                | Alternative refusée                                     |
+| ------------------ | -------------------------------------------------------------------- | ------------------------------------------------------- |
+| Backend            | Python 3.12, FastAPI, SQLAlchemy 2.x async, Alembic                  | pas de blocking I/O en route async                      |
+| BDD transactionnel | PostgreSQL (Supabase en prod, local en dev)                          | —                                                       |
+| Analytics          | DuckDB + dbt-core                                                    | —                                                       |
+| Crypto             | `cryptography` (Ed25519, AES-GCM, SHA-256)                           | pas de `pycryptodome`                                   |
+| Frontend           | SvelteKit 2, Svelte 5, TypeScript strict, Tailwind                   | pas de CSS-in-JS, pas de MUI, pas de framework UI lourd |
+| Tests              | `pytest` (backend), `vitest` (frontend)                              | —                                                       |
+| Lint / format      | `ruff` (backend), `prettier` + `eslint 9` (frontend)                 | —                                                       |
+| Package manager    | `uv` (Python), `pnpm 10.33.4` pinned (Node)                          | pnpm 11 casse la CI                                     |
+| Déploiement        | VM GCP e2-micro (backend + Postgres via Supabase), Vercel (frontend) | plus de Railway (ADR-028)                               |
+| LLM                | LiteLLM proxy (voir `.docs/17-llm-strategy.md`)                      | pas d'appel direct provider en dur                      |
 
 Une nouvelle dépendance = une justification dans la conversation.
 

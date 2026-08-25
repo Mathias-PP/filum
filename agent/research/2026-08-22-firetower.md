@@ -13,17 +13,18 @@
 
 ## 1. Firetower en bref
 
-| Item | Valeur |
-|---|---|
-| URL | https://github.com/firetower-cloud/firetower |
-| Licence | AGPL-3.0 |
-| Langage | Rust (server/worker/CLI) + Next.js/TypeScript (web) |
-| Composants | `ft-cli`, `ft-core`, `ft-proto`, `ft-server`, `ft-worker` + `web/` |
-| Déploiement | Docker Compose mono-image, worker atteint via SSH / `docker exec` / stdin/stdout |
-| Slogan | « Run any coding agent, on your own servers, from anywhere » |
-| Cible | Développeurs qui pilotent des agents Claude Code / autres depuis plusieurs machines |
+| Item        | Valeur                                                                              |
+| ----------- | ----------------------------------------------------------------------------------- |
+| URL         | https://github.com/firetower-cloud/firetower                                        |
+| Licence     | AGPL-3.0                                                                            |
+| Langage     | Rust (server/worker/CLI) + Next.js/TypeScript (web)                                 |
+| Composants  | `ft-cli`, `ft-core`, `ft-proto`, `ft-server`, `ft-worker` + `web/`                  |
+| Déploiement | Docker Compose mono-image, worker atteint via SSH / `docker exec` / stdin/stdout    |
+| Slogan      | « Run any coding agent, on your own servers, from anywhere »                        |
+| Cible       | Développeurs qui pilotent des agents Claude Code / autres depuis plusieurs machines |
 
 **Modèle architectural annoncé** :
+
 - **Control plane** : possède l'intention (hôtes, repos, credentials, planification).
 - **Worker** : possède la réalité (event log, état). Écrit ses events **avant** de reporter, donc la session survit à une déconnexion.
 - **Web** : présentée comme une **inbox** (boîte de réception) plutôt qu'un fleet monitor.
@@ -34,7 +35,7 @@ Le transport est abstrait : le worker lit des frames sur stdin/stdout. Peu impor
 
 ### 2.1 Approval inbox + notification hors-app — **la seule vraie idée à piquer**
 
-Chez Firetower, un agent bloqué sur une décision humaine ne suspend pas la productivité de son utilisateur : la demande arrive dans une inbox web, et l'utilisateur y répond « depuis n'importe où ». La formulation dans le README est explicite : *« Agents block. You are the bottleneck. Firetower's job is to route their blocking to you — wherever you are — and get you back out fast. »*
+Chez Firetower, un agent bloqué sur une décision humaine ne suspend pas la productivité de son utilisateur : la demande arrive dans une inbox web, et l'utilisateur y répond « depuis n'importe où ». La formulation dans le README est explicite : _« Agents block. You are the bottleneck. Firetower's job is to route their blocking to you — wherever you are — and get you back out fast. »_
 
 **État Philum aujourd'hui** : un `approval_request` bloque le tour côté serveur ; l'utilisateur doit être sur l'onglet chat pour valider via `ApprovalCard`. S'il ferme l'onglet ou part 10 minutes, le tour reste suspendu et le stream SSE peut expirer. Pour les providers à quota strict (Gemini free tier), c'est une session perdue.
 

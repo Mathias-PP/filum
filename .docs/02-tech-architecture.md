@@ -50,6 +50,7 @@
 **Pourquoi FastAPI** : async natif, validation Pydantic intégrée, génération automatique d'une doc OpenAPI, performant. Standard de facto pour les APIs Python modernes.
 
 **Versions et libs principales** :
+
 - Python 3.12+
 - FastAPI 0.110+
 - SQLAlchemy 2.x en mode async
@@ -64,6 +65,7 @@
 **Pourquoi PostgreSQL pour le transactionnel** : standard absolu, écosystème mûr, support natif des UUIDs, jsonb, types riches. Hébergé gratuitement sur Railway.
 
 **Pourquoi DuckDB pour l'analytique** :
+
 - C'est la techno data analytics qui a le plus monté en visibilité depuis 2023
 - Idéal pour les requêtes sur le graphe de citations, les agrégations par type de source, les analytics par créateur
 - Embedded (pas de serveur séparé à déployer)
@@ -77,6 +79,7 @@
 dbt (data build tool) est le standard moderne pour les transformations versionnées et testées. Sur DuckDB en local, c'est gratuit, rapide, et signe fort sur un portfolio Data Engineer.
 
 **Modèles dbt prévus** :
+
 - `staging/` : extractions brutes depuis Postgres (sources, fiches, utilisateurs, événements)
 - `marts/` : agrégations métier (statistiques par créateur, sources les plus citées, types de sources par contenu)
 - `analytics/` : tables prêtes à consommer pour l'API ou les dashboards (top sources, graphe de filiation, etc.)
@@ -84,6 +87,7 @@ dbt (data build tool) est le standard moderne pour les transformations versionn�
 ### Frontend : SvelteKit + TypeScript + Tailwind
 
 **Pourquoi SvelteKit plutôt que Next.js** :
+
 - Syntaxe plus claire et compacte
 - Bundle JavaScript plus petit (pas de duplication HTML+JSON systématique)
 - Excellent rendu serveur natif
@@ -91,6 +95,7 @@ dbt (data build tool) est le standard moderne pour les transformations versionn�
 - Moins de "magie" cachée, plus facile à debugger
 
 **Pourquoi Tailwind plutôt qu'une lib de composants** :
+
 - Liberté de design totale (essentielle pour ce projet où l'esthétique compte)
 - Performance optimale
 - Maîtrisé par les LLMs
@@ -165,11 +170,13 @@ Mono-repo simple, géré avec `make` à la racine.
 ## Observabilité
 
 En MVP, minimal :
+
 - Logs structurés côté backend (`structlog`)
 - Erreurs frontend dans la console (pas de Sentry en MVP — à ajouter en phase 2)
 - Métriques de base (uptime, latence API) via les dashboards GCP et Vercel
 
 En phase 2, ajouter :
+
 - Sentry pour le tracking d'erreurs
 - Plausible Analytics (privacy-friendly) pour les analytics web
 
@@ -204,17 +211,17 @@ En phase 2, ajouter :
 
 ## Intégrations externes — résumé
 
-| Service | Phase | Coût | Limite |
-|---|---|---|---|
-| Google OAuth | MVP | 0 € | Pratiquement illimité |
-| Internet Archive Wayback | MVP | 0 € | ~10-15 req/min |
-| Railway hosting | MVP | 0-5 €/mois | 500h/mois tier gratuit |
-| Vercel hosting | MVP | 0 € | 100 GB bande passante/mois |
-| **(phase 2)** ORCID OAuth | Phase 2 | 0 € | Illimité (académique) |
-| **(phase 2)** YouTube OAuth | Phase 2 | 0 € | Quotas Google API |
-| **(phase 3)** C2PA Conformance Program | Phase 3 | ~10 000 €/an | — |
-| **(phase 3)** Scaleway | Phase 3 | Variable | — |
-| **(phase 3)** TSA eIDAS (Universign/Certinomis) | Phase 3 | ~0,10 €/horodatage | — |
+| Service                                         | Phase   | Coût               | Limite                     |
+| ----------------------------------------------- | ------- | ------------------ | -------------------------- |
+| Google OAuth                                    | MVP     | 0 €                | Pratiquement illimité      |
+| Internet Archive Wayback                        | MVP     | 0 €                | ~10-15 req/min             |
+| Railway hosting                                 | MVP     | 0-5 €/mois         | 500h/mois tier gratuit     |
+| Vercel hosting                                  | MVP     | 0 €                | 100 GB bande passante/mois |
+| **(phase 2)** ORCID OAuth                       | Phase 2 | 0 €                | Illimité (académique)      |
+| **(phase 2)** YouTube OAuth                     | Phase 2 | 0 €                | Quotas Google API          |
+| **(phase 3)** C2PA Conformance Program          | Phase 3 | ~10 000 €/an       | —                          |
+| **(phase 3)** Scaleway                          | Phase 3 | Variable           | —                          |
+| **(phase 3)** TSA eIDAS (Universign/Certinomis) | Phase 3 | ~0,10 €/horodatage | —                          |
 
 ---
 
@@ -248,10 +255,12 @@ Léa            Frontend         Backend         Postgres        Wayback
 ## Sauvegarde de la base de données
 
 Railway offre un dump PostgreSQL via son dashboard (plan Hobby) :
+
 - Aller sur le dashboard Railway → service PostgreSQL → "Dump" ou "Backup".
 - Le dump est un fichier `.dump` téléchargeable.
 
 En CLI avec la chaîne de connexion :
+
 ```bash
 pg_dump --no-owner --clean "$DATABASE_URL" > filum_backup_$(date +%Y-%m-%d).sql
 ```
@@ -259,6 +268,7 @@ pg_dump --no-owner --clean "$DATABASE_URL" > filum_backup_$(date +%Y-%m-%d).sql
 **Fréquence recommandée** : hebdomadaire en phase MVP (manuel). Si le nombre d'utilisateurs grandit, basculer vers un backup automatisé (`pg_cron` ou script GitHub Actions avec `pg_dump`).
 
 **Restauration** :
+
 ```bash
 psql "$DATABASE_URL" < filum_backup_2026-05-13.sql
 ```
@@ -274,5 +284,5 @@ psql "$DATABASE_URL" < filum_backup_2026-05-13.sql
 
 ---
 
-*Pour le détail du modèle de données, voir [`03-data-model.md`](./03-data-model.md).*
-*Pour les endpoints API, voir [`04-api-design.md`](./04-api-design.md).*
+_Pour le détail du modèle de données, voir [`03-data-model.md`](./03-data-model.md)._
+_Pour les endpoints API, voir [`04-api-design.md`](./04-api-design.md)._

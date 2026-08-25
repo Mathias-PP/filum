@@ -75,7 +75,7 @@
 
 ### 1.8 Cookies session non envoyés cross-origin (mis à jour 2026-05-26)
 
-- **Symptôme initial** : `auth/me` retourne 401 alors que le cookie est posé, *uniquement sur mobile*.
+- **Symptôme initial** : `auth/me` retourne 401 alors que le cookie est posé, _uniquement sur mobile_.
 - **Cause profonde** : `SameSite=None; Secure` est correctement set côté backend, MAIS Safari iOS / WebKit Chrome iOS bloquent les cookies tiers par défaut via ITP. Vercel et Railway étant deux origines différentes du point de vue du navigateur, le cookie posé par Railway est traité comme un cookie tiers et droppé silencieusement. Desktop est plus permissif et masque le bug.
 - **Solution architecturale (ADR-025)** : proxy SvelteKit `src/routes/api/[...path]/+server.ts` qui forwarde `/api/*` vers `BACKEND_URL` côté serveur. Le navigateur ne voit qu'une seule origine → cookies first-party. Voir aussi pitfalls §1.16, §2.10, §2.11 pour les sous-problèmes rencontrés.
 - **Diagnostic** : si la conn marche sur PC et pas sur mobile, c'est presque certainement un cookie tiers. Tester en dev en utilisant deux ports différents (frontend `:5173`, backend `:8000`) reproduit le problème.
@@ -98,7 +98,7 @@
 - **Symptôme** : tests qui créent un `BiblioCard` via `Base.metadata.create_all` (conftest SQLite) reçoivent `IntegrityError: NOT NULL constraint failed: biblio_cards.canonical_hash` alors qu'on tente d'insérer un draft. Aurait aussi cassé `POST /cards` en prod pour tout user tiers (cas pas encore exercé puisque OAuth pas branché).
 - **Cause** : `BiblioCard.canonical_hash` et `BiblioCard.signature` étaient déclarés `nullable=False` dans `apps/backend/app/models/biblio_card.py`, et la migration 001 créait les colonnes NOT NULL aussi. Mais `CardService.create_card()` les laisse `None`. La seule raison que la démo marche : le seed enchaîne immédiatement avec `publish_card()` qui remplit les champs.
 - **Statut : FIXED dans PR #24** — modèle passé à `Mapped[str | None]` + `nullable=True` + migration `005_nullable_card_hash_sig.py`. Test de régression : la fixture `published_card` de `tests/unit/test_canonical_hash.py` crée un draft sans canonical_hash et passe.
-- **Prévention future** : à chaque ajout de colonne `nullable=False`, vérifier qu'au moins un test crée la ligne sans setter ce champ (preuve que c'est *vraiment* requis dans tous les chemins).
+- **Prévention future** : à chaque ajout de colonne `nullable=False`, vérifier qu'au moins un test crée la ligne sans setter ce champ (preuve que c'est _vraiment_ requis dans tous les chemins).
 
 ### 1.12 Field constraints Pydantic perdus par redéfinition de champ en sous-classe
 
@@ -235,6 +235,27 @@
 - **Cause** : `|| true` pour contourner un échec en CI cache la cause racine.
 - **Prévention** : pas de `|| true` en CI. Si une étape échoue légitimement, soit on la fixe, soit on la retire.
 
+### 3.5 `prettier --check` oublié sur le frontend (2026-08-24)
+
+- **Symptôme** : CI `Lint Frontend` rouge `Code style issues found in 3 files. Run Prettier with --write to fix.` alors que `Lint Backend` est vert. Log : `[warn] src/lib/agent/conversation.ts` / `toolLabels.ts` / `ChatPanel.svelte`.
+- **Cause** : `apps/frontend` lance `eslint . && prettier --check .` (`package.json:lint`). Éditer un `.ts`/`.svelte` sans `prettier --write` laisse le fichier non formaté. Contrairement au backend (`uv run ruff format`), le frontend n'a pas de format auto en CI — `prettier --check` est strict.
+- **Prévention** : après chaque édition frontend, lancer depuis `apps/frontend` : `npx prettier --write <fichiers>` ou `pnpm exec prettier --write src/lib/...`. Vérifier en local avec `pnpm run lint` (doit sortir 0). Ne jamais `git add` un `.svelte` modifié sans ce passage. CI exacte : `pnpm run lint` = `eslint . && prettier --check .`.
+- **Vécu** : PR #564 `fix/agent-fidelite-thrips` — 3 fichiers modifiés (`conversation.ts`, `toolLabels.ts`, `ChatPanel.svelte`) commit sans prettier → CI rouge 28s.
+
+### 3.6 Test d'intégration qui fige le contrat d'erreur de la boucle agent (2026-08-24)
+
+- **Symptôme** : CI `Test Backend` rouge `FAILED tests/unit/test_agent_loop.py::TestBoucle::test_borne_max_tours - AssertionError: assert 'continuation' == 'error'` — 1821 passed, 1 failed.
+- **Cause** : `apps/backend/app/services/agent.py:1054` est passé de `{"type":"error","Maximum de 24 tours"}` à `{"type":"continuation","Pause après 48 actions..."}` (fix harness : 24 arbitraire → 48 + reprise). Le test `test_borne_max_tours` `apps/backend/tests/unit/test_agent_loop.py:923` assert `error` + `"3 tours"` — contrat obsolète. Ne pas mettre à jour le test quand on change le contrat = CI rouge systématique.
+- **Prévention** : à chaque changement de `agent.py` (type d'événement SSE, message de borne, `MAX_TOURS`), `grep -rn "test_borne_max_tours\|continuation\|Maximum de" apps/backend/tests --include="*.py"` et mettre à jour l'assertion (nouveau type `continuation` + payload `tours`). Lancer en local `uv run pytest tests/unit/test_agent_loop.py::TestBoucle::test_borne_max_tours -v` avant push. Si le changement est voulu, le test est la doc du contrat — le mettre à jour fait partie de la PR.
+- **Vécu** : PR #564 — même commit, même cause que 3.5 : deux checks rouges pour une seule PR, 1 skipped, 15 passés.
+
+### 3.7 Nouvel événement SSE sans mise à jour de l'union `AgentEvent` (2026-08-24)
+
+- **Symptôme** : CI `Build Frontend` rouge au step Type check : `Type '"continuation"' is not comparable to type '"error" | "done" | ...'` + `Property 'payload' does not exist on type 'never'` dans `conversation.ts`, alors que `Lint Frontend` et les tests backend sont verts.
+- **Cause** : ajouter un `case 'continuation':` dans `conversation.ts` sans ajouter le membre correspondant à l'union `AgentEvent` de `apps/frontend/src/lib/api/agent.ts`. TypeScript rétrécit alors l'événement à `never` dans le switch. `eslint` ne voit pas l'erreur (pas de type-check cross-fichier) ; seul `svelte-check` (step Type check de `Build Frontend`, ~3 min plus tard) l'attrape.
+- **Prévention** : un nouvel événement SSE se déclare dans **trois** endroits en une PR : (1) union `AgentEvent` dans `agent.ts`, (2) switch de `conversation.ts`, (3) rendu dans `ChatPanel.svelte`. Vérifier en local depuis `apps/frontend` : `npx svelte-kit sync && npx svelte-check --tsconfig ./tsconfig.json` (doit afficher 0 error ; les warnings a11y préexistants ne bloquent pas).
+- **Vécu** : PR #564 commit `9492381` — lint et tests verts, Build Frontend rouge découvert seulement après le second push.
+
 ---
 
 ## 4. Git / déploiement / process
@@ -353,4 +374,4 @@
 
 ---
 
-*Ce fichier grossit à chaque session significative. C'est sain. Un fichier `PITFALLS.md` qui ne grossit jamais, c'est un projet qui réinvente les mêmes bugs.*
+_Ce fichier grossit à chaque session significative. C'est sain. Un fichier `PITFALLS.md` qui ne grossit jamais, c'est un projet qui réinvente les mêmes bugs._

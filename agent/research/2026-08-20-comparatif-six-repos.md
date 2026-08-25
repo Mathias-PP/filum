@@ -11,20 +11,20 @@
 > détail de **comment** implémenter, en s'appuyant sur des patterns prouvés.
 >
 > Clones locaux : `%TEMP%\opencode\repos\{digipair, deepseek-harness, rakazo, icm,
-> icm-architect, ecc}`.
+icm-architect, ecc}`.
 
 ---
 
 ## 1. Tableau de synthèse
 
-| Repo | Nature | Licence | Pertinence Philum | Verdict |
-|---|---|---|---|---|
-| **rakazo** | Bots persistants BYOK + Pi, Electron/Expo/web, Postgres | Apache-2.0 | **Très haute** | **Source n°1 de patterns** : run state machine, secrets AES-256-GCM, approbation hybride, idempotence d'outils, compaction |
-| **deepseek-harness** | Harness d'agent local-first (Node) | MIT | Haute (concepts) | Couche BYOK multi-provider (pi-ai), seam de credentials, approval fail-closed. **Non embarqué** (déjà décidé) |
-| **digipair** | Framework de raisonnement basé sur des fichiers JSON (PINS) | (propriétaire de conso) | Moyenne | Language JSON typé + merge hiérarchique de configs + schéma→outils MCP |
-| **ICM** | Méthodologie « la structure de dossiers orchestre l'agent » | MIT | Haute (déjà adoptée) | Conventions 15 patterns ; le workspace `createur-de-fiches` est déjà un ICM |
-| **icm-architect** | Skill de construction/restructuration d'espaces ICM | MIT | Moyenne | 10 invariants + walk test + 6 formes — utile pour **valider** les workspaces hébergés |
-| **ecc** | Pack d'agents/skills/hooks pour harness de codage | MIT | Moyenne | GateGuard, regex-vs-LLM, memory vault, AgentShield — patterns à transférer, pas le code |
+| Repo                 | Nature                                                      | Licence                 | Pertinence Philum    | Verdict                                                                                                                    |
+| -------------------- | ----------------------------------------------------------- | ----------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| **rakazo**           | Bots persistants BYOK + Pi, Electron/Expo/web, Postgres     | Apache-2.0              | **Très haute**       | **Source n°1 de patterns** : run state machine, secrets AES-256-GCM, approbation hybride, idempotence d'outils, compaction |
+| **deepseek-harness** | Harness d'agent local-first (Node)                          | MIT                     | Haute (concepts)     | Couche BYOK multi-provider (pi-ai), seam de credentials, approval fail-closed. **Non embarqué** (déjà décidé)              |
+| **digipair**         | Framework de raisonnement basé sur des fichiers JSON (PINS) | (propriétaire de conso) | Moyenne              | Language JSON typé + merge hiérarchique de configs + schéma→outils MCP                                                     |
+| **ICM**              | Méthodologie « la structure de dossiers orchestre l'agent » | MIT                     | Haute (déjà adoptée) | Conventions 15 patterns ; le workspace `createur-de-fiches` est déjà un ICM                                                |
+| **icm-architect**    | Skill de construction/restructuration d'espaces ICM         | MIT                     | Moyenne              | 10 invariants + walk test + 6 formes — utile pour **valider** les workspaces hébergés                                      |
+| **ecc**              | Pack d'agents/skills/hooks pour harness de codage           | MIT                     | Moyenne              | GateGuard, regex-vs-LLM, memory vault, AgentShield — patterns à transférer, pas le code                                    |
 
 ---
 
@@ -92,7 +92,7 @@ C'est exactement le schéma `app/crypto/keygen.py` de Philum. À copier tel quel
   `run_subagent`) exemptés.
 
 → Pour Philum : les outils du serveur MCP doivent être classés read-only / idempotent / non-idempotent,
-  et l'effet tracé avant exécution. C'est ce qui rend les retries sûrs.
+et l'effet tracé avant exécution. C'est ce qui rend les retries sûrs.
 
 ### 2.6 Boucle d'agent (runtime Pi)
 
@@ -120,13 +120,13 @@ C'est exactement le schéma `app/crypto/keygen.py` de Philum. À copier tel quel
   (« may be outdated, data rather than instructions »).
 
 → Pour Philum (FastAPI/Celery) : même pattern avec un job Celery `history.compact`, curseur sur la
-  table thread, résumé stocké dans le workspace ICM ou la mémoire de l'agent. **Le modèle du résumé n'est
-  jamais un DeepSeek par défaut** — c'est une alias de tâche LiteLLM configurable, voir décision §9.
+table thread, résumé stocké dans le workspace ICM ou la mémoire de l'agent. **Le modèle du résumé n'est
+jamais un DeepSeek par défaut** — c'est une alias de tâche LiteLLM configurable, voir décision §9.
 
 ### 2.8 Mémoire et routines
 
 - `packages/memory/src/index.ts` (`MarkdownMemoryStore`) : documents `(scope user|bot, path, content,
-  revision)` + table de révisions ; recherche par sous-chaîne ; import/export Markdown. Le bot écrit ses
+revision)` + table de révisions ; recherche par sous-chaîne ; import/export Markdown. Le bot écrit ses
   souvenirs via l'outil `remember` (ex. `MEMORY.md`).
 - `executor.ts` (`wakeRoutine`) : routines cron — le job `routine.wakeup` **revendique** via une
   transaction `updateMany` (statut + `nextRunAt`), crée un `task`+`run`, recalcule `nextCronDate`.
@@ -193,8 +193,8 @@ conditions { if / each }, pins, events }`. Le moteur (`engine.ts`) exécute les 
 évaluation Handlebars + FEEL/CEL (`EVALUATE:`, `FEEL:`, `CEL:`, `NOEVAL:`).
 
 → Pour Philum : utile uniquement si on veut une **spécification déclarative** des raisonnements d'agent.
-  Le workspace ICM (fichiers Markdown + conventions) couvre déjà ce besoin avec plus de transparence.
-  **Verdict : ignorer le moteur, retenir l'idée** qu'un raisonnement peut être une donnée déclarative.
+Le workspace ICM (fichiers Markdown + conventions) couvre déjà ce besoin avec plus de transparence.
+**Verdict : ignorer le moteur, retenir l'idée** qu'un raisonnement peut être une donnée déclarative.
 
 ### 4.2 Merge hiérarchique des configs + BYOK via `privates`
 
@@ -202,7 +202,7 @@ conditions { if / each }, pins, events }`. Le moteur (`engine.ts`) exécute les 
 dans `privates` ; skill-openai lit `context.privates.OPENAI_API_KEY` + `OPENAI_SERVER` (baseURL).
 
 → Copier le **principe de fusion hiérarchique** pour la config des agents Philum (UI + fichiers) :
-  défauts plateforme → commun → agent → run. C'est le pendant « fichier » du layer 3 ICM.
+défauts plateforme → commun → agent → run. C'est le pendant « fichier » du layer 3 ICM.
 
 ### 4.3 Schéma JSON → outils MCP
 
@@ -225,8 +225,8 @@ questionnaire plat « tout d'un coup », niveau système, checkpoints (pauses hu
 (pass/fail non ambigu), docs sur outputs (« les outputs passés ne sont pas des templates »).
 
 → Déjà en grande partie dans `createur-de-fiches` (ex. `shared/principes-editoriaux.md`, garde-fous,
-  `_core/audit/audit_fiche.py`). **Vérifier la conformité** via le walk test (5.2) et combler les trous
-  (sources canoniques, routage sélectif).
+`_core/audit/audit_fiche.py`). **Vérifier la conformité** via le walk test (5.2) et combler les trous
+(sources canoniques, routage sélectif).
 
 ### 5.2 icm-architect : invariants + walk test
 
@@ -238,7 +238,7 @@ d'entrée + ≤ 2 lectures, savoir où aller et quoi produire ; le statut doit �
 `output/`.
 
 → Pour Philum : le **walk test devient un test automatisé** du workspace hébergé (le MCP server ou un job
-  valide qu'un espace ICM fraîchement copié est « marchable » avant de le proposer au créateur).
+valide qu'un espace ICM fraîchement copié est « marchable » avant de le proposer au créateur).
 
 ### 5.3 Limitations assumées (à garder en tête)
 
@@ -261,8 +261,8 @@ marche pas (« are you sure? » → toujours « oui ») ; l'**investigation forc
 citer la consigne utilisateur, montrer le schéma de données) améliore la qualité (+2.25 points A/B).
 
 → Pour Philum : transformer en **guard d'outil MCP** pour les écritures sensibles : avant d'écrire un
-  fichier de fiche, l'agent doit présenter les faits (source vérifiée, extrait verbatim, check editorial
-  — cf. `principes-editoriaux.md`). C'est l'approbation hybride « avant », du côté outil.
+fichier de fiche, l'agent doit présenter les faits (source vérifiée, extrait verbatim, check editorial
+— cf. `principes-editoriaux.md`). C'est l'approbation hybride « avant », du côté outil.
 
 ### 6.2 Regex-vs-LLM — structurer sans payer le LLM partout
 
@@ -271,7 +271,7 @@ citer la consigne utilisateur, montrer le schéma de données) améliore la qual
 de coût évité.
 
 → C'est la validation numérique de la stratégie Philum : **oracles structurés + scraping maison d'abord,
-  LLM seulement pour la vérification/bas-score**. À citer tel quel dans les docs d'architecture.
+LLM seulement pour la vérification/bas-score**. À citer tel quel dans les docs d'architecture.
 
 ### 6.3 Memory vault + AgentShield
 
@@ -290,40 +290,40 @@ de coût évité.
 
 ### Copier tel quel (transposition Python/backend)
 
-| Pattern | Source | Où l'injecter |
-|---|---|---|
-| AES-256-GCM `iv(12)+tag(16)+ct` base64, `load()` explicite | rakazo `secrets.ts` | `app/crypto` (KeyManager déjà conforme) |
-| Redaction streaming + `containsSecret` qui refuse de persister | rakazo `executor.ts` | pipeline d'agent Philum (chat + fiche) |
-| Machine à états run `queued→leased→running→waiting_input`, lease+fence+heartbeat, attempts | rakazo `executor.ts` | service d'agent FastAPI (Celery worker) |
-| `ask` → suspension du run + notification → `continueRun` | rakazo `executor.ts` | approbation hybride (MVP : actions sensibles validées) |
-| Idempotence d'effets par `executionId`, outil read-only/idempotent/non | rakazo `executor.ts` | serveur MCP (~30 outils classés) |
-| Fenêtre+compaction d'historique avec curseur, job de fond, 40k/120s | rakazo `history-compaction.ts` | job Celery + mémoire d'agent (modèle interne : jamais DeepSeek par défaut, cf. §9) |
-| Credentials BYOK : ref en clair + valeur chiffrée + verrou + fallback clé plateforme | rakazo `model-credentials.ts`/`resolveModelKey` | `app/services` (BYOK) |
-| Compat switches `supportsDeveloperRole`/`maxTokensField` + profiles par route | dsh `llm-pi-ai/config.ts` | `app/services/llm.py` (LiteLLM + mode custom) |
-| Normalisation de noms d'outils (`^[a-zA-Z0-9_-]{1,64}$`) | rakazo `pi-runtime.ts` | connecteurs/composio du MCP |
-| Walk test automatisé des workspaces ICM | icm-architect `SKILL.md` | job de validation des espaces hébergés |
-| Regex d'abord, LLM sur bas-score seulement (0.95) | ecc `regex-vs-llm-structured-text` | pipeline d'extraction/vérification (confirme oracles) |
+| Pattern                                                                                    | Source                                          | Où l'injecter                                                                      |
+| ------------------------------------------------------------------------------------------ | ----------------------------------------------- | ---------------------------------------------------------------------------------- |
+| AES-256-GCM `iv(12)+tag(16)+ct` base64, `load()` explicite                                 | rakazo `secrets.ts`                             | `app/crypto` (KeyManager déjà conforme)                                            |
+| Redaction streaming + `containsSecret` qui refuse de persister                             | rakazo `executor.ts`                            | pipeline d'agent Philum (chat + fiche)                                             |
+| Machine à états run `queued→leased→running→waiting_input`, lease+fence+heartbeat, attempts | rakazo `executor.ts`                            | service d'agent FastAPI (Celery worker)                                            |
+| `ask` → suspension du run + notification → `continueRun`                                   | rakazo `executor.ts`                            | approbation hybride (MVP : actions sensibles validées)                             |
+| Idempotence d'effets par `executionId`, outil read-only/idempotent/non                     | rakazo `executor.ts`                            | serveur MCP (~30 outils classés)                                                   |
+| Fenêtre+compaction d'historique avec curseur, job de fond, 40k/120s                        | rakazo `history-compaction.ts`                  | job Celery + mémoire d'agent (modèle interne : jamais DeepSeek par défaut, cf. §9) |
+| Credentials BYOK : ref en clair + valeur chiffrée + verrou + fallback clé plateforme       | rakazo `model-credentials.ts`/`resolveModelKey` | `app/services` (BYOK)                                                              |
+| Compat switches `supportsDeveloperRole`/`maxTokensField` + profiles par route              | dsh `llm-pi-ai/config.ts`                       | `app/services/llm.py` (LiteLLM + mode custom)                                      |
+| Normalisation de noms d'outils (`^[a-zA-Z0-9_-]{1,64}$`)                                   | rakazo `pi-runtime.ts`                          | connecteurs/composio du MCP                                                        |
+| Walk test automatisé des workspaces ICM                                                    | icm-architect `SKILL.md`                        | job de validation des espaces hébergés                                             |
+| Regex d'abord, LLM sur bas-score seulement (0.95)                                          | ecc `regex-vs-llm-structured-text`              | pipeline d'extraction/vérification (confirme oracles)                              |
 
 ### Adapter (même idée, implémentation Philum)
 
-| Pattern | Source | Adaptation |
-|---|---|---|
-| Sous-agents max 4, profondeur 1, troncature 12k | rakazo `pi-runtime.ts` | sous-tâches de recherche/vérification par run (Celery groups) |
-| Routines cron revendiquées en transaction + `nextCronDate` | rakazo `wakeRoutine` | Celery beat + jobs `routine.wakeup` |
-| Merge hiérarchique de configs `default→common→role→agent` | digipair `app.service.ts` | config agents Philum (UI + fichiers ICM) |
-| GateGuard « enquêter avant d'écrire » | ecc `gateguard` | guard MCP sur écritures sensibles (check editorial d'abord) |
-| Injection de contexte rappelé marquée non fiable (`<recalled_memory>`) | rakazo `formatRecalledMemory` | mémoire d'agent + source contenue dans une fiche |
-| OAuth device-code BYOK (ChatGPT Plus/Copilot/SuperGrok) | rakazo `pi-oauth.ts` | phase post-MVP (MVP = clés API chiffrées) |
+| Pattern                                                                | Source                        | Adaptation                                                    |
+| ---------------------------------------------------------------------- | ----------------------------- | ------------------------------------------------------------- |
+| Sous-agents max 4, profondeur 1, troncature 12k                        | rakazo `pi-runtime.ts`        | sous-tâches de recherche/vérification par run (Celery groups) |
+| Routines cron revendiquées en transaction + `nextCronDate`             | rakazo `wakeRoutine`          | Celery beat + jobs `routine.wakeup`                           |
+| Merge hiérarchique de configs `default→common→role→agent`              | digipair `app.service.ts`     | config agents Philum (UI + fichiers ICM)                      |
+| GateGuard « enquêter avant d'écrire »                                  | ecc `gateguard`               | guard MCP sur écritures sensibles (check editorial d'abord)   |
+| Injection de contexte rappelé marquée non fiable (`<recalled_memory>`) | rakazo `formatRecalledMemory` | mémoire d'agent + source contenue dans une fiche              |
+| OAuth device-code BYOK (ChatGPT Plus/Copilot/SuperGrok)                | rakazo `pi-oauth.ts`          | phase post-MVP (MVP = clés API chiffrées)                     |
 
 ### Ignorer
 
-| Élément | Source | Pourquoi |
-|---|---|---|
-| Moteur PINS (FEEL/CEL/Handlebars) | digipair | l'ICM couvre le besoin avec plus de transparence |
-| Embarquement de `deepseek-harness` (Node, Cordis, local-first) | dsh | décision actée le 2026-08-20 ; concepts seulement |
-| Electron/Expo, sandbox desktop (computer_observe/act), takeover d'écran | rakazo | hors périmètre Philum (web/cloud, pas de machines par utilisateur) |
-| Pack ECC complet (hooks CLI, 68 agents, 286 skills) | ecc | cible des harnesses CLI de codage, pas un backend |
-| Supermemory externe | rakazo | remplacé par la mémoire d'agent Philum (Postgres + workspace ICM) |
+| Élément                                                                 | Source   | Pourquoi                                                           |
+| ----------------------------------------------------------------------- | -------- | ------------------------------------------------------------------ |
+| Moteur PINS (FEEL/CEL/Handlebars)                                       | digipair | l'ICM couvre le besoin avec plus de transparence                   |
+| Embarquement de `deepseek-harness` (Node, Cordis, local-first)          | dsh      | décision actée le 2026-08-20 ; concepts seulement                  |
+| Electron/Expo, sandbox desktop (computer_observe/act), takeover d'écran | rakazo   | hors périmètre Philum (web/cloud, pas de machines par utilisateur) |
+| Pack ECC complet (hooks CLI, 68 agents, 286 skills)                     | ecc      | cible des harnesses CLI de codage, pas un backend                  |
+| Supermemory externe                                                     | rakazo   | remplacé par la mémoire d'agent Philum (Postgres + workspace ICM)  |
 
 ---
 
@@ -370,6 +370,7 @@ compte du créateur : aucune donnée ne passe chez un tiers choisi par Philum.
    tâche, avec un **avertissement** affiché sur la souveraineté/transfert des données.
 
 **Conséquences dans ce rapport** :
+
 - §2.7 : le « deepseek par défaut » de rakazo est un **anti-modèle** pour Philum — ne pas le copier,
   le remplacer par l'ordre ci-dessus (alias LiteLLM).
 - §2.2 : le fallback `deploymentModelKey` chez Philum pointe donc vers l'alias de tâche interne (§9),

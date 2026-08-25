@@ -27,7 +27,7 @@ Client desktop **Electron** (Windows/Mac/Linux), « poste de travail IA tout-en-
 - Édition **Enterprise** : déploiement privé, gestion centralisée des modèles (cloud +
   modèles privés auto-hébergés), comptes employés, bases partagées — modèle « admin
   configure, les employés consomment sans rien configurer ».
-- Licence : **AGPL-3.0** (community). ⇒ Le *code* n'est pas incorporable dans Philum
+- Licence : **AGPL-3.0** (community). ⇒ Le _code_ n'est pas incorporable dans Philum
   sans mise en conformité AGPL ; on s'inspire des **patterns**, pas du code.
 
 ## 2. Comment le local fonctionne chez Cherry Studio
@@ -40,7 +40,7 @@ contraintes. Config documentée (page Ollama) :
 1. Installer/lancer Ollama, télécharger un modèle (`ollama run llama3.2`).
 2. Dans Cherry Studio : Settings → Model Services → Ollama → activer le provider.
 3. Clé API **optionnelle** (champ vide ou n'importe quoi) ; adresse API par défaut
-   `http://localhost:11434/` ; option *keep-alive* (libère le modèle après N minutes
+   `http://localhost:11434/` ; option _keep-alive_ (libère le modèle après N minutes
    d'inactivité) ; ajout/gestion manuelle des modèles téléchargés.
 
 UX à retenir : zéro friction après installation d'Ollama, découverte des modèles,
@@ -49,17 +49,17 @@ aucune clé requise.
 ## 3. Le mur architectural pour Philum (et les 4 options)
 
 **Philum est une application web où c'est le BACKEND (VM e2-micro) qui appelle les
-providers** (`_appel_provider`). L'Ollama de l'utilisateur tourne sur *sa* machine :
+providers** (`_appel_provider`). L'Ollama de l'utilisateur tourne sur _sa_ machine :
 le backend distant ne peut joindre ni son loopback ni son réseau privé — quel que soit
 l'opt-in SSRF. Conséquence directe : **A1 (loopback) ne sert qu'aux instances
 self-hostées/développement** (backend co-localisé), pas aux créateurs du SaaS.
 
-| Option | Principe | Faisabilité | Verdict |
-|---|---|---|---|
-| **a) Tunnel HTTPS public** | L'utilisateur expose son Ollama via cloudflared/ngrok/Tailscale Funnel → URL HTTPS publique → kind `custom` Philum pointe dessus | **Marche dès aujourd'hui** (URL publique = passe `assert_url_is_safe`) ; frictions : installer l'outil + lancer une commande ; caveats : quick tunnels = URL changeante, et **exposition** : l'Ollama devient joignable publiquement pendant le tunnel (préférer tunnel avec auth/Access, URL aléatoire, durée courte ; le documenter clairement) | ✅ Court terme : page doc « Brancher votre Ollama sur Philum » step-by-step. Aucun code requis (éventuellement un preset UI + accepter clé placeholder) |
-| **b) Direct navigateur → localhost** | Le frontend (dans le navigateur de l'utilisateur, même machine) appelle lui-même `http://localhost:11434/v1/chat/completions` | Deux obstacles : (i) **Private Network Access** : Chrome exige un préflight avec `Access-Control-Allow-Private-Network: true` que Ollama ne renvoie pas (`OLLAMA_ORIGINS` couvre CORS simple, pas PNA) — support inégal selon navigateurs/versions ; (ii) **architecture** : la boucle d'agent vit côté serveur (outils → DB, approbations, SSE) ⇒ il faudrait déléguer chaque tour d'inférence au navigateur (protocole callback lourd, streaming fragile) | ❌ Court terme. À surveiller (maturation PNA), réévaluer si demande forte |
-| **c) Philum self-hosté** | docker-compose sur la machine/petit serveur de l'utilisateur ⇒ backend co-localisé avec Ollama | A1 (opt-in loopback) suffit alors ; cible niche dev/équipes | ✅ Via A1, priorité self-host |
-| **d) App desktop Philum** (Electron, à la Cherry Studio) | App native sur la machine ⇒ localhost trivial, UX zéro-friction égale à Cherry Studio | Projet produit majeur hors scope actuel | 🔭 Vision long terme ; garder en tête que c'est le seul chemin vers le « 100 % local grand public » |
+| Option                                                   | Principe                                                                                                                         | Faisabilité                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Verdict                                                                                                                                                 |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **a) Tunnel HTTPS public**                               | L'utilisateur expose son Ollama via cloudflared/ngrok/Tailscale Funnel → URL HTTPS publique → kind `custom` Philum pointe dessus | **Marche dès aujourd'hui** (URL publique = passe `assert_url_is_safe`) ; frictions : installer l'outil + lancer une commande ; caveats : quick tunnels = URL changeante, et **exposition** : l'Ollama devient joignable publiquement pendant le tunnel (préférer tunnel avec auth/Access, URL aléatoire, durée courte ; le documenter clairement)                                                                                                           | ✅ Court terme : page doc « Brancher votre Ollama sur Philum » step-by-step. Aucun code requis (éventuellement un preset UI + accepter clé placeholder) |
+| **b) Direct navigateur → localhost**                     | Le frontend (dans le navigateur de l'utilisateur, même machine) appelle lui-même `http://localhost:11434/v1/chat/completions`    | Deux obstacles : (i) **Private Network Access** : Chrome exige un préflight avec `Access-Control-Allow-Private-Network: true` que Ollama ne renvoie pas (`OLLAMA_ORIGINS` couvre CORS simple, pas PNA) — support inégal selon navigateurs/versions ; (ii) **architecture** : la boucle d'agent vit côté serveur (outils → DB, approbations, SSE) ⇒ il faudrait déléguer chaque tour d'inférence au navigateur (protocole callback lourd, streaming fragile) | ❌ Court terme. À surveiller (maturation PNA), réévaluer si demande forte                                                                               |
+| **c) Philum self-hosté**                                 | docker-compose sur la machine/petit serveur de l'utilisateur ⇒ backend co-localisé avec Ollama                                   | A1 (opt-in loopback) suffit alors ; cible niche dev/équipes                                                                                                                                                                                                                                                                                                                                                                                                 | ✅ Via A1, priorité self-host                                                                                                                           |
+| **d) App desktop Philum** (Electron, à la Cherry Studio) | App native sur la machine ⇒ localhost trivial, UX zéro-friction égale à Cherry Studio                                            | Projet produit majeur hors scope actuel                                                                                                                                                                                                                                                                                                                                                                                                                     | 🔭 Vision long terme ; garder en tête que c'est le seul chemin vers le « 100 % local grand public »                                                     |
 
 **Conclusion locale** : pour le SaaS, la réponse honnête aujourd'hui est l'option (a)
 — ça fonctionne immédiatement, avec une doc soignée et des avertissements d'exposition ;
@@ -95,4 +95,4 @@ pas de kind `ollama` dédié en SaaS (le kind `custom` couvre exactement ce cas)
 - **Copier** : rotation multi-clés (différée), clé placeholder, presets UI, doc tunnel
   inspirée du guide Ollama de Cherry Studio.
 
-*Document écrit en lecture seule du dépôt (aucun commit — PR #512 sous le contrôle d'un autre agent).*
+_Document écrit en lecture seule du dépôt (aucun commit — PR #512 sous le contrôle d'un autre agent)._

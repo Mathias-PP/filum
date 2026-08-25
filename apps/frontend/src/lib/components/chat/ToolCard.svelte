@@ -57,10 +57,10 @@
     type="button"
     class="flex w-full items-center justify-between gap-2 text-left"
     onclick={() => (ouvert = !ouvert)}
+    title={name}
   >
     <span class="text-ink-primary">
       {rendu.action}{rendu.objet ? ` ${rendu.objet}` : ''}
-      <span class="ml-1 font-mono text-[11px] text-ink-tertiary">{name}</span>
     </span>
     <span class="text-xs" class:text-danger={echoue} class:text-ink-tertiary={!echoue}>
       {etat}
