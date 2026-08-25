@@ -8,14 +8,14 @@ La logique métier derrière les endpoints (lot 4) et la boucle (lot 2) : provid
 
 ## Les fichiers
 
-| Fiche | Contenu | LOC | SHA256 | Fichier |
+| Fiche | Contenu | LOC | sha256 | Fichier |
 |---|---|---|---|---|
-| [01-providers.md](01-providers.md) | CRUD BYOK, chiffrement, cache modèles, test clé, souveraineté | 608 | `3f40d049cd9e7213841069810a488fd00543f0fea83dba210a3161ecc50bfd08` | `apps/backend/app/services/agent_providers.py` |
-| [02-gratuit.md](02-gratuit.md) | Lanes Z.ai, rotation, cooldown, consentement versionné, catalogue modèles | 420 | `6e72c48a56434a0ea1a8f23537b2de9a741df5e314d1aa0173bd0fe4257f4717` | `apps/backend/app/services/agent_gratuit.py` |
-| [03-workspace.md](03-workspace.md) | Filesystem logique, normalisation chemins, seed, frontmatter, meta | 320 | `2aa6731fd250a1021a2fa5492507a80f79b57ad16ade83cc369cd2bab9005a6a` | `apps/backend/app/services/agent_workspace.py` |
-| [04-definitions.md](04-definitions.md) | Agents nommés YAML, validation, `tools_absents`, tri builtin | 192 | `d46d5c009b4711b0053a1a3158a617ff0ef67f818aae4464cc55ccaa1ce725df` | `apps/backend/app/services/agent_definitions.py` |
-| [05-fiche.md](05-fiche.md) | Orchestrateur 7 étages ICM, reprise `depuis`, compte rendu séquentiel | 211 | `0c19cff5bb3c66fdde3c6ae8baaae8ed1ac55f53e9b7481bfc7c89d3c70c37d9` | `apps/backend/app/services/agent_fiche.py` |
-| [06-discovery.md](06-discovery.md) | Clé serveur DeepSeek, quota découverte, provider transient | 142 | `7fba2a223658c059d98b54f6eebafdeeac5f8a572cdbf9f87caf01342b15cdf6` | `apps/backend/app/services/agent_discovery.py` |
+| [01-providers.md](01-providers.md) | CRUD BYOK, chiffrement, cache modèles, test clé, souveraineté | 608 | sha256: 3f40d049cd9e7213841069810a488fd00543f0fea83dba210a3161ecc50bfd08 | `apps/backend/app/services/agent_providers.py` |
+| [02-gratuit.md](02-gratuit.md) | Lanes Z.ai, rotation, cooldown, consentement versionné, catalogue modèles | 420 | sha256: 6e72c48a56434a0ea1a8f23537b2de9a741df5e314d1aa0173bd0fe4257f4717 | `apps/backend/app/services/agent_gratuit.py` |
+| [03-workspace.md](03-workspace.md) | Filesystem logique, normalisation chemins, seed, frontmatter, meta | 320 | sha256: 2aa6731fd250a1021a2fa5492507a80f79b57ad16ade83cc369cd2bab9005a6a | `apps/backend/app/services/agent_workspace.py` |
+| [04-definitions.md](04-definitions.md) | Agents nommés YAML, validation, `tools_absents`, tri builtin | 192 | sha256: d46d5c009b4711b0053a1a3158a617ff0ef67f818aae4464cc55ccaa1ce725df | `apps/backend/app/services/agent_definitions.py` |
+| [05-fiche.md](05-fiche.md) | Orchestrateur 7 étages ICM, reprise `depuis`, compte rendu séquentiel | 211 | sha256: 0c19cff5bb3c66fdde3c6ae8baaae8ed1ac55f53e9b7481bfc7c89d3c70c37d9 | `apps/backend/app/services/agent_fiche.py` |
+| [06-discovery.md](06-discovery.md) | Clé serveur DeepSeek, quota découverte, provider transient | 142 | sha256: 7fba2a223658c059d98b54f6eebafdeeac5f8a572cdbf9f87caf01342b15cdf6 | `apps/backend/app/services/agent_discovery.py` |
 
 ## Invariants du lot
 

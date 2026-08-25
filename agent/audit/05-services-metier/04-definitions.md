@@ -2,7 +2,7 @@
 
 > **Fiche du lot 5.** [CONTEXT.md](CONTEXT.md) · [Retour au plan](../../plans/2026-08-25-revue-code-agent.md) · **Porte de sortie : G5**.
 > **Fichier :** `apps/backend/app/services/agent_definitions.py` (192 l., 10 symboles).
-> **SHA256 :** `d46d5c009b4711b0053a1a3158a617ff0ef67f818aae4464cc55ccaa1ce725df`
+> sha256: d46d5c009b4711b0053a1a3158a617ff0ef67f818aae4464cc55ccaa1ce725df
 
 ## Rôle
 

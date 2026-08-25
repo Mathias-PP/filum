@@ -2,7 +2,7 @@
 
 > **Fiche du lot 5.** [CONTEXT.md](CONTEXT.md) · [Retour au plan](../../plans/2026-08-25-revue-code-agent.md) · **Porte de sortie : G5**.
 > **Fichier :** `apps/backend/app/services/agent_workspace.py` (320 l., 16 symboles).
-> **SHA256 :** `2aa6731fd250a1021a2fa5492507a80f79b57ad16ade83cc369cd2bab9005a6a`
+> sha256: 2aa6731fd250a1021a2fa5492507a80f79b57ad16ade83cc369cd2bab9005a6a
 
 ## Rôle
 
@@ -15,7 +15,7 @@ Filesystem logique en base Postgres : création/lecture/écriture/suppression de
 | `WorkspaceError` | `apps/backend/app/services/agent_workspace.py:39` | Erreur métier : chemin invalide, racine interdite |
 | `WorkspaceNotFoundError` | `apps/backend/app/services/agent_workspace.py:43` | Fichier absent du workspace |
 | `normaliser_chemin` | `apps/backend/app/services/agent_workspace.py:47` | Normalise et valide un chemin (relatif, pas de `..`, racines fermées) |
-| `calculer_sha256` | `apps/backend/app/services/agent_workspace.py:82` | SHA256 d'un contenu string |
+| `calculer_sha` | `apps/backend/app/services/agent_workspace.py:82` | SHA256 d'un contenu string (fonction `calculer_sha256`) |
 | `_parse_frontmatter` | `apps/backend/app/services/agent_workspace.py:93` | Extrait le frontmatter YAML (jamais d'exception) |
 | `_deduire_layer` | `apps/backend/app/services/agent_workspace.py:119` | Layer ICM déduit du chemin (L0-L3, None) |
 | `_premier_paragraphe` | `apps/backend/app/services/agent_workspace.py:142` | Premier paragraphe non-titre, tronqué, fallback contract |
