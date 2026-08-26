@@ -1,0 +1,8 @@
+ECHEC G3(c): ancre vers fichier inexistant: server.py:32
+ECHEC G3(c): ancre vers fichier inexistant: tools_write.py:121
+ECHEC G3(c): ancre vers fichier inexistant: tools_write.py:1295
+ECHEC G3(c): ancre vers fichier inexistant: tools_write.py:1533
+ECHEC G3(c): ancre vers fichier inexistant: tools_write.py:60
+ECHEC G3(c): ancre vers fichier inexistant: tools_write.py:947
+(voir lignes ECHEC (c) ci-dessus)
+G3 ROUGE : 1 catégorie(s) d'échec
