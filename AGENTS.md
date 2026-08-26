@@ -28,6 +28,7 @@ Pour le détail : [`README.md`](./README.md) → [`.docs/00-vision.md`](.docs/00
 | Créer une fiche Philum de bout en bout               | [`workspaces/createur-de-fiches/AGENTS.md`](./workspaces/createur-de-fiches/AGENTS.md) workspace ICM 7 étapes |
 | Question produit non tranchée                        | [`.docs/07-open-questions.md`](.docs/07-open-questions.md)                                                    |
 | Objectifs, résultats clés, mapping tools → OKR     | [`.docs/22-okrs-philum.md`](.docs/22-okrs-philum.md)                                                         |
+| Audit deepseek-harness → Philum (bugs, features, patterns) | [`agent/audit/09-deepseek-harness/CONTEXT.md`](./agent/audit/09-deepseek-harness/CONTEXT.md)       |
 
 ---
 
