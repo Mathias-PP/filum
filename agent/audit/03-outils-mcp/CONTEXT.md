@@ -17,6 +17,7 @@ Le pont entre les agents IA et la base Philum. Le serveur FastMCP (`server.py`) 
 | [03-schema-compat.md](03-schema-compat.md) | Aplatissement `anyOf: [T, null]` → `T` pour validateurs Gemini | `apps/backend/app/mcp_server/schema_compat.py` (39 l.) |
 | [04-tools-read.md](04-tools-read.md) | 5 outils read-only : `search_cards`, `get_card`, `get_source`, `find_cards_citing`, `whoami` | `apps/backend/app/mcp_server/tools.py` (258 l.) |
 | [05-tools-write.md](05-tools-write.md) | 40 outils d'écriture, catalogue exhaustif avec catégories, approbation, pièges | `apps/backend/app/mcp_server/tools_write.py` (1876 l.) |
+| [06-capabilities-workflows.md](06-capabilities-workflows.md) | Vue fonctionnelle : ce que l'agent peut faire, workflows canoniques, contraintes transversales | — |
 
 ## Invariants du lot
 

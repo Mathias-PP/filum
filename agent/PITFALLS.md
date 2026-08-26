@@ -256,6 +256,13 @@
 - **Prévention** : un nouvel événement SSE se déclare dans **trois** endroits en une PR : (1) union `AgentEvent` dans `agent.ts`, (2) switch de `conversation.ts`, (3) rendu dans `ChatPanel.svelte`. Vérifier en local depuis `apps/frontend` : `npx svelte-kit sync && npx svelte-check --tsconfig ./tsconfig.json` (doit afficher 0 error ; les warnings a11y préexistants ne bloquent pas).
 - **Vécu** : PR #564 commit `9492381` — lint et tests verts, Build Frontend rouge découvert seulement après le second push.
 
+### 3.8 Vérificateur testé seulement sur son chemin nominal (2026-08-25)
+
+- **Symptôme** : la porte G1 a rendu « CONTRADICTION consignée » sur une fiche spot-check pourtant entièrement verte, et n'aurait jamais détecté une case non cochée.
+- **Cause** : `check_lot.sh` comptait le mot `CONTRADICTION` sur TOUTES les lignes de la fiche, y compris la ligne d'instruction du gabarit qui l'utilise comme exemple (faux positif) ; et son motif des cases vides (`^\s*- \[ \]`) ne matchait pas les items réels du gabarit, préfixés `## ` (faux négatif). Même famille : `spot_check.sh` concaténait le seed aux ancres tirées, produisant des extraits vides. Les trois bugs ont survécu à la phase 0 car les smoke-tests de G0 utilisaient des fiches reconstruites de mémoire, pas le format réellement produit par le script.
+- **Prévention** : un vérificateur se valide sur **deux** chemins : refus d'un vrai défaut injecté ET passage d'un vrai artefact conforme produit par la chaîne elle-même. Si on amendé un vérificateur déjà vert, rejouer toutes les portes franchies depuis leur dernier vert. Voir `agent/audit/_core/preuves/AMENDEMENT_VERIFICATEURS_2026-08-25.md`.
+- **Vécu** : porte G1 du plan de revue agent — double faux signal sur la première exécution réelle, corrigés puis G0 rejouée et double vert obtenu.
+
 ---
 
 ## 4. Git / déploiement / process

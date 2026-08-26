@@ -87,6 +87,8 @@ Le MVP vise à valider deux hypothèses simples :
 
 Si ces deux hypothèses sont validées, le projet a sa trajectoire. Sinon, il faut pivoter avant d'investir davantage.
 
+→ L'arbre OKR complet avec mapping outils/workerflows est dans [`22-okrs-philum.md`](./22-okrs-philum.md).
+
 ---
 
-_Pour la suite, voir [`01-product-spec.md`](./01-product-spec.md)._
+_Pour la suite, voir [`01-product-spec.md`](./01-product-spec.md) et [`22-okrs-philum.md`](./22-okrs-philum.md) (arbre OKR complet)._

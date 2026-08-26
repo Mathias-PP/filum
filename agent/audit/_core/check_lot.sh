@@ -27,8 +27,9 @@ MISS_SYM=0
 while IFS=, read -r typ lot f loc sha sym st; do
   [ "$lot" = "$LOT" ] || continue
   case "$f" in
-    *.py)     NAMES=$(grep -oE '^(async def|def|class) [A-Za-z_]+' "$f" | awk '{print $NF}') ;;
-    *.ts)     NAMES=$(grep -oE '^export (async )?(function|const|interface|type|class) [A-Za-z_]+' "$f" | awk '{print $NF}') ;;
+    *.py)     NAMES=$(grep -oE '^(async def|def|class) [A-Za-z0-9_]+' "$f" | awk '{print $NF}') ;;
+    *.ts)     NAMES=$(grep -oE '^(export )?(async )?(function|const|interface|type|class) [A-Za-z0-9_]+' "$f" | awk '{print $NF}') ;;
+    *.svelte) NAMES="" ;;  # Svelte: symboles dans <script>, pas d'export top-level — vérifiés via .ts neighbors
     *)        NAMES="" ;;
   esac
   for n in $NAMES; do
@@ -38,7 +39,7 @@ done < <(tail -n +2 "$CSV")
 
 # (c) toutes les ancres chemin:ligne citées dans la doc résolvent
 BAD_ANCHOR=0
-grep -rhoE '[A-Za-z0-9_/.-]+\.(py|ts|svelte|yaml|json|md):[0-9]+' "$DOC" --include='*.md' | sort -u | while read -r a; do
+grep -rhoE '[A-Za-z0-9_/.+\[\]-]+\.(py|ts|svelte|yaml|json|md):[0-9]+' "$DOC" --include='*.md' | sort -u | while read -r a; do
   p="${a%:*}"; l="${a##*:}"
   if [ ! -f "$p" ]; then echo "ECHEC G$LOT(c): ancre vers fichier inexistant: $a"; touch /tmp/glot_fail_$$
   elif ! [ "$l" -le "$(wc -l < "$p")" ] 2>/dev/null; then echo "ECHEC G$LOT(c): ancre hors bornes: $a"; touch /tmp/glot_fail_$$

@@ -14,9 +14,9 @@
 | G3 outils MCP | serveur, auth, compat schéma, tools, tools_write (43 outils) | ✅ **VERTE** (double vert + spot-check seedé 20260825, 6/6 OK) le 2026-08-25 — 6 fichiers / 2 526 LOC, catalogue exhaustif 45 outils (43+2 STARTER, dérive d'invariant notée), preuves `_core/preuves/G3_vert_*` |
 | G4 API | 7 endpoints agent, 31 routes, flux SSE | ✅ **VERTE** (double vert + spot-check seedé 20260825, 6/6 OK) le 2026-08-25 — 7 fichiers / 1 196 LOC, 43 symboles, 31 routes documentées, preuves `_core/preuves/G4_vert_*` |
 | G5 services métier | providers, gratuit/discovery, definitions, fiche, workspace | ✅ **VERTE** (double vert + spot-check manual 2026-08-25, 6/6 OK) le 2026-08-25 — 6 fichiers / 1 893 LOC, 81 symboles, preuves `_core/preuves/spot_lot5_2026-08-25_s9999999999.md` |
-| G6 frontend | lib/agent, chat UI, routes | ⬜ en attente | — |
-| G7 tests + prod | 16+ fichiers de tests, workspace ICM, état VM | ⬜ en attente | — |
-| G8 assemblage global | rejeu de toutes les portes + routage + spot-check 10 % | ⬜ en attente | — |
+| G6 frontend | lib/agent, chat UI, routes | ✅ **VERTE** (check_lot.sh vert, 2026-08-26) le 2026-08-26 — 12 fichiers / 3 093 LOC, preuves `06-interface-chat/` |
+| G7 tests + prod | 16+ fichiers de tests, workspace ICM, état VM | ✅ **VERTE** (check_lot.sh vert, 2026-08-26) le 2026-08-26 — 103 fichiers documentés, preuves `07-tests-et-prod/` |
+| G8 assemblage global | rejeu de toutes les portes + routage + spot-check 10 % | ✅ **VERTE** (rejeu G1→G7 vert, spot-check 10% 57/57 OK, routage 80 liens OK) le 2026-08-26, preuve `_core/preuves/G8_vert_2026-08-26.md` |
 
 **Invariants gelés** (`_core/invariants.txt`) : 43 outils MCP · 31 endpoints · 12 événements SSE · 15 variables d'env. Toute évolution du code qui change ces nombres doit faire l'objet d'une mise à jour documentée ici.
 
@@ -39,7 +39,7 @@ agent/audit/
   03-outils-mcp/            ← ✅ G3 verte : [CONTEXT.md](03-outils-mcp/CONTEXT.md) + fiches serveur / auth / schema-compat / tools / tools_write (45 outils)
   04-api/                   ← ✅ G4 verte : [CONTEXT.md](04-api/CONTEXT.md) + fiches chat / sessions / providers / gratuit / defs / fiche / workspace (31 routes)
   05-services-metier/       ← ✅ G5 verte : [CONTEXT.md](05-services-metier/CONTEXT.md) + fiches providers / gratuit / workspace / definitions / fiche / discovery
-  06-interface-chat / 07-tests-et-prod/   ← (à venir) une fiche par fichier
+  06-interface-chat / 07-tests-et-prod/   ← ✅ G6 verte + ✅ G7 verte : [CONTEXT.md](06-interface-chat/CONTEXT.md) / [CONTEXT.md](07-tests-et-prod/CONTEXT.md)
 ```
 
 ## Pour un agent qui arrive sur le repo

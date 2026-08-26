@@ -2,7 +2,19 @@
 
 > Snapshot vivant, 1 page max. **Pour l'historique détaillé** : voir [`CHANGELOG.md`](./CHANGELOG.md). **Pour les items long terme** : voir [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md).
 
-**Dernière mise à jour : 2026-08-25**
+**Dernière mise à jour : 2026-08-26**
+
+---
+
+## Session 2026-08-25/26 : revue exhaustive du code agent IA — portes G0→G8 vertes
+
+**Audit complet du code agent IA** (boucle, outils MCP, API, gratuit, interface chat, tests, workspace ICM). 192 fichiers, ~24 500 LOC, 43 outils MCP, 31 endpoints, 12 événements SSE, 15 variables d'env — tout documenté fichier par fichier avec ancres `chemin:ligne` vérifiables.
+
+- **Portes bloquantes G0→G8** : toutes franchies (preuves dans `agent/audit/_core/preuves/`). Rejeu de tous les lots via `check_lot.sh` : 7/7 verts.
+- **Spot-check anti-fraude** : 10% des fichiers (19 fichiers × 3 ancres = 57 points) — zéro contradiction.
+- **Bugs corrigés dans check_lot.sh** : regex digits (`[0-9]`), CSV `\r\n` → `\n`, backtick sha256, regex TS non-exportés, Svelte skip.
+- **Documentation d'état** : `agent/audit/CONTEXT.md` route vers 7 domaines, chaque domaine a son CONTEXT.md + fiches. Routage AGENTS.md → audit → fiches : 80 liens, aucun mort.
+- **Invariants gelés** : 43 outils MCP · 31 endpoints · 12 événements SSE · 15 variables d'env — inchangés depuis G0.
 
 ---
 
