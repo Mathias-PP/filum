@@ -1,1 +1,5 @@
 apps/backend/tests/fixtures/
+agent/audit/
+agent/plans/
+agent/research/
+agent/PITFALLS.md
