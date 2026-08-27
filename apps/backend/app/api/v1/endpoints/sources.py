@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import cast
 from uuid import UUID
 
@@ -673,5 +673,5 @@ async def delete_source(
     # Soft-delete: keep the row so historical references (parent_source_id
     # from other sources, citation graph snapshots, content_attestations)
     # remain intact. Queries on the public path filter `deleted_at IS NULL`.
-    source.deleted_at = datetime.now().replace(tzinfo=None)
+    source.deleted_at = datetime.now(UTC).replace(tzinfo=None)
     await db.commit()

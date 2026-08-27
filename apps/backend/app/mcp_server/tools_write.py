@@ -791,10 +791,10 @@ async def delete_source(db: AsyncSession, user: User, *, source_id: str) -> dict
     en base mais ne s'affichent plus. Preferer `update_source` pour corriger
     une source ; utiliser `delete_source` uniquement si la reference est hors sujet.
     """
-    from datetime import datetime
+    from datetime import UTC, datetime
 
     source = await _source_du_createur(db, user, source_id)
-    source.deleted_at = datetime.now().replace(tzinfo=None)
+    source.deleted_at = datetime.now(UTC).replace(tzinfo=None)
     await db.commit()
     return {"id": str(source.id), "deleted": True}
 
@@ -1270,7 +1270,7 @@ async def search_my_excerpts(
             BiblioCard.user_id == user.id,
             BiblioCard.deleted_at.is_(None),
             Source.deleted_at.is_(None),
-            SourceExcerpt.text.ilike(f"%{q}%"),
+            SourceExcerpt.text.ilike(f"%{q.replace('%', '\\%').replace('_', '\\_')}%"),
         )
         .order_by(SourceExcerpt.created_at.desc())
         .limit(max(1, min(limit, 100)))
@@ -1298,10 +1298,10 @@ async def delete_card(db: AsyncSession, user: User, *, slug: str) -> dict[str, A
     Les extraits et attestations restent en base. Utiliser `restore_card` pour
     annuler. Irreversible au-dela de la politique de retention (90 jours).
     """
-    from datetime import datetime
+    from datetime import UTC, datetime
 
     card = await _fiche_du_createur(db, user, slug)
-    card.deleted_at = datetime.now().replace(tzinfo=None)
+    card.deleted_at = datetime.now(UTC).replace(tzinfo=None)
     await db.commit()
     return {"slug": slug, "deleted": True}
 

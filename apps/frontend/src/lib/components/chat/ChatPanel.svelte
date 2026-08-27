@@ -785,6 +785,7 @@
     onmousemove={onMouseMoveFil}
     role="log"
     aria-live="polite"
+    aria-busy={enCours}
   >
     {#if chargement}
       <p class="text-sm text-ink-tertiary">Chargement de la conversation...</p>
@@ -813,7 +814,7 @@
 
     {#each affichables as item, i (i)}
       {#if item.kind === 'user'}
-        <div class="border-l-2 border-info pl-3 text-sm text-ink-primary">
+        <div class="break-words border-l-2 border-info pl-3 text-sm text-ink-primary">
           {item.text}
         </div>
       {:else if item.kind === 'assistant'}
@@ -867,15 +868,25 @@
             onclick={() => {
               continuer();
               enCours = true;
-              setTimeout(() => (enCours = false), 5000);
             }}
             disabled={enCours}>Continuer</Button
           >
         </div>
       {:else}
-        <p class="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger">
-          {item.text}
-        </p>
+        <div
+          role="alert"
+          class="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger"
+        >
+          <p>{item.text}</p>
+          <button
+            type="button"
+            class="mt-1 text-xs font-medium text-danger underline hover:no-underline"
+            onclick={() => {
+              continuer();
+              enCours = true;
+            }}>Réessayer</button
+          >
+        </div>
       {/if}
     {/each}
 
@@ -970,7 +981,7 @@
       rows="1"
       aria-label="Message à l'agent"
       placeholder="Que doit faire l'agent ?"
-      class="flex-1 resize-none rounded border border-border bg-surface-primary px-3 py-2 text-sm"
+      class="flex-1 resize-none rounded border border-border bg-surface-primary px-3 py-2 text-sm touch-manipulation"
       style="overflow-y: hidden;"
       oninput={(e) => ajusterHauteur(e.currentTarget)}
       onkeydown={(e) => {

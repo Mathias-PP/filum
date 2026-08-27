@@ -56,6 +56,7 @@
   <button
     type="button"
     class="flex w-full items-center justify-between gap-2 text-left"
+    aria-expanded={ouvert}
     onclick={() => (ouvert = !ouvert)}
     title={name}
   >
@@ -94,14 +95,14 @@
   {/if}
   {#if ouvert}
     <pre
-      class="mt-2 overflow-x-auto rounded bg-surface-tertiary p-2 text-xs text-ink-secondary">{JSON.stringify(
+      class="mt-2 max-h-[40vh] overflow-auto rounded bg-surface-tertiary p-2 text-xs text-ink-secondary">{JSON.stringify(
         args,
         null,
         2
       )}</pre>
     {#if result}
       <pre
-        class="mt-1 overflow-x-auto rounded bg-surface-tertiary p-2 text-xs text-ink-secondary">{JSON.stringify(
+        class="mt-1 max-h-[40vh] overflow-auto rounded bg-surface-tertiary p-2 text-xs text-ink-secondary">{JSON.stringify(
           result,
           null,
           2

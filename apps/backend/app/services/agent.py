@@ -64,6 +64,9 @@ _TIMEOUT = 60.0
 #: Plafond de la taille d'un message ``tool`` renvoyé au modèle (le contexte
 #: coûte des tokens, et les résultats d'outils sont bavards).
 TOOL_RESULT_MAX = 120_000
+#: Mur d'horloge sur l'intégralité de la boucle (5 min). Empêche une boucle
+#: de tourner indéfiniment si le modèle produit des tool calls en boucle.
+BOUCLE_TIMEOUT = 300.0
 
 _SYSTEME = (
     "Tu es Philum Agent, l'assistant d'un créateur de contenu scientifique. "
@@ -979,7 +982,9 @@ async def boucle(
         await emit({"type": "contexte_compacte", "payload": {"messages_retires": retires}})
 
     usage_total: dict[str, int] = {"prompt_tokens": 0, "completion_tokens": 0}
-    try:
+
+    async def _boucler() -> None:
+        nonlocal rejeu_fait
         # Utiliser le quota_tours si défini dans agent_def, sinon utiliser MAX_TOURS
         quota_tours = agent_def.quota_tours if agent_def else MAX_TOURS
         for tour in range(1, quota_tours + 1):
@@ -1067,6 +1072,21 @@ async def boucle(
                     "message": f'Pause après {MAX_TOURS} actions : l\'agent a beaucoup travaillé et peut continuer. Cliquez sur Continuer ou envoyez "continue".',
                     "tours": MAX_TOURS,
                 },
+            }
+        )
+
+    try:
+        await asyncio.wait_for(_boucler(), timeout=BOUCLE_TIMEOUT)
+    except asyncio.CancelledError:
+        # Annulation propre (disconnect SSE, arrêt serveur) : pas une erreur.
+        await emit({"type": "error", "payload": {"message": "Communication interrompue."}})
+        raise
+    except TimeoutError:
+        logger.warning("Boucle de l'agent pour %s dépassée (%ss)", user.id, BOUCLE_TIMEOUT)
+        await emit(
+            {
+                "type": "error",
+                "payload": {"message": "L'agent a mis trop de temps à répondre. Réessayez."},
             }
         )
     except Exception as exc:  # noqa: BLE001 -- un échec de boucle doit être visible, pas silencieux

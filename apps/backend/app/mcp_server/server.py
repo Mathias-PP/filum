@@ -27,6 +27,27 @@ mcp = FastMCP(
 )
 
 
+def _aplatir_params_outil(fn) -> None:
+    """Aplatit les ``X | None`` du schema de ``fn`` dans le composant FastMCP.
+
+    L'outil enregistre est sous la cle ``"tool:<nom>@"`` dans les internals de
+    FastMCP. On encapsule l'acces ici : si l'API interne change (version de
+    FastMCP), on ne mute plus rien au lieu de planter tout le serveur. L'objet
+    mute est le meme que ``list_tools()`` servira.
+    """
+    try:
+        key = f"tool:{fn.__name__}@"
+        # API interne FastMCP : on traite le composant comme opaque (Any) pour ne
+        # pas dependre du nommage exact de ses attributs, ici et dans le typage.
+        stored: Any = mcp._local_provider._components.get(key)  # noqa: SLF001 -- API interne FastMCP
+        if stored is not None:
+            stored.parameters = aplatir_nullable(stored.parameters)
+    except (AttributeError, KeyError):
+        # Structure interne de FastMCP changee : on prefere servir les schemas
+        # tels quels plutot que de faire echouer l'enregistrement de tous les tools.
+        pass
+
+
 def outil():
     """`@mcp.tool()`, plus l'aplatissement des optionnels du schema d'entree.
 
@@ -39,13 +60,7 @@ def outil():
 
     def decore(fn):
         mcp.tool()(fn)
-        # L'outil enregistre est dans _local_provider._components sous la cle
-        # "tool:<nom>@". On mute ses parameters en place : c'est le meme objet
-        # que list_tools() servira.
-        key = f"tool:{fn.__name__}@"
-        stored = mcp._local_provider._components.get(key)
-        if stored is not None:
-            stored.parameters = aplatir_nullable(stored.parameters)
+        _aplatir_params_outil(fn)
         return fn
 
     return decore
@@ -743,15 +758,16 @@ async def recall_memory(query: str, hops: int = 3) -> dict[str, Any]:
 
 @outil()
 async def rebuild_graph() -> dict[str, Any]:
-    """Reconstruit le graphe memoire depuis les fiches publiques (déterministe).
+    """Reconstruit le graphe memoire depuis les fiches publiques (deterministe).
 
     A appeler apres avoir publie/modifie des fiches si le rappel doit voir
-    les nouvelles aretes. Sans LLM, sans cout.
+    les nouvelles aretes. Sans LLM, sans cout. Requiert authentification
+    (sinon un tiers pourrait declencher des reconstructions a la demande).
     """
     from app.services.graph_memory import build_graph
 
-    async with _session() as db:  # auth not required but keep session pattern
-        # lecture publique : pas d'utilisateur requis
+    async with _session() as db:
+        await exiger_utilisateur(db)
         return await build_graph(db)
 
 

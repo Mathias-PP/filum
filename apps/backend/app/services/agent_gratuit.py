@@ -23,6 +23,7 @@ from datetime import UTC, date, datetime, timedelta
 from typing import NamedTuple
 
 from sqlalchemy import select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
@@ -106,7 +107,12 @@ def _provider_transient(lane: AgentLane, settings: Settings | None = None) -> Ag
     s = settings or get_settings()
     provider = AgentProvider()
     provider.id = uuid.uuid4()
+    # Valeur sentinelle pour que rien ne puisse confondre ce provider ephemere
+    # avec le compte d'un vrai createur. Tout code qui persistait ce provider
+    # creerait un enregistrement orphelin avec un faux creator_id : on l'interdit
+    # a la source en marquant l'instance et en le verifiant a la sortie.
     provider.creator_id = uuid.UUID(int=0)
+    provider._est_transient = True
     provider.provider = lane.provider_kind
     provider.display_name = f"Gratuit · {lane.label_public}"
     provider.base_url = lane.base_url
@@ -338,29 +344,24 @@ async def verifier_quota_utilisateur(
 
 
 async def consommer_message_utilisateur(db: AsyncSession, creator_id: uuid.UUID) -> None:
-    """Incrément atomique du compteur quotidien utilisateur."""
+    """Incrément atomique du compteur quotidien utilisateur.
+
+    UPSERT PostgreSQL : l'insert et l'incrément sont une seule instruction,
+    sans fenêtre entre un SELECT et un UPDATE. Évite la race TOCTOU où deux
+    requêtes concurrentes lisaient le même compteur et en écrasaient l'un
+    l'autre.
+    """
     today = date.today()
     creator_str = str(creator_id)
-    row = (
-        await db.execute(
-            select(AgentDiscoveryQuota).where(
-                AgentDiscoveryQuota.creator_id == creator_str,
-                AgentDiscoveryQuota.date == today,
-            )
+    stmt = (
+        pg_insert(AgentDiscoveryQuota)
+        .values(id=uuid.uuid4(), creator_id=creator_str, date=today, messages_used=1)
+        .on_conflict_do_update(
+            constraint="uq_discovery_quota_creator_date",
+            set_={"messages_used": AgentDiscoveryQuota.messages_used + 1},
         )
-    ).scalar_one_or_none()
-    if row is None:
-        db.add(
-            AgentDiscoveryQuota(
-                id=uuid.uuid4(), creator_id=creator_str, date=today, messages_used=1
-            )
-        )
-    else:
-        await db.execute(
-            update(AgentDiscoveryQuota)
-            .where(AgentDiscoveryQuota.id == row.id)
-            .values(messages_used=row.messages_used + 1)
-        )
+    )
+    await db.execute(stmt)
     await db.commit()
 
 

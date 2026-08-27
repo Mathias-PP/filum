@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { tick } from 'svelte';
+
   interface Props {
     /** Nom du fournisseur qui servira les conversations (lane active). */
     fournisseur?: string;
@@ -12,6 +14,7 @@
 
   let lu = $state(false);
   let enCours = $state(false);
+  let dialogEl: HTMLDivElement | undefined = $state(undefined);
 
   async function valider() {
     if (!lu || enCours) return;
@@ -22,16 +25,54 @@
       enCours = false;
     }
   }
+
+  function onKeyDown(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      onfermer();
+      return;
+    }
+    if (e.key !== 'Tab' || !dialogEl) return;
+    const focusable = dialogEl.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else {
+      if (document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  }
+
+  $effect(() => {
+    tick().then(() => dialogEl?.focus());
+  });
 </script>
 
 <!-- Overlay plein écran : le consentement doit être un geste explicite,
      pas une case cochée par défaut au milieu d'une page. -->
-<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+<div
+  class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+  onclick={onfermer}
+  role="presentation"
+>
   <div
+    bind:this={dialogEl}
     role="dialog"
     aria-modal="true"
     aria-labelledby="titre-consentement"
-    class="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-lg border border-border bg-surface-primary p-5"
+    tabindex="-1"
+    class="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-lg border border-border bg-surface-primary p-5 outline-none"
+    onclick={(e) => e.stopPropagation()}
+    onkeydown={onKeyDown}
   >
     <h2 id="titre-consentement" class="mb-2 font-serif text-lg text-ink-primary">
       Activer le mode gratuit ?
