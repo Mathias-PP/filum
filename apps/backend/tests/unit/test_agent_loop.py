@@ -1412,6 +1412,117 @@ class TestAgentNomme:
         assert contenu not in systeme["content"]
 
 
+class TestArgumentsTronques:
+    """Un appel d'outil aux arguments illisibles ne doit pas s'exécuter.
+
+    Un flux coupé au milieu du JSON laissait des arguments tronqués, lus comme
+    ``{}``. L'outil partait quand même, et le modèle rapportait comme fait un
+    appel qu'il n'avait pas formulé.
+    """
+
+    @staticmethod
+    def _mock_arguments(brut: str) -> dict:
+        return {
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": None,
+                        "tool_calls": [
+                            {
+                                "id": "call_1",
+                                "type": "function",
+                                "function": {"name": "web_search", "arguments": brut},
+                            }
+                        ],
+                    }
+                }
+            ],
+            "usage": {},
+        }
+
+    @pytest.mark.asyncio
+    async def test_un_json_tronque_n_execute_pas_l_outil(self, db_session, test_user):
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+        executed: list = []
+        appels = {"n": 0}
+
+        def handler(request):
+            appels["n"] += 1
+            if appels["n"] == 1:
+                return httpx.Response(200, json=self._mock_arguments('{"query": "éto'))
+            return httpx.Response(200, json=_mock_texte("Je refais."))
+
+        messages = [{"role": "user", "content": "cherche"}]
+        events = await _collect(
+            db_session,
+            test_user,
+            provider,
+            messages,
+            _refuse,
+            httpx.MockTransport(handler),
+            _registre_fake(executed),
+        )
+        assert executed == []
+        resultat = next(e for e in events if e["type"] == "tool_result")
+        assert "illisibles" in resultat["payload"]["result"]["error"]
+
+    @pytest.mark.asyncio
+    async def test_le_modele_recoit_une_reponse_pour_son_appel(self, db_session, test_user):
+        # Un tool_call sans message tool en face fait rejeter le tour suivant
+        # par tous les fournisseurs : le refus doit répondre, pas se taire.
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+        appels = {"n": 0}
+
+        def handler(request):
+            appels["n"] += 1
+            if appels["n"] == 1:
+                return httpx.Response(200, json=self._mock_arguments("{oops"))
+            return httpx.Response(200, json=_mock_texte("Je refais."))
+
+        messages = [{"role": "user", "content": "cherche"}]
+        await _collect(
+            db_session,
+            test_user,
+            provider,
+            messages,
+            _refuse,
+            httpx.MockTransport(handler),
+            _registre_fake([]),
+        )
+        outils = [m for m in messages if m["role"] == "tool"]
+        assert len(outils) == 1
+        assert outils[0]["tool_call_id"] == "call_1"
+
+    @pytest.mark.asyncio
+    async def test_des_arguments_vides_restent_valides(self, db_session, test_user):
+        # Un outil sans paramètre est appelé avec "" ou "{}" : absent n'est pas
+        # malformé.
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+        executed: list = []
+        appels = {"n": 0}
+
+        def handler(request):
+            appels["n"] += 1
+            if appels["n"] == 1:
+                return httpx.Response(200, json=self._mock_arguments(""))
+            return httpx.Response(200, json=_mock_texte("Fait."))
+
+        await _collect(
+            db_session,
+            test_user,
+            provider,
+            [{"role": "user", "content": "cherche"}],
+            _refuse,
+            httpx.MockTransport(handler),
+            _registre_fake(executed),
+        )
+        assert executed == [{}]
+
+
 class TestCompactionContexte:
     """Une session longue ne doit pas mourir sur la fenêtre du modèle.
 
