@@ -790,7 +790,7 @@ async def _appel_provider(
                         # Jitter ±25 % : evite que plusieurs clients (ou tours
                         # paralleles) se resynchronisent sur le meme instant de
                         # retry et recharge le provider en melee.
-                        base = random.uniform(attente * 0.75, attente * 1.25)
+                        base = random.uniform(attente * 0.75, attente * 1.25)  # nosec B311 - jitter de backoff non cryptographique
                         logger.info(
                             "HTTP %s sur tour agent (tentative %d/%d), backoff %.0fs",
                             statut_5xx,
