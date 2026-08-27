@@ -22,6 +22,7 @@ import asyncio
 import contextlib
 import json
 from typing import Any
+from uuid import UUID
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -32,7 +33,7 @@ from app.api.v1.endpoints.agent_providers import get_http_client
 from app.api.v1.endpoints.auth import get_current_user
 from app.core.config import get_settings
 from app.core.rate_limit import limiter
-from app.db.database import get_db
+from app.db.database import async_session_maker, get_db
 from app.models.user import User
 from app.schemas.agent_chat import AgentChatRequest
 from app.services import agent_approvals, agent_definitions, agent_gratuit, agent_sessions
@@ -340,11 +341,17 @@ async def chat_agent(
                 yield _sse(event)
             await task
             usage = usage_capture[0] if usage_capture else None
-            await _persister_tour(db, session, messages[depart:], "".join(reponse_finale), usage)
+            # Session de base dédiée : pas la session FastAPI (`db`), qui peut
+            # être fermée quand l'utilisateur a quitté avant la fin du flux.
+            await _persister_tour(
+                current_user.id, session.id, messages[depart:], "".join(reponse_finale), usage
+            )
             if mode_gratuit is not None:
-                await agent_gratuit.consommer_message_utilisateur(db, current_user.id)
+                async with async_session_maker() as db_dedie:
+                    await agent_gratuit.consommer_message_utilisateur(db_dedie, current_user.id)
             elif mode_decouverte:
-                await consommer_message(db, current_user.id)
+                async with async_session_maker() as db_dedie:
+                    await consommer_message(db_dedie, current_user.id)
         finally:
             task.cancel()
 
@@ -356,8 +363,8 @@ async def chat_agent(
 
 
 async def _persister_tour(
-    db: AsyncSession,
-    session,
+    creator_id: UUID,
+    session_id: UUID,
     ajouts: list[dict[str, Any]],
     reponse_finale: str,
     usage: dict[str, Any] | None = None,
@@ -367,38 +374,44 @@ async def _persister_tour(
     La reponse textuelle finale n'est pas dans ``messages`` : la boucle
     l'emet en ``message_delta`` sans la rajouter a l'historique. On la
     recompose ici pour que le tour suivant la voie.
+
+    Ouvre sa propre session de base, independante de celle injectee par
+    FastAPI : le tour est persiste apres la fin du flux SSE, quand la session
+    du middleware peut deja etre fermee (client parti, timeout du serveur).
     """
-    for message in ajouts:
-        if message.get("role") == "tool":
+    async with async_session_maker() as db:
+        session = await agent_sessions.obtenir(db, creator_id, session_id)
+        for message in ajouts:
+            if message.get("role") == "tool":
+                await agent_sessions.ajouter_message(
+                    db,
+                    session,
+                    role="tool",
+                    content=message.get("content") or "",
+                    tool_name=message.get("name"),
+                    tool_call_id=message.get("tool_call_id"),
+                )
+            else:
+                await agent_sessions.ajouter_message(
+                    db,
+                    session,
+                    role=message.get("role") or "assistant",
+                    content=message.get("content") or "",
+                    tool_calls=message.get("tool_calls"),
+                )
+        if reponse_finale:
+            prompt_tokens: int | None = None
+            completion_tokens: int | None = None
+            if isinstance(usage, dict):
+                v = usage.get("prompt_tokens")
+                prompt_tokens = v if isinstance(v, int) and v > 0 else None
+                v = usage.get("completion_tokens")
+                completion_tokens = v if isinstance(v, int) and v > 0 else None
             await agent_sessions.ajouter_message(
                 db,
                 session,
-                role="tool",
-                content=message.get("content") or "",
-                tool_name=message.get("name"),
-                tool_call_id=message.get("tool_call_id"),
+                role="assistant",
+                content=reponse_finale,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
             )
-        else:
-            await agent_sessions.ajouter_message(
-                db,
-                session,
-                role=message.get("role") or "assistant",
-                content=message.get("content") or "",
-                tool_calls=message.get("tool_calls"),
-            )
-    if reponse_finale:
-        prompt_tokens: int | None = None
-        completion_tokens: int | None = None
-        if isinstance(usage, dict):
-            v = usage.get("prompt_tokens")
-            prompt_tokens = v if isinstance(v, int) and v > 0 else None
-            v = usage.get("completion_tokens")
-            completion_tokens = v if isinstance(v, int) and v > 0 else None
-        await agent_sessions.ajouter_message(
-            db,
-            session,
-            role="assistant",
-            content=reponse_finale,
-            prompt_tokens=prompt_tokens,
-            completion_tokens=completion_tokens,
-        )

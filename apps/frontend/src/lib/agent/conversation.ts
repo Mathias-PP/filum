@@ -26,6 +26,8 @@ export type ChatItem =
       args: Record<string, unknown>;
       /** Résumé lisible calculé par le serveur (résout UUIDs → titres). */
       resume?: string;
+      /** Époque (secondes) d'expiration de la demande, si le serveur la fournit. */
+      expiresAt?: number;
       approved: boolean | null;
     }
   | { kind: 'error'; text: string }
@@ -85,6 +87,7 @@ export function appliquer(items: ChatItem[], event: AgentEvent): ChatItem[] {
           tool: event.payload.tool,
           args: event.payload.arguments,
           resume: event.payload.resume,
+          expiresAt: event.payload.expires_at,
           approved: null,
         },
       ];
