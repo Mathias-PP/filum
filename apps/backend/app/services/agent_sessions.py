@@ -7,7 +7,6 @@ tiers qu'elle existe.
 
 from __future__ import annotations
 
-import json
 from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
@@ -16,6 +15,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.agent_session import AgentMessage, AgentSession
+from app.services.token_meter import TokenMeter, estimer
 
 #: Longueur du titre dérivé du premier message.
 TITRE_MAX = 80
@@ -37,25 +37,13 @@ class AgentSessionNotFoundError(LookupError):
     """Aucune session de ce créateur sous cet identifiant."""
 
 
-def _taille(message: dict[str, Any]) -> int:
-    """Coût approximatif d'un message, en tokens.
-
-    Quatre caractères pour un token : la moyenne des tokeniseurs BPE sur du
-    texte occidental. On sérialise le message entier plutôt que son seul
-    ``content``, sinon les arguments d'appels d'outils, souvent les plus longs,
-    ne compteraient pour rien. Huit tokens de marge couvrent l'encadrement de
-    rôle que le protocole ajoute autour de chaque message.
-    """
-    try:
-        brut = json.dumps(message, ensure_ascii=False, default=str)
-    except (TypeError, ValueError):
-        brut = str(message)
-    return len(brut) // 4 + 8
-
-
 def taille_historique(messages: list[dict[str, Any]]) -> int:
-    """Coût approximatif d'un historique entier, en tokens."""
-    return sum(_taille(m) for m in messages)
+    """Coût approximatif d'un historique entier, en tokens.
+
+    Estimation pure, sans ancre. Voir :mod:`app.services.token_meter` pour la
+    mesure ancrée sur le compte réel du fournisseur.
+    """
+    return estimer(messages)
 
 
 def _debuts_de_blocs(messages: list[dict[str, Any]]) -> list[int]:
@@ -98,7 +86,9 @@ def _message_synthese(retires: int) -> dict[str, Any]:
 
 
 def compacter(
-    messages: list[dict[str, Any]], budget_tokens: int
+    messages: list[dict[str, Any]],
+    budget_tokens: int,
+    meter: TokenMeter | None = None,
 ) -> tuple[list[dict[str, Any]], int]:
     """Ramène l'historique sous ``budget_tokens``, du plus ancien au plus récent.
 
@@ -108,9 +98,14 @@ def compacter(
     couper la demande en cours rendrait la réponse absurde, là où le
     dépassement, lui, reste explicable à l'utilisateur.
 
+    ``meter`` mesure sur le compte réel du fournisseur plutôt que sur
+    l'estimation. Le déclenchement et le choix du point de coupe passent par la
+    même mesure : les évaluer sur deux échelles ferait couper trop peu.
+
     Rend la liste compactée et le nombre de messages retirés, 0 si rien.
     """
-    if taille_historique(messages) <= budget_tokens:
+    mesurer = meter.mesurer if meter is not None else estimer
+    if mesurer(messages) <= budget_tokens:
         return messages, 0
 
     tete = 0
@@ -127,7 +122,7 @@ def compacter(
 
     for coupe in coupes:
         reste = [*systeme, _message_synthese(coupe), *corps[coupe:]]
-        if taille_historique(reste) <= budget_tokens:
+        if mesurer(reste) <= budget_tokens:
             return reste, coupe
 
     coupe = coupes[-1]
@@ -274,6 +269,31 @@ async def historique_pour_modele(
         else:
             rendu.append({"role": message.role, "content": message.content})
     return rendu
+
+
+async def ancre_du_dernier_appel(
+    db: AsyncSession, creator_id: UUID, session_id: UUID
+) -> tuple[int, int] | None:
+    """Le dernier ``prompt_tokens`` du fournisseur, et ce qu'il couvrait.
+
+    Rend ``(nombre de messages précédents, tokens)`` dans l'ordre rendu par
+    :func:`historique_pour_modele`, ou ``None`` si aucun appel de cette session
+    n'a rapporté son usage. C'est ce qui permet à la compaction préventive du
+    tour suivant de partir d'un compte réel plutôt que d'une estimation, alors
+    même qu'aucun appel n'a encore eu lieu dans ce tour.
+    """
+    await obtenir(db, creator_id, session_id)
+    resultat = await db.execute(
+        select(AgentMessage.prompt_tokens)
+        .where(AgentMessage.session_id == session_id)
+        .order_by(AgentMessage.created_at, AgentMessage.id)
+    )
+    jetons = list(resultat.scalars().all())
+    for index in range(len(jetons) - 1, -1, -1):
+        valeur = jetons[index]
+        if valeur:
+            return index, int(valeur)
+    return None
 
 
 async def mettre_a_jour(

@@ -129,6 +129,8 @@ async def chat_agent(
         messages: list[dict[str, Any]] = [
             {"role": m.role, "content": m.content} for m in body.history
         ]
+        # Session neuve : aucun appel mesuré, donc rien à quoi s'ancrer.
+        ancre_tokens: tuple[int, int] | None = None
     else:
         try:
             session = await agent_sessions.obtenir(db, current_user.id, body.session_id)
@@ -140,6 +142,9 @@ async def chat_agent(
         # L'historique persisté fait autorité : ce que le client renvoie
         # pourrait avoir été retouché en route.
         messages = await agent_sessions.historique_pour_modele(db, current_user.id, session.id)
+        # Le dernier compte de tokens du fournisseur sur cette session : il
+        # rend la compaction préventive juste dès le premier appel du tour.
+        ancre_tokens = await agent_sessions.ancre_du_dernier_appel(db, current_user.id, session.id)
 
     # Changer d'agent en cours de conversation vaut pour la suite : la session
     # porte le dernier choix, le client n'a pas a le repeter a chaque message.
@@ -287,6 +292,7 @@ async def chat_agent(
                     transport=transport,
                     modele=body.model_override or session.model_override or None,
                     agent_def=agent_def,
+                    ancre_tokens=ancre_tokens,
                 )
                 if echecs_gratuit and mode_gratuit is not None:
                     with contextlib.suppress(Exception):

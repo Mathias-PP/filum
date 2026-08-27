@@ -1534,6 +1534,42 @@ class TestCompactionContexte:
         assert envoyes[-1]["content"].startswith("249:")
 
     @pytest.mark.asyncio
+    async def test_l_ancre_du_tour_precedent_declenche_la_compaction(self, db_session, test_user):
+        """Le compte réel du fournisseur fait autorité dès le premier appel.
+
+        Un historique que l'estimation croit sous le budget mais que le
+        fournisseur a déjà compté quatre fois plus gros doit être coupé avant
+        l'envoi, pas après un refus.
+        """
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+        corps = {}
+
+        def handler(request):
+            corps["envoye"] = json.loads(request.content)
+            return httpx.Response(200, json=_mock_texte("Voilà."))
+
+        messages = [{"role": "user", "content": f"{i}:{'u' * 2_000}"} for i in range(30)]
+        events = []
+
+        async def emit(event):
+            events.append(event)
+
+        await agent_svc.boucle(
+            db_session,
+            test_user,
+            provider,
+            messages,
+            emit,
+            _refuse,
+            transport=httpx.MockTransport(handler),
+            registre=_registre_fake([]),
+            ancre_tokens=(len(messages), agent_sessions.BUDGET_HISTORIQUE * 4),
+        )
+        assert [e["type"] for e in events][0] == "contexte_compacte"
+        assert len(corps["envoye"]["messages"]) < 31
+
+    @pytest.mark.asyncio
     async def test_la_passe_preventive_ne_consomme_pas_le_rejeu(self, db_session, test_user):
         """Compacter au départ ne doit pas priver du rattrapage sur refus.
 
