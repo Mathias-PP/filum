@@ -37,7 +37,9 @@ def _aplatir_params_outil(fn) -> None:
     """
     try:
         key = f"tool:{fn.__name__}@"
-        stored = mcp._local_provider._components.get(key)  # noqa: SLF001 -- API interne FastMCP
+        # API interne FastMCP : on traite le composant comme opaque (Any) pour ne
+        # pas dependre du nommage exact de ses attributs, ici et dans le typage.
+        stored: Any = mcp._local_provider._components.get(key)  # noqa: SLF001 -- API interne FastMCP
         if stored is not None:
             stored.parameters = aplatir_nullable(stored.parameters)
     except (AttributeError, KeyError):
