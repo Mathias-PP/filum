@@ -408,6 +408,67 @@ class TestBoucle:
         assert "{'error'" not in msg
 
     @pytest.mark.asyncio
+    async def test_429_header_retry_after_seconds_reprend(self, db_session, test_user, monkeypatch):
+        """429 sans retryDelay Google mais avec le header standard ``Retry-After``
+        (OpenAI/Mistral) : on attend le delai du header puis on retente une fois."""
+        attentes: list[float] = []
+
+        async def _fake_sleep(s: float) -> None:
+            attentes.append(s)
+
+        monkeypatch.setattr("app.services.agent.asyncio.sleep", _fake_sleep)
+
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+        appels = [0]
+
+        def handler(request):
+            appels[0] += 1
+            if appels[0] == 1:
+                # Pas de retryDelay dans le corps : c'est le header qui porte l'info.
+                return httpx.Response(
+                    429,
+                    headers={"Retry-After": "12"},
+                    json={"error": {"message": "Rate limit reached"}},
+                )
+            return httpx.Response(200, json=_mock_texte("ok apres header retry"))
+
+        events = await _collect(
+            db_session,
+            test_user,
+            provider,
+            [{"role": "user", "content": "cherche"}],
+            _refuse,
+            httpx.MockTransport(handler),
+            _registre_fake([]),
+        )
+        assert attentes == [12.0]
+        types = [e["type"] for e in events]
+        assert "message_delta" in types
+        assert "error" not in types
+
+    @pytest.mark.asyncio
+    async def test_extraire_retry_after(self):
+        """Le parseur du header ``Retry-After`` supporte secondes et date HTTP."""
+        from app.services.agent import _extraire_retry_after
+
+        assert _extraire_retry_after("42") == 42.0
+        assert _extraire_retry_after(" 5 ") == 5.0
+        # Date HTTP future -> delai positif en secondes
+        from datetime import UTC, datetime, timedelta
+
+        future = datetime.now(UTC) + timedelta(seconds=30)
+        from email.utils import format_datetime
+
+        delai = _extraire_retry_after(format_datetime(future))
+        assert delai is not None and 25.0 <= delai <= 35.0
+        # Header absent, illisible ou date passee -> None
+        assert _extraire_retry_after(None) is None
+        assert _extraire_retry_after("") is None
+        assert _extraire_retry_after("pas-un-nombre") is None
+        assert _extraire_retry_after("Wed, 21 Oct 2020 07:28:00 GMT") is None
+
+    @pytest.mark.asyncio
     async def test_gemini_thought_signature_preserve_vers_gemini(self, db_session, test_user):
         """Gemini 3.7-flash signe ses tool_calls avec
         `extra_content.google.thought_signature`. Ce champ DOIT revenir dans
@@ -966,7 +1027,10 @@ class TestBoucle:
             httpx.MockTransport(handler),
             _registre_fake([]),
         )
-        assert attentes == [2.0], f"attendait [2.0], obtenu {attentes}"
+        # Jitter ±25 % autour de la base [2 s] : verifie le rang plutot que la
+        # valeur exacte.
+        assert len(attentes) == 1
+        assert 1.5 <= attentes[0] <= 2.5, f"attente hors jitter ±25% : {attentes}"
         types = [e["type"] for e in events]
         assert "message_delta" in types
         assert "error" not in types

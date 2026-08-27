@@ -21,10 +21,13 @@ message ``tool``, et on relance jusqu'à ce que le modèle réponde en texte
 from __future__ import annotations
 
 import asyncio
+import email.utils
 import json
 import logging
+import random
 import time
 from collections.abc import Awaitable, Callable, Sequence
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -307,6 +310,30 @@ _RETRY_MAX_ATTENTE_S = 60.0
 _BACKOFF_5XX = (2.0, 5.0)
 
 
+def _extraire_retry_after(header: str | None) -> float | None:
+    """Extrait un delai (secondes) du header HTTP standard ``Retry-After``.
+
+    Supporte les deux formes : secondes entieres (``Retry-After: 43``) et
+    date HTTP (``Retry-After: Wed, 21 Oct 2026 07:28:00 GMT``). Renvoie None
+    quand le header est absent ou illisible. Couvre les providers OpenAI-compat
+    (OpenAI, Mistral, ...) qui n'incluent pas le ``retryDelay`` Google dans leur
+    corps d'erreur.
+    """
+    if not header:
+        return None
+    valeur = header.strip()
+    if valeur.isdigit():
+        return float(valeur)
+    try:
+        date = email.utils.parsedate_to_datetime(valeur)
+    except (TypeError, ValueError):
+        return None
+    if date is None:
+        return None
+    delai = (date - datetime.now(UTC)).total_seconds()
+    return delai if delai > 0 else None
+
+
 def _extraire_retry_delay(body: Any) -> float | None:
     """Extrait ``retryDelay`` de l'erreur Google, ou None.
 
@@ -574,6 +601,8 @@ async def _traiter_reponse_flux(
         except ValueError:
             body_429 = None
         attente = _extraire_retry_delay(body_429)
+        if attente is None:
+            attente = _extraire_retry_after(r.headers.get("retry-after"))
         if attente is not None and attente <= _RETRY_MAX_ATTENTE_S:
             logger.info(
                 "429 sur %s, attente %.1fs puis retry (retryDelay du provider)",
@@ -758,14 +787,18 @@ async def _appel_provider(
                     await r.aread()
                     statut_5xx = r.status_code
                     for i, attente in enumerate(_BACKOFF_5XX):
+                        # Jitter ±25 % : evite que plusieurs clients (ou tours
+                        # paralleles) se resynchronisent sur le meme instant de
+                        # retry et recharge le provider en melee.
+                        base = random.uniform(attente * 0.75, attente * 1.25)
                         logger.info(
                             "HTTP %s sur tour agent (tentative %d/%d), backoff %.0fs",
                             statut_5xx,
                             i + 1,
                             len(_BACKOFF_5XX),
-                            attente,
+                            base,
                         )
-                        await asyncio.sleep(attente)
+                        await asyncio.sleep(base)
                         async with client.stream(
                             "POST", url, json=payload, headers=headers
                         ) as r_retry:
