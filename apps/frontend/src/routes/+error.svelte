@@ -16,7 +16,7 @@
     <Logo size={72} variant="color" className="block dark:hidden" />
     <Logo size={72} variant="dark" className="hidden dark:block" />
   </div>
-  <p class="text-7xl font-bold text-blue-600 mb-4">{status}</p>
+  <p class="text-7xl font-bold text-info mb-4">{status}</p>
   <h1 class="text-3xl font-bold text-ink-primary mb-4">
     {#if isNotFound}
       Cette page n'existe pas

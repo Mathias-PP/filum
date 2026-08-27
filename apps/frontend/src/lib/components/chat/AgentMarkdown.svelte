@@ -54,7 +54,7 @@
       </blockquote>
     {:else if bloc.t === 'code'}
       <pre
-        class="overflow-x-auto rounded bg-surface-tertiary p-2 font-mono text-xs text-ink-secondary">{bloc.texte}</pre>
+        class="max-h-[60vh] overflow-auto rounded bg-surface-tertiary p-2 font-mono text-xs text-ink-secondary">{bloc.texte}</pre>
     {:else if bloc.t === 'separateur'}
       <hr class="border-border" />
     {/if}

@@ -53,5 +53,10 @@ class AgentProvider(Base):
         ),
     )
 
+    # Marqueur runtime, jamais persisté ni déclaré comme colonne : signale un
+    # provider éphémère (cle serveur du mode gratuit) qui ne doit pas atterrir
+    # en base. Invisible pour SQLAlchemy (pas de `Mapped`).
+    _est_transient: bool = False
+
     def __repr__(self) -> str:
         return f"<AgentProvider {self.provider} {self.model} creator={self.creator_id}>"
