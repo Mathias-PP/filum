@@ -105,3 +105,27 @@ class TestFacteur:
         meter = TokenMeter()
         meter.ancrer(messages, 1_000_000)
         assert meter.facteur == token_meter.FACTEUR_MAX
+
+
+class TestConstante:
+    def test_le_surcout_fixe_ne_part_pas_dans_le_facteur(self):
+        # Un gros schéma d'outils sur un historique court : sans constante,
+        # l'écart entier passerait dans le facteur, plafonné, et le compte
+        # retomberait bien sous l'ancre.
+        messages = [_message(1_000)]
+        meter = TokenMeter()
+        meter.ancrer(messages, 200_000)
+        assert meter.constante > 190_000
+
+    def test_recale_et_ancre_se_recomposent(self):
+        # Déclenchement et choix du point de coupe doivent lire la même échelle.
+        messages = [_message(1_000) for _ in range(4)]
+        meter = TokenMeter()
+        meter.ancrer(messages, 50_000)
+        assert abs(meter.estimer_recale(messages) - 50_000) <= 4
+
+    def test_couper_ne_fait_pas_disparaitre_le_schema_des_outils(self):
+        messages = [_message(1_000) for _ in range(10)]
+        meter = TokenMeter()
+        meter.ancrer(messages, 200_000)
+        assert meter.estimer_recale(messages[:1]) > 150_000

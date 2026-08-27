@@ -180,13 +180,13 @@ def _paire_outil(n: int, taille: int = 400) -> list[dict]:
 class TestCompaction:
     def test_historique_sous_le_budget_reste_intact(self):
         messages = [_systeme(), _user(1), {"role": "assistant", "content": "ok"}]
-        compacte, retires = agent_sessions.compacter(messages, 10_000)
+        compacte, retires, _ = agent_sessions.compacter(messages, 10_000)
         assert retires == 0
         assert compacte is messages
 
     def test_les_plus_anciens_partent_en_premier(self):
         messages = [_systeme(), *[_user(i) for i in range(1, 21)]]
-        compacte, retires = agent_sessions.compacter(messages, 400)
+        compacte, retires, _ = agent_sessions.compacter(messages, 400)
         assert retires > 0
         # Le dernier message survit toujours, le premier du corps disparait.
         assert compacte[-1] == messages[-1]
@@ -196,7 +196,7 @@ class TestCompaction:
     def test_le_prompt_systeme_de_tete_est_conserve(self):
         systeme = _systeme(2_000)
         messages = [systeme, *[_user(i) for i in range(1, 21)]]
-        compacte, retires = agent_sessions.compacter(messages, 700)
+        compacte, retires, _ = agent_sessions.compacter(messages, 700)
         assert retires > 0
         assert compacte[0] is systeme
 
@@ -204,7 +204,7 @@ class TestCompaction:
         messages = [_systeme()]
         for i in range(1, 11):
             messages.extend(_paire_outil(i))
-        compacte, retires = agent_sessions.compacter(messages, 500)
+        compacte, retires, _ = agent_sessions.compacter(messages, 500)
         assert retires > 0
         corps = [m for m in compacte if m.get("role") in ("assistant", "tool")]
         ids_assistant = {tc["id"] for m in corps if m.get("tool_calls") for tc in m["tool_calls"]}
@@ -213,7 +213,7 @@ class TestCompaction:
 
     def test_un_message_de_synthese_remplace_le_troncon(self):
         messages = [_systeme(), *[_user(i) for i in range(1, 21)]]
-        compacte, retires = agent_sessions.compacter(messages, 400)
+        compacte, retires, _ = agent_sessions.compacter(messages, 400)
         synthese = compacte[1]
         assert synthese["role"] == "system"
         assert str(retires) in synthese["content"]
@@ -221,13 +221,13 @@ class TestCompaction:
 
     def test_le_dernier_bloc_survit_meme_seul_trop_gros(self):
         messages = [_systeme(), _user(1), _user(2, taille=40_000)]
-        compacte, retires = agent_sessions.compacter(messages, 100)
+        compacte, retires, _ = agent_sessions.compacter(messages, 100)
         assert retires == 1
         assert compacte[-1] == messages[-1]
 
     def test_un_corps_d_un_seul_bloc_n_est_pas_coupe(self):
         messages = [_systeme(), _user(1, taille=40_000)]
-        compacte, retires = agent_sessions.compacter(messages, 100)
+        compacte, retires, _ = agent_sessions.compacter(messages, 100)
         assert retires == 0
         assert compacte is messages
 
@@ -236,12 +236,11 @@ class TestCompaction:
         # dit le contraire. C'est son compte qui doit décider.
         messages = [_systeme(), *[_user(i) for i in range(1, 21)]]
         budget = agent_sessions.taille_historique(messages) + 1_000
-        assert agent_sessions.compacter(messages, budget)[1] == 0
+        assert agent_sessions.compacter(messages, budget).retires == 0
 
         meter = TokenMeter()
         meter.ancrer(messages, budget * 4)
-        _, retires = agent_sessions.compacter(messages, budget, meter)
-        assert retires > 0
+        assert agent_sessions.compacter(messages, budget, meter).retires > 0
 
     def test_le_point_de_coupe_se_choisit_sur_la_meme_mesure(self):
         # Couper d'après l'estimation alors qu'on a déclenché d'après le compte
@@ -249,9 +248,77 @@ class TestCompaction:
         messages = [_systeme(), *[_user(i) for i in range(1, 21)]]
         meter = TokenMeter()
         meter.ancrer(messages, agent_sessions.taille_historique(messages) * 3)
-        compacte, retires = agent_sessions.compacter(messages, 400, meter)
+        compacte, retires, _ = agent_sessions.compacter(messages, 400, meter)
         assert retires > 0
         assert meter.mesurer(compacte) <= 400 or len(compacte) <= 3
+
+
+class TestElagage:
+    """Les gros résultats d'outils se raccourcissent avant qu'on coupe des messages."""
+
+    def _conversation_avec_gros_resultats(self, taille=30_000, paires=6):
+        messages = [_systeme(), _user(0)]
+        for i in range(1, paires + 1):
+            messages.extend(_paire_outil(i, taille=taille))
+        return messages
+
+    def test_l_elagage_passe_avant_le_retrait_de_messages(self):
+        messages = self._conversation_avec_gros_resultats()
+        budget = agent_sessions.taille_historique(messages) // 3
+        resultat = agent_sessions.compacter(messages, budget)
+        assert resultat.elagues > 0
+        # Tronquer a suffi : aucune consigne du créateur n'a été sacrifiée.
+        assert resultat.retires == 0
+        assert resultat.messages[1] == messages[1]
+
+    def test_l_elagage_ne_casse_aucune_paire(self):
+        messages = self._conversation_avec_gros_resultats()
+        resultat = agent_sessions.compacter(messages, 500)
+        roles = [m.get("role") for m in resultat.messages]
+        assert roles.count("tool") == len(
+            [m for m in resultat.messages if m.get("role") == "tool"]
+        )
+        corps = [m for m in resultat.messages if m.get("role") in ("assistant", "tool")]
+        ids_assistant = {tc["id"] for m in corps if m.get("tool_calls") for tc in m["tool_calls"]}
+        ids_tool = {m["tool_call_id"] for m in corps if m.get("role") == "tool"}
+        assert ids_tool <= ids_assistant
+
+    def test_le_dernier_resultat_n_est_jamais_elague(self):
+        # C'est celui que le modèle est en train d'exploiter.
+        messages = self._conversation_avec_gros_resultats()
+        resultat = agent_sessions.compacter(messages, 100)
+        assert resultat.messages[-1]["content"] == messages[-1]["content"]
+
+    def test_un_resultat_elague_dit_ce_qui_manque(self):
+        messages = self._conversation_avec_gros_resultats()
+        # Un budget que l'élagage seul comble : sinon la coupe de blocs
+        # emporterait les messages élagués et il n'y aurait rien à observer.
+        resultat = agent_sessions.compacter(
+            messages, agent_sessions.taille_historique(messages) // 3
+        )
+        elague = next(
+            m
+            for m in resultat.messages
+            if m.get("role") == "tool" and "Résultat tronqué" in str(m.get("content"))
+        )
+        assert "Rappelez l'outil" in elague["content"]
+        assert "ne devinez pas" in elague["content"]
+        # La paire reste identifiable : l'identifiant d'appel survit.
+        assert elague["tool_call_id"]
+
+    def test_on_n_elague_pas_plus_que_necessaire(self):
+        messages = self._conversation_avec_gros_resultats(paires=10)
+        taille = agent_sessions.taille_historique(messages)
+        # Un manque léger : un ou deux résultats suffisent à le combler.
+        resultat = agent_sessions.compacter(messages, taille - 5_000)
+        assert 0 < resultat.elagues < 10
+
+    def test_les_petits_resultats_sont_laisses_tranquilles(self):
+        messages = [_systeme(), _user(0)]
+        for i in range(1, 6):
+            messages.extend(_paire_outil(i, taille=100))
+        resultat = agent_sessions.compacter(messages, 200)
+        assert resultat.elagues == 0
 
     def test_les_arguments_d_outil_comptent_dans_la_taille(self):
         nu = {"role": "assistant", "content": None}

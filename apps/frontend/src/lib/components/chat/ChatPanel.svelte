@@ -575,6 +575,23 @@
           .catch(() => null);
     }
   }
+
+  // Deux leviers distincts cote serveur : raccourcir de gros resultats d'outils,
+  // et retirer des messages du debut. Les nommer separement, sinon un elagage
+  // seul s'afficherait « 0 message retire ».
+  function texteCompaction(retires: number, elagues: number): string {
+    const parts: string[] = [];
+    if (elagues > 0)
+      parts.push(
+        `${elagues} résultat${elagues > 1 ? 's' : ''} d'outil raccourci${elagues > 1 ? 's' : ''}`
+      );
+    if (retires > 0)
+      parts.push(
+        `${retires} message${retires > 1 ? 's' : ''} du début retiré${retires > 1 ? 's' : ''}`
+      );
+    if (parts.length === 0) return 'Contexte compacté pour tenir dans la fenêtre du modèle';
+    return `${parts.join(', ')} pour tenir dans la fenêtre du modèle`;
+  }
 </script>
 
 <div class="flex h-[calc(100dvh-12rem)] flex-col">
@@ -843,11 +860,7 @@
              prevenir passe pour defaillant alors qu'il subit une limite. -->
         <div class="flex items-center gap-3 py-1 text-xs text-ink-tertiary">
           <span class="h-px flex-1 bg-border"></span>
-          <span
-            >{item.retires} message{item.retires > 1 ? 's' : ''} du début retiré{item.retires > 1
-              ? 's'
-              : ''} pour tenir dans la fenêtre du modèle</span
-          >
+          <span>{texteCompaction(item.retires, item.elagues)}</span>
           <span class="h-px flex-1 bg-border"></span>
         </div>
       {:else if item.kind === 'approval'}
