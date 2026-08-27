@@ -58,6 +58,7 @@ from app.services.llm_adapters import (
 from app.services.llm_adapters import (
     parse_blocking_response as _adapter_parse_blocking,
 )
+from app.services.token_meter import TokenMeter
 
 logger = logging.getLogger(__name__)
 
@@ -959,6 +960,7 @@ async def boucle(
     registre: dict[str, AgentTool] | None = None,
     modele: str | None = None,
     agent_def: AgentDefinition | None = None,
+    ancre_tokens: tuple[int, int] | None = None,
 ) -> None:
     """Exécute la boucle jusqu'à ``done`` ou à la borne dure.
 
@@ -969,6 +971,11 @@ async def boucle(
 
     ``agent_def`` restreint les outils visibles et le contexte injecté. Sans
     lui, tous les outils et tout `shared/` partent au modèle.
+
+    ``ancre_tokens`` est le ``(messages couverts, prompt_tokens)`` du dernier
+    appel de la session, tel que rendu par
+    :func:`agent_sessions.ancre_du_dernier_appel`. Sans lui, la compaction
+    préventive du premier appel d'un tour retombe sur l'estimation.
     """
     registre = registre or construire_registre()
     if agent_def is not None:
@@ -1006,15 +1013,24 @@ async def boucle(
         pass
     messages.insert(0, {"role": "system", "content": systeme + workspace_ctx + graph_ctx})
 
+    meter = TokenMeter()
+    if ancre_tokens is not None:
+        # L'ancre vient de l'historique persisté, qui ne porte pas le prompt
+        # système. Il vient d'être inséré en tête, et il était là aussi lors de
+        # l'appel mesuré : le préfixe couvert avance donc d'exactement un.
+        couverts, tokens_reels = ancre_tokens
+        meter.ancrer(messages[: couverts + 1], tokens_reels)
+
     # Compaction préventive, prompt système et contexte workspace compris : ce
     # sont eux qui pèsent le plus lourd au départ d'une session.
-    compactes, retires = compacter(messages, BUDGET_HISTORIQUE)
+    compactes, retires = compacter(messages, BUDGET_HISTORIQUE, meter)
     # Compteur du seul rejeu réactif : la passe préventive ci-dessus ne doit pas
     # le consommer, sinon un refus survenant plus tard dans la même session ne
     # serait plus rattrapé.
     rejeu_fait = False
     if retires:
         messages[:] = compactes
+        meter.oublier()
         await emit({"type": "contexte_compacte", "payload": {"messages_retires": retires}})
 
     usage_total: dict[str, int] = {"prompt_tokens": 0, "completion_tokens": 0}
@@ -1037,10 +1053,11 @@ async def boucle(
                 # on retente une fois, beaucoup plus bas. Une seule fois : deux
                 # refus de suite ne viennent plus de la taille.
                 if not rejeu_fait and _est_contexte_sature(reponse):
-                    reduits, retires = compacter(messages, BUDGET_APRES_REFUS)
+                    reduits, retires = compacter(messages, BUDGET_APRES_REFUS, meter)
                     rejeu_fait = True
                     if retires:
                         messages[:] = reduits
+                        meter.oublier()
                         await emit(
                             {
                                 "type": "contexte_compacte",
@@ -1054,6 +1071,9 @@ async def boucle(
             if isinstance(usage, dict):
                 usage_total["prompt_tokens"] += int(usage.get("prompt_tokens") or 0)
                 usage_total["completion_tokens"] += int(usage.get("completion_tokens") or 0)
+                # ``messages`` est encore exactement ce que le fournisseur a lu :
+                # l'assistant de ce tour n'est ajouté que plus bas.
+                meter.ancrer(messages, int(usage.get("prompt_tokens") or 0))
             tool_calls = message.get("tool_calls") or []
             if not tool_calls:
                 texte = _texte_message(message)
@@ -1097,9 +1117,10 @@ async def boucle(
         # Limite atteinte : pas une erreur dure, mais une pause avec reprise.
         # Les harness modernes (cordis, opencode) n'ont pas de compteur dur :
         # seule la fenêtre contexte compte. On compacte et on propose de continuer.
-        compactes, retires = compacter(messages, BUDGET_APRES_REFUS)
+        compactes, retires = compacter(messages, BUDGET_APRES_REFUS, meter)
         if retires:
             messages[:] = compactes
+            meter.oublier()
             await emit({"type": "contexte_compacte", "payload": {"messages_retires": retires}})
         await emit(
             {

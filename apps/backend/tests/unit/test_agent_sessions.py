@@ -8,6 +8,7 @@ from uuid import uuid4
 import pytest
 
 from app.services import agent_approvals, agent_sessions
+from app.services.token_meter import TokenMeter
 
 
 class TestTitre:
@@ -56,6 +57,33 @@ class TestSessions:
         assert session.last_message_at is None
         await agent_sessions.ajouter_message(db_session, session, role="user", content="salut")
         assert session.last_message_at is not None
+
+    async def test_sans_usage_persiste_il_n_y_a_pas_d_ancre(self, db_session, test_user):
+        session = await agent_sessions.creer(db_session, test_user.id)
+        await agent_sessions.ajouter_message(db_session, session, role="user", content="salut")
+        assert (
+            await agent_sessions.ancre_du_dernier_appel(db_session, test_user.id, session.id)
+            is None
+        )
+
+    async def test_l_ancre_pointe_le_dernier_usage_et_ce_qu_il_couvrait(
+        self, db_session, test_user
+    ):
+        session = await agent_sessions.creer(db_session, test_user.id)
+        await agent_sessions.ajouter_message(db_session, session, role="user", content="un")
+        await agent_sessions.ajouter_message(
+            db_session, session, role="assistant", content="deux", prompt_tokens=1_200
+        )
+        await agent_sessions.ajouter_message(db_session, session, role="user", content="trois")
+        await agent_sessions.ajouter_message(
+            db_session, session, role="assistant", content="quatre", prompt_tokens=3_400
+        )
+        await agent_sessions.ajouter_message(db_session, session, role="user", content="cinq")
+
+        ancre = await agent_sessions.ancre_du_dernier_appel(db_session, test_user.id, session.id)
+        # Le dernier assistant mesuré est en position 3 : il avait donc lu les
+        # trois messages qui le précèdent.
+        assert ancre == (3, 3_400)
 
     async def test_historique_rend_la_forme_du_provider(self, db_session, test_user):
         session = await agent_sessions.creer(db_session, test_user.id)
@@ -202,6 +230,28 @@ class TestCompaction:
         compacte, retires = agent_sessions.compacter(messages, 100)
         assert retires == 0
         assert compacte is messages
+
+    def test_le_meter_declenche_une_compaction_que_l_estimation_manquait(self):
+        # Le cas réparé : l'estimation dit que ça tient, le fournisseur a déjà
+        # dit le contraire. C'est son compte qui doit décider.
+        messages = [_systeme(), *[_user(i) for i in range(1, 21)]]
+        budget = agent_sessions.taille_historique(messages) + 1_000
+        assert agent_sessions.compacter(messages, budget)[1] == 0
+
+        meter = TokenMeter()
+        meter.ancrer(messages, budget * 4)
+        _, retires = agent_sessions.compacter(messages, budget, meter)
+        assert retires > 0
+
+    def test_le_point_de_coupe_se_choisit_sur_la_meme_mesure(self):
+        # Couper d'après l'estimation alors qu'on a déclenché d'après le compte
+        # réel ferait retirer trop peu et laisserait le fournisseur refuser.
+        messages = [_systeme(), *[_user(i) for i in range(1, 21)]]
+        meter = TokenMeter()
+        meter.ancrer(messages, agent_sessions.taille_historique(messages) * 3)
+        compacte, retires = agent_sessions.compacter(messages, 400, meter)
+        assert retires > 0
+        assert meter.mesurer(compacte) <= 400 or len(compacte) <= 3
 
     def test_les_arguments_d_outil_comptent_dans_la_taille(self):
         nu = {"role": "assistant", "content": None}
