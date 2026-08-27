@@ -23,6 +23,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 from collections.abc import Awaitable, Callable, Sequence
 from typing import Any
 from uuid import UUID, uuid4
@@ -41,6 +42,7 @@ from app.models.source import Source
 from app.models.source_excerpt import SourceExcerpt
 from app.models.user import User
 from app.models.workspace_file import WorkspaceFile
+from app.services.agent_approvals import DELAI_MAX as DELAI_APPROBATION
 from app.services.agent_definitions import AgentDefinition
 from app.services.agent_providers import _decrypt
 from app.services.agent_sessions import BUDGET_APRES_REFUS, BUDGET_HISTORIQUE, compacter
@@ -880,6 +882,7 @@ async def _executer_tour(
                         "arguments": args,
                         "resume": resume,
                         "tour": tour,
+                        "expires_at": time.time() + DELAI_APPROBATION,
                     },
                 }
             )

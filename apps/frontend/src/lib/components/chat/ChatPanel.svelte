@@ -855,6 +855,7 @@
           tool={item.tool}
           args={item.args}
           resume={item.resume}
+          expiresAt={item.expiresAt}
           approved={item.approved}
           onrespond={(approuve) => repondreApprobation(item.requestId, approuve)}
         />

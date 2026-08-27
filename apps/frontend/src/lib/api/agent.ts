@@ -180,6 +180,9 @@ export type AgentEvent =
         /** Phrase lisible qui décrit ce que l'utilisateur autorise, calculée
          * côté serveur qui seul peut résoudre les UUIDs en titres réels. */
         resume?: string;
+        /** Époque (secondes) à laquelle l'approbation expire et sera refusée
+         * du côté serveur. Absent sur les anciens serveurs. */
+        expires_at?: number;
         tour: number;
       };
     }
