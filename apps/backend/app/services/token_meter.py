@@ -107,6 +107,28 @@ class TokenMeter:
         """Invalide l'ancre. À appeler dès que la liste cesse d'être un ajout."""
         self._ancre = None
 
+    def reancrer_apres_elagage(self, prefixe: list[dict[str, Any]]) -> None:
+        """Met l'ancre à l'échelle après que le préfixe a rétréci sur place.
+
+        L'élagage raccourcit des messages sans en retirer aucun : l'ancre
+        couvre toujours le même nombre d'entrées, mais plus le même texte. On
+        la recompose au lieu de l'oublier, ce qui perdrait le seul compte réel
+        qu'on ait au moment précis où l'on décide s'il faut couper davantage.
+
+        Seule la part variable baisse. La constante, elle, est le schéma des
+        outils : élaguer un résultat ne le raccourcit pas.
+        """
+        ancre = self._ancre
+        if ancre is None:
+            return
+        constante, facteur = self.constante, self.facteur
+        apres = max(1, estimer(prefixe))
+        self._ancre = Ancre(
+            messages=ancre.messages,
+            tokens=max(1, min(constante + int(facteur * apres), ancre.tokens)),
+            estimation=apres,
+        )
+
     @property
     def facteur(self) -> float:
         """De combien l'estimation sous-compte, d'après la dernière ancre.
@@ -119,13 +141,41 @@ class TokenMeter:
             return 1.0
         return min(max(self._ancre.tokens / self._ancre.estimation, 1.0), FACTEUR_MAX)
 
+    @property
+    def constante(self) -> int:
+        """Ce que l'ancre compte en plus, et qui ne dépend pas des messages.
+
+        Le schéma des outils part à chaque appel : il est dans
+        ``prompt_tokens`` sans être dans les messages. Le mettre dans le
+        facteur ferait grandir un surcoût fixe à chaque message ajouté, et
+        couper l'historique semblerait le faire disparaître. On l'isole, et ce
+        qui reste est un vrai rapport de tokeniseur.
+        """
+        ancre = self._ancre
+        if ancre is None:
+            return 0
+        return max(0, ancre.tokens - int(self.facteur * ancre.estimation))
+
+    def estimer_recale(self, messages: list[dict[str, Any]]) -> int:
+        """Estimation à l'échelle du fournisseur, sans base ancrée.
+
+        Pour une liste dont le préfixe mesuré n'existe plus : l'ancre ne
+        s'applique plus telle quelle, mais le facteur et la constante qu'elle a
+        révélés restent vrais du prochain appel. Mesurer sans eux donnerait une
+        échelle plus optimiste que celle qui a déclenché la compaction, et on
+        couperait trop peu.
+        """
+        return self.constante + int(estimer(messages) * self.facteur)
+
     def mesurer(self, messages: list[dict[str, Any]]) -> int:
-        """Taille de ``messages`` en tokens, la meilleure connue."""
+        """Taille de ``messages`` en tokens, la meilleure connue.
+
+        Sur le préfixe exact de l'ancre, rend son compte réel : la constante et
+        le facteur sont construits pour se recomposer en ``ancre.tokens``.
+        """
         ancre = self._ancre
         if ancre is None:
             return estimer(messages)
         if ancre.messages > len(messages):
-            # La liste a été recoupée sous l'ancre : le préfixe mesuré n'existe
-            # plus. Le facteur, lui, reste une propriété du tokeniseur.
-            return int(estimer(messages) * self.facteur)
+            return self.estimer_recale(messages)
         return ancre.tokens + int(estimer(messages[ancre.messages :]) * self.facteur)

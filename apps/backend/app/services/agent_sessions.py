@@ -8,14 +8,14 @@ tiers qu'elle existe.
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, NamedTuple
 from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.agent_session import AgentMessage, AgentSession
-from app.services.token_meter import TokenMeter, estimer
+from app.services.token_meter import CARACTERES_PAR_TOKEN, TokenMeter, estimer
 
 #: Longueur du titre dérivé du premier message.
 TITRE_MAX = 80
@@ -31,6 +31,16 @@ BUDGET_HISTORIQUE = 96_000
 #: fenêtre saturée. Assez petit pour passer chez un modèle local à 8 000, ce
 #: qui évite d'avoir à connaître sa fenêtre à l'avance.
 BUDGET_APRES_REFUS = 6_000
+
+#: En deçà, élaguer un résultat d'outil ne rend presque rien et coûte du
+#: contexte utile. Au-delà, un seul résultat pèse déjà plus qu'un tour entier
+#: de conversation.
+ELAGAGE_SEUIL = 2_000
+
+#: Ce qu'on garde en tête d'un résultat élagué. Assez pour que le modèle
+#: reconnaisse la nature de ce qu'il avait obtenu, et sache s'il doit
+#: redemander.
+ELAGAGE_GARDE = 600
 
 
 class AgentSessionNotFoundError(LookupError):
@@ -68,6 +78,57 @@ def _debuts_de_blocs(messages: list[dict[str, Any]]) -> list[int]:
     return debuts
 
 
+def _elaguer_resultats(
+    messages: list[dict[str, Any]], tokens_a_gagner: int, facteur: float = 1.0
+) -> tuple[list[dict[str, Any]], int]:
+    """Raccourcit les gros résultats d'outils, du plus ancien au plus récent.
+
+    C'est là que sont les tokens. Un résultat d'outil monte à
+    ``TOOL_RESULT_MAX`` caractères, soit plus qu'un tour entier de
+    conversation ; couper des blocs de tête pour faire de la place revient à
+    sacrifier les consignes du créateur pour conserver un dump JSON.
+
+    L'élagage ne retire aucun message : les paires ``assistant``/``tool``
+    restent intactes, donc aucun orphelin, et le fil de ce qui a été fait
+    reste lisible. Le dernier bloc n'est jamais touché, c'est celui que le
+    modèle est en train d'exploiter.
+
+    On s'arrête dès que ``tokens_a_gagner`` est atteint : élaguer au-delà du
+    nécessaire coûterait du contexte sans rien acheter. ``facteur`` traduit
+    les caractères retirés dans l'échelle du fournisseur, celle qui a servi à
+    calculer le manque.
+
+    Rend la liste et le nombre de résultats élagués.
+    """
+    debuts = _debuts_de_blocs(messages)
+    protege = debuts[-1] if debuts else len(messages)
+    sortie = list(messages)
+    elagues = 0
+    gagnes = 0.0
+    for i in range(protege):
+        if gagnes >= tokens_a_gagner:
+            break
+        message = sortie[i]
+        if message.get("role") != "tool":
+            continue
+        contenu = message.get("content")
+        if not isinstance(contenu, str) or len(contenu) <= ELAGAGE_SEUIL:
+            continue
+        retires = len(contenu) - ELAGAGE_GARDE
+        gagnes += retires / CARACTERES_PAR_TOKEN * facteur
+        sortie[i] = {
+            **message,
+            "content": (
+                f"{contenu[:ELAGAGE_GARDE]}\n"
+                f"[Résultat tronqué pour tenir dans la fenêtre du modèle : "
+                f"{retires} caractères retirés. Rappelez l'outil si vous avez "
+                f"besoin de la suite ; ne devinez pas ce qu'elle contenait.]"
+            ),
+        }
+        elagues += 1
+    return (sortie, elagues) if elagues else (messages, 0)
+
+
 def _message_synthese(retires: int) -> dict[str, Any]:
     """Le message qui remplace le tronçon retiré.
 
@@ -85,12 +146,30 @@ def _message_synthese(retires: int) -> dict[str, Any]:
     }
 
 
+class Compaction(NamedTuple):
+    """Ce qu'a donné une passe de compaction."""
+
+    messages: list[dict[str, Any]]
+    #: Messages retirés du début de la conversation.
+    retires: int
+    #: Résultats d'outils raccourcis sur place.
+    elagues: int
+
+
 def compacter(
     messages: list[dict[str, Any]],
     budget_tokens: int,
     meter: TokenMeter | None = None,
-) -> tuple[list[dict[str, Any]], int]:
-    """Ramène l'historique sous ``budget_tokens``, du plus ancien au plus récent.
+) -> Compaction:
+    """Ramène l'historique sous ``budget_tokens``, en perdant le moins possible.
+
+    Deux leviers, dans cet ordre. D'abord l'élagage des gros résultats
+    d'outils : c'est là que sont les tokens, et le raccourcir ne retire aucun
+    message, donc ne coupe aucun fil. Ensuite seulement, si ça ne suffit pas,
+    le retrait de blocs entiers depuis le début.
+
+    L'ordre n'est pas cosmétique. Couper d'abord revient à sacrifier les
+    consignes du créateur pour garder un dump JSON qu'on aurait pu tronquer.
 
     Les ``system`` de tête sont gardés : ils portent le prompt et le contexte du
     workspace, les retirer changerait le comportement de l'agent plutôt que sa
@@ -101,12 +180,26 @@ def compacter(
     ``meter`` mesure sur le compte réel du fournisseur plutôt que sur
     l'estimation. Le déclenchement et le choix du point de coupe passent par la
     même mesure : les évaluer sur deux échelles ferait couper trop peu.
+    ``compacter`` le maintient cohérent avec la liste qu'il rend, l'appelant
+    n'a rien à faire.
 
-    Rend la liste compactée et le nombre de messages retirés, 0 si rien.
+    Aucune synthèse par le modèle, à rebours du plan d'intégration : elle
+    coûterait un appel dans le chemin de la requête, et surtout elle ferait
+    reformuler l'historique par le modèle qui va ensuite le traiter comme un
+    fait. C'est la fabrication qu'on combat partout ailleurs. Dire ce qui
+    manque vaut mieux que le raconter de mémoire.
     """
     mesurer = meter.mesurer if meter is not None else estimer
-    if mesurer(messages) <= budget_tokens:
-        return messages, 0
+    taille = mesurer(messages)
+    if taille <= budget_tokens:
+        return Compaction(messages, 0, 0)
+
+    facteur = meter.facteur if meter is not None else 1.0
+    messages, elagues = _elaguer_resultats(messages, taille - budget_tokens, facteur)
+    if elagues and meter is not None and meter.ancre is not None:
+        meter.reancrer_apres_elagage(messages[: meter.ancre.messages])
+    if elagues and mesurer(messages) <= budget_tokens:
+        return Compaction(messages, 0, elagues)
 
     tete = 0
     while tete < len(messages) and messages[tete].get("role") == "system":
@@ -118,15 +211,26 @@ def compacter(
     # l'orphelin qu'on veut éviter.
     coupes = [i for i in _debuts_de_blocs(corps)[1:] if corps[i].get("role") != "tool"]
     if not coupes:
-        return messages, 0
+        return Compaction(messages, 0, elagues)
+
+    # Retirer des messages détruit le préfixe que l'ancre décrivait, mais pas le
+    # facteur qu'elle a révélé : lui est une propriété du tokeniseur. Mesurer
+    # sans lui choisirait le point de coupe sur une échelle plus optimiste que
+    # celle qui a déclenché la compaction, et couperait trop peu.
+    recaler = meter.estimer_recale if meter is not None else estimer
+
+    def rendre(coupe: int, reste: list[dict[str, Any]]) -> Compaction:
+        if meter is not None:
+            meter.oublier()
+        return Compaction(reste, coupe, elagues)
 
     for coupe in coupes:
         reste = [*systeme, _message_synthese(coupe), *corps[coupe:]]
-        if mesurer(reste) <= budget_tokens:
-            return reste, coupe
+        if recaler(reste) <= budget_tokens:
+            return rendre(coupe, reste)
 
     coupe = coupes[-1]
-    return [*systeme, _message_synthese(coupe), *corps[coupe:]], coupe
+    return rendre(coupe, [*systeme, _message_synthese(coupe), *corps[coupe:]])
 
 
 def titre_depuis_message(message: str) -> str:

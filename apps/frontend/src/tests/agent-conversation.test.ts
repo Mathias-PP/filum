@@ -210,7 +210,14 @@ describe('rehydratation d’une session persistée', () => {
       { type: 'message_delta', payload: { delta: 'Bonjour.', tour: 1 } },
       { type: 'contexte_compacte', payload: { messages_retires: 12 } },
     ]);
-    expect(items[1]).toEqual({ kind: 'compaction', retires: 12 });
+    expect(items[1]).toEqual({ kind: 'compaction', retires: 12, elagues: 0 });
+  });
+
+  it('retient l’elagage seul, sans message retire', () => {
+    const items = replier([
+      { type: 'contexte_compacte', payload: { messages_retires: 0, resultats_elagues: 3 } },
+    ]);
+    expect(items).toEqual([{ kind: 'compaction', retires: 0, elagues: 3 }]);
   });
 
   it('ne pose qu’une seule marque quand la compaction est rejouee', () => {
@@ -218,7 +225,7 @@ describe('rehydratation d’une session persistée', () => {
       { type: 'contexte_compacte', payload: { messages_retires: 4 } },
       { type: 'contexte_compacte', payload: { messages_retires: 30 } },
     ]);
-    expect(items).toEqual([{ kind: 'compaction', retires: 30 }]);
+    expect(items).toEqual([{ kind: 'compaction', retires: 30, elagues: 0 }]);
   });
 
   it('ne fabrique pas de bulle vide pour un assistant sans texte ni outil', () => {

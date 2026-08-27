@@ -192,7 +192,7 @@ export type AgentEvent =
        * modèle. Le dire : l'agent qui « oublie » sans prévenir passe pour
        * défaillant alors qu'il subit une limite. */
       type: 'contexte_compacte';
-      payload: { messages_retires: number };
+      payload: { messages_retires: number; resultats_elagues?: number };
     }
   | {
       /** Pause après N tours : pas une erreur dure, l'utilisateur peut continuer. */

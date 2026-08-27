@@ -31,7 +31,7 @@ export type ChatItem =
       approved: boolean | null;
     }
   | { kind: 'error'; text: string }
-  | { kind: 'compaction'; retires: number }
+  | { kind: 'compaction'; retires: number; elagues: number }
   | { kind: 'continuation'; message: string; tours: number };
 
 /** Rend une nouvelle liste : jamais de mutation, pour que Svelte voie le changement. */
@@ -105,14 +105,16 @@ export function appliquer(items: ChatItem[], event: AgentEvent): ChatItem[] {
     case 'contexte_compacte': {
       // Une seule marque par tour : le rejeu après refus du fournisseur peut
       // rejouer l'événement, deux séparateurs collés ne diraient rien de plus.
+      const marque = {
+        kind: 'compaction',
+        retires: event.payload.messages_retires,
+        elagues: event.payload.resultats_elagues ?? 0,
+      } as const;
       const dernier = items[items.length - 1];
       if (dernier?.kind === 'compaction') {
-        return [
-          ...items.slice(0, -1),
-          { kind: 'compaction', retires: event.payload.messages_retires },
-        ];
+        return [...items.slice(0, -1), marque];
       }
-      return [...items, { kind: 'compaction', retires: event.payload.messages_retires }];
+      return [...items, marque];
     }
 
     case 'discovery_active':

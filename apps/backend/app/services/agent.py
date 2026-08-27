@@ -1023,15 +1023,22 @@ async def boucle(
 
     # Compaction préventive, prompt système et contexte workspace compris : ce
     # sont eux qui pèsent le plus lourd au départ d'une session.
-    compactes, retires = compacter(messages, BUDGET_HISTORIQUE, meter)
+    compaction = compacter(messages, BUDGET_HISTORIQUE, meter)
     # Compteur du seul rejeu réactif : la passe préventive ci-dessus ne doit pas
     # le consommer, sinon un refus survenant plus tard dans la même session ne
     # serait plus rattrapé.
     rejeu_fait = False
-    if retires:
-        messages[:] = compactes
-        meter.oublier()
-        await emit({"type": "contexte_compacte", "payload": {"messages_retires": retires}})
+    if compaction.retires or compaction.elagues:
+        messages[:] = compaction.messages
+        await emit(
+            {
+                "type": "contexte_compacte",
+                "payload": {
+                    "messages_retires": compaction.retires,
+                    "resultats_elagues": compaction.elagues,
+                },
+            }
+        )
 
     usage_total: dict[str, int] = {"prompt_tokens": 0, "completion_tokens": 0}
 
@@ -1053,15 +1060,17 @@ async def boucle(
                 # on retente une fois, beaucoup plus bas. Une seule fois : deux
                 # refus de suite ne viennent plus de la taille.
                 if not rejeu_fait and _est_contexte_sature(reponse):
-                    reduits, retires = compacter(messages, BUDGET_APRES_REFUS, meter)
+                    reduction = compacter(messages, BUDGET_APRES_REFUS, meter)
                     rejeu_fait = True
-                    if retires:
-                        messages[:] = reduits
-                        meter.oublier()
+                    if reduction.retires or reduction.elagues:
+                        messages[:] = reduction.messages
                         await emit(
                             {
                                 "type": "contexte_compacte",
-                                "payload": {"messages_retires": retires},
+                                "payload": {
+                                    "messages_retires": reduction.retires,
+                                    "resultats_elagues": reduction.elagues,
+                                },
                             }
                         )
                         continue
@@ -1117,11 +1126,18 @@ async def boucle(
         # Limite atteinte : pas une erreur dure, mais une pause avec reprise.
         # Les harness modernes (cordis, opencode) n'ont pas de compteur dur :
         # seule la fenêtre contexte compte. On compacte et on propose de continuer.
-        compactes, retires = compacter(messages, BUDGET_APRES_REFUS, meter)
-        if retires:
-            messages[:] = compactes
-            meter.oublier()
-            await emit({"type": "contexte_compacte", "payload": {"messages_retires": retires}})
+        pause = compacter(messages, BUDGET_APRES_REFUS, meter)
+        if pause.retires or pause.elagues:
+            messages[:] = pause.messages
+            await emit(
+                {
+                    "type": "contexte_compacte",
+                    "payload": {
+                        "messages_retires": pause.retires,
+                        "resultats_elagues": pause.elagues,
+                    },
+                }
+            )
         await emit(
             {
                 "type": "continuation",
