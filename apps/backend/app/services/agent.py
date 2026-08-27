@@ -876,6 +876,24 @@ def _message_tool(tool_call_id: str, nom: str, resultat: dict[str, Any]) -> dict
     return {"role": "tool", "tool_call_id": tool_call_id, "name": nom, "content": contenu}
 
 
+def _arguments_de(tool_call: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+    """Rend les arguments d'un appel d'outil, et s'ils étaient lisibles.
+
+    Un flux coupé au milieu des arguments laisse du JSON tronqué. On lisait ça
+    comme ``{}`` et on exécutait quand même : le modèle recevait le résultat
+    plausible d'un appel qu'il n'avait pas formulé, et le rapportait comme
+    fait. Absent n'est pas malformé, et il faut pouvoir les distinguer.
+    """
+    brut = tool_call.get("function", {}).get("arguments") or ""
+    if not brut.strip():
+        return {}, True
+    try:
+        args = json.loads(brut)
+    except json.JSONDecodeError:
+        return {}, False
+    return (args, True) if isinstance(args, dict) else ({}, False)
+
+
 async def _executer_tour(
     db: AsyncSession,
     user: User,
@@ -892,18 +910,31 @@ async def _executer_tour(
             nom = tc["function"]["name"]
         except (KeyError, TypeError):
             continue
-        try:
-            args = json.loads(tc["function"].get("arguments") or "{}")
-            if not isinstance(args, dict):
-                args = {}
-        except json.JSONDecodeError:
-            args = {}
+        args, lisibles = _arguments_de(tc)
         await emit(
             {
                 "type": "tool_call",
                 "payload": {"id": tc.get("id"), "name": nom, "arguments": args, "tour": tour},
             }
         )
+        if not lisibles:
+            invalide: dict[str, Any] = {
+                "error": (
+                    "Arguments illisibles : le JSON reçu est incomplet ou malformé, "
+                    "probablement une réponse tronquée. Refais l'appel avec des "
+                    "arguments complets. N'annonce pas cette action comme faite."
+                )
+            }
+            await emit(
+                {
+                    "type": "tool_result",
+                    "payload": {"id": tc.get("id"), "name": nom, "result": invalide},
+                }
+            )
+            messages.append(
+                _message_tool(tc.get("id") or f"call_{uuid4().hex[:12]}", nom, invalide)
+            )
+            continue
         if est_sensible(nom, args):
             request_id = str(uuid4())
             resume = await _resume_approbation(db, user, nom, args)
