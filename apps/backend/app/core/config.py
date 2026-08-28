@@ -90,6 +90,15 @@ class Settings(BaseSettings):
     agent_web_search_provider: str = ""
     agent_web_search_api_key: str = ""
 
+    # Relais de lecture : lit une page depuis une autre origine que la nôtre,
+    # quand l'éditeur refuse notre IP (voir app/extractors/lecteur_relais.py).
+    # `{url}` est remplacé par l'URL demandée. Le défaut fonctionne sans clé,
+    # pour qu'une installation neuve ne soit pas muette ; vider ce champ
+    # désactive l'étage et cesse de confier les URL à un tiers. Une clé lève le
+    # plafond de requêtes par minute, elle n'est pas requise.
+    lecture_relais_endpoint: str = "https://r.jina.ai/{url}"
+    lecture_relais_api_key: str = ""
+
     # Mode découverte : clé serveur sponsorisée pour permettre d'essayer
     # l'agent sans configurer de provider. Désactivé par défaut.
     # Recommandation prod : DeepSeek (ToS commercial, ~0.27 $/M tokens).

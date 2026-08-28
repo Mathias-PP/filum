@@ -192,12 +192,18 @@ async def _texte_de_la_source(url: str | None) -> tuple[str, bool, bool]:
     par le Cloudflare de son éditeur reste lisible par là.
 
     Restent toutes les sources sans DOI ni dépôt libre : une enquête de presse,
-    un billet, un rapport. L'archive du web les couvre sans rien savoir de leur
-    domaine, et c'est le dernier étage. Il vient en dernier parce qu'il rend
-    l'état d'un jour passé, et la page entière plutôt que le seul article.
+    un billet, un rapport. Les deux derniers étages les couvrent sans rien
+    savoir de leur domaine, parce qu'ils ne changent pas la requête mais son
+    origine : le refus suit la réputation de notre IP, pas l'URL demandée.
+
+    Le relais passe avant l'archive parce qu'il rend l'état du jour, là où
+    l'archive rend celui d'une capture passée et ne rend rien d'une page jamais
+    capturée. L'archive reste derrière lui, pour quand le relais est à quota ou
+    en panne.
     """
     # Import local : évite un cycle app.api ↔ app.extractors au démarrage.
     from app.extractors.europepmc_oracle import texte_europepmc
+    from app.extractors.lecteur_relais import texte_par_relais
     from app.extractors.pmc_oracle import texte_ncbi
     from app.extractors.url_extractor import _extract_doi, _html_scrape
     from app.extractors.web_archive import texte_archive
@@ -218,9 +224,12 @@ async def _texte_de_la_source(url: str | None) -> tuple[str, bool, bool]:
     libre = await texte_europepmc(doi)
     if libre:
         return libre, False, True
-    # Dernier étage, le seul qui ne suppose rien de la source. Le texte a été
+    # Les deux derniers étages ne supposent rien de la source. Le texte a été
     # obtenu : ne plus dire « refusée », sinon l'interface annonce un blocage
     # sur une page qu'on vient de lire.
+    relais = await texte_par_relais(url)
+    if relais:
+        return relais, False, True
     archive = await texte_archive(url)
     if archive:
         return archive, False, True

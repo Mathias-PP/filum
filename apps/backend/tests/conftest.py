@@ -4,6 +4,7 @@ import os
 from collections.abc import AsyncGenerator
 from uuid import uuid4
 
+import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -106,3 +107,18 @@ async def test_user(db_session):
 @pytest_asyncio.fixture
 async def session_token(auth_service, test_user) -> str:
     return auth_service.create_session(test_user.id)
+
+
+@pytest.fixture(autouse=True)
+def _relais_de_lecture_hors_ligne(monkeypatch):
+    """Coupe le relais de lecture pour toute la suite.
+
+    Contrairement aux autres etages de la cascade, celui-ci est actif par
+    defaut (son point d'entree ne demande pas de cle). Sans cette coupure, tout
+    test qui atteint `_texte_de_la_source` sans avoir neutralise le reseau
+    partirait chez un tiers : lent, dependant d'un quota, et vert ou rouge
+    selon la meteo. Les tests du relais lui-meme rebranchent le reglage.
+    """
+    from app.extractors import lecteur_relais
+
+    monkeypatch.setattr(lecteur_relais.settings, "lecture_relais_endpoint", "")

@@ -14,15 +14,23 @@ lui-meme, y retrouve le passage, et **inscrit les caracteres de la page**, pas
 ceux de l'appelant. Ce que l'appelant fournit n'est plus un contenu, c'est une
 requete de recherche.
 
-Trois issues, et trois seulement :
+**Deux issues, et deux seulement : le passage est retrouve, ou l'insertion
+echoue.** Il y en avait trois. La troisieme acceptait l'extrait en `unreadable`
+quand la page ne rendait rien, au motif que refuser accuserait la personne pour
+une defaillance du site. Cette clemence etait le trou par lequel toute la
+garantie s'ecoulait : sur une source injoignable, l'appelant ecrivait ce qu'il
+voulait, et le texte inscrit redevenait le sien.
 
-- le passage est retrouve : l'extrait est pose, `found`, ancres posees ;
-- la page ne rend rien (PDF sans couche texte, mur anti-bot, paywall) : on
-  accepte en `unreadable`, parce que refuser accuserait la personne pour une
-  defaillance du site ;
-- la page est lisible et le passage n'y est pas : on refuse. C'est le seul cas
-  ou l'insertion echoue, et c'est celui ou elle produirait une affirmation
-  fausse.
+Deux choses ont permis de la fermer. D'abord le diagnostic : le refus suivait la
+reputation de notre IP et non l'URL, donc « la page ne rend rien » disait
+rarement quelque chose de la page. Ensuite les deux etages qui en decoulent
+(``lecteur_relais`` puis ``web_archive``), qui vont chercher la meme page depuis
+une autre origine. Ce qui reste illisible apres eux l'est vraiment.
+
+Le cout de l'interdit est reel et il est assume : une source qu'aucun etage ne
+rend n'est plus citable **par l'agent**. Elle le reste par le createur, qui
+colle le passage dans l'interface : c'est un humain qui engage alors sa parole,
+et c'est la difference que Philum a pour objet de tenir.
 """
 
 from __future__ import annotations
@@ -54,18 +62,35 @@ _cache: dict[str, tuple[float, str, bool, bool]] = {}
 
 @dataclass(frozen=True)
 class Prelevement:
-    """Ce qui sera reellement inscrit en base, et sur quelle preuve."""
+    """Ce qui sera reellement inscrit en base, et sur quelle preuve.
+
+    Il n'y a plus de champ `statut` : un prelevement qui existe a ete retrouve
+    dans la page, sans quoi il n'y a pas de prelevement mais une exception. Un
+    statut a une seule valeur possible ne renseigne personne et laisse croire
+    qu'il en existe d'autres.
+    """
 
     #: Les caracteres de la page, jamais ceux de l'appelant.
     texte: str
-    #: `found` ou `unreadable`. `missing` n'existe pas ici : un passage absent
-    #: d'une page lisible ne devient pas un extrait, il devient une erreur.
-    statut: str
-    selecteurs: Selecteurs | None
+    selecteurs: Selecteurs
 
 
 class PassageIntrouvableError(Exception):
     """La page est lisible et ne porte pas ce passage."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.message = message
+
+
+class SourceIllisibleError(Exception):
+    """Aucun etage n'a rendu le texte : aucune preuve n'est etablissable.
+
+    Distincte de `PassageIntrouvableError` parce que le remede l'est aussi. Un
+    passage introuvable se corrige en citant les bons mots ; une source
+    illisible ne se corrige pas en reessayant, et le dire evite a l'appelant la
+    boucle de relances que produit une erreur qui ne distingue pas les deux.
+    """
 
     def __init__(self, message: str) -> None:
         super().__init__(message)
@@ -107,14 +132,20 @@ def _prelever(page_text: str, demande: str, complet: bool) -> Prelevement:
     ):
         return Prelevement(
             texte=ancrage.texte,
-            statut="found",
             selecteurs=selecteurs_pour(page_text, ancrage.start, ancrage.end),
         )
 
     if not complet:
-        # On n'a eu qu'un resume : conclure a l'absence accuserait la citation
-        # pour un texte qu'on n'a jamais lu.
-        return Prelevement(texte=demande, statut="unreadable", selecteurs=None)
+        # On n'a eu qu'un resume. Conclure a l'absence accuserait la citation
+        # pour un texte qu'on n'a jamais lu, et l'accepter la poserait sans
+        # preuve : reste a le dire, en nommant ce qui a ete lu.
+        raise SourceIllisibleError(
+            "Seul le resume de cette source a pu etre lu, et le passage n'y "
+            "figure pas. Il est peut-etre dans le corps de l'article, mais rien "
+            "ici ne permet de l'affirmer, donc l'extrait ne sera pas pose. "
+            "Cherchez une adresse qui rende le texte integral, ou laissez le "
+            "createur coller le passage lui-meme."
+        )
 
     if ancrage is not None:
         raise PassageIntrouvableError(
@@ -132,15 +163,22 @@ def _prelever(page_text: str, demande: str, complet: bool) -> Prelevement:
 
 
 async def prelever_dans_la_source(url: str | None, demande: str) -> Prelevement:
-    """Retrouve `demande` dans la source, ou refuse.
+    """Retrouve `demande` dans la source, ou leve. Ne rend jamais sans preuve.
 
-    Leve `PassageIntrouvableError` quand la page est lisible et ne porte pas le
-    passage : c'est la seule barriere qui rende l'invention impossible plutot
-    que deconseillee.
+    `PassageIntrouvableError` quand la page est lisible et ne porte pas le
+    passage, `SourceIllisibleError` quand aucun etage n'a rendu son texte. Ce
+    sont les deux seules sorties autres qu'un prelevement, et c'est ce qui rend
+    l'invention impossible plutot que deconseillee.
     """
     page_text, _refuse, complet = await texte_de_page(url)
     if not page_text.strip():
-        # Le site n'a rien rendu. Refuser ici punirait la personne pour un mur
-        # anti-bot ou un PDF sans couche texte : on accepte en le declarant.
-        return Prelevement(texte=demande, statut="unreadable", selecteurs=None)
+        raise SourceIllisibleError(
+            "Le texte de cette source n'a pu etre obtenu par aucune voie : ni "
+            "l'editeur, ni un depot en acces libre, ni un relais de lecture, ni "
+            "l'archive du web. Sans texte, rien ne prouve qu'un passage y "
+            "figure, et un extrait non prouve ne sera pas pose. Reessayer la "
+            "meme adresse ne changera rien : citez une autre adresse pour le "
+            "meme contenu, ou laissez le createur coller le passage lui-meme "
+            "depuis l'interface. N'inventez pas d'extrait de memoire."
+        )
     return _prelever(page_text, demande, complet)

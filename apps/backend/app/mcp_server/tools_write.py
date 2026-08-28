@@ -39,6 +39,7 @@ from app.services.excerpt_indexing import indexer_sans_bruit
 from app.services.excerpt_insertion import (
     PassageIntrouvableError,
     Prelevement,
+    SourceIllisibleError,
     prelever_dans_la_source,
 )
 from app.services.wayback import horodatage_wayback
@@ -401,7 +402,7 @@ async def _prelever_ou_refuser(url: str | None, corps: str) -> Prelevement:
     """Le passage tel que la source le porte, ou un refus lisible par le modele."""
     try:
         return await prelever_dans_la_source(url, corps)
-    except PassageIntrouvableError as exc:
+    except (PassageIntrouvableError, SourceIllisibleError) as exc:
         raise ToolError(exc.message) from exc
 
 
@@ -411,14 +412,17 @@ def _poser_le_verdict(excerpt: SourceExcerpt, preleve: Prelevement) -> None:
     Le verdict est pose ici et pas laisse a `verify_excerpts` : un extrait qui
     naitrait sans statut serait rendu « non verifie » sur la fiche publique,
     alors que le serveur vient justement de le retrouver dans la page.
+
+    Le statut est `found` sans condition : depuis que l'insertion refuse une
+    source illisible, un prelevement qui parvient jusqu'ici a ete retrouve.
     """
     excerpt.verified_at = datetime.now(UTC).replace(tzinfo=None)
-    excerpt.verified_status = preleve.statut
+    excerpt.verified_status = "found"
     excerpt.verified_text_source = "fetched"
     sel = preleve.selecteurs
-    excerpt.anchor_prefix = sel.prefix if sel else None
-    excerpt.anchor_suffix = sel.suffix if sel else None
-    excerpt.anchor_offset = sel.offset if sel else None
+    excerpt.anchor_prefix = sel.prefix
+    excerpt.anchor_suffix = sel.suffix
+    excerpt.anchor_offset = sel.offset
 
 
 async def add_excerpt(
@@ -438,9 +442,11 @@ async def add_excerpt(
     ou reconstitue de memoire fait echouer l'appel. La traduction et la mise en
     situation vont dans `context`, qui est libre.
 
-    Quand la page ne rend rien (PDF sans couche texte, mur anti-bot, paywall),
-    l'extrait est accepte en `verified_status='unreadable'` : le site est en
-    cause, pas la citation.
+    Quand aucune voie ne rend le texte de la source (l'editeur, un depot en
+    acces libre, un relais de lecture, l'archive du web), l'appel echoue : sans
+    texte, rien ne prouve que le passage y figure. Insister sur la meme adresse
+    ne changera rien. Citez une autre adresse pour le meme contenu, ou laissez
+    le createur coller le passage depuis l'interface.
 
     Marque `annotated_by_ai=True` : cette reponse porte les extraits qu'un
     modele a produits, le distinguer preserve la separation entre ce que la

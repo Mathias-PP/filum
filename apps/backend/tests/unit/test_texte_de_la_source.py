@@ -1,12 +1,14 @@
-"""La cascade : NCBI, editeur, Europe PMC par DOI, puis l'archive du web.
+"""La cascade : NCBI, editeur, Europe PMC par DOI, le relais, puis l'archive.
 
 Les replis sont ce qui separe « bloque par l'editeur » de « illisible ». Un
 article CC-BY derriere un Cloudflare reste lisible, et le declarer illisible
 accuse l'auteur·ice a la place du site.
 
 Les trois premiers etages supposent quelque chose de la source : un hebergeur,
-un DOI, un depot libre. Le dernier n'en suppose rien, et c'est pour cela qu'il
-existe : une enquete de presse bloquee ne releve d'aucun des autres.
+un DOI, un depot libre. Les deux derniers n'en supposent rien, et c'est pour
+cela qu'ils existent : une enquete de presse bloquee ne releve d'aucun des
+autres. Leur ordre entre eux n'est pas indifferent et les tests le fixent, le
+relais rendant l'etat du jour la ou l'archive rend celui d'une capture passee.
 """
 
 from __future__ import annotations
@@ -14,12 +16,18 @@ from __future__ import annotations
 import pytest
 
 from app.api.v1.endpoints.excerpts import _texte_de_la_source
-from app.extractors import europepmc_oracle, pmc_oracle, url_extractor, web_archive
+from app.extractors import (
+    europepmc_oracle,
+    lecteur_relais,
+    pmc_oracle,
+    url_extractor,
+    web_archive,
+)
 
 
 @pytest.fixture
 def sans_reseau(monkeypatch):
-    """Neutralise les quatre etages ; chaque test rebranche celui qu'il teste."""
+    """Neutralise les cinq etages ; chaque test rebranche celui qu'il teste."""
 
     async def rien(*_a, **_k):
         return None
@@ -27,6 +35,7 @@ def sans_reseau(monkeypatch):
     monkeypatch.setattr(pmc_oracle, "texte_ncbi", rien)
     monkeypatch.setattr(url_extractor, "_html_scrape", rien)
     monkeypatch.setattr(europepmc_oracle, "texte_europepmc", rien)
+    monkeypatch.setattr(lecteur_relais, "texte_par_relais", rien)
     monkeypatch.setattr(web_archive, "texte_archive", rien)
 
 
@@ -52,6 +61,7 @@ async def test_l_editeur_qui_repond_court_la_cascade(sans_reseau, monkeypatch):
 
     monkeypatch.setattr(url_extractor, "_html_scrape", scrape)
     monkeypatch.setattr(europepmc_oracle, "texte_europepmc", jamais)
+    monkeypatch.setattr(lecteur_relais, "texte_par_relais", jamais)
     monkeypatch.setattr(web_archive, "texte_archive", jamais)
     assert await _texte_de_la_source("https://example.org/a") == (
         "Le texte de l'article.",
@@ -156,5 +166,71 @@ async def test_le_depot_libre_passe_avant_l_archive(sans_reseau, monkeypatch):
     assert texte == "Le corps de l'article."
 
 
+@pytest.mark.asyncio
+async def test_le_relais_couvre_une_page_jamais_archivee(sans_reseau, monkeypatch):
+    # Le cas qu'aucun etage precedent ne couvre : ni hebergeur connu, ni DOI,
+    # ni depot libre, et aucune capture. C'est la moitie du web bloquant, dont
+    # tout article publie du jour.
+    vues: list[str] = []
+
+    async def scrape(_url):
+        return _Meta(page_text="", access_blocked=True)
+
+    async def relais(url):
+        vues.append(url)
+        return "Le texte, dans son etat du jour."
+
+    monkeypatch.setattr(url_extractor, "_html_scrape", scrape)
+    monkeypatch.setattr(lecteur_relais, "texte_par_relais", relais)
+
+    assert await _texte_de_la_source("https://presse.example/enquete") == (
+        "Le texte, dans son etat du jour.",
+        False,
+        True,
+    )
+    assert vues == ["https://presse.example/enquete"]
+
+
+@pytest.mark.asyncio
+async def test_le_relais_passe_avant_l_archive(sans_reseau, monkeypatch):
+    # Les deux repondent, et l'ordre decide de ce que la fiche portera : l'etat
+    # du jour, ou celui d'une capture parfois vieille de plusieurs annees. Un
+    # extrait verifie contre une version perimee est une regression silencieuse,
+    # d'ou ce test plutot qu'un commentaire.
+    async def scrape(_url):
+        return _Meta(page_text="", access_blocked=True)
+
+    async def jamais(_url):
+        raise AssertionError("l'archive ne doit pas etre sollicitee quand le relais repond")
+
+    monkeypatch.setattr(url_extractor, "_html_scrape", scrape)
+    monkeypatch.setattr(lecteur_relais, "texte_par_relais", lambda _u: _du_jour())
+    monkeypatch.setattr(web_archive, "texte_archive", jamais)
+
+    texte, _bloque, _complet = await _texte_de_la_source("https://presse.example/enquete")
+    assert texte == "Le texte, dans son etat du jour."
+
+
+@pytest.mark.asyncio
+async def test_l_archive_reste_le_filet_quand_le_relais_echoue(sans_reseau, monkeypatch):
+    # Quota atteint ou relais en panne : sans ce dernier filet, brancher le
+    # relais aurait retire de la couverture au lieu d'en ajouter.
+    async def scrape(_url):
+        return _Meta(page_text="", access_blocked=True)
+
+    async def archive(_url):
+        return "Le texte, tel que l'archive l'a capture."
+
+    monkeypatch.setattr(url_extractor, "_html_scrape", scrape)
+    monkeypatch.setattr(web_archive, "texte_archive", archive)
+
+    texte, _bloque, _complet = await _texte_de_la_source("https://presse.example/enquete")
+    assert texte == "Le texte, tel que l'archive l'a capture."
+
+
 async def _corps() -> str:
     return "Le corps de l'article."
+
+
+async def _du_jour() -> str:
+    return "Le texte, dans son etat du jour."

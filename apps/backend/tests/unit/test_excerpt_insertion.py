@@ -2,8 +2,8 @@
 
 Ces tests portent sur la seule chose qui distingue une consigne d'une garantie :
 une consigne se contourne en l'ignorant, une insertion qui echoue ne se contourne
-pas. On verifie donc les trois issues possibles (`found`, `unreadable`, refus) et,
-surtout, que ce qui est inscrit vient de la page et non de l'appelant.
+pas. On verifie donc les deux issues possibles (prelevement, refus) et, surtout,
+que ce qui est inscrit vient de la page et non de l'appelant.
 """
 
 from __future__ import annotations
@@ -93,32 +93,80 @@ async def test_un_passage_absent_est_refuse(db_session, test_user, source_lisibl
 
 
 @pytest.mark.asyncio
-async def test_page_illisible_accepte_en_unreadable(
+async def test_source_illisible_refuse_au_lieu_d_accepter_sans_preuve(
     db_session, test_user, source_lisible, monkeypatch
 ):
-    """Un mur anti-bot ou un PDF sans couche texte n'accuse pas la citation."""
+    """Le trou par lequel toute la garantie s'ecoulait.
+
+    Tant qu'une page muette faisait naitre un extrait `unreadable`, il suffisait
+    d'une source injoignable pour que le texte inscrit redevienne celui de
+    l'appelant. Aucune consigne de prompt ne ferme ce trou : seule l'insertion
+    qui echoue le ferme.
+    """
     _servir(monkeypatch, "   ")
-    result = await add_excerpt(
-        db_session,
-        test_user,
-        source_id=source_lisible["id"],
-        text="Un passage que la page ne rend pas, faute de rendre quoi que ce soit.",
-    )
-    assert result["verified_status"] == "unreadable"
+    with pytest.raises(ToolError, match="aucune voie|par aucune voie"):
+        await add_excerpt(
+            db_session,
+            test_user,
+            source_id=source_lisible["id"],
+            text="Un passage que la page ne rend pas, faute de rendre quoi que ce soit.",
+        )
 
 
 @pytest.mark.asyncio
-async def test_texte_partiel_ne_conclut_pas_a_l_absence(
+async def test_source_illisible_dit_que_reessayer_est_inutile(
     db_session, test_user, source_lisible, monkeypatch
 ):
+    """Un refus qui ne dit pas sa cause produit une boucle de relances."""
+    _servir(monkeypatch, "")
+    with pytest.raises(ToolError, match="ne changera rien"):
+        await add_excerpt(
+            db_session,
+            test_user,
+            source_id=source_lisible["id"],
+            text="Un passage quelconque.",
+        )
+
+
+@pytest.mark.asyncio
+async def test_resume_seul_ne_suffit_pas_a_poser_un_extrait(
+    db_session, test_user, source_lisible, monkeypatch
+):
+    """Ni accuser la citation, ni la poser sans preuve : le dire."""
     _servir(monkeypatch, "Un resume de la page, tronque.", complet=False)
-    result = await add_excerpt(
+    with pytest.raises(ToolError, match="resume"):
+        await add_excerpt(
+            db_session,
+            test_user,
+            source_id=source_lisible["id"],
+            text="Un passage absent du resume mais peut-etre present dans la page.",
+        )
+
+
+@pytest.mark.asyncio
+async def test_update_excerpt_ne_devient_pas_la_porte_de_sortie(
+    db_session, test_user, source_lisible, monkeypatch
+):
+    """Poser un extrait valide, puis le reecrire une fois la source muette.
+
+    Sans cette garde, l'interdit sur `add_excerpt` se contournerait en deux
+    appels au lieu d'un.
+    """
+    ex = await add_excerpt(
         db_session,
         test_user,
         source_id=source_lisible["id"],
-        text="Un passage absent du resume mais peut-etre present dans la page.",
+        text="La memoire n'est pas un enregistrement, c'est une reconstruction.",
     )
-    assert result["verified_status"] == "unreadable"
+    _servir(monkeypatch, "")
+    with pytest.raises(ToolError, match="aucune voie|par aucune voie"):
+        await update_excerpt(
+            db_session,
+            test_user,
+            source_id=source_lisible["id"],
+            excerpt_id=ex["id"],
+            text="Ce que je voudrais que la source dise.",
+        )
 
 
 @pytest.mark.asyncio
