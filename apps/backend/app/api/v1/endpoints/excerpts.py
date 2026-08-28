@@ -186,10 +186,15 @@ async def _texte_de_la_source(url: str | None) -> tuple[str, bool, bool]:
     Hors accès libre, NCBI ne publie que le résumé. Il est lisible, mais
     partiel : l'appelant doit le savoir pour ne pas conclure qu'un extrait est
     absent alors qu'il vit dans un corps de texte qu'on n'a jamais eu.
+
+    Quand l'éditeur bloque, le DOI ouvre une dernière voie : Europe PMC sert le
+    texte intégral du sous-ensemble libre, sans clé. Un article CC-BY rendu
+    illisible par le Cloudflare de son éditeur reste lisible par là.
     """
     # Import local : évite un cycle app.api ↔ app.extractors au démarrage.
+    from app.extractors.europepmc_oracle import texte_europepmc
     from app.extractors.pmc_oracle import texte_ncbi
-    from app.extractors.url_extractor import _html_scrape
+    from app.extractors.url_extractor import _extract_doi, _html_scrape
 
     if not url:
         return "", False, True
@@ -197,7 +202,17 @@ async def _texte_de_la_source(url: str | None) -> tuple[str, bool, bool]:
     if ncbi:
         return ncbi.texte, False, ncbi.complet
     meta = await _html_scrape(url)
-    return (meta.page_text if meta else None) or "", bool(meta and meta.access_blocked), True
+    texte = (meta.page_text if meta else None) or ""
+    bloque = bool(meta and meta.access_blocked)
+    if texte:
+        return texte, bloque, True
+    # Rien lu chez l'éditeur : le DOI de l'URL suffit souvent, et il évite
+    # d'aller redemander la page qui vient précisément de refuser.
+    doi = _extract_doi(url) or (meta.doi if meta else None)
+    libre = await texte_europepmc(doi)
+    if libre:
+        return libre, False, True
+    return "", bloque, True
 
 
 def verify_quote(page_text: str, quote: str) -> re.Match[str] | None:

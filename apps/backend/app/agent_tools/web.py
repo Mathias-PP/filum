@@ -113,6 +113,35 @@ async def _execute_web_search(ctx: ToolContext, args: dict[str, Any]) -> dict[st
     return {"query": query, "results": resultats}
 
 
+async def _pourquoi_illisible(url: str, refuse: bool) -> str:
+    """Dit pourquoi le texte manque, et ce qu'il reste a tenter.
+
+    « Page vide ou bloquée » ne distingue pas un article payant, ou aucune
+    insistance ne servira, d'un article libre momentanement bloque, qu'une
+    autre route peut ouvrir. Le modele bouclait sur le premier et abandonnait
+    le second.
+    """
+    from app.extractors.open_access import OpenAccessStatus, check_open_access
+    from app.extractors.url_extractor import _extract_doi
+
+    acces = await check_open_access(_extract_doi(url))
+    if acces.status is OpenAccessStatus.CLOSED:
+        return (
+            "Article payant : aucune version en accès libre n'existe pour ce DOI. "
+            "Le texte intégral est hors de portée. Travaillez sur le résumé, ou "
+            "citez cette source sans extrait verbatim. N'inventez pas de citation."
+        )
+    if acces.url:
+        return (
+            f"Page illisible chez l'éditeur, mais une version libre existe : {acces.url}. "
+            "Rappelez fetch_url sur cette adresse."
+        )
+    return (
+        "Impossible de lire cette URL (page vide ou bloquée), et aucune version "
+        "libre connue. N'inventez pas d'extrait à partir de votre mémoire."
+    )
+
+
 async def _execute_fetch_url(ctx: ToolContext, args: dict[str, Any]) -> dict[str, Any]:
     url = args.get("url")
     if not isinstance(url, str) or not url.strip():
@@ -128,7 +157,7 @@ async def _execute_fetch_url(ctx: ToolContext, args: dict[str, Any]) -> dict[str
 
     texte, refuse, _complet = await _texte_de_la_source(url)
     if not texte.strip():
-        return {"error": "Impossible de lire cette URL (page vide ou bloquée).", "blocked": refuse}
+        return {"error": await _pourquoi_illisible(url, refuse), "blocked": refuse}
     tronque = len(texte) > _TEXT_MAX
     return {"url": url, "text": texte[:_TEXT_MAX], "truncated": tronque, "blocked": refuse}
 
