@@ -380,6 +380,10 @@ _CHALLENGE_STRONG = (
     "pardon our interruption",
     "one more step",
     "additional security check",
+    # Le captcha d'Elsevier, mesuré le 2026-08-28 : 89 329 caractères de texte,
+    # scripts compris. Sa seule autre signature, « are you a robot », n'est
+    # retenue que sous 2 000 caractères, donc cette page passait pour un article.
+    "confirm you are a human",
 )
 
 # Termes qu'un article légitime peut employer en parlant du sujet. On ne les
@@ -412,12 +416,26 @@ _CHALLENGE_GENERIC = (
     "redirecting",
     "security check",
     "cloudflare",
+)
+
+# L'avis « activez JavaScript », servi à la place de l'article. Il tient sa
+# propre catégorie parce que sa taille le distingue des deux autres : la capture
+# d'archive de ScienceDirect mesurée le 2026-08-28 en fait 2 404 caractères,
+# soit au-dessus du seuil des mots ordinaires, et elle passait donc pour un
+# article. Ces pages énumèrent navigateurs et versions, elles sont bavardes.
+_CHALLENGE_NOSCRIPT = (
     "enable javascript",
     "javascript is disabled",
+    "requires javascript",
 )
 
 # En deçà, la page ne porte aucun contenu : son corps se réduit à un script.
 _CHALLENGE_EMPTY_BODY = 200
+
+# Un avis « activez JavaScript » reste court ; un article de cette longueur qui
+# le mentionne existe, et sera écarté à tort. Le repli suivant de la cascade le
+# rattrape, tandis qu'un avis pris pour un article produit un extrait faux.
+_CHALLENGE_NOSCRIPT_BODY = 4000
 
 # Un interstitiel tient en quelques centaines de caractères ; un article non.
 _CHALLENGE_MAX_BODY = 2000
@@ -426,14 +444,17 @@ _CHALLENGE_MAX_BODY = 2000
 def _looks_like_challenge_page(title: str | None, page_text: str | None) -> bool:
     """True si la page récupérée est un obstacle anti-bot, pas le contenu.
 
-    Trois niveaux d'exigence, du plus au moins tolérant sur le vocabulaire :
-    une formulation qu'aucun contenu n'emploie suffit seule ; un nom de
-    fournisseur exige une page courte ; un mot ordinaire exige une page vide.
+    Quatre niveaux d'exigence, du plus au moins tolérant sur le vocabulaire :
+    une formulation qu'aucun contenu n'emploie suffit seule ; un avis « activez
+    JavaScript » exige une page de taille modeste ; un nom de fournisseur exige
+    une page courte ; un mot ordinaire exige une page vide.
     """
     haystack = f"{title or ''} {page_text or ''}".lower()
     if any(sig in haystack for sig in _CHALLENGE_STRONG):
         return True
     body_len = len(page_text or "")
+    if body_len < _CHALLENGE_NOSCRIPT_BODY and any(sig in haystack for sig in _CHALLENGE_NOSCRIPT):
+        return True
     if body_len < _CHALLENGE_MAX_BODY and any(sig in haystack for sig in _CHALLENGE_WEAK):
         return True
     return body_len < _CHALLENGE_EMPTY_BODY and any(sig in haystack for sig in _CHALLENGE_GENERIC)

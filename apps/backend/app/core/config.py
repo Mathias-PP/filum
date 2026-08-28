@@ -92,11 +92,17 @@ class Settings(BaseSettings):
 
     # Relais de lecture : lit une page depuis une autre origine que la nôtre,
     # quand l'éditeur refuse notre IP (voir app/extractors/lecteur_relais.py).
-    # `{url}` est remplacé par l'URL demandée. Le défaut fonctionne sans clé,
-    # pour qu'une installation neuve ne soit pas muette ; vider ce champ
-    # désactive l'étage et cesse de confier les URL à un tiers. Une clé lève le
-    # plafond de requêtes par minute, elle n'est pas requise.
-    lecture_relais_endpoint: str = "https://r.jina.ai/{url}"
+    # Plusieurs gabarits séparés par des virgules, essayés dans l'ordre : chaque
+    # relais a ses angles morts et ils ne se recouvrent pas (mesuré le
+    # 2026-08-28 : le premier est refusé par ScienceDirect et par x.com, le
+    # second rend x.com). `{url}` est remplacé par l'URL demandée, `{url_encode}`
+    # par sa forme percent-encodée. Le défaut fonctionne sans clé, pour qu'une
+    # installation neuve ne soit pas muette ; vider ce champ désactive l'étage et
+    # cesse de confier les URL à un tiers. Une clé lève le plafond de requêtes
+    # par minute du premier gabarit, elle n'est pas requise.
+    lecture_relais_endpoint: str = (
+        "https://r.jina.ai/{url},https://api.allorigins.win/raw?url={url_encode}"
+    )
     lecture_relais_api_key: str = ""
 
     # Mode découverte : clé serveur sponsorisée pour permettre d'essayer
