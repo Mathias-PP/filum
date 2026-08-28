@@ -24,6 +24,7 @@ import json
 from typing import Any
 from uuid import UUID
 
+import anyio
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
@@ -339,6 +340,7 @@ async def chat_agent(
         # Sans ce `finally`, un client qui ferme l'onglet laisse la boucle
         # tourner jusqu'a 24 tours : elle continue de facturer le provider et
         # d'ecrire via une session de base que FastAPI a deja fermee.
+        persiste = False
         try:
             while True:
                 event = await queue.get()
@@ -352,6 +354,7 @@ async def chat_agent(
             await _persister_tour(
                 current_user.id, session.id, messages[depart:], "".join(reponse_finale), usage
             )
+            persiste = True
             if mode_gratuit is not None:
                 async with async_session_maker() as db_dedie:
                     await agent_gratuit.consommer_message_utilisateur(db_dedie, current_user.id)
@@ -360,12 +363,64 @@ async def chat_agent(
                     await consommer_message(db_dedie, current_user.id)
         finally:
             task.cancel()
+            if not persiste:
+                # Le client est parti en cours de tour. Les écritures d'outils,
+                # elles, sont déjà en base : sans ce rattrapage, la source que
+                # l'agent vient de créer existe mais ne figure nulle part dans
+                # la conversation, et le tour suivant la recréerait.
+                #
+                # Instantané avant tout ``await`` : la boucle annulée peut
+                # encore ajouter un message à sa prochaine reprise.
+                ajouts = _blocs_complets(messages[depart:])
+                # Bouclier obligatoire : on arrive ici par annulation, et tout
+                # `await` non protege releverait aussitot sans rien ecrire.
+                with anyio.CancelScope(shield=True), contextlib.suppress(Exception):
+                    await _persister_tour(
+                        current_user.id,
+                        session.id,
+                        ajouts,
+                        _texte_interrompu("".join(reponse_finale)),
+                        usage_capture[0] if usage_capture else None,
+                    )
 
     return StreamingResponse(
         gen(),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+def _blocs_complets(ajouts: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Coupe un tour interrompu à son dernier bloc complet.
+
+    Un ``assistant`` porteur de ``tool_calls`` dont les réponses manquent
+    laisserait des appels orphelins dans l'historique, et tous les
+    fournisseurs rejettent le tour suivant. Mieux vaut perdre l'appel amorcé
+    que rendre la session inutilisable.
+
+    Seul le dernier bloc peut être incomplet : les précédents avaient reçu
+    leurs réponses avant que l'assistant suivant ne soit ajouté. On compte les
+    réponses plutôt que d'apparier les identifiants, parce que ``_executer_tour``
+    en synthétise un quand le fournisseur n'en donne pas.
+    """
+    for i in range(len(ajouts) - 1, -1, -1):
+        appels = ajouts[i].get("tool_calls")
+        if ajouts[i].get("role") != "assistant" or not appels:
+            continue
+        repondus = sum(1 for m in ajouts[i + 1 :] if m.get("role") == "tool")
+        return ajouts if repondus >= len(appels) else ajouts[:i]
+    return ajouts
+
+
+def _texte_interrompu(texte: str) -> str:
+    """Marque une réponse coupée en cours de route.
+
+    Sans la marque, le modèle relit au tour suivant une phrase tronquée comme
+    s'il l'avait finie, et enchaîne sur une pensée qu'il n'a jamais eue.
+    """
+    if not texte:
+        return ""
+    return f"{texte}\n\n[Réponse interrompue : la connexion a été coupée avant la fin.]"
 
 
 async def _persister_tour(
