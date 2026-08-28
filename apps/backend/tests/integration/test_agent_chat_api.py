@@ -2,22 +2,26 @@
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import json
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import httpx
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
 
-from app.api.v1.endpoints.agent_chat import get_approver
+from app.api.v1.endpoints.agent_chat import _blocs_complets, _texte_interrompu, get_approver
 from app.api.v1.endpoints.agent_providers import get_http_client
 from app.core.config import get_settings
 from app.core.rate_limit import limiter
 from app.crypto.keygen import KeyManager
-from app.db.database import get_db
+from app.db.database import async_session_maker, get_db
 from app.main import app
 from app.models.agent_provider import AgentProvider
+from app.models.agent_session import AgentMessage
 
 
 @pytest.fixture(autouse=True)
@@ -96,11 +100,157 @@ def _mock_tool_call(name: str, arguments: dict) -> dict:
     }
 
 
+def _scope_chat(corps: bytes, session_token: str) -> dict:
+    """Un scope ASGI minimal pour ``POST /agent/chat``, cookie de session compris."""
+    return {
+        "type": "http",
+        "asgi": {"version": "3.0", "spec_version": "2.3"},
+        "http_version": "1.1",
+        "method": "POST",
+        "scheme": "http",
+        "path": "/api/v1/agent/chat",
+        "raw_path": b"/api/v1/agent/chat",
+        "query_string": b"",
+        "root_path": "",
+        "headers": [
+            (b"host", b"test"),
+            (b"content-type", b"application/json"),
+            (b"content-length", str(len(corps)).encode()),
+            (b"cookie", f"filum_session={session_token}".encode()),
+        ],
+        "client": ("127.0.0.1", 51234),
+        "server": ("test", 80),
+    }
+
+
+async def _messages_persistes(session_id: str) -> list[tuple[str, str]]:
+    """Les (rôle, contenu) écrits en base, dans l'ordre.
+
+    Session dédiée : ``_persister_tour`` écrit par la sienne, celle du test ne
+    verrait pas forcément la validation.
+    """
+    async with async_session_maker() as db:
+        resultat = await db.execute(
+            select(AgentMessage.role, AgentMessage.content)
+            .where(AgentMessage.session_id == UUID(session_id))
+            .order_by(AgentMessage.created_at, AgentMessage.id)
+        )
+        return [(r, c or "") for r, c in resultat.all()]
+
+
 async def _post_chat(client, message: str) -> httpx.Response:
     return await client.post(
         "/api/v1/agent/chat",
         json={"message": message, "history": [{"role": "user", "content": "contexte"}]},
     )
+
+
+class TestTourInterrompu:
+    """Un client qui part en cours de tour ne doit pas effacer ce tour.
+
+    Les écritures d'outils, elles, sont déjà en base : sans rattrapage, la
+    source que l'agent vient de créer existe sans figurer dans la
+    conversation, et le tour suivant la recrée.
+    """
+
+    @staticmethod
+    def _assistant(nb_appels: int) -> dict:
+        return {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [
+                {"id": f"call_{i}", "type": "function", "function": {"name": "web_search"}}
+                for i in range(nb_appels)
+            ],
+        }
+
+    @staticmethod
+    def _tool(i: int) -> dict:
+        return {"role": "tool", "tool_call_id": f"call_{i}", "name": "web_search", "content": "{}"}
+
+    def test_un_tour_complet_passe_entier(self):
+        ajouts = [self._assistant(2), self._tool(0), self._tool(1)]
+        assert _blocs_complets(ajouts) == ajouts
+
+    def test_un_appel_sans_reponse_est_coupe(self):
+        # Un tool_calls orphelin fait rejeter le tour suivant par tous les
+        # fournisseurs : mieux vaut perdre l'appel amorcé que la session.
+        ajouts = [self._assistant(1), self._tool(0), self._assistant(2), self._tool(0)]
+        assert _blocs_complets(ajouts) == ajouts[:2]
+
+    def test_un_tour_sans_outil_passe_entier(self):
+        ajouts = [{"role": "assistant", "content": "Voilà."}]
+        assert _blocs_complets(ajouts) == ajouts
+
+    def test_rien_a_persister_ne_leve_pas(self):
+        assert _blocs_complets([]) == []
+
+    def test_une_reponse_coupee_le_dit(self):
+        assert "interrompue" in _texte_interrompu("Je commen")
+        assert _texte_interrompu("") == ""
+
+    @pytest.mark.asyncio
+    async def test_le_tour_est_persiste_meme_si_le_client_part(
+        self, client, session_token, db_session, test_user
+    ):
+        # Appel ASGI brut : ``ASGITransport`` de httpx bufferise la reponse
+        # entiere, donc un client qui cesse de lire n'y coupe rien. On rejoue
+        # ce que fait un vrai serveur : une erreur sur ``send`` des que le
+        # socket est tombe.
+        await _inserer_provider_defaut(db_session, test_user)
+        appels = {"n": 0}
+
+        def handler(request):
+            appels["n"] += 1
+            if appels["n"] == 1:
+                return httpx.Response(200, json=_mock_tool_call("web_search", {"query": "x"}))
+            return httpx.Response(200, json=_mock_texte("Voilà ce que j'ai trouvé."))
+
+        app.dependency_overrides[get_http_client] = lambda: httpx.MockTransport(handler)
+        corps = json.dumps({"message": "cherche", "history": []}).encode()
+        recus: list[dict] = []
+
+        demandes = {"n": 0}
+        jamais = asyncio.Event()
+
+        async def receive():
+            # Le corps une fois, puis plus rien : Starlette ecoute la
+            # deconnexion sur ce meme ``receive``, et lui rendre tout de suite
+            # un ``http.disconnect`` couperait le flux avant le premier tour.
+            demandes["n"] += 1
+            if demandes["n"] == 1:
+                return {"type": "http.request", "body": corps, "more_body": False}
+            await jamais.wait()
+            return {"type": "http.disconnect"}
+
+        async def send(message):
+            recus.append(message)
+            # Partir au premier morceau de reponse : l'outil a deja ecrit en
+            # base, et c'est la que la conversation risque de ne pas le savoir.
+            if b'"message_delta"' in message.get("body", b""):
+                raise ConnectionResetError("le client est parti")
+
+        with contextlib.suppress(ConnectionResetError):
+            await app(_scope_chat(corps, session_token), receive, send)
+
+        evenements = [
+            json.loads(m["body"].decode()[6:])
+            for m in recus
+            if m["type"] == "http.response.body" and m["body"].startswith(b"data: ")
+        ]
+        session_id = evenements[0]["payload"]["id"]
+
+        # Le rattrapage vit dans le `finally` du generateur, que la boucle
+        # d'evenements execute apres le retour de ``app``.
+        messages: list[tuple[str, str]] = []
+        for _ in range(100):
+            messages = await _messages_persistes(session_id)
+            if len(messages) > 1:
+                break
+            await asyncio.sleep(0.02)
+        roles = [r for r, _ in messages]
+        assert roles == ["user", "assistant", "tool", "assistant"]
+        assert "interrompue" in messages[-1][1]
 
 
 @pytest.mark.asyncio
