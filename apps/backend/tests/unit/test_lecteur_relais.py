@@ -124,6 +124,141 @@ async def test_une_reponse_trop_courte_est_rejetee(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_une_erreur_de_l_amont_n_est_pas_du_contenu(monkeypatch):
+    """Le relais repond 200 et raconte le 404 de l'amont dans le corps.
+
+    Sans cette lecture, un lien mort arrivait au modele comme un article, et le
+    refus qui suivait accusait la citation la ou l'adresse etait fausse.
+    """
+
+    def gestionnaire(requete: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            text=(
+                "Title: Not Found\n\nURL Source: https://exemple.org/a\n\n"
+                "Warning: Target URL returned error 404: Not Found\n\n"
+                "Markdown Content:\n" + "Page introuvable. " * 40
+            ),
+        )
+
+    _relais_simule(monkeypatch, gestionnaire)
+    assert await lecteur_relais.texte_par_relais("https://exemple.org/a") is None
+
+
+@pytest.mark.asyncio
+async def test_le_html_brut_est_reduit_a_son_texte(monkeypatch):
+    """Un relais mandataire rend la page telle quelle, scripts et styles compris.
+
+    Sans le retrait des `style`, la coquille que ScienceDirect sert aux proxies,
+    une police en base64 de 167 601 octets, passait pour un article.
+    """
+    police = "d09GMgABAAAAAIegABEAAAABpYAAAIc7AAEAAAAAAAAA" * 200
+
+    def gestionnaire(requete: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            text=(
+                "<!DOCTYPE html><html><head><title>Revue</title>"
+                f"<style>@font-face{{src:url(data:binary/octet-stream;base64,{police})}}</style>"
+                f"<script>var x = '{police}';</script></head>"
+                f"<body><article><p>{_ARTICLE}</p></article></body></html>"
+            ),
+        )
+
+    _relais_simule(monkeypatch, gestionnaire)
+    texte = await lecteur_relais.texte_par_relais("https://exemple.org/a")
+    assert texte is not None
+    assert "d09GMgAB" not in texte
+    assert texte.startswith("Revue Le corps de l'article")
+
+
+@pytest.mark.asyncio
+async def test_une_coquille_sans_texte_est_rejetee(monkeypatch):
+    """167 601 octets de police, zero caractere d'article : rien n'a ete lu."""
+    police = "d09GMgABAAAAAIegABEAAAABpYAAAIc7AAEAAAAAAAAA" * 400
+
+    def gestionnaire(requete: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            text=(
+                "<!DOCTYPE html><html><head><title>ScienceDirect</title>"
+                f"<style>@font-face{{src:url(data:font/woff2;base64,{police})}}</style>"
+                "</head><body></body></html>"
+            ),
+        )
+
+    _relais_simule(monkeypatch, gestionnaire)
+    assert await lecteur_relais.texte_par_relais("https://exemple.org/a") is None
+
+
+@pytest.mark.asyncio
+async def test_le_relais_suivant_prend_la_suite_du_precedent(monkeypatch):
+    """La raison d'etre de la chaine : les angles morts ne se recouvrent pas.
+
+    Mesure du 2026-08-28 : le premier relais rend le mur d'Elsevier a chaque
+    tentative, et refuse x.com d'office ; le second rend x.com. Reessayer le
+    meme relais ne sert a rien, changer d'origine, si.
+    """
+    vues: list[str] = []
+
+    def gestionnaire(requete: httpx.Request) -> httpx.Response:
+        vues.append(str(requete.url))
+        if "premier" in str(requete.url):
+            return httpx.Response(200, text="Just a moment... " * 30)
+        return httpx.Response(200, text=_ARTICLE)
+
+    _relais_simule(monkeypatch, gestionnaire)
+    monkeypatch.setattr(
+        lecteur_relais.settings,
+        "lecture_relais_endpoint",
+        "https://premier.test/{url},https://second.test/?u={url_encode}",
+    )
+    assert await lecteur_relais.texte_par_relais("https://exemple.org/a?x=1") == _ARTICLE.strip()
+    assert vues == [
+        "https://premier.test/https://exemple.org/a?x=1",
+        "https://second.test/?u=https%3A%2F%2Fexemple.org%2Fa%3Fx%3D1",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_le_premier_relais_qui_repond_arrete_la_chaine(monkeypatch):
+    vues: list[str] = []
+
+    def gestionnaire(requete: httpx.Request) -> httpx.Response:
+        vues.append(str(requete.url))
+        return httpx.Response(200, text=_ARTICLE)
+
+    _relais_simule(monkeypatch, gestionnaire)
+    monkeypatch.setattr(
+        lecteur_relais.settings,
+        "lecture_relais_endpoint",
+        "https://premier.test/{url},https://second.test/{url}",
+    )
+    await lecteur_relais.texte_par_relais("https://exemple.org/a")
+    assert vues == ["https://premier.test/https://exemple.org/a"]
+
+
+@pytest.mark.asyncio
+async def test_la_cle_ne_part_qu_au_premier_relais(monkeypatch):
+    """Un secret n'a rien a faire chez les replis anonymes de la chaine."""
+    vues: list[str | None] = []
+
+    def gestionnaire(requete: httpx.Request) -> httpx.Response:
+        vues.append(requete.headers.get("authorization"))
+        return httpx.Response(404)
+
+    _relais_simule(monkeypatch, gestionnaire)
+    monkeypatch.setattr(lecteur_relais.settings, "lecture_relais_api_key", "secrete")
+    monkeypatch.setattr(
+        lecteur_relais.settings,
+        "lecture_relais_endpoint",
+        "https://premier.test/{url},https://second.test/{url}",
+    )
+    await lecteur_relais.texte_par_relais("https://exemple.org/a")
+    assert vues == ["Bearer secrete", None]
+
+
+@pytest.mark.asyncio
 async def test_la_cle_est_envoyee_quand_elle_existe(monkeypatch):
     vues: list[str | None] = []
 
