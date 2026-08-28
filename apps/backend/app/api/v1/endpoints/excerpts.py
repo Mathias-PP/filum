@@ -187,14 +187,20 @@ async def _texte_de_la_source(url: str | None) -> tuple[str, bool, bool]:
     partiel : l'appelant doit le savoir pour ne pas conclure qu'un extrait est
     absent alors qu'il vit dans un corps de texte qu'on n'a jamais eu.
 
-    Quand l'éditeur bloque, le DOI ouvre une dernière voie : Europe PMC sert le
-    texte intégral du sous-ensemble libre, sans clé. Un article CC-BY rendu
-    illisible par le Cloudflare de son éditeur reste lisible par là.
+    Quand l'éditeur bloque, le DOI ouvre une voie : Europe PMC sert le texte
+    intégral du sous-ensemble libre, sans clé. Un article CC-BY rendu illisible
+    par le Cloudflare de son éditeur reste lisible par là.
+
+    Restent toutes les sources sans DOI ni dépôt libre : une enquête de presse,
+    un billet, un rapport. L'archive du web les couvre sans rien savoir de leur
+    domaine, et c'est le dernier étage. Il vient en dernier parce qu'il rend
+    l'état d'un jour passé, et la page entière plutôt que le seul article.
     """
     # Import local : évite un cycle app.api ↔ app.extractors au démarrage.
     from app.extractors.europepmc_oracle import texte_europepmc
     from app.extractors.pmc_oracle import texte_ncbi
     from app.extractors.url_extractor import _extract_doi, _html_scrape
+    from app.extractors.web_archive import texte_archive
 
     if not url:
         return "", False, True
@@ -212,6 +218,12 @@ async def _texte_de_la_source(url: str | None) -> tuple[str, bool, bool]:
     libre = await texte_europepmc(doi)
     if libre:
         return libre, False, True
+    # Dernier étage, le seul qui ne suppose rien de la source. Le texte a été
+    # obtenu : ne plus dire « refusée », sinon l'interface annonce un blocage
+    # sur une page qu'on vient de lire.
+    archive = await texte_archive(url)
+    if archive:
+        return archive, False, True
     return "", bloque, True
 
 

@@ -1,8 +1,12 @@
-"""La cascade de lecture d'une source : NCBI, editeur, puis Europe PMC.
+"""La cascade : NCBI, editeur, Europe PMC par DOI, puis l'archive du web.
 
-Le repli par DOI est ce qui separe « bloque par l'editeur » de « illisible ».
-Un article CC-BY derriere un Cloudflare reste lisible, et le declarer illisible
+Les replis sont ce qui separe « bloque par l'editeur » de « illisible ». Un
+article CC-BY derriere un Cloudflare reste lisible, et le declarer illisible
 accuse l'auteur·ice a la place du site.
+
+Les trois premiers etages supposent quelque chose de la source : un hebergeur,
+un DOI, un depot libre. Le dernier n'en suppose rien, et c'est pour cela qu'il
+existe : une enquete de presse bloquee ne releve d'aucun des autres.
 """
 
 from __future__ import annotations
@@ -10,12 +14,12 @@ from __future__ import annotations
 import pytest
 
 from app.api.v1.endpoints.excerpts import _texte_de_la_source
-from app.extractors import europepmc_oracle, pmc_oracle, url_extractor
+from app.extractors import europepmc_oracle, pmc_oracle, url_extractor, web_archive
 
 
 @pytest.fixture
 def sans_reseau(monkeypatch):
-    """Neutralise les trois etages ; chaque test rebranche celui qu'il teste."""
+    """Neutralise les quatre etages ; chaque test rebranche celui qu'il teste."""
 
     async def rien(*_a, **_k):
         return None
@@ -23,6 +27,7 @@ def sans_reseau(monkeypatch):
     monkeypatch.setattr(pmc_oracle, "texte_ncbi", rien)
     monkeypatch.setattr(url_extractor, "_html_scrape", rien)
     monkeypatch.setattr(europepmc_oracle, "texte_europepmc", rien)
+    monkeypatch.setattr(web_archive, "texte_archive", rien)
 
 
 class _Meta:
@@ -42,11 +47,12 @@ async def test_l_editeur_qui_repond_court_la_cascade(sans_reseau, monkeypatch):
     async def scrape(_url):
         return _Meta(page_text="Le texte de l'article.")
 
-    async def jamais(_doi):
-        raise AssertionError("Europe PMC ne doit pas etre appele quand l'editeur repond")
+    async def jamais(_arg):
+        raise AssertionError("aucun repli ne doit etre appele quand l'editeur repond")
 
     monkeypatch.setattr(url_extractor, "_html_scrape", scrape)
     monkeypatch.setattr(europepmc_oracle, "texte_europepmc", jamais)
+    monkeypatch.setattr(web_archive, "texte_archive", jamais)
     assert await _texte_de_la_source("https://example.org/a") == (
         "Le texte de l'article.",
         False,
@@ -68,9 +74,7 @@ async def test_un_editeur_bloquant_passe_par_le_doi_de_l_url(sans_reseau, monkey
     monkeypatch.setattr(url_extractor, "_html_scrape", scrape)
     monkeypatch.setattr(europepmc_oracle, "texte_europepmc", europepmc)
 
-    texte, bloque, complet = await _texte_de_la_source(
-        "https://doi.org/10.1186/s10020-025-01205-6"
-    )
+    texte, bloque, complet = await _texte_de_la_source("https://doi.org/10.1186/s10020-025-01205-6")
     assert vus == ["10.1186/s10020-025-01205-6"]
     # Le texte a ete obtenu : la source n'est plus « refusee », sinon
     # l'interface afficherait un blocage sur un article qu'on vient de lire.
@@ -106,3 +110,51 @@ async def test_le_blocage_survit_a_l_echec_du_repli(sans_reseau, monkeypatch):
 
     monkeypatch.setattr(url_extractor, "_html_scrape", scrape)
     assert await _texte_de_la_source("https://example.org/a") == ("", True, True)
+
+
+@pytest.mark.asyncio
+async def test_une_source_sans_doi_passe_par_l_archive(sans_reseau, monkeypatch):
+    # Le cas que les trois premiers etages ne couvrent pas : ni hebergeur
+    # connu, ni DOI, ni depot libre. Sans ce dernier etage, une enquete de
+    # presse bloquee est declaree illisible alors qu'elle est archivee.
+    vues: list[str] = []
+
+    async def scrape(_url):
+        return _Meta(page_text="", access_blocked=True)
+
+    async def archive(url):
+        vues.append(url)
+        return "Le texte, tel que l'archive l'a capture."
+
+    monkeypatch.setattr(url_extractor, "_html_scrape", scrape)
+    monkeypatch.setattr(web_archive, "texte_archive", archive)
+
+    assert await _texte_de_la_source("https://presse.example/enquete") == (
+        "Le texte, tel que l'archive l'a capture.",
+        False,
+        True,
+    )
+    assert vues == ["https://presse.example/enquete"]
+
+
+@pytest.mark.asyncio
+async def test_le_depot_libre_passe_avant_l_archive(sans_reseau, monkeypatch):
+    # Europe PMC rend le corps de l'article ; l'archive rend la page entiere,
+    # menus compris, dans l'etat d'un jour passe. A texte egal, le premier est
+    # meilleur : inverser l'ordre degraderait chaque lecture scientifique.
+    async def scrape(_url):
+        return _Meta(page_text="", access_blocked=True)
+
+    async def jamais(_url):
+        raise AssertionError("l'archive ne doit pas etre sollicitee apres un succes")
+
+    monkeypatch.setattr(url_extractor, "_html_scrape", scrape)
+    monkeypatch.setattr(europepmc_oracle, "texte_europepmc", lambda _d: _corps())
+    monkeypatch.setattr(web_archive, "texte_archive", jamais)
+
+    texte, _bloque, _complet = await _texte_de_la_source("https://doi.org/10.1000/xyz")
+    assert texte == "Le corps de l'article."
+
+
+async def _corps() -> str:
+    return "Le corps de l'article."

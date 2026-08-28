@@ -137,8 +137,10 @@ async def _pourquoi_illisible(url: str, refuse: bool) -> str:
             "Rappelez fetch_url sur cette adresse."
         )
     return (
-        "Impossible de lire cette URL (page vide ou bloquée), et aucune version "
-        "libre connue. N'inventez pas d'extrait à partir de votre mémoire."
+        "Impossible de lire cette URL : ni l'éditeur, ni un dépôt en accès libre, "
+        "ni l'archive du web n'en rendent le texte. Insister sur la même adresse "
+        "ne changera rien. Cherchez une autre adresse pour le même contenu, ou "
+        "demandez le passage au créateur. N'inventez pas d'extrait de mémoire."
     )
 
 
