@@ -563,6 +563,24 @@ class TestChallengePageDetection:
         body = "This challenge was set by the lab in 2019 to test memory recall. " * 5
         assert _looks_like_challenge_page("A memory challenge", body) is False
 
+    def test_l_avis_activez_javascript_est_un_obstacle(self):
+        """La capture d'archive de ScienceDirect : 2 404 caracteres, aucun article.
+
+        Sous le seuil des mots ordinaires (200 caracteres) cet avis passait pour
+        du contenu, et chaque extrait cherche dedans etait declare « absent de la
+        source » alors que la source n'avait jamais ete ouverte.
+        """
+        body = (
+            "JavaScript is disabled on your browser. Please enable JavaScript to use "
+            "all the features on this page. Supported browsers: " + "Chrome Firefox Safari " * 120
+        )
+        assert 2000 < len(body) < 4000
+        assert _looks_like_challenge_page("ScienceDirect", body) is True
+
+    def test_un_article_long_qui_parle_de_javascript_reste_un_article(self):
+        body = "Why we disabled JavaScript on our documentation site, and what it cost. " * 100
+        assert _looks_like_challenge_page("Enable JavaScript, or not", body) is False
+
 
 @pytest.mark.asyncio
 async def test_extract_discards_challenge_page_metadata(monkeypatch):
