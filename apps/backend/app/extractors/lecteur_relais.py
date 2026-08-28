@@ -105,6 +105,20 @@ _TAILLE_MINIMALE = 200
 #: dans la source » : le refus accusait la citation la ou l'adresse etait fausse.
 _ERREUR_AMONT = re.compile(r"target url returned error\s*(\d{3})", re.IGNORECASE)
 
+#: Le compte rendu ci-dessus ne couvre que les sites qui repondent un vrai code
+#: d'erreur. Beaucoup servent leur page « introuvable » en HTTP 200, et le relais
+#: n'a alors rien d'anormal a signaler. Mesure du 2026-08-28 en production :
+#: une URL inventee sur lemonde.fr rend 63 456 caracteres de menus, sous le titre
+#: « Erreur 404 ». Le titre est ce qui reste pour la reconnaitre.
+_TITRE_RELAIS = re.compile(r"^Title:\s*(.+)$", re.MULTILINE)
+_TITRE_ERREUR = re.compile(
+    r"(erreur|error|http)\s*[:\-]?\s*[45]\d\d\b"
+    r"|^\s*[45]\d\d\s*$"
+    r"|page (not found|introuvable|non trouv|indisponible)"
+    r"|\bnot found\b",
+    re.IGNORECASE,
+)
+
 
 def _gabarits() -> list[str]:
     return [g.strip() for g in settings.lecture_relais_endpoint.split(",") if g.strip()]
@@ -129,14 +143,17 @@ def _entetes(*, avec_cle: bool) -> dict[str, str]:
     return entetes
 
 
-def _texte_du_corps(corps: str) -> str:
-    """Le texte lisible, que le relais ait rendu du markdown ou du HTML brut."""
+def _titre_et_texte(corps: str) -> tuple[str | None, str]:
+    """Le titre et le texte lisible, que le relais rende du markdown ou du HTML."""
     if not corps.lstrip()[:200].lower().startswith(("<!doctype", "<html", "<?xml")):
-        return corps.strip()
+        entete = _TITRE_RELAIS.search(corps[:1000])
+        return (entete.group(1).strip() if entete else None), corps.strip()
     soup = BeautifulSoup(corps, "lxml")
+    balise_titre = soup.find("title")
+    titre = balise_titre.get_text(strip=True) if balise_titre else None
     for balise in soup(["script", "style", "noscript", "template"]):
         balise.decompose()
-    return soup.get_text(separator=" ", strip=True)
+    return (titre or None), soup.get_text(separator=" ", strip=True)
 
 
 async def _lire(gabarit: str, url: str, *, premier: bool) -> str | None:
@@ -160,7 +177,10 @@ async def _lire(gabarit: str, url: str, *, premier: bool) -> str | None:
     if amont:
         logger.info("Relais : l'amont a repondu %s pour %s", amont.group(1), url)
         return None
-    texte = _texte_du_corps(brut)
+    titre, texte = _titre_et_texte(brut)
+    if titre and _TITRE_ERREUR.search(titre):
+        logger.info("Relais : page d'erreur intitulee %r pour %s", titre, url)
+        return None
     # Le relais peut avoir recu le defi anti-robot plutot que la page. Rendre
     # « Un instant, verification de votre navigateur » comme corps d'article
     # ferait conclure au modele que l'article ne dit rien.
@@ -173,7 +193,7 @@ async def _lire(gabarit: str, url: str, *, premier: bool) -> str | None:
     # article contenant « access denied » sera ecarte a tort ; il tombe alors
     # sur le relais suivant puis sur l'archive, et se tromper dans ce sens coute
     # une lecture, tandis que se tromper dans l'autre coute un extrait faux.
-    if _looks_like_challenge_page(None, texte) or len(texte) < _TAILLE_MINIMALE:
+    if _looks_like_challenge_page(titre, texte) or len(texte) < _TAILLE_MINIMALE:
         return None
     return texte
 

@@ -146,6 +146,42 @@ async def test_une_erreur_de_l_amont_n_est_pas_du_contenu(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_une_page_d_erreur_servie_en_200_n_est_pas_du_contenu(monkeypatch):
+    """Le cas que le compte rendu d'erreur du relais ne couvre pas.
+
+    Mesure en production le 2026-08-28 : une URL inventee sur lemonde.fr rend
+    63 456 caracteres de menus sous le titre « Erreur 404 », et le relais n'a
+    rien d'anormal a signaler puisque le site a repondu 200. Seul le titre la
+    distingue d'un article.
+    """
+
+    def gestionnaire(requete: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            text=(
+                "Title: Erreur 404\n\nURL Source: https://exemple.org/absente\n\n"
+                "Markdown Content:\n" + "Le journal Services Menu Accueil Abonnez-vous. " * 60
+            ),
+        )
+
+    _relais_simule(monkeypatch, gestionnaire)
+    assert await lecteur_relais.texte_par_relais("https://exemple.org/absente") is None
+
+
+@pytest.mark.asyncio
+async def test_un_article_qui_parle_d_erreurs_reste_un_article(monkeypatch):
+    """Le titre est court : le prix du filtre precedent doit rester nul ici."""
+
+    def gestionnaire(requete: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200, text="Title: Les 400 coups de la modernite\n\nMarkdown Content:\n" + _ARTICLE
+        )
+
+    _relais_simule(monkeypatch, gestionnaire)
+    assert await lecteur_relais.texte_par_relais("https://exemple.org/a") is not None
+
+
+@pytest.mark.asyncio
 async def test_le_html_brut_est_reduit_a_son_texte(monkeypatch):
     """Un relais mandataire rend la page telle quelle, scripts et styles compris.
 
