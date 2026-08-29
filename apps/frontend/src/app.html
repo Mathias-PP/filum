@@ -4,6 +4,18 @@
     <meta charset="utf-8" />
     <link rel="icon" type="image/svg+xml" href="%sveltekit.assets%/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Les polices se lient ici et non par `@import` dans app.css : l'import
+         imposait au navigateur d'attendre app.css pour decouvrir la feuille
+         Google, puis la feuille Google pour decouvrir les fichiers de police.
+         Le preconnect ouvre la connexion pendant que le CSS arrive.
+         Source Serif ne demande plus la graisse 400, qu'aucun element
+         n'utilise : les titres sont a 500, 600 pour h2, 700 pour h1. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600;8..60,700&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
     <meta
       name="description"
       content="Infrastructure ouverte de provenance et de filiation pour le contenu numérique"

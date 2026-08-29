@@ -78,7 +78,6 @@
 
 <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
   <div use:reveal>
-    <p class="page-overline">Produit</p>
     <h1 class="text-3xl sm:text-4xl font-bold text-ink-primary mb-4">Fonctionnalités</h1>
     <p class="text-xl text-ink-secondary mb-12 max-w-3xl">
       Philum est conçu pour les créateur·ice·s qui veulent rendre visible la qualité de leurs

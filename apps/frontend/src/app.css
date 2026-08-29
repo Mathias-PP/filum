@@ -1,5 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=JetBrains+Mono:wght@400;500&display=swap')
-layer(base);
+/* Les polices ne sont plus importees ici mais liees depuis `app.html`. Un
+   `@import` de feuille distante place dans le CSS impose une cascade de
+   requetes : le navigateur telecharge app.css, y decouvre l'import, telecharge
+   la feuille Google, y decouvre les `@font-face`, puis seulement telecharge les
+   fichiers de police. Le lien en tete de document supprime le premier maillon
+   et laisse le preconnect ouvrir la connexion pendant que le CSS arrive. */
 
 @import 'tailwindcss';
 
@@ -516,25 +520,6 @@ layer(base);
 }
 .hover-lift:hover .icon-bubble {
   transform: scale(1.12) rotate(-4deg);
-}
-
-/* Page header: small-caps overline above page titles */
-.page-overline {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgb(var(--info));
-  margin-bottom: 0.75rem;
-}
-.page-overline::before {
-  content: '';
-  width: 1.5rem;
-  height: 1px;
-  background: rgb(var(--info) / 0.6);
 }
 
 /* Reveal-on-scroll (shared with the homepage `reveal` action) */
