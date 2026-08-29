@@ -98,6 +98,21 @@ layer(base);
   text-wrap: balance;
 }
 
+/* Mesure de lecture. Une ligne se lit d'autant plus mal qu'elle est longue :
+   l'œil perd le début de la suivante. Les conteneurs de l'application vont
+   jusqu'à `max-w-4xl`, soit près de 110 caractères par ligne, ce qui convient à
+   une grille mais pas à un paragraphe. `measure` borne le texte suivi ; les
+   colonnes, tableaux et grilles gardent la largeur du conteneur. */
+@utility mesure-texte {
+  max-width: 68ch;
+}
+
+/* Version large, pour un bloc de prose qui porte aussi des encarts ou des
+   citations en retrait et paraîtrait étranglé à 68 caractères. */
+@utility mesure-texte-large {
+  max-width: 78ch;
+}
+
 @utility animate-in {
   animation: fadeIn 0.3s ease-out;
 }
@@ -251,8 +266,20 @@ layer(base);
   h4,
   h5,
   h6 {
-    @apply font-serif tracking-tight;
+    @apply font-serif;
     font-weight: 500;
+    /* Un titre casse mieux sur deux lignes équilibrées que sur une ligne pleine
+       suivie d'un mot orphelin. */
+    text-wrap: balance;
+  }
+
+  /* L'interlettrage négatif corrige un défaut d'échelle : au-delà de 28px les
+     lettres paraissent trop espacées, en dessous elles ne le sont pas. Le
+     serrage était appliqué de h1 à h6, donc aussi à des titres de 20px où il
+     ne fait que rapprocher les lettres jusqu'à la gêne. */
+  h1,
+  h2 {
+    @apply tracking-tight;
   }
 
   h1 {
@@ -270,6 +297,34 @@ layer(base);
 
   a {
     @apply text-info hover:opacity-80 transition-opacity;
+    /* Le soulignement par défaut passe au ras des jambages et hache le mot. */
+    text-underline-offset: 0.15em;
+  }
+
+  /* Le curseur de saisie fait partie des surfaces que le navigateur peint
+     lui-même, au même titre que la sélection et les barres de défilement.
+     Celles-là étaient déjà thématisées, celle-ci restait au noir système. */
+  input,
+  textarea,
+  select,
+  [contenteditable] {
+    caret-color: rgb(var(--info));
+  }
+
+  /* Une date ou un compteur qui se met à jour ne doit pas faire danser la
+     ligne : les chiffres à chasse fixe gardent la même largeur. */
+  time,
+  [data-nombre] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Contre les lignes veuves et les mots orphelins en fin de paragraphe. */
+  p,
+  li,
+  dd,
+  figcaption,
+  blockquote {
+    text-wrap: pretty;
   }
 
   *:focus-visible {
@@ -500,13 +555,47 @@ layer(base);
   color: rgb(var(--text-secondary));
 }
 
+/* ============================================================
+   Mouvement réduit
+   ============================================================
+   Le réglage précédent ramenait toute durée à 0,01ms, ce qui supprime le
+   mouvement mais aussi le fondu : un menu qui apparaît d'un coup se lit comme
+   un défaut d'affichage, et une carte qui change d'état sans transition claque.
+   Or la demande du système est « moins de mouvement », pas « aucun retour
+   visuel ». Ce qu'il faut retirer, c'est le déplacement, la boucle et le
+   défilement animé ; le changement de couleur et d'opacité peut rester, à
+   condition d'être bref. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
+    animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 100ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* Le contenu reste visible : une révélation au défilement qui dépend d'un
+     script laisserait la page vide si le script échoue. */
+  [data-reveal] {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  /* Les déplacements au pointeur sont du mouvement, ils sautent. La réponse
+     passe alors par la bordure et le fond, qui, eux, restent. */
+  .btn-lift:hover:not(:disabled),
+  .btn-lift:active:not(:disabled),
+  .hover-lift:hover,
+  .hover-lift:hover .icon-bubble {
+    transform: none;
+  }
+
+  /* Une boucle infinie est exactement ce que le réglage vise. Le squelette
+     garde sa forme, il perd son balayage. */
+  .skeleton-shimmer {
+    animation: none;
+    background: rgb(var(--bg-tertiary));
   }
 }

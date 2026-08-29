@@ -16,7 +16,7 @@
     <h1 class="text-3xl sm:text-4xl font-bold text-ink-primary mb-6">Confidentialité</h1>
   </div>
 
-  <div class="prose prose-slate max-w-none space-y-6 text-ink-secondary">
+  <div class="prose prose-slate mesure-texte-large space-y-6 text-ink-secondary">
     <p class="text-lg">
       Philum collecte le minimum d'informations nécessaires au fonctionnement du service. Cette page
       détaillera bientôt notre politique complète. En attendant, voici l'essentiel.
