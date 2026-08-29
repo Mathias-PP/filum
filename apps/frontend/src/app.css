@@ -337,8 +337,14 @@
     border-radius: 4px;
   }
 
-  button:focus {
-    outline: none;
+  /* Les cases, boutons radio et curseurs sont peints par le systeme, qui les
+     colore de son bleu par defaut. C'est la derniere surface qui trahissait un
+     assemblage de composants plutot qu'une interface. */
+  input[type='checkbox'],
+  input[type='radio'],
+  input[type='range'],
+  progress {
+    accent-color: rgb(var(--info));
   }
 }
 
