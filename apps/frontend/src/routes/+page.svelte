@@ -333,17 +333,17 @@
     {
       question: 'La source dit-elle vraiment ce qu’on lui fait dire ?',
       reponse:
-        'Vous lisez les extraits cités mot pour mot, à côté de la référence d’où ils viennent.',
+        'Permettez à votre audience d’accéder facilement à vos sources et aux passages précis que vous citez.',
     },
     {
       question: 'Cette information est-elle toujours valable ?',
       reponse:
-        'Une étude peut être rétractée des années après. Philum le vérifie auprès de Crossref et l’affiche.',
+        'Une étude peut être rétractée des années après. Philum le vérifie auprès de Crossref et le spécifie dans la bibliographie.',
     },
     {
       question: 'Et si le site n’est plus accessible ?',
       reponse:
-        'Chaque page est archivée le jour où elle est citée. Si elle change ou disparaît, l’archive reste lisible.',
+        'Chaque source est archivée le jour où elle est rattachée à Philum. Si elle change ou disparaît, l’archive reste lisible.',
     },
   ];
 
@@ -572,7 +572,7 @@
         <h2 class="section-title" use:reveal>D’où vient l’information&nbsp;?</h2>
         <p class="section-lede" use:reveal>
           Une émission cite un chiffre. Une vidéo recommande une pratique. La source existe quelque
-          part, mais presque personne n’ira la chercher.
+          part, mais c’est le parcours du combattant pour retrouver l’information d’origine.
         </p>
 
         <ol class="fil-list">
@@ -584,6 +584,13 @@
             </li>
           {/each}
         </ol>
+
+        <p class="section-lede fil-closing" use:reveal>
+          Avec Philum, ces questions ne se posent plus : vous et votre audience pouvez parcourir
+          facilement vos références et celles partagées publiquement par les autres, pour accéder
+          directement aux informations clés, les extraire et interroger le modèle d’IA de votre
+          choix sur un corpus que vous contrôlez.
+        </p>
       </div>
     </section>
   </div>
@@ -1320,6 +1327,18 @@
       margin-top: 0;
       font-size: 0.98rem;
     }
+  }
+
+  /* L'argument de clôture : un cran au-dessus de la liste, juste après le
+     dernier point du rail, pour porter la bascule du doute vers l'outil. */
+  .fil-closing {
+    margin-top: 2.5rem;
+    max-width: 42rem;
+    color: rgba(255, 255, 255, 0.86);
+    font-family: var(--font-serif);
+    font-size: clamp(1.05rem, 2vw, 1.25rem);
+    line-height: 1.7;
+    text-wrap: pretty;
   }
 
   /* ---- l'établi : un seul panneau, trois faces ---- */
