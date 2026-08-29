@@ -228,6 +228,21 @@ describe('rehydratation d’une session persistée', () => {
     expect(items).toEqual([{ kind: 'compaction', retires: 30, elagues: 0 }]);
   });
 
+  it('separe l’annonce fautive de la reponse corrigee', () => {
+    // Sans la marque, les deux textes se recolleraient dans la meme bulle et
+    // l’utilisateur lirait une reponse qui se contredit elle-meme.
+    const items = replier([
+      { type: 'message_delta', payload: { delta: 'J’ai cree la fiche.', tour: 1 } },
+      { type: 'controle_relance', payload: { tour: 1 } },
+      { type: 'message_delta', payload: { delta: 'Rien n’a ete cree.', tour: 2 } },
+    ]);
+    expect(items).toEqual([
+      { kind: 'assistant', text: 'J’ai cree la fiche.' },
+      { kind: 'controle' },
+      { kind: 'assistant', text: 'Rien n’a ete cree.' },
+    ]);
+  });
+
   it('ne fabrique pas de bulle vide pour un assistant sans texte ni outil', () => {
     expect(depuisMessages([message({ role: 'assistant', content: '' })])).toEqual([]);
   });

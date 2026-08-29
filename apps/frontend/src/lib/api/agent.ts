@@ -195,6 +195,13 @@ export type AgentEvent =
       payload: { messages_retires: number; resultats_elagues?: number };
     }
   | {
+      /** La réponse annonçait une action qu'aucun outil d'écriture n'avait faite :
+       * le serveur a redemandé au modèle d'agir ou de se corriger. Le dire, sinon
+       * l'utilisateur voit deux réponses successives sans savoir ce qui les sépare. */
+      type: 'controle_relance';
+      payload: { tour: number };
+    }
+  | {
       /** Pause après N tours : pas une erreur dure, l'utilisateur peut continuer. */
       type: 'continuation';
       payload: { message: string; tours: number };

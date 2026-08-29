@@ -154,7 +154,16 @@
   type Affichable =
     | Extract<
         ChatItem,
-        { kind: 'user' | 'assistant' | 'approval' | 'error' | 'compaction' | 'continuation' }
+        {
+          kind:
+            | 'user'
+            | 'assistant'
+            | 'approval'
+            | 'error'
+            | 'compaction'
+            | 'controle'
+            | 'continuation';
+        }
       >
     | {
         kind: 'group-outils';
@@ -861,6 +870,15 @@
         <div class="flex items-center gap-3 py-1 text-xs text-ink-tertiary">
           <span class="h-px flex-1 bg-border"></span>
           <span>{texteCompaction(item.retires, item.elagues)}</span>
+          <span class="h-px flex-1 bg-border"></span>
+        </div>
+      {:else if item.kind === 'controle'}
+        <!-- La reponse au-dessus annoncait une action que rien n'avait executee.
+             Sans cette marque, la reponse suivante contredit la precedente et
+             l'utilisateur ne sait pas laquelle croire. -->
+        <div class="flex items-center gap-3 py-1 text-xs text-amber-700 dark:text-amber-400">
+          <span class="h-px flex-1 bg-border"></span>
+          <span>Action annoncée mais non exécutée : réponse redemandée</span>
           <span class="h-px flex-1 bg-border"></span>
         </div>
       {:else if item.kind === 'approval'}
