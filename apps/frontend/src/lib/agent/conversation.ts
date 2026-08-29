@@ -32,6 +32,7 @@ export type ChatItem =
     }
   | { kind: 'error'; text: string }
   | { kind: 'compaction'; retires: number; elagues: number }
+  | { kind: 'controle' }
   | { kind: 'continuation'; message: string; tours: number };
 
 /** Rend une nouvelle liste : jamais de mutation, pour que Svelte voie le changement. */
@@ -116,6 +117,11 @@ export function appliquer(items: ChatItem[], event: AgentEvent): ChatItem[] {
       }
       return [...items, marque];
     }
+
+    case 'controle_relance':
+      // La marque se pose après l'annonce fautive, donc le prochain
+      // `message_delta` ouvre une bulle neuve au lieu de se recoller à elle.
+      return [...items, { kind: 'controle' }];
 
     case 'discovery_active':
       return items;

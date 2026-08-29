@@ -1711,3 +1711,175 @@ class TestCompactionContexte:
         types = [e["type"] for e in events]
         assert types.count("contexte_compacte") == 2
         assert types[-1] == "done"
+
+
+class TestControleRelance:
+    """Le tour final annonce une action que rien dans le tour n'a exécutée.
+
+    Vu en production : le modèle écrit « j'ai ajouté la source » sans avoir
+    jamais appelé l'outil. La règle 1 du prompt système l'interdit déjà, et ne
+    suffit pas ; ce contrôle est la même exigence, mais vérifiée par le code.
+    """
+
+    def _registre_ecriture(self, executed: list) -> dict[str, AgentTool]:
+        async def _execute(ctx: ToolContext, args: dict) -> dict:
+            executed.append(args)
+            return {"ok": True}
+
+        return {
+            "create_card": AgentTool(
+                name="create_card",
+                description="create_card",
+                parameters={"type": "object", "properties": {}, "required": []},
+                output="dict",
+                execute=_execute,
+            ),
+            "web_search": AgentTool(
+                name="web_search",
+                description="web_search",
+                parameters={"type": "object", "properties": {}, "required": []},
+                output="dict",
+                execute=_execute,
+            ),
+        }
+
+    @pytest.mark.asyncio
+    async def test_annonce_sans_ecriture_relance_une_fois(self, db_session, test_user):
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+        appels = {"n": 0}
+
+        def handler(request):
+            appels["n"] += 1
+            if appels["n"] == 1:
+                return httpx.Response(200, json=_mock_texte("J'ai créé la fiche, c'est prêt."))
+            return httpx.Response(200, json=_mock_texte("Rien n'a été créé, je m'en excuse."))
+
+        events = await _collect(
+            db_session,
+            test_user,
+            provider,
+            [{"role": "user", "content": "crée une fiche"}],
+            _refuse,
+            httpx.MockTransport(handler),
+            self._registre_ecriture([]),
+        )
+        types = [e["type"] for e in events]
+        assert types.count("controle_relance") == 1
+        assert types[-1] == "done"
+        assert appels["n"] == 2
+
+    @pytest.mark.asyncio
+    async def test_une_seule_relance_meme_si_le_modele_persiste(self, db_session, test_user):
+        # Sans ce plafond, un modèle qui répète son annonce brûlerait le quota
+        # de tours entier en relances.
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+        appels = {"n": 0}
+
+        def handler(request):
+            appels["n"] += 1
+            return httpx.Response(200, json=_mock_texte("J'ai ajouté la source."))
+
+        events = await _collect(
+            db_session,
+            test_user,
+            provider,
+            [{"role": "user", "content": "ajoute"}],
+            _refuse,
+            httpx.MockTransport(handler),
+            self._registre_ecriture([]),
+        )
+        assert [e["type"] for e in events].count("controle_relance") == 1
+        assert appels["n"] == 2
+
+    @pytest.mark.asyncio
+    async def test_une_ecriture_reelle_ne_declenche_rien(self, db_session, test_user):
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+        appels = {"n": 0}
+        executed: list = []
+
+        def handler(request):
+            appels["n"] += 1
+            if appels["n"] == 1:
+                return httpx.Response(200, json=_mock_tool_call("create_card", {"title": "T"}))
+            return httpx.Response(200, json=_mock_texte("J'ai créé la fiche."))
+
+        events = await _collect(
+            db_session,
+            test_user,
+            provider,
+            [{"role": "user", "content": "crée"}],
+            _refuse,
+            httpx.MockTransport(handler),
+            self._registre_ecriture(executed),
+        )
+        assert "controle_relance" not in [e["type"] for e in events]
+        assert executed == [{"title": "T"}]
+
+    @pytest.mark.asyncio
+    async def test_une_lecture_seule_ne_vaut_pas_ecriture(self, db_session, test_user):
+        # `web_search` prouve que le modèle a travaillé, pas qu'il a écrit.
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+        appels = {"n": 0}
+
+        def handler(request):
+            appels["n"] += 1
+            if appels["n"] == 1:
+                return httpx.Response(200, json=_mock_tool_call("web_search", {"query": "x"}))
+            if appels["n"] == 2:
+                return httpx.Response(200, json=_mock_texte("J'ai enregistré la source."))
+            return httpx.Response(200, json=_mock_texte("Je n'ai rien enregistré."))
+
+        events = await _collect(
+            db_session,
+            test_user,
+            provider,
+            [{"role": "user", "content": "cherche puis ajoute"}],
+            _refuse,
+            httpx.MockTransport(handler),
+            self._registre_ecriture([]),
+        )
+        assert [e["type"] for e in events].count("controle_relance") == 1
+
+    @pytest.mark.asyncio
+    async def test_une_reponse_sans_annonce_passe_directement(self, db_session, test_user):
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+        appels = {"n": 0}
+
+        def handler(request):
+            appels["n"] += 1
+            return httpx.Response(
+                200, json=_mock_texte("Je vais créer la fiche. Quel titre veux-tu ?")
+            )
+
+        events = await _collect(
+            db_session,
+            test_user,
+            provider,
+            [{"role": "user", "content": "salut"}],
+            _refuse,
+            httpx.MockTransport(handler),
+            self._registre_ecriture([]),
+        )
+        assert "controle_relance" not in [e["type"] for e in events]
+        assert appels["n"] == 1
+
+    def test_la_negation_n_est_pas_une_annonce(self):
+        # Le motif doit laisser passer l'aveu, sinon le contrôle punirait
+        # exactement la réponse honnête qu'il cherche à obtenir.
+        for texte in (
+            "Je n'ai pas créé la fiche : la source est illisible.",
+            "Je n'ai rien ajouté, l'URL est morte.",
+            "Il faudra créer la fiche ensuite.",
+        ):
+            assert agent_svc._ANNONCE_FAITE.search(texte) is None, texte
+
+    def test_les_outils_qui_ecrivent_sont_tous_exposes(self):
+        # Un nom mal orthographié ici rendrait le contrôle aveugle en silence.
+        from app.agent_tools.philum import OUTILS_QUI_ECRIVENT
+
+        assert OUTILS_QUI_ECRIVENT <= set(construire_registre())

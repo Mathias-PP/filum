@@ -25,6 +25,7 @@ import email.utils
 import json
 import logging
 import random
+import re
 import time
 from collections.abc import Awaitable, Callable, Sequence
 from datetime import UTC, datetime
@@ -35,7 +36,7 @@ import httpx
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agent_tools.philum import est_sensible
+from app.agent_tools.philum import OUTILS_QUI_ECRIVENT, est_sensible
 from app.agent_tools.registry import construire_registre, executer, filtrer, registre_api
 from app.agent_tools.tool import AgentTool, ToolContext
 from app.core.config import get_settings
@@ -92,6 +93,31 @@ _SYSTEME = (
     "6. Si la recherche web est indisponible, dis-le à l'utilisateur et arrête-toi. "
     "Ne substitue rien de ta mémoire d'entraînement.\n\n"
     "Réponds en français, en phrases courtes et factuelles."
+)
+
+#: Une annonce de résultat déjà obtenu, au passé.
+#:
+#: La règle 1 du prompt système l'interdit déjà, et une conversation réelle de
+#: production montre qu'une règle de prompt ne suffit pas : le modèle a annoncé
+#: des actions qu'il n'avait jamais faites. Le motif reste étroit à dessein,
+#: passé composé à la première personne ou constat d'achèvement, parce qu'un
+#: faux positif coûte un tour de modèle. La négation ne matche pas : « je n'ai
+#: pas créé » ne porte pas « j'ai ».
+_ANNONCE_FAITE = re.compile(
+    r"\b(?:j'ai|je viens de|nous avons)\b[^.!?\n]{0,60}?"
+    r"\b(?:cr[ée]{2}\w*|ajout\w*|supprim\w*|modifi\w*|publi\w*|enregistr\w*"
+    r"|import\w*|v[ée]rifi\w*|mis à jour)\b"
+    r"|\bc'est (?:fait|cr[ée]{2}|ajout[ée]|publi[ée]|supprim[ée]|enregistr[ée])\b",
+    re.IGNORECASE,
+)
+
+#: Ce qu'on dit au modèle quand son texte final annonce ce qu'il n'a pas fait.
+_CONTROLE_RELANCE = (
+    "Contrôle automatique : ta réponse annonce une action accomplie, mais aucun "
+    "outil d'écriture n'a été appelé de tout ce tour. Soit tu exécutes "
+    "maintenant l'action annoncée en appelant l'outil, soit tu réécris ta "
+    "réponse en disant exactement ce qui n'a pas été fait et pourquoi. "
+    "N'annonce jamais un résultat que tu n'as pas obtenu."
 )
 
 #: Taille max du contexte workspace injecté dans le prompt système.
@@ -1077,6 +1103,8 @@ async def boucle(
         nonlocal rejeu_fait
         # Utiliser le quota_tours si défini dans agent_def, sinon utiliser MAX_TOURS
         quota_tours = agent_def.quota_tours if agent_def else MAX_TOURS
+        a_ecrit = False
+        relance_faite = False
         for tour in range(1, quota_tours + 1):
 
             async def _on_delta(content: str, _t: int = tour) -> None:
@@ -1118,6 +1146,12 @@ async def boucle(
             if not tool_calls:
                 texte = _texte_message(message)
                 if texte:
+                    if not a_ecrit and not relance_faite and _ANNONCE_FAITE.search(texte):
+                        relance_faite = True
+                        messages.append({"role": "assistant", "content": texte})
+                        messages.append({"role": "system", "content": _CONTROLE_RELANCE})
+                        await emit({"type": "controle_relance", "payload": {"tour": tour}})
+                        continue
                     # Texte émis en temps réel via on_delta (streaming) ou en
                     # bloc dans _appel_provider (repli bloquant). Pas de re-emit ici.
                     await emit(
@@ -1146,6 +1180,10 @@ async def boucle(
                     }
                 )
                 return
+            if any(
+                (tc.get("function") or {}).get("name") in OUTILS_QUI_ECRIVENT for tc in tool_calls
+            ):
+                a_ecrit = True
             messages.append(
                 {
                     "role": "assistant",

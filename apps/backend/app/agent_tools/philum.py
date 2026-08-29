@@ -66,6 +66,37 @@ SENSITIVE_TOOLS: frozenset[str] = frozenset(
 )
 
 
+#: Outils dont l'appel laisse une trace en base.
+#:
+#: Sous-ensemble strict de `_ECRITURE`, qui mêle l'écriture et la lecture
+#: authentifiée : `list_my_cards` ou `get_my_card` sont dans `_ECRITURE` parce
+#: qu'ils exigent un compte, pas parce qu'ils modifient quoi que ce soit. Un
+#: contrôle qui les compterait comme des preuves d'action laisserait passer
+#: exactement le cas qu'il doit attraper, celui du modèle qui lit puis annonce
+#: une écriture jamais faite.
+OUTILS_QUI_ECRIVENT: frozenset[str] = frozenset(
+    {
+        "create_card",
+        "add_source",
+        "add_sources_batch",
+        "add_excerpt",
+        "update_excerpt",
+        "annotate_excerpt",
+        "set_content_text",
+        "update_card",
+        "update_source",
+        "verify_excerpts",
+        "publish_card",
+        "delete_card",
+        "delete_source",
+        "delete_excerpt",
+        "import_from_content_url",
+        "archive_sources",
+        "create_content_attestation",
+    }
+)
+
+
 def est_sensible(name: str, args: dict[str, Any]) -> bool:
     """L'action demandée doit-elle passer par l'approbation humaine ?"""
     if name in SENSITIVE_TOOLS:
