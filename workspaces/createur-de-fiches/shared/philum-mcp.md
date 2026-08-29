@@ -33,7 +33,7 @@ L'ancien flow (`POST /api/v1/auth/mcp-token` puis header manuel) reste supporté
 | `whoami()` | 01 | Vérifier avant tout que le token identifie bien l'utilisateur du brief. Refuser si ambigu. |
 | `create_card(slug, title, content_url?, description?, content_authors?, platform?, content_type?, visibility?)` | 01 | Crée un brouillon. `visibility="public"` par défaut. |
 | `add_source(card_slug, url?, title?, authors?, doi?, category?, author_kind?, format?, stance?, annotation?, journal?, archive_url?)` | 02 puis 03 | Deux passes : une pour poser la source, une pour l'annoter et poser sa position (`stance`). |
-| `add_excerpt(source_id, text, title?, context?)` | 04 | Un extrait par appel. `context` obligatoire dès que `text` contient un pronom référentiel ou fait moins de 15 mots (garde-fou serveur, refuse sinon). |
+| `add_excerpt(source_id, text, title?, context?)` | 04 | Un extrait par appel. `text` n'est pas le contenu de l'extrait, c'est **le passage à retrouver** : le serveur relit la page et inscrit les caractères qu'elle porte. Un passage traduit, reformulé ou reconstitué de mémoire fait échouer l'appel. `context` obligatoire dès que `text` contient un pronom référentiel ou fait moins de 15 mots. |
 | `set_content_text(card_slug, text, confirm_publication_rights)` | 01 ou 07 | Ne l'appeler QUE si le brief a coché `oui` explicite. Passer `confirm_publication_rights=True` engage la responsabilité du compte. |
 | `publish_card(slug)` | 07 | Rend la fiche publique. Ne bascule au public qu'une fois : republier n'est jamais un événement de feed. |
 | `update_card(slug, title?, description?, content_url?, content_authors?, platform?, content_type?, visibility?)` | 01, 06 | Corrige les champs éditoriaux après création. Slug immuable (identifiant public). |
@@ -68,7 +68,8 @@ L'ancien flow (`POST /api/v1/auth/mcp-token` puis header manuel) reste supporté
 
 ## Ce qu'il faut savoir avant d'appeler chaque écriture
 
-- **Pas d'invention** : chaque champ passé est soit vérifié (DOI depuis Crossref/OpenAlex, dates depuis la source elle-même) soit laissé vide. Vide se lit « je ne sais pas » ; une valeur inventée se lit « je sais et j'affirme ».
+- **Pas d'invention** : chaque champ passé est soit lu dans la ressource elle-même, soit rendu par un index externe pour cet identifiant, soit **laissé vide**. Vide se lit « je ne sais pas » ; une valeur inventée se lit « je sais et j'affirme ».
+- **Ce que le serveur garantit, et ce qui repose encore sur vous.** Le texte des extraits est verrouillé : `add_excerpt` et `update_excerpt` écrivent les caractères de la page, vous ne pouvez pas y faire entrer un verbatim fabriqué même en le voulant. Les métadonnées de source ne le sont pas encore : `add_source` et `update_source` écrivent aujourd'hui ce que vous leur passez, sans ouvrir l'URL. Tant que ce n'est pas le cas (ADR-036), un titre, un auteur ou une date que vous n'avez pas lus sur la page **doivent rester vides**. Vous désignez une ressource, vous n'attestez pas un fait à son sujet.
 - **`stance`** : `appuie`, `nuance-contredit`, `mentionne`, `contexte`. Absent = position non déclarée. Silence, pas neutralité.
 - **`is_pivot`** : réservé aux sources qui portent la thèse. Pas de plafond fixe : autant de pivots que la thèse compte de pans distincts (voir `principes-editoriaux.md`).
 - **Ordre d'appel** : `create_card` → `add_source` × N → `add_excerpt` × M par source clé → `set_content_text` (optionnel) → connexions (étape 05) → `publish_card`.
