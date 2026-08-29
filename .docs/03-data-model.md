@@ -117,10 +117,21 @@ Représente une source citée dans une fiche.
 | `biblio_card_id`       | `uuid` FK → biblio_cards.id     |                                                                                                                                           |
 | `position`             | `int`                           | Ordre de la source dans la fiche (1, 2, 3...)                                                                                             |
 | `url`                  | `text`                          | URL de la source                                                                                                                          |
-| `title`                | `text`                          | Titre extrait ou saisi manuellement                                                                                                       |
-| `authors`              | `text` nullable                 | Auteurs (texte libre)                                                                                                                     |
-| `published_at`         | `date` nullable                 | Date de publication de la source                                                                                                          |
-| `source_type`          | `text`                          | `peer-reviewed`, `institutional`, `press`, `original`, `other`                                                                            |
+| `title`                | `text`                          | Titre. Champ factuel : cf. ADR-036, sa provenance sera tracée                                                                             |
+| `authors`              | `text` nullable                 | Auteurs (texte libre). Champ factuel                                                                                                      |
+| `published_at`         | `date` nullable                 | Date de publication de la source. Champ factuel                                                                                           |
+| `format`               | `text`                          | ADR-020, axe 1 : `texte`, `video`, `image`, `audio`, `data`                                                                               |
+| `category`             | `text`                          | ADR-020, axe 2 : 12 valeurs, de `article-scientifique` à `post-social`                                                                    |
+| `author_kind`          | `text`                          | ADR-020, axe 3 : 9 valeurs, `chercheur`, `media`, `institution-publique`... Colore le graphe                                              |
+| `stance`               | `text` nullable                 | Position déclarée de la source vis-à-vis de la fiche                                                                                      |
+| `doi`                  | `text` nullable                 | Champ factuel. Résolvable par index (ADR-033), jamais par éditeur                                                                          |
+| `journal`              | `text` nullable                 | Champ factuel                                                                                                                             |
+| `volume` / `pages`     | `text` nullable                 | Champs factuels                                                                                                                           |
+| `publisher`            | `text` nullable                 | Champ factuel                                                                                                                             |
+| `oa_status` / `oa_url` / `oa_license` / `in_doaj` | nullable      | Accès ouvert, renseigné par sonde externe                                                                                                 |
+| `retraction_status`    | `text` nullable                 | Rétractation détectée, avec `retraction_notice_doi` et `retraction_checked_at`                                                            |
+| `linked_card_id`       | `uuid` FK nullable              | Connexion vers une autre fiche, avec `link_origin` et `link_confirmed_at`                                                                 |
+| `deleted_at`           | `timestamptz` nullable, indexé  | Suppression réversible                                                                                                                    |
 | `annotation`           | `text` nullable                 | "Pourquoi je cite cette source" (max 500 chars)                                                                                           |
 | `is_pivot`             | `boolean` default `false`       | Source structurante du raisonnement                                                                                                       |
 | `parent_source_id`     | `uuid` FK → sources.id nullable | Source citée par celle-ci (auto-référence, indexée). Permet de matérialiser le citation graph sans entrer dans le `canonical_hash` signé. |
@@ -140,33 +151,46 @@ Représente une source citée dans une fiche.
 
 ### Table : `source_excerpts` (migration 004)
 
-Une source peut porter plusieurs citations verbatim utilisées par le créateur. Hors `canonical_hash`.
+Une source peut porter plusieurs citations verbatim utilisées par le créateur.
 
-| Colonne                     | Type                                             | Description                         |
-| --------------------------- | ------------------------------------------------ | ----------------------------------- |
-| `id`                        | `uuid` PK                                        |                                     |
-| `source_id`                 | `uuid` FK → sources.id ON DELETE CASCADE, indexé |                                     |
-| `position`                  | `integer` default 0                              | Ordre d'affichage                   |
-| `text`                      | `text` NOT NULL                                  | Citation verbatim                   |
-| `suggested_by_ai`           | `boolean` default false                          | Future-proof : picker IA d'extraits |
-| `created_at` / `updated_at` | `timestamp`                                      |                                     |
+**Le texte d'un extrait n'est jamais celui que l'appelant a fourni.** `add_excerpt`
+ouvre la source, y retrouve le passage, et inscrit les caractères de la page. Un
+passage traduit, reformulé ou reconstitué de mémoire fait échouer l'appel.
+`update_excerpt` repasse par la même relecture, sans quoi corriger un extrait
+serait la porte de sortie qui annulerait la garantie. Maximum 12 extraits par
+source.
 
-```
-source_excerpts
-├── id (uuid, pk)
-├── source_id (uuid, fk → sources.id CASCADE)
-├── position (int)
-├── text (text)
-├── suggested_by_ai (bool)
-└── created_at / updated_at
-```
+| Colonne                     | Type                                             | Description                                                                     |
+| --------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------- |
+| `id`                        | `uuid` PK                                        |                                                                                 |
+| `source_id`                 | `uuid` FK → sources.id ON DELETE CASCADE, indexé |                                                                                 |
+| `position`                  | `integer` default 0                              | Ordre d'affichage                                                               |
+| `text`                      | `text` NOT NULL                                  | Le verbatim, prélevé dans la page par le serveur                                |
+| `title`                     | `varchar(200)` nullable                          | Intitulé donné au passage                                                       |
+| `context`                   | `varchar(500)` nullable                          | Mise en situation, traduction. Champ libre, jamais du verbatim                  |
+| `suggested_by_ai`           | `boolean` default false                          | L'extrait a été proposé par une IA                                              |
+| `annotated_by_ai`           | `boolean` default false                          | Le `context` vient d'une IA. Distingue ce que la source dit de ce qu'une IA en dit |
+| `anchor_prefix` / `anchor_suffix` / `anchor_offset` | nullable                 | Ancrage dans la page : voisinage textuel et position. Permet de relire un extrait dans son entourage |
+| `verified_at`               | `timestamp` nullable                             | Date du dernier prélèvement ou de la dernière vérification                      |
+| `verified_status`           | `varchar(20)` nullable                           | `found`, `moved`, `missing` (accuse la citation), `unreadable` (accuse le site) |
+| `verified_text_source`      | `varchar(20)` nullable                           | D'où venait le texte relu : `fetched`, ou fourni par le créateur                |
+| `created_at` / `updated_at` | `timestamp`                                      |                                                                                 |
 
 **Contraintes** :
 
 - `position` >= 1
-- `source_type` IN (`peer-reviewed`, `institutional`, `press`, `original`, `other`)
 - `archive_status` IN (`pending`, `archived`, `failed`)
 - `(biblio_card_id, position)` unique
+
+### À venir : provenance et relecture (ADR-036)
+
+Le circuit des extraits est verrouillé, celui des sources ne l'est pas encore :
+`add_source` n'ouvre pas l'URL, `update_source` réécrit les champs factuels sans
+vérification. ADR-036 pose le vocabulaire de provenance (`lu`, `resolu`,
+`declare`, `infere`), la règle « une IA désigne, elle n'atteste pas », et les
+colonnes de relecture humaine (`reviewed_by`, `reviewed_at`). La publication
+publique sera bloquée tant qu'il reste de l'`infere` non relu ; le brouillon ne
+l'est jamais.
 
 ---
 

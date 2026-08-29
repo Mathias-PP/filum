@@ -35,7 +35,7 @@ Lu intégralement : oui (1876/1876 lignes, 2 tranches 1-940 / 941-1876) · sha25
 | # | Outil | Ligne | Effet DB | Pièges |
 |---|---|---|---|---|
 | 1 | `create_card` | :176 | `biblio_card` INSERT | `card_kind='sujet'` interdit `content_url`/`content_authors`/`platform`/`content_type`. Slug vérifié unicité (pas de contrainte en base) |
-| 2 | `add_source` | :244 | `source` INSERT | DOI seul → déduit `https://doi.org/...` pour l'URL. Déjà citée (clé identité) → refuse. Archives manuelles : `archive_status="archived"`, sinon `"pending"` |
+| 2 | `add_source` | :244 | `source` INSERT | DOI seul → déduit `https://doi.org/...` pour l'URL. Déjà citée (clé identité) → refuse. Archives manuelles : `archive_status="archived"`, sinon `"pending"`. **N'ouvre jamais l'URL** : titre, auteurs, journal, DOI, date sont écrits tels que l'appelant les fournit. Asymétrie assumée jusqu'à ADR-036, qui la corrige |
 | 3 | `add_excerpt` | :424 | `source_excerpt` INSERT | `text` est le passage à retrouver (pas le contenu) : le serveur relit la page. Garde-fou anti hors-contexte : extrait court commençant par pronom/démonstratif sans `contexte` → refuse. Limité à 12 extraits/source |
 | 4 | `set_content_text` | :517 | `biblio_card.content_text` UPDATE | `confirm_publication_rights=true` obligatoire. Fiche `sujet` → refuse. Borne 500k chars |
 
@@ -50,7 +50,7 @@ Lu intégralement : oui (1876/1876 lignes, 2 tranches 1-940 / 941-1876) · sha25
 | # | Outil | Ligne | Notes |
 |---|---|---|---|
 | 6 | `update_card` | :609 | `card_kind='sujet'` efface URL/authors/platform/type. Refuse si `content_text` non vide. Slug immuable |
-| 7 | `update_source` | :709 | URL immuable (`delete_source` + `add_source` pour changer). `archive_url` vide → reset `pending` |
+| 7 | `update_source` | :709 | URL immuable (`delete_source` + `add_source` pour changer). `archive_url` vide → reset `pending`. Titre, auteurs, DOI, journal, date se réécrivent **sans aucune revérification** : c'est le contournement que ADR-036 doit fermer en même temps que `add_source` |
 | 8 | `delete_source` | :785 | **Approuvé** — soft-delete, ligne conservée pour citations/attestations |
 | 9 | `delete_excerpt` | :802 | **Approuvé** — suppression PHYSIQUE irréversible. `excerpt_id` = UUID, pas position |
 | 10 | `update_excerpt` | :834 | Modifier `text` repasse par la relecture de la page |

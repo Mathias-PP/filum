@@ -1400,3 +1400,112 @@ changement de variable d'environnement dans les deux sens.**
 **Ce qui reste hors de portee d'un agent** : la cle elle-meme. Elle se cree sur
 AI Studio avec le compte Google **existant** — aucun compte nouveau — mais
 saisir des identifiants ne fait pas partie de ce qu'un agent doit faire.
+
+---
+
+## ADR-036 : Provenance des metadonnees de source. Une IA designe, elle n'atteste pas
+
+**Date :** 2026-08-29
+
+**Contexte.** Le circuit des extraits est mecaniquement verrouille : `add_excerpt`
+ouvre la page, y retrouve le passage, et inscrit **les caracteres de la page**,
+jamais ceux que l'appelant a envoyes (`tools_write.py:487`). `update_excerpt`
+repasse par la meme relecture (`tools_write.py:881`), ce qui ferme la porte de
+sortie evidente. L'URL d'une source est immuable, on ne peut donc pas verifier
+des extraits sur une page vraie puis basculer la source ailleurs.
+
+Le circuit des **sources**, lui, n'a aucun verrou. `add_source`
+(`tools_write.py:245`) valide les enums, deduit une URL depuis un DOI, refuse les
+doublons, et **n'ouvre jamais l'URL**. Titre, auteurs, journal, DOI, date sont
+ecrits tels que l'appelant les a fournis. `update_source` les rouvre ensuite sans
+aucune reverification. Le seul garde-fou est la regle 2 du prompt systeme, qui
+interdit de fabriquer une source de memoire.
+
+Une regle de prompt n'est pas un garde-fou : un modele peut la contourner, et une
+conversation reelle de production a montre qu'il le fait. La bibliographie est
+precisement ce que l'audience lit.
+
+**Contrainte de generalisme.** Philum n'est pas dedie a la recherche
+scientifique (`.docs/00-vision.md` : vulgarisateurs, journalistes, essayistes,
+fact-checkers). Le socle doit valoir pour un blog, une video, un podcast, un
+rapport, un livre. Dans la lignee d'ADR-030 et d'ADR-033 : le general d'abord,
+les resolveurs specialises (Crossref, PubMed, OSF, oEmbed) uniquement en
+accelerateurs enfichables, jamais en condition de la garantie.
+
+Le socle general existe deja : `url_extractor.extract()` est documente
+« best-effort metadata for **any** URL, never raises », son etage de base est le
+scrape HTML avec OpenGraph et JSON-LD, universels. Il porte deja le principe juste,
+ecrit a propos d'OSF : « un titre faux est pire qu'un titre absent, il se recopie
+dans la fiche sans que rien ne signale qu'il ne designe pas le document ». Et
+`access_blocked` distingue deja « je n'ai pas eu le droit de lire » de « il n'y
+avait rien a lire ». Cote lecture, la cascade de `_texte_de_la_source` finit sur
+l'archive du web, qui ne connait aucun domaine, et `get_youtube_transcript`
+montre la generalisation qui compte : **lire une source, c'est en obtenir un
+texte, quel que soit le media.**
+
+`add_source` est simplement le seul endroit qui ne s'en sert pas.
+
+**Decision.**
+
+1. **Une provenance par champ**, dans un vocabulaire qui ne nomme aucun domaine :
+   - `lu` : la valeur figure dans la ressource elle-meme (balise, JSON-LD,
+     transcript, corps de page).
+   - `resolu` : un index externe l'a rendue pour cet identifiant. Le nom de
+     l'index est enregistre, mais aucune regle ne depend d'un index particulier.
+   - `declare` : un humain l'a saisie et en repond.
+   - `infere` : un modele l'a produite. **Jamais promue au rang de fait, jamais
+     affichee comme verifiee.**
+
+2. **Une IA designe une ressource, elle n'atteste jamais un fait a son sujet.**
+   Le niveau `declare` lui est ferme par construction. C'est la signature du
+   createur, pas la sienne. Corollaire : une source **sans URL** (livre papier,
+   conference, entretien) est legitime, integralement `declare`, et hors de
+   portee d'un agent.
+
+3. **`add_source` ouvre la ressource** et ecrit ce qu'il a lu. Les valeurs
+   proposees par l'appelant ne sont plus ecrites telles quelles : elles servent a
+   croiser et a signaler une divergence.
+
+4. **Champs vides plutot que faux.** Quand la ressource est illisible, la source
+   est **creee** avec ses champs factuels vides, et la reponse de l'outil dit
+   explicitement ce qui n'a pas pu etre lu et pourquoi. Refuser la creation
+   perdrait les sources legitimes derriere un paywall et pousserait au
+   contournement ; remplir avec le declaratif du modele est exactement ce que
+   cette ADR interdit.
+
+5. **`update_source` est soumis aux memes regles** sur les champs factuels. Sans
+   cela, tout verrou pose a la creation se contourne en deux appels.
+
+6. **Un statut de source visible sur la fiche publique**, symetrique de
+   `verified_status` sur les extraits. Ce n'est pas un blocage, c'est une preuve
+   rendue lisible.
+
+7. **La relecture humaine est un troisieme axe**, distinct de l'origine
+   (`suggested_by_ai`) et de la verification machine (`verified_status`) :
+   `reviewed_by` et `reviewed_at`.
+
+8. **Le blocage porte sur la publication publique seulement.** `publish_card`
+   refuse tant qu'il reste de l'`infere` non relu. Le brouillon n'est jamais
+   bloque : le createur travaille librement, rien n'atteint son audience sans un
+   passage humain.
+
+**Alternatives ecartees.**
+
+- **Faire de Crossref et du DOI le pilier de la verification** : ne vaut que pour
+  l'article scientifique, contredit frontalement ADR-033 et le positionnement
+  generaliste. Retrograde au rang d'accelerateur.
+- **Refuser la creation quand la ressource est illisible** : perd les sources
+  legitimes bloquees par un editeur, et transforme le garde-fou en obstacle a
+  contourner.
+- **Ecrire la sortie LLM de `extract()` comme metadonnee verifiee** : remplace une
+  fabrication par une autre, avec en plus l'apparence d'une preuve. C'est le piege
+  precis que le niveau `infere` existe pour eviter.
+- **S'en tenir au prompt systeme** : mesure insuffisant en production.
+- **Bloquer aussi le brouillon** : rendrait le travail impraticable sans rien
+  ajouter a la garantie, qui ne concerne que ce que l'audience voit.
+
+**Consequences.** Rupture de contrat MCP sur `add_source` et `update_source` :
+les champs factuels envoyes par un client ne sont plus ecrits tels quels. Une
+migration ajoute la provenance par champ sur `sources` et les colonnes de
+relecture. `ExtractedMetadata` doit porter la provenance de chaque champ, faute de
+quoi l'etage LLM de la cascade serait indiscernable d'une lecture.
