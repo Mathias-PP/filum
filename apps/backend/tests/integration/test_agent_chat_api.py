@@ -354,3 +354,38 @@ async def test_chat_nemprunte_pas_le_provider_dun_autre(
     # L'autre créateur n'a pas de provider : erreur, jamais l'accès à celui du premier.
     assert events[-1]["type"] == "error"
     assert "Aucune clé IA disponible" in events[-1]["payload"]["message"]
+
+
+@pytest.mark.asyncio
+async def test_la_consigne_de_controle_ne_reste_pas_dans_l_historique(
+    client, session_token, db_session, test_user
+):
+    """La relance pose un message système ; il ne doit pas être persisté.
+
+    Le prompt système est reconstruit en tête à chaque tour. Un second message
+    système dans l'historique fait refuser l'appel chez Gemini, et la consigne
+    ne vaut que pour le tour où elle a été posée.
+    """
+    await _inserer_provider_defaut(db_session, test_user)
+    appels = {"n": 0}
+
+    def handler(request):
+        appels["n"] += 1
+        if appels["n"] == 1:
+            return httpx.Response(200, json=_mock_texte("J'ai créé la fiche."))
+        return httpx.Response(200, json=_mock_texte("Rien n'a été créé, la source est illisible."))
+
+    app.dependency_overrides[get_http_client] = lambda: httpx.MockTransport(handler)
+    client.cookies.set("filum_session", session_token)
+    try:
+        response = await _post_chat(client, "crée une fiche")
+    finally:
+        app.dependency_overrides.pop(get_http_client, None)
+
+    events = _lire_evenements(response.text)
+    assert any(e["type"] == "controle_relance" for e in events)
+    assert appels["n"] == 2
+
+    session_id = next(e["payload"]["id"] for e in events if e["type"] == "session")
+    roles = [r for r, _ in await _messages_persistes(session_id)]
+    assert "system" not in roles

@@ -37,7 +37,13 @@ from app.core.rate_limit import limiter
 from app.db.database import async_session_maker, get_db
 from app.models.user import User
 from app.schemas.agent_chat import AgentChatRequest
-from app.services import agent_approvals, agent_definitions, agent_gratuit, agent_sessions
+from app.services import (
+    agent_approvals,
+    agent_definitions,
+    agent_gratuit,
+    agent_sessions,
+    agent_workspace,
+)
 from app.services.agent import boucle
 from app.services.agent_discovery import (
     ErreurQuota,
@@ -245,6 +251,17 @@ async def chat_agent(
 
     messages.append({"role": "user", "content": body.message})
     await agent_sessions.ajouter_message(db, session, role="user", content=body.message)
+    # Le workspace n'etait amorce qu'en ouvrant la page Workspace ou la page
+    # Agents. Un createur qui va droit au chat n'y passe jamais : `shared/`
+    # restait vide et l'agent ecrivait du contenu editorial sans avoir lu la
+    # ligne qui devait le guider.
+    #
+    # Ici et pas dans `boucle` : la boucle tourne pendant le flux SSE, et une
+    # ecriture ouverte pendant tout le flux garde le verrou d'ecriture SQLite,
+    # ce qui fait echouer la persistance du tour en « database is locked ».
+    # A cet endroit la transaction se ferme avant que le flux commence.
+    await agent_workspace.assurer_workspace(db, current_user.id)
+    await db.commit()
     # `boucle` insère le prompt système en tête : le tour commence donc un cran
     # plus loin que la longueur d'avant l'appel.
     depart = len(messages) + 1
@@ -443,6 +460,13 @@ async def _persister_tour(
     async with async_session_maker() as db:
         session = await agent_sessions.obtenir(db, creator_id, session_id)
         for message in ajouts:
+            # Le prompt systeme est reconstruit en tete a chaque tour. Un message
+            # systeme ecrit ici serait rejoue en second, et Gemini refuse un
+            # historique qui en porte deux. La boucle en insere un quand elle
+            # redemande une reponse (`controle_relance`) : c'est une consigne
+            # valable pour ce tour, pas une trace de la conversation.
+            if message.get("role") == "system":
+                continue
             if message.get("role") == "tool":
                 await agent_sessions.ajouter_message(
                     db,
