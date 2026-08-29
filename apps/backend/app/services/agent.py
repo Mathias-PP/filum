@@ -1038,6 +1038,14 @@ async def boucle(
     if agent_def is not None:
         registre = filtrer(registre, agent_def.tools)
     outils_api = registre_api(registre)
+    # Le workspace n'etait amorce qu'en ouvrant la page Workspace ou la page
+    # Agents. Un createur qui va droit au chat n'y passe jamais : `shared/` est
+    # vide, le prompt systeme ne porte aucune ligne editoriale, et l'agent ecrit
+    # du contenu sans avoir lu ce qui devait le guider. L'amorcage est idempotent
+    # et n'ecrase rien.
+    from app.services.agent_workspace import assurer_workspace
+
+    await assurer_workspace(db, user.id)
     workspace_ctx = await _priming_workspace(
         db, user.id, agent_def.context if agent_def is not None else None
     )

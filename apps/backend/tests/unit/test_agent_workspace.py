@@ -243,3 +243,69 @@ class TestFrontmatterParser:
         content = "# Titre\n## Sous-titre\n\nLe vrai paragraphe.\n"
         c, _ = agent_workspace.extraire_meta("shared/x.md", content)
         assert c == "Le vrai paragraphe."
+
+
+@pytest.mark.asyncio
+async def test_le_chat_amorce_le_workspace(db_session, test_user):
+    """Aller droit au chat suffit à provisionner `shared/`.
+
+    L'amorçage ne vivait que sur les pages Workspace et Agents. Un créateur qui
+    ouvre le chat en premier n'y passe jamais : l'agent démarrait sans la ligne
+    éditoriale qu'il est censé lire avant d'écrire.
+    """
+    import httpx
+    from sqlalchemy import select
+
+    from app.core.config import get_settings
+    from app.crypto.keygen import KeyManager
+    from app.models.agent_provider import AgentProvider
+    from app.models.workspace_file import WorkspaceFile
+    from app.services import agent as agent_svc
+
+    avant = await db_session.execute(
+        select(WorkspaceFile.id).where(WorkspaceFile.creator_id == test_user.id)
+    )
+    assert avant.scalars().all() == []
+
+    cle = KeyManager(get_settings().master_encryption_key).encrypt_private_key("sk-test-12345678")
+    provider = AgentProvider(
+        creator_id=test_user.id,
+        provider="openai",
+        display_name="openai",
+        base_url="https://api.openai.com",
+        model="gpt-4o-mini",
+        api_key_enc=cle,
+        is_default=True,
+    )
+    db_session.add(provider)
+    await db_session.commit()
+
+    async def _refuse(request_id: str, tool: str, args: dict) -> bool:
+        return False
+
+    await agent_svc.boucle(
+        db_session,
+        test_user,
+        provider,
+        [{"role": "user", "content": "salut"}],
+        lambda event: _rien(),
+        _refuse,
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(
+                200,
+                json={"choices": [{"message": {"role": "assistant", "content": "Bonjour."}}]},
+            )
+        ),
+        registre={},
+    )
+
+    apres = await db_session.execute(
+        select(WorkspaceFile.path).where(WorkspaceFile.creator_id == test_user.id)
+    )
+    chemins = apres.scalars().all()
+    assert chemins, "le chat doit amorcer le workspace"
+    assert any(p.startswith("shared/") for p in chemins)
+
+
+async def _rien() -> None:
+    return None
