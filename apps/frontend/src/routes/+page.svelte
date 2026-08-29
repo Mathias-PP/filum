@@ -416,7 +416,7 @@
 </script>
 
 <svelte:head>
-  <title>Philum | Un espace de travail pour vos sources</title>
+  <title>Philum | Un espace de recherche pour garantir la traçabilité de l'information</title>
   <meta
     name="description"
     content="Rassemblez les articles, études, vidéos et podcasts sur lesquels vous travaillez. Chaque référence est accompagnée des citations exactes qui vous intéressent. Publiez-les pour votre audience, ou interrogez une IA sur les sources que vous avez choisies."
@@ -443,7 +443,9 @@
 
       <div class="hero-inner">
         <div class="hero-copy">
-          <p class="eyebrow">Un espace de travail pour vos sources</p>
+          <p class="eyebrow">
+            Un espace de recherche pour garantir la traçabilité de l'information
+          </p>
           <h1>
             Vous allez adorer<br />
             <span class="accent">partager vos références</span>
@@ -487,10 +489,8 @@
           <p class="hint">
             <span class="hint-dot" aria-hidden="true"></span>
             <span>
-              <span class="hint-clic">Cliquez</span><span class="hint-touche">Touchez</span> une
-              planète, elle dit ce que Philum sait faire.<span class="hint-plus"
-                >&nbsp;Attrapez-la, elle reste où vous la posez.</span
-              >
+              <span class="hint-clic">Cliquez</span><span class="hint-touche">Touchez</span> sur une planète,
+              elle vous dira ce que Philum sait faire.
             </span>
           </p>
         </div>
@@ -585,12 +585,14 @@
           {/each}
         </ol>
 
-        <p class="section-lede fil-closing" use:reveal>
-          Avec Philum, ces questions ne se posent plus : vous et votre audience pouvez parcourir
-          facilement vos références et celles partagées publiquement par les autres, pour accéder
-          directement aux informations clés, les extraire et interroger le modèle d’IA de votre
-          choix sur un corpus que vous contrôlez.
-        </p>
+        <div class="fil-closing" use:reveal>
+          <p class="fil-closing-head">Avec Philum, ces questions ne se posent plus.</p>
+          <ul class="fil-closing-list">
+            <li>Parcourez vos références et celles partagées par la communauté</li>
+            <li>Accédez aux passages clés, cités mot pour mot à côté de la source</li>
+            <li>Interrogez le modèle d'IA de votre choix sur un corpus que vous contrôlez</li>
+          </ul>
+        </div>
       </div>
     </section>
   </div>
@@ -1334,11 +1336,33 @@
   .fil-closing {
     margin-top: 2.5rem;
     max-width: 42rem;
-    color: rgba(255, 255, 255, 0.86);
+    text-align: center;
+  }
+  .fil-closing-head {
     font-family: var(--font-serif);
-    font-size: clamp(1.05rem, 2vw, 1.25rem);
-    line-height: 1.7;
-    text-wrap: pretty;
+    font-size: clamp(1.15rem, 2.2vw, 1.4rem);
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.94);
+    line-height: 1.5;
+    margin-bottom: 1rem;
+  }
+  .fil-closing-list {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    color: rgba(226, 232, 240, 0.72);
+    font-size: clamp(0.95rem, 1.6vw, 1.05rem);
+    line-height: 1.6;
+    text-align: left;
+    max-width: 38rem;
+    margin: 0 auto;
+  }
+  .fil-closing-list li::before {
+    content: '→ ';
+    color: #9fe3d0;
+    font-weight: 600;
   }
 
   /* ---- l'établi : un seul panneau, trois faces ---- */
