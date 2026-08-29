@@ -12,7 +12,6 @@
 
 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
   <div use:reveal>
-    <p class="page-overline">Vos données</p>
     <h1 class="text-3xl sm:text-4xl font-bold text-ink-primary mb-6">Confidentialité</h1>
   </div>
 

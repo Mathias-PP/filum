@@ -149,7 +149,6 @@
 </svelte:head>
 
 <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-  <p class="page-overline">Explorer</p>
   <h1 class="text-3xl sm:text-4xl font-bold text-ink-primary mb-3">Les fiches publiques</h1>
   <p class="text-lg text-ink-secondary mb-4 max-w-3xl">
     Chaque fiche relie un contenu à la bibliographie que son auteur a réellement consultée. Cherchez
