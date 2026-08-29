@@ -591,12 +591,20 @@
         <!-- La liste reste montée quand le tableau s'affiche : à l'impression,
              c'est elle qui porte la bibliographie complète, et les balises COinS
              que Zotero détecte n'existent nulle part ailleurs. -->
-        <div class="space-y-3 {sourceView === 'tableau' ? 'hidden print:block' : ''}">
+        <!-- Une bibliographie, donc une liste ordonnée : la numérotation portée
+             à l'écran est celle qui sert de renvoi dans le corps de la fiche, et
+             l'assistance vocale annonce enfin « liste de N éléments ». Le cadre
+             est posé une fois sur l'ensemble plutôt qu'une fois par référence :
+             borde et arrondir chacune donnait vingt objets flottants là où il
+             n'y a qu'un seul document. -->
+        <ol
+          class="bg-surface-primary border border-border rounded-lg overflow-hidden divide-y divide-border {sourceView ===
+          'tableau'
+            ? 'hidden print:block'
+            : ''}"
+        >
           {#each card.sources as source, i (source.id)}
-            <div
-              id="source-{source.id}"
-              class="bg-surface-primary rounded-lg border border-border overflow-hidden"
-            >
+            <li id="source-{source.id}">
               <!-- COinS : le connecteur Zotero détecte chaque source comme item. -->
               <span class="Z3988" title={sourceCoins(source)}></span>
               <button
@@ -845,9 +853,9 @@
                   </div>
                 </div>
               {/if}
-            </div>
+            </li>
           {/each}
-        </div>
+        </ol>
       </div>
     </section>
 
