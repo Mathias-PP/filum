@@ -329,6 +329,35 @@ async def resoudre_defaut(
     return result.scalar_one_or_none()
 
 
+async def ordonner_pour_chat(
+    db: AsyncSession,
+    creator_id: UUID,
+    *,
+    prefere: UUID | None = None,
+) -> list[AgentProvider]:
+    """Les clés du créateur, dans l'ordre où la boucle doit les essayer.
+
+    La clé choisie pour la session d'abord, à défaut celle marquée par défaut,
+    puis les autres, et en queue celles qu'un incident récent a mises au repos.
+    Une clé au repos n'est pas écartée : si toutes le sont, mieux vaut retenter
+    la moins fraîche que rendre la main sans avoir essayé.
+
+    `resoudre_defaut` rend une clé et une seule. Un créateur qui en a configuré
+    trois n'en voyait donc essayer qu'une, et le tour échouait là où la suivante
+    aurait répondu.
+    """
+    from app.services.agent_repli import repos
+
+    result = await db.execute(select(AgentProvider).where(AgentProvider.creator_id == creator_id))
+    providers = list(result.scalars().all())
+
+    def rang(p: AgentProvider) -> tuple[int, int, str]:
+        prioritaire = p.id == prefere if prefere is not None else bool(p.is_default)
+        return (1 if repos.au_repos(p.id) else 0, 0 if prioritaire else 1, p.display_name)
+
+    return sorted(providers, key=rang)
+
+
 async def tester(
     db: AsyncSession,
     creator_id: UUID,

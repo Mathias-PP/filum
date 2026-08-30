@@ -50,6 +50,7 @@ from app.models.workspace_file import WorkspaceFile
 from app.services.agent_approvals import DELAI_MAX as DELAI_APPROBATION
 from app.services.agent_definitions import AgentDefinition
 from app.services.agent_providers import _decrypt
+from app.services.agent_repli import Verdict, classer, repos
 from app.services.agent_sessions import (
     BUDGET_APRES_REFUS,
     BUDGET_HISTORIQUE,
@@ -408,6 +409,28 @@ _RETRY_MAX_ATTENTE_S = 60.0
 #: Deux tentatives max, attentes [2 s, 5 s]. Au-delà, l'erreur est remontée.
 _BACKOFF_5XX = (2.0, 5.0)
 
+
+class EchecProvider(str):
+    """Un message d'erreur qui se souvient du statut HTTP qui l'a produit.
+
+    Sous-classe de `str` a dessein : tout le code qui teste `isinstance(reponse,
+    str)` pour distinguer l'echec du succes continue de fonctionner, y compris
+    les faux `_appel_provider` des tests qui rendent une chaine nue. Seul le
+    repli entre cles lit le statut, et il sait le trouver absent.
+
+    Le statut est ce qui separe « une autre cle repondrait » de « une autre cle
+    echouerait pareil ». Sans lui il faudrait le relire dans le texte du
+    message, c'est-a-dire parier sur sa redaction.
+    """
+
+    statut: int | None
+
+    def __new__(cls, message: str, statut: int | None = None) -> EchecProvider:
+        objet = super().__new__(cls, message)
+        objet.statut = statut
+        return objet
+
+
 #: Faits du graphe injectes d'office dans le prompt systeme. Le rappel est
 #: automatique et son cout est paye a chaque tour : il doit rester previsible.
 #: Quand la borne mord, on le dit au modele plutot que de tronquer en silence,
@@ -724,11 +747,15 @@ async def _traiter_reponse_flux(
                         body2 = r2.text[:500]
                     msg2 = _extraire_message_erreur(body2)
                     if r2.status_code == 429:
-                        return (
+                        return EchecProvider(
                             f"Le fournisseur ({provider.provider}) refuse : quota ou "
-                            f"limite de débit atteinte. {msg2}"
+                            f"limite de débit atteinte. {msg2}",
+                            429,
                         )
-                    return f"Le provider a répondu HTTP {r2.status_code} : {msg2 or body2}"
+                    return EchecProvider(
+                        f"Le provider a répondu HTTP {r2.status_code} : {msg2 or body2}",
+                        r2.status_code,
+                    )
                 if "text/event-stream" not in r2.headers.get("content-type", ""):
                     await r2.aread()
                     return await _emettre_en_un_bloc(
@@ -736,9 +763,10 @@ async def _traiter_reponse_flux(
                     )
                 return await _dispatcher_sse(r2, provider, on_delta)
         msg = _extraire_message_erreur(body_429)
-        return (
+        return EchecProvider(
             f"Le fournisseur ({provider.provider}) refuse : quota ou limite de "
-            f"débit atteinte. {msg}"
+            f"débit atteinte. {msg}",
+            429,
         )
     if r.status_code == 400:
         await r.aread()
@@ -753,7 +781,9 @@ async def _traiter_reponse_flux(
         except ValueError:
             body = r.text[:500]
         msg = _extraire_message_erreur(body)
-        return f"Le provider a répondu HTTP {r.status_code} : {msg or body}"
+        return EchecProvider(
+            f"Le provider a répondu HTTP {r.status_code} : {msg or body}", r.status_code
+        )
     if "text/event-stream" not in r.headers.get("content-type", ""):
         await r.aread()
         return await _emettre_en_un_bloc(_parse_blocking_response(r, provider), on_delta)
@@ -913,14 +943,40 @@ async def _appel_provider(
                                     r_retry, client, url, payload, headers, provider, on_delta
                                 )
                             await r_retry.aread()
-                    return f"Le provider a répondu HTTP {statut_5xx} : infrastructure instable."
+                    return EchecProvider(
+                        f"Le provider a répondu HTTP {statut_5xx} : infrastructure instable.",
+                        statut_5xx,
+                    )
                 return await _traiter_reponse_flux(
                     r, client, url, payload, headers, provider, on_delta
                 )
     except httpx.HTTPError as exc:
-        return f"Erreur réseau vers le provider : {exc}"
+        return EchecProvider(f"Erreur réseau vers le provider : {exc}")
     except ValueError as exc:
-        return f"Réponse illisible du provider : {exc}"
+        return EchecProvider(f"Réponse illisible du provider : {exc}")
+
+
+def _cle_suivante(
+    echec: str,
+    actif: AgentProvider,
+    replis: list[AgentProvider],
+) -> AgentProvider | None:
+    """La clé à essayer après ce refus, ou `None` s'il n'y a rien à tenter.
+
+    `None` couvre deux cas que rien ne distinguait avant : il ne reste aucune
+    clé, ou bien le refus est de ceux qu'une autre clé reproduirait à
+    l'identique. Le second est le plus important : une clé révoquée ne doit pas
+    faire tourner les deux autres pour échouer trois fois au lieu d'une.
+    """
+    decision = classer(getattr(echec, "statut", None), echec)
+    if decision.verdict is Verdict.ABANDONNER:
+        return None
+    if decision.verdict is Verdict.REPLIER:
+        repos.signaler(actif.id)
+    for candidat in replis:
+        if candidat.id != actif.id and not repos.au_repos(candidat.id):
+            return candidat
+    return None
 
 
 def _diagnostic_vide(
@@ -1208,6 +1264,7 @@ async def boucle(
     agent_def: AgentDefinition | None = None,
     ancre_tokens: tuple[int, int] | None = None,
     session_id: UUID | None = None,
+    replis: list[AgentProvider] | None = None,
 ) -> None:
     """Exécute la boucle jusqu'à ``done`` ou à la borne dure.
 
@@ -1227,6 +1284,11 @@ async def boucle(
     ``session_id`` donne aux outils d'objectif la ligne qu'ils annotent, et fait
     remonter l'objectif déjà posé dans le prompt système. Sans lui, la boucle
     tourne comme avant : les deux outils répondent qu'ils n'ont pas de session.
+
+    ``replis`` est la liste des clés du créateur, telle que
+    :func:`agent_providers.ordonner_pour_chat` la rend. Sans elle, la boucle
+    n'essaie que ``provider`` : c'est le comportement d'avant, conservé pour les
+    tests et pour le mode gratuit, qui n'a qu'une clé.
     """
     registre = registre or construire_registre()
     if agent_def is not None:
@@ -1310,14 +1372,37 @@ async def boucle(
         # production enjambe les tours, le modèle relit l'erreur puis refait le
         # même appel au tour suivant.
         echecs: dict[str, str] = {}
+        actif = provider
+        candidats = replis or [provider]
         for tour in range(1, quota_tours + 1):
 
             async def _on_delta(content: str, _t: int = tour) -> None:
                 await emit({"type": "message_delta", "payload": {"delta": content, "tour": _t}})
 
-            reponse = await _appel_provider(
-                provider, messages, outils_api, transport, on_delta=_on_delta, modele=modele
-            )
+            # Un tour du modele peut coûter plusieurs appels : si une clé refuse
+            # pour une raison qu'une autre ne reproduirait pas, on essaie la
+            # suivante sans consommer de tour, puisque le modèle n'a rien dit.
+            while True:
+                reponse = await _appel_provider(
+                    actif, messages, outils_api, transport, on_delta=_on_delta, modele=modele
+                )
+                if not isinstance(reponse, str):
+                    repos.reussite(actif.id)
+                    break
+                suivant = _cle_suivante(reponse, actif, candidats)
+                if suivant is None:
+                    break
+                await emit(
+                    {
+                        "type": "repli_fournisseur",
+                        "payload": {
+                            "quitte": actif.display_name,
+                            "pris": suivant.display_name,
+                            "raison": classer(getattr(reponse, "statut", None), reponse).raison,
+                        },
+                    }
+                )
+                actif = suivant
             if isinstance(reponse, str):
                 # Le budget préventif est un pari : le fournisseur, lui, connaît
                 # sa fenêtre. Quand il refuse pour cette raison, on le croit et
