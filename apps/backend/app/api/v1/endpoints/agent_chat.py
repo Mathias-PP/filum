@@ -56,21 +56,6 @@ from app.services.agent_discovery import (
 )
 from app.services.agent_providers import obtenir_pour_chat, ordonner_pour_chat, resoudre_defaut
 
-#: Chaines detectees pour poser un cooldown de lane apres un echec fournisseur.
-#: Les erreurs provider arrivent deja traduites par la couche LLM (« refuse :
-#: quota ou limite de débit », « HTTP 500 ») : on matche le francais ET le brut.
-_MARQUEURS_RATE_LIMIT = (
-    "429",
-    "rate limit",
-    "quota",
-    "débit",
-    "debit",
-    "surcharge",
-    "overloaded",
-    "insufficient",
-    "http 5",
-)
-
 #: Message remplace a l'utilisateur quand la lane gratuite echoue : l'erreur
 #: technique brute (« Le fournisseur (zai) refuse... ») ne dit rien d'actionnable.
 _MESSAGE_SURCHARGE_GRATUIT = (
@@ -79,9 +64,13 @@ _MESSAGE_SURCHARGE_GRATUIT = (
     "ou connectez votre clé depuis la page Clés pour reprendre immédiatement."
 )
 
-
-def _echec_fournisseur_gratuit(texte: str) -> bool:
-    return any(m in texte.lower() for m in _MARQUEURS_RATE_LIMIT)
+#: Distinct du precedent : aucun delai ne repare une cle refusee, et inviter le
+#: createur a « réessayer dans quelques minutes » l'enverrait attendre pour rien.
+_MESSAGE_CLE_GRATUITE_REFUSEE = (
+    "Le mode gratuit est indisponible : la clé du service est refusée par le "
+    "fournisseur. Ce n'est pas un pic de charge, réessayer n'y changera rien. "
+    "Connectez votre clé depuis la page Clés, et signalez le problème."
+)
 
 
 settings = get_settings()
@@ -178,8 +167,10 @@ async def chat_agent(
     mode_gratuit: agent_gratuit.LaneActive | None = None
     mode_decouverte = False
     remaining_today: int | None = None
+    lanes_gratuites: list[agent_gratuit.LaneActive] = []
     if provider is None and await agent_gratuit.est_consentant(db, current_user.id):
-        lane_active = await agent_gratuit.choisir_lane(db)
+        lanes_gratuites = await agent_gratuit.lanes_eligibles(db)
+        lane_active = lanes_gratuites[0] if lanes_gratuites else None
         try:
             remaining_today = await agent_gratuit.verifier_quota_utilisateur(db, current_user.id)
         except agent_gratuit.ErreurQuotaGratuit as exc:
@@ -250,12 +241,16 @@ async def chat_agent(
                 headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
             )
 
-    # Les cles de repli, dans l'ordre ou les essayer. Seulement celles du
-    # createur : le mode gratuit et le mode decouverte tiennent chacun leur
-    # propre cooldown de lane, et n'exposent qu'une cle qu'on ne choisit pas.
-    # Un createur qui en a configure trois n'en voyait essayer qu'une.
+    # Les cles de repli, dans l'ordre ou les essayer. Un createur qui en a
+    # configure trois n'en voyait essayer qu'une.
     replis: list[AgentProvider] = []
-    if mode_gratuit is None and not mode_decouverte:
+    if mode_gratuit is not None:
+        # Le cooldown de lane ne repare que le tour suivant : sans repli ici,
+        # une saturation du primaire rendait une erreur alors que la lane de
+        # secours pouvait repondre tout de suite.
+        replis = [candidate.provider for candidate in lanes_gratuites]
+    elif not mode_decouverte:
+        # Le mode decouverte n'expose qu'une cle, qu'on ne choisit pas.
         replis = await ordonner_pour_chat(db, current_user.id, prefere=provider.id)
 
     messages.append({"role": "user", "content": body.message})
@@ -294,16 +289,25 @@ async def chat_agent(
         # un evenement `error` puis retourne normalement. On surveille donc
         # l'emission pour poser le cooldown et traduire l'erreur en message
         # actionnable ; le except ci-dessous reste pour les vraies levées.
-        echecs_gratuit: list[str] = []
+        reactions: list[agent_gratuit.Reaction] = []
 
         async def emit_surveille(event: dict[str, Any]) -> None:
             if mode_gratuit is not None and event.get("type") == "error":
-                texte = str(event.get("payload", {}).get("message", ""))
-                if _echec_fournisseur_gratuit(texte):
-                    echecs_gratuit.append(texte)
+                charge = event.get("payload", {})
+                statut = charge.get("statut")
+                reaction = agent_gratuit.reagir(
+                    statut if isinstance(statut, int) else None,
+                    str(charge.get("message", "")),
+                )
+                if reaction.cooldown_minutes is not None:
+                    reactions.append(reaction)
                     event = {
                         **event,
-                        "payload": {"message": _MESSAGE_SURCHARGE_GRATUIT},
+                        "payload": {
+                            "message": _MESSAGE_CLE_GRATUITE_REFUSEE
+                            if reaction.cle_refusee
+                            else _MESSAGE_SURCHARGE_GRATUIT
+                        },
                     }
             await emit(event)
 
@@ -323,17 +327,28 @@ async def chat_agent(
                     session_id=session.id,
                     replis=replis,
                 )
-                if echecs_gratuit and mode_gratuit is not None:
+                if reactions and mode_gratuit is not None:
+                    # Le repos le plus long l'emporte : si un tour a vu passer
+                    # une cle refusee, l'oublier au profit d'un simple pic de
+                    # charge remettrait la lane en service dans dix minutes.
+                    minutes = max(
+                        r.cooldown_minutes for r in reactions if r.cooldown_minutes is not None
+                    )
                     with contextlib.suppress(Exception):
-                        await agent_gratuit.signaler_echec(db, mode_gratuit.lane)
+                        await agent_gratuit.signaler_echec(db, mode_gratuit.lane, minutes)
             except Exception as exc:
-                # Un 429/quota provider en pleine conversation : la lane prend
-                # un cooldown, le prochain tour partira sur une autre lane.
-                if mode_gratuit is not None and _echec_fournisseur_gratuit(str(exc)):
+                # Une exception a traverse : le statut HTTP n'a pas survecu, il
+                # ne reste que le message. `reagir` refuse de mettre une lane au
+                # repos sur un texte qu'il ne reconnait pas, ce qui evite qu'un
+                # bug de Philum passe pour une panne du fournisseur.
+                reaction = agent_gratuit.reagir(None, str(exc))
+                if mode_gratuit is not None and reaction.cooldown_minutes is not None:
                     # Best-effort : si la session DB est deja fermee (client
                     # parti), tant pis, le cooldown ratera ce tour-ci.
                     with contextlib.suppress(Exception):
-                        await agent_gratuit.signaler_echec(db, mode_gratuit.lane)
+                        await agent_gratuit.signaler_echec(
+                            db, mode_gratuit.lane, reaction.cooldown_minutes
+                        )
                 raise
             finally:
                 await queue.put(None)

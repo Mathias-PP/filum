@@ -72,6 +72,17 @@ _MOTIFS_QUOTA = (
 )
 
 
+def motif_reconnu(message: str) -> bool:
+    """Le message porte-t-il un motif de refus identifiable ?
+
+    Sert a distinguer « le fournisseur a refuse » de « notre propre code a leve
+    une exception » quand le statut HTTP n'a pas survecu au trajet. Sans cette
+    distinction, un bug de Philum mettrait une cle au repos.
+    """
+    texte = message.lower()
+    return any(motif in texte for motif in _MOTIFS_DEMANDE + _MOTIFS_QUOTA)
+
+
 def classer(statut: int | None, message: str = "") -> Decision:
     """Le verdict pour un refus amont, et pourquoi.
 

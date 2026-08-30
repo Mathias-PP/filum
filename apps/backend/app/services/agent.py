@@ -1423,7 +1423,19 @@ async def boucle(
                             }
                         )
                         continue
-                await emit({"type": "error", "payload": {"message": reponse}})
+                # `statut` traverse la frontiere SSE avec le message. Sans lui,
+                # le seul moyen de savoir si l'echec vient d'un pic de charge ou
+                # d'une cle revoquee serait de chercher des mots dans le texte,
+                # c'est-a-dire de parier sur sa redaction.
+                await emit(
+                    {
+                        "type": "error",
+                        "payload": {
+                            "message": str(reponse),
+                            "statut": getattr(reponse, "statut", None),
+                        },
+                    }
+                )
                 return
             message, finish_reason, usage = reponse
             if isinstance(usage, dict):
