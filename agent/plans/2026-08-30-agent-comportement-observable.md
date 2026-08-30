@@ -33,7 +33,15 @@ comportement.
 
 ---
 
-## PR A — `fix/agent-sait-quel-jour-on-est` (XS)
+## État au 2026-08-30
+
+Les quatre PR du plan sont livrées, mergées et déployées : A dans #597, B dans
+#598, C dans #599, D dans #600. La suite est dans « Écarté pour l'instant » ; à
+reprendre seulement sur mesure, pas par principe.
+
+---
+
+## PR A — `fix/agent-sait-quel-jour-on-est` (XS) — livrée (#597)
 
 **Le problème.** `_SYSTEME` interdit de « fabriquer une date de mémoire » et
 aucune date n'est jamais donnée au modèle. Vérifié : la seule occurrence de
@@ -45,15 +53,15 @@ toute la liste.
 **Fichier :** `apps/backend/app/services/agent.py`
 **Test :** `apps/backend/tests/unit/test_agent_loop.py`
 
-- [ ] A.1 Dans `boucle()`, à l'endroit où `systeme = _SYSTEME` est assemblé,
+- [x] A.1 Dans `boucle()`, à l'endroit où `systeme = _SYSTEME` est assemblé,
       préfixer une ligne de contexte temporel : la date du jour en ISO et le
       fait que toute date postérieure au cutoff doit venir d'un outil, jamais de
       la mémoire. La date est calculée à l'appel, pas au chargement du module,
       sinon un processus qui vit plusieurs jours sert une date périmée.
-- [ ] A.2 Test : deux appels à un jour d'écart rendent deux prompts différents
+- [x] A.2 Test : deux appels à un jour d'écart rendent deux prompts différents
       (geler l'horloge via monkeypatch). Test : le prompt système contient la
       date du jour au format ISO.
-- [ ] A.3 Suite, lint, types, commit, PR, merge, déploiement, vérification.
+- [x] A.3 Suite, lint, types, commit, PR, merge, déploiement, vérification.
 
 **Vérification en production :** demander à l'agent « quelle est la date
 aujourd'hui », puis « cette source de 2024 est-elle récente ». Les deux
@@ -61,7 +69,7 @@ réponses doivent être ancrées sur la vraie date.
 
 ---
 
-## PR B — `feat/agent-outils-en-parallele` (M)
+## PR B — `feat/agent-outils-en-parallele` (M) — livrée (#598)
 
 **Le problème.** `agent.py` exécute les appels d'outils dans une boucle `for`
 séquentielle, sous un unique `BOUCLE_TIMEOUT = 300.0` global. Cinq lectures de
@@ -74,43 +82,41 @@ perceptible du plan, et le mécanisme concret par lequel un tour de recherche
 `apps/backend/app/agent_tools/registry.py`
 **Test :** `apps/backend/tests/unit/test_agent_outils_paralleles.py` (nouveau)
 
-- [ ] B.1 **Timeout par outil d'abord**, parce qu'il est sûr et indépendant du
+- [x] B.1 **Timeout par outil d'abord**, parce qu'il est sûr et indépendant du
       reste. Envelopper chaque `executer(...)` dans un `asyncio.wait_for`. Le
       dépassement rend un résultat d'erreur lisible par le modèle (« l'outil n'a
       pas répondu en N secondes »), il ne tue pas le tour. Budget par défaut
       nettement sous `BOUCLE_TIMEOUT`, surchargeable par outil pour les lectures
       web qui sont légitimement lentes.
 
-- [ ] B.2 **Parallélisme, avec deux gardes strictes.** Le lot d'appels d'un même
-      message assistant part en `asyncio.gather` **seulement si** :
-      1. aucun appel du lot n'est sensible au sens de `est_sensible()` : une
-         approbation est une interaction humaine séquentielle, la paralléliser
-         ferait apparaître plusieurs demandes concurrentes à l'écran ;
-      2. aucun appel du lot n'écrit, au sens de `OUTILS_QUI_ECRIVENT` : deux
-         écritures concurrentes partagent l'`AsyncSession` du contexte, ce qui
-         est explicitement interdit dans ce dépôt.
+- [x] B.2 **Parallélisme, avec deux gardes strictes.** Le lot d'appels d'un même
+      message assistant part en `asyncio.gather` **seulement si** : 1. aucun appel du lot n'est sensible au sens de `est_sensible()` : une
+      approbation est une interaction humaine séquentielle, la paralléliser
+      ferait apparaître plusieurs demandes concurrentes à l'écran ; 2. aucun appel du lot n'écrit, au sens de `OUTILS_QUI_ECRIVENT` : deux
+      écritures concurrentes partagent l'`AsyncSession` du contexte, ce qui
+      est explicitement interdit dans ce dépôt.
       Autrement dit : les lectures partent ensemble, les écritures restent en
       file. C'est là que se trouve tout le gain, les tours lents sont des tours
       de lecture.
 
-- [ ] B.3 L'ordre des messages `tool` rendus au modèle suit l'ordre des
+- [x] B.3 L'ordre des messages `tool` rendus au modèle suit l'ordre des
       `tool_calls` du fournisseur, jamais l'ordre d'arrivée des résultats. Un
       lot désordonné casse la correspondance chez certains fournisseurs.
 
-- [ ] B.4 Les événements SSE `tool_result` sont émis dans le même ordre, sinon
+- [x] B.4 Les événements SSE `tool_result` sont émis dans le même ordre, sinon
       l'interface affiche les cartes d'outil dans le désordre.
 
-- [ ] B.5 Tests : un lot de trois lectures dont chacune dort 0,2 s se termine en
+- [x] B.5 Tests : un lot de trois lectures dont chacune dort 0,2 s se termine en
       moins de 0,4 s ; un lot contenant une écriture reste séquentiel ; un lot
       contenant un outil sensible reste séquentiel ; un outil qui dépasse son
       budget rend une erreur nommée et les autres résultats du lot arrivent
       quand même ; l'ordre des messages `tool` est celui des `tool_calls`.
 
-- [ ] B.6 Suite, lint, types, commit, PR, merge, déploiement, vérification.
+- [x] B.6 Suite, lint, types, commit, PR, merge, déploiement, vérification.
 
 ---
 
-## PR C — `fix/chat-reprend-apres-coupure` (M)
+## PR C — `fix/chat-reprend-apres-coupure` (M) — livrée (#599)
 
 **Le problème.** Aucun `Last-Event-ID` côté backend, aucune reprise côté
 `lib/api/agent.ts`. Une coupure réseau pendant un tour vide l'écran alors que
@@ -121,37 +127,37 @@ déconnexion, il lit une perte de données.
 `apps/frontend/src/lib/api/agent.ts`,
 `apps/frontend/src/lib/components/chat/ChatPanel.svelte`
 
-- [ ] C.1 Décider du niveau de garantie **avant d'écrire une ligne**. Rejouer un
+- [x] C.1 Décider du niveau de garantie **avant d'écrire une ligne**. Rejouer un
       tour interrompu depuis un tampon serveur est une vraie machine à états.
       La version qui vaut le coût : à la reconnexion, le front relit la session
       par l'API et réaffiche le tour tel qu'il a été persisté. Pas de rejeu de
       jetons, pas de tampon en mémoire côté serveur, donc rien à perdre à un
       redéploiement. Si le tour était encore en cours au moment de la coupure,
       dire à l'utilisateur que la réponse continue côté serveur et se recharge.
-- [ ] C.2 Le front distingue trois états : flux vivant, coupure en cours de
+- [x] C.2 Le front distingue trois états : flux vivant, coupure en cours de
       reprise, échec définitif. Aujourd'hui il n'en affiche aucun.
-- [ ] C.3 Tests, régénération du contrat si un point d'entrée bouge, prettier.
-- [ ] C.4 Commit, PR, merge, déploiement, vérification en coupant le réseau
+- [x] C.3 Tests, régénération du contrat si un point d'entrée bouge, prettier.
+- [x] C.4 Commit, PR, merge, déploiement, vérification en coupant le réseau
       pendant une réponse.
 
 ---
 
-## PR D — `feat/agent-objectif-de-session` (M, version minimale)
+## PR D — `feat/agent-objectif-de-session` (M, version minimale) — livrée (#600)
 
 **Le problème.** Aucun état d'objectif persistant : sur un tour long, l'agent
 redérive son intention du seul historique, qui est justement ce que la
 compaction ampute. L'audit chiffrait trois jours avec une `GoalBar.svelte` ; la
 version qui produit l'effet observable est bien plus petite.
 
-- [ ] D.1 Deux colonnes sur `agent_sessions` : objectif et phase courante.
+- [x] D.1 Deux colonnes sur `agent_sessions` : objectif et phase courante.
       Migration.
-- [ ] D.2 Deux outils, `definir_objectif` et `avancer_phase`, dans la couche
+- [x] D.2 Deux outils, `definir_objectif` et `avancer_phase`, dans la couche
       outil. Ni l'un ni l'autre n'est sensible.
-- [ ] D.3 L'objectif courant est injecté dans le prompt système à chaque tour,
+- [x] D.3 L'objectif courant est injecté dans le prompt système à chaque tour,
       donc il survit à la compaction de l'historique.
-- [ ] D.4 Affichage discret d'une ligne d'objectif dans le fil. Pas de barre
+- [x] D.4 Affichage discret d'une ligne d'objectif dans le fil. Pas de barre
       dédiée tant que l'usage n'est pas mesuré.
-- [ ] D.5 Tests, contrat, commit, PR, merge, déploiement.
+- [x] D.5 Tests, contrat, commit, PR, merge, déploiement.
 
 ---
 
