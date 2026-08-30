@@ -48,8 +48,8 @@
   <title>{titre} · Philum</title>
 </svelte:head>
 
-<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-  <div class="mb-4 flex items-center justify-between gap-2">
+<div class="mx-auto flex h-[calc(100dvh-4rem)] max-w-3xl flex-col px-4 py-8 sm:px-6 lg:px-8">
+  <div class="mb-4 flex shrink-0 items-center justify-between gap-2">
     <div class="flex items-center gap-2 min-w-0">
       <Button size="sm" variant="ghost" href="/dashboard/chat" title="Retour aux conversations">
         &larr;
@@ -88,7 +88,7 @@
     </div>
     <Button size="sm" variant="ghost" href="/dashboard/agents">Clés</Button>
   </div>
-  <div>
+  <div class="min-h-0 flex-1">
     {#key sessionId}
       <ChatPanel {sessionId} />
     {/key}

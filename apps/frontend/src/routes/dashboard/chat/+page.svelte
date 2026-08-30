@@ -61,8 +61,13 @@
   <title>Agent · Philum</title>
 </svelte:head>
 
-<div class="max-w-5xl mx-auto grid gap-8 px-4 sm:px-6 lg:px-8 py-8 lg:grid-cols-[16rem_1fr]">
-  <aside>
+<!-- Bornee a la fenetre sous `lg` : la zone de saisie du fil vivait sous la ligne
+     de flottaison, il fallait faire defiler la page pour ecrire. Chaque colonne
+     defile pour son compte. -->
+<div
+  class="max-w-5xl mx-auto grid gap-8 px-4 sm:px-6 lg:px-8 py-8 lg:h-[calc(100dvh-4rem)] lg:grid-cols-[16rem_1fr]"
+>
+  <aside class="flex flex-col lg:min-h-0">
     <div class="flex items-center justify-between gap-2 mb-3">
       <h2 class="text-xs font-medium uppercase tracking-wider text-ink-tertiary">Conversations</h2>
       <div class="flex gap-1">
@@ -85,7 +90,7 @@
     {:else}
       <!-- La liste defile pour son compte : sans borne, chaque conversation
            gardee allongeait la page et repoussait le fil de discussion. -->
-      <ul class="space-y-1 lg:max-h-[calc(100dvh-14rem)] lg:overflow-x-hidden lg:overflow-y-auto">
+      <ul class="space-y-1 lg:min-h-0 lg:flex-1 lg:overflow-x-hidden lg:overflow-y-auto">
         {#each sessions as session (session.id)}
           <li class="flex items-center gap-1">
             <a
@@ -113,7 +118,7 @@
     {/if}
   </aside>
 
-  <section class="min-h-[60vh]">
+  <section class="flex min-h-[60vh] flex-col lg:min-h-0">
     <h1 class="font-serif text-3xl text-ink-primary mb-1">Agent</h1>
     {#if defaut && !gratuitActifIci}
       <p class="text-sm text-ink-secondary mb-4">
@@ -145,7 +150,7 @@
         {/if}
       </p>
     {/if}
-    <div class="mb-3">
+    <div class="mb-3 shrink-0">
       <input
         bind:value={titreNouveau}
         class="w-full rounded border border-border bg-surface-primary px-3 py-2 text-sm"
@@ -153,16 +158,18 @@
         placeholder="Nommer la conversation (optionnel)"
       />
     </div>
-    <ChatPanel
-      titreInitial={titreNouveau}
-      onsession={(id) => {
-        // On met à jour l'URL sans naviguer : goto() démonte ChatPanel et
-        // coupe le flux SSE en cours, ce qui fait "tomber dans le vide" le
-        // premier message d'une nouvelle conversation. history.replaceState()
-        // change l'URL sans toucher au composant.
-        history.replaceState(history.state, '', `/dashboard/chat/${id}`);
-      }}
-    />
+    <div class="min-h-0 flex-1">
+      <ChatPanel
+        titreInitial={titreNouveau}
+        onsession={(id) => {
+          // On met à jour l'URL sans naviguer : goto() démonte ChatPanel et
+          // coupe le flux SSE en cours, ce qui fait "tomber dans le vide" le
+          // premier message d'une nouvelle conversation. history.replaceState()
+          // change l'URL sans toucher au composant.
+          history.replaceState(history.state, '', `/dashboard/chat/${id}`);
+        }}
+      />
+    </div>
   </section>
 </div>
 
