@@ -9,7 +9,7 @@
     ProviderKind,
   } from '$lib/api/agent';
   import { ApiError } from '$lib/api';
-  import { Button, ConfirmDialog, EmptyState, Skeleton, toast } from '$lib/components';
+  import { Button, ConfirmDialog, Skeleton, toast } from '$lib/components';
 
   const kinds: Array<{ value: ProviderKind; label: string }> = [
     { value: 'openai', label: 'OpenAI' },
@@ -207,8 +207,8 @@
     &larr; Retour à l'agent
   </a>
 
-  <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
-    <div>
+  <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-6">
+    <div class="max-w-xl">
       <h1 class="font-serif text-3xl text-ink-primary mb-1">Clés IA</h1>
       <p class="text-sm text-ink-secondary">
         Votre clé, votre modèle, votre facture. Philum ne fournit aucun accès IA et ne relit jamais
@@ -226,9 +226,12 @@
     </p>
   {/if}
 
-  {#if !loading && providers.length === 0}
+  {#if !loading && !loadFailed && providers.length === 0}
     <div class="rounded-lg border border-border bg-surface-secondary px-4 py-4 mb-6 text-sm">
-      <p class="text-ink-primary font-medium mb-1">Vous n'avez pas encore de clé ?</p>
+      <p class="text-ink-primary font-medium mb-1">Aucune clé enregistrée</p>
+      <p class="text-ink-secondary mb-2">
+        Le chat de l'agent a besoin d'une clé d'API pour parler à un modèle.
+      </p>
       <p class="text-ink-secondary">
         Philum n'héberge aucun modèle : vous branchez le vôtre, vous gardez la main sur vos données
         et sur la facture. Plusieurs fournisseurs délivrent une clé sans carte bancaire.
@@ -396,12 +399,10 @@
     <div class="rounded-lg bg-danger-bg border border-danger/30 px-4 py-4 text-sm text-danger">
       Impossible de charger vos clés. Rechargez la page.
     </div>
-  {:else if providers.length === 0}
-    <EmptyState
-      title="Aucune clé enregistrée"
-      description="Le chat de l'agent a besoin d'une clé d'API pour parler à un modèle."
-    />
-  {:else}
+    <!-- Pas de second panneau vide ici : le bloc « Aucune clé enregistrée »
+         ci-dessus porte deja le titre, la raison et les liens pour en obtenir
+         une. Deux encarts qui se suivent pour dire la meme chose. -->
+  {:else if providers.length > 0}
     {#if aucunDefaut}
       <p class="mb-3 text-sm text-ink-secondary">
         Aucune clé n'est marquée par défaut : le chat prendra la première de la liste.
@@ -410,25 +411,45 @@
     <ul class="space-y-3">
       {#each providers as provider (provider.id)}
         <li class="rounded-lg border border-border bg-surface-secondary px-4 py-3">
-          <div class="flex flex-wrap items-center justify-between gap-2">
+          <!-- Grille a deux colonnes, pas un `flex-wrap` : le groupe d'actions
+               basculait sur sa propre ligne des que l'URL du fournisseur etait
+               longue. Trois cles donnaient trois dispositions differentes, et
+               aucun bouton ne tombait au meme endroit d'une carte a l'autre. -->
+          <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
             <div class="min-w-0">
-              <p class="font-medium text-ink-primary">
-                {provider.display_name}
+              <p class="flex flex-wrap items-center gap-2 font-medium text-ink-primary">
+                <span class="truncate">{provider.display_name}</span>
                 {#if provider.is_default}
-                  <span class="badge-soft ml-2">Par défaut</span>
+                  <!-- `badge-soft` vit dans le `<style>` de la page tableau de
+                       bord : la classe est scopee, elle n'existe pas ici. Le
+                       badge s'affichait donc en texte nu, indiscernable du
+                       bouton du meme nom. -->
+                  <span
+                    class="rounded-full bg-surface-tertiary px-2 py-0.5 text-xs font-medium text-ink-secondary"
+                  >
+                    Par défaut
+                  </span>
                 {/if}
               </p>
-              <p class="text-xs text-ink-tertiary mt-0.5 font-mono break-all">
+              <p class="mt-0.5 truncate font-mono text-xs text-ink-tertiary">
                 {provider.model} · {provider.api_key_masked}
               </p>
-              <p class="text-xs text-ink-tertiary font-mono break-all">{provider.base_url}</p>
+              <p class="truncate font-mono text-xs text-ink-tertiary" title={provider.base_url}>
+                {provider.base_url}
+              </p>
             </div>
-            <div class="flex flex-wrap gap-2">
-              {#if !provider.is_default}
-                <Button size="sm" variant="ghost" onclick={() => definirDefaut(provider)}>
-                  Par défaut
-                </Button>
-              {/if}
+            <!-- Les quatre actions sont toujours la, dans le meme ordre : masquer
+                 « Definir par defaut » sur la cle par defaut decalait les trois
+                 autres. Desactive plutot que retire. -->
+            <div class="flex gap-2 sm:justify-end">
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={provider.is_default}
+                onclick={() => definirDefaut(provider)}
+              >
+                Par défaut
+              </Button>
               <Button size="sm" variant="ghost" onclick={() => ouvrirEdition(provider)}>
                 Modifier
               </Button>
@@ -438,7 +459,7 @@
                 loading={testing === provider.id}
                 onclick={() => tester(provider)}
               >
-                Tester la clé
+                Tester
               </Button>
               <Button size="sm" variant="ghost" onclick={() => demanderSuppression(provider)}>
                 Supprimer
