@@ -996,6 +996,35 @@ def _arguments_de(tool_call: dict[str, Any]) -> tuple[dict[str, Any], bool]:
 #: arguments lisibles ?).
 _Appel = tuple[dict[str, Any], str, dict[str, Any], bool]
 
+
+def _empreinte(nom: str, args: dict[str, Any]) -> str:
+    """Ce qui fait qu'un appel est « le même » qu'un autre.
+
+    Les clés sont triées : un fournisseur ne garantit pas l'ordre des champs
+    d'un objet JSON, et deux sérialisations du même appel doivent se reconnaître.
+    """
+    return nom + " " + json.dumps(args, sort_keys=True, ensure_ascii=False, default=str)
+
+
+#: Ce que rend un appel dont l'empreinte a déjà échoué dans la conversation.
+#:
+#: La règle 5 du prompt système dit déjà de ne pas répéter un appel identique
+#: après une erreur. Mesure du 2026-08-30 : elle ne tient pas. Sur une source
+#: illisible, le modèle a rejoué six fois le même `add_excerpt`, mot pour mot,
+#: avant d'abandonner. Une consigne se contourne en l'ignorant, donc la boucle
+#: se casse ici, où le rejeu est simplement impossible.
+#:
+#: Seuls les échecs sont mémorisés. Un appel qui a réussi peut légitimement être
+#: refait, et rien ne dit qu'un outil soit idempotent.
+_DEJA_ECHOUE = (
+    "Tu as déjà fait cet appel dans cette conversation, avec exactement les "
+    "mêmes arguments, et il a échoué. Le rejouer donnerait le même résultat. "
+    "Ce qu'il avait répondu : {message} "
+    "Change les arguments, prends un autre outil, ou dis au créateur que ce "
+    "n'est pas possible. N'annonce pas cette action comme faite."
+)
+
+
 #: Outils qui touchent l'``AsyncSession`` du contexte, donc jamais en parallèle.
 #:
 #: Strictement plus large que `OUTILS_QUI_ECRIVENT`, qui sert au contrôle des
@@ -1036,8 +1065,11 @@ async def _executer_tour(
     emit: Emitter,
     approuver: Approuver,
     session_id: UUID | None = None,
+    echecs: dict[str, str] | None = None,
 ) -> None:
     ctx = ToolContext(db=db, user=user, creator_id=user.id, session_id=session_id)
+    if echecs is None:
+        echecs = {}
     appels: list[_Appel] = []
     for tc in tool_calls:
         try:
@@ -1060,7 +1092,7 @@ async def _executer_tour(
         appels.append((tc, nom, args, lisibles))
 
     async def _resoudre(appel: _Appel) -> dict[str, Any]:
-        return await _resultat_appel(db, user, tour, appel, registre, ctx, emit, approuver)
+        return await _resultat_appel(db, user, tour, appel, registre, ctx, emit, approuver, echecs)
 
     if _lot_parallelisable(appels):
         resultats = list(await asyncio.gather(*(_resoudre(a) for a in appels)))
@@ -1089,6 +1121,7 @@ async def _resultat_appel(
     ctx: ToolContext,
     emit: Emitter,
     approuver: Approuver,
+    echecs: dict[str, str],
 ) -> dict[str, Any]:
     """Un appel d'outil, de ses arguments à son résultat, borné dans le temps."""
     _tc, nom, args, lisibles = appel
@@ -1100,6 +1133,12 @@ async def _resultat_appel(
                 "arguments complets. N'annonce pas cette action comme faite."
             )
         }
+    # Avant l'approbation, pas après : redemander à la personne de valider une
+    # écriture dont on sait déjà qu'elle échouera lui ferait garder une boucle
+    # que ce garde-fou existe pour lui épargner.
+    empreinte = _empreinte(nom, args)
+    if empreinte in echecs:
+        return {"error": _DEJA_ECHOUE.format(message=echecs[empreinte])}
     approbation = False
     if est_sensible(nom, args):
         request_id = str(uuid4())
@@ -1128,18 +1167,25 @@ async def _resultat_appel(
             return {"error": "Action refusée : l'utilisateur n'a pas validé cette écriture."}
     budget = TIMEOUTS_PAR_OUTIL.get(nom, TIMEOUT_OUTIL)
     try:
-        return await asyncio.wait_for(
+        resultat = await asyncio.wait_for(
             executer(registre, nom, args, ctx, approbation_obtenue=approbation),
             timeout=budget,
         )
     except TimeoutError:
-        return {
+        resultat = {
             "error": (
                 f"{nom} n'a pas répondu en {budget:.0f} secondes et a été "
                 "interrompu. Les autres appels de ce tour ont abouti. "
                 "N'annonce pas cette action comme faite."
             )
         }
+    # Le refus d'approbation n'arrive pas ici, et c'est voulu : il est rendu
+    # plus haut. La personne a le droit de refuser puis d'accepter, mémoriser
+    # son refus lui retirerait ce droit.
+    erreur = resultat.get("error") if isinstance(resultat, dict) else None
+    if erreur:
+        echecs[empreinte] = str(erreur)
+    return resultat
 
 
 async def boucle(
@@ -1247,6 +1293,10 @@ async def boucle(
         quota_tours = agent_def.quota_tours if agent_def else MAX_TOURS
         a_ecrit = False
         relance_faite = False
+        # Vit sur toute la boucle, pas sur un tour : la répétition observée en
+        # production enjambe les tours, le modèle relit l'erreur puis refait le
+        # même appel au tour suivant.
+        echecs: dict[str, str] = {}
         for tour in range(1, quota_tours + 1):
 
             async def _on_delta(content: str, _t: int = tour) -> None:
@@ -1334,7 +1384,7 @@ async def boucle(
                 }
             )
             await _executer_tour(
-                db, user, tour, messages, tool_calls, registre, emit, approuver, session_id
+                db, user, tour, messages, tool_calls, registre, emit, approuver, session_id, echecs
             )
         # Limite atteinte : pas une erreur dure, mais une pause avec reprise.
         # Les harness modernes (cordis, opencode) n'ont pas de compteur dur :
