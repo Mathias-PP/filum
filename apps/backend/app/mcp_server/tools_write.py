@@ -44,9 +44,12 @@ from app.services.excerpt_insertion import (
 )
 from app.services.wayback import horodatage_wayback
 
-# Meme limite que l'endpoint REST : au dela, l'agent noie sa fenetre et le
-# lecteur perd de vue le fil du passage.
-_EXTRAITS_MAX_PAR_SOURCE = 12
+# Meme garde-fou technique que l'endpoint REST, et pour la meme raison : le
+# nombre d'extraits qu'une source merite est un arbitrage editorial, tranche
+# par la pertinence et non par un quota. Une source dont tout le propos sert la
+# fiche gagne a etre decoupee en entier. Ce nombre ne borne que l'abus, et le
+# refus doit le dire, sans quoi l'agent le prend pour une regle editoriale.
+_EXTRAITS_MAX_PAR_SOURCE = 200
 
 
 _ENUMS_VOISINS: dict[str, list[tuple[str, type[Enum]]]] = {
@@ -482,7 +485,11 @@ async def add_excerpt(
         select(func.count()).select_from(SourceExcerpt).where(SourceExcerpt.source_id == source.id)
     )
     if (count or 0) >= _EXTRAITS_MAX_PAR_SOURCE:
-        raise ToolError(f"Une source ne porte pas plus de {_EXTRAITS_MAX_PAR_SOURCE} extraits.")
+        raise ToolError(
+            f"Cette source porte deja {_EXTRAITS_MAX_PAR_SOURCE} extraits, le "
+            "maximum technique. Ce n'est pas une regle editoriale : si son "
+            "contenu justifie un tel volume, decoupe-le en plusieurs sources."
+        )
 
     preleve = await _prelever_ou_refuser(source.url, corps)
 
