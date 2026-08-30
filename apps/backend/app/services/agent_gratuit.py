@@ -30,6 +30,7 @@ from app.core.config import Settings, get_settings
 from app.models.agent_discovery_quota import AgentDiscoveryQuota
 from app.models.agent_lane import AgentGratuitConsent, AgentLane, AgentLaneUsage
 from app.models.agent_provider import AgentProvider
+from app.services import agent_repli
 
 #: Version du texte du warning. Incrementer a chaque changement de fond :
 #: un utilisateur qui a consenti a v1 ne couvre pas v2.
@@ -37,6 +38,12 @@ VERSION_WARNING = "2026-08-23-v1"
 
 #: Duree du cooldown pose quand une lane renvoie un 429.
 COOLDOWN_MINUTES = 10
+
+#: Cooldown d'une lane dont la cle elle-meme est refusee (401/403). Reessayer
+#: une cle revoquee toutes les dix minutes ne la ressuscite pas : ca noie la
+#: vraie cause sous des echecs identiques, ce qui a coute une semaine de
+#: diagnostic en aout 2026.
+COOLDOWN_CLE_MINUTES = 120
 
 #: Modeles gratuits proposables, par fournisseur. Le choix manuel (PUT
 #: /modeles) et la validation du seed s'y restreignent : pas de modele payant
@@ -71,6 +78,39 @@ class LaneActive(NamedTuple):
 
     lane: AgentLane
     provider: AgentProvider  # transient, jamais insere en base
+
+
+class Reaction(NamedTuple):
+    """Ce qu'il faut faire d'une lane apres un echec du fournisseur."""
+
+    #: Duree du repos a poser, ou None pour ne pas toucher a la lane.
+    cooldown_minutes: int | None
+    #: La cle est refusee (revoquee, expiree, sans droit sur le modele). Le
+    #: createur doit l'apprendre : aucun delai ne repare ce cas.
+    cle_refusee: bool
+
+
+def reagir(statut: int | None, message: str) -> Reaction:
+    """Classe un echec de lane, par statut HTTP plutot que par mots du message.
+
+    Trois cas se ressemblent dans le texte et n'appellent pas la meme reponse :
+    un pic de charge passe tout seul, une cle revoquee jamais, et un contenu
+    refuse ne dit rien sur la sante de la lane. Les confondre, c'est mettre au
+    repos une lane qui va bien, ou reessayer indefiniment une cle morte.
+
+    Sans preuve (ni statut HTTP, ni motif reconnu), on ne touche a rien : une
+    exception levee par notre propre code n'est pas une panne du fournisseur.
+    """
+    if statut is None and not agent_repli.motif_reconnu(message):
+        return Reaction(None, False)
+    decision = agent_repli.classer(statut, message)
+    if decision.verdict is agent_repli.Verdict.ABANDONNER:
+        if statut in (401, 403):
+            return Reaction(COOLDOWN_CLE_MINUTES, True)
+        # Demande refusee ou malformee : la lane est saine, la masquer derriere
+        # « fournisseur indisponible » cacherait au createur ce qui cloche.
+        return Reaction(None, False)
+    return Reaction(COOLDOWN_MINUTES, False)
 
 
 def cle_lane(slug: str, settings: Settings | None = None) -> str:
@@ -169,23 +209,29 @@ async def liste_modeles(db: AsyncSession) -> list[dict]:
     Un modele du catalogue sans lane en base reste listable (l'UI peut le
     proposer ; il sera servi si une lane le porte) mais marque non actif.
     Le role primaire/secours suit le slug (`zai` vs `zai-*`).
+
+    Les lanes sont parcourues, jamais indexees par modele : deux lanes peuvent
+    porter le meme modele, et un `{lane.model: lane}` en perdrait une en
+    silence. C'est arrive en production, ou l'interface annoncait « secours »
+    un modele que plus aucune lane ne portait.
     """
     lignes = (
         (await db.execute(select(AgentLane).where(AgentLane.slug.like("zai%")))).scalars().all()
     )
-    par_modele = {lane.model: lane for lane in lignes}
     sortie: list[dict] = []
     for model, meta in MODELES_GRATUITS.items():
         if meta["fournisseur"] != "zai":
             continue
-        lane = par_modele.get(model)
+        porteuses = [lane for lane in lignes if lane.model == model]
+        primaire = next((lane for lane in porteuses if lane.slug == "zai"), None)
+        retenue = primaire or (porteuses[0] if porteuses else None)
         sortie.append(
             {
                 "model": model,
                 "label": meta["label"],
-                "role": "primaire" if lane and lane.slug == "zai" else "secours",
-                "actif": lane is not None,
-                "slug": lane.slug if lane else None,
+                "role": "primaire" if primaire is not None else "secours",
+                "actif": retenue is not None,
+                "slug": retenue.slug if retenue is not None else None,
             }
         )
     return sortie
@@ -194,9 +240,13 @@ async def liste_modeles(db: AsyncSession) -> list[dict]:
 async def definir_modele_primaire(db: AsyncSession, model: str) -> dict:
     """Pointe la lane primaire (`zai`) sur un modele du catalogue.
 
-    Le secours (`zai-alt`) n'est pas touche : c'est lui qui prend les tours
-    quand le primaire repond 429/surcharge. ValueError si le modele est
-    inconnu du catalogue — jamais de modele payant sur la cle gratuite.
+    Le secours (`zai-alt`) n'est deplace que s'il porterait desormais le meme
+    modele que le primaire : meme endpoint, meme cle, meme modele, il ne
+    replierait alors sur rien et reproduirait le refus a l'identique. C'est
+    l'etat dans lequel la production se trouvait le 2026-08-31.
+
+    ValueError si le modele est inconnu du catalogue : jamais de modele payant
+    sur la cle gratuite.
     """
     meta = MODELES_GRATUITS.get(model)
     if meta is None or meta["fournisseur"] != "zai":
@@ -205,8 +255,32 @@ async def definir_modele_primaire(db: AsyncSession, model: str) -> dict:
     if lane is None:
         raise ValueError("lane_primaire_absente")
     lane.model = model
+    deplace = await _ecarter_les_secours(db, model)
     await db.commit()
-    return {"model": lane.model, "label": meta["label"], "slug": lane.slug}
+    return {"model": lane.model, "label": meta["label"], "slug": lane.slug, "secours": deplace}
+
+
+async def _ecarter_les_secours(db: AsyncSession, model_primaire: str) -> list[dict[str, str]]:
+    """Deplace les lanes de secours qui portent le modele du primaire.
+
+    Ne commite pas : appele dans la transaction de son appelant.
+    """
+    autres = [
+        m
+        for m, meta in MODELES_GRATUITS.items()
+        if m != model_primaire and meta["fournisseur"] == "zai"
+    ]
+    if not autres:
+        return []
+    secours = (
+        (await db.execute(select(AgentLane).where(AgentLane.slug.like("zai-%")))).scalars().all()
+    )
+    deplacees: list[dict[str, str]] = []
+    for lane in secours:
+        if lane.model == model_primaire:
+            lane.model = autres[0]
+            deplacees.append({"slug": lane.slug, "model": lane.model})
+    return deplacees
 
 
 async def donner_consentement(db: AsyncSession, creator_id: uuid.UUID, version: str) -> None:
@@ -235,14 +309,23 @@ async def retirer_consentement(db: AsyncSession, creator_id: uuid.UUID) -> None:
 # ---------------------------------------------------------------------------
 
 
-async def choisir_lane(db: AsyncSession, settings: Settings | None = None) -> LaneActive | None:
-    """Premiere lane utilisable : active, avec cle, hors quota et hors cooldown."""
+async def lanes_eligibles(db: AsyncSession, settings: Settings | None = None) -> list[LaneActive]:
+    """Toutes les lanes utilisables, dans l'ordre ou les essayer.
+
+    Utilisable : active, avec cle, hors quota journalier et hors cooldown.
+
+    La liste entiere et pas seulement sa tete, parce que le cooldown ne repare
+    que le tour suivant : sans repli disponible pendant le tour, un 429 sur le
+    primaire rendait une erreur au createur alors qu'une seconde lane etait
+    prete a repondre.
+    """
     s = settings or get_settings()
     result = await db.execute(
         select(AgentLane).where(AgentLane.actif.is_(True)).order_by(AgentLane.position.asc())
     )
     today = date.today()
     now = _maintenant()
+    retenues: list[LaneActive] = []
     for lane in result.scalars():
         if not cle_lane(lane.slug, s):
             continue
@@ -259,8 +342,14 @@ async def choisir_lane(db: AsyncSession, settings: Settings | None = None) -> La
                 continue
             if lane.rpd_cap is not None and usage.requests_used >= lane.rpd_cap:
                 continue
-        return LaneActive(lane=lane, provider=_provider_transient(lane, s))
-    return None
+        retenues.append(LaneActive(lane=lane, provider=_provider_transient(lane, s)))
+    return retenues
+
+
+async def choisir_lane(db: AsyncSession, settings: Settings | None = None) -> LaneActive | None:
+    """Premiere lane utilisable, ou `None` s'il n'y en a aucune."""
+    lanes = await lanes_eligibles(db, settings)
+    return lanes[0] if lanes else None
 
 
 async def consommer_requete(db: AsyncSession, lane: AgentLane) -> None:

@@ -223,6 +223,34 @@ class TestChoisirLane:
         )
         assert cle == "zai-key-test"
 
+    async def test_les_lanes_eligibles_sortent_toutes_dans_l_ordre(
+        self, db_session, lane_zai, settings_actives
+    ):
+        """La liste sert de replis au tour en cours, pas seulement sa tete.
+
+        Le cooldown ne repare que le tour suivant : sans repli disponible
+        pendant le tour, une saturation du primaire rendait une erreur au
+        createur alors que le secours pouvait repondre.
+        """
+        db_session.add(
+            AgentLane(
+                id=uuid4(),
+                slug="zai-alt",
+                label_public="GLM · Z.ai (secours)",
+                provider_kind="custom",
+                base_url="https://api.z.ai/api/paas/v4",
+                model="glm-4.5-flash",
+                actif=True,
+                position=10,
+            )
+        )
+        await db_session.commit()
+        lanes = await agent_gratuit.lanes_eligibles(db_session)
+        assert [item.lane.slug for item in lanes] == ["zai", "zai-alt"]
+        # Chaque repli porte sa propre identite : la boucle de chat met les
+        # providers au repos par id, deux ids egaux les confondraient.
+        assert lanes[0].provider.id != lanes[1].provider.id
+
     async def test_saute_la_lane_saturee(self, db_session, lane_zai, settings_actives):
         from datetime import date
 
@@ -358,9 +386,7 @@ class TestTesterLane:
 
         monkeypatch.setattr(agent_module, "_appel_provider", faux_appel)
         await agent_gratuit.tester_lane(db_session)
-        lignes = (
-            (await db_session.execute(select(AgentLaneUsage))).scalars().all()
-        )
+        lignes = (await db_session.execute(select(AgentLaneUsage))).scalars().all()
         assert lignes == []
 
 
@@ -376,9 +402,7 @@ class TestModeles:
         assert agent_gratuit.cle_lane("zai-alt", settings_actives) == "zai-key-test"
         assert agent_gratuit.cle_lane("autre", settings_actives) == ""
 
-    async def test_liste_modeles_annote_le_role(
-        self, db_session, lane_zai, settings_actives
-    ):
+    async def test_liste_modeles_annote_le_role(self, db_session, lane_zai, settings_actives):
         lane_alt = AgentLane(
             id=uuid4(),
             slug="zai-alt",
@@ -416,3 +440,113 @@ class TestModeles:
     async def test_definir_primaire_sans_lane_leve(self, db_session):
         with pytest.raises(ValueError):
             await agent_gratuit.definir_modele_primaire(db_session, "glm-4.7-flash")
+
+    async def test_le_secours_ne_reste_pas_sur_le_modele_du_primaire(
+        self, db_session, lane_zai, settings_actives
+    ):
+        """Sans cet ecart, le repli reproduit exactement l'echec du primaire.
+
+        Les deux lanes partagent l'endpoint et la cle : le modele est la seule
+        chose qui les distingue. C'est l'etat mesure en production le
+        2026-08-31, ou basculer le primaire sur `glm-4.5-flash` avait aligne le
+        secours dessus sans que rien ne le signale.
+        """
+        lane_alt = AgentLane(
+            id=uuid4(),
+            slug="zai-alt",
+            label_public="GLM · Z.ai (secours)",
+            provider_kind="custom",
+            base_url="https://api.z.ai/api/paas/v4",
+            model="glm-4.5-flash",
+            actif=True,
+            position=10,
+        )
+        db_session.add(lane_alt)
+        await db_session.commit()
+
+        r = await agent_gratuit.definir_modele_primaire(db_session, "glm-4.5-flash")
+
+        await db_session.refresh(lane_alt)
+        assert lane_alt.model == "glm-4.7-flash"
+        assert r["secours"] == [{"slug": "zai-alt", "model": "glm-4.7-flash"}]
+
+    async def test_liste_modeles_ne_confond_pas_deux_lanes_de_meme_modele(
+        self, db_session, lane_zai, settings_actives
+    ):
+        """Indexer les lanes par modele en perdait une, et faussait les roles."""
+        lane_zai.model = "glm-4.5-flash"
+        db_session.add(
+            AgentLane(
+                id=uuid4(),
+                slug="zai-alt",
+                label_public="GLM · Z.ai (secours)",
+                provider_kind="custom",
+                base_url="https://api.z.ai/api/paas/v4",
+                model="glm-4.5-flash",
+                actif=True,
+                position=10,
+            )
+        )
+        await db_session.commit()
+
+        par_id = {m["model"]: m for m in await agent_gratuit.liste_modeles(db_session)}
+
+        assert par_id["glm-4.5-flash"]["role"] == "primaire"
+        assert par_id["glm-4.5-flash"]["slug"] == "zai"
+        # Plus aucune lane ne porte glm-4.7-flash : le catalogue le dit.
+        assert par_id["glm-4.7-flash"]["actif"] is False
+        assert par_id["glm-4.7-flash"]["slug"] is None
+
+
+# ---------------------------------------------------------------------------
+# Reaction a un echec fournisseur
+# ---------------------------------------------------------------------------
+
+
+class TestReagir:
+    """Ce qu'on fait d'une lane apres un refus, decide par statut HTTP.
+
+    L'ancien code cherchait des sous-chaines (« quota », « http 5 ») dans le
+    message : une cle revoquee, un solde vide et un pic de charge recevaient
+    tous le meme repos de dix minutes, indefiniment.
+    """
+
+    def test_une_cle_refusee_se_distingue_et_se_repose_longtemps(self):
+        for statut in (401, 403):
+            r = agent_gratuit.reagir(statut, "unauthorized")
+            assert r.cle_refusee is True
+            assert r.cooldown_minutes == agent_gratuit.COOLDOWN_CLE_MINUTES
+
+    def test_un_quota_repose_le_temps_court(self):
+        r = agent_gratuit.reagir(429, "rate limit exceeded")
+        assert r.cle_refusee is False
+        assert r.cooldown_minutes == agent_gratuit.COOLDOWN_MINUTES
+
+    def test_une_panne_amont_repose_le_temps_court(self):
+        assert agent_gratuit.reagir(503, "bad gateway").cooldown_minutes == (
+            agent_gratuit.COOLDOWN_MINUTES
+        )
+
+    def test_une_demande_refusee_ne_touche_pas_a_la_lane(self):
+        """Modele inconnu, requete malformee, contenu filtre : la lane est saine.
+
+        La mettre au repos masquerait derriere « fournisseur indisponible » une
+        erreur que le createur doit voir pour la corriger.
+        """
+        for statut, message in (
+            (400, "invalid model"),
+            (404, "not found"),
+            (200, "content filter"),
+        ):
+            r = agent_gratuit.reagir(statut, message)
+            assert r.cooldown_minutes is None, (statut, message)
+            assert r.cle_refusee is False
+
+    def test_sans_statut_ni_motif_reconnu_la_lane_est_epargnee(self):
+        """Une exception de Philum ne doit pas passer pour une panne amont."""
+        assert agent_gratuit.reagir(None, "KeyError: 'usage'").cooldown_minutes is None
+
+    def test_sans_statut_mais_avec_motif_la_lane_se_repose(self):
+        """Le statut ne survit pas toujours au trajet ; le motif, si."""
+        r = agent_gratuit.reagir(None, "Le fournisseur refuse : quota atteint.")
+        assert r.cooldown_minutes == agent_gratuit.COOLDOWN_MINUTES
