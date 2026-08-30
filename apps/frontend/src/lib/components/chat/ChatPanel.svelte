@@ -605,7 +605,12 @@
   }
 </script>
 
-<div class="flex h-[calc(100dvh-12rem)] flex-col">
+<!-- Le panneau prend la hauteur que son parent lui donne, il ne la calcule plus.
+     Le `calc(100dvh-12rem)` d'avant supposait une seule entete au-dessus : sur
+     la page d'accueil de l'agent, qui porte en plus un titre, une ligne d'etat
+     et un champ de nommage, la zone de saisie tombait sous la ligne de flottaison
+     et il fallait faire defiler la page pour ecrire. -->
+<div class="flex h-full min-h-0 flex-col">
   <!-- Selectors agent, provider et modele -->
   {#if cles.length > 0 || agents.length > 0 || (gratuit?.disponible ?? false)}
     <div class="mb-2 flex flex-wrap gap-3 border-b border-border pb-2 text-sm">
