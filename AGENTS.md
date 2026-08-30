@@ -30,6 +30,7 @@ Pour le détail : [`README.md`](./README.md) → [`.docs/00-vision.md`](.docs/00
 | Objectifs, résultats clés, mapping tools → OKR     | [`.docs/22-okrs-philum.md`](.docs/22-okrs-philum.md)                                                         |
 | Audit deepseek-harness → Philum (bugs, features, patterns) | [`agent/audit/09-deepseek-harness/CONTEXT.md`](./agent/audit/09-deepseek-harness/CONTEXT.md) |
 | Audit 3 dépôts externes → Philum (repli de fournisseur, recherche duale, Unicode) | [`agent/audit/10-externes/CONTEXT.md`](./agent/audit/10-externes/CONTEXT.md) |
+| Audit graph-memory-starter → Philum (portage déjà fait, ses 9 défauts, fusion RRF) | [`agent/audit/11-graph-memory/CONTEXT.md`](./agent/audit/11-graph-memory/CONTEXT.md) |
 
 ---
 
