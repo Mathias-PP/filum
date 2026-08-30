@@ -54,9 +54,13 @@ async def _rechercher(provider: str, cle: str, query: str) -> list[dict[str, str
 async def _rechercher_brut(provider: str, cle: str, query: str) -> list[dict[str, str]]:
     async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
         if provider == "tavily":
+            # La cle passe par l'en-tete, comme chez les trois autres. Tavily a
+            # longtemps accepte un champ `api_key` dans le corps ; sa
+            # documentation ne connait plus que `Authorization`.
             r = await client.post(
                 "https://api.tavily.com/search",
-                json={"api_key": cle, "query": query, "max_results": 8, "search_depth": "basic"},
+                headers={"Authorization": f"Bearer {cle}"},
+                json={"query": query, "max_results": 8, "search_depth": "basic"},
             )
             r.raise_for_status()
             return [
