@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 
 import httpx
 import pytest
@@ -1288,6 +1289,49 @@ class TestPrimingWorkspace:
         )
         system_msg = next(m for m in corps_recus[0]["messages"] if m["role"] == "system")
         assert "Principe editorial de test." in system_msg["content"]
+
+
+class TestDateDuJour:
+    """Le prompt systeme doit dire au modele quel jour on est.
+
+    `_SYSTEME` interdit de fabriquer une date de memoire, et aucune date
+    n'etait donnee au modele : il datait donc au petit bonheur de son cutoff
+    d'entrainement. Sur un produit dont l'argument est de ne rien inventer,
+    c'est la contradiction la moins chere a lever.
+    """
+
+    async def test_la_date_du_jour_est_dans_le_prompt(self, db_session, test_user):
+        provider = _provider(db_session, test_user)
+        await db_session.commit()
+        corps_recus: list[dict] = []
+
+        def handler(request):
+            corps_recus.append(json.loads(request.content))
+            return httpx.Response(200, json=_mock_texte("ok"))
+
+        await _collect(
+            db_session,
+            test_user,
+            provider,
+            [{"role": "user", "content": "test"}],
+            _refuse,
+            httpx.MockTransport(handler),
+            _registre_fake([]),
+        )
+        systeme = next(m for m in corps_recus[0]["messages"] if m["role"] == "system")
+        assert datetime.now(UTC).date().isoformat() in systeme["content"]
+
+    def test_la_date_est_calculee_a_l_appel_pas_au_chargement(self):
+        """Un processus qui vit plusieurs jours servait sinon une date perimee."""
+        veille = agent_svc._contexte_temporel(datetime(2026, 8, 29, 10, 0, tzinfo=UTC))
+        jour = agent_svc._contexte_temporel(datetime(2026, 8, 30, 10, 0, tzinfo=UTC))
+        assert "2026-08-29" in veille
+        assert "2026-08-30" in jour
+        assert veille != jour
+
+    def test_le_contexte_temporel_interdit_la_date_de_memoire(self):
+        texte = agent_svc._contexte_temporel(datetime(2026, 8, 30, tzinfo=UTC))
+        assert "mémoire" in texte or "memoire" in texte
 
 
 class TestSystemeAgent:
