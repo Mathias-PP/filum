@@ -7,7 +7,7 @@
     type AgentSessionUsage,
   } from '$lib/api/agent';
   import { ApiError } from '$lib/api';
-  import { appliquer, depuisMessages, type ChatItem } from '$lib/agent/conversation';
+  import { appliquer, depuisMessages, tourTermine, type ChatItem } from '$lib/agent/conversation';
   import Button from '../Button.svelte';
   import { toast } from '../Toast.svelte';
   import ApprovalCard from './ApprovalCard.svelte';
@@ -30,6 +30,10 @@
   let enCours = $state(false);
   let chargement = $state(Boolean(sessionId));
   let controleur: AbortController | null = null;
+  // Le flux SSE a trois issues, pas deux : il vit, il est coupé et on retrouve la
+  // réponse en base, ou il est perdu. Sans le deuxième état, une coupure réseau
+  // vidait l'écran alors que le serveur avait terminé et persisté le tour.
+  let reprise = $state<'idle' | 'encours'>('idle');
   let usage = $state<AgentSessionUsage | null>(null);
   let decouverte = $state<{
     provider_public_name: string;
@@ -460,6 +464,60 @@
     if (cleChoisie) void testerCombo();
   });
 
+  /** Délais entre deux relectures, en millisecondes. Total un peu moins d'une minute. */
+  const DELAIS_REPRISE = [1000, 2000, 3000, 5000, 8000, 13000, 21000];
+
+  /** Rattrape un tour dont le flux a été coupé.
+   *
+   * Le serveur termine et persiste le tour même quand le client se déconnecte
+   * (`_persister_tour`) : il n'y a donc rien à rejouer, il suffit de relire la
+   * session. Pas de tampon en mémoire côté serveur, donc rien à perdre à un
+   * redéploiement. Rend `true` si la réponse a été retrouvée.
+   */
+  async function reprendreApresCoupure(): Promise<boolean> {
+    if (!sessionId) return false;
+    reprise = 'encours';
+    try {
+      for (const delai of DELAIS_REPRISE) {
+        await new Promise((r) => setTimeout(r, delai));
+        const messages = await agentApi.sessions.messages(sessionId).catch(() => null);
+        if (!messages) continue;
+        if (tourTermine(messages)) {
+          items = depuisMessages(messages);
+          auBas = true;
+          return true;
+        }
+      }
+      return false;
+    } finally {
+      reprise = 'idle';
+    }
+  }
+
+  /** Traite l'échec d'un flux : abandon volontaire, reprise, ou échec définitif.
+   *
+   * Une `ApiError` vient du contrôle de statut, avant que le corps ne s'ouvre :
+   * la requête a été refusée, aucun tour n'a démarré, il n'y a rien à relire.
+   * Seule une coupure en cours de flux vaut une reprise.
+   */
+  async function surCoupure(e: unknown) {
+    if ((e as Error)?.name === 'AbortError') return;
+    // Le flux est mort : plus rien n'arrive, l'indicateur de frappe mentirait.
+    enCours = false;
+    if (e instanceof ApiError) {
+      items = [...items, { kind: 'error', text: e.message }];
+      return;
+    }
+    if (await reprendreApresCoupure()) return;
+    items = [
+      ...items,
+      {
+        kind: 'error',
+        text: "La connexion s'est coupée et la réponse n'est pas encore revenue. Le serveur termine le tour de son côté : rechargez la page dans un instant pour la relire.",
+      },
+    ];
+  }
+
   async function envoyer(event: SubmitEvent) {
     event.preventDefault();
     if (event.target instanceof HTMLFormElement) {
@@ -467,7 +525,8 @@
       if (textarea) textarea.style.height = 'auto';
     }
     const message = saisie.trim();
-    if (!message || enCours) return;
+    // Envoyer pendant une reprise ferait écraser le fil par la relecture.
+    if (!message || enCours || reprise === 'encours') return;
     saisie = '';
     auBas = true;
     items = [...items, { kind: 'user', text: message }];
@@ -506,15 +565,7 @@
         items = appliquer(items, evenement);
       }
     } catch (e) {
-      if ((e as Error)?.name !== 'AbortError') {
-        items = [
-          ...items,
-          {
-            kind: 'error',
-            text: e instanceof ApiError ? e.message : "L'agent s'est interrompu.",
-          },
-        ];
-      }
+      await surCoupure(e);
     } finally {
       enCours = false;
       controleur = null;
@@ -540,7 +591,7 @@
   }
 
   async function continuer() {
-    if (enCours) return;
+    if (enCours || reprise === 'encours') return;
     const message = 'continue';
     auBas = true;
     items = [...items, { kind: 'user', text: message }];
@@ -570,12 +621,7 @@
         items = appliquer(items, evenement);
       }
     } catch (e) {
-      if ((e as Error)?.name !== 'AbortError') {
-        items = [
-          ...items,
-          { kind: 'error', text: e instanceof ApiError ? e.message : "L'agent s'est interrompu." },
-        ];
-      }
+      await surCoupure(e);
     } finally {
       enCours = false;
       controleur = null;
@@ -936,6 +982,16 @@
       <div class="flex items-center gap-2 text-xs text-ink-tertiary">
         <LogoLoader size={20} />
         <span>Philum réfléchit…</span>
+      </div>
+    {/if}
+
+    {#if reprise === 'encours'}
+      <!-- Troisieme etat : le flux est coupe mais le serveur termine le tour de
+           son cote. Le dire, sinon l'utilisateur lit une perte de donnees la ou
+           il n'y a qu'une deconnexion. -->
+      <div class="flex items-center gap-2 text-xs text-ink-tertiary" role="status">
+        <LogoLoader size={20} />
+        <span>Connexion perdue. La réponse continue côté serveur, on la récupère…</span>
       </div>
     {/if}
   </div>

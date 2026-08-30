@@ -254,6 +254,28 @@ function lireJson(texte: string): Record<string, unknown> | null {
   }
 }
 
+/** Le dernier tour est-il complet en base ?
+ *
+ * Le serveur termine le tour même quand le client se déconnecte : après une
+ * coupure réseau, la réponse existe en base et il suffit de la relire. Encore
+ * faut-il savoir si elle y est déjà. Le critère est un message assistant
+ * porteur de texte après le dernier message utilisateur. Un message assistant
+ * qui ne porte que des `tool_calls` ne clôt rien : le tour tourne encore.
+ */
+export function tourTermine(messages: AgentMessage[]): boolean {
+  let dernierUtilisateur = -1;
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    if (messages[i].role === 'user') {
+      dernierUtilisateur = i;
+      break;
+    }
+  }
+  if (dernierUtilisateur < 0) return false;
+  return messages
+    .slice(dernierUtilisateur + 1)
+    .some((m) => m.role === 'assistant' && !!m.content?.trim() && !m.tool_calls?.length);
+}
+
 function trouverDernier(items: ChatItem[], predicat: (item: ChatItem) => boolean): number {
   for (let i = items.length - 1; i >= 0; i -= 1) {
     if (predicat(items[i])) return i;

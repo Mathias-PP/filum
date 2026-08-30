@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { appliquer, depuisMessages, type ChatItem } from '$lib/agent/conversation';
+import { appliquer, depuisMessages, tourTermine, type ChatItem } from '$lib/agent/conversation';
 import type { AgentEvent, AgentMessage } from '$lib/api/agent';
 
 function replier(evenements: AgentEvent[], depart: ChatItem[] = []): ChatItem[] {
@@ -302,5 +302,64 @@ describe('rehydratation d’une session persistée', () => {
 
   it('ne fabrique pas de bulle vide pour un assistant sans texte ni outil', () => {
     expect(depuisMessages([message({ role: 'assistant', content: '' })])).toEqual([]);
+  });
+});
+
+describe('reprise après coupure', () => {
+  const message = (partiel: Partial<AgentMessage>): AgentMessage => ({
+    id: 'm1',
+    role: 'user',
+    content: '',
+    tool_calls: null,
+    tool_name: null,
+    created_at: '2026-08-30T10:00:00',
+    ...partiel,
+  });
+
+  it('reconnaît un tour clos par une réponse texte', () => {
+    expect(
+      tourTermine([
+        message({ id: 'm1', role: 'user', content: 'cherche' }),
+        message({ id: 'm2', role: 'assistant', content: 'voilà' }),
+      ])
+    ).toBe(true);
+  });
+
+  it('ne clôt pas sur un assistant qui ne porte que des appels d’outil', () => {
+    expect(
+      tourTermine([
+        message({ id: 'm1', role: 'user', content: 'cherche' }),
+        message({
+          id: 'm2',
+          role: 'assistant',
+          content: '',
+          tool_calls: [{ id: 'call_1', function: { name: 'fs_read', arguments: '{}' } }],
+        }),
+        message({ id: 'm3', role: 'tool', tool_name: 'fs_read', content: '{}' }),
+      ])
+    ).toBe(false);
+  });
+
+  it('ignore la réponse qui précède le dernier message utilisateur', () => {
+    expect(
+      tourTermine([
+        message({ id: 'm1', role: 'user', content: 'un' }),
+        message({ id: 'm2', role: 'assistant', content: 'voilà' }),
+        message({ id: 'm3', role: 'user', content: 'deux' }),
+      ])
+    ).toBe(false);
+  });
+
+  it('ne clôt pas un assistant dont le texte est vide', () => {
+    expect(
+      tourTermine([
+        message({ id: 'm1', role: 'user', content: 'cherche' }),
+        message({ id: 'm2', role: 'assistant', content: '   ' }),
+      ])
+    ).toBe(false);
+  });
+
+  it('rend faux quand aucun message utilisateur n’a été écrit', () => {
+    expect(tourTermine([])).toBe(false);
   });
 });
