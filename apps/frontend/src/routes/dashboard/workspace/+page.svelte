@@ -279,8 +279,13 @@
     </div>
   </div>
 
-  <div class="grid gap-4 lg:grid-cols-[22rem_1fr]">
-    <aside class="space-y-4">
+  <!-- Sur grand ecran, les deux colonnes tiennent dans la hauteur de la fenetre
+       et defilent chacune pour leur compte. Sans cette borne, l'explorateur
+       poussait la page a mesure que les fichiers s'ajoutaient : on perdait
+       l'editeur de vue en cherchant un fichier, et l'inverse. Sous `lg`, la
+       colonne unique reprend le flux normal. -->
+  <div class="grid gap-4 lg:h-[calc(100dvh-15rem)] lg:grid-cols-[22rem_1fr]">
+    <aside class="space-y-4 lg:overflow-y-auto lg:pr-1">
       {#if chargementArbre}
         <p class="p-2 text-sm text-ink-tertiary">Chargement…</p>
       {:else if sections.length === 0}
@@ -383,7 +388,9 @@
       {/if}
     </aside>
 
-    <section class="rounded-lg border border-border bg-surface-primary p-3">
+    <section
+      class="flex flex-col rounded-lg border border-border bg-surface-primary p-3 lg:min-h-0"
+    >
       {#if !cheminActif}
         <p class="text-sm text-ink-tertiary">Choisissez un fichier à gauche pour l'éditer.</p>
       {:else if chargementFichier}
@@ -401,7 +408,7 @@
         <textarea
           bind:value={contenu}
           spellcheck="false"
-          class="min-h-[24rem] w-full resize-y rounded border border-border bg-surface-primary p-3 font-mono text-sm text-ink-primary"
+          class="h-96 w-full resize-y rounded border border-border bg-surface-primary p-3 font-mono text-sm text-ink-primary lg:h-auto lg:min-h-0 lg:flex-1 lg:resize-none"
         ></textarea>
         {#if messageErr}
           <p class="mt-2 text-xs text-danger">{messageErr}</p>
