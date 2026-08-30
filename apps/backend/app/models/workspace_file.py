@@ -35,6 +35,12 @@ class WorkspaceFile(Base):
     path: Mapped[str] = mapped_column(String(500), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False, default="")
     sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    #: Empreinte de la version du template dont ce fichier est issu, ou NULL
+    #: pour un fichier cree par la personne (ou seede avant la migration 056).
+    #: Comparee a `sha256`, elle dit ce que le contenu seul ne dit pas : un
+    #: fichier qui differe du template a-t-il ete edite ici, ou le template
+    #: a-t-il avance depuis ? Les deux cas appellent l'inverse l'un de l'autre.
+    seed_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         default=None,
         server_default=func.now(),

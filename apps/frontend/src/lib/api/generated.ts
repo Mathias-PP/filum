@@ -429,6 +429,33 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/agent/workspace/sync': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Etat Synchronisation
+     * @description Compare le workspace au template embarqué, sans rien modifier.
+     */
+    get: operations['etat_synchronisation_api_v1_agent_workspace_sync_get'];
+    put?: never;
+    /**
+     * Resynchroniser Workspace
+     * @description Ajoute les fichiers absents et actualise ceux restés au seed.
+     *
+     *     Les fichiers modifiés ici ne sont jamais écrasés : ils sont rendus dans
+     *     `divergents`, et ne sont repris que si leur chemin est passé dans `adopt`.
+     */
+    post: operations['resynchroniser_workspace_api_v1_agent_workspace_sync_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/attestations/content': {
     parameters: {
       query?: never;
@@ -3546,6 +3573,32 @@ export interface components {
       /** Content */
       content: string;
     };
+    /** WorkspaceSyncEntry */
+    WorkspaceSyncEntry: {
+      /** Path */
+      path: string;
+      /**
+       * Etat
+       * @enum {string}
+       */
+      etat: 'absent' | 'a_jour' | 'obsolete' | 'diverge';
+    };
+    /** WorkspaceSyncRequest */
+    WorkspaceSyncRequest: {
+      /** Adopt */
+      adopt?: string[];
+    };
+    /** WorkspaceSyncResult */
+    WorkspaceSyncResult: {
+      /** Ajoutes */
+      ajoutes: string[];
+      /** Mis A Jour */
+      mis_a_jour: string[];
+      /** Adoptes */
+      adoptes: string[];
+      /** Divergents */
+      divergents: string[];
+    };
     /** WorkspaceTreeEntry */
     WorkspaceTreeEntry: {
       /** Path */
@@ -4508,6 +4561,59 @@ export interface operations {
         };
         content: {
           'application/json': unknown;
+        };
+      };
+    };
+  };
+  etat_synchronisation_api_v1_agent_workspace_sync_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['WorkspaceSyncEntry'][];
+        };
+      };
+    };
+  };
+  resynchroniser_workspace_api_v1_agent_workspace_sync_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['WorkspaceSyncRequest'] | null;
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['WorkspaceSyncResult'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
         };
       };
     };

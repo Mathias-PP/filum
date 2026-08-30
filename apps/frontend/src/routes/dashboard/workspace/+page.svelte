@@ -243,6 +243,44 @@
     }
   }
 
+  // Mise a jour depuis le modele livre. Le seed d'origine n'inserait que les
+  // chemins absents : il protegeait les editions, mais figeait le workspace a
+  // sa date de creation, et les evolutions du modele n'arrivaient jamais.
+  let syncEnCours = $state(false);
+  let divergents = $state<string[]>([]);
+  let aAdopter = $state<Set<string>>(new Set());
+
+  async function mettreAJour(adopt: string[] = []) {
+    syncEnCours = true;
+    try {
+      const res = await agentApi.workspace.sync(adopt);
+      const faits = [
+        res.ajoutes.length && `${res.ajoutes.length} ajouté${res.ajoutes.length > 1 ? 's' : ''}`,
+        res.mis_a_jour.length &&
+          `${res.mis_a_jour.length} actualisé${res.mis_a_jour.length > 1 ? 's' : ''}`,
+        res.adoptes.length && `${res.adoptes.length} remplacé${res.adoptes.length > 1 ? 's' : ''}`,
+      ].filter(Boolean);
+      toast.success(faits.length ? `${faits.join(', ')}.` : 'Le workspace est déjà à jour.');
+      // Les fichiers que vous avez modifiés ne sont jamais repris d'office :
+      // ils restent la pour un choix explicite, fichier par fichier.
+      divergents = res.divergents;
+      aAdopter = new Set();
+      await chargerArbre();
+      if (cheminActif) await ouvrir(cheminActif);
+    } catch (e) {
+      toast.danger(e instanceof ApiError ? e.message : 'Mise à jour impossible.');
+    } finally {
+      syncEnCours = false;
+    }
+  }
+
+  function basculerAdoption(chemin: string) {
+    const suivant = new Set(aAdopter);
+    if (suivant.has(chemin)) suivant.delete(chemin);
+    else suivant.add(chemin);
+    aAdopter = suivant;
+  }
+
   onMount(() => {
     void chargerArbre();
   });
@@ -274,10 +312,63 @@
         {seedEnCours ? 'En cours…' : vide ? 'Initialiser la configuration' : 'Restaurer template'}
       </Button>
       {#if !vide}
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={syncEnCours || chargementArbre}
+          onclick={() => void mettreAJour()}
+          title="Ajoute les fichiers livrés absents et actualise ceux que vous n'avez pas modifiés. Vos modifications ne sont jamais écrasées."
+        >
+          {syncEnCours ? 'En cours…' : 'Mettre à jour'}
+        </Button>
         <Button size="sm" onclick={() => (creationOuverte = true)}>Nouveau fichier</Button>
       {/if}
     </div>
   </div>
+
+  {#if divergents.length > 0}
+    <!-- Ces fichiers different du modele livre et portent peut-etre votre
+         travail : la mise a jour les a laisses intacts. Les reprendre est un
+         choix explicite, fichier par fichier. -->
+    <div class="mb-4 rounded-lg border border-border bg-surface-secondary p-4">
+      <p class="text-sm font-medium text-ink-primary">
+        {divergents.length} fichier{divergents.length > 1 ? 's' : ''} que vous avez modifié{divergents.length >
+        1
+          ? 's'
+          : ''}
+      </p>
+      <p class="mt-1 text-sm text-ink-secondary">
+        Ils n'ont pas été touchés. Cochez ceux dont vous voulez la version livrée à la place de la
+        vôtre : votre contenu actuel sera remplacé.
+      </p>
+      <ul class="mt-3 space-y-1">
+        {#each divergents as chemin (chemin)}
+          <li>
+            <label class="flex items-center gap-2 text-sm text-ink-primary">
+              <input
+                type="checkbox"
+                checked={aAdopter.has(chemin)}
+                onchange={() => basculerAdoption(chemin)}
+              />
+              <span class="font-mono">{chemin}</span>
+            </label>
+          </li>
+        {/each}
+      </ul>
+      <div class="mt-3">
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={syncEnCours || aAdopter.size === 0}
+          onclick={() => void mettreAJour([...aAdopter])}
+        >
+          {syncEnCours
+            ? 'En cours…'
+            : `Remplacer ${aAdopter.size} fichier${aAdopter.size > 1 ? 's' : ''} par la version livrée`}
+        </Button>
+      </div>
+    </div>
+  {/if}
 
   <!-- Sur grand ecran, les deux colonnes tiennent dans la hauteur de la fenetre
        et defilent chacune pour leur compte. Sans cette borne, l'explorateur

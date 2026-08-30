@@ -18,6 +18,9 @@ from app.models.user import User
 from app.schemas.workspace_file import (
     WorkspaceFileRead,
     WorkspaceFileWrite,
+    WorkspaceSyncEntry,
+    WorkspaceSyncRequest,
+    WorkspaceSyncResult,
     WorkspaceTreeEntry,
 )
 from app.services import agent_workspace
@@ -118,3 +121,36 @@ async def re_seed_workspace(
 ):
     count = await agent_workspace.seed(db, current_user.id)
     return {"seeded": count}
+
+
+@router.get("/sync", response_model=list[WorkspaceSyncEntry])
+async def etat_synchronisation(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Compare le workspace au template embarqué, sans rien modifier."""
+    return await agent_workspace.etat_synchronisation(db, current_user.id)
+
+
+@router.post("/sync", response_model=WorkspaceSyncResult)
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+async def resynchroniser_workspace(
+    request: Request,
+    payload: WorkspaceSyncRequest | None = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Ajoute les fichiers absents et actualise ceux restés au seed.
+
+    Les fichiers modifiés ici ne sont jamais écrasés : ils sont rendus dans
+    `divergents`, et ne sont repris que si leur chemin est passé dans `adopt`.
+    """
+    try:
+        return await agent_workspace.resynchroniser(
+            db, current_user.id, adopter=payload.adopt if payload else None
+        )
+    except agent_workspace.WorkspaceError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "invalid_path", "message": str(exc)},
+        ) from exc

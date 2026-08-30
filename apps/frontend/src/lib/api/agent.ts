@@ -237,6 +237,27 @@ export interface WorkspaceFile {
   updated_at?: string | null;
 }
 
+/**
+ * `absent` le modèle le connaît, le workspace ne l'a pas. `a_jour` identiques.
+ * `obsolete` le modèle a avancé et le fichier est resté ce que l'installation
+ * avait posé, donc actualisable sans rien perdre. `diverge` le fichier a pu
+ * être modifié ici : jamais écrasé sans demande explicite.
+ */
+export type WorkspaceSyncEtat = 'absent' | 'a_jour' | 'obsolete' | 'diverge';
+
+export interface WorkspaceSyncEntry {
+  path: string;
+  etat: WorkspaceSyncEtat;
+}
+
+export interface WorkspaceSyncResult {
+  ajoutes: string[];
+  mis_a_jour: string[];
+  adoptes: string[];
+  /** Laissés intacts, faute d'avoir été demandés dans `adopt`. */
+  divergents: string[];
+}
+
 export interface ChatInput {
   message: string;
   session_id?: string;
@@ -365,6 +386,17 @@ export const agentApi = {
     remove: (path: string) =>
       request<void>(`/agent/workspace/file?path=${encodeURIComponent(path)}`, { method: 'DELETE' }),
     seed: () => request<{ seeded: number }>('/agent/workspace/seed', { method: 'POST' }),
+    /** Compare le workspace au modèle livré, sans rien modifier. */
+    syncStatus: () => request<WorkspaceSyncEntry[]>('/agent/workspace/sync'),
+    /**
+     * Ajoute les fichiers absents et actualise ceux restés au modèle. Les
+     * fichiers modifiés ici ne sont repris que si leur chemin est dans `adopt`.
+     */
+    sync: (adopt: string[] = []) =>
+      request<WorkspaceSyncResult>('/agent/workspace/sync', {
+        method: 'POST',
+        body: JSON.stringify({ adopt }),
+      }),
   },
 
   streamChat,

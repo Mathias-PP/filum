@@ -1169,6 +1169,79 @@
         }
       }
     },
+    "/api/v1/agent/workspace/sync": {
+      "get": {
+        "tags": [
+          "agent-workspace"
+        ],
+        "summary": "Etat Synchronisation",
+        "description": "Compare le workspace au template embarqué, sans rien modifier.",
+        "operationId": "etat_synchronisation_api_v1_agent_workspace_sync_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WorkspaceSyncEntry"
+                  },
+                  "type": "array",
+                  "title": "Response Etat Synchronisation Api V1 Agent Workspace Sync Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "agent-workspace"
+        ],
+        "summary": "Resynchroniser Workspace",
+        "description": "Ajoute les fichiers absents et actualise ceux restés au seed.\n\nLes fichiers modifiés ici ne sont jamais écrasés : ils sont rendus dans\n`divergents`, et ne sont repris que si leur chemin est passé dans `adopt`.",
+        "operationId": "resynchroniser_workspace_api_v1_agent_workspace_sync_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/WorkspaceSyncRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceSyncResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/attestations/content": {
       "post": {
         "tags": [
@@ -10034,6 +10107,84 @@
           "content"
         ],
         "title": "WorkspaceFileWrite"
+      },
+      "WorkspaceSyncEntry": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "etat": {
+            "type": "string",
+            "enum": [
+              "absent",
+              "a_jour",
+              "obsolete",
+              "diverge"
+            ],
+            "title": "Etat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "path",
+          "etat"
+        ],
+        "title": "WorkspaceSyncEntry"
+      },
+      "WorkspaceSyncRequest": {
+        "properties": {
+          "adopt": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Adopt"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "WorkspaceSyncRequest"
+      },
+      "WorkspaceSyncResult": {
+        "properties": {
+          "ajoutes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Ajoutes"
+          },
+          "mis_a_jour": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Mis A Jour"
+          },
+          "adoptes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Adoptes"
+          },
+          "divergents": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Divergents"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ajoutes",
+          "mis_a_jour",
+          "adoptes",
+          "divergents"
+        ],
+        "title": "WorkspaceSyncResult"
       },
       "WorkspaceTreeEntry": {
         "properties": {
