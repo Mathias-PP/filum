@@ -611,16 +611,23 @@ ses tests coupent avant la base faute de pgvector.
 **Un invariant d'audit avait dérivé sans que personne le voie.**
 `INV_EVENEMENTS_SSE` annonçait 12 ; le compte réel valait 13 depuis #581, qui
 avait ajouté `controle_relance` sans toucher au fichier. La PR 5 le porte à 14 et
-documente les deux dérives. `check_inventaire.sh` ne l'avait pas signalé parce
-qu'il échoue plus tôt, sur G0 : dix fichiers manquent au CSV d'inventaire, dont
-neuf antérieurs à ce plan.
+documente les deux dérives. `check_inventaire.sh` ne l'avait pas signalé, et ne
+pouvait pas : son test (e) vérifie que les invariants sont présents et entiers,
+jamais qu'ils correspondent au code. Aucune porte ne compare ces compteurs à la
+réalité. La porte G0 était rouge par ailleurs, pour une autre raison : onze
+fichiers manquaient au CSV d'inventaire, dont neuf antérieurs à ce plan.
 
 ## Ce qui reste ouvert
 
-- **G0 de l'audit est rouge** et le masque : dix fichiers absents du CSV
-  d'inventaire (`agent/audit/inventaire.csv`), dont `objectif.py`,
-  `excerpt_search.py`, `source_existence.py`, `token_meter.py`. Tant que G0
-  échoue, les invariants ne sont jamais vérifiés. Régénérer l'inventaire.
+- **Aucune porte ne vérifie la valeur des invariants.** G0(e) se contente de
+  constater leur présence, si bien qu'un compteur peut dériver plusieurs jours
+  sans bruit, ce qui est arrivé trois fois (SSE en #581, endpoints en #603,
+  nombre de fichiers). Le seul garde-fou réel est la bande ±5 % sur le LOC
+  périmètre. Comparer les quatre compteurs au code demanderait de porter dans
+  le script les mesures que `gen_inventaire.sh` sait déjà faire.
+- L'inventaire lui-même a été remis à jour le 2026-08-30 (202 fichiers,
+  25 777 LOC, G0 verte) en **ajoutant** les lignes manquantes : régénérer aurait
+  remis les 154 `statut=verifie` à `todo` et effacé la progression de lecture.
 - **`agent_providers._classify` et `agent_repli.classer` font le même travail**
   à deux endroits, le premier pour le test de clé, le second pour le repli. La
   PR 2 l'avait noté ; la PR 5 n'a pas fusionné les deux pour ne pas mêler un

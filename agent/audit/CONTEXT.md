@@ -18,12 +18,16 @@
 | G7 tests + prod | 16+ fichiers de tests, workspace ICM, état VM | ✅ **VERTE** (check_lot.sh vert, 2026-08-26) le 2026-08-26 — 103 fichiers documentés, preuves `07-tests-et-prod/` |
 | G8 assemblage global | rejeu de toutes les portes + routage + spot-check 10 % | ✅ **VERTE** (rejeu G1→G7 vert, spot-check 10% 57/57 OK, routage 80 liens OK) le 2026-08-26, preuve `_core/preuves/G8_vert_2026-08-26.md` |
 
-**Invariants gelés** (`_core/invariants.txt`) : 43 outils MCP · 31 endpoints · 14 événements SSE · 15 variables d'env. Toute évolution du code qui change ces nombres doit faire l'objet d'une mise à jour documentée ici.
+**Invariants regelés le 2026-08-30** (`_core/invariants.txt`, commit `183be0a`) : 43 outils MCP · 33 endpoints · 14 événements SSE · 15 variables d'env · 202 fichiers · 25 777 LOC périmètre. Toute évolution du code qui change ces nombres doit faire l'objet d'une mise à jour documentée ici.
+
+Attention : la porte G0 ne compare **jamais** ces nombres au code. Son test (e) vérifie seulement que les quatre invariants sont présents et entiers. Une dérive de compteur passe donc les portes sans bruit, et c'est ainsi que les trois écarts ci-dessous ont vécu plusieurs jours. Le seul garde-fou automatique est le LOC périmètre, borné à ±5 % de la baseline.
 
 Évolutions documentées depuis le gel du 2026-08-25 :
 
 - **12 → 13 événements SSE, en #581** (`feat(agent): redemande la reponse quand une action annoncee n'a pas ete faite`). Ajout de `controle_relance`. La mise à jour de l'invariant avait été omise : le compte réel valait 13 depuis cette PR alors que le fichier annonçait toujours 12. Constaté et corrigé le 2026-08-30.
 - **13 → 14 événements SSE, le 2026-08-30.** Ajout de `repli_fournisseur`, émis par `agent.boucle` quand une clé refuse et qu'une autre prend le relais. Le créateur qui a configuré trois clés n'en voyait essayer qu'une ; le repli silencieux, lui, serait indistinguable d'une panne, d'où l'événement plutôt qu'un simple changement de clé.
+- **31 → 33 endpoints, en #603** (`feat(workspace): les evolutions du modele arrivent enfin, sans ecraser vos editions`). Deux routes ajoutées au domaine workspace. Là encore la mise à jour de l'invariant avait été omise ; constaté et corrigé le 2026-08-30.
+- **191 → 202 fichiers inventoriés, le 2026-08-30.** Onze fichiers manquaient au CSV, dont neuf antérieurs au travail du jour, et parmi eux `app/services/agent_sessions.py`, un service du noyau qui n'avait jamais été inventorié. Les lignes ont été **ajoutées** au CSV plutôt que régénérées : `gen_inventaire.sh` remet tous les `statut` à `todo`, ce qui aurait effacé la progression de lecture de 154 fichiers déjà `verifie`. La baseline LOC passe de 24 046 à 25 777 et la bande de référence de `check_inventaire.sh` suit.
 
 ## Arborescence (se remplit lot après lot)
 

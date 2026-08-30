@@ -8,6 +8,7 @@ perimetre,1,apps/backend/alembic/versions/049_agent_session_agent_slug.py,34,eca
 perimetre,1,apps/backend/alembic/versions/051_mode_gratuit.py,120,0b6bbbc98ab83dea278e0d692d25f3e6505d9d34241907b43a2b0bf0d0d7b836,2,verifie
 perimetre,1,apps/backend/alembic/versions/052_lane_zai_secours.py,72,56f876c2074a73460be3cfafc7d6660864283be0d00f35132e25047bad8fc91d,2,verifie
 interface,0,apps/backend/app/agent_tools/__init__.py,14,be77adc57ad9f22f88ac9be3d8fd5f85f480714626c579238d62ad128998d885,0,todo
+interface,0,apps/backend/app/agent_tools/objectif.py,130,4fe83400d5e3a604277dfb7ac2f78afd299dd9a6710ef84d632902c9e63747b6,3,todo
 interface,0,apps/backend/app/agent_tools/philum.py,219,941b0d5831e74df25a93f18a96017c999747b61036f32f30dd0eb6362c147dd0,5,todo
 interface,0,apps/backend/app/agent_tools/registry.py,98,d2a59e6b763deade82f678e450c40d147b90798f62a64eab976211c6fc3d2e89,5,todo
 interface,0,apps/backend/app/agent_tools/tool.py,41,923704d7678a611f5cc47f95770a8e974bac763e3c9e385effa8df86cc93b1f9,2,todo
@@ -86,6 +87,8 @@ perimetre,5,apps/backend/app/services/agent_discovery.py,142,7fba2a223658c059d98
 perimetre,5,apps/backend/app/services/agent_fiche.py,211,0c19cff5bb3c66fdde3c6ae8baaae8ed1ac55f53e9b7481bfc7c89d3c70c37d9,7,verifie
 perimetre,5,apps/backend/app/services/agent_gratuit.py,420,6e72c48a56434a0ea1a8f23537b2de9a741df5e314d1aa0173bd0fe4257f4717,19,verifie
 perimetre,5,apps/backend/app/services/agent_providers.py,608,3f40d049cd9e7213841069810a488fd00543f0fea83dba210a3161ecc50bfd08,21,verifie
+perimetre,5,apps/backend/app/services/agent_repli.py,171,a14060eab6752d7dc078650d04110fc0e05a83182fc82efb1773dfc9536d50a0,4,todo
+perimetre,2,apps/backend/app/services/agent_sessions.py,484,b552f93f774295ffdcf8810706fa23ea69f8afaf226e466e18186086b3ce4595,20,todo
 perimetre,5,apps/backend/app/services/agent_workspace.py,320,2aa6731fd250a1021a2fa5492507a80f79b57ad16ade83cc369cd2bab9005a6a,16,verifie
 interface,0,apps/backend/app/services/attestation.py,92,49686f1041a1a3cc270a222b86084b505cb71250443513950287cdb686f9b31b,1,todo
 interface,0,apps/backend/app/services/auth.py,167,ab1bb5e53193f51cc7c771499e81a0c3e02af4d0741b3906306a48da4e7bc758,2,todo
@@ -99,10 +102,13 @@ interface,0,apps/backend/app/services/excerpt_anchor.py,184,ccd0f9d9381c673c1275
 interface,0,apps/backend/app/services/excerpt_guards.py,56,76a9a7fc442362808944c30f39056458e9aeb020d2e7433f2213babfdc84c5f2,1,todo
 interface,0,apps/backend/app/services/excerpt_indexing.py,134,d2075d3d6aa370ff0127ba7d4ac1db6ae52ca129368c71966144f77ffb59122f,3,todo
 interface,0,apps/backend/app/services/excerpt_insertion.py,146,35b2e47347e1fd51c61a6d08f7ed70e606dafce4b68ceef822dfbdb99eab8cc4,7,todo
+interface,0,apps/backend/app/services/excerpt_search.py,344,63db0ac17ca7b71845b98b1f4d5cc1b8157b98f57fd98aa7c26127d465514045,7,todo
 interface,0,apps/backend/app/services/graph_memory.py,304,a830b01907fafd33493c6c7c7734e36d288cd002c12916eef3cb471131ee932d,6,todo
 interface,0,apps/backend/app/services/import_parsers.py,877,e8d7d2f29ea12012a529954d3063de205f3cfaf5fb187943fb6a9570b44ad562,24,todo
 perimetre,1,apps/backend/app/services/llm.py,715,872b43feeb30f1c9837dba1cf281fbc94d7029cea600daf6706a26f75e534165,27,verifie
 perimetre,1,apps/backend/app/services/llm_adapters.py,365,f0e0ec7eb829f8e253a38f8097cbc4ad6b300dd9c76469daf04d50e73fccaf90,10,verifie
+interface,0,apps/backend/app/services/source_existence.py,143,691ef6d58849f44f192238bcd67a65b60027b2aa3c8324c1f982dc1e1f499bfd,4,todo
+interface,0,apps/backend/app/services/token_meter.py,181,6da8949fd6d229d6b6854dc39e0772655efd5f0d5c5f5aa24e13ce4cf29d7ee3,4,todo
 interface,0,apps/backend/app/services/wayback.py,715,b217426eafa90e3514230f14f1b923b987efb2e98f42a79fe2cadc150968ba2d,9,todo
 perimetre,7,apps/backend/tests/integration/test_agent_chat_api.py,206,1312631f1cbc733d09e12f18990cd1a68913c46e751a6e316ede9e30eaa5c5d9,13,verifie
 perimetre,7,apps/backend/tests/integration/test_agent_definitions_api.py,91,448517a4672f45494b04596bfb6ef380ffa73b14783ccb4890223926d6956d47,7,verifie
@@ -116,8 +122,13 @@ perimetre,7,apps/backend/tests/unit/test_agent_discovery.py,158,6f104f07489d638a
 perimetre,7,apps/backend/tests/unit/test_agent_fiche.py,240,9501b6b23334b87c4bbad19f93d21142dfea7710b45d9c9930af73ac00858db4,9,verifie
 perimetre,7,apps/backend/tests/unit/test_agent_gratuit.py,418,98dd6717559808bfd75f6d34d89f3bcfe1c62db4e9ea7e8aa5721b8d34e2190d,10,verifie
 perimetre,7,apps/backend/tests/unit/test_agent_loop.py,1502,df2ae584da0c62ece757926b5b1888a82d88c279a7057e15f324bd3c306c6639,14,verifie
+perimetre,7,apps/backend/tests/unit/test_agent_ne_rejoue_pas.py,214,30bd73118b257c4ef1d25cd93f41b0b658cbce7e2e7033df166d57c9bc86e2e2,7,todo
+perimetre,7,apps/backend/tests/unit/test_agent_objectif.py,162,6cd04f0a5b9129b6d55cf5240862019ae4b96b2f65427dd923ad7bb03b0c9708,4,todo
+perimetre,7,apps/backend/tests/unit/test_agent_outils_paralleles.py,236,476387ba0c7f163fcd0b3a195ab7885bf911be8b6a14b0982f0adb1960bd8104,9,todo
 perimetre,7,apps/backend/tests/unit/test_agent_philum_catalogue.py,182,50fb74248f932015cfbfbe40b2c2e204e71b211e896cbad78bafe5f6656d46d6,4,verifie
+perimetre,7,apps/backend/tests/unit/test_agent_philum_coercition.py,145,12fe91138a6f33e951767e10dc6166ef37b9cbf24ae17117f5f77da831387ef4,5,todo
 perimetre,7,apps/backend/tests/unit/test_agent_providers.py,693,b84ab4db0d471995613a4f1fb23c71e2ff884f0069d64abc279e80d720546b06,14,verifie
+perimetre,7,apps/backend/tests/unit/test_agent_repli.py,95,fce50ed1acef6669f910b69b12ae098c75c4eb4051e3559cd44fda5c7812c61f,10,todo
 perimetre,7,apps/backend/tests/unit/test_agent_sessions.py,222,463dd121a08816a663e530f2ef2692ff4fee599c05ccce1c89cf2d9283000889,7,verifie
 perimetre,7,apps/backend/tests/unit/test_agent_tools.py,156,b6f7bbf97b7805f78ac2d1d854ec5f65d3dbd52f1a64b65799a8f6f8a1162d37,4,verifie
 perimetre,7,apps/backend/tests/unit/test_agent_workspace.py,245,b5c94def718f5cd3ba2b4cb2ea513e2a4a81d752c1263bbc234b23ea97aa831b,15,verifie
