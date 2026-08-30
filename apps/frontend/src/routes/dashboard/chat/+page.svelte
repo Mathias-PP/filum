@@ -2,10 +2,12 @@
   import { onMount } from 'svelte';
   import { agentApi, type AgentSession, type AgentProvider } from '$lib/api/agent';
   import { ApiError } from '$lib/api';
-  import { Button, ConfirmDialog, toast } from '$lib/components';
+  import { Button, ConfirmDialog, Skeleton, toast } from '$lib/components';
   import ChatPanel from '$lib/components/chat/ChatPanel.svelte';
 
   let sessions = $state<AgentSession[]>([]);
+  let chargement = $state(true);
+  let echecChargement = $state(false);
   let providers = $state<AgentProvider[]>([]);
   let confirmOpen = $state(false);
   let cible = $state<AgentSession | null>(null);
@@ -20,12 +22,19 @@
   const defaut = $derived(providers.find((p) => p.is_default) ?? null);
 
   onMount(async () => {
+    // Un echec de chargement rendait `[]`, donc « Aucune conversation pour
+    // l'instant. » : l'utilisateur lisait que son historique avait disparu
+    // alors que seule la requete avait echoue. Les deux etats sont separes.
     const [s, p] = await Promise.all([
-      agentApi.sessions.list().catch(() => []),
+      agentApi.sessions.list().catch(() => {
+        echecChargement = true;
+        return [];
+      }),
       agentApi.providers.list().catch(() => []),
     ]);
     sessions = s;
     providers = p;
+    chargement = false;
     agentApi.gratuit
       .etat()
       .then((v) => {
@@ -61,10 +70,22 @@
         <Button size="sm" variant="ghost" href="/dashboard/agents">Clés</Button>
       </div>
     </div>
-    {#if sessions.length === 0}
+    {#if chargement}
+      <div class="space-y-2">
+        <Skeleton height="1.75rem" />
+        <Skeleton height="1.75rem" />
+        <Skeleton height="1.75rem" />
+      </div>
+    {:else if echecChargement}
+      <p class="text-sm text-danger">
+        Vos conversations n'ont pas pu être chargées. Rechargez la page : rien n'est perdu.
+      </p>
+    {:else if sessions.length === 0}
       <p class="text-sm text-ink-tertiary">Aucune conversation pour l'instant.</p>
     {:else}
-      <ul class="space-y-1">
+      <!-- La liste defile pour son compte : sans borne, chaque conversation
+           gardee allongeait la page et repoussait le fil de discussion. -->
+      <ul class="space-y-1 lg:max-h-[calc(100dvh-14rem)] lg:overflow-x-hidden lg:overflow-y-auto">
         {#each sessions as session (session.id)}
           <li class="flex items-center gap-1">
             <a
@@ -73,9 +94,11 @@
             >
               {session.title}
             </a>
+            <!-- `action-icon` est scopee au `<style>` du tableau de bord : la
+                 classe n'existe pas ici et la croix sortait sans style. -->
             <button
               type="button"
-              class="action-icon"
+              class="rounded px-2 py-1 leading-none text-ink-tertiary transition-colors hover:bg-danger-bg hover:text-danger"
               title="Supprimer"
               onclick={() => {
                 cible = session;
