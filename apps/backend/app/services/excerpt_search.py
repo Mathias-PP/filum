@@ -26,9 +26,12 @@ from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import text
+from sqlalchemy import func, select, text
 
 from app.core.config import get_settings
+from app.models.biblio_card import BiblioCard
+from app.models.source import Source
+from app.models.source_excerpt import SourceExcerpt
 from app.services.embeddings import embed
 
 if TYPE_CHECKING:
@@ -228,41 +231,6 @@ async def rechercher(
     ]
 
 
-#: La jambe lexicale. Elle vivait dans `tools_write.search_my_excerpts`, triee
-#: par date de creation : un ordre qui n'ordonne rien de ce que la requete
-#: demande. Elle rend ici l'ordre du plus grand nombre d'occurrences, qui est la
-#: seule mesure qu'un `ILIKE` sache produire.
-#:
-#: Le compte se fait en SQL par difference de longueur : `replace` retire toutes
-#: les occurrences, l'ecart divise par la longueur du motif les compte. `length`
-#: et `replace` existent des deux cotes, Postgres en production et SQLite dans
-#: les tests.
-_REQUETE_MOTS = """
-    SELECT
-        e.id AS excerpt_id,
-        e.text AS text,
-        e.title AS title,
-        e.context AS context,
-        s.id AS source_id,
-        s.title AS source_title,
-        s.url AS source_url,
-        c.id AS card_id,
-        c.slug AS card_slug,
-        c.title AS card_title,
-        e.verified_status AS verified_status,
-        (length(lower(e.text)) - length(replace(lower(e.text), :motif, ''))) AS ecart
-    FROM source_excerpts e
-    JOIN sources s ON s.id = e.source_id
-    JOIN biblio_cards c ON c.id = s.biblio_card_id
-    WHERE c.user_id = :user_id
-      AND c.deleted_at IS NULL
-      AND s.deleted_at IS NULL
-      AND lower(e.text) LIKE :comme
-    ORDER BY ecart DESC
-    LIMIT :limite
-"""
-
-
 async def rechercher_par_mots(
     db: AsyncSession,
     user_id: UUID,
@@ -274,20 +242,48 @@ async def rechercher_par_mots(
     Rend toujours une liste : une recherche lexicale ne peut pas etre
     indisponible, contrairement a la recherche par le sens qui depend d'un
     service externe. La liste vide veut donc bien dire « rien ne correspond ».
+
+    Cette jambe vivait dans `tools_write.search_my_excerpts`, triee par date de
+    creation : un ordre qui n'ordonne rien de ce que la requete demande. Elle
+    rend ici l'ordre du plus grand nombre d'occurrences, la seule mesure qu'une
+    correspondance de motif sache produire. Le compte se fait par difference de
+    longueur : `replace` retire toutes les occurrences, et l'ecart les compte.
+
+    Construite avec l'ORM et non en SQL textuel comme sa voisine semantique :
+    `user_id` est une cle typee par le projet, rendue en hexadecimal nu sous
+    SQLite et en `uuid` natif sous Postgres. Un `text()` la comparerait a la
+    forme a tirets de `str(uuid)` et ne trouverait jamais rien sous SQLite.
     """
     requete = requete.strip()
     if not requete:
         return []
     motif = requete.lower()
-    echappe = motif.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    texte = func.lower(SourceExcerpt.text)
+    occurrences = func.length(texte) - func.length(func.replace(texte, motif, ""))
     lignes = await db.execute(
-        text(_REQUETE_MOTS),
-        {
-            "motif": motif,
-            "comme": f"%{echappe}%",
-            "user_id": str(user_id),
-            "limite": limite,
-        },
+        select(
+            SourceExcerpt.id.label("excerpt_id"),
+            SourceExcerpt.text.label("text"),
+            SourceExcerpt.title.label("title"),
+            SourceExcerpt.context.label("context"),
+            Source.id.label("source_id"),
+            Source.title.label("source_title"),
+            Source.url.label("source_url"),
+            BiblioCard.id.label("card_id"),
+            BiblioCard.slug.label("card_slug"),
+            BiblioCard.title.label("card_title"),
+            SourceExcerpt.verified_status.label("verified_status"),
+        )
+        .join(Source, Source.id == SourceExcerpt.source_id)
+        .join(BiblioCard, BiblioCard.id == Source.biblio_card_id)
+        .where(
+            BiblioCard.user_id == user_id,
+            BiblioCard.deleted_at.is_(None),
+            Source.deleted_at.is_(None),
+            texte.contains(motif),
+        )
+        .order_by(occurrences.desc())
+        .limit(limite)
     )
     return [
         Resultat(
