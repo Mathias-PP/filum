@@ -59,7 +59,7 @@ export function appliquer(items: ChatItem[], event: AgentEvent): ChatItem[] {
         ...items,
         {
           kind: 'tool',
-          id: event.payload.id ?? `${event.payload.name}-${items.length}`,
+          id: idLibre(items, event.payload.id ?? `${event.payload.name}-${items.length}`),
           name: event.payload.name,
           args: event.payload.arguments,
           result: null,
@@ -147,6 +147,22 @@ export function appliquer(items: ChatItem[], event: AgentEvent): ChatItem[] {
   }
 }
 
+/** Rend un identifiant qu'aucune carte d'outil déjà posée ne porte.
+ *
+ * Un fournisseur peut rejouer le même identifiant d'appel dans un tour ; le
+ * `{#each}` clavé de l'affichage, lui, lève sur le doublon et fait disparaître
+ * toute la conversation.
+ */
+function idLibre(items: ChatItem[], base: string): string {
+  const pris = new Set<string>();
+  for (const item of items) {
+    if (item.kind === 'tool') pris.add(item.id);
+  }
+  let candidat = base;
+  for (let n = 2; pris.has(candidat); n += 1) candidat = `${base}#${n}`;
+  return candidat;
+}
+
 function cloturerSansReponse(items: ChatItem[]): ChatItem[] {
   return items.map((item) =>
     item.kind === 'tool' && item.result === null
@@ -165,6 +181,19 @@ function cloturerSansReponse(items: ChatItem[]): ChatItem[] {
 export function depuisMessages(messages: AgentMessage[]): ChatItem[] {
   const items: ChatItem[] = [];
   const enAttente = new Map<string, number>();
+  // Les cartes d'outil sont affichées dans un `{#each}` clavé : deux items du
+  // même identifiant font lever `each_key_duplicate` à Svelte, et l'exception
+  // emporte le rendu de toute la conversation, écran vide et sans message.
+  // Le cas se produit dès qu'un message assistant porte plusieurs `tool_calls`
+  // sans identifiant fourni par le fournisseur : tous retombaient sur
+  // `message.id`. L'unicité est donc garantie ici, à la source.
+  const pris = new Set<string>();
+  const unique = (base: string): string => {
+    let candidat = base;
+    for (let n = 2; pris.has(candidat); n += 1) candidat = `${base}#${n}`;
+    pris.add(candidat);
+    return candidat;
+  };
   for (const message of messages) {
     if (message.role === 'user') {
       items.push({ kind: 'user', text: message.content });
@@ -187,20 +216,23 @@ export function depuisMessages(messages: AgentMessage[]): ChatItem[] {
       } else {
         items.push({
           kind: 'tool',
-          id: message.id,
+          id: unique(message.id),
           name: message.tool_name ?? 'outil',
           args: {},
           result: resultat,
         });
       }
     } else if (message.tool_calls?.length) {
-      for (const appel of message.tool_calls) {
+      for (const [rang, appel] of message.tool_calls.entries()) {
         const fonction = (appel as { function?: { name?: string; arguments?: string } }).function;
-        const id = String((appel as { id?: string }).id ?? message.id);
-        enAttente.set(id, items.length);
+        // La clé d'appariement reste celle du fournisseur : c'est elle que
+        // porte le `tool_call_id` du résultat. Le rang la remplace quand elle
+        // manque, pour que deux appels d'un même message restent distincts.
+        const cle = String((appel as { id?: string }).id ?? `${message.id}-${rang}`);
+        enAttente.set(cle, items.length);
         items.push({
           kind: 'tool',
-          id,
+          id: unique(cle),
           name: fonction?.name ?? 'outil',
           args: lireJson(fonction?.arguments ?? '{}') ?? {},
           result: null,

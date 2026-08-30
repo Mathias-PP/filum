@@ -230,9 +230,11 @@
     }
     try {
       const res = await agentApi.providers.models(cleChoisie);
-      modeles = res.models
-        .map((m) => (typeof m === 'string' ? m : m.id))
-        .filter(Boolean) as string[];
+      // Dédoublonné : la liste vient du fournisseur et sert de clé au `{#each}`
+      // du sélecteur, où un doublon leverait et emporterait tout le panneau.
+      modeles = [
+        ...new Set(res.models.map((m) => (typeof m === 'string' ? m : m.id)).filter(Boolean)),
+      ] as string[];
     } catch {
       modeles = [];
     }
