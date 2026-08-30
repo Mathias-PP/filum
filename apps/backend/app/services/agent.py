@@ -95,6 +95,23 @@ _SYSTEME = (
     "Réponds en français, en phrases courtes et factuelles."
 )
 
+
+def _contexte_temporel(maintenant: datetime | None = None) -> str:
+    """La date du jour, à mettre en tête du prompt système.
+
+    La règle 2 interdit de fabriquer une date de mémoire, et rien ne disait au
+    modèle quel jour on est : il datait donc au petit bonheur de son cutoff
+    d'entraînement. La date est calculée à l'appel et non au chargement du
+    module, sinon un processus qui vit plusieurs jours sert une date périmée.
+    """
+    jour = (maintenant or datetime.now(UTC)).date().isoformat()
+    return (
+        f"Date du jour : {jour} (UTC). Toute date que tu avances doit venir de "
+        "cette ligne ou d'un résultat d'outil, jamais de ta mémoire "
+        "d'entraînement, qui s'arrête avant aujourd'hui.\n\n"
+    )
+
+
 #: Une annonce de résultat déjà obtenu, au passé.
 #:
 #: La règle 1 du prompt système l'interdit déjà, et une conversation réelle de
@@ -1041,7 +1058,7 @@ async def boucle(
     workspace_ctx = await _priming_workspace(
         db, user.id, agent_def.context if agent_def is not None else None
     )
-    systeme = _SYSTEME
+    systeme = _contexte_temporel() + _SYSTEME
     if agent_def is not None:
         systeme += f"\n\n---\n## Ton rôle : {agent_def.name}\n{agent_def.system_prompt.strip()}\n"
     # Graphe memoire STARTER : 3 tables, 1 requete recursive, 2 ms, 400 tok fixes.
