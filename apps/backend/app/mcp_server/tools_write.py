@@ -133,8 +133,31 @@ async def _fiche_du_createur(db: AsyncSession, user: User, slug: str) -> BiblioC
     )
     card = (await db.execute(stmt)).scalar_one_or_none()
     if card is None:
-        raise ToolError(f"Aucune fiche {slug!r} chez {user.username}.")
+        raise ToolError(
+            f"Aucune fiche {slug!r} chez {user.username}." + await _fiches_a_portee(db, user)
+        )
     return card
+
+
+async def _fiches_a_portee(db: AsyncSession, user: User) -> str:
+    """Les slugs du createur, pour qu'un slug fautif se corrige sans tour perdu.
+
+    Voir `_sources_a_portee` pour la raison : un refus qui ne montre rien fait
+    reessayer, un refus qui montre fait corriger.
+    """
+    stmt = (
+        select(BiblioCard.slug, BiblioCard.title)
+        .where(BiblioCard.user_id == user.id, BiblioCard.deleted_at.is_(None))
+        .order_by(BiblioCard.updated_at.desc())
+    )
+    lignes = (await db.execute(stmt)).all()
+    if not lignes:
+        return " Vous n'avez aucune fiche : commencez par `create_card`."
+    montrees = lignes[:_ECHANTILLON_DU_REFUS]
+    liste = "\n".join(f"- {s} : {t}" for s, t in montrees)
+    reste = len(lignes) - len(montrees)
+    suite = f"\n... et {reste} autres, voir `list_my_cards`." if reste else ""
+    return f" Vos fiches :\n{liste}{suite}"
 
 
 def _identite(url: str | None, doi: str | None) -> str | None:
@@ -175,8 +198,73 @@ async def _source_du_createur(db: AsyncSession, user: User, source_id: str) -> S
     )
     source = (await db.execute(stmt)).scalar_one_or_none()
     if source is None:
-        raise ToolError(f"Aucune source {source_id!r} chez {user.username}.")
+        raise ToolError(
+            f"Aucune source {source_id!r} chez {user.username}." + await _sources_a_portee(db, user)
+        )
     return source
+
+
+#: Combien d'entrees un refus montre avant d'annoncer le reste. Borne
+#: d'affichage, pas regle editoriale : au-dela, la liste coute plus de tokens
+#: qu'elle n'en fait gagner, et le message a deja rempli son office si
+#: l'identifiant cherche figure parmi les premieres.
+_ECHANTILLON_DU_REFUS = 20
+
+
+async def _sources_a_portee(db: AsyncSession, user: User) -> str:
+    """Les sources du createur, pour qu'un identifiant fautif se corrige seul.
+
+    Un refus nu (« aucune source X ») ne dit pas quoi faire : le modele reessaie
+    le meme identifiant, ou en fabrique un autre. Lui rendre ce qui existe
+    change le refus en correction, sans tour supplementaire. Rien n'est
+    divulgue au passage : ce sont ses propres sources.
+    """
+    stmt = (
+        select(Source.id, Source.title, Source.url, BiblioCard.slug)
+        .join(BiblioCard, Source.biblio_card_id == BiblioCard.id)
+        .where(
+            Source.deleted_at.is_(None),
+            BiblioCard.user_id == user.id,
+            BiblioCard.deleted_at.is_(None),
+        )
+        .order_by(BiblioCard.slug, Source.position)
+    )
+    lignes = (await db.execute(stmt)).all()
+    if not lignes:
+        return " Vous n'avez aucune source : commencez par `add_source`."
+    montrees = lignes[:_ECHANTILLON_DU_REFUS]
+    liste = "\n".join(
+        f"- {sid} : {titre or url or 'sans titre'} (fiche {slug})"
+        for sid, titre, url, slug in montrees
+    )
+    reste = len(lignes) - len(montrees)
+    suite = f"\n... et {reste} autres, voir `get_card` sur la fiche visee." if reste else ""
+    return f" Vos sources :\n{liste}{suite}"
+
+
+async def _extraits_a_portee(db: AsyncSession, source: Source) -> str:
+    """Les extraits de cette source, pour la meme raison que `_sources_a_portee`.
+
+    Ici le perimetre tombe de lui-meme : la source est connue, donc la liste
+    est bornee par ce qu'elle porte. Les premiers mots suffisent a reconnaitre
+    un extrait sans recopier son texte entier dans un message d'erreur.
+    """
+    stmt = (
+        select(SourceExcerpt.id, SourceExcerpt.title, SourceExcerpt.text)
+        .where(SourceExcerpt.source_id == source.id)
+        .order_by(SourceExcerpt.position)
+    )
+    lignes = (await db.execute(stmt)).all()
+    if not lignes:
+        return " Cette source ne porte aucun extrait."
+    montrees = lignes[:_ECHANTILLON_DU_REFUS]
+    liste = "\n".join(
+        f"- {eid} : {titre or ' '.join((texte or '').split()[:12]) or 'sans texte'}"
+        for eid, titre, texte in montrees
+    )
+    reste = len(lignes) - len(montrees)
+    suite = f"\n... et {reste} autres, voir `get_source`." if reste else ""
+    return f" Ses extraits :\n{liste}{suite}"
 
 
 async def create_card(
@@ -753,13 +841,16 @@ async def update_source(
     published_at: str | None = None,
     archive_url: str | None = None,
 ) -> dict[str, Any]:
-    """Corrige les champs edituriaux d'une source existante.
+    """Corrige les champs editoriaux d'une source (ecrase l'ancienne valeur).
+
+    Chaque champ passe remplace le precedent sans retour possible ; un champ
+    laisse a `None` reste inchange, et une chaine vide efface la valeur. Les
+    extraits de la source ne sont pas touches.
 
     L'URL d'une source est immuable (elle fait autorite dans les liens deja
-    emis) : pour changer l'URL, `delete_source` puis `add_source`. Un champ
-    laisse a `None` reste inchange. Passer une chaine vide sur `archive_url`
-    retire l'archive et remet le statut en `pending`. Sur `published_at`,
-    une chaine vide efface la date ; formats : 2016, 2016-03, 2016-03-15.
+    emis) : pour changer l'URL, `delete_source` puis `add_source`. Passer une
+    chaine vide sur `archive_url` retire l'archive et remet le statut en
+    `pending`. Sur `published_at`, formats : 2016, 2016-03, 2016-03-15.
     """
     source = await _source_du_createur(db, user, source_id)
     if title is not None:
@@ -854,7 +945,10 @@ async def delete_excerpt(
         select(SourceExcerpt).where(SourceExcerpt.id == eid, SourceExcerpt.source_id == source.id)
     )
     if excerpt is None:
-        raise ToolError(f"Aucun extrait {excerpt_id!r} sur la source {source_id!r}.")
+        raise ToolError(
+            f"Aucun extrait {excerpt_id!r} sur la source {source_id!r}."
+            + await _extraits_a_portee(db, source)
+        )
     await db.delete(excerpt)
     await db.commit()
     return {"excerpt_id": excerpt_id, "source_id": source_id, "deleted": True}
@@ -896,7 +990,10 @@ async def update_excerpt(
         select(SourceExcerpt).where(SourceExcerpt.id == eid, SourceExcerpt.source_id == source.id)
     )
     if excerpt is None:
-        raise ToolError(f"Aucun extrait {excerpt_id!r} sur la source {source_id!r}.")
+        raise ToolError(
+            f"Aucun extrait {excerpt_id!r} sur la source {source_id!r}."
+            + await _extraits_a_portee(db, source)
+        )
     if text is not None:
         corps = text.strip()
         if not corps:
