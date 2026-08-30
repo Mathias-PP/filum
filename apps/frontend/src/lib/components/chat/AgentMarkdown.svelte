@@ -15,7 +15,13 @@
 </script>
 
 <div class="space-y-1.5 text-sm leading-relaxed text-ink-primary">
-  {#each blocs as bloc (bloc.t + JSON.stringify(bloc).length)}
+  <!-- Clave par rang, pas par contenu. Deux blocs identiques, ne serait-ce que
+       deux separateurs ou deux paragraphes de meme longueur, donnaient la meme
+       cle : Svelte levait `each_key_duplicate`, et la levee emportait le rendu
+       de toute la conversation, ecran vide et sans message d'erreur. Les blocs
+       ne portent aucun etat propre et la liste est recalculee a chaque texte :
+       il n'y a rien a preserver qu'une identite de contenu justifierait. -->
+  {#each blocs as bloc, rang (rang)}
     {#if bloc.t === 'titre'}
       {#if bloc.niveau === 1}
         <p class="pt-1 text-base font-semibold">

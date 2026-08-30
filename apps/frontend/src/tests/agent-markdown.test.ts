@@ -1,6 +1,8 @@
+import { render } from '@testing-library/svelte';
 import { describe, expect, it } from 'vitest';
 
 import { analyser, segmentsInline } from '$lib/agent/markdown';
+import AgentMarkdown from '$lib/components/chat/AgentMarkdown.svelte';
 
 describe('analyse des blocs', () => {
   it('sépare titres, paragraphes, listes, citation, code et séparateur', () => {
@@ -93,5 +95,19 @@ describe('segments en ligne', () => {
       { t: 'gras', texte: 'a' },
       { t: 'italique', texte: 'b' },
     ]);
+  });
+});
+
+describe('rendu de blocs identiques', () => {
+  it('affiche deux blocs de contenu identique sans lever', async () => {
+    // La cle du `{#each}` etait `type + longueur JSON` : deux separateurs, ou
+    // deux paragraphes de meme longueur, produisaient la meme cle. Svelte
+    // levait `each_key_duplicate` et la levee emportait le rendu de toute la
+    // conversation, ecran vide et sans message d'erreur.
+    const { container } = render(AgentMarkdown, {
+      props: { texte: ['Meme texte.', '', 'Meme texte.', '', '---', '', '---'].join('\n') },
+    });
+    expect(container.querySelectorAll('p')).toHaveLength(2);
+    expect(container.querySelectorAll('hr')).toHaveLength(2);
   });
 });
