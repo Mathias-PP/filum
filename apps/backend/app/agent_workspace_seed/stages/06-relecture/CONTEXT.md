@@ -53,5 +53,5 @@ Les checks ci-dessous émettent des **alertes** listées dans le verdict. Aucune
 | Pivots avec extraits | Chaque pivot a ≥ 2 extraits |
 | Extraits vérifiables | Aucun `verified_status=missing` sans autorisation explicite |
 | Aucune suggestion connexion pendante | Chaque `outgoing` a un verdict tranché |
-| Extraits ≤ 5 par source | Aucune source > 5 extraits |
+| Extraits sans remplissage | Aucun extrait qui redit un extrait déjà posé, ou qui ne dit rien du sujet de la fiche. Le nombre par source n'est pas un critère. |
 | Métadonnées vérifiées | DOI présents cochés via Crossref, dates depuis le contenu |
