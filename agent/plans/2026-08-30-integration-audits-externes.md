@@ -18,8 +18,8 @@ risque, pas celui des dépôts.
 
 | # | Branche | Origine | Taille |
 |---|---|---|---|
-| 1 | `feat/texte-tiers-assaini` | book-to-skill | S |
-| 2 | `fix/echec-jamais-vide` | open-notebook | S |
+| 1 | `feat/texte-tiers-assaini` | book-to-skill | S, livrée le 2026-08-30 (#612) |
+| 2 | `fix/echec-jamais-vide` | open-notebook | annulée : déjà fait, voir la section |
 | 3 | `fix/graph-memory-rappel-honnete` | graph-memory-starter, lot A | M |
 | 4 | `feat/recherche-fusion-rrf` | graph-memory-starter, `rag/search.py` | M |
 | 5 | `feat/agent-repli-fournisseur` | OmniRoute | M |
@@ -198,7 +198,7 @@ journaux.
 
 ---
 
-# PR 2 : `fix/echec-jamais-vide`
+# PR 2 : `fix/echec-jamais-vide` (ANNULÉE, rien à faire)
 
 **Ce que le dépôt apporte.** `open_notebook/utils/error_classifier.py` range les
 échecs d'un fournisseur dans un petit ensemble fermé de causes, chacune portant
@@ -208,9 +208,23 @@ vide dit « ce corpus ne contient rien là-dessus », et le modèle, entendant c
 comble en fabriquant. Une erreur dit « je n'ai pas pu chercher », et le modèle
 s'arrête ou change de voie.
 
-Philum a déjà la moitié du classement (`agent_providers._classify`, ligne 488).
-Ce qui manque est la distinction entre le vide constaté et le vide subi, dans
-les deux recherches que l'agent appelle.
+## Annulée le 2026-08-30, après vérification
+
+**Philum porte déjà tout ce que cette PR prévoyait, et le porte mieux que le
+dépôt dont elle s'inspirait.** La prémisse écrite ci-dessus était fausse : elle
+supposait que `embed()` rendant `None` faisait rendre `[]`. Rien n'est livré.
+
+| Ce qui était prévu | Ce qui existe déjà |
+|---|---|
+| distinguer le vide constaté du vide subi | `excerpt_search.rechercher:174-181` rend `None` pour « n'a pas pu chercher » et `[]` pour « a cherché, rien trouvé ». Le commentaire de `ExcerptSearchResponse.available` (`endpoints/excerpt_search.py:48-53`) énonce exactement le principe qu'on croyait importer |
+| interdire de combler quand la recherche web est absente | `web.py:124-134`, qui va plus loin : il dit pourquoi combler serait sans effet, et l'outil n'est même pas exposé au modèle sans fournisseur configuré (`web_tools:194-204`) |
+| une recherche en panne rend une erreur, pas une liste | `web.py:135-138` |
+| classer les échecs amont | `agent_providers._classify:488-523`, meilleur que `error_classifier.py` : priorité au code d'erreur du corps sur le cadrage HTTP, et conservation du message brut du fournisseur au lieu de le noyer dans une reformulation |
+
+**Le seul reste réel :** `_classify` ne sert qu'à l'endpoint de test de clé. La
+boucle de chat reconstruit ses propres messages (`agent.py:466`, `:502`, `:732`).
+C'est une duplication, mais c'est le terrain de la PR 5, qui a besoin de cette
+classification pour rendre son verdict de repli. Repliée là, pas traitée seule.
 
 **À ne pas reprendre :** la discipline de citation d'open-notebook vit
 entièrement dans ses gabarits Jinja, c'est-à-dire nulle part. Philum vérifie le
@@ -271,7 +285,7 @@ sort futur du graphe, parce qu'il corrige un rappel aujourd'hui faux.
 - Modifier : `apps/backend/app/mcp_server/server.py:760` (`rebuild_graph`)
 - Test : `apps/backend/tests/unit/test_graph_memory.py`
 
-- [ ] **3.1 Défaut 1 : le repli sémantique est du code mort**
+- [x] **3.1 Défaut 1 : le repli sémantique est du code mort**
 
 `graph_memory.py:255-277` lit une colonne `embedding` que `:153-156` n'écrit
 jamais. Le `WHERE embedding IS NOT NULL` filtre donc toute la table, après un
@@ -282,13 +296,13 @@ d'entité, pour un graphe dont la valeur reste à établir (défaut 7). Retirer
 supprime un appel réseau par rappel et une illusion de repli. Le laisser tel quel
 n'était pas une option.
 
-- [ ] **3.2 Défaut 2 : le slug, pas l'UUID**
+- [x] **3.2 Défaut 2 : le slug, pas l'UUID**
 
 `:39` et `:287` injectent `r.source_card_id`, un UUID. Le modèle lit
 `(7c9a1f2e-...)` là où il devrait lire `(les-mitochondries)`. Joindre
 `biblio_cards` dans `WALK_SQL` et rendre le slug.
 
-- [ ] **3.3 Défauts 3 et 4 : le nœud CARD issu du titre**
+- [x] **3.3 Défauts 3 et 4 : le nœud CARD issu du titre**
 
 `:136-138` crée un nœud nommé par le titre de la fiche, alors que `:163` et
 `:197` rattachent les arêtes au nœud nommé par le slug. Nommer une fiche par son
@@ -299,7 +313,7 @@ non-opérateur.
 Correction : un seul nœud CARD, identifié par le slug, et le titre devient un
 alias réel qui pointe vers lui.
 
-- [ ] **3.4 Défaut 5 : l'amorçage**
+- [x] **3.4 Défaut 5 : l'amorçage**
 
 `:222-237` cherche par sous-chaîne, avec un `OR` sur tous les mots de la requête
 et aucun mot vide retiré. Le dépôt (`src/recall.py:67`) cherche par mot entier.
@@ -309,13 +323,13 @@ tout nœud contenant « de », c'est-à-dire à peu près tous.
 Correction : mot entier, mots vides français et anglais retirés, longueur
 minimale de trois caractères.
 
-- [ ] **3.5 Défaut 6 : le vocabulaire déclaré**
+- [x] **3.5 Défaut 6 : le vocabulaire déclaré**
 
 `:16-29` déclare 7 types d'entité et 11 prédicats. Le constructeur en écrit 4 et
 3. Réduire les constantes à ce qui est réellement écrit. Coût nul, et cela évite
 qu'une session future croie disposer d'un vocabulaire qui n'existe pas.
 
-- [ ] **3.6 Défaut 8 : la durée fabriquée et le contexte non borné**
+- [x] **3.6 Défaut 8 : la durée fabriquée et le contexte non borné**
 
 `agent.py:1250` écrit `(rappel automatique, 2 ms)` en dur, alors que `Facts.ms`
 porte la mesure. Utiliser la mesure. Borner le nombre de faits injectés, en
@@ -324,7 +338,7 @@ disant combien ont été écartés plutôt qu'en tronquant en silence.
 Traduire au passage les chaînes de `Facts.as_text()` (`:67`, `:69`), restées en
 anglais depuis le portage, dans un projet qui est en français partout.
 
-- [ ] **3.7 Défaut 9 : `rebuild_graph` est globalement destructif**
+- [x] **3.7 Défaut 9 : `rebuild_graph` est globalement destructif**
 
 `graph_memory.py:86-88` vide les trois tables, `server.py:760-771` expose
 l'opération à tout compte authentifié. Tout utilisateur peut donc vider et
@@ -332,10 +346,15 @@ reconstruire le graphe de tous.
 
 Le graphe ne porte que des fiches publiées et publiques, donc ce n'est pas une
 fuite : c'est un déni de service et une reconstruction non sollicitée.
-Correction minimale et suffisante : réserver l'outil au superutilisateur, et
-dire dans son libellé qu'il est global.
 
-- [ ] **3.8 Tests, commit, PR, merge, déployer.**
+Il n'existe pas de notion de superutilisateur sur `User`, et en inventer une
+pour un seul outil coûterait une migration et un modèle de permissions que rien
+d'autre ne réclame. Correction retenue : un délai de cinq minutes entre deux
+reconstructions (`ReconstructionTropRecenteError`), et un libellé qui dit que le
+graphe est global. Le délai supprime le vrai dommage, qui est le coût répété ;
+le libellé supprime la surprise.
+
+- [x] **3.8 Tests, commit, PR, merge, déployer.**
 
 Vérification prod : `recall_memory` sur le titre d'une fiche publiée doit rendre
 des faits, et les identifiants affichés doivent être des slugs.

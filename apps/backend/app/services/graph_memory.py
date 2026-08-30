@@ -12,22 +12,18 @@ from app.models.biblio_card import BiblioCard
 from app.models.graph_memory import GraphAlias, GraphEntity, GraphRelation
 from app.models.source import Source
 
-# Ontologie fermée Philum (STARTER: 5 types → Philum 7)
-ENTITY_TYPES = {"PERSON", "ROLE", "CARD", "SOURCE", "CONCEPT", "POLICY", "PROCESS"}
-PREDICATES = {
-    "authored_by",
-    "created_by",
-    "cites",
-    "supports",
-    "contradicts",
-    "part_of",
-    "held_by",
-    "delegates_to",
-    "references",
-    "attests",
-    "mentions",
-}
+# Ontologie fermée, réduite à ce que `build_graph` écrit réellement. Le portage
+# initial déclarait 7 types et 11 prédicats pour 4 types et 3 prédicats
+# construits : un vocabulaire déclaré au-delà de l'écrit fait croire à une
+# session future qu'elle dispose d'arêtes qui n'existent pas. Toute extension
+# se fait ici *et* dans `build_graph`, jamais ici seulement.
+ENTITY_TYPES = {"PERSON", "CARD", "SOURCE", "CONCEPT"}
+PREDICATES = {"authored_by", "cites", "references"}
 
+# La jointure sur `biblio_cards` sert le slug plutôt que l'UUID de la fiche : le
+# modèle lisait `(7c9a1f2e-...)`, qui ne le mène nulle part et qu'il ne peut ni
+# citer ni rappeler, là où le slug est l'identifiant que le reste des outils
+# accepte.
 WALK_SQL = """
 WITH RECURSIVE walk(entity_id, depth) AS (
   SELECT id, 0 FROM graph_entities WHERE id IN ({seeds})
@@ -36,12 +32,13 @@ WITH RECURSIVE walk(entity_id, depth) AS (
   FROM graph_relations r JOIN walk w ON w.entity_id IN (r.source_id, r.target_id)
   WHERE w.depth < :hops
 )
-SELECT e1.name, r.predicate, e2.name, r.source_card_id,
+SELECT e1.name, r.predicate, e2.name, c.slug,
        LEAST((SELECT MIN(depth) FROM walk WHERE entity_id = r.source_id),
              (SELECT MIN(depth) FROM walk WHERE entity_id = r.target_id)) AS near
 FROM graph_relations r
 JOIN graph_entities e1 ON e1.id = r.source_id
 JOIN graph_entities e2 ON e2.id = r.target_id
+LEFT JOIN biblio_cards c ON c.id = r.source_card_id
 WHERE r.source_id IN (SELECT entity_id FROM walk)
   AND r.target_id IN (SELECT entity_id FROM walk)
 ORDER BY near
@@ -64,25 +61,61 @@ class Facts:
     ms: float
 
     def as_text(self) -> str:
-        header = f"memory: {len(self.triples)} facts recalled in {self.ms:.0f} ms"
+        entete = f"memoire : {len(self.triples)} faits rappeles en {self.ms:.0f} ms"
         if not self.triples:
-            return header + "\n(no memory matches for this prompt)"
-        width = max(len(f"{s} --[{p}]--> {t}") for s, p, t, _ in self.triples)
-        lines = [f"{f'{s} --[{p}]--> {t}':<{width}}   ({doc})" for s, p, t, doc in self.triples]
-        text = header + "\n\n" + "\n".join(lines)
+            return entete + "\n(aucun fait du graphe ne correspond a cette question)"
+        largeur = max(len(f"{s} --[{p}]--> {t}") for s, p, t, _ in self.triples)
+        lignes = [f"{f'{s} --[{p}]--> {t}':<{largeur}}   ({doc})" for s, p, t, doc in self.triples]
+        texte = entete + "\n\n" + "\n".join(lignes)
         if self.notes:
-            text += "\n\nwhere:\n" + "\n".join(f"  {n}: {d}" for n, d in self.notes)
-        return text
+            texte += "\n\nou :\n" + "\n".join(f"  {n} : {d}" for n, d in self.notes)
+        return texte
 
 
-async def build_graph(db: AsyncSession) -> dict:
+#: Écart minimal entre deux reconstructions. Le graphe est **global** : il porte
+#: les fiches publiées et publiques de tout le monde, et le reconstruire les vide
+#: puis les réécrit toutes. L'outil MCP étant ouvert à tout compte authentifié,
+#: rien n'empêchait de le rappeler en boucle et de faire porter à la base le coût
+#: d'un parcours complet à chaque appel.
+#:
+#: L'écart est tenu en mémoire de processus, pas en base : Philum tourne sur un
+#: conteneur unique. Un passage en multi-instance devrait le déplacer, faute de
+#: quoi la garde vaudra par instance.
+_ECART_RECONSTRUCTION_S = 300.0
+
+_derniere_reconstruction: float | None = None
+
+
+class ReconstructionTropRecenteError(Exception):
+    """Le graphe vient d'être reconstruit, et il l'est pour tout le monde."""
+
+
+async def build_graph(db: AsyncSession, *, forcer: bool = False) -> dict:
     """Construit le graphe depuis les fiches publiques (déterministe, sans LLM).
 
-    2 passes comme STARTER:
-    1) tous les noeuds content-addressed
-    2) arêtes + aliases résolus par nom normalisé
+    Deux passes : d'abord tous les nœuds, adressés par leur contenu, puis les
+    arêtes et les alias résolus par nom normalisé.
+
+    Vide et réécrit **tout** le graphe, qui est global. La reconstruction se fait
+    en une transaction, donc personne ne lit un graphe à moitié construit, mais
+    elle coûte un parcours complet : d'où l'écart minimal entre deux appels.
     """
-    # wipe
+    global _derniere_reconstruction
+    maintenant = time.monotonic()
+    if (
+        not forcer
+        and _derniere_reconstruction is not None
+        and maintenant - _derniere_reconstruction < _ECART_RECONSTRUCTION_S
+    ):
+        attente = _ECART_RECONSTRUCTION_S - (maintenant - _derniere_reconstruction)
+        raise ReconstructionTropRecenteError(
+            f"Le graphe a été reconstruit il y a moins de "
+            f"{int(_ECART_RECONSTRUCTION_S // 60)} minutes. Il est global et "
+            f"déterministe : le reconstruire à nouveau rendrait le même résultat. "
+            f"Réessayez dans {int(attente)} s si des fiches ont été publiées entre-temps."
+        )
+    _derniere_reconstruction = maintenant
+
     await db.execute(text("DELETE FROM graph_aliases"))
     await db.execute(text("DELETE FROM graph_relations"))
     await db.execute(text("DELETE FROM graph_entities"))
@@ -133,9 +166,17 @@ async def build_graph(db: AsyncSession) -> dict:
         return eid
 
     for card in cards:
+        # Une fiche, un seul nœud, identifié par son slug. Le portage en créait
+        # un second nommé par le titre : les arêtes se rattachaient au premier,
+        # si bien que nommer une fiche par son titre, ce que fait toute question
+        # en langue naturelle, amorçait sur un nœud sans arête et rendait
+        # « aucun fait ne correspond » alors que le graphe portait la réponse.
+        #
+        # Le titre devient donc un alias, ce qu'il aurait toujours dû être. Le
+        # seul alias écrit jusqu'ici valait le nom du nœud, c'est-à-dire rien.
         add_node(card.slug, "CARD", card.description or card.title or "", card.id)
-        add_node(card.title, "CARD", card.description or "", card.id)
-        aliases.append((entity_id("CARD", card.slug), card.slug))
+        if card.title and card.title != card.slug:
+            aliases.append((entity_id("CARD", card.slug), card.title))
         if card.content_authors:
             for a in [x.strip() for x in card.content_authors.split(",") if x.strip()]:
                 add_node(a, "PERSON", "", card.id)
@@ -219,62 +260,113 @@ async def build_graph(db: AsyncSession) -> dict:
     }
 
 
+#: Mots trop courants pour désigner quoi que ce soit. Sans ce filtre, une
+#: question comme « quelles sont les sources de la fiche » amorçait sur tout nœud
+#: contenant « des », c'est-à-dire à peu près tous, et le parcours partait de
+#: partout : le rappel rendait alors les huit premières arêtes de la base plutôt
+#: que celles de la question.
+_MOTS_VIDES = frozenset(
+    {
+        "avec",
+        "cette",
+        "comme",
+        "dans",
+        "donc",
+        "elle",
+        "fiche",
+        "leur",
+        "mais",
+        "meme",
+        "même",
+        "pour",
+        "quel",
+        "quelle",
+        "quelles",
+        "quels",
+        "sans",
+        "sont",
+        "source",
+        "sources",
+        "sous",
+        "tout",
+        "tous",
+        "toute",
+        "toutes",
+        "about",
+        "from",
+        "that",
+        "this",
+        "what",
+        "which",
+        "with",
+    }
+)
+
+
+def mots_utiles(question: str) -> list[str]:
+    """Les mots d'une question qui peuvent designer une entite."""
+    mots = re.findall(r"\w{4,}", question.lower())
+    return list(dict.fromkeys(m for m in mots if m not in _MOTS_VIDES))
+
+
+def _mot_entier(mot: str, nom: str) -> bool:
+    return re.search(rf"\b{re.escape(mot)}\b", nom.lower()) is not None
+
+
 async def _seeds_lexical_sql(db: AsyncSession, question: str) -> list[str]:
-    """Seeds via SQL LIKE — <50 ms même à 5k entités, vs 1.6s en Python."""
-    words = [w for w in re.findall(r"\w{4,}", question.lower()) if len(w) >= 4]
-    if not words:
+    """Les entites dont le nom ou un alias porte un mot de la question.
+
+    Deux temps. Le `LIKE` en base ramene les candidats, parce qu'il se pose sur
+    l'index trigramme de la migration 054 et reste sous les 30 ms a 5k entites.
+    Le mot entier est ensuite verifie en Python, sur ces seuls candidats.
+
+    La verification separee n'est pas un detour : une sous-chaine seule fait
+    correspondre « art » a « particule » et « one » a « money », et le portage
+    initial s'en tenait la, la ou le depot d'origine cherchait le mot entier.
+    L'ecart se paie en amorces qui n'ont rien a voir avec la question.
+    """
+    mots = mots_utiles(question)
+    if not mots:
         return []
-    # un LIKE par mot, OR entre eux — pg_trgm accélère si index présent, sinon seq scan <30 ms à 5k
-    conds = " OR ".join(f"lower(name) LIKE :w{i}" for i in range(len(words)))
-    params = {f"w{i}": f"%{w}%" for i, w in enumerate(words)}
+    conds = " OR ".join(f"lower(name) LIKE :w{i}" for i in range(len(mots)))
+    params = {f"w{i}": f"%{m}%" for i, m in enumerate(mots)}
     ents = (
         await db.execute(
             text(
-                f"SELECT id FROM graph_entities WHERE {conds}"  # nosec B608
+                f"SELECT id, name FROM graph_entities WHERE {conds}"  # nosec B608
             ),
             params,
         )
     ).fetchall()
-    conds_a = " OR ".join(f"lower(alias) LIKE :w{i}" for i in range(len(words)))
+    conds_a = " OR ".join(f"lower(alias) LIKE :w{i}" for i in range(len(mots)))
     aliases = (
         await db.execute(
             text(
-                f"SELECT entity_id FROM graph_aliases WHERE {conds_a}"  # nosec B608
+                f"SELECT entity_id, alias FROM graph_aliases WHERE {conds_a}"  # nosec B608
             ),
             params,
         )
     ).fetchall()
-    seeds = [str(r[0]) for r in ents] + [str(r[0]) for r in aliases]
+    seeds = [
+        str(ligne[0])
+        for ligne in list(ents) + list(aliases)
+        if any(_mot_entier(mot, ligne[1]) for mot in mots)
+    ]
     return list(dict.fromkeys(seeds))
 
 
 async def recall(db: AsyncSession, question: str, hops: int = 3, top_k: int = 8) -> Facts:
+    # Le repli sémantique qui vivait ici a été retiré : il lisait une colonne
+    # `embedding` que `build_graph` n'écrit jamais, si bien que son
+    # `WHERE embedding IS NOT NULL` filtrait toute la table. Il coûtait un appel
+    # réseau par rappel sans amorce, pour zéro graine, sous un `except` muet.
+    #
+    # Le remplir plutôt que le retirer supposerait d'embarquer chaque nom
+    # d'entité, pour un graphe dont les trois arêtes sont aujourd'hui des clés
+    # étrangères qu'une jointure donne déjà. Le remettre suppose de trancher
+    # d'abord cette question-là.
     t0 = time.perf_counter()
-    # 1) lexical SQL (<30 ms)
     seeds = await _seeds_lexical_sql(db, question)
-    # 2) vector hybrid — si lexical vide, tente sémantique (refund≈remboursement)
-    if not seeds:
-        try:
-            from app.services.embeddings import embed
-            from app.services.excerpt_search import litteral_vecteur, schema_du_type_vector
-
-            vecs = await embed([question])
-            schema = await schema_du_type_vector(db)
-            if vecs and schema:
-                v = litteral_vecteur(vecs[0])
-                # séquentiel sans HNSW à 5k — <20 ms, exact
-                rows = (
-                    await db.execute(
-                        text(
-                            f"SELECT id FROM graph_entities WHERE embedding IS NOT NULL ORDER BY embedding OPERATOR({schema}.<=>) CAST(:v AS {schema}.vector) LIMIT 8"  # nosec B608
-                        ),
-                        {"v": v},
-                    )
-                ).fetchall()
-                # filtrer par similarité >0.35 (approx 1-distance), sinon bruit
-                seeds = [str(r[0]) for r in rows]
-        except Exception:  # nosec B110
-            pass
     if not seeds:
         return Facts([], [], (time.perf_counter() - t0) * 1000)
 

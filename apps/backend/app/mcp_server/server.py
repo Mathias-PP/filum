@@ -741,13 +741,14 @@ async def parse_biblio(text: str) -> dict[str, Any]:
 
 @outil()
 async def recall_memory(query: str, hops: int = 3) -> dict[str, Any]:
-    """Rappel graphe memoire : 3 tables, 1 requete recursive (STARTER).
+    """Rappel du graphe memoire : qui a ecrit quoi, quelle fiche cite quelle source.
 
-    Seed les entites dont le nom/alias apparait dans `query`, marche `hops`
-    arêtes et rend les triples + leur fiche source. 2 ms, 400 tok fixes,
-    0 appel modele — le walk est fait en SQL avant l'invocation.
-    Echec bruyant `no memory matches` si hors vocabulaire (ne devine jamais).
-    Preferer a `search_cards` quand la question chaine des faits.
+    Part des entites dont le nom ou l'alias apparait mot pour mot dans `query`,
+    marche `hops` aretes et rend les triples avec la fiche d'ou vient chaque
+    fait. Le graphe ne porte que les fiches publiees en public, et il ne connait
+    que trois relations : authored_by, cites, references. Hors de ce vocabulaire
+    il le dit plutot que de deviner. Preferer `search_cards` pour chercher du
+    texte, `recall_memory` pour enchainer des faits.
     """
     from app.services.graph_memory import recall
 
@@ -758,17 +759,25 @@ async def recall_memory(query: str, hops: int = 3) -> dict[str, Any]:
 
 @outil()
 async def rebuild_graph() -> dict[str, Any]:
-    """Reconstruit le graphe memoire depuis les fiches publiques (deterministe).
+    """Reconstruit le graphe memoire entier, pour tout le monde (deterministe).
 
-    A appeler apres avoir publie/modifie des fiches si le rappel doit voir
-    les nouvelles aretes. Sans LLM, sans cout. Requiert authentification
-    (sinon un tiers pourrait declencher des reconstructions a la demande).
+    Le graphe est global : il porte les fiches publiees en public de tous les
+    createurs, et la reconstruction efface puis reecrit la totalite, pas
+    seulement vos fiches. A appeler apres une publication si le rappel doit
+    voir les nouvelles aretes. Sans LLM, sans cout de modele, mais un balayage
+    complet de la base : deux reconstructions sont espacees de cinq minutes, et
+    l'outil refuse en le disant si l'appel arrive trop tot.
     """
-    from app.services.graph_memory import build_graph
+    from fastmcp.exceptions import ToolError
+
+    from app.services.graph_memory import ReconstructionTropRecenteError, build_graph
 
     async with _session() as db:
         await exiger_utilisateur(db)
-        return await build_graph(db)
+        try:
+            return await build_graph(db)
+        except ReconstructionTropRecenteError as exc:
+            raise ToolError(str(exc)) from exc
 
 
 mcp_http_app = mcp.http_app(path="/")

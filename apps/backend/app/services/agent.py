@@ -408,6 +408,12 @@ _RETRY_MAX_ATTENTE_S = 60.0
 #: Deux tentatives max, attentes [2 s, 5 s]. Au-delà, l'erreur est remontée.
 _BACKOFF_5XX = (2.0, 5.0)
 
+#: Faits du graphe injectes d'office dans le prompt systeme. Le rappel est
+#: automatique et son cout est paye a chaque tour : il doit rester previsible.
+#: Quand la borne mord, on le dit au modele plutot que de tronquer en silence,
+#: pour qu'il sache que `recall_memory` peut en rendre davantage.
+_GRAPHE_FAITS_MAX = 12
+
 
 def _extraire_retry_after(header: str | None) -> float | None:
     """Extrait un delai (secondes) du header HTTP standard ``Retry-After``.
@@ -1232,8 +1238,8 @@ async def boucle(
     systeme = _contexte_temporel() + _SYSTEME + await _contexte_objectif(db, user.id, session_id)
     if agent_def is not None:
         systeme += f"\n\n---\n## Ton rôle : {agent_def.name}\n{agent_def.system_prompt.strip()}\n"
-    # Graphe memoire STARTER : 3 tables, 1 requete recursive, 2 ms, 400 tok fixes.
-    # Le walk est fait en SQL avant l'appel — 0 tool call, 0 hops par le modele.
+    # Graphe memoire : 3 tables, 1 requete recursive. Le parcours est fait en SQL
+    # avant l'appel, donc zero appel d'outil et zero saut par le modele.
     graph_ctx = ""
     try:
         from app.services.graph_memory import recall as graph_recall
@@ -1247,13 +1253,20 @@ async def boucle(
             "",
         )
         if q:
-            facts = await graph_recall(db, q, hops=3)
+            # `top_k` borne le contexte injecte. Il etait laisse a son defaut,
+            # et l'entete annoncait « 2 ms » en dur alors que `Facts.ms` porte la
+            # mesure : deux facons de dire au modele quelque chose de faux sur ce
+            # qu'il vient de recevoir.
+            facts = await graph_recall(db, q, hops=3, top_k=_GRAPHE_FAITS_MAX)
             if facts.triples:
-                graph_ctx = (
-                    "\n\n---\n## Mémoire graphe (rappel automatique, 2 ms)\n"
-                    + facts.as_text()
-                    + "\n"
-                )
+                graph_ctx = "\n\n---\n## Mémoire graphe (rappel automatique)\n" + facts.as_text()
+                if len(facts.triples) == _GRAPHE_FAITS_MAX:
+                    graph_ctx += (
+                        f"\n\n(rappel borné à {_GRAPHE_FAITS_MAX} faits : "
+                        "le graphe peut en porter d'autres sur cette question, "
+                        "utilisez recall_memory pour aller plus loin)"
+                    )
+                graph_ctx += "\n"
     except Exception:  # nosec B110
         pass
     messages.insert(0, {"role": "system", "content": systeme + workspace_ctx + graph_ctx})
