@@ -75,6 +75,28 @@ TOOL_RESULT_MAX = 120_000
 #: de tourner indéfiniment si le modèle produit des tool calls en boucle.
 BOUCLE_TIMEOUT = 300.0
 
+#: Budget par appel d'outil.
+#:
+#: Sans lui, un seul `fetch_url` lent mangeait les 300 s de `BOUCLE_TIMEOUT` et
+#: coupait le tour entier, y compris les appels qui n'avaient rien demandé. Le
+#: dépassement rend une erreur que le modèle peut lire ; il ne tue pas le tour.
+TIMEOUT_OUTIL = 60.0
+
+#: Outils légitimement lents, à qui le budget par défaut ferait échouer des
+#: pages parfaitement saines. Tous restent sous `BOUCLE_TIMEOUT` : un budget
+#: qui l'atteindrait ne servirait à rien, la boucle serait coupée avant que le
+#: modèle ait pu lire l'erreur.
+TIMEOUTS_PAR_OUTIL: dict[str, float] = {
+    "fetch_url": 120.0,
+    "web_search": 90.0,
+    "import_from_content_url": 180.0,
+    "add_sources_batch": 180.0,
+    "archive_sources": 180.0,
+    "verify_excerpts": 180.0,
+    "suggest_excerpts": 120.0,
+    "get_url_metadata": 90.0,
+}
+
 _SYSTEME = (
     "Tu es Philum Agent, l'assistant d'un créateur de contenu scientifique. "
     "Tu utilises des outils pour lire et écrire des fiches, des sources, des "
@@ -937,6 +959,32 @@ def _arguments_de(tool_call: dict[str, Any]) -> tuple[dict[str, Any], bool]:
     return (args, True) if isinstance(args, dict) else ({}, False)
 
 
+#: Un appel d'outil prêt à exécuter : (brut du fournisseur, nom, arguments,
+#: arguments lisibles ?).
+_Appel = tuple[dict[str, Any], str, dict[str, Any], bool]
+
+
+def _lot_parallelisable(appels: list[_Appel]) -> bool:
+    """Le lot d'appels d'un même message assistant peut-il partir ensemble ?
+
+    Les lectures partent ensemble, les écritures restent en file. Deux
+    frontières, et aucune n'est négociable :
+
+    - une écriture partage l'``AsyncSession`` du contexte, et ce dépôt interdit
+      de partager une session entre coroutines ;
+    - une approbation est une interaction humaine séquentielle : deux demandes
+      concurrentes apparaîtraient en même temps à l'écran, sans dire laquelle
+      répond à quoi.
+
+    Le gain est là malgré tout : les tours lents sont des tours de lecture.
+    """
+    if len(appels) < 2:
+        return False
+    return not any(
+        nom in OUTILS_QUI_ECRIVENT or est_sensible(nom, args) for _tc, nom, args, _ in appels
+    )
+
+
 async def _executer_tour(
     db: AsyncSession,
     user: User,
@@ -948,78 +996,108 @@ async def _executer_tour(
     approuver: Approuver,
 ) -> None:
     ctx = ToolContext(db=db, user=user, creator_id=user.id)
+    appels: list[_Appel] = []
     for tc in tool_calls:
         try:
             nom = tc["function"]["name"]
         except (KeyError, TypeError):
             continue
         args, lisibles = _arguments_de(tc)
+        # Fallback si le provider a envoyé un tool_call sans id (rare mais
+        # possible avec des endpoints custom). L'identifiant est posé ici, une
+        # fois pour toutes : le lot entier est annoncé avant que le premier
+        # résultat n'arrive, et côté interface un résultat sans identifiant
+        # rejoindrait la dernière carte en attente, pas la sienne.
+        tc["id"] = tc.get("id") or f"call_{uuid4().hex[:12]}"
         await emit(
             {
                 "type": "tool_call",
-                "payload": {"id": tc.get("id"), "name": nom, "arguments": args, "tour": tour},
+                "payload": {"id": tc["id"], "name": nom, "arguments": args, "tour": tour},
             }
         )
-        if not lisibles:
-            invalide: dict[str, Any] = {
-                "error": (
-                    "Arguments illisibles : le JSON reçu est incomplet ou malformé, "
-                    "probablement une réponse tronquée. Refais l'appel avec des "
-                    "arguments complets. N'annonce pas cette action comme faite."
-                )
-            }
-            await emit(
-                {
-                    "type": "tool_result",
-                    "payload": {"id": tc.get("id"), "name": nom, "result": invalide},
-                }
-            )
-            messages.append(
-                _message_tool(tc.get("id") or f"call_{uuid4().hex[:12]}", nom, invalide)
-            )
-            continue
-        if est_sensible(nom, args):
-            request_id = str(uuid4())
-            resume = await _resume_approbation(db, user, nom, args)
-            await emit(
-                {
-                    "type": "approval_request",
-                    "payload": {
-                        "request_id": request_id,
-                        "tool": nom,
-                        "arguments": args,
-                        "resume": resume,
-                        "tour": tour,
-                        "expires_at": time.time() + DELAI_APPROBATION,
-                    },
-                }
-            )
-            approuve = await approuver(request_id, nom, args)
-            await emit(
-                {
-                    "type": "approval_resolved",
-                    "payload": {"request_id": request_id, "tool": nom, "approved": approuve},
-                }
-            )
-            if not approuve:
-                resultat: dict[str, Any] = {
-                    "error": "Action refusée : l'utilisateur n'a pas validé cette écriture."
-                }
-            else:
-                resultat = await executer(registre, nom, args, ctx, approbation_obtenue=True)
-        else:
-            resultat = await executer(registre, nom, args, ctx)
+        appels.append((tc, nom, args, lisibles))
+
+    async def _resoudre(appel: _Appel) -> dict[str, Any]:
+        return await _resultat_appel(db, user, tour, appel, registre, ctx, emit, approuver)
+
+    if _lot_parallelisable(appels):
+        resultats = list(await asyncio.gather(*(_resoudre(a) for a in appels)))
+    else:
+        resultats = [await _resoudre(a) for a in appels]
+
+    # L'ordre rendu est celui des `tool_calls`, jamais l'ordre d'arrivée des
+    # résultats : un lot désordonné casse la correspondance chez certains
+    # fournisseurs, et affiche les cartes d'outil en désordre à l'écran.
+    for (tc, nom, _args, _lisibles), resultat in zip(appels, resultats, strict=True):
         await emit(
             {
                 "type": "tool_result",
-                "payload": {"id": tc.get("id"), "name": nom, "result": resultat},
+                "payload": {"id": tc["id"], "name": nom, "result": resultat},
             }
         )
-        # Fallback si le provider a envoyé un tool_call sans id (rare mais
-        # possible avec des endpoints custom) : on en synthétise un pour
-        # préserver la correspondance côté message tool.
-        tool_call_id = tc.get("id") or f"call_{uuid4().hex[:12]}"
-        messages.append(_message_tool(tool_call_id, nom, resultat))
+        messages.append(_message_tool(tc["id"], nom, resultat))
+
+
+async def _resultat_appel(
+    db: AsyncSession,
+    user: User,
+    tour: int,
+    appel: _Appel,
+    registre: dict[str, AgentTool],
+    ctx: ToolContext,
+    emit: Emitter,
+    approuver: Approuver,
+) -> dict[str, Any]:
+    """Un appel d'outil, de ses arguments à son résultat, borné dans le temps."""
+    _tc, nom, args, lisibles = appel
+    if not lisibles:
+        return {
+            "error": (
+                "Arguments illisibles : le JSON reçu est incomplet ou malformé, "
+                "probablement une réponse tronquée. Refais l'appel avec des "
+                "arguments complets. N'annonce pas cette action comme faite."
+            )
+        }
+    approbation = False
+    if est_sensible(nom, args):
+        request_id = str(uuid4())
+        resume = await _resume_approbation(db, user, nom, args)
+        await emit(
+            {
+                "type": "approval_request",
+                "payload": {
+                    "request_id": request_id,
+                    "tool": nom,
+                    "arguments": args,
+                    "resume": resume,
+                    "tour": tour,
+                    "expires_at": time.time() + DELAI_APPROBATION,
+                },
+            }
+        )
+        approbation = await approuver(request_id, nom, args)
+        await emit(
+            {
+                "type": "approval_resolved",
+                "payload": {"request_id": request_id, "tool": nom, "approved": approbation},
+            }
+        )
+        if not approbation:
+            return {"error": "Action refusée : l'utilisateur n'a pas validé cette écriture."}
+    budget = TIMEOUTS_PAR_OUTIL.get(nom, TIMEOUT_OUTIL)
+    try:
+        return await asyncio.wait_for(
+            executer(registre, nom, args, ctx, approbation_obtenue=approbation),
+            timeout=budget,
+        )
+    except TimeoutError:
+        return {
+            "error": (
+                f"{nom} n'a pas répondu en {budget:.0f} secondes et a été "
+                "interrompu. Les autres appels de ce tour ont abouti. "
+                "N'annonce pas cette action comme faite."
+            )
+        }
 
 
 async def boucle(
