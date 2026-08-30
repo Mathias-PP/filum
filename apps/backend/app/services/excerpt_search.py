@@ -22,13 +22,16 @@ from __future__ import annotations
 
 import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import text
+from sqlalchemy import func, select, text
 
 from app.core.config import get_settings
+from app.models.biblio_card import BiblioCard
+from app.models.source import Source
+from app.models.source_excerpt import SourceExcerpt
 from app.services.embeddings import embed
 
 if TYPE_CHECKING:
@@ -78,7 +81,13 @@ class Resultat:
     card_id: UUID
     card_slug: str
     card_title: str
+    verified_status: str | None
     similarite: float
+    #: Les jambes qui ont ramene cet extrait : `sens`, `mots`, ou les deux.
+    #: Sans ce champ la fusion serait une boite noire de plus, et le lecteur
+    #: n'aurait aucun moyen de savoir si un extrait remonte parce qu'il porte
+    #: le mot cherche ou parce qu'il en porte le sens.
+    trouve_par: frozenset[str] = frozenset({"sens"})
 
 
 def litteral_vecteur(vecteur: list[float]) -> str:
@@ -137,6 +146,7 @@ _MODELE_REQUETE = """
         c.id AS card_id,
         c.slug AS card_slug,
         c.title AS card_title,
+        e.verified_status AS verified_status,
         1 - ({distance}) AS similarite
     FROM excerpt_embeddings em
     JOIN source_excerpts e ON e.id = em.excerpt_id
@@ -213,8 +223,122 @@ async def rechercher(
             card_id=ligne.card_id,
             card_slug=ligne.card_slug,
             card_title=ligne.card_title,
+            verified_status=ligne.verified_status,
             similarite=float(ligne.similarite),
         )
         for ligne in lignes
         if float(ligne.similarite) >= SIMILARITE_MINIMALE
     ]
+
+
+async def rechercher_par_mots(
+    db: AsyncSession,
+    user_id: UUID,
+    requete: str,
+    limite: int = 20,
+) -> list[Resultat]:
+    """Les extraits de `user_id` qui portent `requete` mot pour mot.
+
+    Rend toujours une liste : une recherche lexicale ne peut pas etre
+    indisponible, contrairement a la recherche par le sens qui depend d'un
+    service externe. La liste vide veut donc bien dire « rien ne correspond ».
+
+    Cette jambe vivait dans `tools_write.search_my_excerpts`, triee par date de
+    creation : un ordre qui n'ordonne rien de ce que la requete demande. Elle
+    rend ici l'ordre du plus grand nombre d'occurrences, la seule mesure qu'une
+    correspondance de motif sache produire. Le compte se fait par difference de
+    longueur : `replace` retire toutes les occurrences, et l'ecart les compte.
+
+    Construite avec l'ORM et non en SQL textuel comme sa voisine semantique :
+    `user_id` est une cle typee par le projet, rendue en hexadecimal nu sous
+    SQLite et en `uuid` natif sous Postgres. Un `text()` la comparerait a la
+    forme a tirets de `str(uuid)` et ne trouverait jamais rien sous SQLite.
+    """
+    requete = requete.strip()
+    if not requete:
+        return []
+    motif = requete.lower()
+    texte = func.lower(SourceExcerpt.text)
+    occurrences = func.length(texte) - func.length(func.replace(texte, motif, ""))
+    lignes = await db.execute(
+        select(
+            SourceExcerpt.id.label("excerpt_id"),
+            SourceExcerpt.text.label("text"),
+            SourceExcerpt.title.label("title"),
+            SourceExcerpt.context.label("context"),
+            Source.id.label("source_id"),
+            Source.title.label("source_title"),
+            Source.url.label("source_url"),
+            BiblioCard.id.label("card_id"),
+            BiblioCard.slug.label("card_slug"),
+            BiblioCard.title.label("card_title"),
+            SourceExcerpt.verified_status.label("verified_status"),
+        )
+        .join(Source, Source.id == SourceExcerpt.source_id)
+        .join(BiblioCard, BiblioCard.id == Source.biblio_card_id)
+        .where(
+            BiblioCard.user_id == user_id,
+            BiblioCard.deleted_at.is_(None),
+            Source.deleted_at.is_(None),
+            texte.contains(motif),
+        )
+        .order_by(occurrences.desc())
+        .limit(limite)
+    )
+    return [
+        Resultat(
+            excerpt_id=ligne.excerpt_id,
+            text=ligne.text,
+            title=ligne.title,
+            context=ligne.context,
+            source_id=ligne.source_id,
+            source_title=ligne.source_title,
+            source_url=ligne.source_url,
+            card_id=ligne.card_id,
+            card_slug=ligne.card_slug,
+            card_title=ligne.card_title,
+            verified_status=ligne.verified_status,
+            similarite=0.0,
+            trouve_par=frozenset({"mots"}),
+        )
+        for ligne in lignes
+    ]
+
+
+async def rechercher_fusionne(
+    db: AsyncSession,
+    user_id: UUID,
+    requete: str,
+    limite: int = 20,
+) -> list[Resultat]:
+    """Les deux jambes, fusionnees par le rang reciproque.
+
+    Le seuil semantique s'applique **avant** la fusion, pas a sa place : un
+    extrait etranger a la question ne doit pas remonter au seul motif qu'il est
+    premier de sa liste. La fusion ordonne ce que chaque jambe a juge digne
+    d'etre rendu, elle ne rattrape pas ce qu'elles ont ecarte.
+
+    La jambe semantique indisponible ne fait pas echouer la recherche : sa liste
+    est simplement absente de la fusion, et les extraits rendus le disent par
+    leur `trouve_par`.
+    """
+    from app.services.fusion_rangs import fusionner
+
+    par_sens = await rechercher(db, user_id, requete, limite)
+    par_mots = await rechercher_par_mots(db, user_id, requete, limite)
+
+    classements: dict[str, list[UUID]] = {"mots": [r.excerpt_id for r in par_mots]}
+    if par_sens is not None:
+        classements["sens"] = [r.excerpt_id for r in par_sens]
+
+    connus: dict[UUID, Resultat] = {r.excerpt_id: r for r in par_mots}
+    for resultat in par_sens or []:
+        # La jambe semantique gagne quand les deux portent le meme extrait :
+        # elle seule connait la similarite, que la jambe lexicale laisse a zero.
+        connus[resultat.excerpt_id] = resultat
+
+    ordonnes = []
+    for fusion in fusionner(classements)[:limite]:
+        resultat = connus[fusion.identifiant]
+        ordonnes.append(replace(resultat, trouve_par=fusion.jambes))
+    return ordonnes
