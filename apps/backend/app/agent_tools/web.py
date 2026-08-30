@@ -102,8 +102,11 @@ async def _execute_web_search(ctx: ToolContext, args: dict[str, Any]) -> dict[st
         return {
             "error": (
                 "Recherche web non configurée sur ce serveur. "
-                "Signalez-le au créateur. "
-                "Ne proposez jamais de sources inventées ou issues de votre mémoire d'entraînement."
+                "Dites-le au créateur et demandez-lui les adresses : c'est la "
+                "seule issue. Ne comblez jamais avec des sources reconstituées "
+                "de mémoire. Ce serait d'ailleurs sans effet : `add_source` "
+                "joint l'adresse avant d'écrire et refuse ce qui ne mène nulle "
+                "part."
             )
         }
     try:

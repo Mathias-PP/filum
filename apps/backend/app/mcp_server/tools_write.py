@@ -15,6 +15,7 @@ detail complet gaspille sa fenetre de tokens.
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
@@ -42,6 +43,7 @@ from app.services.excerpt_insertion import (
     SourceIllisibleError,
     prelever_dans_la_source,
 )
+from app.services.source_existence import SourceInexistanteError, verifier_que_la_source_existe
 from app.services.wayback import horodatage_wayback
 
 # Meme garde-fou technique que l'endpoint REST, et pour la meme raison : le
@@ -264,7 +266,14 @@ async def add_source(
     archive_url: str | None = None,
     excerpts: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Ajoute une source a la fiche, avec ses extraits si vous en avez.
+    """Ajoute une source a la fiche, apres avoir verifie que son adresse existe.
+
+    L'adresse est jointe avant l'ecriture, et le DOI confronte a Crossref. Une
+    source dont le domaine n'existe pas, dont la page repond 404 ou 410, ou dont
+    le DOI est inconnu de Crossref est refusee : citer de memoire est donc
+    impossible, pas seulement deconseille. Un mur anti-bot, un paywall, une
+    limitation de debit ou une panne de l'editeur ne bloquent rien, ce sont des
+    sources qui existent et qu'on ne peut pas lire.
 
     `excerpts` evite l'aller-retour par l'identifiant : chaque entree est un
     objet `{"text": ..., "title": ..., "context": ...}` et suit exactement les
@@ -294,6 +303,13 @@ async def add_source(
     cle = _identite(url, doi)
     if cle and cle in await _identites_deja_citees(db, card.id):
         raise ToolError(f"Cette source figure deja dans {card_slug!r}.")
+
+    # Apres le doublon, avant l'ecriture : inutile de joindre le reseau pour une
+    # source deja citee, et hors de question d'ecrire une source introuvable.
+    try:
+        await verifier_que_la_source_existe(url, doi)
+    except SourceInexistanteError as exc:
+        raise ToolError(str(exc)) from exc
 
     max_position = await db.scalar(
         select(func.max(Source.position)).where(Source.biblio_card_id == card.id)
@@ -1716,18 +1732,27 @@ async def add_sources_batch(
     card_slug: str,
     sources: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    """Ajoute plusieurs sources a une fiche en un appel.
+    """Ajoute plusieurs sources a une fiche, apres avoir verifie leurs adresses.
 
     Chaque entree suit la meme signature que `add_source` (url, title,
     authors, doi, category, author_kind, format, stance, annotation,
-    journal, published_at, archive_url). Ce qui echoue est retourne dans
-    `failed` avec la raison, ce qui reussit dans `created` (avec les IDs).
+    journal, published_at, archive_url), verification d'existence comprise :
+    une entree dont l'adresse ne mene nulle part part dans `failed` et n'ecrit
+    rien. Ce qui echoue est retourne dans `failed` avec la raison, ce qui
+    reussit dans `created` (avec les IDs).
 
     Utilise ce tool quand tu poses 5+ sources d'affilee : un seul commit
     au lieu de N, une seule verification de dedup en amont.
     """
     card = await _fiche_du_createur(db, user, card_slug)
     connues = await _identites_deja_citees(db, card.id)
+
+    # De front plutot qu'en file : une par une, un lot de vingt sources
+    # cumulerait vingt attentes reseau et depasserait le tour de l'agent.
+    existences = await asyncio.gather(
+        *(verifier_que_la_source_existe(sd.get("url", "") or "", sd.get("doi")) for sd in sources),
+        return_exceptions=True,
+    )
 
     max_position = await db.scalar(
         select(func.max(Source.position)).where(Source.biblio_card_id == card.id)
@@ -1743,6 +1768,9 @@ async def add_sources_batch(
         cle = _identite(url, doi)
         if cle and cle in connues:
             failed.append({"index": i, "url": url, "reason": "Deja citee dans cette fiche."})
+            continue
+        if isinstance(existences[i], SourceInexistanteError):
+            failed.append({"index": i, "url": url, "reason": str(existences[i])})
             continue
         try:
             linked_card_id = await effective_linked_card_id(

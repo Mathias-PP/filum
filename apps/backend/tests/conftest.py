@@ -122,3 +122,21 @@ def _relais_de_lecture_hors_ligne(monkeypatch):
     from app.extractors import lecteur_relais
 
     monkeypatch.setattr(lecteur_relais.settings, "lecture_relais_endpoint", "")
+
+
+@pytest.fixture(autouse=True)
+def _existence_des_sources_admise(monkeypatch):
+    """Admet l'existence des adresses citees par les tests, sans reseau.
+
+    `add_source` joint l'adresse avant d'ecrire, ce qui est le point de la
+    garde. Les fixtures de la suite citent des URLs de convention qui n'existent
+    pas : sans cette neutralisation, chaque test paierait un aller-retour reseau
+    pour se voir refuser. Les tests de la garde elle-meme rebranchent la
+    fonction sur un double qui refuse.
+    """
+    from app.mcp_server import tools_write
+
+    async def _admettre(url: str | None, doi: str | None) -> None:
+        return None
+
+    monkeypatch.setattr(tools_write, "verifier_que_la_source_existe", _admettre)

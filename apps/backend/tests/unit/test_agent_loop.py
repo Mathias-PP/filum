@@ -1344,14 +1344,20 @@ class TestSystemeAgent:
 
     @pytest.mark.asyncio
     async def test_web_search_non_configure_interdit_fabrication(self):
-        """Le message d'erreur de web_search non configure doit interdire les
-        sources inventees."""
+        """Le refus nomme l'issue, et dit que combler de memoire serait vain.
+
+        Interdire ne suffit pas : un modele prive d'outil comble. Le message
+        renvoie donc au createur, et rappelle que `add_source` joint l'adresse
+        avant d'ecrire, ce qui rend le comblement sans effet.
+        """
         from app.agent_tools.tool import ToolContext
         from app.agent_tools.web import _execute_web_search
 
         ctx = ToolContext(db=None, user=None, creator_id=None)
         result = await _execute_web_search(ctx, {"query": "test"})
-        assert "mémoire d'entraînement" in result["error"]
+        assert "de mémoire" in result["error"]
+        assert "créateur" in result["error"]
+        assert "add_source" in result["error"]
 
 
 @pytest.mark.asyncio
