@@ -17,6 +17,7 @@ import pytest
 
 from app.api.v1.endpoints.excerpts import _texte_de_la_source
 from app.extractors import (
+    crossref_resume,
     europepmc_oracle,
     lecteur_relais,
     pmc_oracle,
@@ -27,16 +28,20 @@ from app.extractors import (
 
 @pytest.fixture
 def sans_reseau(monkeypatch):
-    """Neutralise les cinq etages ; chaque test rebranche celui qu'il teste."""
+    """Neutralise les six etages ; chaque test rebranche celui qu'il teste."""
 
     async def rien(*_a, **_k):
         return None
+
+    async def sans_resume(*_a, **_k):
+        return ""
 
     monkeypatch.setattr(pmc_oracle, "texte_ncbi", rien)
     monkeypatch.setattr(url_extractor, "_html_scrape", rien)
     monkeypatch.setattr(europepmc_oracle, "texte_europepmc", rien)
     monkeypatch.setattr(lecteur_relais, "texte_par_relais", rien)
     monkeypatch.setattr(web_archive, "texte_archive", rien)
+    monkeypatch.setattr(crossref_resume, "texte_resume_crossref", sans_resume)
 
 
 class _Meta:
@@ -226,6 +231,65 @@ async def test_l_archive_reste_le_filet_quand_le_relais_echoue(sans_reseau, monk
 
     texte, _bloque, _complet = await _texte_de_la_source("https://presse.example/enquete")
     assert texte == "Le texte, tel que l'archive l'a capture."
+
+
+class TestLeResumeCrossrefEnDernierRecours:
+    """Ce que le serveur affiche par ailleurs doit pouvoir etre cite.
+
+    Mesure du 2026-08-30 : l'agent lisait le resume Crossref d'un article par
+    `get_url_metadata`, voulait en citer la premiere phrase, et se voyait
+    repondre que la source n'avait pu etre obtenue par aucune voie. La preuve
+    etait la, deposee par l'editeur, et le systeme la declarait inexistante.
+    """
+
+    @pytest.mark.asyncio
+    async def test_il_sert_quand_aucun_etage_ne_rend_la_page(self, sans_reseau, monkeypatch):
+        async def scrape(_url):
+            return _Meta(page_text="", access_blocked=True, doi="10.1113/JP278810")
+
+        async def resume(doi):
+            assert doi == "10.1113/JP278810"
+            return "Contrary to Warburg's original thesis, accelerated aerobic glycolysis..."
+
+        monkeypatch.setattr(url_extractor, "_html_scrape", scrape)
+        monkeypatch.setattr(crossref_resume, "texte_resume_crossref", resume)
+
+        texte, bloque, complet = await _texte_de_la_source("https://revue.example/article")
+        assert texte.startswith("Contrary to Warburg's original thesis")
+        # Le texte entier reste refuse : seul le resume a ete obtenu, et il ne
+        # vient pas de la page. Annoncer la source lisible serait faux.
+        assert (bloque, complet) == (True, False)
+
+    @pytest.mark.asyncio
+    async def test_il_ne_passe_jamais_devant_un_texte_entier(self, sans_reseau, monkeypatch):
+        """Un resume ne remplace pas un article : il vient apres tous les autres."""
+
+        async def scrape(_url):
+            return _Meta(page_text="", access_blocked=True, doi="10.1113/JP278810")
+
+        async def archive(_url):
+            return "Le texte entier, tel que l'archive l'a capture."
+
+        async def jamais(_doi):
+            raise AssertionError("le resume ne doit pas etre demande quand la page a ete lue")
+
+        monkeypatch.setattr(url_extractor, "_html_scrape", scrape)
+        monkeypatch.setattr(web_archive, "texte_archive", archive)
+        monkeypatch.setattr(crossref_resume, "texte_resume_crossref", jamais)
+
+        texte, _bloque, complet = await _texte_de_la_source("https://revue.example/article")
+        assert texte == "Le texte entier, tel que l'archive l'a capture."
+        assert complet is True
+
+    @pytest.mark.asyncio
+    async def test_sans_resume_depose_la_source_reste_illisible(self, sans_reseau, monkeypatch):
+        """Elsevier n'en depose aucun : l'absence est ordinaire, pas un incident."""
+
+        async def scrape(_url):
+            return _Meta(page_text="", access_blocked=True, doi="10.1016/j.drup.2018.03.001")
+
+        monkeypatch.setattr(url_extractor, "_html_scrape", scrape)
+        assert await _texte_de_la_source("https://revue.example/article") == ("", True, True)
 
 
 async def _corps() -> str:
