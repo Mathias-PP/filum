@@ -1380,40 +1380,32 @@ async def list_sources(db: AsyncSession, user: User, *, card_slug: str) -> list[
 async def search_my_excerpts(
     db: AsyncSession, user: User, *, query: str, limit: int = 20
 ) -> list[dict[str, Any]]:
-    """Recherche full-text dans les extraits de l'utilisateur.
+    """Recherche dans les extraits de l'utilisateur, par les mots et par le sens.
 
-    Cherche `query` dans le `text` des extraits des fiches du user. Rend
-    l'extrait, la source qui le porte et la fiche parente.
+    Les deux recherches sont lancees et leurs classements fusionnes : un extrait
+    qui porte le mot cherche sort de l'une, un extrait qui en porte le sens sans
+    le mot sort de l'autre, et un extrait que les deux designent passe devant.
+    Chaque resultat porte `found_by`, qui dit laquelle l'a trouve.
     """
+    from app.services.excerpt_search import rechercher_fusionne
+
     q = query.strip()
     if not q:
         return []
-    stmt = (
-        select(SourceExcerpt, Source, BiblioCard)
-        .join(Source, SourceExcerpt.source_id == Source.id)
-        .join(BiblioCard, Source.biblio_card_id == BiblioCard.id)
-        .where(
-            BiblioCard.user_id == user.id,
-            BiblioCard.deleted_at.is_(None),
-            Source.deleted_at.is_(None),
-            SourceExcerpt.text.ilike(f"%{q.replace('%', '\\%').replace('_', '\\_')}%"),
-        )
-        .order_by(SourceExcerpt.created_at.desc())
-        .limit(max(1, min(limit, 100)))
-    )
-    rows = (await db.execute(stmt)).all()
+    resultats = await rechercher_fusionne(db, user.id, q, limite=max(1, min(limit, 100)))
     return [
         {
-            "excerpt_id": str(ex.id),
-            "text": ex.text,
-            "title": ex.title,
-            "context": ex.context,
-            "source_id": str(src.id),
-            "source_title": src.title,
-            "card_slug": card.slug,
-            "verified_status": ex.verified_status,
+            "excerpt_id": str(r.excerpt_id),
+            "text": r.text,
+            "title": r.title,
+            "context": r.context,
+            "source_id": str(r.source_id),
+            "source_title": r.source_title,
+            "card_slug": r.card_slug,
+            "verified_status": r.verified_status,
+            "found_by": sorted(r.trouve_par),
         }
-        for ex, src, card in rows
+        for r in resultats
     ]
 
 

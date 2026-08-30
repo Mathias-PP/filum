@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 from uuid import UUID
 
@@ -78,7 +78,13 @@ class Resultat:
     card_id: UUID
     card_slug: str
     card_title: str
+    verified_status: str | None
     similarite: float
+    #: Les jambes qui ont ramene cet extrait : `sens`, `mots`, ou les deux.
+    #: Sans ce champ la fusion serait une boite noire de plus, et le lecteur
+    #: n'aurait aucun moyen de savoir si un extrait remonte parce qu'il porte
+    #: le mot cherche ou parce qu'il en porte le sens.
+    trouve_par: frozenset[str] = frozenset({"sens"})
 
 
 def litteral_vecteur(vecteur: list[float]) -> str:
@@ -137,6 +143,7 @@ _MODELE_REQUETE = """
         c.id AS card_id,
         c.slug AS card_slug,
         c.title AS card_title,
+        e.verified_status AS verified_status,
         1 - ({distance}) AS similarite
     FROM excerpt_embeddings em
     JOIN source_excerpts e ON e.id = em.excerpt_id
@@ -213,8 +220,129 @@ async def rechercher(
             card_id=ligne.card_id,
             card_slug=ligne.card_slug,
             card_title=ligne.card_title,
+            verified_status=ligne.verified_status,
             similarite=float(ligne.similarite),
         )
         for ligne in lignes
         if float(ligne.similarite) >= SIMILARITE_MINIMALE
     ]
+
+
+#: La jambe lexicale. Elle vivait dans `tools_write.search_my_excerpts`, triee
+#: par date de creation : un ordre qui n'ordonne rien de ce que la requete
+#: demande. Elle rend ici l'ordre du plus grand nombre d'occurrences, qui est la
+#: seule mesure qu'un `ILIKE` sache produire.
+#:
+#: Le compte se fait en SQL par difference de longueur : `replace` retire toutes
+#: les occurrences, l'ecart divise par la longueur du motif les compte. `length`
+#: et `replace` existent des deux cotes, Postgres en production et SQLite dans
+#: les tests.
+_REQUETE_MOTS = """
+    SELECT
+        e.id AS excerpt_id,
+        e.text AS text,
+        e.title AS title,
+        e.context AS context,
+        s.id AS source_id,
+        s.title AS source_title,
+        s.url AS source_url,
+        c.id AS card_id,
+        c.slug AS card_slug,
+        c.title AS card_title,
+        e.verified_status AS verified_status,
+        (length(lower(e.text)) - length(replace(lower(e.text), :motif, ''))) AS ecart
+    FROM source_excerpts e
+    JOIN sources s ON s.id = e.source_id
+    JOIN biblio_cards c ON c.id = s.biblio_card_id
+    WHERE c.user_id = :user_id
+      AND c.deleted_at IS NULL
+      AND s.deleted_at IS NULL
+      AND lower(e.text) LIKE :comme
+    ORDER BY ecart DESC
+    LIMIT :limite
+"""
+
+
+async def rechercher_par_mots(
+    db: AsyncSession,
+    user_id: UUID,
+    requete: str,
+    limite: int = 20,
+) -> list[Resultat]:
+    """Les extraits de `user_id` qui portent `requete` mot pour mot.
+
+    Rend toujours une liste : une recherche lexicale ne peut pas etre
+    indisponible, contrairement a la recherche par le sens qui depend d'un
+    service externe. La liste vide veut donc bien dire « rien ne correspond ».
+    """
+    requete = requete.strip()
+    if not requete:
+        return []
+    motif = requete.lower()
+    echappe = motif.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    lignes = await db.execute(
+        text(_REQUETE_MOTS),
+        {
+            "motif": motif,
+            "comme": f"%{echappe}%",
+            "user_id": str(user_id),
+            "limite": limite,
+        },
+    )
+    return [
+        Resultat(
+            excerpt_id=ligne.excerpt_id,
+            text=ligne.text,
+            title=ligne.title,
+            context=ligne.context,
+            source_id=ligne.source_id,
+            source_title=ligne.source_title,
+            source_url=ligne.source_url,
+            card_id=ligne.card_id,
+            card_slug=ligne.card_slug,
+            card_title=ligne.card_title,
+            verified_status=ligne.verified_status,
+            similarite=0.0,
+            trouve_par=frozenset({"mots"}),
+        )
+        for ligne in lignes
+    ]
+
+
+async def rechercher_fusionne(
+    db: AsyncSession,
+    user_id: UUID,
+    requete: str,
+    limite: int = 20,
+) -> list[Resultat]:
+    """Les deux jambes, fusionnees par le rang reciproque.
+
+    Le seuil semantique s'applique **avant** la fusion, pas a sa place : un
+    extrait etranger a la question ne doit pas remonter au seul motif qu'il est
+    premier de sa liste. La fusion ordonne ce que chaque jambe a juge digne
+    d'etre rendu, elle ne rattrape pas ce qu'elles ont ecarte.
+
+    La jambe semantique indisponible ne fait pas echouer la recherche : sa liste
+    est simplement absente de la fusion, et les extraits rendus le disent par
+    leur `trouve_par`.
+    """
+    from app.services.fusion_rangs import fusionner
+
+    par_sens = await rechercher(db, user_id, requete, limite)
+    par_mots = await rechercher_par_mots(db, user_id, requete, limite)
+
+    classements: dict[str, list[UUID]] = {"mots": [r.excerpt_id for r in par_mots]}
+    if par_sens is not None:
+        classements["sens"] = [r.excerpt_id for r in par_sens]
+
+    connus: dict[UUID, Resultat] = {r.excerpt_id: r for r in par_mots}
+    for resultat in par_sens or []:
+        # La jambe semantique gagne quand les deux portent le meme extrait :
+        # elle seule connait la similarite, que la jambe lexicale laisse a zero.
+        connus[resultat.excerpt_id] = resultat
+
+    ordonnes = []
+    for fusion in fusionner(classements)[:limite]:
+        resultat = connus[fusion.identifiant]
+        ordonnes.append(replace(resultat, trouve_par=fusion.jambes))
+    return ordonnes

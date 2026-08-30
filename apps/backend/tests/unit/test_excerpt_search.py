@@ -97,6 +97,7 @@ class _LigneFactice:
         self.card_id = uuid4()
         self.card_slug = "une-fiche"
         self.card_title = "Une fiche"
+        self.verified_status = "found"
         self.similarite = similarite
 
 
@@ -128,3 +129,71 @@ async def test_le_seuil_ecarte_le_bruit_franc(monkeypatch):
     assert [round(r.similarite, 2) for r in resultats] == [0.82]
     # Le vecteur part sous forme textuelle, jamais en liste Python.
     assert db.parametres["vecteur"] == "[0.1,0.2]"
+
+
+def _resultat(trouve_par: str, similarite: float = 0.0) -> excerpt_search.Resultat:
+    return excerpt_search.Resultat(
+        excerpt_id=uuid4(),
+        text="un passage",
+        title=None,
+        context=None,
+        source_id=uuid4(),
+        source_title=None,
+        source_url="https://example.org/a",
+        card_id=uuid4(),
+        card_slug="une-fiche",
+        card_title="Une fiche",
+        verified_status=None,
+        similarite=similarite,
+        trouve_par=frozenset({trouve_par}),
+    )
+
+
+@pytest.mark.asyncio
+async def test_la_fusion_nomme_les_deux_jambes(monkeypatch):
+    commun = _resultat("sens", 0.71)
+    seul_par_les_mots = _resultat("mots")
+
+    async def _sens(db, user_id, requete, limite=20):
+        return [commun]
+
+    async def _mots(db, user_id, requete, limite=20):
+        return [seul_par_les_mots, commun]
+
+    monkeypatch.setattr(excerpt_search, "rechercher", _sens)
+    monkeypatch.setattr(excerpt_search, "rechercher_par_mots", _mots)
+
+    resultats = await excerpt_search.rechercher_fusionne(None, uuid4(), "sommeil")
+    par_id = {r.excerpt_id: r.trouve_par for r in resultats}
+
+    assert par_id[commun.excerpt_id] == frozenset({"sens", "mots"})
+    assert par_id[seul_par_les_mots.excerpt_id] == frozenset({"mots"})
+    # L'accord des deux jambes passe devant le premier d'une seule.
+    assert resultats[0].excerpt_id == commun.excerpt_id
+    # Et c'est la version semantique qui est rendue : elle seule sait la mesure.
+    assert resultats[0].similarite == 0.71
+
+
+@pytest.mark.asyncio
+async def test_la_fusion_survit_a_l_absence_de_la_jambe_semantique(monkeypatch):
+    """Sans service d'embeddings, la recherche par les mots repond seule.
+
+    `rechercher` rend `None` et non une liste vide : la fusion doit lire ce
+    `None` comme « cette jambe n'a pas eu lieu », pas comme « elle n'a rien
+    trouve », faute de quoi une panne effacerait aussi les resultats lexicaux.
+    """
+    par_mots = [_resultat("mots"), _resultat("mots")]
+
+    async def _sens(db, user_id, requete, limite=20):
+        return None
+
+    async def _mots(db, user_id, requete, limite=20):
+        return par_mots
+
+    monkeypatch.setattr(excerpt_search, "rechercher", _sens)
+    monkeypatch.setattr(excerpt_search, "rechercher_par_mots", _mots)
+
+    resultats = await excerpt_search.rechercher_fusionne(None, uuid4(), "sommeil")
+
+    assert [r.excerpt_id for r in resultats] == [r.excerpt_id for r in par_mots]
+    assert all(r.trouve_par == frozenset({"mots"}) for r in resultats)
