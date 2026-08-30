@@ -722,21 +722,11 @@
           >
             Mode gratuit…
           </button>
-          <button
-            type="button"
-            class="text-xs text-ink-tertiary underline hover:text-ink-primary disabled:opacity-50"
-            onclick={testerGratuit}
-            disabled={etatTestGratuit === 'testing'}
-            title="Vérifier que le fournisseur gratuit répond (sans consommer de quota)"
-          >
-            {etatTestGratuit === 'testing'
-              ? 'Test…'
-              : etatTestGratuit === 'ok'
-                ? 'OK'
-                : etatTestGratuit === 'ko'
-                  ? 'Échec'
-                  : 'Tester'}
-          </button>
+          <!-- Pas de « Tester » ici : celui du couple cle+modele suit
+               immediatement, et deux boutons du meme nom cote a cote ne
+               disaient pas lequel testait quoi. Le fournisseur gratuit se
+               teste depuis la barre du mode gratuit, une fois celui-ci actif,
+               la ou le resultat porte a consequence. -->
         {/if}
       {/if}
       <!-- Indicateur du dernier test cle+modele. Le bouton relance le test a
