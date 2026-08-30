@@ -1933,3 +1933,143 @@ class TestControleRelance:
         from app.agent_tools.philum import OUTILS_QUI_ECRIVENT
 
         assert OUTILS_QUI_ECRIVENT <= set(construire_registre())
+
+
+class TestRepliFournisseur:
+    """Le passage d'une cle a l'autre : ce qu'il tente, et ce qu'il refuse.
+
+    Un createur qui a configure trois cles n'en voyait essayer qu'une. Ces
+    tests tiennent les deux moities de la correction : le repli existe, et il
+    s'arrete devant un echec qu'une autre cle reproduirait a l'identique.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _repos_neuf(self):
+        from app.services.agent_repli import repos
+
+        repos._jusqu_a.clear()
+        repos._incidents.clear()
+        yield
+        repos._jusqu_a.clear()
+        repos._incidents.clear()
+
+    @staticmethod
+    def _deux_cles(db_session, test_user):
+        premiere = _provider(db_session, test_user, base_url="https://premiere.test")
+        seconde = _provider(db_session, test_user, base_url="https://seconde.test")
+        seconde.display_name = "seconde"
+        seconde.is_default = False
+        return premiere, seconde
+
+    @pytest.mark.asyncio
+    async def test_un_quota_passe_la_main_a_la_cle_suivante(self, db_session, test_user):
+        premiere, seconde = self._deux_cles(db_session, test_user)
+        await db_session.commit()
+        vus: list[str] = []
+
+        def handler(request):
+            vus.append(request.url.host)
+            if request.url.host == "premiere.test":
+                return httpx.Response(429, json={"error": {"message": "rate limit exceeded"}})
+            return httpx.Response(200, json=_mock_texte("Repondu par la seconde."))
+
+        events = []
+
+        async def emit(event):
+            events.append(event)
+
+        await agent_svc.boucle(
+            db_session,
+            test_user,
+            premiere,
+            [{"role": "user", "content": "salut"}],
+            emit,
+            _refuse,
+            transport=httpx.MockTransport(handler),
+            registre=_registre_fake([]),
+            replis=[premiere, seconde],
+        )
+
+        types = [e["type"] for e in events]
+        assert "repli_fournisseur" in types
+        assert "error" not in types
+        repli = next(e for e in events if e["type"] == "repli_fournisseur")
+        assert repli["payload"]["pris"] == "seconde"
+        assert "premiere.test" in vus and "seconde.test" in vus
+
+    @pytest.mark.asyncio
+    async def test_une_cle_revoquee_n_essaie_pas_les_autres(self, db_session, test_user):
+        """Le verdict qui evite deux appels payants pour le meme resultat.
+
+        Un 401 ne dit rien de la sante des autres cles, mais il dit tout de
+        celle-ci : les essayer ferait payer deux echecs de plus et compterait
+        un incident contre des cles qui n'ont rien fait.
+        """
+        premiere, seconde = self._deux_cles(db_session, test_user)
+        await db_session.commit()
+        vus: list[str] = []
+
+        def handler(request):
+            vus.append(request.url.host)
+            return httpx.Response(401, json={"error": {"message": "invalid api key"}})
+
+        events = []
+
+        async def emit(event):
+            events.append(event)
+
+        await agent_svc.boucle(
+            db_session,
+            test_user,
+            premiere,
+            [{"role": "user", "content": "salut"}],
+            emit,
+            _refuse,
+            transport=httpx.MockTransport(handler),
+            registre=_registre_fake([]),
+            replis=[premiere, seconde],
+        )
+
+        assert "repli_fournisseur" not in [e["type"] for e in events]
+        assert "error" in [e["type"] for e in events]
+        assert vus == ["premiere.test"]
+
+    @pytest.mark.asyncio
+    async def test_le_repli_ne_consomme_pas_un_tour(self, db_session, test_user):
+        """Un tour est un echange avec le modele, pas une tentative de connexion.
+
+        Sans cela, un createur a trois cles fatiguees verrait son quota de tours
+        fondre avant que le modele ait dit un mot.
+        """
+        premiere, seconde = self._deux_cles(db_session, test_user)
+        await db_session.commit()
+        appels = {"n": 0}
+
+        def handler(request):
+            appels["n"] += 1
+            if request.url.host == "premiere.test":
+                return httpx.Response(429, json={"error": {"message": "quota"}})
+            if appels["n"] == 2:
+                return httpx.Response(200, json=_mock_tool_call("web_search", {"query": "x"}))
+            return httpx.Response(200, json=_mock_texte("Fini."))
+
+        events = []
+
+        async def emit(event):
+            events.append(event)
+
+        await agent_svc.boucle(
+            db_session,
+            test_user,
+            premiere,
+            [{"role": "user", "content": "cherche"}],
+            emit,
+            _refuse,
+            transport=httpx.MockTransport(handler),
+            registre=_registre_fake([]),
+            replis=[premiere, seconde],
+        )
+
+        # Le refus, puis deux vrais tours : l'outil et la reponse finale.
+        assert appels["n"] == 3
+        assert [e["type"] for e in events][-1] == "done"

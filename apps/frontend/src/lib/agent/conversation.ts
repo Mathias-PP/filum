@@ -33,6 +33,7 @@ export type ChatItem =
   | { kind: 'error'; text: string }
   | { kind: 'compaction'; retires: number; elagues: number }
   | { kind: 'controle' }
+  | { kind: 'repli'; quitte: string; pris: string; raison: string }
   | { kind: 'continuation'; message: string; tours: number };
 
 /** Rend une nouvelle liste : jamais de mutation, pour que Svelte voie le changement. */
@@ -117,6 +118,19 @@ export function appliquer(items: ChatItem[], event: AgentEvent): ChatItem[] {
       }
       return [...items, marque];
     }
+
+    case 'repli_fournisseur':
+      // Une ligne dans le fil, pas une erreur : la conversation continue, et
+      // la teinter en rouge ferait croire à un échec là où le repli a réussi.
+      return [
+        ...items,
+        {
+          kind: 'repli',
+          quitte: event.payload.quitte,
+          pris: event.payload.pris,
+          raison: event.payload.raison,
+        },
+      ];
 
     case 'controle_relance':
       // La marque se pose après l'annonce fautive, donc le prochain

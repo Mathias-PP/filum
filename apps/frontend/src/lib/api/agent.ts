@@ -206,6 +206,13 @@ export type AgentEvent =
       payload: { tour: number };
     }
   | {
+      /** Une clé a refusé et une autre a pris le relais. Le dire : un repli
+       * silencieux serait indistinguable d'une panne, et le créateur doit
+       * pouvoir relier une réponse lente à la clé qui l'a refusée. */
+      type: 'repli_fournisseur';
+      payload: { quitte: string; pris: string; raison: string };
+    }
+  | {
       /** Pause après N tours : pas une erreur dure, l'utilisateur peut continuer. */
       type: 'continuation';
       payload: { message: string; tours: number };

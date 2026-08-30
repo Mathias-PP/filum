@@ -35,6 +35,7 @@ from app.api.v1.endpoints.auth import get_current_user
 from app.core.config import get_settings
 from app.core.rate_limit import limiter
 from app.db.database import async_session_maker, get_db
+from app.models.agent_provider import AgentProvider
 from app.models.user import User
 from app.schemas.agent_chat import AgentChatRequest
 from app.services import (
@@ -53,7 +54,7 @@ from app.services.agent_discovery import (
     resoudre_provider_decouverte,
     verifier_quota,
 )
-from app.services.agent_providers import obtenir_pour_chat, resoudre_defaut
+from app.services.agent_providers import obtenir_pour_chat, ordonner_pour_chat, resoudre_defaut
 
 #: Chaines detectees pour poser un cooldown de lane apres un echec fournisseur.
 #: Les erreurs provider arrivent deja traduites par la couche LLM (« refuse :
@@ -249,6 +250,14 @@ async def chat_agent(
                 headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
             )
 
+    # Les cles de repli, dans l'ordre ou les essayer. Seulement celles du
+    # createur : le mode gratuit et le mode decouverte tiennent chacun leur
+    # propre cooldown de lane, et n'exposent qu'une cle qu'on ne choisit pas.
+    # Un createur qui en a configure trois n'en voyait essayer qu'une.
+    replis: list[AgentProvider] = []
+    if mode_gratuit is None and not mode_decouverte:
+        replis = await ordonner_pour_chat(db, current_user.id, prefere=provider.id)
+
     messages.append({"role": "user", "content": body.message})
     await agent_sessions.ajouter_message(db, session, role="user", content=body.message)
     # Le workspace n'etait amorce qu'en ouvrant la page Workspace ou la page
@@ -312,6 +321,7 @@ async def chat_agent(
                     agent_def=agent_def,
                     ancre_tokens=ancre_tokens,
                     session_id=session.id,
+                    replis=replis,
                 )
                 if echecs_gratuit and mode_gratuit is not None:
                     with contextlib.suppress(Exception):

@@ -285,6 +285,25 @@ describe('rehydratation d’une session persistée', () => {
     expect(items).toEqual([{ kind: 'compaction', retires: 30, elagues: 0 }]);
   });
 
+  it('marque le passage a une autre cle sans couper la reponse', () => {
+    // Le repli n’est pas une erreur : la bulle assistant qui suit doit pouvoir
+    // s’ouvrir normalement, et la marque se lire entre les deux.
+    const items = replier([
+      {
+        type: 'repli_fournisseur',
+        payload: { quitte: 'Gemini perso', pris: 'Mistral', raison: 'Quota atteint.' },
+      },
+      { type: 'message_delta', payload: { delta: 'Voici.', tour: 1 } },
+    ]);
+    expect(items[0]).toEqual({
+      kind: 'repli',
+      quitte: 'Gemini perso',
+      pris: 'Mistral',
+      raison: 'Quota atteint.',
+    });
+    expect(items[1]).toMatchObject({ kind: 'assistant', text: 'Voici.' });
+  });
+
   it('separe l’annonce fautive de la reponse corrigee', () => {
     // Sans la marque, les deux textes se recolleraient dans la meme bulle et
     // l’utilisateur lirait une reponse qui se contredit elle-meme.

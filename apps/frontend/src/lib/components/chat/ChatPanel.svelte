@@ -171,6 +171,7 @@
             | 'error'
             | 'compaction'
             | 'controle'
+            | 'repli'
             | 'continuation';
         }
       >
@@ -949,6 +950,15 @@
         <div class="flex items-center gap-3 py-1 text-xs text-amber-700 dark:text-amber-400">
           <span class="h-px flex-1 bg-border"></span>
           <span>Action annoncée mais non exécutée : réponse redemandée</span>
+          <span class="h-px flex-1 bg-border"></span>
+        </div>
+      {:else if item.kind === 'repli'}
+        <!-- Une cle a refuse, une autre a pris le relais. Discret et non rouge :
+             la conversation a continue, seule la cle a change. Le taire ferait
+             passer le temps perdu a essayer pour une lenteur du modele. -->
+        <div class="flex items-center gap-3 py-1 text-xs text-ink-tertiary">
+          <span class="h-px flex-1 bg-border"></span>
+          <span>{item.quitte} n'a pas répondu, {item.pris} prend le relais. {item.raison}</span>
           <span class="h-px flex-1 bg-border"></span>
         </div>
       {:else if item.kind === 'approval'}

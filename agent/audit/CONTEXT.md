@@ -18,7 +18,12 @@
 | G7 tests + prod | 16+ fichiers de tests, workspace ICM, état VM | ✅ **VERTE** (check_lot.sh vert, 2026-08-26) le 2026-08-26 — 103 fichiers documentés, preuves `07-tests-et-prod/` |
 | G8 assemblage global | rejeu de toutes les portes + routage + spot-check 10 % | ✅ **VERTE** (rejeu G1→G7 vert, spot-check 10% 57/57 OK, routage 80 liens OK) le 2026-08-26, preuve `_core/preuves/G8_vert_2026-08-26.md` |
 
-**Invariants gelés** (`_core/invariants.txt`) : 43 outils MCP · 31 endpoints · 12 événements SSE · 15 variables d'env. Toute évolution du code qui change ces nombres doit faire l'objet d'une mise à jour documentée ici.
+**Invariants gelés** (`_core/invariants.txt`) : 43 outils MCP · 31 endpoints · 14 événements SSE · 15 variables d'env. Toute évolution du code qui change ces nombres doit faire l'objet d'une mise à jour documentée ici.
+
+Évolutions documentées depuis le gel du 2026-08-25 :
+
+- **12 → 13 événements SSE, en #581** (`feat(agent): redemande la reponse quand une action annoncee n'a pas ete faite`). Ajout de `controle_relance`. La mise à jour de l'invariant avait été omise : le compte réel valait 13 depuis cette PR alors que le fichier annonçait toujours 12. Constaté et corrigé le 2026-08-30.
+- **13 → 14 événements SSE, le 2026-08-30.** Ajout de `repli_fournisseur`, émis par `agent.boucle` quand une clé refuse et qu'une autre prend le relais. Le créateur qui a configuré trois clés n'en voyait essayer qu'une ; le repli silencieux, lui, serait indistinguable d'une panne, d'où l'événement plutôt qu'un simple changement de clé.
 
 ## Arborescence (se remplit lot après lot)
 
