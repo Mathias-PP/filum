@@ -200,8 +200,15 @@ async def _texte_de_la_source(url: str | None) -> tuple[str, bool, bool]:
     l'archive rend celui d'une capture passée et ne rend rien d'une page jamais
     capturée. L'archive reste derrière lui, pour quand le relais est à quota ou
     en panne.
+
+    Quand aucun étage ne rend la page, reste le résumé déposé par l'éditeur chez
+    Crossref. C'est du verbatim, et c'est la même classe de preuve que le résumé
+    PubMed du premier étage. Il vient en dernier parce qu'un résumé ne remplace
+    pas un article, et il est rendu incomplet pour que l'appelant ne conclue pas
+    à l'absence d'un passage qui vit dans un corps de texte jamais obtenu.
     """
     # Import local : évite un cycle app.api ↔ app.extractors au démarrage.
+    from app.extractors.crossref_resume import texte_resume_crossref
     from app.extractors.europepmc_oracle import texte_europepmc
     from app.extractors.lecteur_relais import texte_par_relais
     from app.extractors.pmc_oracle import texte_ncbi
@@ -233,6 +240,14 @@ async def _texte_de_la_source(url: str | None) -> tuple[str, bool, bool]:
     archive = await texte_archive(url)
     if archive:
         return archive, False, True
+    # Dernier recours : le résumé déposé par l'éditeur chez Crossref. Il ne vient
+    # pas de la page, donc `bloque` reste vrai : le texte entier l'est toujours,
+    # et l'annoncer lisible serait faux. Mais quelques centaines de mots de
+    # verbatim valent mieux que « illisible », qui interdisait de citer un
+    # passage que le serveur affichait par ailleurs dans les métadonnées.
+    resume = await texte_resume_crossref(doi)
+    if resume:
+        return resume, bloque, False
     return "", bloque, True
 
 
