@@ -285,7 +285,7 @@
        l'editeur de vue en cherchant un fichier, et l'inverse. Sous `lg`, la
        colonne unique reprend le flux normal. -->
   <div class="grid gap-4 lg:h-[calc(100dvh-15rem)] lg:grid-cols-[22rem_1fr]">
-    <aside class="space-y-4 lg:overflow-y-auto lg:pr-1">
+    <aside class="space-y-4 lg:overflow-x-hidden lg:overflow-y-auto lg:pr-1">
       {#if chargementArbre}
         <p class="p-2 text-sm text-ink-tertiary">Chargement…</p>
       {:else if sections.length === 0}
