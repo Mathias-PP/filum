@@ -14,6 +14,7 @@ page telle qu'elle est aujourd'hui — cf. `app/services/excerpt_anchor.py`.
 from __future__ import annotations
 
 import asyncio
+import logging
 import re
 from datetime import UTC, datetime
 from uuid import UUID
@@ -39,6 +40,9 @@ from app.services.excerpt_anchor import Selecteurs, ancrer
 from app.services.excerpt_guards import LONGUEUR_MIN_AUTONOME_MOTS, passage_a_besoin_de_contexte
 from app.services.excerpt_indexing import indexer_sans_bruit
 from app.services.llm import suggest_annotation, suggest_chunk_titles, suggest_excerpts
+from app.services.texte_invisible import assainir
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/sources/{source_id}/excerpts", tags=["excerpts"])
 
@@ -183,6 +187,23 @@ async def _get_owned_source(source_id: UUID, user: User, db: AsyncSession) -> So
 
 
 async def _texte_de_la_source(url: str | None) -> tuple[str, bool, bool]:
+    """Le texte de la source, assaini des caractères invisibles.
+
+    Enveloppe volontaire : l'étagement ci-dessous a sept points de sortie, et
+    les assainir un par un revient à parier qu'aucun huitième ne sera ajouté
+    sans y penser. Un seul passage ici, et toute route nouvelle en hérite.
+
+    Ce qui est retiré ne se voit pas à l'écran mais entre tel quel dans le
+    contexte du modèle : voir `app/services/texte_invisible.py`.
+    """
+    texte, refuse, complet = await _texte_de_la_source_brut(url)
+    texte, invisibles = assainir(texte)
+    if invisibles:
+        logger.info("%s : %d caractères invisibles retirés du texte lu", url, invisibles)
+    return texte, refuse, complet
+
+
+async def _texte_de_la_source_brut(url: str | None) -> tuple[str, bool, bool]:
     """Texte d'une source : le contenu, si le site a refusé, si le texte est entier.
 
     PubMed et PMC opposent un reCAPTCHA aux IP de datacenter : leur page HTML
