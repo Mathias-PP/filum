@@ -22,6 +22,31 @@ class WorkspaceFileRead(BaseModel):
     updated_at: datetime | None = None
 
 
+class WorkspaceSyncEntry(BaseModel):
+    path: str
+    #: `absent` le template le connait, le workspace ne l'a pas. `a_jour`
+    #: identiques. `obsolete` le template a avance et le fichier est reste ce
+    #: que le seed avait pose, donc actualisable sans rien perdre. `diverge` le
+    #: fichier a pu etre edite ici : jamais ecrase sans demande explicite.
+    etat: Literal["absent", "a_jour", "obsolete", "diverge"]
+
+
+class WorkspaceSyncRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    #: Chemins divergents a reprendre du template malgre tout. Vide par defaut :
+    #: une adoption ecrase une edition, elle se demande chemin par chemin.
+    adopt: list[str] = Field(default_factory=list)
+
+
+class WorkspaceSyncResult(BaseModel):
+    ajoutes: list[str]
+    mis_a_jour: list[str]
+    adoptes: list[str]
+    #: Laisses intacts, faute d'avoir ete demandes dans `adopt`.
+    divergents: list[str]
+
+
 class WorkspaceTreeEntry(BaseModel):
     path: str
     type: Literal["file", "directory"]

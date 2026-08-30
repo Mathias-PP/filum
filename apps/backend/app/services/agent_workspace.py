@@ -284,31 +284,137 @@ async def supprimer(db: AsyncSession, creator_id: UUID, path: str) -> None:
     await db.delete(fichier)
 
 
+def fichiers_du_modele() -> dict[str, str]:
+    """Le template ICM tel qu'il est embarqué, chemin relatif → contenu."""
+    return {
+        f.relative_to(SEED_DIR).as_posix(): f.read_text(encoding="utf-8")
+        for f in sorted(SEED_DIR.rglob("*"))
+        if f.is_file()
+    }
+
+
 async def seed(db: AsyncSession, creator_id: UUID) -> int:
     """Insère les fichiers manquants du template ICM. Idempotent.
 
     Ne **jamais** écraser un fichier que l'utilisateur (ou l'agent) a modifié :
-    on n'insère que les chemins absents.
+    on n'insère que les chemins absents. Pour propager les évolutions du
+    template sur un workspace déjà peuplé, voir `resynchroniser()`.
     """
     count = 0
-    for fichier_disk in sorted(SEED_DIR.rglob("*")):
-        if not fichier_disk.is_file():
-            continue
-        rel = fichier_disk.relative_to(SEED_DIR).as_posix()
+    for rel, content in fichiers_du_modele().items():
         if await _get(db, creator_id, rel) is not None:
             continue
-        content = fichier_disk.read_text(encoding="utf-8")
+        sha = calculer_sha256(content)
         db.add(
             WorkspaceFile(
                 creator_id=creator_id,
                 path=rel,
                 content=content,
-                sha256=calculer_sha256(content),
+                sha256=sha,
+                seed_sha256=sha,
             )
         )
         count += 1
     await db.flush()
     return count
+
+
+#: Les quatre états possibles d'un fichier du template dans un workspace.
+#:
+#: `absent`   le template le connaît, le workspace ne l'a pas.
+#: `a_jour`   contenus identiques, rien à faire.
+#: `obsolete` le contenu diffère du template, mais il est resté exactement ce
+#:            que le seed avait posé : personne ne l'a touché ici, donc le
+#:            mettre à jour ne fait perdre aucun travail.
+#: `diverge`  le contenu diffère du template et ne correspond plus à sa
+#:            provenance, ou sa provenance est inconnue (fichier seedé avant
+#:            la migration 056). Il a pu être édité : on ne l'écrase jamais
+#:            d'office, on le signale.
+ETATS = ("absent", "a_jour", "obsolete", "diverge")
+
+
+async def etat_synchronisation(db: AsyncSession, creator_id: UUID) -> list[dict[str, str]]:
+    """Compare le workspace au template, sans rien modifier.
+
+    Ne parle que des chemins du template : un fichier écrit par la personne et
+    inconnu du template n'est pas un écart, c'est son travail.
+    """
+    stmt = select(WorkspaceFile).where(WorkspaceFile.creator_id == creator_id)
+    par_chemin = {f.path: f for f in (await db.execute(stmt)).scalars().all()}
+
+    rapport: list[dict[str, str]] = []
+    for chemin, attendu in fichiers_du_modele().items():
+        fichier = par_chemin.get(chemin)
+        if fichier is None:
+            etat = "absent"
+        elif fichier.content == attendu:
+            etat = "a_jour"
+        elif fichier.seed_sha256 is not None and fichier.seed_sha256 == fichier.sha256:
+            etat = "obsolete"
+        else:
+            etat = "diverge"
+        rapport.append({"path": chemin, "etat": etat})
+    return rapport
+
+
+async def resynchroniser(
+    db: AsyncSession,
+    creator_id: UUID,
+    adopter: list[str] | None = None,
+) -> dict[str, object]:
+    """Propage les évolutions du template, sans jamais écraser une édition.
+
+    Insère les fichiers `absent`, met à jour les `obsolete`, et laisse les
+    `diverge` intacts en les rendant dans le rapport. Un chemin passé dans
+    `adopter` est repris du template même s'il diverge : c'est le seul moyen de
+    reprendre la version courante en connaissance de cause, et il faut le
+    demander explicitement, chemin par chemin.
+    """
+    demandes = set(adopter or [])
+    inconnus = demandes - set(fichiers_du_modele())
+    if inconnus:
+        raise WorkspaceError(f"Chemins hors du template : {', '.join(sorted(inconnus))}.")
+
+    etats = {ligne["path"]: ligne["etat"] for ligne in await etat_synchronisation(db, creator_id)}
+    modele = fichiers_du_modele()
+    ajoutes: list[str] = []
+    mis_a_jour: list[str] = []
+    adoptes: list[str] = []
+    divergents: list[str] = []
+
+    for chemin, etat in etats.items():
+        if etat == "a_jour":
+            continue
+        if etat == "diverge" and chemin not in demandes:
+            divergents.append(chemin)
+            continue
+        contenu = modele[chemin]
+        sha = calculer_sha256(contenu)
+        fichier = await _get(db, creator_id, chemin)
+        if fichier is None:
+            db.add(
+                WorkspaceFile(
+                    creator_id=creator_id,
+                    path=chemin,
+                    content=contenu,
+                    sha256=sha,
+                    seed_sha256=sha,
+                )
+            )
+            ajoutes.append(chemin)
+        else:
+            fichier.content = contenu
+            fichier.sha256 = sha
+            fichier.seed_sha256 = sha
+            (adoptes if etat == "diverge" else mis_a_jour).append(chemin)
+
+    await db.flush()
+    return {
+        "ajoutes": sorted(ajoutes),
+        "mis_a_jour": sorted(mis_a_jour),
+        "adoptes": sorted(adoptes),
+        "divergents": sorted(divergents),
+    }
 
 
 async def assurer_workspace(db: AsyncSession, creator_id: UUID) -> None:
