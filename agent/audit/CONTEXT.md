@@ -40,6 +40,8 @@ agent/audit/
   04-api/                   ← ✅ G4 verte : [CONTEXT.md](04-api/CONTEXT.md) + fiches chat / sessions / providers / gratuit / defs / fiche / workspace (31 routes)
   05-services-metier/       ← ✅ G5 verte : [CONTEXT.md](05-services-metier/CONTEXT.md) + fiches providers / gratuit / workspace / definitions / fiche / discovery
   06-interface-chat / 07-tests-et-prod/   ← ✅ G6 verte + ✅ G7 verte : [CONTEXT.md](06-interface-chat/CONTEXT.md) / [CONTEXT.md](07-tests-et-prod/CONTEXT.md)
+  09-deepseek-harness/      ← ✅ audit Philum vs deepseek-harness (bugs, faisabilité, plans, UI, patterns)
+  10-externes/              ← audit 3 dépôts externes → Philum (OmniRoute/repli, open-notebook/recherche duale, book-to-skill/Unicode)
 ```
 
 ## Pour un agent qui arrive sur le repo
