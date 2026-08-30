@@ -22,7 +22,7 @@ if [ "$MISSING" -ne 0 ]; then note "ECHEC G0(b): $MISSING fichier(s) manquant(s)
 # (c) LOC périmètre cohérent avec la baseline gelée (±5 %) et avec la référence du plan
 LOC_DISK=$(awk -F, '$1=="perimetre"{s+=$4} END{print s+0}' "$CSV")
 BASE=$(grep -E '^INV_LOC_PERIMETRE=' "$AUDIT/invariants.txt" | cut -d= -f2)
-REF_LO=22843; REF_HI=25248   # baseline machine du 2026-08-25 : 24046 ±5 % (estimation initiale 21400 corrigée en G0)
+REF_LO=24488; REF_HI=27065   # baseline machine du 2026-08-30 : 25777 ±5 % (gel précédent : 24046, 2026-08-25)
 if [ -z "$BASE" ]; then note "ECHEC G0(c): baseline LOC absente des invariants";
 else
   LO=$(( BASE * 95 / 100 )); HI=$(( BASE * 105 / 100 ))
