@@ -25,9 +25,14 @@ de la stdlib reste vulnerable a l'expansion d'entites.
 from __future__ import annotations
 
 import io
+import logging
 import zipfile
 
 from defusedxml import ElementTree as DefusedET
+
+from app.services.texte_invisible import assainir
+
+logger = logging.getLogger(__name__)
 
 #: Meme plafond que le collage : au-dela, on refuse plutot que de tronquer.
 MAX_CHARS = 200_000
@@ -156,6 +161,18 @@ def extract_text(filename: str, data: bytes) -> str:
         )
     else:
         raise DocumentError(f"Format non reconnu. Formats acceptés : {', '.join(EXTENSIONS)}.")
+
+    # Assainir avant de compter : le texte qui compte est celui qui sera lu,
+    # pas celui qui a ete recu. Un document peut porter des milliers de points
+    # de code invisibles, qui pousseraient au-dela du plafond un texte utile
+    # bien plus court.
+    texte, invisibles = assainir(texte)
+    if invisibles:
+        logger.info(
+            "document %s : %d caracteres invisibles retires du texte extrait",
+            filename,
+            invisibles,
+        )
 
     if len(texte) > MAX_CHARS:
         raise DocumentError(

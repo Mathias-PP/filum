@@ -14,6 +14,7 @@ extensions futures.
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Any
 
 import httpx
@@ -21,6 +22,9 @@ import httpx
 from app.agent_tools.tool import AgentTool, ToolContext
 from app.core.config import get_settings
 from app.core.url_safety import UnsafeUrlError, assert_url_is_safe
+from app.services.texte_invisible import assainir
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
@@ -29,6 +33,25 @@ _TEXT_MAX = 200_000
 
 
 async def _rechercher(provider: str, cle: str, query: str) -> list[dict[str, str]]:
+    """Les resultats du fournisseur, assainis des caracteres invisibles.
+
+    Titres et extraits viennent d'un tiers et partent directement au modele,
+    sans passer par `_texte_de_la_source` qui assainit le reste. Meme enveloppe
+    ici, et pour la meme raison : quatre fournisseurs, autant de sorties, et un
+    cinquieme un jour.
+    """
+    resultats = await _rechercher_brut(provider, cle, query)
+    total = 0
+    for resultat in resultats:
+        for champ, valeur in resultat.items():
+            resultat[champ], retires = assainir(valeur)
+            total += retires
+    if total:
+        logger.info("recherche web : %d caracteres invisibles retires des resultats", total)
+    return resultats
+
+
+async def _rechercher_brut(provider: str, cle: str, query: str) -> list[dict[str, str]]:
     async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
         if provider == "tavily":
             r = await client.post(
