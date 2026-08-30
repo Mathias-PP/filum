@@ -17,7 +17,7 @@
 1. **Lanes en base, cles hors base.** La table `agent_lanes` porte slug, label public, kind de protocole (`custom` = OpenAI-compatible generique), base_url, model, caps rpm/rpd, position, actif. La cle API ne vit JAMAIS en base : elle est resolue depuis les settings `agent_gratuit_<slug>_api_key` a l'appel. Un dump de base ne divulgue donc rien, et ajouter un lane = une ligne SQL + une variable d'env.
 2. **Consentement versionne.** Table `agent_gratuit_consents` (createur, version du texte de traitement des donnees, date). Le front doit confirmer la version exacte exposee par le backend (`PUT /agent/mode-gratuit {version}`) ; une version perimee n'est plus un consentement. Le texte dit que les echanges transitent par un tiers et peuvent servir a entrainer des modeles.
 3. **Ordre de resolution du provider :** `body.provider_id` explicite > lane gratuite si consenti > provider par defaut > mode decouverte. L'intention explicite prime toujours.
-4. **Quotas a deux niveaux.** Par lane : compteur/jour + cooldown 10 min sur detection de rate-limit (429/"rate limit"/"quota" dans l'erreur). Par utilisateur : reutilise la table `agent_discovery_quota` avec son propre plafond (`agent_gratuit_daily_quota_messages`, defaut 30).
+4. **Quotas a deux niveaux.** Par lane : compteur/jour + cooldown dont la duree depend de la cause de l'echec (voir l'amendement du 2026-08-31). Par utilisateur : reutilise la table `agent_discovery_quota` avec son propre plafond (`agent_gratuit_daily_quota_messages`, defaut 30).
 5. **Evenement SSE dedie** `gratuit_actif` (payload identique a `discovery_active` + notice de retention), pour que la banniere dise « Mode gratuit » et pas « Mode decouverte » ; le front mappe les deux vers la meme banniere avec un libelle different.
 
 **Alternatives ecartees :**
@@ -26,6 +26,14 @@
 - **Rotation cote client** : exiger plusieurs cles gratuites contredit le but (zero cle pour essayer).
 
 **Consequences :** activer en prod demande deux variables (`AGENT_GRATUIT_ENABLED=true`, `AGENT_GRATUIT_ZAI_API_KEY=...`) + migration 050. Sans elles, tout le code est inert : endpoints repondent `disponible=false`, aucun appel sortant. Les tests couvrent consentement, selection de lane, cooldown, quotas, SSE et le chemin HTTP complet via MockTransport.
+
+**Amendement du 2026-08-31 (#618) : le point 4 est remplace, et le repli devient reel.**
+
+Trois defauts mesures en production, tous invisibles depuis le code seul :
+
+- **Le repli reproduisait la panne du primaire.** `zai` et `zai-alt` partagent endpoint et cle ; seule la colonne `model` les distingue. Les deux portaient `glm-4.5-flash`. La migration `057_lane_secours_modele_distinct` repare la donnee et `definir_modele_primaire` empeche la reconvergence. Si les deux lanes se retrouvent un jour sur le meme modele, le repli est mort sans que rien ne le signale.
+- **Le cooldown ne reparait que le tour suivant.** En mode gratuit la liste `replis` etait volontairement vide : un 429 sur le primaire rendait une erreur au createur alors que la lane de secours pouvait repondre immediatement. `lanes_eligibles()` rend desormais toutes les lanes utilisables, et le chat les essaie dans l'ordre pendant le tour. Contrepartie acceptee : le cooldown de lane n'est pose que si le tour entier echoue.
+- **La detection par sous-chaine se trompait dans les deux sens.** Elle mettait au repos sur un texte d'erreur venant de notre propre code, et traitait une cle refusee comme un pic de charge. `agent_gratuit.reagir(statut, message)` classe maintenant par statut HTTP au-dessus de `agent_repli.classer` : 401/403 → 120 min et message dedie (aucun delai ne repare une cle refusee, inviter a « reessayer dans quelques minutes » enverrait attendre pour rien) ; 429 et 5xx → 10 min ; demande refusee ou malformee (400/404, filtre de contenu) → aucun repos, la lane est saine ; exception sans statut dont le motif n'est pas reconnu → aucun repos, pour qu'un bug de Philum ne passe pas pour une panne du fournisseur. Quand un tour a vu passer plusieurs echecs, le repos le plus long l'emporte.
 
 ---
 
