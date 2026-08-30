@@ -42,7 +42,14 @@ from app.services.llm import suggest_annotation, suggest_chunk_titles, suggest_e
 
 router = APIRouter(prefix="/sources/{source_id}/excerpts", tags=["excerpts"])
 
-MAX_EXCERPTS_PER_SOURCE = 10
+#: Garde-fou technique, pas une regle editoriale. Le nombre d'extraits qu'une
+#: source merite depend de la part de son contenu qui sert la fiche : une
+#: source consultee pour un chiffre en porte un, une source dont tout le propos
+#: est pertinent peut legitimement etre decoupee en entier. L'ancien plafond de
+#: 10 tranchait cette question editoriale a la place de la personne, et faisait
+#: echouer le decoupage integral d'un article un peu long. Ce nombre-ci ne
+#: borne que l'abus : il depasse le decoupage complet de toute source reelle.
+PLAFOND_TECHNIQUE_EXTRAITS = 200
 
 
 class ExcerptCreate(BaseModel):
@@ -271,12 +278,16 @@ async def create_excerpt(
     count = await db.scalar(
         select(func.count()).select_from(SourceExcerpt).where(SourceExcerpt.source_id == source.id)
     )
-    if (count or 0) >= MAX_EXCERPTS_PER_SOURCE:
+    if (count or 0) >= PLAFOND_TECHNIQUE_EXTRAITS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
                 "code": "validation_error",
-                "message": f"Maximum {MAX_EXCERPTS_PER_SOURCE} excerpts per source",
+                "message": (
+                    f"Cette source porte deja {PLAFOND_TECHNIQUE_EXTRAITS} extraits, "
+                    "le maximum technique. Si son contenu justifie vraiment un tel "
+                    "volume, decoupez-le en plusieurs sources."
+                ),
             },
         )
     max_pos = await db.scalar(

@@ -30,33 +30,59 @@ Une fiche Philum n'est pas une bibliographie. C'est un **lien de confiance** ent
 
 Une annotation dit ce que la source **apporte** à la fiche. Deux à quatre lignes. Ni résumé, ni éloge : ce que le créateur a pris dans cette source pour construire son propos.
 
+Les deux exemples ci-dessous décrivent une fiche imaginaire. Ils montrent une forme, ils ne disent rien du sujet que vous traitez.
+
 Bon exemple :
-> Ce papier fige la mesure du 12 février 2025 : plasma stable à 1337 secondes sur WEST. C'est la ligne de base contre laquelle les progrès ultérieurs sont comparés.
+> Ce papier fige la mesure de référence : la valeur relevée à cette date. C'est la ligne de base contre laquelle les progrès ultérieurs sont comparés.
 
 Mauvais exemple :
-> Article scientifique publié dans Nuclear Fusion sur le tokamak WEST.
+> Article scientifique publié dans une revue à comité de lecture sur le même thème.
 
 ## Extraits
 
-Un extrait est un **verbatim** copié à la lettre, avec `context` qui nomme les référents et situe le passage. Trois à cinq extraits par source pivot, pas plus.
+Un extrait est un **verbatim** copié à la lettre, avec `context` qui nomme les référents et situe le passage.
 
 - Titre court (2 à 6 mots) qui dit ce qu'on trouve dedans, pas un slogan.
 - `context` rend l'extrait intelligible seul. Si le passage commence par « Cela », dire ce que « cela » nomme.
 - Un extrait long qui pose lui-même son contexte n'a pas besoin d'un `context` séparé.
 - Un extrait très court (trois mots, une formule) est acceptable si le `context` en fait la mise en situation. Le critère n'est pas la longueur : c'est l'intelligibilité une fois cité seul.
 
+### Combien d'extraits par source
+
+Il n'y a **pas de quota**. Ce que porte une source dépend de la part de son contenu qui sert réellement la fiche. Les fourchettes ci-dessous sont des recommandations, pas des limites : le créateur tranche.
+
+| Ce qu'est la source pour cette fiche | Fourchette |
+|---|---|
+| Contenu inaccessible, donc invérifiable ; ou source vraiment secondaire | 0 |
+| Consultée pour un point précis : une citation, un chiffre, l'origine d'une info ; ou source clé mais très courte | 1 à 3 |
+| Source clé dont une grande part du contenu porte sur le sujet de la fiche | 3 à 4 et au-delà |
+| Source dont la quasi-totalité du propos sert la fiche | jusqu'au découpage intégral du contenu |
+
+Découper une source de bout en bout est un usage légitime, pas un abus : quand tout le texte est pertinent, chaque passage devient consultable et recherchable. Le seul plafond est technique (200 extraits par source).
+
+Ce qui disqualifie un extrait n'est jamais son rang dans la liste, c'est qu'il n'apporte rien : redite d'un extrait déjà posé, passage de transition, phrase qui ne dit rien du sujet de la fiche.
+
+### Quelle longueur
+
+Un extrait est lu par un humain qui le rencontre seul, et indexé pour la recherche par le sens. Les deux poussent dans la même direction : un passage assez large pour se comprendre, assez serré pour ne dire qu'une chose. En recherche documentaire, les unités qui se retrouvent le mieux sont celles qui tiennent une idée à la fois et se suffisent à elles-mêmes, pas les plus longues.
+
+| Ce que fait l'extrait | Longueur indicative |
+|---|---|
+| Une formule, un chiffre, une dénomination que la fiche cite | 3 à 15 mots, `context` obligatoire |
+| Une affirmation, une donnée située, un résultat | 15 à 80 mots, une à trois phrases |
+| Un raisonnement, une nuance, une contradiction argumentée | 80 à 160 mots, sans dépasser le plafond serveur de 1 000 caractères |
+
+Un passage qui dépasse se coupe **entre deux phrases**, jamais à l'intérieur de l'une d'elles, ou se pose en deux extraits consécutifs. Un extrait plus long qu'il n'a besoin de l'être noie ce qu'il prouve.
+
 ## Titre et description de la fiche
 
-**Le titre de la fiche EST le titre exact du contenu documenté.** Aucune reformulation, aucun ajout, aucune traduction : le titre de la fiche est celui que l'auteur du contenu a publié, quelle que soit la nature du contenu (article scientifique, article de blog, vidéo, livre, podcast…). La fiche documente un contenu précis ; l'afficher sous un autre titre la rend non vérifiable.
-
-- Titre du contenu (vidéo) : « WEST bat le record du plasma le plus long ».
-- Titre de la fiche : « WEST bat le record du plasma le plus long » (identique).
+La règle est posée une seule fois, dans `garde-fous.md`, section « Sur les métadonnées » : le titre de la fiche est celui que l'auteur du contenu a publié, sans reformulation. La raison : la fiche documente un contenu précis, l'afficher sous un autre titre la rend invérifiable.
 
 Description : 2 à 4 phrases. Situer le contenu documenté et annoncer ce que la fiche prouve. C'est la description qui porte la lecture éditoriale, pas le titre.
 
 ## Dates de publication
 
-**Une date de publication doit figurer quand elle existe** — sur la fiche (celle du contenu documenté) et sur chaque source.
+**Une date de publication doit figurer quand elle existe** : sur la fiche (celle du contenu documenté) et sur chaque source.
 
 - La date se prend sur le **contenu lui-même** : date affichée par la vidéo, pied de page du blog, page de l'éditeur, métadonnées de la page (`/sources/extract`), Crossref en source complémentaire pour les articles scientifiques.
 - Une date connue qui manque est une erreur : jamais de « s. d. » quand la date est trouvable.

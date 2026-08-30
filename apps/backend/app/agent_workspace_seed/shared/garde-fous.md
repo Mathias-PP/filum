@@ -12,7 +12,7 @@ Chaque règle bloque une action, avec la raison. Aucune n'est négociable.
 - **Préférer un extrait autonome (≥ 15 mots ou nommant son sujet)** quand c'est possible. Ce n'est pas une limite basse absolue : si le passage clé fait 5 mots, on le prend en fournissant `context`, plutôt que d'élargir vers du bruit.
 - **Refuser un extrait qui n'est pas vérifiable dans le texte de la source.** Toujours confirmer que le passage existe verbatim avant de l'ajouter.
 - **Refuser de couper à l'intérieur d'une phrase pour raccourcir.** Élargir ou choisir un autre passage.
-- **Refuser plus de 5 extraits par source.** Le serveur plafonne à 10 ; l'usage éditorial en autorise 3 à 5 pour les pivots, 1 à 2 pour les autres.
+- **Aucun plafond arbitraire sur le nombre d'extraits.** Ce que porte une source dépend de la part de son contenu qui sert la fiche, pas d'un quota. Les fourchettes recommandées sont dans `principes-editoriaux.md`, section « Extraits ». Le serveur borne à 200 par source : c'est un garde-fou anti-abus, pas une règle éditoriale.
 
 ## Sur les auteurs
 
@@ -24,7 +24,7 @@ Chaque règle bloque une action, avec la raison. Aucune n'est négociable.
 
 - **Refuser d'inventer DOI, date, pagination, journal.** Absence > invention.
 - **Le titre de la fiche est le titre exact du contenu documenté**, quel que soit le type de contenu (article, blog, vidéo, livre…). Aucune reformulation, aucun ajout, aucune traduction.
-- **Une date de publication connue doit figurer** — sur la fiche (date du contenu) et sur chaque source. La date se prend sur le contenu lui-même ; Crossref en source complémentaire pour les articles.
+- **Une date de publication connue doit figurer** : sur la fiche (date du contenu) et sur chaque source. La date se prend sur le contenu lui-même ; Crossref en source complémentaire pour les articles.
 - **Une date introuvable se trace** : noter « pas de date trouvée » dans l'audit. Ce n'est jamais une excuse pour laisser une date connue absente.
 - **Vérifier via une source d'autorité** avant d'écrire :
   - DOI et référence complète : Crossref (`https://api.crossref.org/works/{doi}`) ou OpenAlex.

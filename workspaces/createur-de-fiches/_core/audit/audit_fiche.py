@@ -203,7 +203,7 @@ def main():
 
 def finish():
     out("")
-    out(f"VERDICT : {len(ALERTS)} ALERTE(S) — aucune ne bloque la publication (decision humaine)")
+    out(f"VERDICT : {len(ALERTS)} ALERTE(S) : aucune ne bloque la publication (decision humaine)")
     for a in ALERTS:
         first = a.splitlines()[0]
         out(f"  - {first}")
