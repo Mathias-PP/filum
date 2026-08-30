@@ -87,7 +87,7 @@ présent). La version Philum est dédupliquée.
 - Modifier : `apps/backend/app/agent_tools/web.py:31` (`_rechercher`)
 - Test : `apps/backend/tests/unit/test_texte_invisible.py`
 
-- [ ] **1.1 Le module**
+- [x] **1.1 Le module**
 
 ```python
 """Retire d'un texte tiers les caracteres que le modele lit et que nul ne voit.
@@ -164,7 +164,7 @@ séquences emoji composées, perdre les sélecteurs de variation retire l'indice
 présentation emoji contre texte. Sur de la prose citée, aucun des deux ne porte
 de sens.
 
-- [ ] **1.2 Brancher les trois entonnoirs**
+- [x] **1.2 Brancher les trois entonnoirs**
 
 `extract_text` (dépôt de fichier), juste avant la vérification de `MAX_CHARS` :
 le texte assaini est celui qui compte, pas celui qui est reçu.
@@ -178,7 +178,7 @@ caractères sont retirés, avec l'URL et le nombre.
 `_rechercher` dans `web.py` : titres et extraits viennent d'une API tierce et
 partent au modèle sans passer par `_texte_de_la_source`.
 
-- [ ] **1.3 Tests**
+- [x] **1.3 Tests**
 
 - `test_bloc_de_balises_retire` : une charge ASCII encodée en `U+E0041`
   et suivantes disparaît entièrement.
@@ -190,7 +190,7 @@ partent au modèle sans passer par `_texte_de_la_source`.
 - `test_les_deux_entonnoirs_assainissent` : `extract_text` sur un `.txt` piégé,
   et `_texte_de_la_source` avec `_html_scrape` simulé rendant du texte piégé.
 
-- [ ] **1.4 Vérifier, commit, PR, merge, déployer.**
+- [x] **1.4 Vérifier, commit, PR, merge, déployer.**
 
 Vérification prod : `fetch_url` sur une page connue, la réponse ne doit pas
 changer visiblement. C'est un correctif silencieux, son effet se lit dans les
@@ -396,7 +396,7 @@ Avec, l'utilisateur voit pourquoi un extrait est remonté.
 - Modifier : `apps/backend/app/mcp_server/tools_write.py:1380-1403`
 - Test : `apps/backend/tests/unit/test_fusion_rangs.py`
 
-- [ ] **4.1 Le mécanisme**
+- [x] **4.1 Le mécanisme**
 
 ```python
 K_RANG = 60
@@ -414,7 +414,7 @@ La fusion prend des listes ordonnées d'identifiants, rend les identifiants
 triés par score décroissant, et pour chacun l'ensemble des jambes qui l'ont
 trouvé. Elle ne connaît ni extraits ni embeddings : elle est testable seule.
 
-- [ ] **4.2 Le seuil sémantique reste**
+- [x] **4.2 Le seuil sémantique reste**
 
 `SIMILARITE_MINIMALE = 0.60` est une mesure faite sur le corpus de production, et
 son commentaire (`excerpt_search.py:39-51`) documente pourquoi le plancher
@@ -426,12 +426,12 @@ Symétriquement, la jambe lexicale garde son `ILIKE` mais perd son tri par date,
 qui n'ordonne rien de pertinent. Elle rend l'ordre du plus grand nombre
 d'occurrences.
 
-- [ ] **4.3 `found_by` remonte jusqu'à l'appelant**
+- [x] **4.3 `found_by` remonte jusqu'à l'appelant**
 
 Ajouter le champ au `Resultat` de `excerpt_search.py:62-81` et à la réponse de
 l'outil MCP. Valeurs possibles : `sens`, `mots`, ou les deux.
 
-- [ ] **4.4 Tests**
+- [x] **4.4 Tests**
 
 - `test_rrf_recompense_l_accord` : un identifiant présent dans les deux jambes
   au rang 2 passe devant un identifiant premier d'une seule jambe.
@@ -439,7 +439,7 @@ l'outil MCP. Valeurs possibles : `sens`, `mots`, ou les deux.
 - `test_found_by_nomme_les_deux_jambes`.
 - `test_seuil_semantique_applique_avant_fusion`.
 
-- [ ] **4.5 Vérifier, commit, PR, merge, déployer.**
+- [x] **4.5 Vérifier, commit, PR, merge, déployer.**
 
 **Ce qui n'est pas repris de ce dépôt.** La distillation à l'écriture (générer
 les questions auxquelles un extrait répond, gardées par une citation exacte
@@ -488,7 +488,7 @@ objet. On prend la classification, le plafond, et la raison portée. Rien d'autr
 - Modifier : `apps/frontend/src/lib/components/chat/` (affichage de l'événement)
 - Test : `apps/backend/tests/unit/test_agent_repli.py`
 
-- [ ] **5.1 Classer l'échec amont**
+- [x] **5.1 Classer l'échec amont**
 
 ```python
 class Verdict(StrEnum):
@@ -503,7 +503,7 @@ class Verdict(StrEnum):
 
 Chaque verdict porte une `raison` en français, destinée à être lue.
 
-- [ ] **5.2 Repos plafonné**
+- [x] **5.2 Repos plafonné**
 
 Après un `REPLIER`, la clé est mise au repos pour un temps croissant, plafonné à
 15 minutes. En mémoire de processus, pas en base : Philum tourne sur un seul
@@ -511,13 +511,13 @@ conteneur, et persister un état de santé transitoire coûterait une migration 
 rien. Le noter dans le commentaire, pour qu'un futur passage en multi-instance
 sache où regarder.
 
-- [ ] **5.3 La boucle essaie les clés du créateur**
+- [x] **5.3 La boucle essaie les clés du créateur**
 
 `resoudre_defaut` rend aujourd'hui un fournisseur. Ajouter `ordonner_pour_chat`,
 qui rend la liste des fournisseurs du créateur, le défaut en tête, les clés au
 repos en queue. `_appel_provider` parcourt la liste selon le verdict.
 
-- [ ] **5.4 Le repli se voit**
+- [x] **5.4 Le repli se voit**
 
 Nouvel événement SSE `repli_fournisseur`, portant le fournisseur quitté, celui
 pris, et la raison. Affiché dans le fil comme une ligne discrète, pas comme une
@@ -528,7 +528,7 @@ SSE. En ajouter un le fait passer à 13 : mettre à jour le fichier et la ligne 
 tableau de bord de `agent/audit/CONTEXT.md` dans le même commit, sinon la porte
 G8 devient rouge, ce qui est le comportement voulu.
 
-- [ ] **5.5 Tests**
+- [x] **5.5 Tests**
 
 - `test_401_abandonne_sans_essayer_les_autres_cles`.
 - `test_429_replie_sur_la_cle_suivante`.
@@ -536,7 +536,7 @@ G8 devient rouge, ce qui est le comportement voulu.
 - `test_toutes_les_cles_epuisees_rend_une_erreur_qui_les_nomme`.
 - `test_evenement_repli_porte_la_raison`.
 
-- [ ] **5.6 Vérifier, régénérer openapi et `generated.ts`, prettier, commit, PR, merge, déployer.**
+- [x] **5.6 Vérifier, régénérer openapi et `generated.ts`, prettier, commit, PR, merge, déployer.**
 
 ---
 
@@ -581,3 +581,49 @@ Pour qu'une session future ne le repropose pas.
 - **Le token `gh` n'a pas `read:org`** : passer `--body`, pas `--body-file`.
 - **Les invariants de l'audit sont volontairement fragiles** : les mettre à jour
   dans le commit qui les change.
+
+---
+
+# Bilan, le 2026-08-30
+
+Les quatre PR livrables sont en production. La PR 2 reste annulée, ses cases
+volontairement vides : rien n'y a été fait parce que rien n'y était à faire.
+
+| PR | Livrée | Ce qui est en prod |
+|---|---|---|
+| 1 | #612 | l'assainissement du texte tiers que le modèle lit |
+| 2 | annulée | Philum portait déjà tout, et mieux |
+| 3 | #613 | le rappel du graphe dit ce qu'il porte, avec ses vrais mots |
+| 4 | #614 | les mots et le sens cherchent ensemble, et disent lequel a trouvé |
+| 5 | #615 | la clé suivante prend le relais, et le repli se voit |
+
+## Ce que l'exécution a appris
+
+**La CI a rattrapé ce que les tests ciblés laissaient passer.** La jambe
+lexicale de la PR 4, écrite en SQL textuel, comparait `c.user_id` à
+`str(user_id)`, soit la forme à tirets. Le projet stocke ses clés en
+hexadécimal nu sous SQLite : `search_my_excerpts` ne trouvait plus rien, et
+seul le test de bout en bout le voyait. La leçon tient en une ligne : **le SQL
+textuel perd le typage des clés, l'ORM le garde.** La requête sémantique voisine
+dort sur le même défaut, mais son SQL doit rester textuel pour porter `<=>`, et
+ses tests coupent avant la base faute de pgvector.
+
+**Un invariant d'audit avait dérivé sans que personne le voie.**
+`INV_EVENEMENTS_SSE` annonçait 12 ; le compte réel valait 13 depuis #581, qui
+avait ajouté `controle_relance` sans toucher au fichier. La PR 5 le porte à 14 et
+documente les deux dérives. `check_inventaire.sh` ne l'avait pas signalé parce
+qu'il échoue plus tôt, sur G0 : dix fichiers manquent au CSV d'inventaire, dont
+neuf antérieurs à ce plan.
+
+## Ce qui reste ouvert
+
+- **G0 de l'audit est rouge** et le masque : dix fichiers absents du CSV
+  d'inventaire (`agent/audit/inventaire.csv`), dont `objectif.py`,
+  `excerpt_search.py`, `source_existence.py`, `token_meter.py`. Tant que G0
+  échoue, les invariants ne sont jamais vérifiés. Régénérer l'inventaire.
+- **`agent_providers._classify` et `agent_repli.classer` font le même travail**
+  à deux endroits, le premier pour le test de clé, le second pour le repli. La
+  PR 2 l'avait noté ; la PR 5 n'a pas fusionné les deux pour ne pas mêler un
+  refactor à une fonctionnalité.
+- **`Repos` vit en mémoire de processus.** Un passage en multi-instance le
+  casserait en silence : chaque instance apprendrait la panne de son côté.
