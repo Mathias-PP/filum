@@ -444,7 +444,8 @@
       <div class="hero-inner">
         <div class="hero-copy">
           <p class="eyebrow">
-            Un espace de recherche pour garantir la traçabilité de l'information
+            Votre espace de recherche<br />
+            qui garantit la traçabilité de l'information
           </p>
           <h1>
             Vous allez adorer<br />
@@ -588,8 +589,8 @@
         <div class="fil-closing" use:reveal>
           <p class="fil-closing-head">Avec Philum, ces questions ne se posent plus.</p>
           <ul class="fil-closing-list">
-            <li>Parcourez vos références et celles partagées par la communauté</li>
-            <li>Accédez aux passages clés, cités mot pour mot à côté de la source</li>
+            <li>Naviguez facilement parmi les références publiées et archivées dans Philum</li>
+            <li>Accédez aux passages clés, cités mot pour mot avec la source associée</li>
             <li>Interrogez le modèle d'IA de votre choix sur un corpus que vous contrôlez</li>
           </ul>
         </div>
@@ -1336,6 +1337,7 @@
   .fil-closing {
     margin-top: 2.5rem;
     max-width: 42rem;
+    margin-inline: auto;
     text-align: center;
   }
   .fil-closing-head {
@@ -1351,13 +1353,15 @@
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.55rem;
+    align-items: center;
     color: rgba(226, 232, 240, 0.72);
     font-size: clamp(0.95rem, 1.6vw, 1.05rem);
     line-height: 1.6;
-    text-align: left;
-    max-width: 38rem;
-    margin: 0 auto;
+    text-align: center;
+  }
+  .fil-closing-list li {
+    max-width: 40rem;
   }
   .fil-closing-list li::before {
     content: '→ ';
