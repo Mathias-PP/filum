@@ -92,6 +92,10 @@ export interface AgentSession {
   model_override: string | null;
   /** Slug de l'agent nommé de cette session. Null = assistant généraliste. */
   agent_slug: string | null;
+  /** Ce que la conversation cherche à obtenir. Posé par l'agent, jamais par l'interface. */
+  objectif: string | null;
+  /** Où en est ce travail, en quelques mots. */
+  phase: string | null;
   created_at: string;
   last_message_at: string | null;
 }

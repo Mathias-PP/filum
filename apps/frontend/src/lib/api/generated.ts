@@ -1918,6 +1918,10 @@ export interface components {
       model_override: string | null;
       /** Agent Slug */
       agent_slug: string | null;
+      /** Objectif */
+      objectif?: string | null;
+      /** Phase */
+      phase?: string | null;
       /**
        * Created At
        * Format: date-time

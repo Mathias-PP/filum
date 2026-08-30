@@ -5078,6 +5078,28 @@
             ],
             "title": "Agent Slug"
           },
+          "objectif": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Objectif"
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",

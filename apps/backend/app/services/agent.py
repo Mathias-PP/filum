@@ -36,6 +36,7 @@ import httpx
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agent_tools.objectif import OUTILS_OBJECTIF
 from app.agent_tools.philum import OUTILS_QUI_ECRIVENT, est_sensible
 from app.agent_tools.registry import construire_registre, executer, filtrer, registre_api
 from app.agent_tools.tool import AgentTool, ToolContext
@@ -49,7 +50,12 @@ from app.models.workspace_file import WorkspaceFile
 from app.services.agent_approvals import DELAI_MAX as DELAI_APPROBATION
 from app.services.agent_definitions import AgentDefinition
 from app.services.agent_providers import _decrypt
-from app.services.agent_sessions import BUDGET_APRES_REFUS, BUDGET_HISTORIQUE, compacter
+from app.services.agent_sessions import (
+    BUDGET_APRES_REFUS,
+    BUDGET_HISTORIQUE,
+    compacter,
+    objectif_courant,
+)
 from app.services.llm_adapters import (
     format_chat_payload,
     parse_sse_stream_anthropic,
@@ -132,6 +138,33 @@ def _contexte_temporel(maintenant: datetime | None = None) -> str:
         "cette ligne ou d'un résultat d'outil, jamais de ta mémoire "
         "d'entraînement, qui s'arrête avant aujourd'hui.\n\n"
     )
+
+
+async def _contexte_objectif(db: AsyncSession, creator_id: UUID, session_id: UUID | None) -> str:
+    """L'objectif de la session, réinjecté à chaque tour.
+
+    C'est tout l'intérêt de le stocker hors de l'historique : la compaction
+    ampute le début de la conversation, donc la demande de départ. Relu ici, il
+    survit à toutes les compactions du monde.
+
+    Rend la chaîne vide quand aucun objectif n'est posé, plutôt qu'une section
+    creuse : un titre suivi de rien apprend au modèle que la section ne veut
+    rien dire.
+    """
+    if session_id is None:
+        return ""
+    objectif, phase = await objectif_courant(db, creator_id, session_id)
+    if not objectif:
+        return ""
+    bloc = f"\n\n---\n## Objectif de cette conversation\n{objectif}\n"
+    if phase:
+        bloc += f"\nPhase en cours : {phase}\n"
+    bloc += (
+        "\nCet objectif vient de `definir_objectif`, pas de l'historique : il est "
+        "vrai même si le début de la conversation a été compacté. S'il ne "
+        "correspond plus à ce que le créateur demande, rappelle `definir_objectif`.\n"
+    )
+    return bloc
 
 
 #: Une annonce de résultat déjà obtenu, au passé.
@@ -963,6 +996,14 @@ def _arguments_de(tool_call: dict[str, Any]) -> tuple[dict[str, Any], bool]:
 #: arguments lisibles ?).
 _Appel = tuple[dict[str, Any], str, dict[str, Any], bool]
 
+#: Outils qui touchent l'``AsyncSession`` du contexte, donc jamais en parallèle.
+#:
+#: Strictement plus large que `OUTILS_QUI_ECRIVENT`, qui sert au contrôle des
+#: annonces non tenues et ne doit compter que les écritures éditoriales. Les deux
+#: ensembles répondent à deux questions différentes, les confondre casserait
+#: silencieusement l'un des deux.
+OUTILS_NON_PARALLELISABLES: frozenset[str] = OUTILS_QUI_ECRIVENT | OUTILS_OBJECTIF
+
 
 def _lot_parallelisable(appels: list[_Appel]) -> bool:
     """Le lot d'appels d'un même message assistant peut-il partir ensemble ?
@@ -981,7 +1022,7 @@ def _lot_parallelisable(appels: list[_Appel]) -> bool:
     if len(appels) < 2:
         return False
     return not any(
-        nom in OUTILS_QUI_ECRIVENT or est_sensible(nom, args) for _tc, nom, args, _ in appels
+        nom in OUTILS_NON_PARALLELISABLES or est_sensible(nom, args) for _tc, nom, args, _ in appels
     )
 
 
@@ -994,8 +1035,9 @@ async def _executer_tour(
     registre: dict[str, AgentTool],
     emit: Emitter,
     approuver: Approuver,
+    session_id: UUID | None = None,
 ) -> None:
-    ctx = ToolContext(db=db, user=user, creator_id=user.id)
+    ctx = ToolContext(db=db, user=user, creator_id=user.id, session_id=session_id)
     appels: list[_Appel] = []
     for tc in tool_calls:
         try:
@@ -1113,6 +1155,7 @@ async def boucle(
     modele: str | None = None,
     agent_def: AgentDefinition | None = None,
     ancre_tokens: tuple[int, int] | None = None,
+    session_id: UUID | None = None,
 ) -> None:
     """Exécute la boucle jusqu'à ``done`` ou à la borne dure.
 
@@ -1128,6 +1171,10 @@ async def boucle(
     appel de la session, tel que rendu par
     :func:`agent_sessions.ancre_du_dernier_appel`. Sans lui, la compaction
     préventive du premier appel d'un tour retombe sur l'estimation.
+
+    ``session_id`` donne aux outils d'objectif la ligne qu'ils annotent, et fait
+    remonter l'objectif déjà posé dans le prompt système. Sans lui, la boucle
+    tourne comme avant : les deux outils répondent qu'ils n'ont pas de session.
     """
     registre = registre or construire_registre()
     if agent_def is not None:
@@ -1136,7 +1183,7 @@ async def boucle(
     workspace_ctx = await _priming_workspace(
         db, user.id, agent_def.context if agent_def is not None else None
     )
-    systeme = _contexte_temporel() + _SYSTEME
+    systeme = _contexte_temporel() + _SYSTEME + await _contexte_objectif(db, user.id, session_id)
     if agent_def is not None:
         systeme += f"\n\n---\n## Ton rôle : {agent_def.name}\n{agent_def.system_prompt.strip()}\n"
     # Graphe memoire STARTER : 3 tables, 1 requete recursive, 2 ms, 400 tok fixes.
@@ -1286,7 +1333,9 @@ async def boucle(
                     "tool_calls": tool_calls,
                 }
             )
-            await _executer_tour(db, user, tour, messages, tool_calls, registre, emit, approuver)
+            await _executer_tour(
+                db, user, tour, messages, tool_calls, registre, emit, approuver, session_id
+            )
         # Limite atteinte : pas une erreur dure, mais une pause avec reprise.
         # Les harness modernes (cordis, opencode) n'ont pas de compteur dur :
         # seule la fenêtre contexte compte. On compacte et on propose de continuer.

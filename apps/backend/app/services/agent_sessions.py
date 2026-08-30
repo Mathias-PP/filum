@@ -430,6 +430,53 @@ async def mettre_a_jour(
     return session
 
 
+#: Bornes des colonnes `objectif` et `phase` (cf. migration 055).
+OBJECTIF_MAX = 400
+PHASE_MAX = 120
+
+
+async def fixer_objectif(
+    db: AsyncSession,
+    creator_id: UUID,
+    session_id: UUID,
+    *,
+    objectif: str | None = None,
+    phase: str | None = None,
+) -> AgentSession:
+    """Pose l'objectif et/ou la phase courante d'une session.
+
+    Séparé de :func:`mettre_a_jour` : celui-là sert le formulaire humain, celui-ci
+    l'agent en cours de tour. Les mélanger ferait qu'un objectif posé par le
+    modèle emprunterait le chemin qui normalise un titre vide en « Nouvelle
+    conversation ».
+    """
+    session = await obtenir(db, creator_id, session_id)
+    if objectif is not None:
+        propre = " ".join(objectif.split())[:OBJECTIF_MAX]
+        session.objectif = propre or None
+    if phase is not None:
+        propre = " ".join(phase.split())[:PHASE_MAX]
+        session.phase = propre or None
+    await db.commit()
+    await db.refresh(session)
+    return session
+
+
+async def objectif_courant(
+    db: AsyncSession, creator_id: UUID, session_id: UUID
+) -> tuple[str | None, str | None]:
+    """L'objectif et la phase d'une session, ou ``(None, None)``.
+
+    Ne lève pas : une session introuvable rend simplement l'absence d'objectif.
+    Le prompt système doit s'assembler même quand cette lecture échoue.
+    """
+    try:
+        session = await obtenir(db, creator_id, session_id)
+    except Exception:  # noqa: BLE001 — l'absence d'objectif n'est pas une erreur ici
+        return None, None
+    return session.objectif, session.phase
+
+
 async def supprimer(db: AsyncSession, creator_id: UUID, session_id: UUID) -> None:
     """Suppression logique : la trace reste, la session sort des listes."""
     session = await obtenir(db, creator_id, session_id)

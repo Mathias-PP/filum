@@ -37,6 +37,13 @@ class AgentSession(Base):
     #: Slug de l'agent nommé de cette session (fichier `agents/<slug>.yaml` du
     #: workspace). NULL = assistant généraliste, tous outils, tout `shared/`.
     agent_slug: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    #: Ce que la session cherche à obtenir, en une phrase, posé par l'agent via
+    #: `definir_objectif`. Vit hors de l'historique exprès : c'est précisément
+    #: le début de l'historique que la compaction ampute, et avec lui
+    #: l'intention de départ. Le prompt système le réinjecte à chaque tour.
+    objectif: Mapped[str | None] = mapped_column(String(400), nullable=True)
+    #: Où en est ce travail, en quelques mots (`avancer_phase`).
+    phase: Mapped[str | None] = mapped_column(String(120), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), onupdate=func.now()

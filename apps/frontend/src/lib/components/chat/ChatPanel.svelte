@@ -34,6 +34,11 @@
   // réponse en base, ou il est perdu. Sans le deuxième état, une coupure réseau
   // vidait l'écran alors que le serveur avait terminé et persisté le tour.
   let reprise = $state<'idle' | 'encours'>('idle');
+  // Objectif de session, pose par l'agent lui-meme. Affiche hors du fil pour
+  // qu'il ne parte pas au defilement : c'est justement ce qui ne doit pas se
+  // perdre sur un travail long.
+  let objectif = $state<string | null>(null);
+  let phase = $state<string | null>(null);
   let usage = $state<AgentSessionUsage | null>(null);
   let decouverte = $state<{
     provider_public_name: string;
@@ -422,6 +427,8 @@
       sessionRes && sessionRes.status === 'fulfilled'
         ? (sessionRes.value as Awaited<ReturnType<typeof agentApi.sessions.get>> | null)
         : null;
+    objectif = sessionSauvegardee?.objectif ?? null;
+    phase = sessionSauvegardee?.phase ?? null;
     if (
       sessionSauvegardee?.provider_id &&
       cles.some((c) => c.id === sessionSauvegardee.provider_id)
@@ -463,6 +470,15 @@
     // l'utilisateur le voit avant d'envoyer un message.
     if (cleChoisie) void testerCombo();
   });
+
+  /** Relit l'objectif après un tour : c'est l'agent qui le pose, pas l'interface. */
+  async function rafraichirObjectif() {
+    if (!sessionId) return;
+    const s = await agentApi.sessions.get(sessionId).catch(() => null);
+    if (!s) return;
+    objectif = s.objectif ?? null;
+    phase = s.phase ?? null;
+  }
 
   /** Délais entre deux relectures, en millisecondes. Total un peu moins d'une minute. */
   const DELAIS_REPRISE = [1000, 2000, 3000, 5000, 8000, 13000, 21000];
@@ -575,6 +591,7 @@
           .then((u) => (usage = u))
           .catch(() => null);
       }
+      void rafraichirObjectif();
     }
   }
 
@@ -630,6 +647,7 @@
           .usage(sessionId)
           .then((u) => (usage = u))
           .catch(() => null);
+      void rafraichirObjectif();
     }
   }
 
@@ -845,6 +863,15 @@
   <!-- Fil de conversation : un seul fil vertical, pas de bulles. Les tours
        utilisateur sont marques par une barre laterale plutot qu'une bulle
        flottante (standard 2026 : ChatGPT, Claude, Cursor). -->
+  {#if objectif}
+    <!-- Hors du fil, exprès : l'objectif sert justement sur les conversations
+         longues, celles ou une ligne posee au debut aurait disparu du champ. -->
+    <p class="shrink-0 border-l-2 border-info px-3 py-1 text-xs text-ink-secondary">
+      <span class="text-ink-tertiary">Objectif :</span>
+      {objectif}{#if phase}<span class="text-ink-tertiary"> · {phase}</span>{/if}
+    </p>
+  {/if}
+
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <div
     bind:this={fil}

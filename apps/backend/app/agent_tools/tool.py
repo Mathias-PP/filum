@@ -22,6 +22,10 @@ class ToolContext:
     db: AsyncSession
     user: User
     creator_id: UUID
+    #: Session de chat en cours, quand l'outil est appelé depuis la boucle. Seuls
+    #: les outils d'objectif s'en servent : le reste du catalogue est volontairement
+    #: ignorant de la conversation qui l'appelle. ``None`` hors chat (tests, MCP).
+    session_id: UUID | None = None
 
 
 @dataclass(frozen=True)

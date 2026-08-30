@@ -12,6 +12,7 @@ from collections.abc import Iterable
 from typing import Any
 
 from app.agent_tools.fiche import fiche_tools
+from app.agent_tools.objectif import objectif_tools
 from app.agent_tools.philum import est_sensible, philum_tools
 from app.agent_tools.tool import AgentTool, ToolContext
 from app.agent_tools.web import web_tools
@@ -21,7 +22,9 @@ from app.agent_tools.workspace import workspace_tools
 def construire_registre() -> dict[str, AgentTool]:
     """Tous les outils, indexés par nom."""
     outils: dict[str, AgentTool] = {}
-    for outil in workspace_tools() + philum_tools() + web_tools() + fiche_tools():
+    for outil in (
+        workspace_tools() + philum_tools() + web_tools() + fiche_tools() + objectif_tools()
+    ):
         outils[outil.name] = outil
     return outils
 

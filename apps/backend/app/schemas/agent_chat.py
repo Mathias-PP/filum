@@ -91,6 +91,10 @@ class AgentSessionRead(BaseModel):
     provider_id: UUID | None
     model_override: str | None
     agent_slug: str | None
+    #: Posés par l'agent lui-même (`definir_objectif`, `avancer_phase`), en
+    #: lecture seule ici : l'interface les affiche, elle ne les écrit pas.
+    objectif: str | None = None
+    phase: str | None = None
     created_at: datetime
     last_message_at: datetime | None
 

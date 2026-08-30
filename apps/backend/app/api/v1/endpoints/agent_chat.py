@@ -311,6 +311,7 @@ async def chat_agent(
                     modele=body.model_override or session.model_override or None,
                     agent_def=agent_def,
                     ancre_tokens=ancre_tokens,
+                    session_id=session.id,
                 )
                 if echecs_gratuit and mode_gratuit is not None:
                     with contextlib.suppress(Exception):
