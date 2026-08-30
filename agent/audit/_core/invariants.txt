@@ -1,12 +1,12 @@
-# Invariants de la revue agent — regelés le 2026-08-30 au commit 183be0a3da113ecef7124a7775d12800b14854da
-# Gel initial : 2026-08-25 au commit 444ef682667122662a47e6a8111ca53c3c6c44e9.
-# Les écarts entre les deux gels sont documentés dans agent/audit/CONTEXT.md.
-INV_DATE=2026-08-30
-INV_COMMIT=183be0a3da113ecef7124a7775d12800b14854da
+# Invariants de la revue agent, regelés le 2026-08-31 au commit 911455872959239b0f0c056c61493b7b07f678e4
+# Gels précédents : 2026-08-30 (183be0a3), 2026-08-25 (444ef682, gel initial).
+# Les écarts entre les gels sont documentés dans agent/audit/CONTEXT.md.
+INV_DATE=2026-08-31
+INV_COMMIT=911455872959239b0f0c056c61493b7b07f678e4
 INV_OUTILS_MCP=43
 INV_ENDPOINTS_AGENT=33
 INV_EVENEMENTS_SSE=14
 INV_VARS_ENV=15
-INV_LOC_PERIMETRE=25777
-INV_NB_FICHIERS=202
+INV_LOC_PERIMETRE=28451
+INV_NB_FICHIERS=204
 # Référence du plan (mesurée le 2026-08-25 sur dae9cc0) : ~21400 LOC / ~80 fichiers

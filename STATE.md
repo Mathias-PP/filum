@@ -2,7 +2,21 @@
 
 > Snapshot vivant, 1 page max. **Pour l'historique détaillé** : voir [`CHANGELOG.md`](./CHANGELOG.md). **Pour les items long terme** : voir [`.docs/13-audit-2026-05-26-followups.md`](./.docs/13-audit-2026-05-26-followups.md).
 
-**Dernière mise à jour : 2026-08-26**
+**Dernière mise à jour : 2026-08-31**
+
+---
+
+## Sessions 2026-08-27 → 2026-08-31 : lecture réelle des sources, agent qui se rattrape, mode gratuit opérationnel
+
+**43 PR mergées et déployées** (#569 à #618). Entrée consolidée : le détail commit par commit est dans `git log`, seules les lignes de force sont ici.
+
+- **L'agent lit vraiment ce qu'il cite.** Chaîne de relais de lecture configurable devant les murs anti-bot, plus Europe PMC (#576) et l'archive du web (#577) comme voies de secours quel que soit le domaine. Un mur ou une erreur ne passe plus pour un article (#579), l'adresse est jointe avant l'écriture (#606) et le résumé déposé par l'éditeur fait preuve (#601). Un captcha, lui, ne se franchit pas en changeant d'origine : mesuré sur ScienceDirect.
+- **La boucle cesse de tourner à vide.** Arguments illisibles refusés (#574), arguments mal typés qui ne font plus boucler le modèle (#596), appel déjà échoué jamais rejoué (#602), identifiant fautif qui rend ce qui existe au lieu d'un refus nu (#607), budget par outil et lectures parallèles (#598), élagage des gros résultats avant troncature de l'historique (#573), objectif de session qui survit à la compaction (#600), date du jour connue (#597). Nouvel événement SSE `controle_relance` : quand l'agent annonce une action qu'il n'a pas faite, on lui redemande la réponse (#581).
+- **Repli entre clés, puis mode gratuit vraiment opérationnel.** #615 essaie la clé suivante quand la première refuse et l'annonce (événement `repli_fournisseur`). #618 ferme le sujet côté gratuit : les deux lanes Z.ai portaient le même modèle, donc le secours reproduisait la panne du primaire (migration `057`) ; le repli agit désormais **pendant** le tour et non au tour suivant ; la classification par sous-chaîne cède la place à `agent_gratuit.reagir(statut, message)`, qui distingue une clé refusée (120 min, message dédié) d'un pic de charge (10 min) et refuse de punir une lane saine. Voir l'amendement d'ADR-034. Recherche web Tavily branchée, la clé passant par l'en-tête `Authorization` (#617).
+- **Interface.** Conversation qui ne se vide plus sur coupure réseau (#599), conversation rouverte qui s'affiche (#588), blocs identiques qui n'effacent plus le fil (#589), zone de saisie qui reste à l'écran (#595), explorateur de workspace qui défile seul (#591, #592), focus clavier visible (#587), bibliographie en liste unique (#586), copy de la page d'accueil (#580, #583, #585, #609).
+- **Audits externes** : 3 dépôts tiers (#610) puis graph-memory-starter (#611), avec le plan d'intégration clos le 2026-08-30 (`183be0a`). En sont sortis la recherche duale mots + sens qui dit lequel a trouvé (#614) et la mémoire de graphe qui rappelle avec ses vrais mots (#613).
+- **Porte d'audit G0** : rouge deux fois en deux jours, verte à chaque fois après correction (#616, puis le regel du 2026-08-31). La leçon est écrite dans `agent/audit/CONTEXT.md` : `gen_inventaire.sh` filtre les migrations par une liste de numéros écrite à la main, et un regel qui met à jour `invariants.txt` sans recalculer les lignes du CSV fabrique l'écart qu'il prétend mesurer. Périmètre réel au 2026-08-31 : **204 fichiers, 28 451 LOC**.
+- **ADR-036** (#582) : une IA désigne une ressource, elle ne l'atteste pas.
 
 ---
 

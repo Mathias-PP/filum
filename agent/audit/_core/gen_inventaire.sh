@@ -57,7 +57,7 @@ collect_to_file() {
   # lot 1 : fondations (config, contrats de données, migrations, transport LLM)
   echo "perimetre 1 apps/backend/app/core/config.py" >> "$dest"
   for f in $(git ls-files "apps/backend/app/models/agent_*.py" "apps/backend/app/schemas/agent_*.py"); do echo "perimetre 1 $f" >> "$dest"; done
-  grep -E '/(040|042|045|046|047|049|051|052)_' "$T/migs.txt" | while read -r f; do echo "perimetre 1 $f" >> "$dest"; done
+  grep -E '/(040|042|045|046|047|049|051|052|057)_' "$T/migs.txt" | while read -r f; do echo "perimetre 1 $f" >> "$dest"; done
   for f in apps/backend/app/services/llm.py apps/backend/app/services/llm_adapters.py; do
     [ -f "$f" ] && echo "perimetre 1 $f" >> "$dest";
   done
@@ -120,7 +120,7 @@ LOC_PERIM=$(awk -F, '$1=="perimetre"{s+=$4} END{print s+0}' "$AUDIT/inventaire.c
 NB_FIC=$(($(wc -l < "$AUDIT/inventaire.csv") - 1))
 
 cat > "$AUDIT/invariants.txt" <<EOF
-# Invariants de la revue agent — gelés le $DATE au commit $COMMIT
+# Invariants de la revue agent, gelés le $DATE au commit $COMMIT
 INV_DATE=$DATE
 INV_COMMIT=$COMMIT
 INV_OUTILS_MCP=$OUTILS
