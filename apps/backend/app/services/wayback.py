@@ -5,7 +5,7 @@ import logging
 import re
 import time
 from collections.abc import Awaitable, Callable
-from datetime import datetime
+from datetime import UTC, datetime
 from functools import partial
 from html import unescape
 from typing import Protocol, TypeVar
@@ -558,13 +558,17 @@ class WaybackService:
     async def _mark_archived(
         self, source_id: UUID, archive_url: str, archive_timestamp: str | None
     ) -> dict:
+        # Les horodatages de Wayback sont en UTC, et la colonne les recoit nus.
+        # Se rabattre sur `datetime.now()` melangeait deux echelles dans la meme
+        # colonne : une capture datee a Paris en ete paraissait posterieure de
+        # deux heures a une capture reelle du meme instant.
         if archive_timestamp:
             try:
                 stamp = datetime.strptime(archive_timestamp[:14], "%Y%m%d%H%M%S")
             except ValueError:
-                stamp = datetime.now().replace(tzinfo=None)
+                stamp = datetime.now(UTC).replace(tzinfo=None)
         else:
-            stamp = datetime.now().replace(tzinfo=None)
+            stamp = datetime.now(UTC).replace(tzinfo=None)
 
         await self._update_source(source_id, ArchiveStatus.ARCHIVED, archive_url, stamp)
         return {"status": "archived", "archive_url": archive_url, "timestamp": stamp.isoformat()}
@@ -648,7 +652,7 @@ class WaybackService:
         result = await self._db.execute(select(Source).where(Source.id == source_id))
         source = result.scalar_one_or_none()
         if source:
-            source.archive_attempted_at = datetime.now().replace(tzinfo=None)
+            source.archive_attempted_at = datetime.now(UTC).replace(tzinfo=None)
             await self._db.commit()
 
     async def _update_source(
