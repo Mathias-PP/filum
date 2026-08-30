@@ -13,6 +13,7 @@ une fiche d'un autre créateur (le `user` du contexte est celui qui appelle).
 from __future__ import annotations
 
 import inspect
+import json
 import types
 from typing import Any, cast, get_args, get_origin, get_type_hints
 
@@ -127,6 +128,76 @@ def _json_schema(tp: Any) -> dict[str, Any]:
     return {"type": "string"}
 
 
+def _coercer(args: dict[str, Any], proprietes: dict[str, Any]) -> dict[str, Any]:
+    """Aligne les arguments du modèle sur les types annoncés par le schéma.
+
+    Le JSON que rend un fournisseur ne respecte pas toujours le type déclaré :
+    `limit` arrive en `"10"`, un booléen en `"true"`, une liste en chaîne JSON
+    doublement sérialisée. Passés tels quels, ces arguments faisaient lever la
+    fonction outil loin de son entrée, sur un message que le modèle ne pouvait
+    relier à aucun paramètre : `search_cards` a rendu `'>' not supported between
+    instances of 'int' and 'str'` en production, et le modèle a reessayé
+    plusieurs fois à l'identique faute de savoir quoi corriger.
+
+    Lève `ValueError` en nommant le paramètre et le type attendu quand la valeur
+    ne peut pas être ramenée au type declaré.
+    """
+    sortie: dict[str, Any] = {}
+    for nom, valeur in args.items():
+        attendu = proprietes.get(nom, {}).get("type")
+        # Un `null` explicite est une valeur, pas une erreur de type : il doit
+        # atteindre la fonction, qui seule sait si son paramètre est optionnel.
+        if attendu is None or valeur is None:
+            sortie[nom] = valeur
+            continue
+        sortie[nom] = _coercer_valeur(nom, valeur, attendu)
+    return sortie
+
+
+def _coercer_valeur(nom: str, valeur: Any, attendu: str) -> Any:
+    if attendu == "integer":
+        # `isinstance(True, int)` est vrai en Python : sans cette garde, un
+        # `limit=true` passerait silencieusement pour 1.
+        if isinstance(valeur, bool):
+            raise ValueError(f"{nom} attend un entier, pas un booléen.")
+        if isinstance(valeur, int):
+            return valeur
+        if isinstance(valeur, float):
+            if valeur.is_integer():
+                return int(valeur)
+            raise ValueError(f"{nom} attend un entier, reçu {valeur!r}.")
+        if isinstance(valeur, str):
+            try:
+                return int(valeur.strip())
+            except ValueError:
+                raise ValueError(f"{nom} attend un entier, reçu {valeur!r}.") from None
+        raise ValueError(f"{nom} attend un entier, reçu {valeur!r}.")
+
+    if attendu == "boolean":
+        if isinstance(valeur, bool):
+            return valeur
+        if isinstance(valeur, str) and valeur.strip().lower() in ("true", "false"):
+            return valeur.strip().lower() == "true"
+        raise ValueError(f"{nom} attend un booléen (true ou false), reçu {valeur!r}.")
+
+    if attendu in ("array", "object"):
+        python = list if attendu == "array" else dict
+        if isinstance(valeur, python):
+            return valeur
+        # Doubles sérialisations : le modèle rend la valeur en texte JSON.
+        if isinstance(valeur, str):
+            try:
+                decode = json.loads(valeur)
+            except json.JSONDecodeError:
+                decode = None
+            if isinstance(decode, python):
+                return decode
+        libelle = "une liste" if attendu == "array" else "un objet"
+        raise ValueError(f"{nom} attend {libelle}, reçu {valeur!r}.")
+
+    return valeur
+
+
 def _envelopper(fonction, *, avec_utilisateur: bool) -> tuple[dict[str, Any], Any]:
     """Schéma JSON des paramètres + execute qui délègue à la fonction MCP."""
     hints = get_type_hints(fonction)
@@ -170,7 +241,10 @@ def _envelopper(fonction, *, avec_utilisateur: bool) -> tuple[dict[str, Any], An
                     + ", absent{} de l'appel.".format("s" if len(manquants) > 1 else "")
                 )
             }
-        kwargs = dict(args)
+        try:
+            kwargs = _coercer(args, proprietes)
+        except ValueError as exc:
+            return {"error": str(exc)}
         try:
             resultat = (
                 await fonction(ctx.db, ctx.user, **kwargs)
