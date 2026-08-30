@@ -180,12 +180,69 @@ describe('rehydratation d’une session persistée', () => {
     expect(items).toEqual([
       {
         kind: 'tool',
-        id: 'm1',
+        id: 'm1-0',
         name: 'web_search',
         args: { q: 'x' },
         result: { ok: 1 },
       },
     ]);
+  });
+
+  it('donne un identifiant distinct à chaque appel d’un même message', () => {
+    // Sans identifiant de fournisseur, les trois appels retombaient sur l’id du
+    // message : le `{#each}` clavé de l’affichage levait `each_key_duplicate`
+    // et la conversation entière disparaissait à la réouverture.
+    const items = depuisMessages([
+      message({
+        id: 'm1',
+        role: 'assistant',
+        content: '',
+        tool_calls: [
+          { function: { name: 'fs_read', arguments: '{"path":"a.md"}' } },
+          { function: { name: 'fs_read', arguments: '{"path":"b.md"}' } },
+          { function: { name: 'fs_list', arguments: '{}' } },
+        ],
+      }),
+    ]);
+    const ids = items.map((i) => (i as Extract<ChatItem, { kind: 'tool' }>).id);
+    expect(ids).toHaveLength(3);
+    expect(new Set(ids).size).toBe(3);
+  });
+
+  it('ne laisse pas deux appels partager l’identifiant rejoué par le fournisseur', () => {
+    const items = depuisMessages([
+      message({
+        id: 'm1',
+        role: 'assistant',
+        content: '',
+        tool_calls: [{ id: 'call_1', function: { name: 'fs_read', arguments: '{}' } }],
+      }),
+      message({
+        id: 'm2',
+        role: 'tool',
+        tool_name: 'fs_read',
+        tool_call_id: 'call_1',
+        content: '{}',
+      }),
+      message({
+        id: 'm3',
+        role: 'assistant',
+        content: '',
+        tool_calls: [{ id: 'call_1', function: { name: 'fs_list', arguments: '{}' } }],
+      }),
+    ]);
+    const ids = items.map((i) => (i as Extract<ChatItem, { kind: 'tool' }>).id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('ne réutilise pas l’identifiant d’un appel déjà affiché pendant le flux', () => {
+    const items = replier([
+      { type: 'tool_call', payload: { id: 'call_1', name: 'fs_read', arguments: {}, tour: 1 } },
+      { type: 'tool_result', payload: { id: 'call_1', name: 'fs_read', result: { ok: 1 } } },
+      { type: 'tool_call', payload: { id: 'call_1', name: 'fs_list', arguments: {}, tour: 2 } },
+    ]);
+    const ids = items.map((i) => (i as Extract<ChatItem, { kind: 'tool' }>).id);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 
   it('montre un échec explicite pour un appel jamais abouti dans le journal', () => {
