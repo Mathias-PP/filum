@@ -1031,6 +1031,39 @@ avec un `title` explicite sur une URL `example.org` qui n'existe pas. Avec
 `page` par défaut, chacun partirait chercher une page injoignable et perdrait
 son titre. Le défaut doit être choisi en connaissant ce prix.
 
+### 3.9 Ce qui a été livré (2026-09-11)
+
+Mergée en #635. Quatre écarts au plan écrit plus haut, tous décidés avec
+l'utilisateur avant d'écrire :
+
+1. **`metadata_from` n'a aucun défaut**, il est obligatoire. Le `"page"` de la
+   section 3.3 aurait envoyé une quinzaine de tests chercher des URL
+   injoignables et coûté quatre appels réseau par source (constat e).
+2. **L'origine `page` appelle `_html_scrape` seul**, exposé sous le nom
+   `scraper_la_page`, jamais `extract()` (constat b). Coût assumé : moins de
+   titres remplis sur les pages mal balisées, aucun titre rédigé.
+3. **`update_source` est dans le périmètre** (constat d), avec `metadata_from`
+   optionnel qui devient obligatoire dès que l'appel touche `title`, `authors`,
+   `journal` ou `published_at`.
+4. **Le résolveur OpenAlex a été écrit**
+   (`app/extractors/openalex_metadonnees.py`), plutôt que l'origine abandonnée
+   (constat a).
+
+Deux choses que le plan ne prévoyait pas et que l'écriture a fait apparaître :
+
+- **Une origine muette fait échouer la correction.** La première version laissait
+  un champ que le résolveur ne rendait pas retomber sur `None`, donc inchangé :
+  une correction sans effet et sans message, ce qui est pire qu'un refus. Seule
+  `createur` échappe à cette règle, sans quoi la chaîne vide qui efface une
+  valeur cesserait de fonctionner.
+- **Les écarts sont rendus, pas écartés.** Une valeur proposée que le résolveur
+  contredit revient dans `metadata_ecarts`. Un modèle qui ne voit pas l'écart le
+  refera au tour suivant.
+
+`add_sources_batch` porte une origine **par entrée** et les résout de front : un
+lot mêlant articles à DOI et pages web n'a pas à être coupé en deux, et vingt
+sources ne sérialisent pas vingt attentes réseau.
+
 ---
 
 # PR 4, `feat/sources-retraction-perimee`
