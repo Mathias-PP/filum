@@ -19,8 +19,10 @@ from fastmcp.exceptions import ToolError
 
 from app.mcp_server.tools_write import (
     CONTENU_MAX,
+    _MARGE_ENTOURAGE,
     add_excerpt,
     add_source,
+    annotate_excerpt,
     add_sources_batch,
     archive_sources,
     confirm_connection,
@@ -1369,3 +1371,136 @@ async def test_add_sources_batch_rejette_dans_failed_sans_bloquer_le_lot(
     assert [c["url"] for c in result["created"]] == ["https://a.org/bon"]
     assert len(result["failed"]) == 1
     assert "Valeurs acceptees" in result["failed"][0]["reason"]
+
+
+@pytest_asyncio.fixture
+async def source_annotable(db_session, test_user, fiche_brouillon):
+    return await add_source(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        url="https://example.org/article",
+        title="Titre de l'article",
+    )
+
+
+@pytest.mark.asyncio
+async def test_annotate_refuse_sans_entourage(db_session, test_user, source_annotable, monkeypatch):
+    """Page illisible : l'outil refuse au lieu de se rabattre sur le titre.
+
+    C'etait la porte par laquelle une mise en situation pouvait etre redigee
+    sans que rien du texte entourant le passage n'ait ete lu.
+    """
+    from app.services import excerpt_insertion
+
+    async def _page_vide(_url: str | None) -> tuple[str, bool, bool]:
+        return "", True, True
+
+    monkeypatch.setattr(excerpt_insertion, "texte_de_page", _page_vide)
+
+    with pytest.raises(ToolError, match="provided_text"):
+        await annotate_excerpt(
+            db_session,
+            test_user,
+            source_id=source_annotable["id"],
+            excerpt_text="La memoire n'est pas un enregistrement.",
+        )
+
+
+@pytest.mark.asyncio
+async def test_annotate_refuse_si_le_passage_n_est_pas_dans_la_page(
+    db_session, test_user, source_annotable
+):
+    """Page lisible mais passage absent : meme refus.
+
+    Le titre de la source suffirait a produire une prose plausible, et c'est
+    precisement ce qu'il ne faut pas.
+    """
+    with pytest.raises(ToolError, match="provided_text"):
+        await annotate_excerpt(
+            db_session,
+            test_user,
+            source_id=source_annotable["id"],
+            excerpt_text="Un passage que cette page ne contient nulle part.",
+        )
+
+
+@pytest.mark.asyncio
+async def test_annotate_prend_la_fenetre_autour_du_passage(
+    db_session, test_user, source_annotable, monkeypatch
+):
+    """Ce qui part au modele est le voisinage du passage, borne des deux cotes."""
+    from app.services import excerpt_insertion, llm
+
+    passage = "Le protocole de re-consolidation porte sur le sommeil lent."
+    page = "\n\n".join(
+        [
+            "TROP LOIN AVANT." + "x" * _MARGE_ENTOURAGE,
+            "PARAGRAPHE PRECEDENT.",
+            passage,
+            "PARAGRAPHE SUIVANT.",
+            "x" * _MARGE_ENTOURAGE + "TROP LOIN APRES.",
+        ]
+    )
+
+    async def _page(_url: str | None) -> tuple[str, bool, bool]:
+        return page, False, True
+
+    monkeypatch.setattr(excerpt_insertion, "texte_de_page", _page)
+
+    vus: list[str] = []
+
+    async def _annote(_passage: str, entourage: str = "") -> llm.LlmAnnotation:
+        vus.append(entourage)
+        return llm.LlmAnnotation(title="Reconsolidation", context="Une phrase.")
+
+    monkeypatch.setattr(llm, "suggest_annotation", _annote)
+
+    result = await annotate_excerpt(
+        db_session,
+        test_user,
+        source_id=source_annotable["id"],
+        excerpt_text=passage,
+    )
+    assert result["title"] == "Reconsolidation"
+    assert len(vus) == 1
+    entourage = vus[0]
+    assert "PARAGRAPHE PRECEDENT." in entourage
+    assert "PARAGRAPHE SUIVANT." in entourage
+    assert "TROP LOIN AVANT." not in entourage
+    assert "TROP LOIN APRES." not in entourage
+
+
+@pytest.mark.asyncio
+async def test_annotate_accepte_le_texte_fourni_par_le_createur(
+    db_session, test_user, source_annotable, monkeypatch
+):
+    """`provided_text` est la porte de sortie quand la page est illisible.
+
+    Elle reste ouverte : un PDF derriere un mur se lit a la main, et le
+    createur qui colle son texte a bien lu ce qu'il colle.
+    """
+    from app.services import excerpt_insertion, llm
+
+    async def _page_vide(_url: str | None) -> tuple[str, bool, bool]:
+        return "", True, True
+
+    monkeypatch.setattr(excerpt_insertion, "texte_de_page", _page_vide)
+
+    vus: list[str] = []
+
+    async def _annote(_passage: str, entourage: str = "") -> llm.LlmAnnotation:
+        vus.append(entourage)
+        return llm.LlmAnnotation(title="Intitule", context="Une phrase.")
+
+    monkeypatch.setattr(llm, "suggest_annotation", _annote)
+
+    result = await annotate_excerpt(
+        db_session,
+        test_user,
+        source_id=source_annotable["id"],
+        excerpt_text="La memoire n'est pas un enregistrement.",
+        provided_text="Le paragraphe entier, colle par le createur.",
+    )
+    assert result["context"] == "Une phrase."
+    assert vus == ["Le paragraphe entier, colle par le createur."]

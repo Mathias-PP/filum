@@ -20,14 +20,15 @@ fichiers, et le contexte le plus lourd est celui de `assistant` (42 427 émis)
 contre un plafond relevé à 60 000.
 
 **PR 1 bis, `fix/agent-role-questionneur`** : corrige deux choses livrées de
-travers en #632, sur retour de l'utilisateur du 2026-09-10.
+travers en #632, sur retour de l'utilisateur du 2026-09-10. Mergée en #633
+(`adb6839`) et déployée le 2026-09-10.
 
-- [ ] Renommer le rôle `socratique` en `questionneur`, et le réécrire en deux
+- [x] Renommer le rôle `socratique` en `questionneur`, et le réécrire en deux
       temps : il questionne tant que le créateur n'a pas formulé son angle, puis
       il propose du contenu qui sert cet angle, en annonçant la bascule.
       L'interdiction totale de proposer protégeait l'angle en sacrifiant
       l'utilité du rôle.
-- [ ] Renommer la fiche 05 en `05-fidelite-a-la-source-conception.md`. Une fiche
+- [x] Renommer la fiche 05 en `05-fidelite-a-la-source-conception.md`. Une fiche
       n'affirme pas forcément quelque chose : « fidélité des affirmations »
       décrivait mal ce que le juge vérifie.
 
@@ -37,21 +38,34 @@ travers en #632, sur retour de l'utilisateur du 2026-09-10.
 - [x] 1.2 Créer `shared/rien-de-memoire.md`
 - [x] 1.3 Créer `shared/qualite-des-sources.md`
 - [x] 1.4 Créer `shared/chercher-la-contradiction.md`
-- [x] 1.5 Créer `agents/socratique.yaml`
+- [x] 1.5 Créer le rôle qui questionne (livré `socratique`, renommé
+      `questionneur` en #633)
 - [x] 1.6 Câbler les modules dans les six rôles existants
 - [x] 1.7 Fondre l'élargissement interdisciplinaire dans `rechercheur.yaml`
 - [x] 1.8 Mettre à jour `AGENTS.md` (folder map, routing, limites strictes)
-- [x] 1.9 Tests : budget de priming, socratique sans outil d'écriture
+- [x] 1.9 Tests : budget de priming, le questionneur sans outil d'écriture
 - [x] 1.10 Corriger la fiche 06 (§3 sur `add_source`, §7 sur l'activation)
 - [ ] 1.11 Vérifier, PR, merge, déployer, valider les quatre points en production
 
 **PR 2, `fix/agent-annotation-sans-entourage`**
 
-- [ ] 2.1 Helper `_entourage_du_passage`
-- [ ] 2.2 `annotate_excerpt` refuse au lieu de se rabattre
-- [ ] 2.3 Le docstring nomme la conséquence
-- [ ] 2.4 Trois tests, plus la réécriture du test qui dépendait du repli
+- [x] 2.1 Helper `_entourage_du_passage`
+- [x] 2.2 `annotate_excerpt` refuse au lieu de se rabattre
+- [x] 2.3 Le docstring nomme la conséquence
+- [x] 2.4 Quatre tests écrits de zéro
 - [ ] 2.5 Vérifier, PR, merge, déployer, valider
+
+Deux écarts au plan, assumés à l'écriture :
+
+- **La lecture passe par `excerpt_insertion.texte_de_page`**, pas par
+  `_texte_de_la_source` comme écrit en 2.2. Le premier enveloppe le second d'un
+  cache de 300 secondes, celui-là même qu'utilise `add_excerpt`. Annoter puis
+  poser dix extraits d'un article coûte alors un téléchargement au lieu de onze,
+  et les tests existants du fichier monkeypatchent déjà ce point d'entrée.
+- **Aucun test existant ne s'appuyait sur le repli `source.title`**, contrairement
+  à ce qu'annonce 2.4 : `annotate_excerpt` n'était couvert par aucun test. Les
+  quatre tests sont donc neufs, dont un sur `provided_text`, qui reste la porte
+  de sortie légitime quand la page est illisible.
 
 **PR 3, `feat/sources-metadonnees-resolues`**
 
