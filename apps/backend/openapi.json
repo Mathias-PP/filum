@@ -8684,6 +8684,17 @@
         ],
         "title": "LinkedPlatform"
       },
+      "MetadataOrigin": {
+        "type": "string",
+        "enum": [
+          "page",
+          "crossref",
+          "openalex",
+          "createur"
+        ],
+        "title": "MetadataOrigin",
+        "description": "Qui fait foi pour le titre, les auteurs, la date, la revue, l'editeur.\n\nL'agent choisit l'origine, il ne saisit plus les valeurs : c'est la seule\nforme qui rende l'invention impossible plutot que deconseillee. Ce que\nl'origine choisie ne rend pas reste vide, et le vide est un etat affichable.\n\nCREATEUR est la porte de sortie legitime, quand le createur dicte ce qu'il\na sous les yeux et qu'aucun resolveur ne connait la source. Elle demande une\napprobation nommee, pour qu'un agent ne puisse pas s'y rabattre en silence.\n\nNULL en base se lit « origine inconnue » : la source a ete posee avant que\nla regle existe. Ne jamais retro-remplir, ce serait affirmer une origine\nqu'on ignore."
+      },
       "OpenAccessStatus": {
         "type": "string",
         "enum": [
@@ -9474,6 +9485,16 @@
               }
             ],
             "title": "Doi"
+          },
+          "metadata_origin": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MetadataOrigin"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "citations_count": {
             "anyOf": [

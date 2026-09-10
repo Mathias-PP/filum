@@ -83,6 +83,28 @@ class LinkOrigin(str, Enum):
     CONTENU = "contenu"
 
 
+class MetadataOrigin(str, Enum):
+    """Qui fait foi pour le titre, les auteurs, la date, la revue, l'editeur.
+
+    L'agent choisit l'origine, il ne saisit plus les valeurs : c'est la seule
+    forme qui rende l'invention impossible plutot que deconseillee. Ce que
+    l'origine choisie ne rend pas reste vide, et le vide est un etat affichable.
+
+    CREATEUR est la porte de sortie legitime, quand le createur dicte ce qu'il
+    a sous les yeux et qu'aucun resolveur ne connait la source. Elle demande une
+    approbation nommee, pour qu'un agent ne puisse pas s'y rabattre en silence.
+
+    NULL en base se lit « origine inconnue » : la source a ete posee avant que
+    la regle existe. Ne jamais retro-remplir, ce serait affirmer une origine
+    qu'on ignore.
+    """
+
+    PAGE = "page"
+    CROSSREF = "crossref"
+    OPENALEX = "openalex"
+    CREATEUR = "createur"
+
+
 class ArchiveStatus(str, Enum):
     PENDING = "pending"
     ARCHIVED = "archived"
@@ -170,6 +192,10 @@ class Source(Base):
     pages: Mapped[str | None] = mapped_column(String(50), nullable=True)
     publisher: Mapped[str | None] = mapped_column(String(300), nullable=True)
     doi: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    # Qui a fait foi pour les metadonnees ci-dessus (cf. MetadataOrigin). NULL
+    # sur les lignes posees avant la regle : origine inconnue, pas origine
+    # absente.
+    metadata_origin: Mapped[str | None] = mapped_column(String(20), nullable=True)
     citations_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     subscribers_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     views_count: Mapped[int | None] = mapped_column(Integer, nullable=True)

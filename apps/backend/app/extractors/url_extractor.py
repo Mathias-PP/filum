@@ -1012,6 +1012,15 @@ async def _html_scrape(url: str) -> ExtractedMetadata | None:
         return None
 
 
+#: Le scrape seul, sans l'etage LLM que `extract()` ajoute ensuite.
+#:
+#: L'origine `page` de `metadata_from` promet des metadonnees lues sur la page,
+#: pas redigees d'apres elle. `extract()` ne convient donc pas : il termine par
+#: `llm.extract_metadata`, qui comble un titre absent en le formulant. Ce que ce
+#: scrape ne trouve pas doit rester vide.
+scraper_la_page = _html_scrape
+
+
 async def extract(url: str) -> ExtractedMetadata:
     """Return best-effort metadata for any URL. Never raises.
 

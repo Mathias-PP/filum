@@ -36,6 +36,7 @@ async def source_lisible(db_session, test_user, monkeypatch):
     return await add_source(
         db_session,
         test_user,
+        metadata_from="createur",
         card_slug=card["slug"],
         title="Une source lisible",
         url="https://example.org/ancrage",
