@@ -40,6 +40,7 @@ def _source(**kw):
         "archive_url": None,
         "retraction_status": None,
         "retraction_notice_doi": None,
+        "retraction_reason": None,
         "oa_status": None,
         "oa_url": None,
         "excerpts": [],

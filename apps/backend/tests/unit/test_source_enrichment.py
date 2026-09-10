@@ -51,7 +51,7 @@ class TestEnrichOne:
             "check_open_access",
             _returns(OpenAccessResult(status=OpenAccessStatus.GOLD, url="https://x/a")),
         )
-        values = await se._enrich_one("10.1/x")
+        values = await se.enrich_one("10.1/x")
         assert values["retraction_status"] == "none"
         assert values["oa_status"] == "gold"
         assert values["oa_url"] == "https://x/a"
@@ -67,7 +67,7 @@ class TestEnrichOne:
             _returns(RetractionResult(status=RetractionStatus.RETRACTED, notice_doi="10.1/r")),
         )
         monkeypatch.setattr(se, "check_open_access", _raises())
-        values = await se._enrich_one("10.1/x")
+        values = await se.enrich_one("10.1/x")
         assert values["retraction_status"] == "retracted"
         assert "oa_status" not in values
 
@@ -79,7 +79,7 @@ class TestEnrichOne:
             "check_open_access",
             _returns(OpenAccessResult(status=OpenAccessStatus.GREEN, url="https://hal/a")),
         )
-        values = await se._enrich_one("10.1/x")
+        values = await se.enrich_one("10.1/x")
         assert values["oa_url"] == "https://hal/a"
         assert "retraction_status" not in values
 
@@ -90,7 +90,7 @@ class TestEnrichOne:
         # reprise au prochain affichage.
         monkeypatch.setattr(se, "check_retraction", _raises())
         monkeypatch.setattr(se, "check_open_access", _raises())
-        assert await se._enrich_one("10.1/x") == {}
+        assert await se.enrich_one("10.1/x") == {}
 
 
 class TestPeremption:

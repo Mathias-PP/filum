@@ -9376,6 +9376,17 @@
             ],
             "title": "Retraction Checked At"
           },
+          "retraction_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retraction Reason"
+          },
           "oa_status": {
             "anyOf": [
               {

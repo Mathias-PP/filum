@@ -59,6 +59,9 @@ CSV_STANCE_COLUMN = ["stance"]
 CSV_RELIABILITY_COLUMNS = [
     "retraction_status",
     "retraction_notice_doi",
+    # Motif verbatim de Retraction Watch (CC BY 4.0). Souvent vide : il n'arrive
+    # que par `app.scripts.motifs_retractation`, pas par l'enrichissement.
+    "retraction_reason",
     "oa_status",
     "oa_url",
 ]
@@ -118,11 +121,12 @@ def _source_row(
             [
                 source.retraction_status or "",
                 source.retraction_notice_doi or "",
+                source.retraction_reason or "",
                 source.oa_status or "",
                 source.oa_url or "",
             ]
             if scope.reliability
-            else ["", "", "", ""]
+            else ["", "", "", "", ""]
         )
     if shape.excerpts:
         row.append(str(len(source.excerpts)) if scope.excerpts else "")
@@ -260,6 +264,7 @@ def _json_source(s: Source, scope: ExportScope, style: str = "apa") -> dict:
     if scope.reliability:
         entry["retraction_status"] = s.retraction_status
         entry["retraction_notice_doi"] = s.retraction_notice_doi
+        entry["retraction_reason"] = s.retraction_reason
         entry["oa_status"] = s.oa_status
         entry["oa_url"] = s.oa_url
     return entry
@@ -279,8 +284,10 @@ def export_philum_json(
       cabler directement Article, Person, ScholarlyArticle sans mapping ;
     - le champ `stance` par source (declaration explicite de la relation
       entre l'affirmation du contenu et la source citee) ;
-    - le statut de retraction (`retraction_status`, `retraction_notice_doi`)
-      indispensable pour qu'un agent evite de propager une source retiree ;
+    - le statut de retraction (`retraction_status`, `retraction_notice_doi`,
+      `retraction_reason`) indispensable pour qu'un agent evite de propager une
+      source retiree, et pour qu'il sache si l'avis touche les resultats ou
+      seulement la forme ;
     - la version du format en clair, pour permettre une evolution stricte.
     """
     document: dict = {
@@ -350,6 +357,7 @@ def _philum_source(s: Source, scope: ExportScope, style: str = "apa") -> dict:
     if scope.reliability:
         entry["philum:retractionStatus"] = s.retraction_status
         entry["philum:retractionNoticeDOI"] = s.retraction_notice_doi
+        entry["philum:retractionReason"] = s.retraction_reason
         entry["philum:openAccessStatus"] = s.oa_status
         entry["philum:openAccessUrl"] = s.oa_url
     return entry
@@ -661,8 +669,12 @@ def _source_details(
     if scope.reliability and source.retraction_status == "retracted":
         retraction = "⚠️ RÉTRACTÉE"
         if source.retraction_notice_doi:
-            retraction += f" — avis de rétractation : {source.retraction_notice_doi}"
+            retraction += f" (avis de rétractation : {source.retraction_notice_doi})"
         lines.append(f"  - {retraction}")
+        # Le motif est cité verbatim et attribué : c'est le vocabulaire de
+        # Retraction Watch, pas une qualification que Philum porterait.
+        if source.retraction_reason:
+            lines.append(f"    Motif (Retraction Watch) : {source.retraction_reason}")
 
     # Le DOI n'est repete que s'il n'est pas deja l'adresse de la source : la
     # plupart des references academiques pointent vers `doi.org/<doi>`, et le
@@ -908,8 +920,11 @@ def _docx_source(s: Source, i: int, scope: ExportScope, style: str = "apa") -> l
     if stance:
         paragraphs.append(_docx_p(_docx_run(f"Position déclarée : {stance}")))
     if scope.reliability and s.retraction_status == "retracted":
-        avis = f" — avis : {s.retraction_notice_doi}" if s.retraction_notice_doi else ""
+        avis = f" (avis : {s.retraction_notice_doi})" if s.retraction_notice_doi else ""
         paragraphs.append(_docx_p(_docx_run(f"⚠️ RÉTRACTÉE{avis}", bold=True)))
+        if s.retraction_reason:
+            motif = f"Motif (Retraction Watch) : {s.retraction_reason}"
+            paragraphs.append(_docx_p(_docx_run(motif)))
     if scope.reliability and s.oa_url:
         label = f"Accès ouvert ({s.oa_status})" if s.oa_status else "Accès ouvert"
         paragraphs.append(_docx_p(_docx_run(f"{label} : {s.oa_url}")))

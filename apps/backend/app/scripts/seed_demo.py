@@ -560,6 +560,10 @@ class EnrichissementReporte(NamedTuple):
     retraction_status: str | None
     retraction_notice_doi: str | None
     retraction_checked_at: datetime | None
+    #: Le motif ne se recalcule pas paresseusement : il n'arrive que par
+    #: `app.scripts.motifs_retractation`, que le redemarrage d'un conteneur ne
+    #: rejoue pas. Sans ce report, il disparaitrait pour de bon.
+    retraction_reason: str | None
     oa_status: str | None
     oa_url: str | None
     oa_license: str | None
@@ -585,6 +589,7 @@ def _enrichissements_par_source(
             retraction_status=source.retraction_status,
             retraction_notice_doi=source.retraction_notice_doi,
             retraction_checked_at=source.retraction_checked_at,
+            retraction_reason=source.retraction_reason,
             oa_status=source.oa_status,
             oa_url=source.oa_url,
             oa_license=source.oa_license,
