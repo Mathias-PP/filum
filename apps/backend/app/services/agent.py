@@ -193,8 +193,14 @@ _CONTROLE_RELANCE = (
     "N'annonce jamais un résultat que tu n'as pas obtenu."
 )
 
-#: Taille max du contexte workspace injecté dans le prompt système.
-_PRIMING_MAX = 40_000
+#: Taille max, en caractères, du contexte workspace injecté dans le prompt
+#: système. Le gabarit `shared/` complet en émet 42 000 environ depuis l'ajout
+#: des trois modules d'ancrage : à 40 000, la troncature de `_priming_workspace`
+#: est un `break` sur une liste triée par chemin, et elle perdait en silence
+#: `rien-de-memoire.md` puis `style-redactionnel.md`. Le garde-fou n'est pas ce
+#: nombre, c'est `test_le_seed_shared_tient_sous_le_plafond`, qui échoue le jour
+#: où le gabarit repasse au-dessus.
+_PRIMING_MAX = 60_000
 
 #: Marqueurs d'un refus pour fenêtre de contexte saturée. La boucle de chat ne
 #: passe pas par les cadrages de ``agent_providers`` : elle rend le message brut

@@ -45,6 +45,9 @@ context:
   - shared/garde-fous.md
   - shared/philum-mcp.md
   - shared/pieges-vecus.md
+  - shared/rien-de-memoire.md
+  - shared/qualite-des-sources.md
+  - shared/chercher-la-contradiction.md
 system_prompt: |
   Tu accompagnes le créateur sur toute la construction d'une fiche, du brief à
   la publication. Tu as accès à l'ensemble des outils.

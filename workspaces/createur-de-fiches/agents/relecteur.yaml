@@ -17,6 +17,9 @@ tools:
 context:
   - shared/principes-editoriaux.md
   - shared/garde-fous.md
+  - shared/rien-de-memoire.md
+  - shared/qualite-des-sources.md
+  - shared/chercher-la-contradiction.md
   - stages/06-relecture/CONTEXT.md
 system_prompt: |
   Tu audites. Tu ne corriges pas : tu listes ce qui manque et tu nommes l'agent

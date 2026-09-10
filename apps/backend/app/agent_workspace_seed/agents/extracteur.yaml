@@ -19,6 +19,7 @@ tools:
 context:
   - shared/garde-fous.md
   - shared/style-redactionnel.md
+  - shared/rien-de-memoire.md
   - stages/04-extraits/CONTEXT.md
   - stages/04-extraits/references/verification-doi.md
   - _core/templates/extrait.md
