@@ -69,7 +69,7 @@ Deux écarts au plan, assumés à l'écriture :
 
 **PR 3, `feat/sources-metadonnees-resolues`**
 
-- [ ] 3.7 Instruire d'abord les quatre points listés (bloquant)
+- [x] 3.7 Instruire d'abord les quatre points listés (bloquant) ; résultat en 3.8
 - [ ] 3.3 Paramètre `metadata_from`
 - [ ] 3.4 Migration 058 (`metadata_origin`, avec `downgrade`)
 - [ ] 3.5 Sensibilité par valeur de paramètre
@@ -978,6 +978,58 @@ faire d'abord, sans quoi le code ne passera pas du premier coup :
 3. Relever tous les appelants de `est_sensible()`.
 4. Relever tous les tests qui construisent une source par `add_source` avec un
    `title` explicite : ils changeront de comportement.
+
+### 3.8 Ce que le relevé a trouvé (2026-09-10)
+
+Les quatre points sont instruits. Cinq constats, dont trois contredisent ce qui
+est écrit plus haut. Le plan n'est pas corrigé en place : les sections 3.1 à 3.7
+restent telles qu'elles ont été pensées, et ce paragraphe dit où elles se
+trompent.
+
+**a. Crossref est prêt, OpenAlex n'existe pas.**
+`crossref_lookup(doi) -> ExtractedMetadata | None`
+(`app/extractors/url_extractor.py:571`) rend déjà titre, auteurs, date, revue,
+éditeur, volume, pages et DOI. L'origine `crossref` est donc un appel, rien de
+plus. L'origine `openalex`, elle, n'a aucun code : `check_open_access`
+(`app/extractors/open_access.py:123`) télécharge pourtant le work OpenAlex
+entier, qui porte `display_name`, `authorships`, `publication_date` et
+`primary_location.source.display_name`, puis n'en lit que le statut d'accès
+ouvert et jette le reste. C'est le seul vrai chantier des quatre origines.
+
+**b. L'origine `page` passe par un LLM.** `extract()` se termine sur
+`llm.extract_metadata(page_text, url)` (`url_extractor.py:1090-1100`), qui
+comble `title`, `authors`, `published_at` et `description` quand le scraping n'a
+rien trouvé. `page` n'est donc pas une origine non générative. La nuance
+compte : ce LLM lit le texte réel de la page, il n'écrit pas de mémoire. Mais
+promettre « le modèle ne saisit plus » en laissant un modèle rédiger le titre
+demande soit de n'appeler que `_html_scrape` pour cette origine, soit de le dire
+en clair dans le nom de l'origine. À trancher avant d'écrire.
+
+**c. `est_sensible` prend déjà les arguments.** La section 3.5 propose de lui
+ajouter un second paramètre : il l'a depuis toujours
+(`app/agent_tools/philum.py:101`), et une branche par valeur y vit déjà pour
+`update_card(visibility="public")` (`:108`). Il n'y a aucune infrastructure à
+créer, seulement une condition à ajouter. Les appelants sont trois
+(`services/agent.py:1122` et `:1211`, `agent_tools/registry.py:91`), tous
+passent déjà un dictionnaire d'arguments.
+
+**d. `update_source` est la porte de derrière, et le plan l'ignore.**
+`update_source` (`tools_write.py:826`) accepte `title`, `authors`, `doi`,
+`journal` et `published_at` en texte libre, et n'est pas sensible. Fermer
+`add_source` sans le fermer laisse le contournement grand ouvert : poser la
+source puis corriger le titre. La PR doit couvrir les trois outils, ou elle ne
+couvre rien.
+
+**e. Le défaut `metadata_from="page"` coûte cher, et casse les tests.**
+Deux effets non prévus. Réseau d'abord : `add_source(metadata_from="crossref")`
+lancerait deux requêtes Crossref (celle de `verifier_que_la_source_existe`,
+déjà là en `:398`, plus le nouveau `crossref_lookup`), auxquelles
+`schedule_source_enrichment` en ajoute deux en fond. Quatre appels pour une
+source, et `add_sources_batch` multiplie sans plafond de concurrence. Tests
+ensuite : une quinzaine d'appels de `test_mcp_tools_write.py` posent une source
+avec un `title` explicite sur une URL `example.org` qui n'existe pas. Avec
+`page` par défaut, chacun partirait chercher une page injoignable et perdrait
+son titre. Le défaut doit être choisi en connaissant ce prix.
 
 ---
 
