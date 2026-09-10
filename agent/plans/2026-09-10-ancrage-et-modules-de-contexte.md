@@ -47,11 +47,23 @@ travers en #632, sur retour de l'utilisateur du 2026-09-10.
 
 **PR 2, `fix/agent-annotation-sans-entourage`**
 
-- [ ] 2.1 Helper `_entourage_du_passage`
-- [ ] 2.2 `annotate_excerpt` refuse au lieu de se rabattre
-- [ ] 2.3 Le docstring nomme la conséquence
-- [ ] 2.4 Trois tests, plus la réécriture du test qui dépendait du repli
+- [x] 2.1 Helper `_entourage_du_passage`
+- [x] 2.2 `annotate_excerpt` refuse au lieu de se rabattre
+- [x] 2.3 Le docstring nomme la conséquence
+- [x] 2.4 Quatre tests écrits de zéro
 - [ ] 2.5 Vérifier, PR, merge, déployer, valider
+
+Deux écarts au plan, assumés à l'écriture :
+
+- **La lecture passe par `excerpt_insertion.texte_de_page`**, pas par
+  `_texte_de_la_source` comme écrit en 2.2. Le premier enveloppe le second d'un
+  cache de 300 secondes, celui-là même qu'utilise `add_excerpt`. Annoter puis
+  poser dix extraits d'un article coûte alors un téléchargement au lieu de onze,
+  et les tests existants du fichier monkeypatchent déjà ce point d'entrée.
+- **Aucun test existant ne s'appuyait sur le repli `source.title`**, contrairement
+  à ce qu'annonce 2.4 : `annotate_excerpt` n'était couvert par aucun test. Les
+  quatre tests sont donc neufs, dont un sur `provided_text`, qui reste la porte
+  de sortie légitime quand la page est illisible.
 
 **PR 3, `feat/sources-metadonnees-resolues`**
 
