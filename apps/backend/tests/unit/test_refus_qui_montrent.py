@@ -35,7 +35,13 @@ async def fiche(db_session, test_user):
 @pytest.mark.asyncio
 async def test_un_slug_fautif_rend_les_fiches(db_session, test_user, fiche):
     with pytest.raises(ToolError) as capture:
-        await add_source(db_session, test_user, card_slug="fiche-des-refuz", url="https://x.test/")
+        await add_source(
+            db_session,
+            test_user,
+            metadata_from="createur",
+            card_slug="fiche-des-refuz",
+            url="https://x.test/",
+        )
     message = str(capture.value)
     assert "fiche-des-refus" in message
     assert "Fiche pour les refus qui montrent" in message
@@ -44,7 +50,13 @@ async def test_un_slug_fautif_rend_les_fiches(db_session, test_user, fiche):
 @pytest.mark.asyncio
 async def test_sans_aucune_fiche_le_refus_dit_par_ou_commencer(db_session, test_user):
     with pytest.raises(ToolError, match="create_card"):
-        await add_source(db_session, test_user, card_slug="jamais-creee", url="https://x.test/")
+        await add_source(
+            db_session,
+            test_user,
+            metadata_from="createur",
+            card_slug="jamais-creee",
+            url="https://x.test/",
+        )
 
 
 @pytest.mark.asyncio
@@ -52,6 +64,7 @@ async def test_un_identifiant_de_source_fautif_rend_les_sources(db_session, test
     posee = await add_source(
         db_session,
         test_user,
+        metadata_from="createur",
         card_slug="fiche-des-refus",
         url="https://exemple.test/article",
         title="Un article reel",
@@ -83,6 +96,7 @@ async def test_un_identifiant_d_extrait_fautif_rend_les_extraits(
     posee = await add_source(
         db_session,
         test_user,
+        metadata_from="createur",
         card_slug="fiche-des-refus",
         url="https://exemple.test/article",
         title="Un article reel",
@@ -111,6 +125,7 @@ async def test_une_source_sans_extrait_le_dit(db_session, test_user, fiche):
     posee = await add_source(
         db_session,
         test_user,
+        metadata_from="createur",
         card_slug="fiche-des-refus",
         url="https://exemple.test/article",
         title="Un article reel",

@@ -23,7 +23,13 @@ from app.agent_tools.tool import AgentTool, ToolContext
 from app.mcp_server import tools as lecture
 from app.mcp_server import tools_write as ecriture
 from app.models.biblio_card import CardKind, CardStatus
-from app.models.source import AuthorKind, SourceCategory, SourceFormat, SourceStance
+from app.models.source import (
+    AuthorKind,
+    MetadataOrigin,
+    SourceCategory,
+    SourceFormat,
+    SourceStance,
+)
 from app.schemas.biblio_card import ContentType, Platform, Visibility
 
 #: Enums par nom de parametre : injectees dans le schema JSON pour que le modele
@@ -38,6 +44,7 @@ _ENUMS_PAR_PARAMETRE: dict[str, list[str]] = {
     "author_kind": [e.value for e in AuthorKind],
     "format": [e.value for e in SourceFormat],
     "stance": [e.value for e in SourceStance],
+    "metadata_from": [e.value for e in MetadataOrigin],
 }
 
 #: Paramètres retirés du schéma vu par le modèle.
@@ -105,7 +112,23 @@ def est_sensible(name: str, args: dict[str, Any]) -> bool:
     # `update_card(visibility="public")` publie aussi sûrement que
     # `publish_card` : sans cette branche, l'approbation se contourne en
     # changeant d'outil.
-    return name == "update_card" and args.get("visibility") == "public"
+    if name == "update_card" and args.get("visibility") == "public":
+        return True
+    # `metadata_from="createur"` est la seule origine où les métadonnées d'une
+    # source viennent du modèle et non d'un résolveur. Elle est légitime quand
+    # le créateur dicte, et c'est justement pourquoi elle doit se voir : sans
+    # approbation, un agent s'y rabat dès qu'un résolveur reste muet, et la
+    # règle entière se vide.
+    if name in ("add_source", "update_source"):
+        return args.get("metadata_from") == MetadataOrigin.CREATEUR.value
+    if name == "add_sources_batch":
+        entrees = args.get("sources")
+        if isinstance(entrees, list):
+            return any(
+                isinstance(e, dict) and e.get("metadata_from") == MetadataOrigin.CREATEUR.value
+                for e in entrees
+            )
+    return False
 
 
 def _json_schema(tp: Any) -> dict[str, Any]:

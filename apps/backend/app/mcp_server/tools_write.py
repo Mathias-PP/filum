@@ -28,10 +28,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.biblio_card import BiblioCard, CardKind, CardStatus
-from app.models.source import AuthorKind, Source, SourceCategory, SourceFormat, SourceStance
+from app.models.source import (
+    AuthorKind,
+    MetadataOrigin,
+    Source,
+    SourceCategory,
+    SourceFormat,
+    SourceStance,
+)
 from app.models.source_excerpt import SourceExcerpt
 from app.models.user import User
 from app.schemas.biblio_card import CardCreate, ContentType, Platform, Visibility
+from app.services import metadonnees_source
 from app.services.card import CardService
 from app.services.card_link import effective_linked_card_id
 from app.services.content_identity import extract_doi, normalize_url
@@ -335,11 +343,48 @@ async def create_card(
     }
 
 
+async def _resoudre_metadonnees(
+    metadata_from: str,
+    *,
+    url: str | None,
+    doi: str | None,
+    propose: dict[str, str | None],
+) -> tuple[dict[str, str | None], list[dict[str, str]]]:
+    """Rend les valeurs a ecrire, et les ecarts a signaler a l'appelant.
+
+    Sur `createur`, les valeurs proposees passent telles quelles : c'est la
+    porte de sortie assumee, et elle est sensible. Sur les autres origines, le
+    resolveur fait foi et ce qu'il ne rend pas reste vide.
+    """
+    origine = _valeur_enum("metadata_from", metadata_from, MetadataOrigin)
+    if origine is None:
+        connues = ", ".join(o.value for o in MetadataOrigin)
+        raise ToolError(f"metadata_from est obligatoire. Valeurs acceptees : {connues}.")
+    if origine == MetadataOrigin.CREATEUR.value:
+        return dict(propose), []
+
+    try:
+        metadonnees = await metadonnees_source.resoudre(origine, url=url, doi=doi)
+    except metadonnees_source.OrigineIndisponibleError as exc:
+        raise ToolError(str(exc)) from exc
+
+    retenues: dict[str, str | None] = {
+        champ: (getattr(metadonnees, champ, None) or None)
+        for champ in metadonnees_source.CHAMPS_RESOLUS
+    }
+    signales = [
+        {"champ": e.champ, "propose": e.propose, "retenu": e.retenu or ""}
+        for e in metadonnees_source.ecarts(metadonnees, propose)
+    ]
+    return retenues, signales
+
+
 async def add_source(
     db: AsyncSession,
     user: User,
     *,
     card_slug: str,
+    metadata_from: str,
     url: str = "",
     title: str | None = None,
     authors: str | None = None,
@@ -355,6 +400,20 @@ async def add_source(
     excerpts: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Ajoute une source a la fiche, apres avoir verifie que son adresse existe.
+
+    `metadata_from` dit qui fait foi pour le titre, les auteurs, la date, la
+    revue et l'editeur, et ces cinq champs sont remplis par l'origine choisie,
+    pas par ce que vous passez. Une valeur que vous passez et que l'origine
+    contredit est rendue dans `metadata_ecarts` : lisez-la, elle dit que vous
+    vous rappeliez autre chose que la source. Ce que l'origine ne rend pas
+    reste vide, et un champ vide se corrige.
+
+    - `page` : les metadonnees sont lues sur l'adresse, sans etage de redaction.
+    - `crossref`, `openalex` : demandent un `doi`, et rendent la revue et
+      l'editeur que la page ne porte souvent pas.
+    - `createur` : vos valeurs sont ecrites telles quelles. Reservee au cas ou
+      le createur dicte ce qu'il a sous les yeux et qu'aucun resolveur ne
+      connait la source. Elle demande une approbation.
 
     L'adresse est jointe avant l'ecriture, et le DOI confronte a Crossref. Une
     source dont le domaine n'existe pas, dont la page repond 404 ou 410, ou dont
@@ -415,7 +474,19 @@ async def add_source(
         _valeur_enum("author_kind", author_kind, AuthorKind) or AuthorKind.CHERCHEUR.value
     )
     position_declaree = _valeur_enum("stance", stance, SourceStance)
-    date_publication = _valeur_date(published_at)
+
+    retenues, ecarts_metadonnees = await _resoudre_metadonnees(
+        metadata_from,
+        url=url,
+        doi=doi,
+        propose={
+            "title": title,
+            "authors": authors,
+            "journal": journal,
+            "published_at": published_at,
+        },
+    )
+    date_publication = _valeur_date(retenues.get("published_at"))
 
     try:
         linked_card_id = await effective_linked_card_id(
@@ -433,14 +504,16 @@ async def add_source(
         biblio_card_id=card.id,
         position=(max_position or 0) + 1,
         url=url,
-        title=title,
-        authors=authors,
+        title=retenues.get("title"),
+        authors=retenues.get("authors"),
         format=fmt,
         category=categorie,
         author_kind=nature_auteur,
         stance=position_declaree,
         annotation=annotation,
-        journal=journal,
+        journal=retenues.get("journal"),
+        publisher=retenues.get("publisher"),
+        metadata_origin=metadata_from,
         published_at=date_publication,
         doi=doi,
         linked_card_id=linked_card_id,
@@ -456,7 +529,11 @@ async def add_source(
         "card_slug": card.slug,
         "position": source.position,
         "linked_card_id": str(source.linked_card_id) if source.linked_card_id else None,
+        "metadata_origin": source.metadata_origin,
+        "title": source.title,
     }
+    if ecarts_metadonnees:
+        reponse["metadata_ecarts"] = ecarts_metadonnees
     if excerpts:
         reponse |= await _extraits_a_la_volee(db, user, source, excerpts)
     return reponse
@@ -828,6 +905,7 @@ async def update_source(
     user: User,
     *,
     source_id: str,
+    metadata_from: str | None = None,
     title: str | None = None,
     authors: str | None = None,
     doi: str | None = None,
@@ -843,6 +921,13 @@ async def update_source(
 ) -> dict[str, Any]:
     """Corrige les champs editoriaux d'une source (ecrase l'ancienne valeur).
 
+    Toucher a `title`, `authors`, `journal` ou `published_at` exige de dire
+    d'ou vient la correction, par `metadata_from` : ce sont des faits sur la
+    source, pas des choix editoriaux, et les corriger de memoire annulerait la
+    regle que `add_source` applique a la pose. Les autres champs (`stance`,
+    `annotation`, `category`, `format`, `is_pivot`, `archive_url`) sont des
+    choix du createur et se corrigent sans origine.
+
     Chaque champ passe remplace le precedent sans retour possible ; un champ
     laisse a `None` reste inchange, et une chaine vide efface la valeur. Les
     extraits de la source ne sont pas touches.
@@ -853,6 +938,55 @@ async def update_source(
     `pending`. Sur `published_at`, formats : 2016, 2016-03, 2016-03-15.
     """
     source = await _source_du_createur(db, user, source_id)
+
+    propose = {
+        "title": title,
+        "authors": authors,
+        "journal": journal,
+        "published_at": published_at,
+    }
+    touches = sorted(champ for champ, valeur in propose.items() if valeur is not None)
+    ecarts_metadonnees: list[dict[str, str]] = []
+    if touches and metadata_from is None:
+        connues = ", ".join(o.value for o in MetadataOrigin)
+        raise ToolError(
+            f"Corriger {', '.join(touches)} exige metadata_from. Valeurs acceptees : {connues}."
+        )
+    if metadata_from is not None and touches:
+        retenues, ecarts_metadonnees = await _resoudre_metadonnees(
+            metadata_from,
+            url=source.url,
+            doi=(doi if doi is not None else source.doi),
+            propose=propose,
+        )
+        # L'origine ne rend pas toujours le champ qu'on lui demande. Le taire
+        # laisserait l'appelant croire sa correction faite, alors que la source
+        # garde l'ancienne valeur : c'est precisement le mensonge que la regle
+        # existe pour empecher.
+        # Sur `createur`, une chaine vide reste l'effacement documente : le
+        # createur a le droit de retirer une valeur qu'il sait fausse.
+        muets = (
+            []
+            if metadata_from == MetadataOrigin.CREATEUR.value
+            else [champ for champ in touches if not retenues.get(champ)]
+        )
+        if muets:
+            raise ToolError(
+                f"L'origine {metadata_from!r} ne rend rien pour "
+                f"{', '.join(muets)}. Choisissez une autre origine, ou "
+                "metadata_from='createur' si le createur dicte la valeur."
+            )
+        # L'origine fait foi sur les champs qu'elle rend, mais elle n'ecrase pas
+        # ce qu'on ne lui a pas demande de corriger : un appel qui ne touche
+        # qu'au journal laisse le titre en place.
+        title = retenues["title"] if "title" in touches else None
+        authors = retenues["authors"] if "authors" in touches else None
+        journal = retenues["journal"] if "journal" in touches else None
+        published_at = retenues["published_at"] if "published_at" in touches else None
+        if metadata_from != MetadataOrigin.CREATEUR.value and retenues.get("publisher"):
+            source.publisher = retenues["publisher"]
+        source.metadata_origin = metadata_from
+
     if title is not None:
         source.title = title or None
     if authors is not None:
@@ -893,13 +1027,17 @@ async def update_source(
             source.archive_timestamp = None
     await db.commit()
     await db.refresh(source)
-    return {
+    reponse: dict[str, Any] = {
         "id": str(source.id),
         "title": source.title,
         "stance": source.stance,
         "is_pivot": source.is_pivot,
         "annotation": source.annotation,
+        "metadata_origin": source.metadata_origin,
     }
+    if ecarts_metadonnees:
+        reponse["metadata_ecarts"] = ecarts_metadonnees
+    return reponse
 
 
 async def delete_source(db: AsyncSession, user: User, *, source_id: str) -> dict[str, Any]:
@@ -1865,12 +2003,18 @@ async def add_sources_batch(
 ) -> dict[str, Any]:
     """Ajoute plusieurs sources a une fiche, apres avoir verifie leurs adresses.
 
-    Chaque entree suit la meme signature que `add_source` (url, title,
-    authors, doi, category, author_kind, format, stance, annotation,
+    Chaque entree suit la meme signature que `add_source` (metadata_from, url,
+    title, authors, doi, category, author_kind, format, stance, annotation,
     journal, published_at, archive_url), verification d'existence comprise :
     une entree dont l'adresse ne mene nulle part part dans `failed` et n'ecrit
     rien. Ce qui echoue est retourne dans `failed` avec la raison, ce qui
     reussit dans `created` (avec les IDs).
+
+    `metadata_from` est obligatoire sur chaque entree, et gouverne son titre,
+    ses auteurs, sa date, sa revue et son editeur comme dans `add_source` : une
+    entree sans origine part dans `failed`. Les origines peuvent differer d'une
+    entree a l'autre, un lot melant des articles a DOI et des pages web n'a pas
+    a etre coupe en deux.
 
     Utilise ce tool quand tu poses 5+ sources d'affilee : un seul commit
     au lieu de N, une seule verification de dedup en amont.
@@ -1882,6 +2026,21 @@ async def add_sources_batch(
     # cumulerait vingt attentes reseau et depasserait le tour de l'agent.
     existences = await asyncio.gather(
         *(verifier_que_la_source_existe(sd.get("url", "") or "", sd.get("doi")) for sd in sources),
+        return_exceptions=True,
+    )
+    resolutions = await asyncio.gather(
+        *(
+            _resoudre_metadonnees(
+                sd.get("metadata_from") or "",
+                url=sd.get("url"),
+                doi=sd.get("doi"),
+                propose={
+                    champ: sd.get(champ)
+                    for champ in ("title", "authors", "journal", "published_at")
+                },
+            )
+            for sd in sources
+        ),
         return_exceptions=True,
     )
 
@@ -1929,7 +2088,17 @@ async def add_sources_batch(
                 or AuthorKind.CHERCHEUR.value
             )
             position_declaree = _valeur_enum("stance", sd.get("stance"), SourceStance)
-            date_publication = _valeur_date(sd.get("published_at"))
+        except ToolError as exc:
+            failed.append({"index": i, "url": url, "reason": str(exc)})
+            continue
+
+        resolution = resolutions[i]
+        if isinstance(resolution, BaseException):
+            failed.append({"index": i, "url": url, "reason": str(resolution)})
+            continue
+        retenues, ecarts_metadonnees = resolution
+        try:
+            date_publication = _valeur_date(retenues.get("published_at"))
         except ToolError as exc:
             failed.append({"index": i, "url": url, "reason": str(exc)})
             continue
@@ -1939,14 +2108,16 @@ async def add_sources_batch(
             biblio_card_id=card.id,
             position=next_pos,
             url=url,
-            title=sd.get("title"),
-            authors=sd.get("authors"),
+            title=retenues.get("title"),
+            authors=retenues.get("authors"),
             format=fmt,
             category=categorie,
             author_kind=nature_auteur,
             stance=position_declaree,
             annotation=sd.get("annotation"),
-            journal=sd.get("journal"),
+            journal=retenues.get("journal"),
+            publisher=retenues.get("publisher"),
+            metadata_origin=sd.get("metadata_from"),
             published_at=date_publication,
             doi=doi,
             linked_card_id=linked_card_id,
@@ -1956,13 +2127,15 @@ async def add_sources_batch(
         )
         db.add(source)
         await db.flush()
-        created.append(
-            {
-                "id": str(source.id),
-                "position": source.position,
-                "url": url,
-            }
-        )
+        entree: dict[str, Any] = {
+            "id": str(source.id),
+            "position": source.position,
+            "url": url,
+            "title": source.title,
+        }
+        if ecarts_metadonnees:
+            entree["metadata_ecarts"] = ecarts_metadonnees
+        created.append(entree)
         next_pos += 1
         if cle:
             connues.add(cle)

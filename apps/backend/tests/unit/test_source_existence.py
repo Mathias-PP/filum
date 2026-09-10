@@ -124,6 +124,7 @@ async def test_add_source_refuse_une_adresse_introuvable(
         await add_source(
             db_session,
             test_user,
+            metadata_from="createur",
             card_slug="fiche-existence",
             url="https://invente.test/jamais-publie",
             title="Une source de memoire",
@@ -147,8 +148,12 @@ async def test_le_lot_ecarte_l_introuvable_et_garde_le_reste(
         test_user,
         card_slug="fiche-existence",
         sources=[
-            {"url": "https://reel.test/un", "title": "Une source qui existe"},
-            {"url": "https://invente.test/deux", "title": "Une source de memoire"},
+            {"metadata_from": "createur", "url": "https://reel.test/un", "title": "Une source qui existe"},
+            {
+                "metadata_from": "createur",
+                "url": "https://invente.test/deux",
+                "title": "Une source de memoire",
+            },
         ],
     )
     assert len(lot["created"]) == 1

@@ -17,6 +17,7 @@ import pytest
 import pytest_asyncio
 from fastmcp.exceptions import ToolError
 
+from app.models.source import MetadataOrigin
 from app.mcp_server.tools_write import (
     CONTENU_MAX,
     _MARGE_ENTOURAGE,
@@ -66,6 +67,19 @@ Ce que la premiere source dit exactement. Un passage suffisamment long pour
 passer le garde-fou. Le passage exact que la source contient. Une affirmation
 precise avec le mot cle magique.
 """
+
+
+async def ajouter_source(db, user, **kwargs):
+    """`add_source` en origine `createur`, sauf origine nommee par l'appelant.
+
+    Ces tests eprouvent la propriete, l'unicite, la position et les extraits ;
+    pas la resolution des metadonnees, qui a son propre fichier. `createur`
+    ecrit les valeurs passees telles quelles, sans reseau, ce que faisait
+    `add_source` avant que l'origine existe. Les rares tests qui portent sur la
+    resolution passent leur `metadata_from` explicitement.
+    """
+    kwargs.setdefault("metadata_from", MetadataOrigin.CREATEUR.value)
+    return await add_source(db, user, **kwargs)
 
 
 @pytest.fixture(autouse=True)
@@ -120,7 +134,7 @@ async def fiche_brouillon(db_session, test_user):
 
 @pytest.mark.asyncio
 async def test_ajouter_une_source_la_lie_a_la_fiche(db_session, test_user, fiche_brouillon):
-    result = await add_source(
+    result = await ajouter_source(
         db_session,
         test_user,
         card_slug="fiche-en-cours",
@@ -130,7 +144,7 @@ async def test_ajouter_une_source_la_lie_a_la_fiche(db_session, test_user, fiche
     )
     assert result["card_slug"] == "fiche-en-cours"
     assert result["position"] == 1
-    result2 = await add_source(
+    result2 = await ajouter_source(
         db_session,
         test_user,
         card_slug="fiche-en-cours",
@@ -142,14 +156,14 @@ async def test_ajouter_une_source_la_lie_a_la_fiche(db_session, test_user, fiche
 
 @pytest.mark.asyncio
 async def test_ajouter_deux_fois_la_meme_source_est_refuse(db_session, test_user, fiche_brouillon):
-    await add_source(
+    await ajouter_source(
         db_session,
         test_user,
         card_slug="fiche-en-cours",
         url="https://example.org/article",
     )
     with pytest.raises(ToolError, match="deja"):
-        await add_source(
+        await ajouter_source(
             db_session,
             test_user,
             card_slug="fiche-en-cours",
@@ -160,14 +174,14 @@ async def test_ajouter_deux_fois_la_meme_source_est_refuse(db_session, test_user
 @pytest.mark.asyncio
 async def test_meme_source_ecrite_differemment_est_refusee(db_session, test_user, fiche_brouillon):
     """Deux ecritures de la meme URL comptent comme une seule reference."""
-    await add_source(
+    await ajouter_source(
         db_session,
         test_user,
         card_slug="fiche-en-cours",
         url="https://www.example.org/article/",
     )
     with pytest.raises(ToolError, match="deja"):
-        await add_source(
+        await ajouter_source(
             db_session,
             test_user,
             card_slug="fiche-en-cours",
@@ -192,7 +206,7 @@ async def test_ajouter_une_source_a_la_fiche_d_autrui_est_refuse(db_session, tes
     await db_session.commit()
     await create_card(db_session, autre, slug="fiche-d-autrui", title="D'autrui")
     with pytest.raises(ToolError, match="Aucune fiche"):
-        await add_source(
+        await ajouter_source(
             db_session,
             test_user,
             card_slug="fiche-d-autrui",
@@ -202,7 +216,7 @@ async def test_ajouter_une_source_a_la_fiche_d_autrui_est_refuse(db_session, tes
 
 @pytest.mark.asyncio
 async def test_ajouter_un_extrait_le_marque_comme_ia(db_session, test_user, fiche_brouillon):
-    source = await add_source(
+    source = await ajouter_source(
         db_session,
         test_user,
         card_slug="fiche-en-cours",
@@ -236,7 +250,7 @@ def UUID_from_str(s):
 
 @pytest.mark.asyncio
 async def test_un_extrait_vide_est_refuse(db_session, test_user, fiche_brouillon):
-    source = await add_source(
+    source = await ajouter_source(
         db_session, test_user, card_slug="fiche-en-cours", url="https://example.org/article"
     )
     with pytest.raises(ToolError, match="vide"):
@@ -250,7 +264,7 @@ async def test_extrait_court_referentiel_sans_contexte_est_refuse(
     """« Cela ameliore la memoire » cite seul est un contresens : ce que
     « cela » nomme n'apparait nulle part. Le tool refuse pour forcer soit
     l'elargissement, soit une mise en situation."""
-    source = await add_source(
+    source = await ajouter_source(
         db_session, test_user, card_slug="fiche-en-cours", url="https://example.org/x"
     )
     with pytest.raises(ToolError, match="referentiel"):
@@ -268,7 +282,7 @@ async def test_extrait_court_referentiel_avec_contexte_passe(
 ):
     """La mise en situation nomme le referent en clair : le meme extrait
     devient utilisable pour un lecteur qui le rencontre isole."""
-    source = await add_source(
+    source = await ajouter_source(
         db_session, test_user, card_slug="fiche-en-cours", url="https://example.org/y"
     )
     result = await add_excerpt(
@@ -286,7 +300,7 @@ async def test_extrait_court_referentiel_avec_contexte_passe(
 async def test_extrait_long_autonome_passe_sans_contexte(db_session, test_user, fiche_brouillon):
     """Au-dela de 15 mots, le passage porte son propre contexte lexical :
     le garde-fou ne mord plus, meme sans mise en situation."""
-    source = await add_source(
+    source = await ajouter_source(
         db_session, test_user, card_slug="fiche-en-cours", url="https://example.org/z"
     )
     result = await add_excerpt(
@@ -316,7 +330,7 @@ async def test_ajouter_un_extrait_a_une_source_d_autrui_est_refuse(db_session, t
     db_session.add(autre)
     await db_session.commit()
     await create_card(db_session, autre, slug="fiche-etrangere", title="Etrangere")
-    source = await add_source(
+    source = await ajouter_source(
         db_session,
         autre,
         card_slug="fiche-etrangere",
@@ -373,7 +387,7 @@ async def test_le_parcours_complet_produit_une_fiche_qu_un_agent_peut_relire(db_
         # Une bibliographie sur une question, sans contenu source a documenter.
         card_kind="sujet",
     )
-    s1 = await add_source(
+    s1 = await ajouter_source(
         db_session,
         test_user,
         card_slug="parcours-complet",
@@ -381,7 +395,7 @@ async def test_le_parcours_complet_produit_une_fiche_qu_un_agent_peut_relire(db_
         title="Premiere source",
         authors="Alice Martin",
     )
-    await add_source(
+    await ajouter_source(
         db_session,
         test_user,
         card_slug="parcours-complet",
@@ -561,7 +575,7 @@ async def test_update_card_refuse_non_proprietaire(
 
 @pytest.mark.asyncio
 async def test_update_source_pose_stance_et_annotation(db_session, test_user, fiche_brouillon):
-    src = await add_source(
+    src = await ajouter_source(
         db_session,
         test_user,
         card_slug="fiche-en-cours",
@@ -589,7 +603,7 @@ async def test_add_source_pose_published_at(db_session, test_user, fiche_brouill
     sources sont sorties sans date."""
     from app.models.source import Source
 
-    src = await add_source(
+    src = await ajouter_source(
         db_session,
         test_user,
         card_slug="fiche-en-cours",
@@ -607,7 +621,7 @@ async def test_add_source_deduit_l_url_du_doi(db_session, test_user, fiche_broui
     """Un DOI seul laissait une source sans adresse, donc ni archivable ni relisible."""
     from app.models.source import Source
 
-    src = await add_source(
+    src = await ajouter_source(
         db_session,
         test_user,
         card_slug="fiche-en-cours",
@@ -625,7 +639,7 @@ async def test_add_source_url_explicite_prime_sur_le_doi(db_session, test_user, 
     """La deduction ne comble qu'une absence : une URL donnee n'est jamais ecrasee."""
     from app.models.source import Source
 
-    src = await add_source(
+    src = await ajouter_source(
         db_session,
         test_user,
         card_slug="fiche-en-cours",
@@ -642,7 +656,7 @@ async def test_add_source_pose_les_extraits_fournis(db_session, test_user, fiche
     """Les extraits inline evitent l'aller-retour par l'identifiant de la source."""
     from app.models.source_excerpt import SourceExcerpt
 
-    src = await add_source(
+    src = await ajouter_source(
         db_session,
         test_user,
         card_slug="fiche-en-cours",
@@ -674,7 +688,7 @@ async def test_add_source_dit_quels_extraits_ont_ete_refuses(
     l'est : exactement la fausse declaration que cette couche existe pour
     empecher.
     """
-    src = await add_source(
+    src = await ajouter_source(
         db_session,
         test_user,
         card_slug="fiche-en-cours",
@@ -696,7 +710,7 @@ async def test_add_source_dit_quels_extraits_ont_ete_refuses(
 async def test_add_source_published_at_formats_souples(db_session, test_user, fiche_brouillon):
     from app.models.source import Source
 
-    s_mois = await add_source(
+    s_mois = await ajouter_source(
         db_session,
         test_user,
         card_slug="fiche-en-cours",
@@ -704,7 +718,7 @@ async def test_add_source_published_at_formats_souples(db_session, test_user, fi
         title="Article mois",
         published_at="2016-03",
     )
-    s_jour = await add_source(
+    s_jour = await ajouter_source(
         db_session,
         test_user,
         card_slug="fiche-en-cours",
@@ -712,7 +726,7 @@ async def test_add_source_published_at_formats_souples(db_session, test_user, fi
         title="Article jour",
         published_at="2016-03-15",
     )
-    s_an = await add_source(
+    s_an = await ajouter_source(
         db_session,
         test_user,
         card_slug="fiche-en-cours",
@@ -737,7 +751,7 @@ async def test_add_source_published_at_formats_souples(db_session, test_user, fi
 @pytest.mark.asyncio
 async def test_add_source_published_at_illisible_refuse(db_session, test_user, fiche_brouillon):
     with pytest.raises(ToolError, match="format illisible"):
-        await add_source(
+        await ajouter_source(
             db_session,
             test_user,
             card_slug="fiche-en-cours",
@@ -753,7 +767,7 @@ async def test_update_source_efface_published_at_par_chaine_vide(
 ):
     from app.models.source import Source
 
-    src = await add_source(
+    src = await ajouter_source(
         db_session,
         test_user,
         card_slug="fiche-en-cours",
@@ -761,7 +775,15 @@ async def test_update_source_efface_published_at_par_chaine_vide(
         title="Article date",
         published_at="2016-03-15",
     )
-    await update_source(db_session, test_user, source_id=src["id"], published_at="")
+    # `createur` est la seule origine qui autorise l'effacement : un resolveur
+    # ne rend jamais « rien » comme reponse, seulement comme silence.
+    await update_source(
+        db_session,
+        test_user,
+        source_id=src["id"],
+        metadata_from="createur",
+        published_at="",
+    )
     lu = await db_session.get(Source, UUID(src["id"]))
     assert lu is not None and lu.published_at is None
 
@@ -770,7 +792,7 @@ async def test_update_source_efface_published_at_par_chaine_vide(
 async def test_update_source_refuse_non_proprietaire(
     db_session, test_user, fiche_brouillon, autre_utilisateur
 ):
-    src = await add_source(
+    src = await ajouter_source(
         db_session,
         test_user,
         card_slug="fiche-en-cours",
@@ -782,7 +804,7 @@ async def test_update_source_refuse_non_proprietaire(
 
 @pytest.mark.asyncio
 async def test_delete_source_marque_deleted_at(db_session, test_user, fiche_brouillon):
-    src = await add_source(
+    src = await ajouter_source(
         db_session,
         test_user,
         card_slug="fiche-en-cours",
@@ -799,7 +821,7 @@ async def test_delete_source_marque_deleted_at(db_session, test_user, fiche_brou
 async def test_delete_source_refuse_non_proprietaire(
     db_session, test_user, fiche_brouillon, autre_utilisateur
 ):
-    src = await add_source(
+    src = await ajouter_source(
         db_session,
         test_user,
         card_slug="fiche-en-cours",
@@ -811,7 +833,7 @@ async def test_delete_source_refuse_non_proprietaire(
 
 @pytest.mark.asyncio
 async def test_delete_excerpt_retire_l_extrait(db_session, test_user, fiche_brouillon):
-    src = await add_source(
+    src = await ajouter_source(
         db_session,
         test_user,
         card_slug="fiche-en-cours",
@@ -831,7 +853,7 @@ async def test_delete_excerpt_retire_l_extrait(db_session, test_user, fiche_brou
 async def test_delete_excerpt_refuse_non_proprietaire(
     db_session, test_user, fiche_brouillon, autre_utilisateur
 ):
-    src = await add_source(
+    src = await ajouter_source(
         db_session,
         test_user,
         card_slug="fiche-en-cours",
@@ -853,7 +875,7 @@ async def test_delete_excerpt_refuse_non_proprietaire(
 async def test_verify_excerpts_avec_texte_fourni_marque_verified(
     db_session, test_user, fiche_brouillon
 ):
-    src = await add_source(
+    src = await ajouter_source(
         db_session,
         test_user,
         card_slug="fiche-en-cours",
@@ -880,7 +902,7 @@ async def test_verify_excerpts_avec_texte_fourni_marque_verified(
 async def test_verify_excerpts_refuse_non_proprietaire(
     db_session, test_user, fiche_brouillon, autre_utilisateur
 ):
-    src = await add_source(
+    src = await ajouter_source(
         db_session,
         test_user,
         card_slug="fiche-en-cours",
@@ -914,7 +936,7 @@ async def test_list_connections_refuse_non_proprietaire(
 
 @pytest.mark.asyncio
 async def test_confirm_connection_refuse_source_sans_lien(db_session, test_user, fiche_brouillon):
-    src = await add_source(
+    src = await ajouter_source(
         db_session,
         test_user,
         card_slug="fiche-en-cours",
@@ -933,7 +955,7 @@ async def test_confirm_connection_refuse_source_sans_lien(db_session, test_user,
 async def test_confirm_connection_refuse_source_autre_fiche(db_session, test_user):
     await create_card(db_session, test_user, slug="fiche-a", title="A")
     await create_card(db_session, test_user, slug="fiche-b", title="B")
-    src_a = await add_source(
+    src_a = await ajouter_source(
         db_session,
         test_user,
         card_slug="fiche-a",
@@ -959,7 +981,7 @@ async def test_remove_connection_efface_le_lien(db_session, test_user):
     # `fiche-b` publiee pour que effective_linked_card_id la resolve.
     await publish_card(db_session, test_user, slug="fiche-b")
     # Utiliser l'URL publique de fiche-b comme source de fiche-a.
-    src_a = await add_source(
+    src_a = await ajouter_source(
         db_session,
         test_user,
         card_slug="fiche-a",
@@ -980,7 +1002,7 @@ async def test_remove_connection_efface_le_lien(db_session, test_user):
 async def test_remove_connection_refuse_non_proprietaire(
     db_session, test_user, fiche_brouillon, autre_utilisateur
 ):
-    src = await add_source(
+    src = await ajouter_source(
         db_session,
         test_user,
         card_slug="fiche-en-cours",
@@ -1032,7 +1054,7 @@ async def test_get_my_card_lit_un_brouillon(db_session, test_user, fiche_brouill
         text="Le transcript complet.",
         confirm_publication_rights=True,
     )
-    await add_source(db_session, test_user, card_slug="fiche-en-cours", url="https://a.org")
+    await ajouter_source(db_session, test_user, card_slug="fiche-en-cours", url="https://a.org")
     fiche = await get_my_card(db_session, test_user, card_slug="fiche-en-cours")
     assert fiche["status"] == "draft"
     assert fiche["title"] == "Fiche en cours"
@@ -1072,8 +1094,8 @@ async def test_get_my_card_refuse_non_proprietaire(
 
 @pytest.mark.asyncio
 async def test_list_sources_rend_les_sources_de_la_fiche(db_session, test_user, fiche_brouillon):
-    await add_source(db_session, test_user, card_slug="fiche-en-cours", url="https://a.org")
-    await add_source(db_session, test_user, card_slug="fiche-en-cours", url="https://b.org")
+    await ajouter_source(db_session, test_user, card_slug="fiche-en-cours", url="https://a.org")
+    await ajouter_source(db_session, test_user, card_slug="fiche-en-cours", url="https://b.org")
     result = await list_sources(db_session, test_user, card_slug="fiche-en-cours")
     assert len(result) == 2
     assert result[0]["position"] < result[1]["position"]
@@ -1089,7 +1111,7 @@ async def test_list_sources_refuse_non_proprietaire(
 
 @pytest.mark.asyncio
 async def test_search_my_excerpts_trouve_par_texte(db_session, test_user, fiche_brouillon):
-    src = await add_source(db_session, test_user, card_slug="fiche-en-cours", url="https://a.org")
+    src = await ajouter_source(db_session, test_user, card_slug="fiche-en-cours", url="https://a.org")
     await add_excerpt(
         db_session,
         test_user,
@@ -1105,7 +1127,7 @@ async def test_search_my_excerpts_trouve_par_texte(db_session, test_user, fiche_
 async def test_search_my_excerpts_isole_par_user(
     db_session, test_user, fiche_brouillon, autre_utilisateur
 ):
-    src = await add_source(db_session, test_user, card_slug="fiche-en-cours", url="https://a.org")
+    src = await ajouter_source(db_session, test_user, card_slug="fiche-en-cours", url="https://a.org")
     await add_excerpt(
         db_session,
         test_user,
@@ -1140,7 +1162,7 @@ async def test_delete_card_refuse_non_proprietaire(
 
 @pytest.mark.asyncio
 async def test_archive_sources_accepte_les_sources_du_user(db_session, test_user, fiche_brouillon):
-    src = await add_source(db_session, test_user, card_slug="fiche-en-cours", url="https://a.org")
+    src = await ajouter_source(db_session, test_user, card_slug="fiche-en-cours", url="https://a.org")
     result = await archive_sources(db_session, test_user, source_ids=[src["id"]])
     assert src["id"] in result["accepted"]
     assert result["refused"] == []
@@ -1150,7 +1172,7 @@ async def test_archive_sources_accepte_les_sources_du_user(db_session, test_user
 async def test_archive_sources_refuse_les_sources_d_autrui(
     db_session, test_user, fiche_brouillon, autre_utilisateur
 ):
-    src = await add_source(db_session, test_user, card_slug="fiche-en-cours", url="https://a.org")
+    src = await ajouter_source(db_session, test_user, card_slug="fiche-en-cours", url="https://a.org")
     result = await archive_sources(db_session, autre_utilisateur, source_ids=[src["id"]])
     assert result["accepted"] == []
     assert len(result["refused"]) == 1
@@ -1168,9 +1190,9 @@ async def test_add_sources_batch_pose_plusieurs_sources_en_un_appel(
         test_user,
         card_slug="fiche-en-cours",
         sources=[
-            {"url": "https://a.org/1", "title": "A"},
-            {"url": "https://a.org/2", "title": "B"},
-            {"url": "https://a.org/3", "title": "C"},
+            {"metadata_from": "createur", "url": "https://a.org/1", "title": "A"},
+            {"metadata_from": "createur", "url": "https://a.org/2", "title": "B"},
+            {"metadata_from": "createur", "url": "https://a.org/3", "title": "C"},
         ],
     )
     assert len(result["created"]) == 3
@@ -1184,8 +1206,8 @@ async def test_add_sources_batch_dedup_dans_le_meme_lot(db_session, test_user, f
         test_user,
         card_slug="fiche-en-cours",
         sources=[
-            {"url": "https://a.org/1"},
-            {"url": "https://a.org/1"},  # doublon
+            {"metadata_from": "createur", "url": "https://a.org/1"},
+            {"metadata_from": "createur", "url": "https://a.org/1"},  # doublon
         ],
     )
     assert len(result["created"]) == 1
@@ -1201,7 +1223,7 @@ async def test_add_sources_batch_refuse_non_proprietaire(
             db_session,
             autre_utilisateur,
             card_slug="fiche-en-cours",
-            sources=[{"url": "https://x.org"}],
+            sources=[{"metadata_from": "createur", "url": "https://x.org"}],
         )
 
 
@@ -1298,7 +1320,7 @@ async def test_add_source_refuse_une_valeur_hors_vocabulaire(
     db_session, test_user, fiche_brouillon, champ, valeur
 ):
     with pytest.raises(ToolError, match="Valeurs acceptees"):
-        await add_source(
+        await ajouter_source(
             db_session,
             test_user,
             card_slug="fiche-en-cours",
@@ -1312,7 +1334,7 @@ async def test_add_source_message_d_erreur_cite_le_vocabulaire(
     db_session, test_user, fiche_brouillon
 ):
     with pytest.raises(ToolError) as exc_info:
-        await add_source(
+        await ajouter_source(
             db_session,
             test_user,
             card_slug="fiche-en-cours",
@@ -1329,7 +1351,7 @@ async def test_add_source_stance_vide_vaut_silence(db_session, test_user, fiche_
 
     from app.models.source import Source as _Source
 
-    src = await add_source(
+    src = await ajouter_source(
         db_session, test_user, card_slug="fiche-en-cours", url="https://a.org/silence", stance=""
     )
     ligne = await db_session.scalar(_select(_Source).where(_Source.id == UUID(src["id"])))
@@ -1341,14 +1363,14 @@ async def test_add_source_stance_vide_vaut_silence(db_session, test_user, fiche_
 async def test_update_source_refuse_une_valeur_hors_vocabulaire(
     db_session, test_user, fiche_brouillon
 ):
-    src = await add_source(db_session, test_user, card_slug="fiche-en-cours", url="https://a.org/u")
+    src = await ajouter_source(db_session, test_user, card_slug="fiche-en-cours", url="https://a.org/u")
     with pytest.raises(ToolError, match="Valeurs acceptees"):
         await update_source(db_session, test_user, source_id=src["id"], stance="soutient")
 
 
 @pytest.mark.asyncio
 async def test_update_source_stance_vide_efface_la_position(db_session, test_user, fiche_brouillon):
-    src = await add_source(
+    src = await ajouter_source(
         db_session, test_user, card_slug="fiche-en-cours", url="https://a.org/v", stance="appuie"
     )
     result = await update_source(db_session, test_user, source_id=src["id"], stance="")
@@ -1364,8 +1386,8 @@ async def test_add_sources_batch_rejette_dans_failed_sans_bloquer_le_lot(
         test_user,
         card_slug="fiche-en-cours",
         sources=[
-            {"url": "https://a.org/ok", "stance": "soutient"},  # refuse
-            {"url": "https://a.org/bon", "stance": "appuie"},  # accepte
+            {"metadata_from": "createur", "url": "https://a.org/ok", "stance": "soutient"},  # refuse
+            {"metadata_from": "createur", "url": "https://a.org/bon", "stance": "appuie"},  # accepte
         ],
     )
     assert [c["url"] for c in result["created"]] == ["https://a.org/bon"]
@@ -1375,7 +1397,7 @@ async def test_add_sources_batch_rejette_dans_failed_sans_bloquer_le_lot(
 
 @pytest_asyncio.fixture
 async def source_annotable(db_session, test_user, fiche_brouillon):
-    return await add_source(
+    return await ajouter_source(
         db_session,
         test_user,
         card_slug="fiche-en-cours",

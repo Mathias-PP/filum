@@ -7,6 +7,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.source import ArchiveStatus as ModelArchiveStatus
+from app.models.source import MetadataOrigin as ModelMetadataOrigin
 
 
 def _naive_utc(value: datetime | None) -> datetime | None:
@@ -103,6 +104,7 @@ class OpenAccessStatus(str, Enum):
 # le schema a trois valeurs quand `not_applicable` est arrive en base, et toute
 # fiche contenant une telle source repondait 500.
 ArchiveStatus = ModelArchiveStatus
+MetadataOrigin = ModelMetadataOrigin
 
 
 class SourceBase(BaseModel):
@@ -242,6 +244,9 @@ class SourceResponse(BaseModel):
     pages: str | None = None
     publisher: str | None = None
     doi: str | None = None
+    # Qui a fait foi pour title, authors, published_at, journal et publisher.
+    # NULL sur les sources posees avant la regle : origine inconnue, pas absente.
+    metadata_origin: MetadataOrigin | None = None
     citations_count: int | None = None
     subscribers_count: int | None = None
     views_count: int | None = None

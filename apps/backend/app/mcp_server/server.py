@@ -181,6 +181,7 @@ async def create_card(
 @outil()
 async def add_source(
     card_slug: str,
+    metadata_from: str,
     url: str = "",
     title: str | None = None,
     authors: str | None = None,
@@ -197,6 +198,12 @@ async def add_source(
 ) -> dict[str, Any]:
     """Ajoute une source citee a la fiche `card_slug`, avec ses extraits si vous en avez.
 
+    `metadata_from` : page|crossref|openalex|createur. Qui fait foi pour le
+      titre, les auteurs, la date, la revue et l'editeur. Ces cinq champs sont
+      remplis par l'origine choisie, pas par les valeurs passees ; une valeur
+      passee que l'origine contredit revient dans `metadata_ecarts`. `crossref`
+      et `openalex` demandent un `doi`. `createur` ecrit les valeurs passees
+      telles quelles, pour le cas ou le createur dicte ce qu'il a sous les yeux.
     `excerpts` : liste d'objets `{"text": ..., "title": ..., "context": ...}`.
       Evite l'aller-retour par l'identifiant de la source. Chaque entree suit
       les regles de `add_excerpt`, relecture de la page comprise. Un extrait
@@ -222,6 +229,7 @@ async def add_source(
             db,
             user,
             card_slug=card_slug,
+            metadata_from=metadata_from,
             url=url,
             title=title,
             authors=authors,
@@ -370,6 +378,7 @@ async def update_source(
     is_pivot: bool | None = None,
     published_at: str | None = None,
     archive_url: str | None = None,
+    metadata_from: str | None = None,
 ) -> dict[str, Any]:
     """Corrige les champs edituriaux d'une source existante (titre, auteurs,
     DOI, revue, categorie, position declaree, annotation, statut pivot, date
@@ -377,6 +386,13 @@ async def update_source(
     `published_at` : 2016, 2016-03 ou 2016-03-15 ; chaine vide pour effacer.
     L'URL de la source est immuable : pour la changer, `delete_source` puis
     `add_source`.
+
+    `metadata_from` : page|crossref|openalex|createur. Obligatoire des que
+    l'appel touche `title`, `authors`, `journal` ou `published_at` : ces quatre
+    champs sont ecrits par l'origine choisie, pas par les valeurs passees. Une
+    origine qui ne rend rien pour un champ demande fait echouer l'appel plutot
+    que de le laisser inchange en silence. `createur` ecrit les valeurs passees
+    telles quelles, et seule cette origine autorise la chaine vide qui efface.
     """
     async with _session() as db:
         user = await exiger_utilisateur(db)
@@ -384,6 +400,7 @@ async def update_source(
             db,
             user,
             source_id=source_id,
+            metadata_from=metadata_from,
             title=title,
             authors=authors,
             doi=doi,
@@ -708,8 +725,10 @@ async def list_deleted_cards(limit: int = 50) -> list[dict[str, Any]]:
 async def add_sources_batch(card_slug: str, sources: list[dict[str, Any]]) -> dict[str, Any]:
     """Ajoute plusieurs sources a une fiche en un appel.
 
-    Chaque entree suit la meme signature que `add_source`. Utile pour les
-    fiches longues : un seul commit au lieu de N.
+    Chaque entree suit la meme signature que `add_source`, `metadata_from`
+    compris : une entree porte sa propre origine, si bien qu'un lot melangeant
+    des articles a DOI et des pages web n'a pas a etre coupe en deux. Utile
+    pour les fiches longues : un seul commit au lieu de N.
     """
     async with _session() as db:
         user = await exiger_utilisateur(db)
