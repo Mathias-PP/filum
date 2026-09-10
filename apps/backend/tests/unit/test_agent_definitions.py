@@ -140,3 +140,13 @@ async def test_obtenir_rend_none_sur_slug_absent(db_session, test_user):
 
 def test_chemin_de():
     assert agent_definitions.chemin_de("relecteur") == "agents/relecteur.yaml"
+
+
+def test_socratique_n_expose_aucun_outil_d_ecriture():
+    """La non-generation du mode socratique est structurelle, pas promptee."""
+    from app.agent_tools.philum import OUTILS_QUI_ECRIVENT
+
+    chemin = "agents/socratique.yaml"
+    contenu = (agent_definitions.SEED_DIR / chemin).read_text(encoding="utf-8")
+    definition = parser(chemin, contenu, noms_connus=CONNUS)
+    assert not set(definition.tools) & OUTILS_QUI_ECRIVENT

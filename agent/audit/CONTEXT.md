@@ -52,7 +52,7 @@ agent/audit/
   05-services-metier/       ← ✅ G5 verte : [CONTEXT.md](05-services-metier/CONTEXT.md) + fiches providers / gratuit / workspace / definitions / fiche / discovery
   06-interface-chat / 07-tests-et-prod/   ← ✅ G6 verte + ✅ G7 verte : [CONTEXT.md](06-interface-chat/CONTEXT.md) / [CONTEXT.md](07-tests-et-prod/CONTEXT.md)
   09-deepseek-harness/      ← ✅ audit Philum vs deepseek-harness (bugs, faisabilité, plans, UI, patterns)
-  10-externes/              ← audit 3 dépôts externes → Philum (OmniRoute/repli, open-notebook/recherche duale, book-to-skill/Unicode)
+  10-externes/              ← audit 4 dépôts externes → Philum (OmniRoute/repli, open-notebook/recherche duale, book-to-skill/Unicode, ARS/ancrage et mesure des seuils) + 2 notes de conception : juge de fidélité des affirmations (05), invention structurellement impossible et modules de contexte du workspace (06)
   11-graph-memory/          ← audit graph-memory-starter : déjà porté dans graph_memory.py, 9 défauts du portage, 3 manques (RRF, distillation, mémoire de session)
 ```
 

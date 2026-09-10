@@ -19,6 +19,8 @@ context:
   - shared/philum-mcp.md
   - shared/style-redactionnel.md
   - shared/principes-editoriaux.md
+  - shared/rien-de-memoire.md
+  - shared/qualite-des-sources.md
   - stages/02-sources-collectees/CONTEXT.md
   - _core/templates/source.md
 system_prompt: |

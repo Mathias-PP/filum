@@ -18,6 +18,7 @@ tools:
 context:
   - shared/style-redactionnel.md
   - shared/principes-editoriaux.md
+  - shared/rien-de-memoire.md
   - stages/01-brief/CONTEXT.md
   - stages/05-connexions/CONTEXT.md
   - _core/templates/brief.md

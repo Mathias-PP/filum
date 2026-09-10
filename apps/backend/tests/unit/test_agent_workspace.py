@@ -243,3 +243,23 @@ class TestFrontmatterParser:
         content = "# Titre\n## Sous-titre\n\nLe vrai paragraphe.\n"
         c, _ = agent_workspace.extraire_meta("shared/x.md", content)
         assert c == "Le vrai paragraphe."
+
+
+def test_le_seed_shared_tient_sous_le_plafond():
+    """Le gabarit `shared/` doit tenir sous le plafond d'injection.
+
+    `_priming_workspace` tronque par un `break` sur une liste triee par
+    chemin : un depassement ne leve rien, il retire en silence les derniers
+    fichiers de l'ordre alphabetique. Ce test est le seul garde-fou.
+    """
+    from app.services.agent import _PRIMING_MAX
+
+    emis = len("\n\n---\n## Workspace éditorial du créateur\n")
+    for chemin, contenu in agent_workspace.fichiers_du_modele().items():
+        if chemin.startswith("shared/"):
+            emis += len(f"\n### {chemin}\n{contenu}\n")
+    assert emis <= _PRIMING_MAX, (
+        f"Le gabarit shared/ emet {emis} caracteres pour un plafond de "
+        f"{_PRIMING_MAX} : les derniers fichiers de l'ordre alphabetique "
+        "seraient perdus en silence."
+    )

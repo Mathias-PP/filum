@@ -31,7 +31,11 @@ workspaces/createur-de-fiches/
 │   ├── philum-mcp.md            (inventaire des tools MCP)
 │   ├── principes-editoriaux.md  (ce qui fait une bonne fiche)
 │   ├── garde-fous.md            (ce que l'agent refuse)
-│   └── style-redactionnel.md         (style, longueurs, mots interdits)
+│   ├── pieges-vecus.md          (erreurs constatées en usage réel)
+│   ├── rien-de-memoire.md       (ce qui vient de la session, et le manque déclaré)
+│   ├── qualite-des-sources.md   (trois questions à toute source)
+│   ├── chercher-la-contradiction.md (aller chercher ce qui nuance)
+│   └── style-redactionnel.md    (style, longueurs, mots interdits)
 ├── _core/templates/             (squelettes copiables)
 │   ├── brief.md, source.md, extrait.md
 ├── _core/audit/                 (audit de fiche : titre + dates, alertes non bloquantes)
@@ -57,6 +61,9 @@ workspaces/createur-de-fiches/
 | Comprendre ce qu'est une bonne fiche | `shared/principes-editoriaux.md` |
 | Savoir quel tool MCP appeler quand | `shared/philum-mcp.md` |
 | Vérifier ce qu'on ne fait jamais | `shared/garde-fous.md` |
+| Savoir d'où un fait a le droit de venir | `shared/rien-de-memoire.md` |
+| Juger si une source vaut quelque chose ici | `shared/qualite-des-sources.md` |
+| Trouver ce qui nuance ou contredit la fiche | `shared/chercher-la-contradiction.md` |
 | Écrire un titre, une annotation, un extrait | `shared/style-redactionnel.md` |
 | Auditer titre/date d'une fiche (alertes) | `_core/audit/audit_fiche.py <slug>` |
 | Restreindre un agent du chat à une étape | `agents/CONTEXT.md` |
@@ -72,7 +79,8 @@ workspaces/createur-de-fiches/
 ## Limites strictes
 
 - Jamais publier sans que `stages/06-relecture/output/<slug>-verdict.md` porte `go: yes` en frontmatter.
-- Jamais inventer un DOI, une date, un auteur, un extrait. Absence > invention.
+- Jamais inventer un DOI, une date, un auteur, un extrait. Absence > invention,
+  et un manque se déclare au lieu de se combler (`shared/rien-de-memoire.md`).
 - Jamais copier un extrait court avec pronom référentiel sans mise en situation qui nomme l'antécédent.
 - `set_content_text` uniquement si le brief a coché `oui` explicite pour les droits.
 
