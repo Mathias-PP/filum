@@ -1,4 +1,6 @@
-# Conception 05. Fidélité des affirmations : ce que Philum doit construire, et pourquoi il peut le faire mieux qu'ARS
+# Conception 05. Fidélité à la source : ce que Philum doit construire, et pourquoi il peut le faire mieux qu'ARS
+
+> **Renommée le 2026-09-10**, de « fidélité des affirmations » à « fidélité à la source ». L'objet d'une fiche n'est pas de porter une thèse : c'est d'aborder un sujet sous un angle, ou face à des problèmes particuliers, et beaucoup de fiches ne soutiennent rien. Ce que le juge vérifie n'a jamais été « les affirmations de la fiche » mais une chose plus étroite et plus vraie : qu'une mise en situation ne fasse pas dire à un passage autre chose que ce qu'il dit. Le mot « affirmation » reste employé plus bas là où il est exact, pour ce qu'une mise en situation attribue à un passage.
 
 > Suite de [`04-ars-claim-audit.md`](./04-ars-claim-audit.md). Cette note ne rapporte plus ce qu'ARS fait, elle décide ce que Philum fait. ARS est sous CC BY-NC 4.0 : **aucune ligne de son code, ni son prompt, ne peut être reprise**. Ce qui suit décrit des mécanismes en français, à réécrire de zéro.
 

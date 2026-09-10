@@ -142,11 +142,15 @@ def test_chemin_de():
     assert agent_definitions.chemin_de("relecteur") == "agents/relecteur.yaml"
 
 
-def test_socratique_n_expose_aucun_outil_d_ecriture():
-    """La non-generation du mode socratique est structurelle, pas promptee."""
+def test_questionneur_n_expose_aucun_outil_d_ecriture():
+    """Le role questionne et propose, mais n'ecrit jamais : c'est structurel.
+
+    Le premier temps du role peut se relacher au fil des versions du prompt ;
+    l'interdiction d'ecrire en base, elle, tient au filtrage des outils.
+    """
     from app.agent_tools.philum import OUTILS_QUI_ECRIVENT
 
-    chemin = "agents/socratique.yaml"
+    chemin = "agents/questionneur.yaml"
     contenu = (agent_definitions.SEED_DIR / chemin).read_text(encoding="utf-8")
     definition = parser(chemin, contenu, noms_connus=CONNUS)
     assert not set(definition.tools) & OUTILS_QUI_ECRIVENT

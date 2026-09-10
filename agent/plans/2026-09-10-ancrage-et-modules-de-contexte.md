@@ -6,7 +6,7 @@
 > il n'existe pas dans cet environnement : `uv run pytest` depuis `apps/backend`.
 >
 > **Source.** Ce plan exécute [`agent/audit/10-externes/06-modules-de-contexte-agent.md`](../audit/10-externes/06-modules-de-contexte-agent.md)
-> et la partie Q3a de [`05-fidelite-des-affirmations-conception.md`](../audit/10-externes/05-fidelite-des-affirmations-conception.md).
+> et la partie Q3a de [`05-fidelite-a-la-source-conception.md`](../audit/10-externes/05-fidelite-a-la-source-conception.md).
 > ARS est sous **CC BY-NC 4.0** : aucune ligne de son code ni de sa prose n'entre
 > dans Philum. Tout ce qui suit est écrit de zéro.
 
@@ -14,10 +14,22 @@
 
 ## État courant
 
-PR 1 en cours sur la branche `feat/agent-modules-de-contexte`. Mesure faite sur
-le disque après câblage : le gabarit `shared/` émet **42 450** caractères, le seed
-passe à **31** fichiers, et le contexte le plus lourd est celui de `assistant`
-(42 427 émis) contre un plafond relevé à 60 000.
+PR 1 mergée en **#632** (`d654b36`) et déployée. Mesure faite sur le disque après
+câblage : le gabarit `shared/` émet **42 450** caractères, le seed passe à **31**
+fichiers, et le contexte le plus lourd est celui de `assistant` (42 427 émis)
+contre un plafond relevé à 60 000.
+
+**PR 1 bis, `fix/agent-role-questionneur`** : corrige deux choses livrées de
+travers en #632, sur retour de l'utilisateur du 2026-09-10.
+
+- [ ] Renommer le rôle `socratique` en `questionneur`, et le réécrire en deux
+      temps : il questionne tant que le créateur n'a pas formulé son angle, puis
+      il propose du contenu qui sert cet angle, en annonçant la bascule.
+      L'interdiction totale de proposer protégeait l'angle en sacrifiant
+      l'utilité du rôle.
+- [ ] Renommer la fiche 05 en `05-fidelite-a-la-source-conception.md`. Une fiche
+      n'affirme pas forcément quelque chose : « fidélité des affirmations »
+      décrivait mal ce que le juge vérifie.
 
 **PR 1, `feat/agent-modules-de-contexte`**
 

@@ -1,6 +1,6 @@
 # Conception 06. Modules de contexte pour l'agent Philum, et l'impossibilité structurelle d'inventer
 
-> Troisième volet de la série ARS, après [`04-ars-claim-audit.md`](./04-ars-claim-audit.md) (ce qu'ARS fait) et [`05-fidelite-des-affirmations-conception.md`](./05-fidelite-des-affirmations-conception.md) (ce que Philum construit sur la fidélité). Celle-ci traite du **contexte que l'agent lit avant d'agir**, et de la doctrine qui doit le rendre incapable d'inventer.
+> Troisième volet de la série ARS, après [`04-ars-claim-audit.md`](./04-ars-claim-audit.md) (ce qu'ARS fait) et [`05-fidelite-a-la-source-conception.md`](./05-fidelite-a-la-source-conception.md) (ce que Philum construit sur la fidélité). Celle-ci traite du **contexte que l'agent lit avant d'agir**, et de la doctrine qui doit le rendre incapable d'inventer.
 >
 > ARS est sous **CC BY-NC 4.0**. Aucune ligne de son code ni de sa prose n'est reprise. Tout ce qui suit décrit des idées en français, à réécrire de zéro.
 
@@ -109,18 +109,29 @@ Mais la contrainte 3 du créateur inverse la priorité : Philum ne veut pas seul
 
 Les deux autres entrées à garder du catalogue, parce qu'elles visent des gestes fréquents chez un créateur : l'**appel à l'autorité**, publié dans une revue prestigieuse donc valide, et l'**appel à la nouveauté**, plus récent donc meilleur.
 
-### 4.4 `agents/socratique.yaml`
+### 4.4 `agents/questionneur.yaml`
 
 Inspiration : le mode socratique d'ARS (`deep-research/references/socratic_mode_protocol.md`). Ce n'est pas un module `shared/`, c'est un huitième rôle.
 
-Un mode où l'agent **ne répond pas, il questionne**, pour amener le créateur à formuler ce que sa fiche affirme réellement. Cinq couches chez ARS, du cadrage du problème à l'auto-examen critique. Les questions qui transposent le mieux à une fiche Philum : quelle est la question à laquelle ce contenu répond, quelle preuve te convaincrait du contraire, comment quelqu'un qui pense l'inverse te réfuterait-il.
+> **Corrigé le 2026-09-10**, après une première livraison en PR #632 sous le nom `socratique` et avec une interdiction totale de proposer. Deux erreurs. Le nom d'abord : personne ne sait ce qu'est un « mode socratique », et un nom de rôle doit dire ce que la chose fait. Le fond ensuite : ce qui doit rester au créateur est **l'angle sous lequel il traite son sujet**, pas chaque phrase de sa fiche. Une fiche n'affirme pas forcément quelque chose ; elle aborde un sujet sous un angle, ou face à des problèmes particuliers. Interdire toute proposition protégeait l'angle en sacrifiant l'utilité du rôle.
 
-Deux règles de conception à reprendre telles quelles, parce qu'elles sont ce qui empêche le mode de se dégrader en générateur d'idées :
+Le rôle travaille donc en deux temps, et dit toujours dans lequel il est.
 
-- **Non-génération stricte.** Même après plusieurs tours sans convergence, l'agent ne propose aucune thèse candidate. Il résume ce que le créateur a exprimé, nomme ce qui reste ouvert, continue de questionner.
-- **Sortie annoncée.** Si le créateur demande explicitement des propositions, l'agent annonce la sortie du mode par un marqueur visible, et ce qui suit est étiqueté comme venant de lui, pas comme une idée du créateur. Il ne rentre jamais silencieusement dans le mode.
+**Premier temps, il questionne et ne propose pas.** Tant que le créateur n'a pas formulé son angle lui-même, l'agent ne propose aucun angle candidat, aucun titre, aucun plan, aucun exemple. Il résume ce qui a été dit, nomme ce qui reste ouvert, pose la question suivante. Proposer ici, c'est mettre ses idées dans la bouche du créateur et les lui faire prendre pour les siennes.
 
-Ce mode croise directement la contrainte 3 : la couche d'auto-examen est le moment où la contradiction se cherche.
+Les cinq questions retenues, écrites pour être comprises sans connaître Philum :
+
+- De quel sujet parles-tu, et sous quel angle ?
+- Quel problème ce sujet soulève-t-il ?
+- Qu'est-ce qu'on comprend en te lisant, qu'on ne comprenait pas avant ?
+- De quoi tu ne parles pas ?
+- Qu'est-ce qui pourrait te donner tort ?
+
+Les deux dernières portent la contrainte 3 : la première délimite le sujet, la seconde va chercher la contradiction.
+
+**Deuxième temps, l'angle est posé par le créateur.** L'agent bascule sur une ligne visible, « L'angle est à toi maintenant. Ce que je propose à partir d'ici sert cet angle ; si je m'en écarte, dis-le. », puis il propose : pistes à traiter, sources à chercher, ce qui manque, ce qui contredit. Tout sert l'angle formulé, jamais celui que l'agent aurait choisi. Il bascule aussi quand le créateur demande des propositions, et jamais en silence dans un sens ni dans l'autre.
+
+La garantie n'est pas dans le prompt. Le rôle ne déclare que des outils de lecture, donc `filtrer()` l'empêche d'écrire en base quoi qu'il décide. Proposer dans la conversation n'est pas écrire dans la fiche : l'assouplissement du premier temps ne touche pas cette garantie, et `test_questionneur_n_expose_aucun_outil_d_ecriture` la tient.
 
 ---
 
