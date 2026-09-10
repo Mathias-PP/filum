@@ -1533,6 +1533,32 @@ async def suggest_excerpts(
     }
 
 
+#: Nombre de caracteres pris de chaque cote du passage pour le situer. 1 200
+#: couvre le paragraphe qui precede et celui qui suit sur la quasi totalite des
+#: pages, et laisse la fenetre tres en dessous du `entourage[:6000]` que
+#: `llm.suggest_annotation` applique de son cote (`services/llm.py:620`).
+_MARGE_ENTOURAGE = 1200
+
+
+def _entourage_du_passage(page_text: str, passage: str) -> str:
+    """Fenetre de texte autour du passage dans la page, ou chaine vide.
+
+    Chaine vide dans deux cas que l'appelant traite pareil, en refusant : la
+    page n'a pas pu etre lue, ou le passage n'y figure pas. Annoter un passage
+    absent de sa source, ce serait annoter autre chose que la source.
+    """
+    from app.api.v1.endpoints.excerpts import verify_quote
+
+    if not page_text or not passage.strip():
+        return ""
+    trouve = verify_quote(page_text, passage)
+    if trouve is None:
+        return ""
+    debut = max(0, trouve.start() - _MARGE_ENTOURAGE)
+    fin = min(len(page_text), trouve.end() + _MARGE_ENTOURAGE)
+    return page_text[debut:fin]
+
+
 async def annotate_excerpt(
     db: AsyncSession,
     user: User,
@@ -1545,13 +1571,29 @@ async def annotate_excerpt(
 
     A appeler apres avoir choisi le verbatim mais avant `add_excerpt`. A
     l'agent de valider ce qu'il pose ensuite.
+
+    L'outil refuse quand le texte qui entoure le passage n'est pas disponible :
+    ni `provided_text`, ni page lisible ou le passage figure. Une mise en
+    situation ecrite sans le texte qu'elle situe est une invention, pas une
+    approximation.
     """
+    from app.services.excerpt_insertion import texte_de_page
     from app.services.llm import suggest_annotation as llm_annotate
 
     source = await _source_du_createur(db, user, source_id)
     entourage = (provided_text or "").strip()
     if not entourage:
-        entourage = " - ".join(filter(None, [source.title, source.annotation]))
+        # Meme lecture que `add_excerpt`, donc meme cache : annoter puis poser
+        # dix extraits d'un article ne coute qu'un telechargement.
+        page_text, _refuse, _complet = await texte_de_page(source.url)
+        entourage = _entourage_du_passage(page_text, excerpt_text)
+    if not entourage:
+        raise ToolError(
+            "Impossible de situer ce passage : la page n'a pas pu etre lue, ou "
+            "le passage n'y figure pas. Une mise en situation ecrite sans le "
+            "texte qui entoure le passage est une invention. Rouvrez la source, "
+            "ou passez son texte dans `provided_text`."
+        )
     annotation = await llm_annotate(excerpt_text, entourage)
     if annotation is None:
         return {"title": None, "context": None, "llm_enabled": False}
