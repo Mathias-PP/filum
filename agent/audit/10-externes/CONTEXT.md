@@ -2,7 +2,7 @@
 
 > Analyse de quatre dépôts open-source à la recherche de ce que Philum n'a pas encore. Après vérification ligne à ligne, huit apports subsistent : repli d'un fournisseur vers un autre, transparence du routage, assainissement Unicode, recherche duale en MCP, puis, venus d'ARS, un jeu doré qui mesure les seuils d'ancrage, la rétractation croisée sur deux résolveurs, la péremption d'une vérification et la précondition de version sur les écritures d'agent. Le reste existait déjà ou avait été refusé avec motif.
 >
-> Deux notes de conception prolongent cet audit sans venir d'un dépôt : la [fiche 05](./05-fidelite-des-affirmations-conception.md) sur le juge de fidélité des affirmations, la [fiche 06](./06-modules-de-contexte-agent.md) sur la doctrine « le modèle choisit, il ne saisit pas » et les modules de contexte à poser dans le workspace du créateur.
+> Deux notes de conception prolongent cet audit sans venir d'un dépôt : la [fiche 05](./05-fidelite-a-la-source-conception.md) sur le juge de fidélité à la source, la [fiche 06](./06-modules-de-contexte-agent.md) sur la doctrine « le modèle choisit, il ne saisit pas » et les modules de contexte à poser dans le workspace du créateur.
 
 ---
 
@@ -14,7 +14,7 @@
 | [open-notebook](https://github.com/lfnovo/open-notebook) | Recherche duale, citations structurées | [`02-open-notebook-knowledge.md`](./02-open-notebook-knowledge.md) |
 | [book-to-skill](https://github.com/virgiliojr94/book-to-skill) | Assainissement Unicode avant le contexte du modèle | [`03-book-to-skill-rag.md`](./03-book-to-skill-rag.md) |
 | [academic-research-skills](https://github.com/Imbad0202/academic-research-skills) (ARS) | Ancrage des citations, jugement de soutien, mesure d'erreur. **CC BY-NC 4.0 : idées seulement, jamais de code** | [`04-ars-claim-audit.md`](./04-ars-claim-audit.md) |
-| (conception, pas un dépôt) | Ce que Philum construit sur la fidélité des affirmations, et pourquoi il peut faire mieux qu'ARS | [`05-fidelite-des-affirmations-conception.md`](./05-fidelite-des-affirmations-conception.md) |
+| (conception, pas un dépôt) | Ce que Philum construit sur la fidélité à la source, et pourquoi il peut faire mieux qu'ARS | [`05-fidelite-a-la-source-conception.md`](./05-fidelite-a-la-source-conception.md) |
 | (conception, pas un dépôt) | Rendre l'invention structurellement impossible, et les modules de contexte à ajouter au workspace du créateur | [`06-modules-de-contexte-agent.md`](./06-modules-de-contexte-agent.md) |
 
 ---
@@ -42,7 +42,7 @@
 | Posture « non mesuré » déclarée plutôt que tue | ARS (fiche 06 §6.3) | le juge part en production sans mesure, mais le dit ; verdict privé au créateur, aucune page publique ne s'en sert | oui |
 | Vocabulaire de verdict fermé, pertinence puis vérifiabilité puis position, sans score numérique | ARS (fiche 06 §6.4) | une preuve manquante cesse d'être confondue avec un sujet non abordé | oui |
 | `shared/rien-de-memoire.md`, `shared/qualite-des-sources.md`, `shared/chercher-la-contradiction.md` | conception (fiche 06 §4) | trois modules de contexte, un fichier chacun dans le workspace du créateur ; exigence identique quel que soit le domaine | oui |
-| `agents/socratique.yaml` | ARS (fiche 06 §4.4) | un rôle qui questionne sans jamais proposer de contenu, avec marqueur de sortie visible | oui |
+| `agents/questionneur.yaml` | ARS (fiche 06 §4.4) | un rôle qui questionne jusqu'à ce que le créateur ait formulé son angle, puis propose du contenu qui sert cet angle, en annonçant la bascule | oui |
 | Re-vérification périodique des rétractations sur les sources déjà citées | ARS (fiche 06 §5.3) | confirme l'apport « péremption datée » depuis une seconde source du dépôt | oui |
 | Échelle en cinq degrés original → verbatim, et seuil des vingt mots consécutifs | ARS (fiche 06 §5.1) | grille de lecture pour Q3b : du verbatim présenté comme la prose du créateur dans `content_text` | oui |
 | Verdict « ce texte est généré par une IA » | ARS (fiche 06 §5.1) | aucun | non : ARS le refuse explicitement, et Philum a des marqueurs d'origine, pas des devinettes |
