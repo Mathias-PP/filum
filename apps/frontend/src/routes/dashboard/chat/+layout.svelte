@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, type Snippet } from 'svelte';
-  import { goto } from '$app/navigation';
+  import { afterNavigate, goto } from '$app/navigation';
   import { agentApi, type AgentSession } from '$lib/api/agent';
   import { ApiError } from '$lib/api';
   import { Button, ConfirmDialog, Skeleton, toast } from '$lib/components';
@@ -19,7 +19,13 @@
     void rafraichirConversations();
   });
 
+  // Choisir une conversation dans le tiroir le referme.
+  afterNavigate(() => {
+    conversations.tiroirOuvert = false;
+  });
+
   function ouvrirNouvelle() {
+    conversations.tiroirOuvert = false;
     nouvelleConversation();
     void goto('/dashboard/chat');
   }
@@ -40,18 +46,36 @@
   }
 </script>
 
-<!-- Une seule mise en page pour la liste et pour chaque conversation : la page
-     d'une conversation n'avait pas de barre laterale, on ne passait d'une
-     conversation a l'autre qu'en revenant en arriere.
+<!-- Une mise en page d'application : pleine largeur, a la hauteur exacte sous
+     la barre du site (h-14 et sa bordure), sans pied de page. En colonne de
+     1024 px centree, la conversation n'avait que 44 % de l'ecran.
 
      `minmax(0, 1fr)` et non `1fr` : `1fr` vaut `minmax(auto, 1fr)`, et la
      colonne s'etirait a la largeur de son contenu. Un resultat d'outil de
      3 000 caracteres portait la conversation a 21 736 px de large. -->
-<div
-  class="max-w-5xl mx-auto grid gap-8 px-4 sm:px-6 lg:px-8 py-8 lg:h-[calc(100dvh-4rem)] lg:grid-cols-[16rem_minmax(0,1fr)]"
->
-  <aside class="flex min-w-0 flex-col lg:min-h-0">
-    <div class="flex items-center justify-between gap-2 mb-3">
+<div class="grid h-[calc(100dvh-3.5rem-1px)] overflow-hidden lg:grid-cols-[16rem_minmax(0,1fr)]">
+  {#if conversations.tiroirOuvert}
+    <button
+      type="button"
+      class="fixed inset-0 z-30 bg-black/40 lg:hidden"
+      aria-label="Fermer la liste des conversations"
+      onclick={() => (conversations.tiroirOuvert = false)}
+    ></button>
+  {/if}
+
+  <aside
+    class="min-w-0 flex-col border-r border-border bg-surface-secondary px-3 py-4 lg:static lg:z-auto lg:flex lg:min-h-0 lg:w-auto lg:max-w-none lg:shadow-none"
+    class:hidden={!conversations.tiroirOuvert}
+    class:flex={conversations.tiroirOuvert}
+    class:fixed={conversations.tiroirOuvert}
+    class:inset-y-0={conversations.tiroirOuvert}
+    class:left-0={conversations.tiroirOuvert}
+    class:z-40={conversations.tiroirOuvert}
+    class:w-72={conversations.tiroirOuvert}
+    class:shadow-xl={conversations.tiroirOuvert}
+    aria-label="Conversations"
+  >
+    <div class="mb-3 flex items-center justify-between gap-2">
       <h2 class="text-xs font-medium uppercase tracking-wider text-ink-tertiary">Conversations</h2>
       <div class="flex gap-1">
         <Button size="sm" variant="ghost" onclick={ouvrirNouvelle}>Nouvelle</Button>
@@ -73,7 +97,7 @@
     {:else}
       <!-- La liste defile pour son compte : sans borne, chaque conversation
            gardee allongeait la page et repoussait le fil de discussion. -->
-      <ul class="space-y-1 lg:min-h-0 lg:flex-1 lg:overflow-x-hidden lg:overflow-y-auto">
+      <ul class="min-h-0 flex-1 space-y-1 overflow-x-hidden overflow-y-auto">
         {#each conversations.liste as session (session.id)}
           {@const active = session.id === conversations.active}
           <li class="flex items-center gap-1">
@@ -106,7 +130,17 @@
     {/if}
   </aside>
 
-  <section class="flex h-[calc(100dvh-4rem)] min-w-0 flex-col lg:h-auto lg:min-h-0">
+  <section class="flex min-h-0 min-w-0 flex-col px-4 pb-3 pt-3 sm:px-6">
+    <div class="mb-2 shrink-0 lg:hidden">
+      <button
+        type="button"
+        class="rounded border border-border px-2.5 py-1 text-xs text-ink-secondary hover:text-ink-primary"
+        aria-expanded={conversations.tiroirOuvert}
+        onclick={() => (conversations.tiroirOuvert = true)}
+      >
+        Conversations
+      </button>
+    </div>
     {@render children()}
   </section>
 </div>
