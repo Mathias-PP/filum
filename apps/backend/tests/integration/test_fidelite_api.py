@@ -11,6 +11,18 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
+from app.core.rate_limit import limiter
+
+
+@pytest.fixture(autouse=True)
+def _reset_limiter():
+    # Le compteur de `POST /cards` vit pour toute la session de test : sans
+    # remise a zero, les fiches creees ici epuisent le quota des fichiers qui
+    # passent apres, et ce sont eux qui echouent.
+    limiter.reset()
+    yield
+    limiter.reset()
+
 
 @pytest_asyncio.fixture
 async def client(db_session):
