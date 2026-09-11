@@ -177,7 +177,7 @@ function idLibre(items: ChatItem[], base: string): string {
   return candidat;
 }
 
-function cloturerSansReponse(items: ChatItem[]): ChatItem[] {
+export function cloturerSansReponse(items: ChatItem[]): ChatItem[] {
   return items.map((item) =>
     item.kind === 'tool' && item.result === null
       ? { ...item, result: { error: 'Aucun résultat reçu : l’appel est resté sans réponse.' } }
@@ -191,8 +191,15 @@ function cloturerSansReponse(items: ChatItem[]): ChatItem[] {
  * sans réappariement, l'appel resterait une carte « En cours… » orpheline et
  * le résultat apparaîtrait en doublon, sans arguments. Les vieilles lignes
  * sans identifiant retombent sur un appariement séquentiel par nom d'outil.
+ *
+ * `clore: false` laisse « En cours » les appels encore sans résultat. C'est le
+ * cas d'une conversation rouverte pendant que le serveur termine son tour : les
+ * marquer en échec affichait des erreurs qui n'en étaient pas.
  */
-export function depuisMessages(messages: AgentMessage[]): ChatItem[] {
+export function depuisMessages(
+  messages: AgentMessage[],
+  { clore = true }: { clore?: boolean } = {}
+): ChatItem[] {
   const items: ChatItem[] = [];
   const enAttente = new Map<string, number>();
   // Les cartes d'outil sont affichées dans un `{#each}` clavé : deux items du
@@ -256,7 +263,7 @@ export function depuisMessages(messages: AgentMessage[]): ChatItem[] {
       items.push({ kind: 'assistant', text: message.content });
     }
   }
-  return cloturerSansReponse(items);
+  return clore ? cloturerSansReponse(items) : items;
 }
 
 function lireJson(texte: string): Record<string, unknown> | null {

@@ -1,5 +1,6 @@
 <script lang="ts">
   import Button from '../Button.svelte';
+  import { rendreOutil } from '$lib/agent/toolLabels';
 
   interface Props {
     tool: string;
@@ -14,6 +15,10 @@
   }
 
   let { tool, args, resume, approved = null, expiresAt = undefined, onrespond }: Props = $props();
+
+  // Ce que l'action fait, en mots : le nom technique ne disait rien a celui
+  // qui doit trancher.
+  const action = $derived(rendreOutil(tool, args).action);
 
   let envoi = $state(false);
   let dateMaintenant = $state(Date.now());
@@ -82,20 +87,19 @@
 <div class="rounded-lg border border-warning/40 bg-warning-bg px-4 py-3 text-sm">
   {#if resume}
     <p class="text-ink-primary font-medium">{resume}</p>
-    <p class="mt-1 text-xs text-ink-tertiary">
-      Action sensible <span class="font-mono">{tool}</span>, lancée seulement si vous la validez.
-    </p>
+    <p class="mt-1 text-xs text-ink-tertiary">Rien n'est lancé sans votre accord.</p>
   {:else}
     <p class="text-ink-primary">
-      L'agent veut exécuter <span class="font-mono">{tool}</span>. Cette action écrit chez vous :
-      elle n'est lancée que si vous la validez.
+      L'agent demande votre accord : {action.toLowerCase()}. Cette action écrit chez vous, elle
+      n'est lancée que si vous la validez.
     </p>
   {/if}
   <details class="mt-2 text-xs text-ink-secondary">
     <summary class="cursor-pointer text-ink-tertiary hover:text-ink-secondary">
       Voir les arguments bruts
     </summary>
-    <pre class="mt-1 overflow-x-auto rounded bg-surface-tertiary p-2">{JSON.stringify(
+    <pre
+      class="mt-1 max-h-[40vh] overflow-y-auto whitespace-pre-wrap rounded bg-surface-tertiary p-2 [overflow-wrap:anywhere]">{JSON.stringify(
         args,
         null,
         2

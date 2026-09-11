@@ -52,26 +52,30 @@
   });
 </script>
 
-<div class="rounded-lg border border-border bg-surface-secondary px-3 py-2 text-sm">
+<!-- `min-w-0` et coupure des mots longs a chaque niveau : une URL, un texte de
+     page ou une ligne JSON de 3 000 caracteres ne doivent jamais elargir le fil.
+     Le JSON revient a la ligne plutot que de defiler sur 23 000 px. -->
+<div class="min-w-0 rounded-lg border border-border bg-surface-secondary px-3 py-2 text-sm">
   <button
     type="button"
-    class="flex w-full items-center justify-between gap-2 text-left"
+    class="flex w-full min-w-0 items-center justify-between gap-2 text-left"
     aria-expanded={ouvert}
     onclick={() => (ouvert = !ouvert)}
-    title={name}
   >
-    <span class="text-ink-primary">
+    <span class="min-w-0 truncate text-ink-primary">
       {rendu.action}{rendu.objet ? ` ${rendu.objet}` : ''}
     </span>
-    <span class="text-xs" class:text-danger={echoue} class:text-ink-tertiary={!echoue}>
+    <span class="shrink-0 text-xs" class:text-danger={echoue} class:text-ink-tertiary={!echoue}>
       {etat}
     </span>
   </button>
   {#if raison}
-    <p class="mt-1 text-xs text-danger">{raison}</p>
+    <p class="mt-1 text-xs text-danger [overflow-wrap:anywhere]">{raison}</p>
   {/if}
   {#if extrait}
-    <blockquote class="mt-2 border-l-2 border-border pl-2 text-xs text-ink-secondary italic">
+    <blockquote
+      class="mt-2 border-l-2 border-border pl-2 text-xs text-ink-secondary italic [overflow-wrap:anywhere]"
+    >
       {extrait.texte}
     </blockquote>
     {#if verdict}
@@ -94,15 +98,17 @@
     </p>
   {/if}
   {#if ouvert}
+    <p class="mt-2 text-xs text-ink-tertiary">Demande</p>
     <pre
-      class="mt-2 max-h-[40vh] overflow-auto rounded bg-surface-tertiary p-2 text-xs text-ink-secondary">{JSON.stringify(
+      class="mt-1 max-h-[40vh] overflow-y-auto whitespace-pre-wrap rounded bg-surface-tertiary p-2 text-xs text-ink-secondary [overflow-wrap:anywhere]">{JSON.stringify(
         args,
         null,
         2
       )}</pre>
     {#if result}
+      <p class="mt-2 text-xs text-ink-tertiary">Réponse</p>
       <pre
-        class="mt-1 max-h-[40vh] overflow-auto rounded bg-surface-tertiary p-2 text-xs text-ink-secondary">{JSON.stringify(
+        class="mt-1 max-h-[40vh] overflow-y-auto whitespace-pre-wrap rounded bg-surface-tertiary p-2 text-xs text-ink-secondary [overflow-wrap:anywhere]">{JSON.stringify(
           result,
           null,
           2

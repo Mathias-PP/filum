@@ -173,7 +173,8 @@ export interface paths {
      * @description Choisit le modele primaire du mode gratuit (toute l'instance).
      *
      *     Le secours n'est pas touche : la rotation s'en sert automatiquement
-     *     quand le primaire repond 429/surcharge.
+     *     quand le primaire repond 429/surcharge. Reserve aux adresses de
+     *     `agent_admin_emails`, puisque le choix vaut pour tous les comptes.
      */
     put: operations['definir_modele_gratuit_api_v1_agent_mode_gratuit_modele_put'];
     post?: never;

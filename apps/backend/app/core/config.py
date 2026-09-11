@@ -122,6 +122,11 @@ class Settings(BaseSettings):
     agent_gratuit_enabled: bool = False
     agent_gratuit_daily_quota_messages: int = 30
     agent_gratuit_zai_api_key: str = ""
+    # Adresses e-mail autorisees a regler l'instance depuis l'interface, separees
+    # par des virgules. Une seule chose en depend aujourd'hui : le modele primaire
+    # du mode gratuit, partage par tous les utilisateurs. Vide, personne ne le
+    # change depuis l'API.
+    agent_admin_emails: str = ""
     # Self-hosted uniquement : autorise localhost comme base_url de provider.
     # Ne jamais mettre a True sur le SaaS Philum (VM distante != loopback user).
     agent_allow_local_providers: bool = False

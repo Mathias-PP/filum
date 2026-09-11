@@ -3,11 +3,19 @@
   import {
     agentApi,
     type AgentDefinition,
+    type AgentMessage,
     type AgentProvider,
     type AgentSessionUsage,
   } from '$lib/api/agent';
   import { ApiError } from '$lib/api';
-  import { appliquer, depuisMessages, tourTermine, type ChatItem } from '$lib/agent/conversation';
+  import {
+    appliquer,
+    cloturerSansReponse,
+    depuisMessages,
+    tourTermine,
+    type ChatItem,
+  } from '$lib/agent/conversation';
+  import { rendreGroupe } from '$lib/agent/toolLabels';
   import Button from '../Button.svelte';
   import { toast } from '../Toast.svelte';
   import ApprovalCard from './ApprovalCard.svelte';
@@ -42,7 +50,6 @@
   let usage = $state<AgentSessionUsage | null>(null);
   let decouverte = $state<{
     provider_public_name: string;
-    remaining_today: number | null;
     retention_notice: string;
   } | null>(null);
   let banniereMode = $state<'decouverte' | 'gratuit'>('decouverte');
@@ -54,6 +61,7 @@
     version_warning: string;
     fournisseur_actuel: string | null;
     modele_actuel: string | null;
+    peut_choisir_modele?: boolean;
   } | null>(null);
   let consentOuvert = $state(false);
   const gratuitActif = $derived(gratuit?.actif ?? false);
@@ -340,7 +348,7 @@
       const r = await agentApi.gratuit.tester();
       if (r.ok) {
         etatTestGratuit = 'ok';
-        messageTestGratuit = `OK — ${r.modele} en ${((r.latence_ms ?? 0) / 1000).toFixed(1)} s`;
+        messageTestGratuit = `${r.modele} répond en ${((r.latence_ms ?? 0) / 1000).toFixed(1)} s`;
       } else {
         etatTestGratuit = 'ko';
         messageTestGratuit = r.detail || 'Le fournisseur gratuit ne répond pas.';
@@ -443,10 +451,15 @@
       if (defaut) cleChoisie = defaut.id;
     }
     if (sessionId && messagesRes && messagesRes.status === 'fulfilled') {
-      items = depuisMessages(
-        messagesRes.value as Awaited<ReturnType<typeof agentApi.sessions.messages>>
-      );
+      const messages = messagesRes.value as AgentMessage[];
+      const aReprendre = tourRecentInacheve(messages);
+      items = depuisMessages(messages, { clore: !aReprendre });
       chargement = false;
+      if (aReprendre) {
+        void reprendreApresCoupure('rechargement').then((retrouve) => {
+          if (!retrouve) items = cloturerSansReponse(items);
+        });
+      }
     } else if (sessionId) {
       chargement = false;
     }
@@ -484,6 +497,26 @@
   /** Délais entre deux relectures, en millisecondes. Total un peu moins d'une minute. */
   const DELAIS_REPRISE = [1000, 2000, 3000, 5000, 8000, 13000, 21000];
 
+  /** Pourquoi on relit la session : une coupure du flux, ou une conversation
+   * rouverte pendant que le serveur termine son tour. */
+  let motifReprise = $state<'coupure' | 'rechargement'>('coupure');
+
+  /** Au-delà, un tour inachevé ne reviendra plus : on le clôt au lieu d'attendre. */
+  const FRAICHEUR_TOUR_MS = 10 * 60 * 1000;
+
+  /** Le serveur termine-t-il peut-être encore le dernier tour ?
+   *
+   * Rouvrir une conversation pendant qu'il travaille affichait ses appels en
+   * échec, avec « Aucun résultat reçu », alors que les résultats arrivaient.
+   */
+  function tourRecentInacheve(messages: AgentMessage[]): boolean {
+    if (messages.length === 0 || tourTermine(messages)) return false;
+    const brut = messages[messages.length - 1].created_at;
+    // Les dates du serveur sont en UTC, sans fuseau écrit.
+    const quand = Date.parse(/[zZ]$|[+-]\d\d:\d\d$/.test(brut) ? brut : `${brut}Z`);
+    return Number.isFinite(quand) && Date.now() - quand < FRAICHEUR_TOUR_MS;
+  }
+
   /** Rattrape un tour dont le flux a été coupé.
    *
    * Le serveur termine et persiste le tour même quand le client se déconnecte
@@ -491,8 +524,11 @@
    * session. Pas de tampon en mémoire côté serveur, donc rien à perdre à un
    * redéploiement. Rend `true` si la réponse a été retrouvée.
    */
-  async function reprendreApresCoupure(): Promise<boolean> {
+  async function reprendreApresCoupure(
+    motif: 'coupure' | 'rechargement' = 'coupure'
+  ): Promise<boolean> {
     if (!sessionId) return false;
+    motifReprise = motif;
     reprise = 'encours';
     try {
       for (const delai of DELAIS_REPRISE) {
@@ -542,9 +578,15 @@
       if (textarea) textarea.style.height = 'auto';
     }
     const message = saisie.trim();
-    // Envoyer pendant une reprise ferait écraser le fil par la relecture.
     if (!message || enCours || reprise === 'encours') return;
     saisie = '';
+    await lancerTour(message);
+  }
+
+  /** Envoie un message et déroule le tour : commun à l'envoi, à « Continuer » et à « Réessayer ». */
+  async function lancerTour(message: string) {
+    // Envoyer pendant une reprise ferait écraser le fil par la relecture.
+    if (enCours || reprise === 'encours') return;
     auBas = true;
     items = [...items, { kind: 'user', text: message }];
     enCours = true;
@@ -567,7 +609,15 @@
         if (evenement.type === 'session' && !sessionId) {
           sessionId = evenement.payload.id;
           if (titreInitial && sessionId) {
-            await agentApi.sessions.update(sessionId, { title: titreInitial }).catch(() => null);
+            // L'echec etait avale : la conversation gardait le debut du message
+            // pour titre, sans que rien ne le dise.
+            await agentApi.sessions
+              .update(sessionId, { title: titreInitial })
+              .catch(() =>
+                toast.danger(
+                  "Le nom n'a pas pu être enregistré. Renommez la conversation depuis son en-tête."
+                )
+              );
           }
           onsession?.(sessionId);
         }
@@ -608,48 +658,20 @@
     }
   }
 
-  async function continuer() {
-    if (enCours || reprise === 'encours') return;
-    const message = 'continue';
-    auBas = true;
-    items = [...items, { kind: 'user', text: message }];
-    enCours = true;
-    controleur = new AbortController();
-    try {
-      for await (const evenement of agentApi.streamChat({
-        message,
-        session_id: sessionId ?? undefined,
-        ...(gratuitActif
-          ? {}
-          : {
-              provider_id: cleChoisie || undefined,
-              model_override: modeleChoisi || undefined,
-            }),
-        agent_slug: agentChoisi || undefined,
-        signal: controleur.signal,
-      })) {
-        if (evenement.type === 'discovery_active') {
-          decouverte = evenement.payload;
-          banniereMode = 'decouverte';
-        }
-        if (evenement.type === 'gratuit_actif') {
-          decouverte = evenement.payload;
-          banniereMode = 'gratuit';
-        }
-        items = appliquer(items, evenement);
-      }
-    } catch (e) {
-      await surCoupure(e);
-    } finally {
-      enCours = false;
-      controleur = null;
-      if (sessionId)
-        agentApi.sessions
-          .usage(sessionId)
-          .then((u) => (usage = u))
-          .catch(() => null);
-      void rafraichirObjectif();
-    }
+  function continuer() {
+    void lancerTour('continue');
+  }
+
+  /** Renvoie le dernier message de l'utilisateur.
+   *
+   * « Réessayer » envoyait le mot « continue ». Quand l'erreur précédait la
+   * création de la session, cela ouvrait une conversation intitulée ainsi.
+   */
+  function reessayer() {
+    const dernier = items.findLast((i) => i.kind === 'user');
+    if (!dernier || dernier.kind !== 'user') return;
+    if (items.at(-1)?.kind === 'error') items = items.slice(0, -1);
+    void lancerTour(dernier.text);
   }
 
   // Deux leviers distincts cote serveur : raccourcir de gros resultats d'outils,
@@ -703,7 +725,7 @@
         >
           Mode gratuit{gratuit?.fournisseur_actuel ? ` · ${gratuit.fournisseur_actuel}` : ''}
         </span>
-        {#if modelesGratuit.length > 0}
+        {#if modelesGratuit.length > 0 && gratuit?.peut_choisir_modele}
           <label class="flex items-center gap-1.5">
             <span class="text-xs text-ink-tertiary">Modèle</span>
             <select
@@ -927,7 +949,7 @@
                appels, chaque carte reste consultable en dessous. -->
           <div class="space-y-1 rounded-lg border border-border bg-surface-secondary/40 p-1.5">
             <p class="px-1 text-xs text-ink-tertiary">
-              {item.entrees.length}× {item.name}
+              {rendreGroupe(item.name, item.entrees.length)}
             </p>
             {#each item.entrees as tc (tc.id)}
               <ToolCard name={tc.name} args={tc.args} result={tc.result} />
@@ -975,13 +997,11 @@
           class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-700 dark:bg-amber-950"
         >
           <p class="text-sm text-amber-800 dark:text-amber-200">{item.message}</p>
-          <Button
-            variant="ghost"
-            onclick={() => {
-              continuer();
-              enCours = true;
-            }}
-            disabled={enCours}>Continuer</Button
+          <!-- `enCours` n'est plus force ici : quand le tour ne partait pas
+               (reprise en cours), il restait vrai sans flux derriere, et la
+               saisie affichait « Arreter » jusqu'au rechargement. -->
+          <Button variant="ghost" onclick={continuer} disabled={enCours || reprise === 'encours'}
+            >Continuer</Button
           >
         </div>
       {:else}
@@ -989,15 +1009,17 @@
           role="alert"
           class="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger"
         >
-          <p>{item.text}</p>
-          <button
-            type="button"
-            class="mt-1 text-xs font-medium text-danger underline hover:no-underline"
-            onclick={() => {
-              continuer();
-              enCours = true;
-            }}>Réessayer</button
-          >
+          <p class="[overflow-wrap:anywhere]">{item.text}</p>
+          <!-- Seule la derniere erreur se reessaie : une erreur ancienne n'a
+               plus de message a renvoyer qui ait un sens a cet endroit du fil. -->
+          {#if i === affichables.length - 1}
+            <button
+              type="button"
+              class="mt-1 text-xs font-medium text-danger underline hover:no-underline disabled:opacity-50"
+              disabled={enCours || reprise === 'encours'}
+              onclick={reessayer}>Réessayer</button
+            >
+          {/if}
         </div>
       {/if}
     {/each}
@@ -1028,7 +1050,11 @@
            il n'y a qu'une deconnexion. -->
       <div class="flex items-center gap-2 text-xs text-ink-tertiary" role="status">
         <LogoLoader size={20} />
-        <span>Connexion perdue. La réponse continue côté serveur, on la récupère…</span>
+        <span>
+          {motifReprise === 'rechargement'
+            ? 'L’agent termine un tour commencé plus tôt, on récupère sa réponse…'
+            : 'Connexion perdue. La réponse continue côté serveur, on la récupère…'}
+        </span>
       </div>
     {/if}
   </div>
@@ -1071,14 +1097,8 @@
       {/if}
       <span class="font-medium">{decouverte.provider_public_name}</span>.
       {decouverte.retention_notice}
-      {#if decouverte.remaining_today !== null}
-        <span class="ml-1 font-medium"
-          >{decouverte.remaining_today} message{decouverte.remaining_today !== 1 ? 's' : ''} restant{decouverte.remaining_today !==
-          1
-            ? 's'
-            : ''} aujourd'hui.</span
-        >
-      {/if}
+      <!-- Plus de « N messages restants » : le compteur ne comptait qu'un tour
+           termine page ouverte, et affichait 30 restants apres 9 envois. -->
       {#if banniereMode === 'gratuit'}
         <button type="button" class="ml-1 underline" onclick={desactiverGratuit} disabled={enCours}>
           Désactiver le mode gratuit</button

@@ -140,6 +140,7 @@ async def test_testeur_renvoie_ok_ou_echec(
 
     # Cle retablie : le ping passe par _appel_provider (meme chemin que le chat).
     monkeypatch.setattr(s, "agent_gratuit_zai_api_key", "zai-key-test")
+
     async def faux_appel(provider, messages, outils, transport, **kw):
         assert provider.model == "glm-4.7-flash"
         return ({"role": "assistant", "content": "ok"}, "stop", {})
@@ -152,9 +153,15 @@ async def test_testeur_renvoie_ok_ou_echec(
     assert lignes == []
 
 
+@pytest.fixture
+def administrateur(monkeypatch, settings_actives):
+    """L'utilisateur de test est administrateur de l'instance."""
+    monkeypatch.setattr(get_settings(), "agent_admin_emails", "autre@example.com, test@example.com")
+
+
 @pytest.mark.asyncio
 async def test_modeles_catalogue_et_bascule_manuelle(
-    client, session_token, settings_actives, lane_zai
+    client, session_token, settings_actives, lane_zai, administrateur
 ):
     """GET /modeles liste le catalogue ; PUT /modele pointe la lane primaire."""
     client.cookies.set("filum_session", session_token)
@@ -180,6 +187,27 @@ async def test_modeles_catalogue_et_bascule_manuelle(
     r = await client.put("/api/v1/agent/mode-gratuit/modele", json={"model": "glm-5.2"})
     assert r.status_code == 400
     assert r.json()["error"]["code"] == "modele_inconnu"
+
+
+@pytest.mark.asyncio
+async def test_seul_un_administrateur_change_le_modele_de_l_instance(
+    client, session_token, settings_actives, lane_zai, db_session
+):
+    """Le modele primaire sert tous les utilisateurs de l'instance.
+
+    Un compte ordinaire ne le change pas, et l'etat lui dit qu'il ne peut pas :
+    l'interface ne lui montre pas un reglage qui lui serait refuse.
+    """
+    client.cookies.set("filum_session", session_token)
+    etat = (await client.get("/api/v1/agent/mode-gratuit")).json()
+    assert etat["peut_choisir_modele"] is False
+
+    avant = lane_zai.model
+    r = await client.put("/api/v1/agent/mode-gratuit/modele", json={"model": "glm-4.5-flash"})
+    assert r.status_code == 403
+    assert r.json()["error"]["code"] == "reserve_administrateur"
+    await db_session.refresh(lane_zai)
+    assert lane_zai.model == avant
 
 
 # ---------------------------------------------------------------------------
