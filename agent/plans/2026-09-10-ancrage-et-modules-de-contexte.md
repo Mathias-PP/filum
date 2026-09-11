@@ -1319,6 +1319,40 @@ existants de `services/agent.py` (les lire avant d'écrire). Cas à couvrir :
    différentes sur la latence perçue.
 3. Comment le verdict remonte dans l'interface d'édition de fiche.
 
+### 5.10 Ce qui a été livré, et les trois écarts au plan
+
+**Le point d'accroche : `verify_excerpts`, pas `annotate_excerpt`** (réponse à
+5.9.2). `annotate_excerpt` rend la main avant que l'extrait soit persisté : il
+n'y a pas encore d'`excerpt.id` sur lequel poser un verdict. `verify_excerpts`
+tient déjà `page_text` et `complet` en main, ce qui donne deux choses gratuites :
+aucun second téléchargement, et surtout une **portée déduite de ce qui a
+réellement été lu** au lieu d'être annoncée par le modèle. Un modèle à qui l'on
+demande sur quoi il s'est prononcé répond ce qui l'arrange.
+
+**Le mode gratuit est refusé** (écart assumé à la ligne « clé du créateur, ou le
+mode gratuit » du tableau 5.1). Mesure faite avant d'écrire :
+`agent_gratuit_daily_quota_messages` vaut 30 par jour. Ce budget est un budget de
+*conversation*. Une douzaine d'extraits annotés le viderait en une passe, et le
+créateur perdrait son agent pour avoir laissé un garde-fou allumé. Sans clé, le
+juge ne tourne pas et le dit : `cle_configuree: false` dans le rapport, et aucune
+alerte de publication, parce que reprocher un retard de relecture à quelqu'un qui
+n'avait aucun moyen de la faire serait un reproche vide.
+
+**Le verdict ne pouvait pas vivre sur `SourceExcerptResponse`** (fuite que 5.1 ne
+prévoyait pas). Ce schéma est imbriqué dans `SourceResponse`, que `get_public_card`
+sert au monde entier : y ajouter les quatre champs aurait publié chaque verdict.
+D'où `FideliteVerdict` et `FideliteRapport`, schémas distincts sur
+`GET /cards/{card_id}/fidelite`, authentifié et réservé au propriétaire. La
+séparation est **structurelle** plutôt que tenue par la discipline, et
+`test_aucune_route_publique_ne_porte_le_verdict` la garde.
+
+Surface livrée : migration 060, quatre colonnes sur `source_excerpts`,
+`users.fidelity_judge_enabled`, `app/services/fidelite.py`, accroche dans les deux
+chemins de retour de `verify_excerpts`, l'endpoint ci-dessus, l'alerte de
+publication (dans la réponse de l'API et sur la page, avant le bouton puisque
+publier navigue aussitôt ailleurs), `lib/utils/fidelite-verdict.ts` et l'affichage
+dans `ExcerptWorkspace`. 14 tests unitaires backend, 7 d'intégration, 10 frontend.
+
 ---
 
 ## Vérification après chaque merge

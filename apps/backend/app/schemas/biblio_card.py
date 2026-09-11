@@ -332,3 +332,36 @@ class IncomingCitationsResponse(BaseModel):
     # NULL = jamais consulte. Le frontend doit le dire, pas inventer une date.
     seen_at: datetime | None = None
     truncated: bool = False
+
+
+class FideliteVerdict(BaseModel):
+    """Le verdict du juge sur un extrait, prive au createur.
+
+    Ce schema vit a l'ecart de `SourceExcerptResponse` a dessein : celui-ci est
+    servi par la route publique d'une fiche, et y ajouter un champ de verdict
+    l'exposerait au monde. Ici la separation est structurelle plutot que tenue
+    par la discipline, et c'est la seule forme qui ne se perd pas.
+    """
+
+    excerpt_id: UUID
+    source_id: UUID
+    #: L'une des six valeurs de `services/fidelite.VERDICTS`. NULL = jamais
+    #: juge, un etat a afficher tel quel.
+    verdict: str | None = None
+    #: `texte_integral` | `resume_seul` | `metadonnees_seules`.
+    scope: str | None = None
+    checked_at: datetime | None = None
+    note: str | None = None
+
+
+class FideliteRapport(BaseModel):
+    actif: bool
+    #: Sans cle, le juge ne tourne pas : son quota gratuit est un budget de
+    #: conversation, et le depenser ici priverait le createur de son agent.
+    cle_configuree: bool
+    #: Extraits qu'un modele a touches et que le juge n'a jamais relus. Un juge
+    #: actif mais jamais execute laisse la fiche aussi peu verifiee que s'il
+    #: etait eteint : ce compte est ce qui permet de le dire.
+    en_attente: int
+    verdicts: list[FideliteVerdict]
+    avertissement: str

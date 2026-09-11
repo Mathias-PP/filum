@@ -1,6 +1,8 @@
 import { browser } from '$app/environment';
 import { env } from '$env/dynamic/public';
 
+import type { FideliteRapport } from '$lib/utils/fidelite-verdict';
+
 import type {
   ArchiveOutcome,
   Attestation,
@@ -178,8 +180,22 @@ export const api = {
       status: string;
       published_at: string;
       public_url: string;
+      /** Ce que la publication signale sans l'empêcher, par exemple des
+       * citations annotées par un modèle que le juge de fidélité n'a jamais
+       * relues. */
+      avertissements?: { code: string; message: string }[];
     }> => {
       return request(`/cards/${cardId}/publish`, { method: 'POST' });
+    },
+
+    /**
+     * Ce que le juge de fidélité a dit des citations annotées par un modèle.
+     *
+     * Route authentifiée, sans équivalent public : un verdict est un doute de
+     * travail, pas une information à publier.
+     */
+    fidelite: async (cardId: string): Promise<FideliteRapport> => {
+      return request<FideliteRapport>(`/cards/${cardId}/fidelite`);
     },
 
     delete: async (cardId: string): Promise<void> => {

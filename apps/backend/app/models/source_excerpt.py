@@ -63,6 +63,25 @@ class SourceExcerpt(Base):
     verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     verified_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
     verified_text_source: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # La relecture ci-dessus demande « ces mots sont-ils dans la page ». Celle-ci
+    # demande autre chose : « la source dit-elle ce que l'annotation lui fait
+    # dire ». Un passage peut etre retrouve au mot pres et servir a etayer le
+    # contraire de ce qu'il affirme.
+    #
+    # Enumeration fermee a six valeurs, tenue par `services/fidelite.py`. `None`
+    # se lit « jamais juge », un etat a afficher tel quel : sans lui, un extrait
+    # jamais soumis au juge se lirait comme un extrait que le juge a valide.
+    fidelity_verdict: Mapped[str | None] = mapped_column(String(24), nullable=True)
+    # Sur quoi le verdict porte : `texte_integral`, `resume_seul` ou
+    # `metadonnees_seules`. Un verdict rendu sur un titre n'engage pas ce qu'un
+    # verdict rendu sur l'article engage, et ne pas le dire serait mentir par
+    # omission.
+    fidelity_scope: Mapped[str | None] = mapped_column(String(24), nullable=True)
+    fidelity_checked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # La phrase du juge, dans ses mots. Aucun score numerique ici ni ailleurs :
+    # un scalaire invite a la moyenne, et une moyenne de jugements categoriels
+    # ne veut rien dire.
+    fidelity_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow_naive, nullable=False)
     updated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 

@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from sqlalchemy import Boolean, DateTime, String, Text
+from sqlalchemy import true as sa_true
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -36,6 +37,13 @@ class User(Base, TimestampMixin):
     # Derniere consultation des citations entrantes. NULL = jamais consulte,
     # pas « rien de nouveau » : dans ce cas toute citation entrante est neuve.
     citations_seen_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Le juge de fidelite relit ce que l'IA a annote, sur la cle du createur.
+    # Actif par defaut, parce qu'un garde-fou qu'il faut penser a allumer ne
+    # protege personne. Il ne se declenche pourtant que si une cle est
+    # configuree : rien ne depense l'argent de quelqu'un qui n'a rien branche.
+    fidelity_judge_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=sa_true()
+    )
 
     biblio_cards: Mapped[list[BiblioCard]] = relationship(
         "BiblioCard",

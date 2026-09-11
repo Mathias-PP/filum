@@ -26,6 +26,11 @@
     SuggestedExcerpt,
   } from '$lib/api/types';
   import { CLASSES_VERDICT, lireVerdict } from '$lib/utils/excerpt-verdict';
+  import {
+    CLASSES_FIDELITE,
+    lireFidelite,
+    type FideliteVerdict,
+  } from '$lib/utils/fidelite-verdict';
   import Button from '$lib/components/Button.svelte';
   import ChunkArchitect from '$lib/components/ChunkArchitect.svelte';
 
@@ -34,6 +39,12 @@
     excerpts: SourceExcerpt[];
     /** Remonte la liste à jour ; le parent reste seul propriétaire de l'état. */
     onchange: (excerpts: SourceExcerpt[]) => void;
+    /**
+     * Verdicts du juge de fidélité, par id de citation. Le parent les charge :
+     * ils se lisent à l'échelle de la fiche, pas de la source, et les recharger
+     * ici ferait une requête par source ouverte.
+     */
+    fidelite?: Record<string, FideliteVerdict>;
   }
 
   /** Dit d'où vient la prose qui entoure le verbatim, jamais d'où vient le verbatim. */
@@ -54,7 +65,7 @@
     { id: 'decouper' as const, label: 'Découper un texte long' },
   ];
 
-  let { sourceId, excerpts, onchange }: Props = $props();
+  let { sourceId, excerpts, onchange, fidelite = {} }: Props = $props();
 
   let mode = $state<'coller' | 'decouper'>('coller');
   let texte = $state('');
@@ -356,6 +367,21 @@
                 mots que la source n'a jamais écrits.
               -->
               <p class="mt-0.5 text-xs text-ink-tertiary">{excerpt.context}</p>
+            {/if}
+            <!--
+              Le second verdict, et il ne dit pas la même chose que le premier.
+              Celui du dessus répond à « ces mots sont-ils dans la page », celui-ci
+              à « la source dit-elle ce que l'annotation lui fait dire ». Un
+              passage peut être retrouvé au mot près et servir à étayer le
+              contraire de ce qu'il affirme.
+
+              Privé au créateur : aucune page publique ne le porte.
+            -->
+            {#if fidelite[excerpt.id]}
+              {@const f = lireFidelite(fidelite[excerpt.id])}
+              <p class="mt-0.5 text-xs not-italic {CLASSES_FIDELITE[f.ton]}" title={f.detail}>
+                {f.label}
+              </p>
             {/if}
           </div>
           <button

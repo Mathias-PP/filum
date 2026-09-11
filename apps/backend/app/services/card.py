@@ -3,13 +3,14 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import get_settings
 from app.models.biblio_card import BiblioCard, CardStatus
 from app.models.source import ArchiveStatus, AuthorKind, Source
+from app.models.source_excerpt import SourceExcerpt
 from app.models.user import User
 from app.schemas.biblio_card import CardCreate, CardStats
 from app.services.card_link import link_sources_designating_card
@@ -146,6 +147,35 @@ class CardService:
         username = card.user.username
         card_slug = card.slug
 
+        # Un juge allume mais jamais execute laisse la fiche aussi peu relue que
+        # s'il etait eteint, et c'est le pire des trois etats parce que c'est
+        # celui qui rassure a tort. Publier est le moment ou le dire : apres, la
+        # fiche est lue par d'autres. L'alerte ne bloque rien, conformement a la
+        # regle posee pour ce juge : il avertit, il n'empeche pas.
+        #
+        # Compte par requete plutot qu'en parcourant `card.sources` : cette
+        # methode recoit des fiches chargees par des chemins varies, dont
+        # certains n'ont pas eager-loade les extraits, et le parcours y declenche
+        # un lazy-load hors greenlet. Meme piege que la capture de `username`
+        # juste au-dessus, paye une seconde fois.
+        fidelite_en_attente = 0
+        if card.user.fidelity_judge_enabled:
+            result = await self._db.execute(
+                select(func.count())
+                .select_from(SourceExcerpt)
+                .join(Source, SourceExcerpt.source_id == Source.id)
+                .where(
+                    Source.biblio_card_id == card.id,
+                    Source.deleted_at.is_(None),
+                    SourceExcerpt.fidelity_verdict.is_(None),
+                    or_(
+                        SourceExcerpt.annotated_by_ai.is_(True),
+                        SourceExcerpt.suggested_by_ai.is_(True),
+                    ),
+                )
+            )
+            fidelite_en_attente = result.scalar_one()
+
         now = datetime.now(UTC).replace(tzinfo=None)
         was_already_published = card.status == CardStatus.PUBLISHED
         card.published_at = now
@@ -175,12 +205,24 @@ class CardService:
 
         await self._db.commit()
 
-        return {
+        resultat = {
             "id": card.id,
             "status": card.status,
             "published_at": card.published_at,
             "public_url": f"{settings.frontend_base_url}/@{username}/{card_slug}",
         }
+        if fidelite_en_attente:
+            resultat["avertissements"] = [
+                {
+                    "code": "fidelite_en_attente",
+                    "message": (
+                        f"{fidelite_en_attente} extrait(s) annote(s) par un modele n'ont "
+                        "jamais ete relus par le juge de fidelite. La fiche est publiee : "
+                        "cet avertissement ne l'en empeche pas."
+                    ),
+                }
+            ]
+        return resultat
 
     def compute_stats(self, card: BiblioCard) -> CardStats:
         sources = card.sources or []
