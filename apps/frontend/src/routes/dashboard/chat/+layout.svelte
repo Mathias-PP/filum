@@ -3,7 +3,7 @@
   import { afterNavigate, goto } from '$app/navigation';
   import { agentApi, type AgentSession } from '$lib/api/agent';
   import { ApiError } from '$lib/api';
-  import { Button, ConfirmDialog, Skeleton, toast } from '$lib/components';
+  import { Button, ConfirmDialog, Logo, Skeleton, toast } from '$lib/components';
   import {
     conversations,
     nouvelleConversation,
@@ -92,7 +92,7 @@
      `minmax(0, 1fr)` et non `1fr` : `1fr` vaut `minmax(auto, 1fr)`, et la
      colonne s'etirait a la largeur de son contenu. Un resultat d'outil de
      3 000 caracteres portait la conversation a 21 736 px de large. -->
-<div class="grid h-[calc(100dvh-3.5rem-1px)] overflow-hidden lg:grid-cols-[16rem_minmax(0,1fr)]">
+<div class="grid h-[100dvh] overflow-hidden lg:grid-cols-[16rem_minmax(0,1fr)]">
   {#if conversations.tiroirOuvert}
     <button
       type="button"
@@ -114,6 +114,17 @@
     class:shadow-xl={conversations.tiroirOuvert}
     aria-label="Conversations"
   >
+    <!-- L'en-tete du site n'est plus affichee sur l'agent : le retour vers le
+         reste de Philum se prend ici. -->
+    <a
+      href="/dashboard"
+      class="mb-4 flex shrink-0 items-center gap-2 text-sm text-ink-secondary hover:text-ink-primary"
+      title="Retour au tableau de bord"
+    >
+      <Logo size={26} variant="color" className="block dark:hidden" />
+      <Logo size={26} variant="dark" className="hidden dark:block" />
+      <span class="font-serif">Philum</span>
+    </a>
     <div class="mb-3 flex items-center justify-between gap-2">
       <h2 class="text-xs font-medium uppercase tracking-wider text-ink-tertiary">Conversations</h2>
       <div class="flex gap-1">

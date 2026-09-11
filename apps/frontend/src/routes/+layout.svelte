@@ -76,6 +76,11 @@
       .toUpperCase();
   }
 
+  // L'agent est une application a la hauteur de l'ecran : elle prend la place
+  // de l'en-tete et du pied du site. Le retour vers le reste de Philum vit
+  // alors en haut de la liste des conversations.
+  const estAgent = $derived($page.url.pathname.startsWith('/dashboard/chat'));
+
   const navItems = [
     { href: '/', label: 'Accueil' },
     { href: '/discover', label: 'Explorer' },
@@ -92,153 +97,156 @@
 <a href="#main-content" class="skip-link">Aller au contenu principal</a>
 
 <div class="min-h-screen flex flex-col">
-  <header class="site-header glass sticky top-0 z-40" class:is-scrolled={scrolled}>
-    <nav class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-14 gap-3">
-        <div class="flex items-center gap-2">
-          <button
-            type="button"
-            class="md:hidden p-2 -ml-2 text-ink-secondary hover:text-ink-primary rounded hover:bg-surface-tertiary transition-colors"
-            aria-label={mobileNavOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
-            aria-expanded={mobileNavOpen}
-            aria-controls="mobile-nav"
-            onclick={(e) => {
-              e.stopPropagation();
-              mobileNavOpen = !mobileNavOpen;
-            }}
-          >
-            <div class="hamburger" class:open={mobileNavOpen} aria-hidden="true">
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-          </button>
-          <a href="/" class="flex items-center gap-2.5" aria-label="Philum, accueil">
-            <Logo size={42} variant="color" className="block dark:hidden" />
-            <Logo size={42} variant="dark" className="hidden dark:block" />
-            <span class="text-base font-serif font-medium text-ink-primary">Philum</span>
-          </a>
-        </div>
-
-        <div class="hidden md:flex items-center gap-1">
-          {#each navItems as item}
-            <a
-              href={item.href}
-              class="nav-link {$page.url.pathname === item.href ? 'is-active' : ''}"
-            >
-              {item.label}
-            </a>
-          {/each}
-        </div>
-
-        <div class="flex items-center gap-2">
-          <ThemeToggle />
-          {#if data.user}
-            <!-- svelte-ignore a11y_click_events_have_key_events -->
-            <!-- svelte-ignore a11y_no_static_element_interactions -->
-            <div
-              class="relative"
+  {#if !estAgent}
+    <header class="site-header glass sticky top-0 z-40" class:is-scrolled={scrolled}>
+      <nav class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-14 gap-3">
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="md:hidden p-2 -ml-2 text-ink-secondary hover:text-ink-primary rounded hover:bg-surface-tertiary transition-colors"
+              aria-label={mobileNavOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+              aria-expanded={mobileNavOpen}
+              aria-controls="mobile-nav"
               onclick={(e) => {
                 e.stopPropagation();
-                showUserMenu = !showUserMenu;
+                mobileNavOpen = !mobileNavOpen;
               }}
             >
-              {#if data.user.avatar_url}
-                <img
-                  src={data.user.avatar_url}
-                  alt={data.user.display_name ?? data.user.username}
-                  class="w-8 h-8 rounded-full cursor-pointer ring-1 ring-border hover:ring-info transition-all"
-                />
-              {:else}
-                <div
-                  class="w-8 h-8 rounded-full bg-info/10 text-info flex items-center justify-center text-xs font-medium cursor-pointer ring-1 ring-border hover:ring-info transition-all"
-                >
-                  {userInitials(data.user.display_name ?? data.user.username)}
-                </div>
-              {/if}
-              {#if showUserMenu}
-                <!-- svelte-ignore a11y_click_events_have_key_events -->
-                <!-- svelte-ignore a11y_no_static_element_interactions -->
-                <div
-                  class="glass glass-panel absolute right-0 mt-2 w-52 rounded-lg py-1 z-50 overflow-hidden"
-                  onclick={(e) => e.stopPropagation()}
-                  transition:fly={{ y: -4, duration: 120 }}
-                >
-                  <div class="px-3 py-2 border-b border-border">
-                    <p class="text-sm font-medium text-ink-primary truncate">
-                      {data.user.display_name ?? data.user.username}
-                    </p>
-                    <p class="text-xs text-ink-tertiary truncate">@{data.user.username}</p>
-                  </div>
-                  <a
-                    href="/dashboard"
-                    class="block px-3 py-2 text-sm text-ink-secondary hover:bg-surface-tertiary hover:text-ink-primary transition-colors"
-                  >
-                    Tableau de bord
-                  </a>
-                  <a
-                    href="/dashboard/chat"
-                    class="block px-3 py-2 text-sm text-ink-secondary hover:bg-surface-tertiary hover:text-ink-primary transition-colors"
-                  >
-                    Agent
-                  </a>
-                  <a
-                    href="/dashboard/workspace"
-                    class="block px-3 py-2 text-sm text-ink-secondary hover:bg-surface-tertiary hover:text-ink-primary transition-colors"
-                  >
-                    Workspace
-                  </a>
-                  <a
-                    href="/@{data.user.username}"
-                    class="block px-3 py-2 text-sm text-ink-secondary hover:bg-surface-tertiary hover:text-ink-primary transition-colors"
-                  >
-                    Mon profil public
-                  </a>
-                  <button
-                    type="button"
-                    onclick={logout}
-                    class="w-full text-left px-3 py-2 text-sm text-danger hover:bg-danger-bg transition-colors"
-                  >
-                    Se déconnecter
-                  </button>
-                </div>
-              {/if}
-            </div>
-          {:else}
-            <Button href={googleLoginUrl} variant="secondary" size="sm">Se connecter</Button>
-            <!-- Hidden on phones (< 480px) to keep both buttons on one line.
-                 Same destination (Google login) so no feature regression. -->
-            <span class="hidden xs:inline-flex">
-              <Button href={googleLoginUrl} variant="primary" size="sm">Créer une fiche</Button>
-            </span>
-          {/if}
-        </div>
-      </div>
-
-      {#if mobileNavOpen}
-        <!-- svelte-ignore a11y_click_events_have_key_events -->
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div
-          id="mobile-nav"
-          class="md:hidden border-t border-border py-2"
-          onclick={(e) => e.stopPropagation()}
-          transition:fly={{ y: -8, duration: 180 }}
-        >
-          {#each navItems as item}
-            <a
-              href={item.href}
-              onclick={closeMobileNav}
-              class="block px-4 py-2.5 text-sm font-medium rounded {$page.url.pathname === item.href
-                ? 'text-info bg-info-bg'
-                : 'text-ink-secondary hover:bg-surface-tertiary hover:text-ink-primary'}"
-            >
-              {item.label}
+              <div class="hamburger" class:open={mobileNavOpen} aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </button>
+            <a href="/" class="flex items-center gap-2.5" aria-label="Philum, accueil">
+              <Logo size={42} variant="color" className="block dark:hidden" />
+              <Logo size={42} variant="dark" className="hidden dark:block" />
+              <span class="text-base font-serif font-medium text-ink-primary">Philum</span>
             </a>
-          {/each}
+          </div>
+
+          <div class="hidden md:flex items-center gap-1">
+            {#each navItems as item}
+              <a
+                href={item.href}
+                class="nav-link {$page.url.pathname === item.href ? 'is-active' : ''}"
+              >
+                {item.label}
+              </a>
+            {/each}
+          </div>
+
+          <div class="flex items-center gap-2">
+            <ThemeToggle />
+            {#if data.user}
+              <!-- svelte-ignore a11y_click_events_have_key_events -->
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <div
+                class="relative"
+                onclick={(e) => {
+                  e.stopPropagation();
+                  showUserMenu = !showUserMenu;
+                }}
+              >
+                {#if data.user.avatar_url}
+                  <img
+                    src={data.user.avatar_url}
+                    alt={data.user.display_name ?? data.user.username}
+                    class="w-8 h-8 rounded-full cursor-pointer ring-1 ring-border hover:ring-info transition-all"
+                  />
+                {:else}
+                  <div
+                    class="w-8 h-8 rounded-full bg-info/10 text-info flex items-center justify-center text-xs font-medium cursor-pointer ring-1 ring-border hover:ring-info transition-all"
+                  >
+                    {userInitials(data.user.display_name ?? data.user.username)}
+                  </div>
+                {/if}
+                {#if showUserMenu}
+                  <!-- svelte-ignore a11y_click_events_have_key_events -->
+                  <!-- svelte-ignore a11y_no_static_element_interactions -->
+                  <div
+                    class="glass glass-panel absolute right-0 mt-2 w-52 rounded-lg py-1 z-50 overflow-hidden"
+                    onclick={(e) => e.stopPropagation()}
+                    transition:fly={{ y: -4, duration: 120 }}
+                  >
+                    <div class="px-3 py-2 border-b border-border">
+                      <p class="text-sm font-medium text-ink-primary truncate">
+                        {data.user.display_name ?? data.user.username}
+                      </p>
+                      <p class="text-xs text-ink-tertiary truncate">@{data.user.username}</p>
+                    </div>
+                    <a
+                      href="/dashboard"
+                      class="block px-3 py-2 text-sm text-ink-secondary hover:bg-surface-tertiary hover:text-ink-primary transition-colors"
+                    >
+                      Tableau de bord
+                    </a>
+                    <a
+                      href="/dashboard/chat"
+                      class="block px-3 py-2 text-sm text-ink-secondary hover:bg-surface-tertiary hover:text-ink-primary transition-colors"
+                    >
+                      Agent
+                    </a>
+                    <a
+                      href="/dashboard/workspace"
+                      class="block px-3 py-2 text-sm text-ink-secondary hover:bg-surface-tertiary hover:text-ink-primary transition-colors"
+                    >
+                      Workspace
+                    </a>
+                    <a
+                      href="/@{data.user.username}"
+                      class="block px-3 py-2 text-sm text-ink-secondary hover:bg-surface-tertiary hover:text-ink-primary transition-colors"
+                    >
+                      Mon profil public
+                    </a>
+                    <button
+                      type="button"
+                      onclick={logout}
+                      class="w-full text-left px-3 py-2 text-sm text-danger hover:bg-danger-bg transition-colors"
+                    >
+                      Se déconnecter
+                    </button>
+                  </div>
+                {/if}
+              </div>
+            {:else}
+              <Button href={googleLoginUrl} variant="secondary" size="sm">Se connecter</Button>
+              <!-- Hidden on phones (< 480px) to keep both buttons on one line.
+                 Same destination (Google login) so no feature regression. -->
+              <span class="hidden xs:inline-flex">
+                <Button href={googleLoginUrl} variant="primary" size="sm">Créer une fiche</Button>
+              </span>
+            {/if}
+          </div>
         </div>
-      {/if}
-    </nav>
-  </header>
+
+        {#if mobileNavOpen}
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div
+            id="mobile-nav"
+            class="md:hidden border-t border-border py-2"
+            onclick={(e) => e.stopPropagation()}
+            transition:fly={{ y: -8, duration: 180 }}
+          >
+            {#each navItems as item}
+              <a
+                href={item.href}
+                onclick={closeMobileNav}
+                class="block px-4 py-2.5 text-sm font-medium rounded {$page.url.pathname ===
+                item.href
+                  ? 'text-info bg-info-bg'
+                  : 'text-ink-secondary hover:bg-surface-tertiary hover:text-ink-primary'}"
+              >
+                {item.label}
+              </a>
+            {/each}
+          </div>
+        {/if}
+      </nav>
+    </header>
+  {/if}
 
   <main id="main-content" class="relative flex-1">
     <!-- Le halo est posé ici plutôt que dans chaque page : sept en-têtes de
@@ -258,7 +266,7 @@
 
   <!-- Pas de pied de page sur l'agent : c'est une application a la hauteur de
        l'ecran, et le pied faisait defiler la page entiere de 66 px sous le fil. -->
-  {#if !$page.url.pathname.startsWith('/dashboard/chat')}
+  {#if !estAgent}
     <footer class="bg-surface-secondary border-t border-border mt-auto">
       <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div class="flex flex-col md:flex-row items-center justify-between gap-3 text-sm">
