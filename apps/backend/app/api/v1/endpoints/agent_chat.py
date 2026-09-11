@@ -170,29 +170,12 @@ async def chat_agent(
     if provider is None and await agent_gratuit.est_consentant(db, current_user.id):
         lanes_gratuites = await agent_gratuit.lanes_eligibles(db)
         lane_active = lanes_gratuites[0] if lanes_gratuites else None
-        try:
-            # Le restant n'est plus envoye a l'interface. Le compteur ne compte
-            # qu'un tour termine page ouverte : il affichait 30 messages restants
-            # apres 9 envoyes (mesure en production, 2026-08-30). Un chiffre
-            # faux ne s'affiche pas.
-            await agent_gratuit.verifier_quota_utilisateur(db, current_user.id)
-        except agent_gratuit.ErreurQuotaGratuit as exc:
-            quota_msg = (
-                f"Vous avez atteint la limite de {exc.quota} messages par jour en mode "
-                "gratuit. Reessayez demain ou connectez votre propre cle pour continuer "
-                "sans limite."
-            )
-            erreur = {"type": "error", "payload": {"message": quota_msg}}
-            return StreamingResponse(
-                iter(
-                    [
-                        _sse({"type": "session", "payload": {"id": str(session.id)}}),
-                        _sse(erreur),
-                    ]
-                ),
-                media_type="text/event-stream",
-                headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-            )
+        # Plus de plafond par utilisateur en mode gratuit. Celui de 30 messages
+        # par jour ne comptait qu'un tour termine page ouverte : 9 messages
+        # envoyes le 2026-08-30, 1 seul decompte. Il ne protegeait donc rien, et
+        # le nombre choisi n'avait aucune mesure derriere lui. Ce qui protege
+        # vraiment le fournisseur reste en place : les plafonds par minute et
+        # par jour de chaque lane, et le cooldown apres un 429.
         if lane_active is not None:
             provider = lane_active.provider
             mode_gratuit = lane_active
@@ -399,10 +382,7 @@ async def chat_agent(
                 current_user.id, session.id, messages[depart:], "".join(reponse_finale), usage
             )
             persiste = True
-            if mode_gratuit is not None:
-                async with async_session_maker() as db_dedie:
-                    await agent_gratuit.consommer_message_utilisateur(db_dedie, current_user.id)
-            elif mode_decouverte:
+            if mode_decouverte:
                 async with async_session_maker() as db_dedie:
                     await consommer_message(db_dedie, current_user.id)
         finally:

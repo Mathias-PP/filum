@@ -244,9 +244,10 @@ async def test_chat_mode_gratuit_emet_la_banniere(
     assert events[-2]["payload"]["delta"] == "Reponse gratuite."
     assert types[-1] == "done"
 
-    # Le tour a consomme la lane ET le quota utilisateur.
-    reste = await agent_gratuit.verifier_quota_utilisateur(db_session, test_user.id)
-    assert reste == get_settings().agent_gratuit_daily_quota_messages - 1
+    # Le tour a consomme la lane. Aucun plafond par utilisateur : il ne comptait
+    # qu'un tour termine page ouverte, et ne bornait donc rien.
+    usage = (await db_session.execute(select(AgentLaneUsage))).scalars().all()
+    assert [u.requests_used for u in usage] == [1]
 
 
 @pytest.mark.asyncio

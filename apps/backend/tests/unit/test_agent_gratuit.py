@@ -299,21 +299,6 @@ class TestQuotas:
         ).scalar_one()
         assert row.requests_used == 2 and row.date == date.today()
 
-    async def test_quota_utilisateur_bloque_a_epuisement(self, db_session, test_user, monkeypatch):
-        s = get_settings()
-        monkeypatch.setattr(s, "agent_gratuit_daily_quota_messages", 2)
-        await agent_gratuit.consommer_message_utilisateur(db_session, test_user.id)
-        await agent_gratuit.consommer_message_utilisateur(db_session, test_user.id)
-        with pytest.raises(agent_gratuit.ErreurQuotaGratuit):
-            await agent_gratuit.verifier_quota_utilisateur(db_session, test_user.id)
-
-    async def test_restant_decroit(self, db_session, test_user, monkeypatch):
-        s = get_settings()
-        monkeypatch.setattr(s, "agent_gratuit_daily_quota_messages", 5)
-        assert await agent_gratuit.verifier_quota_utilisateur(db_session, test_user.id) == 5
-        await agent_gratuit.consommer_message_utilisateur(db_session, test_user.id)
-        assert await agent_gratuit.verifier_quota_utilisateur(db_session, test_user.id) == 4
-
 
 # ---------------------------------------------------------------------------
 # Testeur de lane (diagnostic)
@@ -375,7 +360,6 @@ class TestTesterLane:
     async def test_nincremente_pas_les_compteurs(
         self, db_session, lane_zai, settings_actives, monkeypatch
     ):
-        from datetime import date
 
         from sqlalchemy import select
 

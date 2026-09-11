@@ -11,9 +11,10 @@ en écartant celles dont le quota journalier est épuisé ou qui sont en
 cooldown (429 récent). Les clés vivent exclusivement dans les settings ;
 une lane sans clé configurée est invisible.
 
-Réutilise ``AgentDiscoveryQuota`` comme compteur quotidien par utilisateur :
-même forme (creator_id + date), même sémantique « budget plateforme » —
-le mode gratuit a simplement son propre plafond dans les settings.
+Aucun plafond par utilisateur ici : celui qui existait ne comptait qu'un tour
+terminé page ouverte, et laissait donc passer la plupart des messages. Ce qui
+borne l'usage est le plafond de chaque lane, par minute et par jour, plus le
+cooldown après un refus du fournisseur.
 """
 
 from __future__ import annotations
@@ -23,11 +24,9 @@ from datetime import UTC, date, datetime, timedelta
 from typing import NamedTuple
 
 from sqlalchemy import select, update
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
-from app.models.agent_discovery_quota import AgentDiscoveryQuota
 from app.models.agent_lane import AgentGratuitConsent, AgentLane, AgentLaneUsage
 from app.models.agent_provider import AgentProvider
 from app.services import agent_repli
@@ -63,14 +62,6 @@ def _maintenant() -> datetime:
     defaut ne se voit qu'en production, jamais dans les tests.
     """
     return datetime.now(UTC).replace(tzinfo=None)
-
-
-class ErreurQuotaGratuit(Exception):  # noqa: N818
-    """Quota quotidien gratuit de l'utilisateur epuise."""
-
-    def __init__(self, quota: int) -> None:
-        self.quota = quota
-        super().__init__(f"Quota gratuit epuise ({quota} messages/jour).")
 
 
 class LaneActive(NamedTuple):
@@ -403,54 +394,6 @@ async def signaler_echec(
             .where(AgentLaneUsage.id == usage.id)
             .values(cooldown_until=echeance)
         )
-    await db.commit()
-
-
-# ---------------------------------------------------------------------------
-# Quota quotidien par utilisateur (compteur plateforme partage)
-# ---------------------------------------------------------------------------
-
-
-async def verifier_quota_utilisateur(
-    db: AsyncSession, creator_id: uuid.UUID, settings: Settings | None = None
-) -> int:
-    """Rend le nombre de messages restants aujourd'hui. Leve ErreurQuotaGratuit."""
-    s = settings or get_settings()
-    quota = s.agent_gratuit_daily_quota_messages
-    row = (
-        await db.execute(
-            select(AgentDiscoveryQuota).where(
-                AgentDiscoveryQuota.creator_id == str(creator_id),
-                AgentDiscoveryQuota.date == date.today(),
-            )
-        )
-    ).scalar_one_or_none()
-    used = row.messages_used if row else 0
-    remaining = max(0, quota - used)
-    if remaining <= 0:
-        raise ErreurQuotaGratuit(quota)
-    return remaining
-
-
-async def consommer_message_utilisateur(db: AsyncSession, creator_id: uuid.UUID) -> None:
-    """Incrément atomique du compteur quotidien utilisateur.
-
-    UPSERT PostgreSQL : l'insert et l'incrément sont une seule instruction,
-    sans fenêtre entre un SELECT et un UPDATE. Évite la race TOCTOU où deux
-    requêtes concurrentes lisaient le même compteur et en écrasaient l'un
-    l'autre.
-    """
-    today = date.today()
-    creator_str = str(creator_id)
-    stmt = (
-        pg_insert(AgentDiscoveryQuota)
-        .values(id=uuid.uuid4(), creator_id=creator_str, date=today, messages_used=1)
-        .on_conflict_do_update(
-            constraint="uq_discovery_quota_creator_date",
-            set_={"messages_used": AgentDiscoveryQuota.messages_used + 1},
-        )
-    )
-    await db.execute(stmt)
     await db.commit()
 
 

@@ -120,7 +120,6 @@ class Settings(BaseSettings):
     # pour entrainer leurs modeles. Les cles vivent dans l'environnement, jamais
     # en base ; une lane dont la cle est absente est ignoree par le routeur.
     agent_gratuit_enabled: bool = False
-    agent_gratuit_daily_quota_messages: int = 30
     agent_gratuit_zai_api_key: str = ""
     # Adresses e-mail autorisees a regler l'instance depuis l'interface, separees
     # par des virgules. Une seule chose en depend aujourd'hui : le modele primaire
