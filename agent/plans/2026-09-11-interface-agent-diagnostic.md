@@ -246,3 +246,31 @@ n'ont pas d'objet vérifié à montrer.
 
 La PR 1 corrige ce qui est faux aujourd'hui et ne change pas l'apparence. Les
 PR 2 à 5 la supposent mergée.
+
+---
+
+## 7. Avancement
+
+**PR 1, #641** : mergée et déployée le 2026-09-11. **Validée en production** sur
+la conversation « supprime les doublons » : barre latérale présente et
+conversation active surlignée, aucun nom technique, groupes au pluriel
+(« Supprime 11 extraits »), aucun débordement horizontal.
+
+Piège payé au déploiement : la configuration est sensible à la casse
+(`case_sensitive=True` dans `core/config.py`). Posée en `AGENT_ADMIN_EMAILS`, la
+variable arrivait dans le conteneur mais le champ restait vide, et le
+propriétaire perdait le choix du modèle. Elle s'écrit `agent_admin_emails`,
+comme les autres lignes du `.env`.
+
+**PR 2, #642** (place à l'écran) et **PR 3, #643** (lecture des actions) :
+ouvertes, empilées.
+
+**PR 4** (confort) : deux écarts au diagnostic, assumés.
+
+- **« Modifier et renvoyer » devient « Reprendre ».** Le message revient dans la
+  zone de saisie et part comme un nouveau message. L'historique n'est pas
+  réécrit : l'agent a peut-être écrit en base pendant ce tour, et un historique
+  tronqué le lui cacherait.
+- **« Régénérer » n'est pas fait.** Rejouer un tour relancerait ses écritures :
+  une source ajoutée le serait deux fois. « Réessayer », après une erreur, reste
+  la seule relance, et seulement pour un tour qui a échoué.

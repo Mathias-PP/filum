@@ -12,6 +12,10 @@
   let titre = $state('');
   let edition = $state(false);
   let brouillon = $state('');
+  // Un renommage fait depuis la liste doit se voir ici aussi.
+  const titreAffiche = $derived(
+    conversations.liste.find((s) => s.id === sessionId)?.title ?? titre
+  );
 
   $effect(() => {
     conversations.active = sessionId ?? null;
@@ -25,7 +29,7 @@
   });
 
   function ouvrirEdition() {
-    brouillon = titre;
+    brouillon = titreAffiche;
     edition = true;
   }
 
@@ -47,7 +51,7 @@
 </script>
 
 <svelte:head>
-  <title>{titre || 'Agent'} · Philum</title>
+  <title>{titreAffiche || 'Agent'} · Philum</title>
 </svelte:head>
 
 <div class="flex h-full min-h-0 flex-col">
@@ -83,7 +87,7 @@
         title="Renommer"
         onclick={ouvrirEdition}
       >
-        {titre}
+        {titreAffiche}
       </button>
       <button
         type="button"
