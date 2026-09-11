@@ -50,11 +50,60 @@
     if (poses === 0 && refuses === 0) return null;
     return { poses, refuses };
   });
+
+  // Noms lisibles des arguments les plus courants. Le JSON brut reste
+  // accessible plus bas : ce tableau sert a lire, pas a deboguer.
+  const CLES: Record<string, string> = {
+    url: 'Adresse',
+    title: 'Titre',
+    text: 'Texte',
+    query: 'Recherche',
+    q: 'Recherche',
+    slug: 'Fiche',
+    card_slug: 'Fiche',
+    card_id: 'Fiche',
+    source_id: 'Source',
+    excerpt_id: 'Extrait',
+    context: 'Mise en situation',
+    annotation: 'Note du créateur',
+    stance: 'Relation à la source',
+    category: 'Catégorie',
+    author_kind: 'Type d’auteur',
+    authors: 'Auteurs',
+    content_url: 'Contenu',
+    path: 'Fichier',
+    content: 'Contenu du fichier',
+    visibility: 'Visibilité',
+    provided_text: 'Texte fourni',
+  };
+
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const LONGUEUR_APERCU = 280;
+
+  function apercu(valeur: unknown): string {
+    if (valeur === null || valeur === undefined || valeur === '') return '(vide)';
+    if (typeof valeur === 'boolean') return valeur ? 'oui' : 'non';
+    if (typeof valeur === 'number') return String(valeur);
+    if (typeof valeur === 'string') {
+      if (UUID_RE.test(valeur)) return `#${valeur.slice(0, 8)}`;
+      if (valeur.length <= LONGUEUR_APERCU) return valeur;
+      return `${valeur.slice(0, LONGUEUR_APERCU)}… (${valeur.length} caractères)`;
+    }
+    if (Array.isArray(valeur)) return `${valeur.length} élément${valeur.length > 1 ? 's' : ''}`;
+    const brut = JSON.stringify(valeur);
+    return brut.length <= LONGUEUR_APERCU ? brut : `${brut.slice(0, LONGUEUR_APERCU)}…`;
+  }
+
+  const arguments_ = $derived(
+    Object.entries(args).map(([cle, valeur]) => ({
+      cle: CLES[cle] ?? cle.replace(/_/g, ' '),
+      valeur: apercu(valeur),
+    }))
+  );
 </script>
 
 <!-- `min-w-0` et coupure des mots longs a chaque niveau : une URL, un texte de
-     page ou une ligne JSON de 3 000 caracteres ne doivent jamais elargir le fil.
-     Le JSON revient a la ligne plutot que de defiler sur 23 000 px. -->
+     page ou une ligne JSON de 3 000 caracteres ne doivent jamais elargir le fil. -->
 <div class="min-w-0 rounded-lg border border-border bg-surface-secondary px-3 py-2 text-sm">
   <button
     type="button"
@@ -98,21 +147,34 @@
     </p>
   {/if}
   {#if ouvert}
-    <p class="mt-2 text-xs text-ink-tertiary">Demande</p>
-    <pre
-      class="mt-1 max-h-[40vh] overflow-y-auto whitespace-pre-wrap rounded bg-surface-tertiary p-2 text-xs text-ink-secondary [overflow-wrap:anywhere]">{JSON.stringify(
-        args,
-        null,
-        2
-      )}</pre>
-    {#if result}
-      <p class="mt-2 text-xs text-ink-tertiary">Réponse</p>
+    {#if arguments_.length > 0}
+      <dl class="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-xs">
+        {#each arguments_ as a, rang (rang)}
+          <dt class="text-ink-tertiary">{a.cle}</dt>
+          <dd class="text-ink-secondary [overflow-wrap:anywhere]">{a.valeur}</dd>
+        {/each}
+      </dl>
+    {:else}
+      <p class="mt-2 text-xs text-ink-tertiary">Sans argument.</p>
+    {/if}
+    <details class="mt-2 text-xs">
+      <summary class="cursor-pointer text-ink-tertiary hover:text-ink-secondary">
+        Demande et réponse brutes
+      </summary>
       <pre
-        class="mt-1 max-h-[40vh] overflow-y-auto whitespace-pre-wrap rounded bg-surface-tertiary p-2 text-xs text-ink-secondary [overflow-wrap:anywhere]">{JSON.stringify(
-          result,
+        class="mt-1 max-h-[40vh] overflow-y-auto whitespace-pre-wrap rounded bg-surface-tertiary p-2 text-ink-secondary [overflow-wrap:anywhere]">{JSON.stringify(
+          args,
           null,
           2
         )}</pre>
-    {/if}
+      {#if result}
+        <pre
+          class="mt-1 max-h-[40vh] overflow-y-auto whitespace-pre-wrap rounded bg-surface-tertiary p-2 text-ink-secondary [overflow-wrap:anywhere]">{JSON.stringify(
+            result,
+            null,
+            2
+          )}</pre>
+      {/if}
+    </details>
   {/if}
 </div>
