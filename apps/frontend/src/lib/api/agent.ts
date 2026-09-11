@@ -147,7 +147,6 @@ export type AgentEvent =
       type: 'discovery_active';
       payload: {
         provider_public_name: string;
-        remaining_today: number | null;
         retention_notice: string;
       };
     }
@@ -157,7 +156,6 @@ export type AgentEvent =
       type: 'gratuit_actif';
       payload: {
         provider_public_name: string;
-        remaining_today: number | null;
         retention_notice: string;
       };
     }
@@ -343,6 +341,8 @@ export const agentApi = {
         fournisseur_actuel: string | null;
         /** Modèle exact qui servirait le prochain tour (affichage/diagnostic). */
         modele_actuel: string | null;
+        /** Le compte peut-il changer le modèle gratuit, commun à toute l'instance ? */
+        peut_choisir_modele: boolean;
       }>('/agent/mode-gratuit'),
     activer: (version: string) =>
       request<{ actif: boolean; version_warning: string }>('/agent/mode-gratuit', {

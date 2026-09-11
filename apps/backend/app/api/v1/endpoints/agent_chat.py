@@ -166,13 +166,16 @@ async def chat_agent(
             )
     mode_gratuit: agent_gratuit.LaneActive | None = None
     mode_decouverte = False
-    remaining_today: int | None = None
     lanes_gratuites: list[agent_gratuit.LaneActive] = []
     if provider is None and await agent_gratuit.est_consentant(db, current_user.id):
         lanes_gratuites = await agent_gratuit.lanes_eligibles(db)
         lane_active = lanes_gratuites[0] if lanes_gratuites else None
         try:
-            remaining_today = await agent_gratuit.verifier_quota_utilisateur(db, current_user.id)
+            # Le restant n'est plus envoye a l'interface. Le compteur ne compte
+            # qu'un tour termine page ouverte : il affichait 30 messages restants
+            # apres 9 envoyes (mesure en production, 2026-08-30). Un chiffre
+            # faux ne s'affiche pas.
+            await agent_gratuit.verifier_quota_utilisateur(db, current_user.id)
         except agent_gratuit.ErreurQuotaGratuit as exc:
             quota_msg = (
                 f"Vous avez atteint la limite de {exc.quota} messages par jour en mode "
@@ -201,7 +204,7 @@ async def chat_agent(
     if provider is None:
         if discovery_est_actif():
             try:
-                remaining_today = await verifier_quota(db, current_user.id)
+                await verifier_quota(db, current_user.id)
             except ErreurQuota as exc:
                 quota_msg = (
                     f"Vous avez atteint la limite de {exc.quota} messages par jour "
@@ -361,7 +364,6 @@ async def chat_agent(
                     "type": "discovery_active",
                     "payload": {
                         "provider_public_name": nom_public_provider(),
-                        "remaining_today": remaining_today,
                         "retention_notice": "Ce provider peut utiliser vos echanges pour ameliorer son modele.",
                     },
                 }
@@ -372,7 +374,6 @@ async def chat_agent(
                     "type": "gratuit_actif",
                     "payload": {
                         "provider_public_name": mode_gratuit.lane.label_public,
-                        "remaining_today": remaining_today,
                         "retention_notice": (
                             "Ce fournisseur gratuit peut conserver vos echanges et les "
                             "utiliser pour entrainer ses modeles."

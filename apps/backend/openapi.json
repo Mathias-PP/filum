@@ -333,7 +333,7 @@
           "agent"
         ],
         "summary": "Definir Modele Gratuit",
-        "description": "Choisit le modele primaire du mode gratuit (toute l'instance).\n\nLe secours n'est pas touche : la rotation s'en sert automatiquement\nquand le primaire repond 429/surcharge.",
+        "description": "Choisit le modele primaire du mode gratuit (toute l'instance).\n\nLe secours n'est pas touche : la rotation s'en sert automatiquement\nquand le primaire repond 429/surcharge. Reserve aux adresses de\n`agent_admin_emails`, puisque le choix vaut pour tous les comptes.",
         "operationId": "definir_modele_gratuit_api_v1_agent_mode_gratuit_modele_put",
         "requestBody": {
           "content": {

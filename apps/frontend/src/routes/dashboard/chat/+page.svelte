@@ -1,17 +1,17 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { agentApi, type AgentSession, type AgentProvider } from '$lib/api/agent';
+  import { replaceState } from '$app/navigation';
+  import { agentApi, type AgentProvider } from '$lib/api/agent';
   import { ApiError } from '$lib/api';
-  import { Button, ConfirmDialog, Skeleton, toast } from '$lib/components';
+  import { toast } from '$lib/components';
   import ChatPanel from '$lib/components/chat/ChatPanel.svelte';
+  import { conversations, rafraichirConversations } from '$lib/agent/sessions.svelte';
 
-  let sessions = $state<AgentSession[]>([]);
-  let chargement = $state(true);
-  let echecChargement = $state(false);
   let providers = $state<AgentProvider[]>([]);
-  let confirmOpen = $state(false);
-  let cible = $state<AgentSession | null>(null);
   let titreNouveau = $state('');
+  // Session ouverte par le premier message. A partir de la, le champ de nom
+  // renomme : avant, un nom saisi apres le premier message restait sans effet.
+  let sessionCreee = $state<string | null>(null);
 
   // Le mode gratuit n'existe pas sur toutes les instances : sans lane
   // configuree, promettre « activez-le ci-dessous » designerait un bouton
@@ -22,19 +22,7 @@
   const defaut = $derived(providers.find((p) => p.is_default) ?? null);
 
   onMount(async () => {
-    // Un echec de chargement rendait `[]`, donc « Aucune conversation pour
-    // l'instant. » : l'utilisateur lisait que son historique avait disparu
-    // alors que seule la requete avait echoue. Les deux etats sont separes.
-    const [s, p] = await Promise.all([
-      agentApi.sessions.list().catch(() => {
-        echecChargement = true;
-        return [];
-      }),
-      agentApi.providers.list().catch(() => []),
-    ]);
-    sessions = s;
-    providers = p;
-    chargement = false;
+    providers = await agentApi.providers.list().catch(() => []);
     agentApi.gratuit
       .etat()
       .then((v) => {
@@ -44,16 +32,35 @@
       .catch(() => null);
   });
 
-  async function supprimer() {
-    if (!cible) return;
-    const session = cible;
-    cible = null;
+  // Chaque « Nouvelle » repart d'une page vierge, y compris depuis cette page.
+  $effect(() => {
+    void conversations.generation;
+    titreNouveau = '';
+    sessionCreee = null;
+    conversations.active = null;
+  });
+
+  async function renommer() {
+    const titre = titreNouveau.trim();
+    // Avant le premier message, le nom part avec lui : rien a enregistrer.
+    if (!sessionCreee || !titre) return;
     try {
-      await agentApi.sessions.remove(session.id);
-      sessions = sessions.filter((s) => s.id !== session.id);
+      await agentApi.sessions.update(sessionCreee, { title: titre });
+      await rafraichirConversations();
     } catch (e) {
-      toast.danger(e instanceof ApiError ? e.message : 'Suppression impossible.');
+      toast.danger(e instanceof ApiError ? e.message : 'Renommage impossible.');
     }
+  }
+
+  function surSession(id: string) {
+    sessionCreee = id;
+    conversations.active = id;
+    // `replaceState` de SvelteKit et non celui du navigateur : le routeur
+    // ignorait l'adresse reecrite a la main, et « Nouvelle » ne rechargeait
+    // plus rien. Pas de `goto` non plus : il demonterait le panneau et
+    // couperait le flux du premier message.
+    replaceState(`/dashboard/chat/${id}`, {});
+    void rafraichirConversations();
   }
 </script>
 
@@ -61,124 +68,54 @@
   <title>Agent · Philum</title>
 </svelte:head>
 
-<!-- Bornee a la fenetre sous `lg` : la zone de saisie du fil vivait sous la ligne
-     de flottaison, il fallait faire defiler la page pour ecrire. Chaque colonne
-     defile pour son compte. -->
-<div
-  class="max-w-5xl mx-auto grid gap-8 px-4 sm:px-6 lg:px-8 py-8 lg:h-[calc(100dvh-4rem)] lg:grid-cols-[16rem_1fr]"
->
-  <aside class="flex flex-col lg:min-h-0">
-    <div class="flex items-center justify-between gap-2 mb-3">
-      <h2 class="text-xs font-medium uppercase tracking-wider text-ink-tertiary">Conversations</h2>
-      <div class="flex gap-1">
-        <Button size="sm" variant="ghost" href="/dashboard/chat">Nouvelle</Button>
-        <Button size="sm" variant="ghost" href="/dashboard/agents">Clés</Button>
-      </div>
-    </div>
-    {#if chargement}
-      <div class="space-y-2">
-        <Skeleton height="1.75rem" />
-        <Skeleton height="1.75rem" />
-        <Skeleton height="1.75rem" />
-      </div>
-    {:else if echecChargement}
-      <p class="text-sm text-danger">
-        Vos conversations n'ont pas pu être chargées. Rechargez la page : rien n'est perdu.
-      </p>
-    {:else if sessions.length === 0}
-      <p class="text-sm text-ink-tertiary">Aucune conversation pour l'instant.</p>
-    {:else}
-      <!-- La liste defile pour son compte : sans borne, chaque conversation
-           gardee allongeait la page et repoussait le fil de discussion. -->
-      <ul class="space-y-1 lg:min-h-0 lg:flex-1 lg:overflow-x-hidden lg:overflow-y-auto">
-        {#each sessions as session (session.id)}
-          <li class="flex items-center gap-1">
-            <a
-              href="/dashboard/chat/{session.id}"
-              class="flex-1 truncate rounded px-2 py-1.5 text-sm text-ink-secondary hover:bg-surface-tertiary hover:text-ink-primary"
-            >
-              {session.title}
-            </a>
-            <!-- `action-icon` est scopee au `<style>` du tableau de bord : la
-                 classe n'existe pas ici et la croix sortait sans style. -->
-            <button
-              type="button"
-              class="rounded px-2 py-1 leading-none text-ink-tertiary transition-colors hover:bg-danger-bg hover:text-danger"
-              title="Supprimer"
-              onclick={() => {
-                cible = session;
-                confirmOpen = true;
-              }}
-            >
-              ×
-            </button>
-          </li>
-        {/each}
-      </ul>
-    {/if}
-  </aside>
-
-  <section class="flex min-h-[60vh] flex-col lg:min-h-0">
-    <h1 class="font-serif text-3xl text-ink-primary mb-1">Agent</h1>
-    {#if defaut && !gratuitActifIci}
-      <p class="text-sm text-ink-secondary mb-4">
-        Répondra avec <span class="font-mono">{defaut.model}</span> ({defaut.display_name}), votre
-        clé, votre facture.
-        <a href="/dashboard/agents" class="text-info hover:underline">Changer</a>
-      </p>
-    {:else if gratuitActifIci}
-      <!-- Le panneau gere la lane : ne pas suggerer en parallele que la cle
-           par defaut sert encore les messages. -->
-      <p class="text-sm text-ink-secondary mb-4">
-        Répondra via le mode gratuit (fournisseur serveur Philum). Voir la bannière dans le fil de
-        discussion.
-      </p>
-    {:else}
-      <!-- Sans clé, le chat reste utilisable : le serveur bascule sur le mode
-           gratuit ou le mode découverte. Masquer le chat ici enfermait le
-           nouvel arrivant, puisque le bouton d'activation du mode gratuit vit
-           dans le chat lui-même. -->
-      <p class="text-sm text-ink-secondary mb-4">
-        {#if gratuitDisponible}
-          Aucune clé par défaut. Essayez sans clé avec le bouton « Mode gratuit » ci-dessous, ou
-          <a href="/dashboard/agents" class="text-info hover:underline">enregistrez la vôtre</a>
-          pour choisir votre modèle et lever les quotas.
-        {:else}
-          Aucune clé par défaut.
-          <a href="/dashboard/agents" class="text-info hover:underline">Enregistrez-en une</a>
-          pour choisir votre modèle et votre fournisseur.
-        {/if}
-      </p>
-    {/if}
-    <div class="mb-3 shrink-0">
-      <input
-        bind:value={titreNouveau}
-        class="w-full rounded border border-border bg-surface-primary px-3 py-2 text-sm"
-        maxlength="200"
-        placeholder="Nommer la conversation (optionnel)"
-      />
-    </div>
-    <div class="min-h-0 flex-1">
-      <ChatPanel
-        titreInitial={titreNouveau}
-        onsession={(id) => {
-          // On met à jour l'URL sans naviguer : goto() démonte ChatPanel et
-          // coupe le flux SSE en cours, ce qui fait "tomber dans le vide" le
-          // premier message d'une nouvelle conversation. history.replaceState()
-          // change l'URL sans toucher au composant.
-          history.replaceState(history.state, '', `/dashboard/chat/${id}`);
-        }}
-      />
-    </div>
-  </section>
+<div class="flex h-full min-h-0 flex-col">
+  <h1 class="font-serif text-3xl text-ink-primary mb-1">Agent</h1>
+  {#if defaut && !gratuitActifIci}
+    <p class="text-sm text-ink-secondary mb-4">
+      Répondra avec <span class="font-mono">{defaut.model}</span> ({defaut.display_name}), votre
+      clé, votre facture.
+      <a href="/dashboard/agents" class="text-info hover:underline">Changer</a>
+    </p>
+  {:else if gratuitActifIci}
+    <!-- Le panneau gere la lane : ne pas suggerer en parallele que la cle
+         par defaut sert encore les messages. -->
+    <p class="text-sm text-ink-secondary mb-4">
+      Répondra via le mode gratuit (fournisseur serveur Philum). Voir la bannière dans le fil de
+      discussion.
+    </p>
+  {:else}
+    <!-- Sans clé, le chat reste utilisable : le serveur bascule sur le mode
+         gratuit ou le mode découverte. Masquer le chat ici enfermait le
+         nouvel arrivant, puisque le bouton d'activation du mode gratuit vit
+         dans le chat lui-même. -->
+    <p class="text-sm text-ink-secondary mb-4">
+      {#if gratuitDisponible}
+        Aucune clé par défaut. Essayez sans clé avec le bouton « Mode gratuit » ci-dessous, ou
+        <a href="/dashboard/agents" class="text-info hover:underline">enregistrez la vôtre</a>
+        pour choisir votre modèle et lever les quotas.
+      {:else}
+        Aucune clé par défaut.
+        <a href="/dashboard/agents" class="text-info hover:underline">Enregistrez-en une</a>
+        pour choisir votre modèle et votre fournisseur.
+      {/if}
+    </p>
+  {/if}
+  <div class="mb-3 shrink-0">
+    <input
+      bind:value={titreNouveau}
+      class="w-full rounded border border-border bg-surface-primary px-3 py-2 text-sm"
+      maxlength="200"
+      aria-label="Nom de la conversation"
+      placeholder={sessionCreee ? 'Renommer la conversation' : 'Nommer la conversation (optionnel)'}
+      onchange={renommer}
+      onkeydown={(e) => {
+        if (e.key === 'Enter') e.currentTarget.blur();
+      }}
+    />
+  </div>
+  <div class="min-h-0 flex-1">
+    {#key conversations.generation}
+      <ChatPanel titreInitial={titreNouveau} onsession={surSession} />
+    {/key}
+  </div>
 </div>
-
-<ConfirmDialog
-  bind:open={confirmOpen}
-  title="Supprimer cette conversation ?"
-  message={cible ? `« ${cible.title} » sortira de la liste.` : ''}
-  confirmLabel="Supprimer"
-  variant="danger"
-  onConfirm={supprimer}
-  onCancel={() => (cible = null)}
-/>
