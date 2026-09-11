@@ -57,7 +57,7 @@ complete dans \`citation[]\`.
 - Recherche JSON: \`GET ${o}/api/v1/discover?q=<termes>\` — sans authentification
 - Facettes: \`GET ${o}/api/v1/discover/facets\`
 - Fiche: \`GET ${o}/api/v1/@<createur>/<fiche>\`
-- Bibliographie exportable: \`GET ${o}/api/v1/@<createur>/<fiche>/export?format=<json|philum|md|csv|xlsx|docx|bibtex|ris|csl|apa|mla|chicago>\`
+- Bibliographie exportable: \`GET ${o}/api/v1/@<createur>/<fiche>/export?format=<json|philum|md|pdf|csv|xlsx|docx|bibtex|ris|csl|apa|mla|chicago>\`
   — \`&include=\` choisit ce que l'export emporte (extraits, fiabilite, annotations,
   archives), \`&cited=\`/\`&citing=\` y ajoutent les fiches voisines par degre. Aucun
   format ne perd d'information qu'il pourrait porter : le tableur rend les extraits

@@ -765,6 +765,11 @@ _EXPORT_FORMATS = {
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "docx",
     ),
+    # Le format qu'on imprime et qu'on joint a un courriel, donc celui qui
+    # circulera le plus loin de Philum : les references y restent cliquables,
+    # et la retractation y est dite, parce que personne n'ouvrira la fiche en
+    # ligne pour verifier.
+    "pdf": ("application/pdf", "pdf"),
 }
 
 #: Alias historiques : chaque style de citation etait un format a part. On
@@ -784,7 +789,7 @@ async def export_public_card(
         description=(
             "Style de citation. Valeurs : apa, harvard, mla, chicago, vancouver, "
             "ieee. Applique a TOUS les formats : txt rend une bibliographie "
-            "entiere dans le style ; markdown, docx, csv, xlsx, json, philum "
+            "entiere dans le style ; markdown, pdf, docx, csv, xlsx, json, philum "
             "rendent une reference formatee par source (ligne, colonne ou "
             "champ) ; bibtex, ris, csl portent la reference formatee dans un "
             "champ note (`annote`, `N1`, `note`), lisible sans casser la "
@@ -898,6 +903,10 @@ async def export_public_card(
         content = export_service.export_bibliography(card, public_url, style_effectif)
     elif format == "docx":
         content = export_service.export_docx(card, public_url, scope, neighbourhood, style_effectif)
+    elif format == "pdf":
+        from app.services.export_pdf import export_pdf
+
+        content = export_pdf(card, public_url, scope, neighbourhood, style_effectif)
     else:
         content = export_service.export_markdown(
             card, public_url, scope, neighbourhood, style_effectif
