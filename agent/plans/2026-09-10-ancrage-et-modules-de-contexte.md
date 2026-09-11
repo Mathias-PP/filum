@@ -14,6 +14,11 @@
 
 ## État courant
 
+**Plan terminé le 2026-09-11.** Les cinq PR sont mergées et déployées (#632 à
+#638), plus l'export PDF demandé en fin de plan (#639). Deux écarts assumés en
+PR 4, décrits plus bas. Restent quatre vérifications à la main dans l'interface,
+listées en fin de section.
+
 PR 1 mergée en **#632** (`d654b36`) et déployée. Mesure faite sur le disque après
 câblage : le gabarit `shared/` émet **42 450** caractères, le seed passe à **31**
 fichiers, et le contexte le plus lourd est celui de `assistant` (42 427 émis)
@@ -45,7 +50,8 @@ travers en #632, sur retour de l'utilisateur du 2026-09-10. Mergée en #633
 - [x] 1.8 Mettre à jour `AGENTS.md` (folder map, routing, limites strictes)
 - [x] 1.9 Tests : budget de priming, le questionneur sans outil d'écriture
 - [x] 1.10 Corriger la fiche 06 (§3 sur `add_source`, §7 sur l'activation)
-- [ ] 1.11 Vérifier, PR, merge, déployer, valider les quatre points en production
+- [x] 1.11 Vérifier, PR, merge, déployer (#632) ; validation d'interface listée
+      en fin de section
 
 **PR 2, `fix/agent-annotation-sans-entourage`**
 
@@ -53,7 +59,8 @@ travers en #632, sur retour de l'utilisateur du 2026-09-10. Mergée en #633
 - [x] 2.2 `annotate_excerpt` refuse au lieu de se rabattre
 - [x] 2.3 Le docstring nomme la conséquence
 - [x] 2.4 Quatre tests écrits de zéro
-- [ ] 2.5 Vérifier, PR, merge, déployer, valider
+- [x] 2.5 Vérifier, PR, merge, déployer (#634, `d0397c6`) ; validation
+      d'interface listée en fin de section
 
 Deux écarts au plan, assumés à l'écriture :
 
@@ -67,35 +74,63 @@ Deux écarts au plan, assumés à l'écriture :
   quatre tests sont donc neufs, dont un sur `provided_text`, qui reste la porte
   de sortie légitime quand la page est illisible.
 
-**PR 3, `feat/sources-metadonnees-resolues`**
+**PR 3, `feat/sources-metadonnees-resolues`** : mergée en **#635** (`28b8a89`)
+et déployée.
 
 - [x] 3.7 Instruire d'abord les quatre points listés (bloquant) ; résultat en 3.8
-- [ ] 3.3 Paramètre `metadata_from`
-- [ ] 3.4 Migration 058 (`metadata_origin`, avec `downgrade`)
-- [ ] 3.5 Sensibilité par valeur de paramètre
-- [ ] 3.6 Contrat MCP et API, régénération `openapi.json` et `generated.ts`
-- [ ] Vérifier, PR (mentionner la rupture de contrat MCP), merge, déployer
+- [x] 3.3 Paramètre `metadata_from`
+- [x] 3.4 Migration 058 (`metadata_origin`, avec `downgrade`)
+- [x] 3.5 Sensibilité par valeur de paramètre
+- [x] 3.6 Contrat MCP et API, régénération `openapi.json` et `generated.ts`
+- [x] Vérifier, PR (mentionner la rupture de contrat MCP), merge, déployer
 
-**PR 4, `feat/sources-retraction-perimee`**
+**PR 4, `feat/sources-retraction-perimee`** : mergée en **#636** (`1ab87ed`),
+corrigée en **#637** (`c2e8eea`, le jeu Retraction Watch se télécharge depuis
+le miroir GitLab de Crossref), déployée le 2026-09-11.
 
-- [ ] 4.1 `DUREE_DE_VALIDITE` et `est_perime`, en datetime naïf
-- [ ] 4.2 Gravité du motif de rétractation, défaut `verifier`
-- [ ] 4.3 Script de re-contrôle, idempotent et borné
-- [ ] 4.4 Migration 059 (`retraction_reason`, `retraction_gravite`)
-- [ ] 4.5 Contrat API, régénération
-- [ ] Vérifier, PR, merge, déployer
+- [x] 4.1 Péremption : **écart assumé**, pas de `est_perime` neuf. Le script
+      réutilise `needs_recheck` de `services/source_enrichment.py` (30 jours pour
+      un verdict, 6 heures pour `unverifiable`) : deux règles de péremption
+      divergeraient, et c'est la plus laxiste qui déciderait.
+- [x] 4.2 Gravité du motif : **écart assumé, non implémentée.** Graduer les 112
+      motifs observés reviendrait à porter un jugement sur des chercheurs nommés
+      depuis une table écrite ici. Le motif est rendu tel quel et attribué à
+      Retraction Watch ; le créateur juge. Voir la docstring de
+      `extractors/retraction_watch.py`.
+- [x] 4.3 Script de re-contrôle, idempotent et borné (`scripts/motifs_retractation.py`)
+- [x] 4.4 Migration 059 (`retraction_reason` seule, conséquence de 4.2)
+- [x] 4.5 Contrat API, régénération
+- [x] Vérifier, PR, merge, déployer. **Validé en production le 2026-09-11** :
+      63 148 articles lus depuis le miroir, 22 sources sous avis, toutes en
+      `corrected`, aucune présente dans le jeu (qui ne recense que rétractations
+      et avis de préoccupation), donc 0 motif posé. Comportement attendu.
 
-**PR 5, `feat/agent-juge-de-fidelite`**
+**PR 5, `feat/agent-juge-de-fidelite`** : mergée en **#638** (`acf1a4c`),
+déployée le 2026-09-11, migration 060 appliquée.
 
-- [ ] 5.9 Instruire d'abord les trois points listés (bloquant)
-- [ ] 5.2 Appel bloquant sur la clé du créateur
-- [ ] 5.3 Séparation générateur / vérificateur, déclassement du positif non étayé
-- [ ] 5.4 Vocabulaire fermé à six valeurs, aucun score numérique
-- [ ] 5.5 État « non mesuré » affiché
-- [ ] 5.6 Migration 060 (quatre colonnes nullables sur `source_excerpts`)
-- [ ] 5.7 Réglage par créateur
-- [ ] 5.8 Tests sous `MockTransport`, six cas
-- [ ] Vérifier, PR, merge, déployer
+- [x] 5.9 Instruire d'abord les trois points listés (bloquant)
+- [x] 5.2 Appel bloquant sur la clé du créateur
+- [x] 5.3 Séparation générateur / vérificateur, déclassement du positif non étayé
+- [x] 5.4 Vocabulaire fermé à six valeurs, aucun score numérique
+- [x] 5.5 État « non mesuré » affiché
+- [x] 5.6 Migration 060 (`fidelity_verdict`, `fidelity_scope`,
+      `fidelity_checked_at`, `fidelity_note` sur `source_excerpts`)
+- [x] 5.7 Réglage par créateur (`users.fidelity_judge_enabled`)
+- [x] 5.8 Tests sous `MockTransport`
+- [x] Vérifier, PR, merge, déployer
+
+**Hors plan, demandé à la fin du plan : export PDF.** Mergé en **#639**
+(`c5eda07`), déployé le 2026-09-11. Écrit sans dépendance (`services/pdf_minimal.py`),
+liens cliquables, rétractations dites, et un avertissement en fin de document
+quand un caractère hors WinAnsi a dû être remplacé par « ¤ ». **Validé en
+production** : fiche de démonstration en 4 pages, 54 liens cliquables.
+
+**Vérifications de production encore dues** (interface, à faire à la main) :
+
+- [ ] PR 1 : « Mettre à jour » sur `/dashboard/workspace`, le rôle `questionneur` apparaît
+- [ ] PR 2 : une source derrière un mur anti-bot fait refuser l'annotation et nommer `provided_text`
+- [ ] PR 3 : une source avec DOI, le titre du résolveur l'emporte
+- [ ] PR 5 : sur `/dashboard/new/{id}/sources`, le badge de fidélité et l'avis avant publication
 
 ---
 
