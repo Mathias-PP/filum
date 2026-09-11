@@ -2082,6 +2082,50 @@
         }
       }
     },
+    "/api/v1/cards/{card_id}/fidelite": {
+      "get": {
+        "tags": [
+          "cards"
+        ],
+        "summary": "Get Card Fidelite",
+        "description": "Ce que le juge de fidelite a dit des extraits annotes par un modele.\n\nRoute authentifiee et reservee au proprietaire, sans equivalent public : un\nverdict est un doute de travail, pas une information a publier. Le rendre\nlisible du monde transformerait un garde-fou interne en accusation portee\nsur la source.\n\nLe rapport porte trois etats distincts qu'il ne faut pas confondre : le juge\neteint, le juge allume sans cle configuree donc jamais execute, et le juge\nexecute. Les deux premiers laissent `verdict` a `None` sur tous les\nextraits, et seuls `actif` et `cle_configuree` permettent de dire lequel des\ndeux on regarde.",
+        "operationId": "get_card_fidelite_api_v1_cards__card_id__fidelite_get",
+        "parameters": [
+          {
+            "name": "card_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Card Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FideliteRapport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/cards/{card_id}/content-text/upload": {
       "post": {
         "tags": [
@@ -7864,6 +7908,108 @@
           "entries"
         ],
         "title": "FeedResponse"
+      },
+      "FideliteRapport": {
+        "properties": {
+          "actif": {
+            "type": "boolean",
+            "title": "Actif"
+          },
+          "cle_configuree": {
+            "type": "boolean",
+            "title": "Cle Configuree"
+          },
+          "en_attente": {
+            "type": "integer",
+            "title": "En Attente"
+          },
+          "verdicts": {
+            "items": {
+              "$ref": "#/components/schemas/FideliteVerdict"
+            },
+            "type": "array",
+            "title": "Verdicts"
+          },
+          "avertissement": {
+            "type": "string",
+            "title": "Avertissement"
+          }
+        },
+        "type": "object",
+        "required": [
+          "actif",
+          "cle_configuree",
+          "en_attente",
+          "verdicts",
+          "avertissement"
+        ],
+        "title": "FideliteRapport"
+      },
+      "FideliteVerdict": {
+        "properties": {
+          "excerpt_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Excerpt Id"
+          },
+          "source_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Source Id"
+          },
+          "verdict": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verdict"
+          },
+          "scope": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scope"
+          },
+          "checked_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked At"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "excerpt_id",
+          "source_id"
+        ],
+        "title": "FideliteVerdict",
+        "description": "Le verdict du juge sur un extrait, prive au createur.\n\nCe schema vit a l'ecart de `SourceExcerptResponse` a dessein : celui-ci est\nservi par la route publique d'une fiche, et y ajouter un champ de verdict\nl'exposerait au monde. Ici la separation est structurelle plutot que tenue\npar la discipline, et c'est la seule forme qui ne se perd pas."
       },
       "GraphEdgeResponse": {
         "properties": {

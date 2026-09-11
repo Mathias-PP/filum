@@ -1156,6 +1156,44 @@ async def update_excerpt(
     }
 
 
+async def _juger_la_fidelite(
+    db: AsyncSession,
+    user: User,
+    source: Source,
+    excerpts: list[SourceExcerpt],
+    page_text: str,
+    *,
+    complet: bool,
+) -> dict[str, Any]:
+    """Fait passer le juge de fidelite et pose ses verdicts. Ne leve jamais.
+
+    L'appelant commit. Rendre un dict plutot que lever garde la propriete qui
+    compte : le juge avertit, et une relecture d'ancrage reussie ne doit pas
+    echouer parce qu'un fournisseur tiers etait muet.
+    """
+    from app.services import agent_providers, fidelite
+
+    cibles = fidelite.a_juger(excerpts)
+    if not user.fidelity_judge_enabled or not cibles:
+        return {"juge_actif": user.fidelity_judge_enabled, "verdicts": {}, "juges": 0}
+
+    cles = await agent_providers.ordonner_pour_chat(db, user.id)
+    rapport = await fidelite.juger(
+        user, source, excerpts, page_text, complet=complet, provider=cles[0] if cles else None
+    )
+    poses = fidelite.appliquer(excerpts, rapport)
+    resultat: dict[str, Any] = {
+        "juge_actif": True,
+        "juges": poses,
+        "en_attente": fidelite.en_attente(excerpts),
+        "verdicts": fidelite.resume_verdicts(excerpts),
+        "avertissement": rapport.avertissement,
+    }
+    if rapport.erreur:
+        resultat["erreur"] = rapport.erreur
+    return resultat
+
+
 async def verify_excerpts(
     db: AsyncSession,
     user: User,
@@ -1179,6 +1217,13 @@ async def verify_excerpts(
     ScienceDirect, IOP, PubMed), l'agent atteste le texte qu'il a recupere
     ailleurs (NASA ADS, Semantic Scholar, Crossref abstract). Le champ
     `text_source` de la reponse dit d'ou vient le texte de reference.
+
+    Dans la foulee, le juge de fidelite relit les extraits qu'un modele a
+    annotes et repond a l'autre question, celle que l'ancrage ne pose pas : la
+    source dit-elle ce que l'annotation lui fait dire ? Il tourne ici parce que
+    le texte de la page est deja en main, donc sans second telechargement et
+    sans avoir a deviner sur quoi il se prononce. Son resultat arrive dans
+    `fidelite`, et il n'empeche jamais rien.
     """
     from datetime import UTC, datetime
 
@@ -1221,12 +1266,14 @@ async def verify_excerpts(
             extrait.verified_status = "unreadable"
             extrait.verified_text_source = provenance
             checks.append({"excerpt_id": str(extrait.id), "status": "unreadable"})
+        fidelite = await _juger_la_fidelite(db, user, source, excerpts, "", complet=False)
         await db.commit()
         return {
             "source_id": source_id,
             "checks": checks,
             "page_text_length": 0,
             "text_source": provenance,
+            "fidelite": fidelite,
         }
 
     for extrait in excerpts:
@@ -1255,6 +1302,7 @@ async def verify_excerpts(
                 "end": ancrage.end,
             }
         )
+    fidelite = await _juger_la_fidelite(db, user, source, excerpts, page_text, complet=complet)
     await db.commit()
     return {
         "source_id": source_id,
@@ -1262,6 +1310,7 @@ async def verify_excerpts(
         "checks": checks,
         "page_text_length": len(page_text),
         "text_source": provenance,
+        "fidelite": fidelite,
     }
 
 

@@ -782,6 +782,37 @@ export interface paths {
     patch: operations['update_card_api_v1_cards__card_id__patch'];
     trace?: never;
   };
+  '/api/v1/cards/{card_id}/fidelite': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get Card Fidelite
+     * @description Ce que le juge de fidelite a dit des extraits annotes par un modele.
+     *
+     *     Route authentifiee et reservee au proprietaire, sans equivalent public : un
+     *     verdict est un doute de travail, pas une information a publier. Le rendre
+     *     lisible du monde transformerait un garde-fou interne en accusation portee
+     *     sur la source.
+     *
+     *     Le rapport porte trois etats distincts qu'il ne faut pas confondre : le juge
+     *     eteint, le juge allume sans cle configuree donc jamais execute, et le juge
+     *     execute. Les deux premiers laissent `verdict` a `None` sur tous les
+     *     extraits, et seuls `actif` et `cle_configuree` permettent de dire lequel des
+     *     deux on regarde.
+     */
+    get: operations['get_card_fidelite_api_v1_cards__card_id__fidelite_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/cards/{card_id}/content-text/upload': {
     parameters: {
       query?: never;
@@ -2829,6 +2860,48 @@ export interface components {
       next_before: string | null;
       /** Entries */
       entries: components['schemas']['FeedEntry'][];
+    };
+    /** FideliteRapport */
+    FideliteRapport: {
+      /** Actif */
+      actif: boolean;
+      /** Cle Configuree */
+      cle_configuree: boolean;
+      /** En Attente */
+      en_attente: number;
+      /** Verdicts */
+      verdicts: components['schemas']['FideliteVerdict'][];
+      /** Avertissement */
+      avertissement: string;
+    };
+    /**
+     * FideliteVerdict
+     * @description Le verdict du juge sur un extrait, prive au createur.
+     *
+     *     Ce schema vit a l'ecart de `SourceExcerptResponse` a dessein : celui-ci est
+     *     servi par la route publique d'une fiche, et y ajouter un champ de verdict
+     *     l'exposerait au monde. Ici la separation est structurelle plutot que tenue
+     *     par la discipline, et c'est la seule forme qui ne se perd pas.
+     */
+    FideliteVerdict: {
+      /**
+       * Excerpt Id
+       * Format: uuid
+       */
+      excerpt_id: string;
+      /**
+       * Source Id
+       * Format: uuid
+       */
+      source_id: string;
+      /** Verdict */
+      verdict?: string | null;
+      /** Scope */
+      scope?: string | null;
+      /** Checked At */
+      checked_at?: string | null;
+      /** Note */
+      note?: string | null;
     };
     /** GraphEdgeResponse */
     GraphEdgeResponse: {
@@ -5194,6 +5267,37 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['CardResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  get_card_fidelite_api_v1_cards__card_id__fidelite_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        card_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FideliteRapport'];
         };
       };
       /** @description Validation Error */

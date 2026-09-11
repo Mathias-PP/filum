@@ -23,6 +23,7 @@
     ExcerptCheckStatus,
   } from '$lib/api';
   import { STANCE_ORDER, STANCE_STYLES } from '$lib/utils/stance';
+  import { parExtrait, type FideliteVerdict } from '$lib/utils/fidelite-verdict';
 
   const wizardSteps = [
     { label: 'Informations', description: 'Titre, plateforme', clickable: true },
@@ -137,6 +138,30 @@
     }
   }
 
+  /**
+   * Le juge de fidélité, pour cette fiche. Chargé à part et sans bloquer : son
+   * absence ne doit jamais empêcher d'éditer des sources, et son échec se tait
+   * plutôt que d'afficher une erreur pour un garde-fou optionnel.
+   */
+  let fidelite = $state<Record<string, FideliteVerdict>>({});
+  let fideliteEnAttente = $state(0);
+  let fideliteAvertissement = $state('');
+
+  async function chargerFidelite() {
+    try {
+      const rapport = await api.cards.fidelite(cardId);
+      fidelite = parExtrait(rapport);
+      // Un juge allumé sans clé configurée ne tourne pas : annoncer un retard de
+      // relecture dans ce cas reprocherait au créateur un travail que rien ne
+      // pouvait faire.
+      fideliteEnAttente = rapport.actif && rapport.cle_configuree ? rapport.en_attente : 0;
+      fideliteAvertissement = rapport.avertissement;
+    } catch {
+      fidelite = {};
+      fideliteEnAttente = 0;
+    }
+  }
+
   onMount(async () => {
     try {
       const [loadedCard, loadedSources] = await Promise.all([
@@ -149,6 +174,7 @@
     } catch (err) {
       loadError = err instanceof Error ? err.message : 'Erreur de chargement';
     }
+    await chargerFidelite();
     // Fichier déposé à l'étape « Informations » : transmis en mémoire via le
     // store (un File survit aux navigations client-side de SvelteKit).
     const dropped = get(pendingImportFile);
@@ -1962,6 +1988,7 @@
             sourceId={editingSource.id}
             excerpts={editingSource.excerpts}
             onchange={(list) => updateSourceExcerpts(editingSource.id, list)}
+            {fidelite}
           />
         {/key}
       {/if}
@@ -2210,6 +2237,27 @@
         class="rounded-lg bg-danger-bg border border-danger/30 px-4 py-3 text-sm text-danger mb-4"
       >
         {publishError}
+      </div>
+    {/if}
+
+    <!--
+      Un juge allumé mais jamais exécuté laisse la fiche aussi peu relue que
+      s'il était éteint, et c'est le pire des trois états parce que c'est celui
+      qui rassure à tort. Publier est le moment de le dire : après, la fiche est
+      lue par d'autres. L'avertissement ne désactive pas le bouton, conformément
+      à la règle posée pour ce juge : il avertit, il n'empêche pas.
+    -->
+    {#if fideliteEnAttente > 0}
+      <div class="rounded-lg border border-border bg-surface-secondary px-4 py-3 text-sm mb-4">
+        <p class="text-ink-secondary">
+          {fideliteEnAttente} citation{fideliteEnAttente > 1 ? 's' : ''} dont l'intitulé ou la mise en
+          situation viennent d'un modèle {fideliteEnAttente > 1 ? "n'ont" : "n'a"} jamais été
+          {fideliteEnAttente > 1 ? 'relues' : 'relue'} par le juge de fidélité. Vous pouvez publier quand
+          même.
+        </p>
+        {#if fideliteAvertissement}
+          <p class="mt-1 text-xs text-ink-tertiary">{fideliteAvertissement}</p>
+        {/if}
       </div>
     {/if}
 

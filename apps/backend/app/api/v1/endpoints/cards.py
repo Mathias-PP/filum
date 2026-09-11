@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Upl
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from starlette.status import HTTP_401_UNAUTHORIZED
 
 from app.core.rate_limit import limiter
@@ -24,6 +25,8 @@ from app.schemas.biblio_card import (
     CardSearchResult,
     CardUpdate,
     CreatorInfo,
+    FideliteRapport,
+    FideliteVerdict,
     GraphEdgeResponse,
     GraphNodeResponse,
     IncomingCitationResponse,
@@ -35,6 +38,7 @@ from app.services.auth import AuthService
 from app.services.card import CardService
 from app.services.card_graph import MAX_DEPTH, build_card_graph
 from app.services.citations import list_incoming_citations, mark_citations_seen
+from app.services.fidelite import AVERTISSEMENT_NON_MESURE, en_attente
 from app.services.source_enrichment import needs_recheck, schedule_source_enrichment
 from app.services.wayback import least_recently_attempted, schedule_archiving
 
@@ -241,6 +245,76 @@ async def get_card(
             detail={"code": "forbidden", "message": "Access denied"},
         )
     return card
+
+
+@router.get("/cards/{card_id}/fidelite", response_model=FideliteRapport)
+async def get_card_fidelite(
+    card_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Ce que le juge de fidelite a dit des extraits annotes par un modele.
+
+    Route authentifiee et reservee au proprietaire, sans equivalent public : un
+    verdict est un doute de travail, pas une information a publier. Le rendre
+    lisible du monde transformerait un garde-fou interne en accusation portee
+    sur la source.
+
+    Le rapport porte trois etats distincts qu'il ne faut pas confondre : le juge
+    eteint, le juge allume sans cle configuree donc jamais execute, et le juge
+    execute. Les deux premiers laissent `verdict` a `None` sur tous les
+    extraits, et seuls `actif` et `cle_configuree` permettent de dire lequel des
+    deux on regarde.
+    """
+    result = await db.execute(
+        select(BiblioCard).where(BiblioCard.id == card_id, BiblioCard.deleted_at.is_(None))
+    )
+    card = result.scalar_one_or_none()
+    if not card:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "not_found", "message": "Card not found"},
+        )
+    if card.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": "forbidden", "message": "Access denied"},
+        )
+
+    sources_result = await db.execute(
+        select(Source)
+        .options(selectinload(Source.excerpts))
+        .where(Source.biblio_card_id == card_id, Source.deleted_at.is_(None))
+        .order_by(Source.position)
+    )
+    sources = list(sources_result.scalars().all())
+
+    verdicts: list[FideliteVerdict] = []
+    tous_extraits = []
+    for source in sources:
+        for extrait in sorted(source.excerpts, key=lambda e: e.position):
+            tous_extraits.append(extrait)
+            verdicts.append(
+                FideliteVerdict(
+                    excerpt_id=extrait.id,
+                    source_id=source.id,
+                    verdict=extrait.fidelity_verdict,
+                    scope=extrait.fidelity_scope,
+                    checked_at=extrait.fidelity_checked_at,
+                    note=extrait.fidelity_note,
+                )
+            )
+
+    from app.services import agent_providers
+
+    cles = await agent_providers.ordonner_pour_chat(db, current_user.id)
+    return FideliteRapport(
+        actif=current_user.fidelity_judge_enabled,
+        cle_configuree=bool(cles),
+        en_attente=en_attente(tous_extraits),
+        verdicts=verdicts,
+        avertissement=AVERTISSEMENT_NON_MESURE,
+    )
 
 
 @router.patch("/cards/{card_id}", response_model=CardResponse)
