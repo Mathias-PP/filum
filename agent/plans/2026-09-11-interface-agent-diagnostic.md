@@ -274,3 +274,22 @@ ouvertes, empilées.
 - **« Régénérer » n'est pas fait.** Rejouer un tour relancerait ses écritures :
   une source ajoutée le serait deux fois. « Réessayer », après une erreur, reste
   la seule relance, et seulement pour un tour qui a échoué.
+
+**PR 5** (fiche en direct) : le panneau s'ouvre à droite du fil et montre la
+fiche que l'agent modifie.
+
+- **Quelle fiche.** Les outils la désignent par son slug, dans leurs arguments
+  ou leur résultat ; la fiche courante est la dernière ainsi nommée, et un appel
+  en échec ne compte pas. L'identifiant interne, que l'API demande, vient de la
+  liste des fiches du créateur.
+- **Quand elle se relit.** À chaque action terminée, après un délai court :
+  dix extraits posés d'affilée ne doivent pas faire dix lectures. Ce qui a
+  changé depuis la lecture précédente s'éclaire deux secondes et demie.
+- **Ce qu'elle montre.** Le titre, l'état, une ligne de faits comptés (sources,
+  archivées, accès libre, extraits retrouvés, rétractées), puis chaque source
+  avec sa relation déclarée, sa rétractation, son accès ouvert, son archive, et
+  chaque extrait avec son verdict de relecture. Les mêmes fonctions que la page
+  publique : un seul vocabulaire pour le créateur et pour son lecteur.
+- **Où.** À côté du fil à partir de `lg`, en recouvrement en dessous. Ouvert
+  automatiquement à la première fiche nommée sur grand écran, sauf si
+  l'utilisateur l'a fermé une fois.
