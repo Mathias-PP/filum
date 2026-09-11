@@ -40,9 +40,24 @@ logger = logging.getLogger(__name__)
 #: Un timeout aligne sur celui de `retraction.py` (10 s) le couperait toujours.
 _TIMEOUT = 180.0
 
-#: L'adresse est le seul parametre attendu, nue, sans nom de cle : c'est la
-#: forme documentee par Crossref pour ce point d'acces.
-_URL = "https://api.labs.crossref.org/data/retractionwatch?contact@philum.app"
+#: Deux adresses pour le meme fichier, essayees dans cet ordre.
+#:
+#: Le miroir GitLab passe en premier parce qu'il tient debout. Mesure le
+#: 2026-09-11, depuis la VM et depuis un poste : le point d'acces Labs rendait
+#: 502 en 0,4 s et 504 apres 37 s, quand le miroir rendait 200 et 66 537 343
+#: octets. Labs est un bac a sable que Crossref ne s'engage pas a maintenir ;
+#: le depot git est la forme que Crossref documente pour une copie locale, et
+#: il recoit la meme mise a jour quotidienne.
+#:
+#: Labs reste en second, non par symetrie mais parce que les deux tombent pour
+#: des raisons differentes : une panne de GitLab n'est pas une panne de
+#: Crossref. Garder les deux, c'est ne dependre d'aucun des deux.
+_URLS = (
+    "https://gitlab.com/crossref/retraction-watch-data/-/raw/main/retraction_watch.csv",
+    # L'adresse de courriel est le seul parametre attendu, nue, sans nom de
+    # cle : c'est la forme documentee par Crossref pour ce point d'acces.
+    "https://api.labs.crossref.org/data/retractionwatch?contact@philum.app",
+)
 
 # Les natures observees dans le jeu, au 2026-09-11 : Retraction (66869),
 # Expression of concern (3715), Correction (1514), vide (218),
@@ -131,17 +146,20 @@ def motif_pour(avis: list[AvisRetractionWatch], statut: str | None) -> str | Non
 async def telecharger_dump() -> dict[str, list[AvisRetractionWatch]] | None:
     """Recupere et indexe le jeu complet. Ne leve jamais, rend `None` si echec.
 
-    Un echec n'a pas a interrompre l'appelant : les motifs sont un complement,
-    et une passe qui n'en pose aucun laisse le corpus exactement dans l'etat ou
+    Essaie chaque adresse de `_URLS` et s'arrete a la premiere qui repond. Un
+    echec n'a pas a interrompre l'appelant : les motifs sont un complement, et
+    une passe qui n'en pose aucun laisse le corpus exactement dans l'etat ou
     elle l'a trouve.
     """
-    try:
-        async with httpx.AsyncClient(timeout=_TIMEOUT, follow_redirects=True) as client:
-            reponse = await client.get(_URL)
-        if reponse.status_code != 200:
-            logger.warning("Retraction Watch a repondu %s", reponse.status_code)
-            return None
-        return parser_dump(reponse.text)
-    except Exception as e:
-        logger.warning("Telechargement Retraction Watch impossible : %s", e)
-        return None
+    async with httpx.AsyncClient(timeout=_TIMEOUT, follow_redirects=True) as client:
+        for url in _URLS:
+            try:
+                reponse = await client.get(url)
+            except Exception as e:
+                logger.warning("Retraction Watch injoignable sur %s : %s", url, e)
+                continue
+            if reponse.status_code != 200:
+                logger.warning("Retraction Watch a repondu %s sur %s", reponse.status_code, url)
+                continue
+            return parser_dump(reponse.text)
+    return None

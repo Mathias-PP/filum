@@ -7,8 +7,8 @@ from datetime import date
 import httpx
 import pytest
 
-from app.extractors.retraction import RetractionStatus
 from app.extractors import retraction_watch as rw
+from app.extractors.retraction import RetractionStatus
 
 _ENTETE = (
     "Record ID,Title,Subject,Institution,Journal,Publisher,Country,Author,URLS,"
@@ -129,6 +129,13 @@ class TestMotifPour:
         assert rw.motif_pour(avis, None) is None
 
 
+_CSV_OK = (
+    _ENTETE
+    + "\n"
+    + _ligne(doi="10.1/ok", nature="Retraction", motif="Motif;", date_avis="1/1/2020 0:00")
+)
+
+
 class TestTelecharger:
     @pytest.mark.asyncio
     async def test_service_muet_rend_none_sans_lever(self, monkeypatch):
@@ -140,23 +147,46 @@ class TestTelecharger:
 
     @pytest.mark.asyncio
     async def test_reponse_non_200_rend_none(self, monkeypatch):
-        async def _cinq_cents(*a, **k):
-            return httpx.Response(503, request=httpx.Request("GET", rw._URL))
+        async def _cinq_cents(self, url, *a, **k):
+            return httpx.Response(503, request=httpx.Request("GET", url))
 
         monkeypatch.setattr(httpx.AsyncClient, "get", _cinq_cents)
         assert await rw.telecharger_dump() is None
 
     @pytest.mark.asyncio
     async def test_reponse_valide_est_indexee(self, monkeypatch):
-        csv = (
-            _ENTETE
-            + "\n"
-            + _ligne(doi="10.1/ok", nature="Retraction", motif="Motif;", date_avis="1/1/2020 0:00")
-        )
-
-        async def _ok(*a, **k):
-            return httpx.Response(200, text=csv, request=httpx.Request("GET", rw._URL))
+        async def _ok(self, url, *a, **k):
+            return httpx.Response(200, text=_CSV_OK, request=httpx.Request("GET", url))
 
         monkeypatch.setattr(httpx.AsyncClient, "get", _ok)
         index = await rw.telecharger_dump()
         assert index is not None and "10.1/ok" in index
+
+    @pytest.mark.asyncio
+    async def test_la_premiere_adresse_qui_repond_gagne(self, monkeypatch):
+        """Le miroir sert seul quand il repond : pas de second telechargement."""
+        vues: list[str] = []
+
+        async def _ok(self, url, *a, **k):
+            vues.append(url)
+            return httpx.Response(200, text=_CSV_OK, request=httpx.Request("GET", url))
+
+        monkeypatch.setattr(httpx.AsyncClient, "get", _ok)
+        assert await rw.telecharger_dump() is not None
+        assert vues == [rw._URLS[0]]
+
+    @pytest.mark.asyncio
+    async def test_une_adresse_en_panne_passe_a_la_suivante(self, monkeypatch):
+        """Le 502 mesure en production sur Labs ne doit plus couter le jeu."""
+        vues: list[str] = []
+
+        async def _premiere_en_panne(self, url, *a, **k):
+            vues.append(url)
+            if url == rw._URLS[0]:
+                raise httpx.ConnectError("miroir coupe")
+            return httpx.Response(200, text=_CSV_OK, request=httpx.Request("GET", url))
+
+        monkeypatch.setattr(httpx.AsyncClient, "get", _premiere_en_panne)
+        index = await rw.telecharger_dump()
+        assert index is not None and "10.1/ok" in index
+        assert vues == list(rw._URLS)
