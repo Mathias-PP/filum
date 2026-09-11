@@ -44,6 +44,7 @@
     {
       label: 'Documents',
       formats: [
+        { value: 'pdf', label: 'PDF' },
         { value: 'markdown', label: 'Markdown / Obsidian' },
         { value: 'docx', label: 'Word (.docx)' },
         { value: 'txt', label: 'Bibliographie (.txt)' },

@@ -615,3 +615,29 @@ async def test_degre_hors_bornes_422(client, published_card, test_user):
         params={"format": "json", "cited": "9"},
     )
     assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_export_pdf_est_un_pdf_lisible(client, published_card, test_user):
+    """Le PDF sort avec le bon type, la bonne extension, et s'ouvre vraiment.
+
+    Le controle porte sur le fichier tel qu'un lecteur le recevra : un octet
+    de travers dans la table xref rendrait un document qu'aucun lecteur
+    n'accepte, et aucune assertion sur le contenu Python ne l'aurait vu.
+    """
+    from io import BytesIO
+
+    from pypdf import PdfReader
+
+    resp = await client.get(
+        f"/api/v1/@{test_user.username}/{published_card.slug}/export",
+        params={"format": "pdf"},
+    )
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "application/pdf"
+    assert resp.headers["content-disposition"].endswith('.pdf"')
+
+    lecteur = PdfReader(BytesIO(resp.content))
+    texte = "\n".join(page.extract_text() for page in lecteur.pages)
+    assert published_card.title in texte
+    assert "Titre {avec} accolades" in texte

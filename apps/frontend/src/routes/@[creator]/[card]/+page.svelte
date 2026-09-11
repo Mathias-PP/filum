@@ -177,9 +177,12 @@
   let exportCustomOpen = $state(false);
   const exportBase = $derived(`${API_BASE}/api/v1/@${creatorSlug}/${cardSlug}/export`);
   // Le menu court : un format, un clic, tout le contenu. Les six styles de
-  // citation et le réglage fin vivent dans le panneau personnalisé — les
+  // citation et le réglage fin vivent dans le panneau personnalisé : les
   // empiler ici ferait une liste de quinze entrées pour un geste courant.
+  // Le PDF est en tête parce que c'est ce qu'on imprime et ce qu'on joint à
+  // un message, donc le geste le plus courant de tous.
   const exportFormats = [
+    { format: 'pdf', label: 'PDF' },
     { format: 'json', label: 'JSON' },
     { format: 'csv', label: 'CSV' },
     { format: 'xlsx', label: 'Excel (.xlsx)' },
