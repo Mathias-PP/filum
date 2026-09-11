@@ -23,7 +23,18 @@ export type Bloc =
   | { t: 'liste'; ordonnee: boolean; items: Segment[][] }
   | { t: 'citation'; segments: Segment[] }
   | { t: 'code'; texte: string }
+  | { t: 'tableau'; entetes: Segment[][]; lignes: Segment[][][] }
   | { t: 'separateur' };
+
+/** Ligne de séparation d'un tableau : `|---|:---:|`, bordures facultatives. */
+const RE_SEPARATEUR_TABLEAU = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/;
+
+function cellules(ligne: string): string[] {
+  let t = ligne.trim();
+  if (t.startsWith('|')) t = t.slice(1);
+  if (t.endsWith('|')) t = t.slice(0, -1);
+  return t.split('|').map((c) => c.trim());
+}
 
 /** Liens http(s) et mailto uniquement : un `javascript:` dans une réponse de
  * modèle ne doit jamais devenir cliquable. */
@@ -115,6 +126,29 @@ export function analyser(texte: string): Bloc[] {
         t: 'titre',
         niveau: Math.min(titre[1].length, 3),
         segments: segmentsInline(titre[2]),
+      });
+      continue;
+    }
+
+    // Tableau : une ligne à barres verticales suivie d'une ligne de tirets.
+    // Sans cette règle, un tableau de l'agent s'affichait en barres brutes.
+    if (t.includes('|') && i + 1 < lignes.length && RE_SEPARATEUR_TABLEAU.test(lignes[i + 1])) {
+      viderParagraphe();
+      const entetes = cellules(t);
+      const lignesTableau: Segment[][][] = [];
+      i += 2;
+      while (i < lignes.length && lignes[i].trim() !== '' && lignes[i].includes('|')) {
+        // Une ligne plus courte ou plus longue que l'en-tête est ramenée à sa
+        // largeur : le tableau reste rectangulaire.
+        const brutes = cellules(lignes[i]);
+        lignesTableau.push(entetes.map((_, k) => segmentsInline(brutes[k] ?? '')));
+        i += 1;
+      }
+      i -= 1; // la boucle externe réincrémentera
+      blocs.push({
+        t: 'tableau',
+        entetes: entetes.map((e) => segmentsInline(e)),
+        lignes: lignesTableau,
       });
       continue;
     }

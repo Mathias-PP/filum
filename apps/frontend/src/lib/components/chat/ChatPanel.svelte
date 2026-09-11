@@ -15,11 +15,12 @@
     tourTermine,
     type ChatItem,
   } from '$lib/agent/conversation';
-  import { rendreGroupe } from '$lib/agent/toolLabels';
+  import { regrouper } from '$lib/agent/activite';
   import Button from '../Button.svelte';
   import { toast } from '../Toast.svelte';
   import ApprovalCard from './ApprovalCard.svelte';
-  import ToolCard from './ToolCard.svelte';
+  import BlocActivite from './BlocActivite.svelte';
+  import CopierBouton from './CopierBouton.svelte';
   import AgentMarkdown from './AgentMarkdown.svelte';
   import LogoLoader from '../LogoLoader.svelte';
   import ConsentementGratuit from './ConsentementGratuit.svelte';
@@ -165,46 +166,13 @@
     "Trouve des sources sur l'effet Warburg",
   ];
 
-  // Regroupe les appels d'outils consecutifs de meme nom pour eviter d'avoir
-  // 10 cartes « Lit la source #a1b2c3d4 » qui empilent le meme verbe. Le nom
-  // « Lit la source » figure une fois, les entrees s'empilent en dessous.
-  type Affichable =
-    | Extract<
-        ChatItem,
-        {
-          kind:
-            | 'user'
-            | 'assistant'
-            | 'approval'
-            | 'error'
-            | 'compaction'
-            | 'controle'
-            | 'repli'
-            | 'continuation';
-        }
-      >
-    | {
-        kind: 'group-outils';
-        name: string;
-        entrees: Extract<ChatItem, { kind: 'tool' }>[];
-      };
+  // Chaque suite d'appels d'outils devient un bloc d'activite resume en une
+  // ligne : 64 cartes affichees une a une faisaient du fil un mur.
+  const affichables = $derived(regrouper(items));
 
-  const affichables = $derived.by<Affichable[]>(() => {
-    const rendu: Affichable[] = [];
-    for (const item of items) {
-      if (item.kind === 'tool') {
-        const dernier = rendu[rendu.length - 1];
-        if (dernier?.kind === 'group-outils' && dernier.name === item.name) {
-          dernier.entrees.push(item);
-          continue;
-        }
-        rendu.push({ kind: 'group-outils', name: item.name, entrees: [item] });
-        continue;
-      }
-      rendu.push(item);
-    }
-    return rendu;
-  });
+  // Annonce pour les lecteurs d'ecran. Le fil n'est plus une region vivante :
+  // il faisait lire chaque jeton recu. On annonce le debut et la fin du tour.
+  let annonce = $state('');
 
   // Curseur clignotant : montre que le modele reflechit *avant* que le
   // premier token n'arrive. Sans ca, l'utilisateur ne sait pas si le message
@@ -622,6 +590,7 @@
     auBas = true;
     items = [...items, { kind: 'user', text: message }];
     enCours = true;
+    annonce = 'Message envoyé. L’agent travaille.';
     controleur = new AbortController();
     try {
       for await (const evenement of agentApi.streamChat({
@@ -668,6 +637,7 @@
     } finally {
       enCours = false;
       controleur = null;
+      annonce = 'Réponse de l’agent terminée.';
       if (sessionId) {
         agentApi.sessions
           .usage(sessionId)
@@ -936,6 +906,8 @@
     </p>
   {/if}
 
+  <p class="sr-only" role="status">{annonce}</p>
+
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <div
     bind:this={fil}
@@ -944,7 +916,7 @@
     onmousedown={onMouseDownFil}
     onmousemove={onMouseMoveFil}
     role="log"
-    aria-live="polite"
+    aria-live="off"
     aria-busy={enCours}
   >
     <!-- Le fil defile sur toute la largeur, sa barre au bord de l'ecran ; le
@@ -981,25 +953,18 @@
             {item.text}
           </div>
         {:else if item.kind === 'assistant'}
-          <div class="text-sm">
+          <div class="group min-w-0 text-sm">
             <AgentMarkdown texte={item.text} />
+            <!-- Pas de copie sur la reponse qui s'ecrit encore : on copierait
+                 une moitie de phrase. -->
+            {#if !(enCours && i === affichables.length - 1)}
+              <div class="mt-1 flex opacity-60 group-hover:opacity-100 focus-within:opacity-100">
+                <CopierBouton texte={item.text} />
+              </div>
+            {/if}
           </div>
-        {:else if item.kind === 'group-outils'}
-          {#if item.entrees.length === 1}
-            {@const seule = item.entrees[0]}
-            <ToolCard name={seule.name} args={seule.args} result={seule.result} />
-          {:else}
-            <!-- N cartes consecutives de meme outil : un en-tete compte les
-               appels, chaque carte reste consultable en dessous. -->
-            <div class="space-y-1 rounded-lg border border-border bg-surface-secondary/40 p-1.5">
-              <p class="px-1 text-xs text-ink-tertiary">
-                {rendreGroupe(item.name, item.entrees.length)}
-              </p>
-              {#each item.entrees as tc (tc.id)}
-                <ToolCard name={tc.name} args={tc.args} result={tc.result} />
-              {/each}
-            </div>
-          {/if}
+        {:else if item.kind === 'activite'}
+          <BlocActivite bloc={item} enDirect={enCours && i === affichables.length - 1} />
         {:else if item.kind === 'compaction'}
           <!-- Le debut de la conversation est sorti de la fenetre du modele. Le
              dire ici, a sa place dans le fil : l'agent qui « oublie » sans

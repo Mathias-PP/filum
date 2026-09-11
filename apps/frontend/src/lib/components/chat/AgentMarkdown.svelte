@@ -1,5 +1,6 @@
 <script lang="ts">
   import { analyser, type Segment } from '$lib/agent/markdown';
+  import CopierBouton from './CopierBouton.svelte';
 
   interface Props {
     texte: string;
@@ -14,7 +15,7 @@
   }
 </script>
 
-<div class="space-y-1.5 text-sm leading-relaxed text-ink-primary">
+<div class="min-w-0 space-y-1.5 text-sm leading-relaxed text-ink-primary">
   <!-- Clave par rang, pas par contenu. Deux blocs identiques, ne serait-ce que
        deux separateurs ou deux paragraphes de meme longueur, donnaient la meme
        cle : Svelte levait `each_key_duplicate`, et la levee emportait le rendu
@@ -33,7 +34,7 @@
         </p>
       {/if}
     {:else if bloc.t === 'paragraphe'}
-      <p>
+      <p class="[overflow-wrap:anywhere]">
         {#each bloc.segments as s}{@render segment(s)}{/each}
       </p>
     {:else if bloc.t === 'liste'}
@@ -59,8 +60,38 @@
         {#each bloc.segments as s}{@render segment(s)}{/each}
       </blockquote>
     {:else if bloc.t === 'code'}
-      <pre
-        class="max-h-[60vh] overflow-auto rounded bg-surface-tertiary p-2 font-mono text-xs text-ink-secondary">{bloc.texte}</pre>
+      <!-- Le code defile dans son cadre plutot que de revenir a la ligne : une
+           ligne de code coupee change de sens. Le cadre, lui, ne deborde pas. -->
+      <div class="relative">
+        <pre
+          class="max-h-[60vh] overflow-auto rounded bg-surface-tertiary p-2 pr-16 font-mono text-xs text-ink-secondary">{bloc.texte}</pre>
+        <CopierBouton texte={bloc.texte} class="absolute right-1 top-1 bg-surface-tertiary" />
+      </div>
+    {:else if bloc.t === 'tableau'}
+      <div class="overflow-x-auto rounded border border-border">
+        <table class="w-full border-collapse text-xs">
+          <thead class="bg-surface-tertiary">
+            <tr>
+              {#each bloc.entetes as cellule}
+                <th class="border-b border-border px-2 py-1 text-left font-semibold">
+                  {#each cellule as s}{@render segment(s)}{/each}
+                </th>
+              {/each}
+            </tr>
+          </thead>
+          <tbody>
+            {#each bloc.lignes as ligne}
+              <tr class="border-b border-border last:border-0">
+                {#each ligne as cellule}
+                  <td class="px-2 py-1 align-top">
+                    {#each cellule as s}{@render segment(s)}{/each}
+                  </td>
+                {/each}
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
     {:else if bloc.t === 'separateur'}
       <hr class="border-border" />
     {/if}
