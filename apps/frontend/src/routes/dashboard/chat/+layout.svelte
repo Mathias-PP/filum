@@ -120,7 +120,6 @@
         <Button size="sm" variant="ghost" onclick={ouvrirNouvelle} title="Nouvelle (Ctrl+Maj+O)"
           >Nouvelle</Button
         >
-        <Button size="sm" variant="ghost" href="/dashboard/agents">Clés</Button>
       </div>
     </div>
     {#if conversations.liste.length > 0}
@@ -227,6 +226,14 @@
         {/each}
       </div>
     {/if}
+    <!-- En bas plutot qu'a cote de « Nouvelle » : dans 16 rem, le second
+         bouton sortait du cadre, coupe en « Clé » (capture du 2026-09-11). -->
+    <a
+      href="/dashboard/agents"
+      class="mt-3 shrink-0 border-t border-border px-2 pt-3 text-xs text-ink-tertiary hover:text-ink-primary"
+    >
+      Gérer vos clés
+    </a>
   </aside>
 
   <section class="flex min-h-0 min-w-0 flex-col px-4 pb-3 pt-3 sm:px-6">
