@@ -3383,6 +3383,8 @@ export interface components {
       retraction_notice_doi?: string | null;
       /** Retraction Checked At */
       retraction_checked_at?: string | null;
+      /** Retraction Reason */
+      retraction_reason?: string | null;
       oa_status?: components['schemas']['OpenAccessStatus'] | null;
       /** Oa Url */
       oa_url?: string | null;

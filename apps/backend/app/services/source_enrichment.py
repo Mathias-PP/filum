@@ -68,7 +68,7 @@ def needs_recheck(checked_at: datetime | None, status: str | None, doi: str | No
     return age >= (_UNVERIFIABLE_TTL if status == "unverifiable" else _VERDICT_TTL)
 
 
-async def _enrich_one(doi: str | None) -> dict:
+async def enrich_one(doi: str | None) -> dict:
     """Valeurs a ecrire pour une source. Aucun appel ne leve.
 
     Un service muet ne doit pas emporter l'autre : une panne d'OpenAlex ne
@@ -115,7 +115,7 @@ async def _run(pairs: list[tuple[UUID, str | None]]) -> None:
     try:
         async with async_session_maker() as db:
             for source_id, doi in pairs:
-                values = await _enrich_one(doi)
+                values = await enrich_one(doi)
                 if not values:
                     continue
                 await db.execute(update(Source).where(Source.id == source_id).values(**values))

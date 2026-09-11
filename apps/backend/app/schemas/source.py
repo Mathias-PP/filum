@@ -232,6 +232,10 @@ class SourceResponse(BaseModel):
     retraction_status: RetractionStatus | None = None
     retraction_notice_doi: str | None = None
     retraction_checked_at: datetime | None = None
+    # Motif verbatim de Retraction Watch (CC BY 4.0), a afficher attribue.
+    # Rempli par une passe distincte de celle du statut : NULL sur une source
+    # retractee veut dire « motif inconnu ici », pas « avis sans motif ».
+    retraction_reason: str | None = None
     # Derive d'OpenAlex, jamais saisi. Meme regle a trois etats.
     oa_status: OpenAccessStatus | None = None
     oa_url: str | None = None

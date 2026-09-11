@@ -176,6 +176,14 @@ class Source(Base):
     retraction_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
     retraction_notice_doi: Mapped[str | None] = mapped_column(String(200), nullable=True)
     retraction_checked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Motif de l'avis, dans le vocabulaire de Retraction Watch et verbatim (cf.
+    # extractors/retraction_watch.py). Crossref ne le donne pas : il n'arrive
+    # que par la passe de `app.scripts.motifs_retractation`, et reste donc NULL
+    # sur une source pourtant retractee tant que cette passe n'a pas tourne.
+    # NULL se lit « motif inconnu ici », jamais « avis sans motif » : ce
+    # dernier existe et se dit, Retraction Watch l'ecrit « Notice - Limited or
+    # No Information ».
+    retraction_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Acces libre (cf. extractors/open_access.py). Meme regle a trois etats :
     # NULL = jamais verifie, "unverifiable" = verification impossible,
     # "closed" = OpenAlex connait la reference et ne trouve rien de gratuit.

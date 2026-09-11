@@ -1132,6 +1132,59 @@ symétrique.
 Les deux champs remontent dans les schémas de source. Régénérer `openapi.json`
 et `generated.ts` dans le même commit, prettier sur `generated.ts`.
 
+### 4.6 Ce qui a été livré (2026-09-11)
+
+Trois prémisses de cette section se sont révélées fausses à la vérification.
+Elles sont consignées ici plutôt que corrigées au-dessus : le plan garde ce
+qu'il croyait, et cette section dit ce qu'on a mesuré.
+
+**§4.1 n'avait rien à construire.** `services/source_enrichment.py` porte déjà
+`needs_recheck()`, avec deux durées distinctes : trente jours pour un verdict,
+six heures pour un « non vérifiable », qui est une panne et non un fait. Ces
+nombres sont adossés à une mesure du 2026-08-07 sur 643 sources. Le
+`DUREE_DE_VALIDITE = timedelta(days=90)` proposé ici aurait posé une seconde
+règle de péremption, plus laxiste et non mesurée, à côté de la première. La
+comparaison naïve contre aware, annoncée comme « la source d'erreur la plus
+probable de cette PR », était déjà traitée.
+
+**Crossref ne donne pas le motif.** Mesuré sur le papier Wakefield
+(`10.1016/S0140-6736(97)11096-0`) : `updated-by` porte `DOI`, `type`, `label`,
+`source`, `updated`, `record-id`, et rien d'autre. La documentation Crossref le
+confirme, les motifs n'existent que dans le jeu CSV. Ce jeu ne s'interroge pas
+par DOI : un appel rend 66 Mo, 72 476 lignes, en une quinzaine de secondes. Le
+motif ne peut donc pas être rempli par l'enrichissement à la source, d'où la
+passe séparée `app/scripts/motifs_retractation.py`, et d'où l'aveu porté par le
+schéma : `NULL` sur une source rétractée veut dire « motif inconnu ici ».
+
+**`retraction_gravite` n'a pas été posé, et ne devrait pas l'être.** Les motifs
+observés sont 112, dans un vocabulaire contrôlé, et les plus fréquents sont
+procéduraux : « Investigation by Journal/Publisher » 32 105 occurrences,
+« Unreliable Results and/or Conclusions » 21 930, « Investigation by Third
+Party » 17 954, contre 1 739 pour « Falsification/Fabrication of Data ». Les
+ramener à trois niveaux aurait donné `verifier` sur la quasi-totalité du corpus,
+donc un champ sans information ; et l'y ranger aurait voulu dire porter, depuis
+une table écrite dans ce dépôt, un jugement sur la conduite de chercheurs
+nommés. Le motif est rendu verbatim et attribué à Retraction Watch. Le créateur
+juge. C'est la règle déjà posée pour `metadata_origin` : le résolveur fait foi,
+Philum rapporte.
+
+Trois choix qu'a imposés l'écriture :
+
+- **Le motif est filtré sur le statut retenu.** Un article corrigé en 2004 puis
+  rétracté en 2010 porte deux lignes dans le jeu. Sans ce filtre, le badge
+  « rétracté » afficherait le motif de la correction.
+- **`Reinstatement` est écarté de la table des natures** (160 lignes). « Rétracté,
+  motif : réinstallation » ne veut rien dire. Limite connue : le statut vient de
+  Crossref, et si Crossref ne reflétait pas une réinstallation, Philum non plus.
+- **La passe rafraîchit aussi les verdicts périmés**, ce que §4.3 demandait, et
+  qui n'est pas redondant avec le chemin paresseux : celui-ci ne se déclenche
+  qu'au service d'une fiche **publique**. Une fiche en cours d'écriture, celle
+  où le créateur décide encore quoi citer, garde sinon le verdict de sa création.
+
+Licence : Crossref publie ce jeu sous CC BY 4.0. L'attribution est portée par
+l'export (Markdown, DOCX, JSON-LD) et devra l'être par l'affichage quand une PR
+frontend rendra le champ.
+
 ---
 
 # PR 5, `feat/agent-juge-de-fidelite`
