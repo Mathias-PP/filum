@@ -16,6 +16,7 @@
     type ChatItem,
   } from '$lib/agent/conversation';
   import { regrouper } from '$lib/agent/activite';
+  import { ecrireBrouillon, effacerBrouillon, lireBrouillon } from '$lib/agent/brouillons';
   import Button from '../Button.svelte';
   import { toast } from '../Toast.svelte';
   import ApprovalCard from './ApprovalCard.svelte';
@@ -173,6 +174,45 @@
   // Annonce pour les lecteurs d'ecran. Le fil n'est plus une region vivante :
   // il faisait lire chaque jeton recu. On annonce le debut et la fin du tour.
   let annonce = $state('');
+
+  // Zone de saisie : curseur place a l'ouverture et apres une amorce, et
+  // brouillon garde par conversation.
+  let champSaisie = $state<HTMLTextAreaElement | null>(null);
+  const cleBrouillon = $derived(sessionId ?? 'nouvelle');
+
+  async function focaliserSaisie() {
+    await tick();
+    if (!champSaisie) return;
+    champSaisie.focus();
+    const fin = champSaisie.value.length;
+    champSaisie.setSelectionRange(fin, fin);
+    ajusterHauteur(champSaisie);
+  }
+
+  /** Remet un message dans la zone de saisie, pour le corriger et le renvoyer.
+   *
+   * L'historique n'est pas réécrit : l'agent a peut-être déjà écrit en base
+   * pendant ce tour, et un historique tronqué le lui cacherait. Le message
+   * corrigé part comme un nouveau message.
+   */
+  function reprendreMessage(texte: string) {
+    saisie = texte;
+    ecrireBrouillon(cleBrouillon, texte);
+    void focaliserSaisie();
+  }
+
+  // Echap arrete le tour en cours, sauf s'il sert d'abord a fermer un panneau.
+  $effect(() => {
+    if (!enCours) return;
+    const surTouche = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !reglagesOuverts && !consentOuvert) interrompre();
+    };
+    window.addEventListener('keydown', surTouche);
+    return () => window.removeEventListener('keydown', surTouche);
+  });
+
+  // Index du dernier message de l'utilisateur, seul a proposer « Reprendre ».
+  const indexDernierUtilisateur = $derived(affichables.findLastIndex((a) => a.kind === 'user'));
 
   // Curseur clignotant : montre que le modele reflechit *avant* que le
   // premier token n'arrive. Sans ca, l'utilisateur ne sait pas si le message
@@ -483,6 +523,10 @@
     // enregistre en session n'existe plus (compte migre, plan degrade),
     // l'utilisateur le voit avant d'envoyer un message.
     if (cleChoisie) void testerCombo();
+    // Le brouillon laisse dans cette conversation revient, et le curseur est
+    // pret : ouvrir l'agent, c'est pour lui ecrire.
+    if (!saisie) saisie = lireBrouillon(cleBrouillon);
+    void focaliserSaisie();
   });
 
   /** Relit l'objectif après un tour : c'est l'agent qui le pose, pas l'interface. */
@@ -580,6 +624,7 @@
     const message = saisie.trim();
     if (!message || enCours || reprise === 'encours') return;
     saisie = '';
+    effacerBrouillon(cleBrouillon);
     await lancerTour(message);
   }
 
@@ -936,7 +981,11 @@
                   type="button"
                   class="w-full rounded border border-border bg-surface-secondary px-3 py-2 text-left text-sm text-ink-primary hover:border-info hover:bg-surface-tertiary"
                   onclick={() => {
-                    saisie = amorce;
+                    // Une amorce qui attend une suite (une adresse) finit par
+                    // une espace, et le curseur s'y place : il n'y a plus qu'a
+                    // coller.
+                    saisie = amorce.endsWith(':') ? `${amorce} ` : amorce;
+                    void focaliserSaisie();
                   }}
                 >
                   {amorce}
@@ -949,8 +998,23 @@
 
       {#each affichables as item, i (i)}
         {#if item.kind === 'user'}
-          <div class="break-words border-l-2 border-info pl-3 text-sm text-ink-primary">
-            {item.text}
+          <div class="group border-l-2 border-info pl-3 text-sm text-ink-primary">
+            <p class="whitespace-pre-wrap [overflow-wrap:anywhere]">{item.text}</p>
+            <div
+              class="mt-1 flex gap-1 opacity-60 group-hover:opacity-100 focus-within:opacity-100"
+            >
+              <CopierBouton texte={item.text} />
+              {#if !enCours && i === indexDernierUtilisateur}
+                <button
+                  type="button"
+                  class="rounded px-1.5 py-0.5 text-xs text-ink-tertiary hover:bg-surface-tertiary hover:text-ink-primary"
+                  title="Remettre ce message dans la zone de saisie pour le corriger"
+                  onclick={() => reprendreMessage(item.text)}
+                >
+                  Reprendre
+                </button>
+              {/if}
+            </div>
           </div>
         {:else if item.kind === 'assistant'}
           <div class="group min-w-0 text-sm">
@@ -1159,13 +1223,17 @@
       onsubmit={envoyer}
     >
       <textarea
+        bind:this={champSaisie}
         bind:value={saisie}
         rows="1"
         aria-label="Message à l'agent"
         placeholder="Que doit faire l'agent ?"
         class="block w-full resize-none bg-transparent py-1 text-sm text-ink-primary outline-none touch-manipulation placeholder:text-ink-tertiary"
         style="overflow-y: hidden;"
-        oninput={(e) => ajusterHauteur(e.currentTarget)}
+        oninput={(e) => {
+          ajusterHauteur(e.currentTarget);
+          ecrireBrouillon(cleBrouillon, e.currentTarget.value);
+        }}
         onkeydown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
             e.preventDefault();
