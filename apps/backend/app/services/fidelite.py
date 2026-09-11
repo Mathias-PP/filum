@@ -312,16 +312,16 @@ async def juger(
 
     verdicts: list[VerdictExtrait] = []
     for i, extrait in enumerate(cibles, start=1):
-        ligne = par_indice.get(i)
-        if ligne is None:
+        rendu = par_indice.get(i)
+        if rendu is None:
             continue
-        brut = str(ligne.get("verdict") or "").strip().lower()
+        brut = str(rendu.get("verdict") or "").strip().lower()
         if brut not in VERDICTS:
             # Rejete, jamais rapproche du plus proche : « plutot favorable » ne
             # devient pas « soutient », parce que ce n'est pas la meme chose.
             logger.info("Verdict hors enumeration ecarte : %r", brut)
             continue
-        note = str(ligne.get("motif") or "").strip()
+        note = str(rendu.get("motif") or "").strip()
         retenu, declassement = declasser(brut, portee)
         if declassement:
             note = f"{declassement} {note}".strip()
