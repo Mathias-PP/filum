@@ -9,13 +9,12 @@
 
   let providers = $state<AgentProvider[]>([]);
   let titreNouveau = $state('');
-  // Session ouverte par le premier message. A partir de la, le champ de nom
-  // renomme : avant, un nom saisi apres le premier message restait sans effet.
+  // Session ouverte par le premier message. A partir de la, le titre renomme :
+  // avant, un nom saisi apres le premier message restait sans effet.
   let sessionCreee = $state<string | null>(null);
 
   // Le mode gratuit n'existe pas sur toutes les instances : sans lane
-  // configuree, promettre « activez-le ci-dessous » designerait un bouton
-  // absent.
+  // configuree, promettre de l'activer designerait un bouton absent.
   let gratuitDisponible = $state(false);
   let gratuitActifIci = $state(false);
 
@@ -69,28 +68,33 @@
 </svelte:head>
 
 <div class="flex h-full min-h-0 flex-col">
-  <h1 class="font-serif text-3xl text-ink-primary mb-1">Agent</h1>
-  {#if defaut && !gratuitActifIci}
-    <p class="text-sm text-ink-secondary mb-4">
-      Répondra avec <span class="font-mono">{defaut.model}</span> ({defaut.display_name}), votre
-      clé, votre facture.
-      <a href="/dashboard/agents" class="text-info hover:underline">Changer</a>
-    </p>
-  {:else if gratuitActifIci}
-    <!-- Le panneau gere la lane : ne pas suggerer en parallele que la cle
-         par defaut sert encore les messages. -->
-    <p class="text-sm text-ink-secondary mb-4">
-      Répondra via le mode gratuit (fournisseur serveur Philum). Voir la bannière dans le fil de
-      discussion.
-    </p>
+  <!-- Le nom est le titre de la page, modifiable en place : un champ dedie et
+       un titre « Agent » au-dessus prenaient deux lignes au fil. -->
+  <div class="mx-auto flex w-full max-w-4xl shrink-0 items-center pb-2">
+    <input
+      bind:value={titreNouveau}
+      class="min-w-0 flex-1 border-b border-transparent bg-transparent py-1 font-serif text-xl text-ink-primary outline-none placeholder:text-ink-tertiary hover:border-border focus:border-info"
+      maxlength="200"
+      aria-label="Nom de la conversation"
+      placeholder="Nouvelle conversation"
+      title={sessionCreee ? 'Renommer la conversation' : 'Nommer la conversation (optionnel)'}
+      onchange={renommer}
+      onkeydown={(e) => {
+        if (e.key === 'Enter') e.currentTarget.blur();
+      }}
+    />
+  </div>
+  {#if defaut || gratuitActifIci}
+    <!-- La pastille de la zone de saisie dit deja qui repondra. -->
   {:else}
     <!-- Sans clé, le chat reste utilisable : le serveur bascule sur le mode
          gratuit ou le mode découverte. Masquer le chat ici enfermait le
-         nouvel arrivant, puisque le bouton d'activation du mode gratuit vit
-         dans le chat lui-même. -->
-    <p class="text-sm text-ink-secondary mb-4">
+         nouvel arrivant, puisque l'activation du mode gratuit vit dans le
+         chat lui-même. -->
+    <p class="mx-auto w-full max-w-4xl shrink-0 pb-2 text-sm text-ink-secondary">
       {#if gratuitDisponible}
-        Aucune clé par défaut. Essayez sans clé avec le bouton « Mode gratuit » ci-dessous, ou
+        Aucune clé par défaut. Essayez sans clé : ouvrez les réglages sous la zone de saisie et
+        choisissez « Mode gratuit », ou
         <a href="/dashboard/agents" class="text-info hover:underline">enregistrez la vôtre</a>
         pour choisir votre modèle et lever les quotas.
       {:else}
@@ -100,19 +104,6 @@
       {/if}
     </p>
   {/if}
-  <div class="mb-3 shrink-0">
-    <input
-      bind:value={titreNouveau}
-      class="w-full rounded border border-border bg-surface-primary px-3 py-2 text-sm"
-      maxlength="200"
-      aria-label="Nom de la conversation"
-      placeholder={sessionCreee ? 'Renommer la conversation' : 'Nommer la conversation (optionnel)'}
-      onchange={renommer}
-      onkeydown={(e) => {
-        if (e.key === 'Enter') e.currentTarget.blur();
-      }}
-    />
-  </div>
   <div class="min-h-0 flex-1">
     {#key conversations.generation}
       <ChatPanel titreInitial={titreNouveau} onsession={surSession} />

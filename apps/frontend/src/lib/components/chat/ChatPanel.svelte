@@ -219,6 +219,38 @@
     modeleChoisi || cles.find((c) => c.id === cleChoisie)?.model || ''
   );
 
+  // Panneau des reglages, ouvert depuis la pastille de la zone de saisie.
+  let reglagesOuverts = $state(false);
+  let zoneSaisie = $state<HTMLDivElement | null>(null);
+
+  // La pastille dit qui repondra : c'est le seul reglage utile en permanence,
+  // le reste attend dans le panneau.
+  const libellePastille = $derived.by(() => {
+    const qui = agentActif && agentActif.slug !== 'assistant' ? `${agentActif.name} · ` : '';
+    if (gratuitActif) {
+      return `${qui}Mode gratuit${gratuit?.modele_actuel ? ` · ${gratuit.modele_actuel}` : ''}`;
+    }
+    return `${qui}${modeleEffectif || 'Choisir un modèle'}`;
+  });
+  const etatPastille = $derived(gratuitActif ? (etatTestGratuit === 'ko' ? 'ko' : 'ok') : etatTest);
+
+  // Un clic hors de la zone de saisie ou Echap referme le panneau.
+  $effect(() => {
+    if (!reglagesOuverts) return;
+    const surClic = (e: MouseEvent) => {
+      if (zoneSaisie && !zoneSaisie.contains(e.target as Node)) reglagesOuverts = false;
+    };
+    const surTouche = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') reglagesOuverts = false;
+    };
+    window.addEventListener('click', surClic);
+    window.addEventListener('keydown', surTouche);
+    return () => {
+      window.removeEventListener('click', surClic);
+      window.removeEventListener('keydown', surTouche);
+    };
+  });
+
   $effect(() => {
     void empreinte; // lire la derivee pour que l'effet se rejoue
     // Ne pas forcer le scroll pendant une selection en cours : chaque
@@ -698,190 +730,196 @@
      et un champ de nommage, la zone de saisie tombait sous la ligne de flottaison
      et il fallait faire defiler la page pour ecrire. -->
 <div class="flex h-full min-h-0 flex-col">
-  <!-- Selectors agent, provider et modele -->
-  {#if cles.length > 0 || agents.length > 0 || (gratuit?.disponible ?? false)}
-    <div class="mb-2 flex flex-wrap gap-3 border-b border-border pb-2 text-sm">
-      {#if agents.length > 0}
-        <label class="flex items-center gap-1.5">
-          <span class="text-xs text-ink-tertiary">Agent</span>
-          <select
-            bind:value={agentChoisi}
-            onchange={changerAgent}
-            disabled={enCours}
-            class="rounded border border-border bg-surface-primary px-2 py-1 text-xs"
-          >
-            {#each agents as a (a.slug)}
-              <option value={a.slug}>{a.name}</option>
-            {/each}
-          </select>
-        </label>
-      {/if}
-      {#if gratuitActif}
-        <!-- Mode gratuit actif : la lane serveur porte la cle ; le modele
+  <!-- Reglages : agent, cle, modele, mode gratuit. Ils s'ouvrent depuis la
+       pastille de la zone de saisie. En ligne permanente au-dessus du fil, ils
+       prenaient jusqu'a cinq lignes, et le fil n'avait plus que la moitie de
+       l'ecran (348 px sur 695, mesure du 2026-09-11). -->
+  {#snippet reglages()}
+    {#if cles.length > 0 || agents.length > 0 || (gratuit?.disponible ?? false)}
+      <div class="flex flex-wrap items-center gap-3 text-sm">
+        {#if agents.length > 0}
+          <label class="flex items-center gap-1.5">
+            <span class="text-xs text-ink-tertiary">Agent</span>
+            <select
+              bind:value={agentChoisi}
+              onchange={changerAgent}
+              disabled={enCours}
+              class="rounded border border-border bg-surface-primary px-2 py-1 text-xs"
+            >
+              {#each agents as a (a.slug)}
+                <option value={a.slug}>{a.name}</option>
+              {/each}
+            </select>
+          </label>
+        {/if}
+        {#if gratuitActif}
+          <!-- Mode gratuit actif : la lane serveur porte la cle ; le modele
              primaire se choisit dans le catalogue gratuit, le secours prend
              le relais automatiquement quand le primaire sature. -->
-        <span
-          class="flex items-center gap-1.5 rounded border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-200"
-        >
-          Mode gratuit{gratuit?.fournisseur_actuel ? ` · ${gratuit.fournisseur_actuel}` : ''}
-        </span>
-        {#if modelesGratuit.length > 0 && gratuit?.peut_choisir_modele}
-          <label class="flex items-center gap-1.5">
-            <span class="text-xs text-ink-tertiary">Modèle</span>
-            <select
-              bind:value={modelePrimaire}
-              onchange={changerModeleGratuit}
-              disabled={enCours}
-              class="rounded border border-border bg-surface-primary px-2 py-1 text-xs"
-              title="Modèle principal du mode gratuit pour toute l'instance ; l'autre modèle du catalogue sert de secours en cas de surcharge"
-            >
-              {#each modelesGratuit as m (m.model)}
-                <option value={m.model}>
-                  {m.label}{m.role === 'secours' ? ' (secours)' : ''}
-                </option>
-              {/each}
-            </select>
-          </label>
-        {:else if gratuit?.modele_actuel}
-          <span class="text-xs text-ink-tertiary" title="Modèle qui sert les messages">
-            {gratuit.modele_actuel}
-          </span>
-        {/if}
-        <button
-          type="button"
-          class="rounded border border-border bg-surface-primary px-2 py-1 text-xs hover:border-primary-600 hover:text-primary-700 disabled:opacity-50 dark:hover:border-primary-400 dark:hover:text-primary-300"
-          onclick={testerGratuit}
-          disabled={etatTestGratuit === 'testing'}
-          title="Envoyer un ping au fournisseur gratuit (hors quota) pour vérifier qu'il répond"
-        >
-          {etatTestGratuit === 'testing'
-            ? 'Test…'
-            : etatTestGratuit === 'ok'
-              ? 'OK'
-              : etatTestGratuit === 'ko'
-                ? 'Échec'
-                : 'Tester'}
-        </button>
-        <button
-          type="button"
-          class="rounded border border-border bg-surface-primary px-2 py-1 text-xs text-ink-secondary hover:border-danger hover:text-danger disabled:opacity-50"
-          onclick={desactiverGratuit}
-          disabled={enCours}
-          title="Revenir à votre clé personnelle pour les nouveaux messages"
-        >
-          Quitter le mode gratuit
-        </button>
-      {:else}
-        {#if cles.length > 0}
-          <label class="flex items-center gap-1.5">
-            <span class="text-xs text-ink-tertiary">Clé</span>
-            <select
-              bind:value={cleChoisie}
-              onchange={changerCle}
-              disabled={enCours}
-              class="rounded border border-border bg-surface-primary px-2 py-1 text-xs"
-            >
-              {#each cles as cle (cle.id)}
-                <option value={cle.id}>{cle.display_name} ({cle.api_key_masked})</option>
-              {/each}
-            </select>
-          </label>
-        {/if}
-        {#if modeles.length > 0}
-          <label class="flex items-center gap-1.5">
-            <span class="text-xs text-ink-tertiary">Modèle</span>
-            <select
-              bind:value={modeleChoisi}
-              onchange={changerModele}
-              disabled={enCours}
-              class="rounded border border-border bg-surface-primary px-2 py-1 text-xs"
-            >
-              <option value="">Défaut ({cles.find((c) => c.id === cleChoisie)?.model ?? ''})</option
-              >
-              {#each modeles as m (m)}
-                <option value={m}>{m}</option>
-              {/each}
-            </select>
-          </label>
-        {/if}
-        {#if gratuit?.disponible}
-          <button
-            type="button"
-            class="rounded border border-border bg-surface-secondary px-2 py-1 text-xs text-ink-secondary hover:border-info hover:text-ink-primary disabled:opacity-50"
-            onclick={() => (consentOuvert = true)}
-            disabled={enCours}
-            title="Utiliser l'agent sans clé, via les serveurs Philum"
-          >
-            Mode gratuit…
-          </button>
-          <!-- Pas de « Tester » ici : celui du couple cle+modele suit
-               immediatement, et deux boutons du meme nom cote a cote ne
-               disaient pas lequel testait quoi. Le fournisseur gratuit se
-               teste depuis la barre du mode gratuit, une fois celui-ci actif,
-               la ou le resultat porte a consequence. -->
-        {/if}
-      {/if}
-      <!-- Indicateur du dernier test cle+modele. Le bouton relance le test a
-           la demande ; le point coloré resume l'etat sans se disputer la
-           largeur avec les selecteurs. -->
-      {#if !gratuitActif}
-        <span class="flex items-center gap-1.5">
           <span
-            aria-hidden="true"
-            class="inline-block h-2 w-2 rounded-full"
-            class:bg-emerald-500={etatTest === 'ok'}
-            class:bg-red-500={etatTest === 'ko' || etatTest === 'incompat'}
-            class:bg-amber-400={etatTest === 'testing'}
-            class:bg-ink-tertiary={etatTest === 'idle'}
-            class:animate-pulse={etatTest === 'testing'}
-          ></span>
-          {#if libelleTest}
-            <span
-              class="text-xs"
-              class:text-emerald-600={etatTest === 'ok'}
-              class:text-danger={etatTest === 'ko' || etatTest === 'incompat'}
-              class:text-ink-tertiary={etatTest === 'testing' || etatTest === 'idle'}
-              title={messageTest}
-            >
-              {libelleTest}
+            class="flex items-center gap-1.5 rounded border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-200"
+          >
+            Mode gratuit{gratuit?.fournisseur_actuel ? ` · ${gratuit.fournisseur_actuel}` : ''}
+          </span>
+          {#if modelesGratuit.length > 0 && gratuit?.peut_choisir_modele}
+            <label class="flex items-center gap-1.5">
+              <span class="text-xs text-ink-tertiary">Modèle</span>
+              <select
+                bind:value={modelePrimaire}
+                onchange={changerModeleGratuit}
+                disabled={enCours}
+                class="rounded border border-border bg-surface-primary px-2 py-1 text-xs"
+                title="Modèle principal du mode gratuit pour toute l'instance ; l'autre modèle du catalogue sert de secours en cas de surcharge"
+              >
+                {#each modelesGratuit as m (m.model)}
+                  <option value={m.model}>
+                    {m.label}{m.role === 'secours' ? ' (secours)' : ''}
+                  </option>
+                {/each}
+              </select>
+            </label>
+          {:else if gratuit?.modele_actuel}
+            <span class="text-xs text-ink-tertiary" title="Modèle qui sert les messages">
+              {gratuit.modele_actuel}
             </span>
           {/if}
           <button
             type="button"
-            class="text-xs text-ink-tertiary underline hover:text-ink-primary disabled:opacity-50"
-            onclick={testerCombo}
-            disabled={enCours || etatTest === 'testing' || !cleChoisie}
-            title="Tester le couple clé + modèle"
+            class="rounded border border-border bg-surface-primary px-2 py-1 text-xs hover:border-primary-600 hover:text-primary-700 disabled:opacity-50 dark:hover:border-primary-400 dark:hover:text-primary-300"
+            onclick={testerGratuit}
+            disabled={etatTestGratuit === 'testing'}
+            title="Envoyer un ping au fournisseur gratuit (hors quota) pour vérifier qu'il répond"
           >
-            Tester
+            {etatTestGratuit === 'testing'
+              ? 'Test…'
+              : etatTestGratuit === 'ok'
+                ? 'OK'
+                : etatTestGratuit === 'ko'
+                  ? 'Échec'
+                  : 'Tester'}
           </button>
-        </span>
+          <button
+            type="button"
+            class="rounded border border-border bg-surface-primary px-2 py-1 text-xs text-ink-secondary hover:border-danger hover:text-danger disabled:opacity-50"
+            onclick={desactiverGratuit}
+            disabled={enCours}
+            title="Revenir à votre clé personnelle pour les nouveaux messages"
+          >
+            Quitter le mode gratuit
+          </button>
+        {:else}
+          {#if cles.length > 0}
+            <label class="flex items-center gap-1.5">
+              <span class="text-xs text-ink-tertiary">Clé</span>
+              <select
+                bind:value={cleChoisie}
+                onchange={changerCle}
+                disabled={enCours}
+                class="rounded border border-border bg-surface-primary px-2 py-1 text-xs"
+              >
+                {#each cles as cle (cle.id)}
+                  <option value={cle.id}>{cle.display_name} ({cle.api_key_masked})</option>
+                {/each}
+              </select>
+            </label>
+          {/if}
+          {#if modeles.length > 0}
+            <label class="flex items-center gap-1.5">
+              <span class="text-xs text-ink-tertiary">Modèle</span>
+              <select
+                bind:value={modeleChoisi}
+                onchange={changerModele}
+                disabled={enCours}
+                class="rounded border border-border bg-surface-primary px-2 py-1 text-xs"
+              >
+                <option value=""
+                  >Défaut ({cles.find((c) => c.id === cleChoisie)?.model ?? ''})</option
+                >
+                {#each modeles as m (m)}
+                  <option value={m}>{m}</option>
+                {/each}
+              </select>
+            </label>
+          {/if}
+          {#if gratuit?.disponible}
+            <button
+              type="button"
+              class="rounded border border-border bg-surface-secondary px-2 py-1 text-xs text-ink-secondary hover:border-info hover:text-ink-primary disabled:opacity-50"
+              onclick={() => (consentOuvert = true)}
+              disabled={enCours}
+              title="Utiliser l'agent sans clé, via les serveurs Philum"
+            >
+              Mode gratuit…
+            </button>
+            <!-- Pas de « Tester » ici : celui du couple cle+modele suit
+               immediatement, et deux boutons du meme nom cote a cote ne
+               disaient pas lequel testait quoi. Le fournisseur gratuit se
+               teste depuis la barre du mode gratuit, une fois celui-ci actif,
+               la ou le resultat porte a consequence. -->
+          {/if}
+        {/if}
+        <!-- Indicateur du dernier test cle+modele. Le bouton relance le test a
+           la demande ; le point coloré resume l'etat sans se disputer la
+           largeur avec les selecteurs. -->
+        {#if !gratuitActif}
+          <span class="flex items-center gap-1.5">
+            <span
+              aria-hidden="true"
+              class="inline-block h-2 w-2 rounded-full"
+              class:bg-emerald-500={etatTest === 'ok'}
+              class:bg-red-500={etatTest === 'ko' || etatTest === 'incompat'}
+              class:bg-amber-400={etatTest === 'testing'}
+              class:bg-ink-tertiary={etatTest === 'idle'}
+              class:animate-pulse={etatTest === 'testing'}
+            ></span>
+            {#if libelleTest}
+              <span
+                class="text-xs"
+                class:text-emerald-600={etatTest === 'ok'}
+                class:text-danger={etatTest === 'ko' || etatTest === 'incompat'}
+                class:text-ink-tertiary={etatTest === 'testing' || etatTest === 'idle'}
+                title={messageTest}
+              >
+                {libelleTest}
+              </span>
+            {/if}
+            <button
+              type="button"
+              class="text-xs text-ink-tertiary underline hover:text-ink-primary disabled:opacity-50"
+              onclick={testerCombo}
+              disabled={enCours || etatTest === 'testing' || !cleChoisie}
+              title="Tester le couple clé + modèle"
+            >
+              Tester
+            </button>
+          </span>
+        {/if}
+      </div>
+      {#if agentActif}
+        <p class="mb-2 text-xs text-ink-tertiary">
+          {agentActif.contract}
+          <span class="text-ink-tertiary">({agentActif.tools.length} outils)</span>
+        </p>
+        {#if agentActif.tools_absents.length > 0}
+          <p class="mb-2 text-xs text-warning">
+            Outils demandés mais non disponibles sur ce serveur : {agentActif.tools_absents.join(
+              ', '
+            )}
+          </p>
+        {/if}
       {/if}
-    </div>
-    {#if agentActif}
-      <p class="mb-2 text-xs text-ink-tertiary">
-        {agentActif.contract}
-        <span class="text-ink-tertiary">({agentActif.tools.length} outils)</span>
-      </p>
-      {#if agentActif.tools_absents.length > 0}
-        <p class="mb-2 text-xs text-warning">
-          Outils demandés mais non disponibles sur ce serveur : {agentActif.tools_absents.join(
-            ', '
-          )}
+      {#if messageTest && (etatTest === 'ko' || etatTest === 'incompat')}
+        <p class="mb-2 text-xs text-danger">{messageTest}</p>
+      {/if}
+      {#if messageTestGratuit && etatTestGratuit === 'ko'}
+        <p class="mb-2 text-xs text-danger">Fournisseur gratuit : {messageTestGratuit}</p>
+      {:else if messageTestGratuit && etatTestGratuit === 'ok'}
+        <p class="mb-2 text-xs text-emerald-600 dark:text-emerald-400">
+          Fournisseur gratuit : {messageTestGratuit}
         </p>
       {/if}
     {/if}
-    {#if messageTest && (etatTest === 'ko' || etatTest === 'incompat')}
-      <p class="mb-2 text-xs text-danger">{messageTest}</p>
-    {/if}
-    {#if messageTestGratuit && etatTestGratuit === 'ko'}
-      <p class="mb-2 text-xs text-danger">Fournisseur gratuit : {messageTestGratuit}</p>
-    {:else if messageTestGratuit && etatTestGratuit === 'ok'}
-      <p class="mb-2 text-xs text-emerald-600 dark:text-emerald-400">
-        Fournisseur gratuit : {messageTestGratuit}
-      </p>
-    {/if}
-  {/if}
+  {/snippet}
 
   <!-- Fil de conversation : un seul fil vertical, pas de bulles. Les tours
        utilisateur sont marques par une barre laterale plutot qu'une bulle
@@ -889,7 +927,10 @@
   {#if objectif}
     <!-- Hors du fil, exprès : l'objectif sert justement sur les conversations
          longues, celles ou une ligne posee au debut aurait disparu du champ. -->
-    <p class="shrink-0 border-l-2 border-info px-3 py-1 text-xs text-ink-secondary">
+    <p
+      class="mx-auto w-full max-w-4xl shrink-0 truncate border-l-2 border-info px-3 py-1 text-xs text-ink-secondary"
+      title={objectif}
+    >
       <span class="text-ink-tertiary">Objectif :</span>
       {objectif}{#if phase}<span class="text-ink-tertiary"> · {phase}</span>{/if}
     </p>
@@ -898,7 +939,7 @@
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <div
     bind:this={fil}
-    class="flex-1 space-y-4 overflow-y-auto px-1 py-2"
+    class="min-h-0 flex-1 overflow-y-auto px-1 py-2"
     onscroll={surDefilement}
     onmousedown={onMouseDownFil}
     onmousemove={onMouseMoveFil}
@@ -906,157 +947,161 @@
     aria-live="polite"
     aria-busy={enCours}
   >
-    {#if chargement}
-      <p class="text-sm text-ink-tertiary">Chargement de la conversation...</p>
-    {:else if items.length === 0}
-      <div class="mt-6 space-y-3">
-        <p class="text-sm text-ink-secondary">
-          Que doit faire l'agent ? Cliquez une amorce ou tapez la vôtre.
-        </p>
-        <ul class="space-y-1.5">
-          {#each AMORCES as amorce (amorce)}
-            <li>
-              <button
-                type="button"
-                class="w-full rounded border border-border bg-surface-secondary px-3 py-2 text-left text-sm text-ink-primary hover:border-info hover:bg-surface-tertiary"
-                onclick={() => {
-                  saisie = amorce;
-                }}
-              >
-                {amorce}
-              </button>
-            </li>
-          {/each}
-        </ul>
-      </div>
-    {/if}
-
-    {#each affichables as item, i (i)}
-      {#if item.kind === 'user'}
-        <div class="break-words border-l-2 border-info pl-3 text-sm text-ink-primary">
-          {item.text}
-        </div>
-      {:else if item.kind === 'assistant'}
-        <div class="text-sm">
-          <AgentMarkdown texte={item.text} />
-        </div>
-      {:else if item.kind === 'group-outils'}
-        {#if item.entrees.length === 1}
-          {@const seule = item.entrees[0]}
-          <ToolCard name={seule.name} args={seule.args} result={seule.result} />
-        {:else}
-          <!-- N cartes consecutives de meme outil : un en-tete compte les
-               appels, chaque carte reste consultable en dessous. -->
-          <div class="space-y-1 rounded-lg border border-border bg-surface-secondary/40 p-1.5">
-            <p class="px-1 text-xs text-ink-tertiary">
-              {rendreGroupe(item.name, item.entrees.length)}
-            </p>
-            {#each item.entrees as tc (tc.id)}
-              <ToolCard name={tc.name} args={tc.args} result={tc.result} />
+    <!-- Le fil defile sur toute la largeur, sa barre au bord de l'ecran ; le
+         texte, lui, reste a une largeur de lecture. -->
+    <div class="mx-auto max-w-4xl space-y-4">
+      {#if chargement}
+        <p class="text-sm text-ink-tertiary">Chargement de la conversation...</p>
+      {:else if items.length === 0}
+        <div class="mt-6 space-y-3">
+          <p class="text-sm text-ink-secondary">
+            Que doit faire l'agent ? Cliquez une amorce ou tapez la vôtre.
+          </p>
+          <ul class="space-y-1.5">
+            {#each AMORCES as amorce (amorce)}
+              <li>
+                <button
+                  type="button"
+                  class="w-full rounded border border-border bg-surface-secondary px-3 py-2 text-left text-sm text-ink-primary hover:border-info hover:bg-surface-tertiary"
+                  onclick={() => {
+                    saisie = amorce;
+                  }}
+                >
+                  {amorce}
+                </button>
+              </li>
             {/each}
-          </div>
-        {/if}
-      {:else if item.kind === 'compaction'}
-        <!-- Le debut de la conversation est sorti de la fenetre du modele. Le
-             dire ici, a sa place dans le fil : l'agent qui « oublie » sans
-             prevenir passe pour defaillant alors qu'il subit une limite. -->
-        <div class="flex items-center gap-3 py-1 text-xs text-ink-tertiary">
-          <span class="h-px flex-1 bg-border"></span>
-          <span>{texteCompaction(item.retires, item.elagues)}</span>
-          <span class="h-px flex-1 bg-border"></span>
-        </div>
-      {:else if item.kind === 'controle'}
-        <!-- La reponse au-dessus annoncait une action que rien n'avait executee.
-             Sans cette marque, la reponse suivante contredit la precedente et
-             l'utilisateur ne sait pas laquelle croire. -->
-        <div class="flex items-center gap-3 py-1 text-xs text-amber-700 dark:text-amber-400">
-          <span class="h-px flex-1 bg-border"></span>
-          <span>Action annoncée mais non exécutée : réponse redemandée</span>
-          <span class="h-px flex-1 bg-border"></span>
-        </div>
-      {:else if item.kind === 'repli'}
-        <!-- Une cle a refuse, une autre a pris le relais. Discret et non rouge :
-             la conversation a continue, seule la cle a change. Le taire ferait
-             passer le temps perdu a essayer pour une lenteur du modele. -->
-        <div class="flex items-center gap-3 py-1 text-xs text-ink-tertiary">
-          <span class="h-px flex-1 bg-border"></span>
-          <span>{item.quitte} n'a pas répondu, {item.pris} prend le relais. {item.raison}</span>
-          <span class="h-px flex-1 bg-border"></span>
-        </div>
-      {:else if item.kind === 'approval'}
-        <ApprovalCard
-          tool={item.tool}
-          args={item.args}
-          resume={item.resume}
-          expiresAt={item.expiresAt}
-          approved={item.approved}
-          onrespond={(approuve) => repondreApprobation(item.requestId, approuve)}
-        />
-      {:else if item.kind === 'continuation'}
-        <div
-          class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-700 dark:bg-amber-950"
-        >
-          <p class="text-sm text-amber-800 dark:text-amber-200">{item.message}</p>
-          <!-- `enCours` n'est plus force ici : quand le tour ne partait pas
-               (reprise en cours), il restait vrai sans flux derriere, et la
-               saisie affichait « Arreter » jusqu'au rechargement. -->
-          <Button variant="ghost" onclick={continuer} disabled={enCours || reprise === 'encours'}
-            >Continuer</Button
-          >
-        </div>
-      {:else}
-        <div
-          role="alert"
-          class="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger"
-        >
-          <p class="[overflow-wrap:anywhere]">{item.text}</p>
-          <!-- Seule la derniere erreur se reessaie : une erreur ancienne n'a
-               plus de message a renvoyer qui ait un sens a cet endroit du fil. -->
-          {#if i === affichables.length - 1}
-            <button
-              type="button"
-              class="mt-1 text-xs font-medium text-danger underline hover:no-underline disabled:opacity-50"
-              disabled={enCours || reprise === 'encours'}
-              onclick={reessayer}>Réessayer</button
-            >
-          {/if}
+          </ul>
         </div>
       {/if}
-    {/each}
 
-    {#if attentePremierToken}
-      <!-- Curseur clignotant : le message est parti, le modele n'a pas
+      {#each affichables as item, i (i)}
+        {#if item.kind === 'user'}
+          <div class="break-words border-l-2 border-info pl-3 text-sm text-ink-primary">
+            {item.text}
+          </div>
+        {:else if item.kind === 'assistant'}
+          <div class="text-sm">
+            <AgentMarkdown texte={item.text} />
+          </div>
+        {:else if item.kind === 'group-outils'}
+          {#if item.entrees.length === 1}
+            {@const seule = item.entrees[0]}
+            <ToolCard name={seule.name} args={seule.args} result={seule.result} />
+          {:else}
+            <!-- N cartes consecutives de meme outil : un en-tete compte les
+               appels, chaque carte reste consultable en dessous. -->
+            <div class="space-y-1 rounded-lg border border-border bg-surface-secondary/40 p-1.5">
+              <p class="px-1 text-xs text-ink-tertiary">
+                {rendreGroupe(item.name, item.entrees.length)}
+              </p>
+              {#each item.entrees as tc (tc.id)}
+                <ToolCard name={tc.name} args={tc.args} result={tc.result} />
+              {/each}
+            </div>
+          {/if}
+        {:else if item.kind === 'compaction'}
+          <!-- Le debut de la conversation est sorti de la fenetre du modele. Le
+             dire ici, a sa place dans le fil : l'agent qui « oublie » sans
+             prevenir passe pour defaillant alors qu'il subit une limite. -->
+          <div class="flex items-center gap-3 py-1 text-xs text-ink-tertiary">
+            <span class="h-px flex-1 bg-border"></span>
+            <span>{texteCompaction(item.retires, item.elagues)}</span>
+            <span class="h-px flex-1 bg-border"></span>
+          </div>
+        {:else if item.kind === 'controle'}
+          <!-- La reponse au-dessus annoncait une action que rien n'avait executee.
+             Sans cette marque, la reponse suivante contredit la precedente et
+             l'utilisateur ne sait pas laquelle croire. -->
+          <div class="flex items-center gap-3 py-1 text-xs text-amber-700 dark:text-amber-400">
+            <span class="h-px flex-1 bg-border"></span>
+            <span>Action annoncée mais non exécutée : réponse redemandée</span>
+            <span class="h-px flex-1 bg-border"></span>
+          </div>
+        {:else if item.kind === 'repli'}
+          <!-- Une cle a refuse, une autre a pris le relais. Discret et non rouge :
+             la conversation a continue, seule la cle a change. Le taire ferait
+             passer le temps perdu a essayer pour une lenteur du modele. -->
+          <div class="flex items-center gap-3 py-1 text-xs text-ink-tertiary">
+            <span class="h-px flex-1 bg-border"></span>
+            <span>{item.quitte} n'a pas répondu, {item.pris} prend le relais. {item.raison}</span>
+            <span class="h-px flex-1 bg-border"></span>
+          </div>
+        {:else if item.kind === 'approval'}
+          <ApprovalCard
+            tool={item.tool}
+            args={item.args}
+            resume={item.resume}
+            expiresAt={item.expiresAt}
+            approved={item.approved}
+            onrespond={(approuve) => repondreApprobation(item.requestId, approuve)}
+          />
+        {:else if item.kind === 'continuation'}
+          <div
+            class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-700 dark:bg-amber-950"
+          >
+            <p class="text-sm text-amber-800 dark:text-amber-200">{item.message}</p>
+            <!-- `enCours` n'est plus force ici : quand le tour ne partait pas
+               (reprise en cours), il restait vrai sans flux derriere, et la
+               saisie affichait « Arreter » jusqu'au rechargement. -->
+            <Button variant="ghost" onclick={continuer} disabled={enCours || reprise === 'encours'}
+              >Continuer</Button
+            >
+          </div>
+        {:else}
+          <div
+            role="alert"
+            class="rounded-lg border border-danger/30 bg-danger-bg px-3 py-2 text-sm text-danger"
+          >
+            <p class="[overflow-wrap:anywhere]">{item.text}</p>
+            <!-- Seule la derniere erreur se reessaie : une erreur ancienne n'a
+               plus de message a renvoyer qui ait un sens a cet endroit du fil. -->
+            {#if i === affichables.length - 1}
+              <button
+                type="button"
+                class="mt-1 text-xs font-medium text-danger underline hover:no-underline disabled:opacity-50"
+                disabled={enCours || reprise === 'encours'}
+                onclick={reessayer}>Réessayer</button
+              >
+            {/if}
+          </div>
+        {/if}
+      {/each}
+
+      {#if attentePremierToken}
+        <!-- Curseur clignotant : le message est parti, le modele n'a pas
            encore repondu. Sans ce signal, l'utilisateur ne sait pas si
            l'envoi a echoue ou si l'agent reflechit. -->
-      <div class="flex items-center gap-2 text-sm text-ink-secondary">
-        <span class="curseur-clignotant inline-block h-4 w-[2px] bg-ink-primary"></span>
-      </div>
-    {/if}
+        <div class="flex items-center gap-2 text-sm text-ink-secondary">
+          <span class="curseur-clignotant inline-block h-4 w-[2px] bg-ink-primary"></span>
+        </div>
+      {/if}
 
-    {#if enCours && !attentePremierToken}
-      <!-- Logo Philum anime : rassure sur le travail en cours apres le premier
+      {#if enCours && !attentePremierToken}
+        <!-- Logo Philum anime : rassure sur le travail en cours apres le premier
            token (recherche web, appel d'outil, etc.). Avant le premier token,
            le curseur clignotant tient deja ce role : afficher les deux ferait
            deux signaux pour un seul etat. -->
-      <div class="flex items-center gap-2 text-xs text-ink-tertiary">
-        <LogoLoader size={20} />
-        <span>Philum réfléchit…</span>
-      </div>
-    {/if}
+        <div class="flex items-center gap-2 text-xs text-ink-tertiary">
+          <LogoLoader size={20} />
+          <span>Philum réfléchit…</span>
+        </div>
+      {/if}
 
-    {#if reprise === 'encours'}
-      <!-- Troisieme etat : le flux est coupe mais le serveur termine le tour de
+      {#if reprise === 'encours'}
+        <!-- Troisieme etat : le flux est coupe mais le serveur termine le tour de
            son cote. Le dire, sinon l'utilisateur lit une perte de donnees la ou
            il n'y a qu'une deconnexion. -->
-      <div class="flex items-center gap-2 text-xs text-ink-tertiary" role="status">
-        <LogoLoader size={20} />
-        <span>
-          {motifReprise === 'rechargement'
-            ? 'L’agent termine un tour commencé plus tôt, on récupère sa réponse…'
-            : 'Connexion perdue. La réponse continue côté serveur, on la récupère…'}
-        </span>
-      </div>
-    {/if}
+        <div class="flex items-center gap-2 text-xs text-ink-tertiary" role="status">
+          <LogoLoader size={20} />
+          <span>
+            {motifReprise === 'rechargement'
+              ? 'L’agent termine un tour commencé plus tôt, on récupère sa réponse…'
+              : 'Connexion perdue. La réponse continue côté serveur, on la récupère…'}
+          </span>
+        </div>
+      {/if}
+    </div>
   </div>
 
   <!-- Bouton "nouveaux messages" quand l'utilisateur a remonte -->
@@ -1073,41 +1118,46 @@
     </button>
   {/if}
 
-  {#if usage && (usage.total_prompt_tokens > 0 || usage.total_completion_tokens > 0)}
-    <p class="py-1 text-right text-xs text-ink-tertiary">
-      {#if modeleEffectif}
-        <span class="font-mono">{modeleEffectif}</span> ·
-      {/if}
-      {(usage.total_prompt_tokens / 1000).toFixed(1)}k prompt · {(
-        usage.total_completion_tokens / 1000
-      ).toFixed(1)}k completion{usage.cost_eur != null
-        ? ` · ~${usage.cost_eur.toFixed(2)} EUR`
-        : ''}
-    </p>
-  {/if}
+  {#snippet usageLigne()}
+    {#if usage && (usage.total_prompt_tokens > 0 || usage.total_completion_tokens > 0)}
+      <p class="text-xs text-ink-tertiary">
+        Cette conversation : {(usage.total_prompt_tokens / 1000).toFixed(1)} k jetons envoyés,
+        {(usage.total_completion_tokens / 1000).toFixed(1)} k reçus{usage.cost_eur != null
+          ? `, environ ${usage.cost_eur.toFixed(2)} €`
+          : ''}.
+      </p>
+    {/if}
+  {/snippet}
 
-  {#if decouverte}
-    <div
-      class="mt-2 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
-    >
-      {#if banniereMode === 'gratuit'}
-        <span class="font-medium">Mode gratuit</span> : vos échanges transitent par
-      {:else}
-        <span class="font-medium">Mode découverte</span> : vos échanges transitent par
-      {/if}
-      <span class="font-medium">{decouverte.provider_public_name}</span>.
-      {decouverte.retention_notice}
-      <!-- Plus de « N messages restants » : le compteur ne comptait qu'un tour
+  {#snippet noticeMode()}
+    {#if decouverte}
+      <div
+        class="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
+      >
+        {#if banniereMode === 'gratuit'}
+          <span class="font-medium">Mode gratuit</span> : vos échanges transitent par
+        {:else}
+          <span class="font-medium">Mode découverte</span> : vos échanges transitent par
+        {/if}
+        <span class="font-medium">{decouverte.provider_public_name}</span>.
+        {decouverte.retention_notice}
+        <!-- Plus de « N messages restants » : le compteur ne comptait qu'un tour
            termine page ouverte, et affichait 30 restants apres 9 envois. -->
-      {#if banniereMode === 'gratuit'}
-        <button type="button" class="ml-1 underline" onclick={desactiverGratuit} disabled={enCours}>
-          Désactiver le mode gratuit</button
-        >.
-      {:else}
-        <a href="/dashboard/agents" class="ml-1 underline">Connecter votre clé</a>
-      {/if}
-    </div>
-  {/if}
+        {#if banniereMode === 'gratuit'}
+          <button
+            type="button"
+            class="ml-1 underline"
+            onclick={desactiverGratuit}
+            disabled={enCours}
+          >
+            Désactiver le mode gratuit</button
+          >.
+        {:else}
+          <a href="/dashboard/agents" class="ml-1 underline">Connecter votre clé</a>
+        {/if}
+      </div>
+    {/if}
+  {/snippet}
 
   {#if consentOuvert && gratuit}
     <ConsentementGratuit
@@ -1117,29 +1167,79 @@
     />
   {/if}
 
-  <form class="flex gap-2 border-t border-border pt-3" onsubmit={envoyer}>
-    <textarea
-      bind:value={saisie}
-      rows="1"
-      aria-label="Message à l'agent"
-      placeholder="Que doit faire l'agent ?"
-      class="flex-1 resize-none rounded border border-border bg-surface-primary px-3 py-2 text-sm touch-manipulation"
-      style="overflow-y: hidden;"
-      oninput={(e) => ajusterHauteur(e.currentTarget)}
-      onkeydown={(e) => {
-        if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
-          e.preventDefault();
-          if (!enCours && saisie.trim()) {
-            e.currentTarget.form?.requestSubmit();
-          }
-        }
-      }}></textarea>
-    {#if enCours}
-      <Button variant="ghost" onclick={interrompre}>Arrêter</Button>
-    {:else}
-      <Button type="submit">Envoyer</Button>
+  <!-- Zone de saisie : un seul cadre, la pastille des reglages a gauche et
+       l'envoi a droite, comme chez Claude et ChatGPT. Le panneau des reglages
+       s'ouvre au-dessus, par-dessus le fil, et ne lui prend plus de hauteur. -->
+  <div class="relative mx-auto w-full max-w-4xl shrink-0 pt-2" bind:this={zoneSaisie}>
+    {#if reglagesOuverts}
+      <div
+        id="reglages-agent"
+        class="absolute bottom-full left-0 z-20 mb-2 max-h-[60vh] w-full space-y-3 overflow-y-auto rounded-lg border border-border bg-surface-primary p-3 shadow-lg"
+      >
+        {@render reglages()}
+        {@render noticeMode()}
+        {@render usageLigne()}
+        <a href="/dashboard/agents" class="inline-block text-xs text-info hover:underline">
+          Gérer vos clés
+        </a>
+      </div>
     {/if}
-  </form>
+    {#if messageTest && (etatTest === 'ko' || etatTest === 'incompat') && !reglagesOuverts}
+      <!-- Un couple cle et modele refuse doit se voir sans ouvrir le panneau :
+           c'est lui qui fera echouer le prochain message. -->
+      <p class="mb-1 text-xs text-danger">{messageTest}</p>
+    {/if}
+    <form
+      class="rounded-xl border border-border bg-surface-primary px-3 py-2 shadow-sm focus-within:border-info"
+      onsubmit={envoyer}
+    >
+      <textarea
+        bind:value={saisie}
+        rows="1"
+        aria-label="Message à l'agent"
+        placeholder="Que doit faire l'agent ?"
+        class="block w-full resize-none bg-transparent py-1 text-sm text-ink-primary outline-none touch-manipulation placeholder:text-ink-tertiary"
+        style="overflow-y: hidden;"
+        oninput={(e) => ajusterHauteur(e.currentTarget)}
+        onkeydown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+            e.preventDefault();
+            if (!enCours && saisie.trim()) {
+              e.currentTarget.form?.requestSubmit();
+            }
+          }
+        }}></textarea>
+      <div class="mt-1 flex items-center gap-2">
+        <button
+          type="button"
+          class="flex min-w-0 items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs text-ink-secondary hover:border-info hover:text-ink-primary"
+          aria-expanded={reglagesOuverts}
+          aria-controls="reglages-agent"
+          title="Agent, clé, modèle et mode gratuit"
+          onclick={() => (reglagesOuverts = !reglagesOuverts)}
+        >
+          <span
+            aria-hidden="true"
+            class="inline-block h-2 w-2 shrink-0 rounded-full"
+            class:bg-emerald-500={etatPastille === 'ok'}
+            class:bg-red-500={etatPastille === 'ko' || etatPastille === 'incompat'}
+            class:bg-amber-400={etatPastille === 'testing'}
+            class:bg-ink-tertiary={etatPastille === 'idle'}
+          ></span>
+          <span class="truncate">{libellePastille}</span>
+          <span aria-hidden="true" class="text-ink-tertiary">▾</span>
+        </button>
+        <span class="flex-1"></span>
+        {#if enCours}
+          <Button size="sm" variant="ghost" onclick={interrompre}>Arrêter</Button>
+        {:else}
+          <Button size="sm" type="submit" disabled={!saisie.trim() || reprise === 'encours'}
+            >Envoyer</Button
+          >
+        {/if}
+      </div>
+    </form>
+  </div>
 </div>
 
 <style>

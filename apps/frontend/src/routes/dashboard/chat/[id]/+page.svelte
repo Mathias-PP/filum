@@ -51,14 +51,7 @@
 </svelte:head>
 
 <div class="flex h-full min-h-0 flex-col">
-  <div class="mb-4 flex shrink-0 items-center gap-2 min-w-0">
-    <!-- Sous `lg`, la liste est au-dessus : le retour y ramene. Au-dela, elle
-         est a cote et le bouton ferait doublon. -->
-    <span class="lg:hidden">
-      <Button size="sm" variant="ghost" href="/dashboard/chat" title="Retour aux conversations">
-        &larr;
-      </Button>
-    </span>
+  <div class="mx-auto flex w-full max-w-4xl shrink-0 items-center gap-2 pb-2">
     {#if edition}
       <form
         class="flex min-w-0 flex-1 items-center gap-1"
@@ -70,7 +63,7 @@
         <!-- svelte-ignore a11y_autofocus -->
         <input
           bind:value={brouillon}
-          class="min-w-0 flex-1 rounded border border-border bg-surface-primary px-2 py-1 text-sm"
+          class="min-w-0 flex-1 rounded border border-border bg-surface-primary px-2 py-1 font-serif text-xl"
           maxlength="200"
           aria-label="Nom de la conversation"
           autofocus
@@ -82,7 +75,16 @@
         <Button size="sm" variant="ghost" onclick={() => (edition = false)}>Annuler</Button>
       </form>
     {:else}
-      <h1 class="min-w-0 truncate font-serif text-2xl text-ink-primary">{titre}</h1>
+      <!-- Cliquer le titre le renomme, comme dans la liste de Claude et de
+           ChatGPT ; le bouton reste pour qui ne le devine pas. -->
+      <button
+        type="button"
+        class="min-w-0 truncate py-1 text-left font-serif text-xl text-ink-primary"
+        title="Renommer"
+        onclick={ouvrirEdition}
+      >
+        {titre}
+      </button>
       <button
         type="button"
         class="shrink-0 rounded px-1.5 py-0.5 text-xs text-ink-tertiary hover:bg-surface-tertiary hover:text-ink-primary"

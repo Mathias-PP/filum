@@ -17,7 +17,16 @@ export const conversations = $state<{
   active: string | null;
   /** Incrémenté à chaque demande de conversation vierge. */
   generation: number;
-}>({ liste: [], chargement: true, echec: false, active: null, generation: 0 });
+  /** Liste ouverte en tiroir, sous `lg`, où elle ne tient pas à côté du fil. */
+  tiroirOuvert: boolean;
+}>({
+  liste: [],
+  chargement: true,
+  echec: false,
+  active: null,
+  generation: 0,
+  tiroirOuvert: false,
+});
 
 export async function rafraichirConversations(): Promise<void> {
   try {
