@@ -49,7 +49,7 @@ jobs:
             - name: Check for secrets in code
               if: github.event_name == 'pull_request'
               # Pin SHA (= v3.95.9) : @main exécuterait n'importe quel commit upstream.
-              uses: trufflesecurity/trufflehog@bcfcf73aaf4759d4dadc2783177c245a02792318
+              uses: trufflesecurity/trufflehog@20652fbbdefffcdaa493a5bf57ab2ac6b1db715b
               with:
                   path: ./
                   base: ${{ github.event.pull_request.base.sha }}
