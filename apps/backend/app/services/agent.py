@@ -1092,6 +1092,68 @@ _DEJA_ECHOUE = (
     "n'est pas possible. N'annonce pas cette action comme faite."
 )
 
+#: Lectures dont le résultat ne dépend que de ce qui a été écrit avant elles.
+#:
+#: Mesure du 2026-09-13 : `verify_excerpts` appelé seize fois sur la même source
+#: sans une écriture entre deux, le même PDF lu deux fois. Tant que rien n'a été
+#: écrit depuis, ces appels rendent la même chose : on le rend sans refaire le
+#: travail, et on le dit. Liste fermée plutôt que « tout sauf les écritures » :
+#: un outil qu'on n'a pas classé ne doit jamais servir un résultat périmé.
+LECTURES_REPRISES: frozenset[str] = frozenset(
+    {
+        "get_card",
+        "get_source",
+        "search_cards",
+        "find_cards_citing",
+        "list_my_cards",
+        "get_my_card",
+        "list_sources",
+        "search_my_excerpts",
+        "get_url_metadata",
+        "find_passage",
+        "verify_excerpts",
+        "web_search",
+        "fetch_url",
+        "fs_read",
+        "fs_list",
+        "fiche_state",
+    }
+)
+
+_LECTURE_REPRISE = (
+    "Résultat repris de ton appel identique précédent : rien n'a été écrit depuis, "
+    "il ne peut pas avoir changé. Ne refais pas cet appel."
+)
+
+#: Refus d'`add_excerpt` sur une même source avant d'exiger une recherche de verbatim.
+#:
+#: Mesure du 2026-09-13 : 73 refus sur 83 appels. Passé les premiers refus, le
+#: modèle ne converge plus, il réécrit sa paraphrase. Trois laisse corriger une
+#: typographie ou un découpage ; au-delà, il faut aller lire la page.
+REFUS_AVANT_RECHERCHE = 3
+
+_RECHERCHE_EXIGEE = (
+    "Plusieurs extraits refusés sur cette source depuis ta dernière recherche : "
+    "tu cites de mémoire ou tu reformules. `add_excerpt` est suspendu sur cette "
+    "source jusqu'à ce que tu appelles `find_passage` avec ce que tu veux citer. "
+    "Il rend les passages exacts de la page : recopie l'un d'eux tel quel. "
+    "N'annonce pas cet extrait comme posé."
+)
+
+
+class MemoireAppels:
+    """Ce que la boucle retient des appels d'une conversation, au-delà des échecs."""
+
+    def __init__(self) -> None:
+        #: Empreinte d'une lecture réussie : nombre d'écritures quand elle a été
+        #: rendue, et son résultat.
+        self.lectures: dict[str, tuple[int, dict[str, Any]]] = {}
+        #: Tout appel hors `LECTURES_REPRISES` compte, réussi ou non : un échec
+        #: peut avoir écrit à moitié.
+        self.ecritures = 0
+        #: Refus d'`add_excerpt` par source, depuis la dernière recherche sur elle.
+        self.refus_extraits: dict[str, int] = {}
+
 
 #: Outils qui touchent l'``AsyncSession`` du contexte, donc jamais en parallèle.
 #:
@@ -1134,10 +1196,13 @@ async def _executer_tour(
     approuver: Approuver,
     session_id: UUID | None = None,
     echecs: dict[str, str] | None = None,
+    memoire: MemoireAppels | None = None,
 ) -> None:
     ctx = ToolContext(db=db, user=user, creator_id=user.id, session_id=session_id)
     if echecs is None:
         echecs = {}
+    if memoire is None:
+        memoire = MemoireAppels()
     appels: list[_Appel] = []
     for tc in tool_calls:
         try:
@@ -1160,7 +1225,9 @@ async def _executer_tour(
         appels.append((tc, nom, args, lisibles))
 
     async def _resoudre(appel: _Appel) -> dict[str, Any]:
-        return await _resultat_appel(db, user, tour, appel, registre, ctx, emit, approuver, echecs)
+        return await _resultat_appel(
+            db, user, tour, appel, registre, ctx, emit, approuver, echecs, memoire
+        )
 
     if _lot_parallelisable(appels):
         resultats = list(await asyncio.gather(*(_resoudre(a) for a in appels)))
@@ -1190,8 +1257,11 @@ async def _resultat_appel(
     emit: Emitter,
     approuver: Approuver,
     echecs: dict[str, str],
+    memoire: MemoireAppels | None = None,
 ) -> dict[str, Any]:
     """Un appel d'outil, de ses arguments à son résultat, borné dans le temps."""
+    if memoire is None:
+        memoire = MemoireAppels()
     _tc, nom, args, lisibles = appel
     if not lisibles:
         return {
@@ -1207,6 +1277,16 @@ async def _resultat_appel(
     empreinte = _empreinte(nom, args)
     if empreinte in echecs:
         return {"error": _DEJA_ECHOUE.format(message=echecs[empreinte])}
+    source_visee = str(args.get("source_id") or "")
+    if (
+        nom == "add_excerpt"
+        and memoire.refus_extraits.get(source_visee, 0) >= REFUS_AVANT_RECHERCHE
+    ):
+        return {"error": _RECHERCHE_EXIGEE}
+    if nom in LECTURES_REPRISES:
+        deja = memoire.lectures.get(empreinte)
+        if deja is not None and deja[0] == memoire.ecritures:
+            return {**deja[1], "note": _LECTURE_REPRISE}
     approbation = False
     if est_sensible(nom, args):
         request_id = str(uuid4())
@@ -1253,6 +1333,17 @@ async def _resultat_appel(
     erreur = resultat.get("error") if isinstance(resultat, dict) else None
     if erreur:
         echecs[empreinte] = str(erreur)
+    if nom not in LECTURES_REPRISES:
+        memoire.ecritures += 1
+    elif not erreur and isinstance(resultat, dict):
+        memoire.lectures[empreinte] = (memoire.ecritures, resultat)
+    if source_visee and nom in ("find_passage", "suggest_excerpts"):
+        memoire.refus_extraits.pop(source_visee, None)
+    elif source_visee and nom == "add_excerpt":
+        if erreur:
+            memoire.refus_extraits[source_visee] = memoire.refus_extraits.get(source_visee, 0) + 1
+        else:
+            memoire.refus_extraits.pop(source_visee, None)
     return resultat
 
 
@@ -1378,6 +1469,7 @@ async def boucle(
         # production enjambe les tours, le modèle relit l'erreur puis refait le
         # même appel au tour suivant.
         echecs: dict[str, str] = {}
+        memoire = MemoireAppels()
         actif = provider
         candidats = replis or [provider]
         for tour in range(1, quota_tours + 1):
@@ -1500,7 +1592,17 @@ async def boucle(
                 }
             )
             await _executer_tour(
-                db, user, tour, messages, tool_calls, registre, emit, approuver, session_id, echecs
+                db,
+                user,
+                tour,
+                messages,
+                tool_calls,
+                registre,
+                emit,
+                approuver,
+                session_id,
+                echecs,
+                memoire,
             )
         # Limite atteinte : pas une erreur dure, mais une pause avec reprise.
         # Les harness modernes (cordis, opencode) n'ont pas de compteur dur :

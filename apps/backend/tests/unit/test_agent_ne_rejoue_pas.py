@@ -55,7 +55,7 @@ def _registre(nom: str, reponse: dict, compteur: list[int]) -> dict[str, AgentTo
     return {nom: _outil(nom, _execute)}
 
 
-async def _lancer(registre, tool_calls, *, echecs=None, approuver=None):
+async def _lancer(registre, tool_calls, *, echecs=None, approuver=None, memoire=None):
     """Joue un tour d'outils et rend les messages ajoutés."""
     messages: list[dict] = []
 
@@ -76,8 +76,123 @@ async def _lancer(registre, tool_calls, *, echecs=None, approuver=None):
         approuver or _accepte,
         None,
         echecs,
+        memoire,
     )
     return messages
+
+
+class TestUneLectureIdentiqueEstReprise:
+    """Mesure du 2026-09-13 : `verify_excerpts` seize fois sur la même source,
+    sans une écriture entre deux. Le résultat ne pouvait pas avoir changé."""
+
+    async def test_sans_ecriture_la_lecture_n_est_pas_refaite(self):
+        faits: list[int] = []
+        registre = _registre("verify_excerpts", {"checks": []}, faits)
+        memoire = agent_svc.MemoireAppels()
+        appel = {"source_id": "s1"}
+
+        await _lancer(registre, [_tc("verify_excerpts", "a", appel)], memoire=memoire)
+        messages = await _lancer(registre, [_tc("verify_excerpts", "b", appel)], memoire=memoire)
+
+        assert len(faits) == 1
+        assert "rien n'a été écrit depuis" in messages[0]["content"]
+        assert '"checks"' in messages[0]["content"]
+
+    async def test_une_ecriture_entre_deux_fait_relire(self):
+        lectures: list[int] = []
+        ecritures: list[int] = []
+        registre = {
+            **_registre("get_source", {"id": "s1"}, lectures),
+            **_registre("add_excerpt", {"id": "e1"}, ecritures),
+        }
+        memoire = agent_svc.MemoireAppels()
+
+        await _lancer(registre, [_tc("get_source", "a", {"source_id": "s1"})], memoire=memoire)
+        await _lancer(
+            registre, [_tc("add_excerpt", "b", {"source_id": "s1", "text": "x"})], memoire=memoire
+        )
+        await _lancer(registre, [_tc("get_source", "c", {"source_id": "s1"})], memoire=memoire)
+
+        assert len(lectures) == 2
+
+    async def test_une_ecriture_n_est_jamais_reprise(self):
+        faits: list[int] = []
+        registre = _registre("add_excerpt", {"id": "e1"}, faits)
+        memoire = agent_svc.MemoireAppels()
+        appel = {"source_id": "s1", "text": "x"}
+
+        await _lancer(registre, [_tc("add_excerpt", "a", appel)], memoire=memoire)
+        await _lancer(registre, [_tc("add_excerpt", "b", appel)], memoire=memoire)
+
+        assert len(faits) == 2
+
+
+class TestLesRefusRepetesExigentUneRecherche:
+    """73 refus sur 83 appels à `add_excerpt` : après chaque refus, le modèle
+    réécrivait sa paraphrase au lieu de relire la page."""
+
+    async def test_apres_trois_refus_add_excerpt_est_suspendu(self):
+        faits: list[int] = []
+        registre = _registre("add_excerpt", {"error": "Ce passage ne figure pas."}, faits)
+        memoire = agent_svc.MemoireAppels()
+
+        for rang in range(agent_svc.REFUS_AVANT_RECHERCHE):
+            await _lancer(
+                registre,
+                [_tc("add_excerpt", f"a{rang}", {"source_id": "s1", "text": f"variante {rang}"})],
+                memoire=memoire,
+            )
+        messages = await _lancer(
+            registre,
+            [_tc("add_excerpt", "z", {"source_id": "s1", "text": "encore une"})],
+            memoire=memoire,
+        )
+
+        assert len(faits) == agent_svc.REFUS_AVANT_RECHERCHE
+        assert "find_passage" in messages[0]["content"]
+
+    async def test_une_recherche_leve_la_suspension(self):
+        extraits: list[int] = []
+        recherches: list[int] = []
+        registre = {
+            **_registre("add_excerpt", {"error": "Ce passage ne figure pas."}, extraits),
+            **_registre("find_passage", {"passages": ["Le passage."]}, recherches),
+        }
+        memoire = agent_svc.MemoireAppels()
+        for rang in range(agent_svc.REFUS_AVANT_RECHERCHE):
+            await _lancer(
+                registre,
+                [_tc("add_excerpt", f"a{rang}", {"source_id": "s1", "text": f"variante {rang}"})],
+                memoire=memoire,
+            )
+
+        await _lancer(
+            registre, [_tc("find_passage", "f", {"source_id": "s1", "query": "q"})], memoire=memoire
+        )
+        await _lancer(
+            registre,
+            [_tc("add_excerpt", "z", {"source_id": "s1", "text": "Le passage."})],
+            memoire=memoire,
+        )
+
+        assert len(extraits) == agent_svc.REFUS_AVANT_RECHERCHE + 1
+
+    async def test_les_refus_d_une_source_ne_bloquent_pas_une_autre(self):
+        faits: list[int] = []
+        registre = _registre("add_excerpt", {"error": "Ce passage ne figure pas."}, faits)
+        memoire = agent_svc.MemoireAppels()
+        for rang in range(agent_svc.REFUS_AVANT_RECHERCHE):
+            await _lancer(
+                registre,
+                [_tc("add_excerpt", f"a{rang}", {"source_id": "s1", "text": f"variante {rang}"})],
+                memoire=memoire,
+            )
+
+        await _lancer(
+            registre, [_tc("add_excerpt", "z", {"source_id": "s2", "text": "x"})], memoire=memoire
+        )
+
+        assert len(faits) == agent_svc.REFUS_AVANT_RECHERCHE + 1
 
 
 class TestUnEchecNeSeRejouePas:

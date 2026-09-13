@@ -56,8 +56,15 @@ _ENUMS_PAR_PARAMETRE: dict[str, list[str]] = {
 #: écrit le texte qui l'atteste, et la fiche annonce « vérifié » sans que rien
 #: d'extérieur ne l'ait confirmé. Sans ce paramètre, la vérification passe
 #: toujours par la page que le serveur est allé lire.
+#:
+#: Même boucle mesurée le 2026-09-13 sur `suggest_excerpts` et `annotate_excerpt` :
+#: l'agent y passait sa propre paraphrase comme texte de la source, et les
+#: suggestions comme la mise en situation étaient calculées sur ce qu'il avait
+#: écrit, pas sur ce que la source dit.
 _PARAMETRES_MASQUES: dict[str, frozenset[str]] = {
     "verify_excerpts": frozenset({"provided_text"}),
+    "suggest_excerpts": frozenset({"provided_text"}),
+    "annotate_excerpt": frozenset({"provided_text"}),
 }
 
 #: Actions sensibles : toujours soumises à validation humaine (approbation
@@ -303,6 +310,7 @@ _ECRITURE = (
     "delete_excerpt",
     "update_excerpt",
     "suggest_excerpts",
+    "find_passage",
     "annotate_excerpt",
     "parse_biblio",
     "add_sources_batch",

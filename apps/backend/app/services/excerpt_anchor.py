@@ -74,27 +74,53 @@ def selecteurs_pour(page_text: str, start: int, end: int) -> Selecteurs:
     )
 
 
-def _normalise(texte: str) -> tuple[str, list[int]]:
+#: Un mot coupe en fin de ligne (« démo-\ngraphiques ») ou un tiret conditionnel.
+_CESURE = re.compile(r"[^\W\d_]-\s+[a-zàâäçéèêëîïôöùûüÿœæ]|­")
+
+
+def _normalise(texte: str, *, cesures: bool = False) -> tuple[str, list[int]]:
     """Texte aux espaces reduits, plus l'index d'origine de chaque caractere.
 
     La table de correspondance est ce qui permet de chercher sur une forme
     normalisee tout en rendant des offsets utilisables dans le texte reel :
     sans elle, un ancrage designerait une position dans un texte qui n'existe
     nulle part.
+
+    `cesures` recolle les mots coupes en fin de ligne. Un PDF de
+    recommandations portait « démo-graphiques » : le passage cite, ecrit d'un
+    seul tenant, a ete refuse cinq fois alors qu'il figurait mot pour mot dans
+    la source. Les caracteres retires n'ont pas d'entree dans l'index, donc les
+    offsets rendus designent toujours le texte reel, cesure comprise.
     """
     sortie: list[str] = []
     index: list[int] = []
     espace_en_cours = False
-    for i, c in enumerate(texte):
+    i = 0
+    n = len(texte)
+    while i < n:
+        c = texte[i]
+        if cesures:
+            if c == "­":
+                i += 1
+                continue
+            if c == "-" and sortie and sortie[-1].isalpha():
+                j = i + 1
+                while j < n and texte[j].isspace():
+                    j += 1
+                if j > i + 1 and j < n and texte[j].islower():
+                    i = j
+                    continue
         if c.isspace():
             if sortie and not espace_en_cours:
                 sortie.append(" ")
                 index.append(i)
             espace_en_cours = True
+            i += 1
             continue
         espace_en_cours = False
         sortie.append(c)
         index.append(i)
+        i += 1
     # Sentinelle : borne de fin d'un passage qui finit le texte.
     index.append(len(texte))
     return "".join(sortie).rstrip(), index
@@ -175,10 +201,18 @@ def ancrer(page_text: str, sel: Selecteurs) -> Ancrage | None:
 
     page_norm, index = _normalise(page_text)
 
-    for strategie, exact in ((_par_citation, True), (_par_approche, False)):
-        bornes = strategie(page_text, page_norm, index, sel)
-        if bornes is None:
-            continue
+    bornes = _par_citation(page_text, page_norm, index, sel)
+    # Les cesures ne sont recollees qu'apres un echec : un mot compose coupe en
+    # fin de ligne (« porte-\nmonnaie ») perdrait sinon son trait d'union, et
+    # une citation qui le porte cesserait d'etre retrouvee.
+    if bornes is None and _CESURE.search(page_text):
+        recolle, index_recolle = _normalise(page_text, cesures=True)
+        bornes = _par_citation(page_text, recolle, index_recolle, sel)
+    if bornes is not None:
         debut, fin = bornes
-        return Ancrage(start=debut, end=fin, texte=page_text[debut:fin], exact=exact)
-    return None
+        return Ancrage(start=debut, end=fin, texte=page_text[debut:fin], exact=True)
+    bornes = _par_approche(page_text, page_norm, index, sel)
+    if bornes is None:
+        return None
+    debut, fin = bornes
+    return Ancrage(start=debut, end=fin, texte=page_text[debut:fin], exact=False)

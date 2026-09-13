@@ -249,10 +249,13 @@ class TestTourInterrompu:
         # Le tour ne vit plus dans le flux : il continue sans le client et
         # s'ecrit en entier, reponse finale comprise, sans marque de coupure.
         messages: list[tuple[str, str]] = []
-        for _ in range(200):
-            messages = await _messages_persistes(session_id)
-            if len(messages) > 1:
-                break
+        # Attendre la fin du tour, pas le premier message ecrit : le tour
+        # s'ecrit message par message, et la CI a lu trois messages sur quatre.
+        for _ in range(500):
+            if not agent_tours.en_cours(UUID(session_id)):
+                messages = await _messages_persistes(session_id)
+                if len(messages) > 1:
+                    break
             await asyncio.sleep(0.02)
         roles = [r for r, _ in messages]
         assert roles == ["user", "assistant", "tool", "assistant"]

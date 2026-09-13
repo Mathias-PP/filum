@@ -145,6 +145,10 @@ const ACTIONS: Record<
     action: 'Suggère des extraits depuis',
     objet: (_a, r) => titreDepuisResultat(r) ?? 'cette source',
   },
+  find_passage: {
+    action: 'Cherche le passage exact dans',
+    objet: (_a, r) => titreDepuisResultat(r) ?? 'cette source',
+  },
   annotate_excerpt: {
     action: 'Annote un extrait',
     objet: (_a, r) => titreDepuisResultat(r),
