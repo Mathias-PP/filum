@@ -81,10 +81,10 @@
   // URL extraction
   let extracting = $state(false);
   let lastExtractedUrl = $state('');
-  // Taxonomie suggérée par l'extracteur (Crossref ou LLM) — indicateur UI
+  // Taxonomie suggérée par l'extracteur (Crossref ou LLM) : indicateur UI
   let taxonomySuggested = $state(false);
 
-  // Relative — routed through the SvelteKit /api proxy for first-party cookies.
+  // Relative : routed through the SvelteKit /api proxy for first-party cookies.
   const EXTRACT_API = '/api/v1/sources/extract';
 
   async function extractUrl() {
@@ -123,7 +123,7 @@
         taxonomySuggested = suggested;
       }
     } catch {
-      // silent fail — user can fill manually
+      // silent fail : user can fill manually
     } finally {
       extracting = false;
     }
@@ -483,7 +483,7 @@
     try {
       const res = await api.cards.publish(cardId);
       // Land on the freshly published public page rather than back on the
-      // dashboard — the user gets to see (and share) the result immediately.
+      // dashboard : the user gets to see (and share) the result immediately.
       let publicPath = '/dashboard';
       try {
         publicPath = new URL(res.public_url).pathname;

@@ -25,7 +25,7 @@ export interface Card {
    */
   content_text: string | null;
   /**
-   * Auteurs du contenu documenté — pas ceux de la fiche.
+   * Auteurs du contenu documenté, pas ceux de la fiche.
    *
    * Publier une fiche n'est pas signer ce qu'elle documente. Sans ce champ,
    * les auteurs ne vivaient que dans la bibliographie des fiches citantes, et
@@ -82,7 +82,7 @@ export interface CardStats {
   institution_publique: number;
   individu: number;
   archived_count: number;
-  /** Sources ayant une URL à archiver — dénominateur du compteur. Les
+  /** Sources ayant une URL à archiver : dénominateur du compteur. Les
    *  références sans lien n'ont rien à archiver et en sont exclues. */
   archivable_count: number;
   all_archived: boolean;
@@ -123,7 +123,7 @@ export interface SourceExcerpt {
   /** Intitulé de repérage, facultatif : dix extraits empilés ne se distinguent pas. */
   title: string | null;
   /**
-   * Une phrase qui situe le passage pour qui le rencontre hors de sa page —
+   * Une phrase qui situe le passage pour qui le rencontre hors de sa page :
    * en export, en réponse MCP, dans un moteur. Champ séparé du verbatim et
    * jamais recollé dedans : `text` reste exactement ce que la source dit.
    */
@@ -142,7 +142,7 @@ export interface SourceExcerpt {
    */
   verified_at: string | null;
   verified_status: 'found' | 'moved' | 'missing' | 'unreadable' | null;
-  /** Contre quoi le verdict a été rendu — les deux n'engagent pas la même chose. */
+  /** Contre quoi le verdict a été rendu : les deux n'engagent pas la même chose. */
   verified_text_source: 'fetched' | 'provided' | null;
 }
 
@@ -200,7 +200,7 @@ export interface ExcerptSuggestResponse {
  *
  * `found` : le passage y est. `moved` : il y est, mais plus tout à fait dans
  * ces mots. `missing` : il n'y est pas. `unreadable` : la page n'a rendu aucun
- * texte — **on ne sait pas**, ce qui n'est pas la même chose qu'absent.
+ * texte : **on ne sait pas**, ce qui n'est pas la même chose qu'absent.
  */
 export type ExcerptCheckStatus = 'found' | 'moved' | 'missing' | 'unreadable';
 
@@ -514,7 +514,7 @@ export interface ImportedSourceDraft {
   publisher?: string | null;
   doi?: string | null;
   /**
-   * Classification IA du type d'URL. Le badge est indicatif — l'user coche
+   * Classification IA du type d'URL. Le badge est indicatif : l'user coche
    * ou décoche à sa guise, rien n'est jamais filtré automatiquement.
    */
   classification?: 'source' | 'promo' | 'social' | 'other' | null;
@@ -534,7 +534,7 @@ export interface UrlMetadataResponse {
   /** Auteurs du contenu visé, extraits de la page (Crossref, JSON-LD, meta). */
   authors: string | null;
   /**
-   * Le site a refusé l'accès (obstacle anti-bot, 403, 429) — à distinguer d'une
+   * Le site a refusé l'accès (obstacle anti-bot, 403, 429) : à distinguer d'une
    * page dont rien n'a pu être tiré. Les deux arrivent sous forme de champs
    * vides ; seul ce drapeau dit lequel des deux s'est produit.
    */
@@ -558,7 +558,7 @@ export interface ImportFromUrlResponse {
    * - 'low'   : ni oracle ni HTML → aucune validation possible.
    */
   extraction_confidence?: 'high' | 'medium' | 'low';
-  /** Nb de refs venues d'un oracle (Wikipedia API, Crossref) — autoritatives. */
+  /** Nb de refs venues d'un oracle (Wikipedia API, Crossref) : autoritatives. */
   refs_from_oracle?: number;
   /** Nb de refs venues de S2/HTML/LLM, validées par section-detection. */
   refs_from_enrichment?: number;
@@ -589,7 +589,7 @@ export interface YoutubeTranscriptResponse {
  * graphe d'une fiche, et la constellation (fiches seules).
  */
 export interface GraphNode {
-  /** `card:<uuid>` ou `source:<uuid>` — unique tous types confondus. */
+  /** `card:<uuid>` ou `source:<uuid>` : unique tous types confondus. */
   id: string;
   kind: 'card' | 'source';
   /** Nombre de sauts depuis la fiche racine. */
@@ -612,7 +612,7 @@ export interface GraphNode {
   journal?: string | null;
   publisher?: string | null;
   doi?: string | null;
-  /** Nœuds `card` uniquement — nécessaires pour étiqueter et naviguer. */
+  /** Nœuds `card` uniquement : nécessaires pour étiqueter et naviguer. */
   slug?: string | null;
   creator_slug?: string | null;
   creator_name?: string | null;

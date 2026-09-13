@@ -2,7 +2,7 @@
  * Cet écran décide de ce qu'une fiche Philum affirmera d'une source. Le risque
  * propre n'est donc pas le plantage : c'est le verdict abusif. Dire
  * « introuvable » d'une citation que la page n'a simplement pas rendue
- * accuserait l'auteur·ice à la place du site — et une fiche qui accuse à tort
+ * accuserait l'auteur·ice à la place du site, et une fiche qui accuse à tort
  * ne vaut rien.
  *
  * D'où les invariants tenus ici : les quatre verdicts restent distincts, un
@@ -166,7 +166,7 @@ describe('ExcerptWorkspace', () => {
   });
 
   it("rend l'intitulé et la mise en situation quand ils existent", () => {
-    // Saisis, stockés, exportés, servis par le MCP — et jamais affichés
+    // Saisis, stockés, exportés, servis par le MCP, et jamais affichés
     // jusqu'ici. Une annotation qu'on ne relit pas est une annotation qu'on
     // ne corrige pas.
     monter([

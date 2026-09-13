@@ -73,7 +73,7 @@
     // below `top`. The previous `max-h-[85%]` class was independent of `top`,
     // so a tall source (annotation + 4 excerpts + manual archive link, etc.)
     // could be positioned such that its bottom extended below the graph
-    // container — clipped by `overflow-hidden` on the parent, with the
+    // container : clipped by `overflow-hidden` on the parent, with the
     // scrollbar itself out of view. With a pixel-exact max-height, the
     // overflow always lands inside the visible viewport and the user can
     // scroll the panel content normally.
@@ -177,7 +177,7 @@
         Seul `citations_count` est renseigné par du code : Crossref le donne
         (`is-referenced-by-count`) à chaque import. `impact_factor`,
         `subscribers_count` et `views_count` n'étaient écrits que par le seed
-        de démo, en dur — mesuré le 2026-08-07 sur la fiche vitrine en prod :
+        de démo, en dur (mesuré le 2026-08-07 sur la fiche vitrine en prod) :
         5 impact factors affichés sur 18 sources, aucun issu d'une mesure.
         Un chiffre non sourcé sur une fiche qui promet la traçabilité dit
         l'inverse de ce que Philum affirme. Retirés de l'affichage.

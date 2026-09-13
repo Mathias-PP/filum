@@ -23,7 +23,7 @@ describe('guessPlatform', () => {
 
   // Constaté le 2026-08-04 en parcourant la création de fiche : une revue
   // scientifique retombait sur « Autre », faute de case. Ce n'était pas une
-  // détection ratée mais une taxonomie incomplète — et « Autre » sur Nature
+  // détection ratée mais une taxonomie incomplète, et « Autre » sur Nature
   // dit au lecteur que le support n'a pas de genre.
   it('reconnaît une revue scientifique', () => {
     for (const url of [

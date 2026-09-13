@@ -9,7 +9,7 @@
  * Règle d'honnêteté, la même que partout ailleurs dans Philum : une source sans
  * date connue ne reçoit **jamais** une position inventée sur la frise. Elle est
  * garée dans une colonne à part, explicitement étiquetée « sans date ».
- * L'alternative — la coller à l'année médiane, ou à l'extrémité — ferait dire au
+ * L'alternative (la coller à l'année médiane, ou à l'extrémité) ferait dire au
  * graphe une chose que personne n'a vérifiée.
  *
  * ⚠️ Un simple écart ne suffit pas. **Une position sur un axe temporel signifie
@@ -17,7 +17,7 @@
  * colonne collée à gauche d'une frise 1935→2021 se lisait « années 1940-1960 ».
  * D'où `breakX` : la colonne est séparée de la frise par un **filet de rupture**
  * explicite, la convention usuelle pour dire « l'échelle s'interrompt ici ».
- * Sans ce filet, l'absence redevient une valeur — et une valeur fausse.
+ * Sans ce filet, l'absence redevient une valeur, et une valeur fausse.
  *
  * La colonne est placée **après** la frise, à droite. À gauche, elle occupait la
  * place que l'œil lit comme « le plus ancien » ; à droite, après la fin de

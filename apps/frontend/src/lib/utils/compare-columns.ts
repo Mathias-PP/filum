@@ -9,10 +9,10 @@
  * Ici, une cellule vide n'existe pas. Une case sans valeur dit *pourquoi* elle
  * n'en a pas, et les quatre raisons ne se confondent jamais :
  *
- * - **non renseignée** — le champ n'a jamais été rempli ; rien n'a été cherché ;
- * - **sans objet**     — la question ne se pose pas pour ce type de source ;
- * - **non vérifié**    — le contrôle machine n'a jamais tourné (`null`) ;
- * - **non vérifiable** — le contrôle a été tenté et ne peut pas conclure.
+ * - **non renseignée** : le champ n'a jamais été rempli ; rien n'a été cherché ;
+ * - **sans objet**     : la question ne se pose pas pour ce type de source ;
+ * - **non vérifié**    : le contrôle machine n'a jamais tourné (`null`) ;
+ * - **non vérifiable** : le contrôle a été tenté et ne peut pas conclure.
  *
  * C'est la même règle que celle qui gouverne `retraction_status` et
  * `oa_status` : trois états, jamais deux.
@@ -33,7 +33,7 @@ export type CellTone =
   | 'warning'
   /** Un retrait de la littérature. */
   | 'danger'
-  /** Pas de valeur — la cellule dit pourquoi. */
+  /** Pas de valeur : la cellule dit pourquoi. */
   | 'absent';
 
 export interface CompareCell {
@@ -86,7 +86,7 @@ function absent(label: string, help: string): CompareCell {
 /**
  * Catégories pour lesquelles une revue ou un éditeur est attendu.
  *
- * Ailleurs — une vidéo, un fil social, une page web — la case n'est pas vide
+ * Ailleurs (une vidéo, un fil social, une page web), la case n'est pas vide
  * par oubli : la notion n'existe pas. Dire « non renseignée » y serait un
  * reproche adressé à l'auteur de la fiche pour une information qui n'existe pas.
  */
@@ -219,7 +219,7 @@ function stanceCell(source: Source): CompareCell {
   };
   return {
     label: style.label,
-    help: `Déclaré par l’auteur de la fiche — ${style.help}`,
+    help: `Déclaré par l’auteur de la fiche : ${style.help}`,
     tone: source.stance === 'nuance-contredit' ? 'warning' : 'neutral',
     sortKey: rank[source.stance ?? ''] ?? 4,
   };

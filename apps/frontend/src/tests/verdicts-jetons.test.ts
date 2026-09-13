@@ -11,7 +11,7 @@
  *   depend pas de la page : la figer est un choix, elle ne s'inverse pas.
  * - Les **non-avis** (aucun avis, non verifiable, acces payant, non verifie)
  *   sont du texte nu pose sur la surface de la page. Leur lisibilite depend
- *   donc du fond, qui s'inverse — ils doivent venir de jetons.
+ *   donc du fond, qui s'inverse : ils doivent venir de jetons.
  *
  * `text-neutral-500` / `text-neutral-400` melangeaient les deux regimes : une
  * nuance figee en face d'un fond qui bascule.

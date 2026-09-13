@@ -9,7 +9,7 @@ export interface AuthorColor {
 }
 
 /**
- * Palette by author_kind — drives the graph node colors (ADR-020).
+ * Palette by author_kind : drives the graph node colors (ADR-020).
  * The choice of "who said it?" as the primary epistemic signal means the
  * graph color directly communicates the source's authority origin.
  */
@@ -79,7 +79,7 @@ export const AUTHOR_COLORS: Record<AuthorKind, AuthorColor> = {
   },
 };
 
-/** Axe de couleur du graphe — les 3 axes de la taxonomie ADR-020. */
+/** Axe de couleur du graphe : les 3 axes de la taxonomie ADR-020. */
 export type ColorMode = 'author_kind' | 'format' | 'category';
 
 export interface NodeColor {

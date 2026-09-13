@@ -39,7 +39,7 @@
     Aucun nom ici. Le compte sous lequel vit la fiche est celui qui l'a établie,
     pas l'auteur·rice du contenu d'origine : nommer le premier pour désigner le
     second faisait dire au bandeau « non validée par X » à X lui-même. Philum ne
-    connaît pas de façon fiable l'auteur·rice du contenu — il ne le nomme donc pas.
+    connaît pas de façon fiable l'auteur·rice du contenu : il ne le nomme donc pas.
   -->
   <p class="flex-1 text-ink-secondary">
     Fiche établie par Philum à partir de sources publiques, non validée par l'auteur·rice du contenu

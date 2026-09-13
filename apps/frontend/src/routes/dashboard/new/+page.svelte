@@ -29,7 +29,7 @@
   let slug = $state('');
   let description = $state('');
   let contentUrl = $state('');
-  // Auteurs du contenu documenté — pas ceux de la fiche. Sans eux, le nœud de
+  // Auteurs du contenu documenté, pas ceux de la fiche. Sans eux, le nœud de
   // la fiche dans le graphe ne peut s'annoncer que sous le nom de son créateur
   // Philum, laissant croire qu'il est l'auteur de ce qu'elle documente.
   let contentAuthors = $state('');
@@ -113,7 +113,7 @@
   // qu'il est là, pour que sa destruction reste un geste voulu.
   const texteIntegralABandonner = $derived(!estContenu && contentText.trim().length > 0);
 
-  // Fichier bibliographique déposé — transmis à la page Sources via le store.
+  // Fichier bibliographique déposé : transmis à la page Sources via le store.
   let droppedFile = $state<File | null>(null);
   let dragOver = $state(false);
   let fileInput = $state<HTMLInputElement | null>(null);
@@ -168,7 +168,7 @@
       if (meta.access_blocked) {
         // Certains editeurs (Nature, Elsevier, IEEE...) refusent tout fetch
         // automatique. La citation est presque toujours disponible en fichier
-        // depuis la page — plus fiable que la ressaisie a la main. On oriente
+        // depuis la page : plus fiable que la ressaisie a la main. On oriente
         // le lecteur vers l'import fichier en aval du wizard.
         suggestNotice =
           'Ce site a refusé la lecture automatique de la page. ' +

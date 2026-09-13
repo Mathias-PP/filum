@@ -6,7 +6,7 @@
  * THIRD-PARTY cookie from the browser's point of view. Mobile Safari and
  * iOS WebKit (which Chrome iOS also uses) block third-party cookies by
  * default via ITP, so the OAuth state and session cookies are silently
- * dropped — the symptom is "Echec de l'authentification" only on mobile.
+ * dropped : the symptom is "Echec de l'authentification" only on mobile.
  *
  * Routing /api/* through this SvelteKit endpoint makes every backend call
  * first-party (same origin as the SPA), so cookies just work everywhere.
@@ -31,7 +31,7 @@ import type { RequestHandler } from './$types';
 
 const BACKEND_URL = (env.BACKEND_URL ?? '').replace(/\/$/, '') || 'http://localhost:8000';
 
-// Hop-by-hop headers (RFC 7230 §6.1) — must not be forwarded by a proxy.
+// Hop-by-hop headers (RFC 7230 §6.1) : must not be forwarded by a proxy.
 const HOP_BY_HOP = new Set([
   'connection',
   'keep-alive',
@@ -61,7 +61,7 @@ const proxy: RequestHandler = async ({ request, params, url }) => {
   // We use a CUSTOM header (`X-Filum-Public-Origin`) rather than the standard
   // `X-Forwarded-Host` / `X-Forwarded-Proto` because Railway's ingress
   // unconditionally rewrites those with its own internal hostname before the
-  // request reaches FastAPI — a security default that makes the standard
+  // request reaches FastAPI : a security default that makes the standard
   // headers useless for our purpose. A custom name slips through.
   const publicHost = url.host;
   const publicProto = url.protocol.replace(':', '');
@@ -103,7 +103,7 @@ const proxy: RequestHandler = async ({ request, params, url }) => {
     if (lower === 'content-encoding' || lower === 'content-length') continue;
     // `Set-Cookie` MUST be handled separately. When multiple Set-Cookie
     // headers are present, iterating `Headers` collapses them into a single
-    // comma-separated value in undici/Node fetch — which mangles cookies
+    // comma-separated value in undici/Node fetch, which mangles cookies
     // whose attributes legitimately contain commas (e.g. `Expires=...`) and,
     // worse, can lose individual cookies entirely. The browser then never
     // stores the cookie. This was the cause of OAuth `invalid_state` errors
