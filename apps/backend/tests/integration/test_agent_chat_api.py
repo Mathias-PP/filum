@@ -13,7 +13,12 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 
-from app.api.v1.endpoints.agent_chat import _blocs_complets, _texte_interrompu, get_approver
+from app.api.v1.endpoints.agent_chat import (
+    _blocs_complets,
+    _reponse_finale,
+    _texte_interrompu,
+    get_approver,
+)
 from app.api.v1.endpoints.agent_providers import get_http_client
 from app.core.config import get_settings
 from app.core.rate_limit import limiter
@@ -22,6 +27,7 @@ from app.db.database import async_session_maker, get_db
 from app.main import app
 from app.models.agent_provider import AgentProvider
 from app.models.agent_session import AgentMessage
+from app.services import agent_tours
 
 
 @pytest.fixture(autouse=True)
@@ -79,13 +85,13 @@ def _mock_texte(texte: str) -> dict:
     return {"choices": [{"message": {"role": "assistant", "content": texte}}], "usage": {}}
 
 
-def _mock_tool_call(name: str, arguments: dict) -> dict:
+def _mock_tool_call(name: str, arguments: dict, content: str | None = None) -> dict:
     return {
         "choices": [
             {
                 "message": {
                     "role": "assistant",
-                    "content": None,
+                    "content": content,
                     "tool_calls": [
                         {
                             "id": "call_1",
@@ -240,17 +246,17 @@ class TestTourInterrompu:
         ]
         session_id = evenements[0]["payload"]["id"]
 
-        # Le rattrapage vit dans le `finally` du generateur, que la boucle
-        # d'evenements execute apres le retour de ``app``.
+        # Le tour ne vit plus dans le flux : il continue sans le client et
+        # s'ecrit en entier, reponse finale comprise, sans marque de coupure.
         messages: list[tuple[str, str]] = []
-        for _ in range(100):
+        for _ in range(200):
             messages = await _messages_persistes(session_id)
             if len(messages) > 1:
                 break
             await asyncio.sleep(0.02)
         roles = [r for r, _ in messages]
         assert roles == ["user", "assistant", "tool", "assistant"]
-        assert "interrompue" in messages[-1][1]
+        assert messages[-1][1] == "Voilà ce que j'ai trouvé."
 
 
 @pytest.mark.asyncio
@@ -389,3 +395,142 @@ async def test_la_consigne_de_controle_ne_reste_pas_dans_l_historique(
     session_id = next(e["payload"]["id"] for e in events if e["type"] == "session")
     roles = [r for r, _ in await _messages_persistes(session_id)]
     assert "system" not in roles
+
+
+class TestReponseFinale:
+    """La réponse persistée est le texte du dernier appel au modèle, seul."""
+
+    def test_le_plan_du_debut_n_est_pas_recolle(self):
+        deltas = {1: ["Je vais poser trois extraits."], 2: ["Deux extraits posés."]}
+        assert _reponse_finale(deltas, []) == "Deux extraits posés."
+
+    def test_un_texte_deja_porte_par_un_appel_n_est_pas_double(self):
+        ajouts = [{"role": "assistant", "content": "Je lis la page.", "tool_calls": [{}]}]
+        assert _reponse_finale({1: ["Je lis la page."]}, ajouts) == ""
+
+    def test_sans_texte(self):
+        assert _reponse_finale({}, []) == ""
+
+
+def _code_erreur(response: httpx.Response) -> str:
+    """Le code d'une erreur HTTP, quelle que soit l'enveloppe posee par l'application."""
+    corps = response.json()
+    return (corps.get("error") or corps.get("detail"))["code"]
+
+
+async def _session_apres_un_tour(client, session_token, db_session, test_user) -> str:
+    await _inserer_provider_defaut(db_session, test_user)
+    appels = {"n": 0}
+
+    def handler(request):
+        appels["n"] += 1
+        if appels["n"] == 1:
+            return httpx.Response(
+                200, json=_mock_tool_call("web_search", {"query": "x"}, "Je cherche d'abord.")
+            )
+        return httpx.Response(200, json=_mock_texte("Voilà."))
+
+    app.dependency_overrides[get_http_client] = lambda: httpx.MockTransport(handler)
+    client.cookies.set("filum_session", session_token)
+    response = await _post_chat(client, "cherche")
+    return next(
+        e["payload"]["id"] for e in _lire_evenements(response.text) if e["type"] == "session"
+    )
+
+
+@pytest.mark.asyncio
+async def test_la_narration_du_tour_ne_devient_pas_la_reponse(
+    client, session_token, db_session, test_user
+):
+    session_id = await _session_apres_un_tour(client, session_token, db_session, test_user)
+    messages = await _messages_persistes(session_id)
+    assert [c for r, c in messages if r == "assistant"] == ["Je cherche d'abord.", "Voilà."]
+
+
+@pytest.mark.asyncio
+async def test_un_client_coupe_reprend_le_flux_la_ou_il_l_a_laisse(
+    client, session_token, db_session, test_user
+):
+    session_id = await _session_apres_un_tour(client, session_token, db_session, test_user)
+    response = await client.get(f"/api/v1/agent/sessions/{session_id}/flux?depuis=1")
+    assert response.status_code == 200
+    events = _lire_evenements(response.text)
+    assert events[0]["seq"] == 1
+    assert [e["seq"] for e in events] == list(range(1, len(events) + 1))
+    assert events[-1]["type"] == "done"
+
+
+@pytest.mark.asyncio
+async def test_pas_de_flux_sans_tour(client, session_token, db_session, test_user):
+    client.cookies.set("filum_session", session_token)
+    response = await client.get(f"/api/v1/agent/sessions/{uuid4()}/flux")
+    assert response.status_code == 404
+    assert _code_erreur(response) == "aucun_tour"
+
+
+@pytest.mark.asyncio
+async def test_un_second_envoi_pendant_un_tour_est_refuse(
+    client, session_token, db_session, test_user
+):
+    session_id = await _session_apres_un_tour(client, session_token, db_session, test_user)
+    tour = agent_tours.reserver(UUID(session_id), test_user.id)
+    try:
+        lue = await client.get(f"/api/v1/agent/sessions/{session_id}")
+        assert lue.json()["tour_en_cours"] is True
+        response = await client.post(
+            "/api/v1/agent/chat", json={"message": "encore", "session_id": session_id}
+        )
+        assert response.status_code == 409
+        assert _code_erreur(response) == "tour_en_cours"
+    finally:
+        agent_tours.liberer(tour)
+    # Le message refusé n'a pas été inscrit.
+    assert [c for r, c in await _messages_persistes(session_id) if r == "user"] == ["cherche"]
+    lue = await client.get(f"/api/v1/agent/sessions/{session_id}")
+    assert lue.json()["tour_en_cours"] is False
+
+
+@pytest.mark.asyncio
+async def test_arreter_coupe_le_tour_et_garde_ce_qui_est_fait(
+    client, session_token, db_session, test_user
+):
+    await _inserer_provider_defaut(db_session, test_user)
+
+    def handler(request):
+        return httpx.Response(200, json=_mock_tool_call("publish_card", {"slug": "ma-fiche"}))
+
+    app.dependency_overrides[get_http_client] = lambda: httpx.MockTransport(handler)
+
+    async def jamais(request_id, tool, args):
+        await asyncio.Event().wait()
+        return False
+
+    app.dependency_overrides[get_approver] = lambda: lambda creator_id: jamais
+    client.cookies.set("filum_session", session_token)
+
+    envoi = asyncio.create_task(_post_chat(client, "publie"))
+    session_id = None
+    for _ in range(200):
+        session_id = next(
+            (
+                sid
+                for sid, t in agent_tours._TOURS.items()
+                if t.creator_id == test_user.id and not t.termine
+            ),
+            None,
+        )
+        if session_id and any(
+            e["type"] == "approval_request" for e in agent_tours._TOURS[session_id].evenements
+        ):
+            break
+        await asyncio.sleep(0.02)
+    assert session_id is not None
+
+    arret = await client.post(f"/api/v1/agent/sessions/{session_id}/arreter")
+    assert arret.status_code == 204
+    events = _lire_evenements((await envoi).text)
+    assert events[-1]["type"] == "error"
+    assert "arrêté" in events[-1]["payload"]["message"]
+    # L'appel resté sans réponse est retiré : il rendrait la session inutilisable.
+    assert [r for r, _ in await _messages_persistes(str(session_id))] == ["user"]
+    assert (await client.post(f"/api/v1/agent/sessions/{session_id}/arreter")).status_code == 404

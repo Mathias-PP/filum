@@ -95,6 +95,9 @@ class AgentSessionRead(BaseModel):
     #: lecture seule ici : l'interface les affiche, elle ne les écrit pas.
     objectif: str | None = None
     phase: str | None = None
+    #: Un tour tourne sur le serveur : l'interface qui rouvre la conversation
+    #: s'y rattache au lieu d'afficher un tour à moitié écrit comme fini.
+    tour_en_cours: bool = False
     created_at: datetime
     last_message_at: datetime | None
 

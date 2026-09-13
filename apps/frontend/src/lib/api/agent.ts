@@ -96,6 +96,8 @@ export interface AgentSession {
   objectif: string | null;
   /** Où en est ce travail, en quelques mots. */
   phase: string | null;
+  /** Un tour tourne sur le serveur : s'y rattacher plutôt que de le croire fini. */
+  tour_en_cours?: boolean;
   created_at: string;
   last_message_at: string | null;
 }
@@ -320,6 +322,9 @@ export const agentApi = {
         body: JSON.stringify(body),
       }),
     remove: (id: string) => request<void>(`/agent/sessions/${id}`, { method: 'DELETE' }),
+    /** Arrête le tour en cours. Fermer la connexion ne l'arrête pas : le serveur
+     * le termine sans le client, qui s'y rattache ensuite. */
+    arreter: (id: string) => request<void>(`/agent/sessions/${id}/arreter`, { method: 'POST' }),
   },
 
   /** Répond à une action sensible suspendue. Débloque la boucle côté serveur. */
@@ -407,6 +412,7 @@ export const agentApi = {
   },
 
   streamChat,
+  suivreTour,
 };
 
 async function* streamChat({
@@ -429,7 +435,36 @@ async function* streamChat({
     body: JSON.stringify(body),
     signal,
   });
+  yield* lireFlux(response);
+}
 
+/** Événement d'un tour, numéroté par le serveur. `session` ne l'est pas. */
+export type AgentEventNumerote = AgentEvent & { seq?: number };
+
+/** Reprend le flux d'un tour à partir de l'événement `depuis`.
+ *
+ * Un téléphone verrouillé ou un proxy qui coupe au bout de cinq minutes ne
+ * coupe plus le tour : il continue sur le serveur, et ce flux rend ce que le
+ * client n'a pas reçu, puis la suite en direct. 404 `aucun_tour` quand plus
+ * rien n'est rejouable : la conversation en base fait alors foi.
+ */
+async function* suivreTour({
+  session_id,
+  depuis,
+  signal,
+}: {
+  session_id: string;
+  depuis: number;
+  signal?: AbortSignal;
+}): AsyncGenerator<AgentEventNumerote> {
+  const response = await fetch(
+    `${API_BASE}/agent/sessions/${encodeURIComponent(session_id)}/flux?depuis=${depuis}`,
+    { credentials: 'include', signal }
+  );
+  yield* lireFlux(response);
+}
+
+async function* lireFlux(response: Response): AsyncGenerator<AgentEventNumerote> {
   if (!response.ok || !response.body) {
     const detail = await response.json().catch(() => null);
     throw new ApiError(

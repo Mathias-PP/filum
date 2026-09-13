@@ -3,19 +3,14 @@
   import {
     agentApi,
     type AgentDefinition,
+    type AgentEventNumerote,
     type AgentMessage,
     type AgentProvider,
     type AgentSessionUsage,
   } from '$lib/api/agent';
   import { ApiError } from '$lib/api';
-  import {
-    appliquer,
-    cloturerSansReponse,
-    depuisMessages,
-    tourTermine,
-    type ChatItem,
-  } from '$lib/agent/conversation';
-  import { regrouper } from '$lib/agent/activite';
+  import { appliquer, depuisMessages, tourTermine, type ChatItem } from '$lib/agent/conversation';
+  import { annoterTours, regrouper } from '$lib/agent/activite';
   import { ecrireBrouillon, effacerBrouillon, lireBrouillon } from '$lib/agent/brouillons';
   import Button from '../Button.svelte';
   import { toast } from '../Toast.svelte';
@@ -172,6 +167,10 @@
   // Chaque suite d'appels d'outils devient un bloc d'activite resume en une
   // ligne : 64 cartes affichees une a une faisaient du fil un mur.
   const affichables = $derived(regrouper(items));
+  const notesTours = $derived(annoterTours(affichables));
+  // Quitter la conversation cesse d'écouter le tour sans l'arrêter : le serveur
+  // le termine, et y revenir s'y rattache.
+  $effect(() => () => controleur?.abort());
 
   // Annonce pour les lecteurs d'ecran. Le fil n'est plus une region vivante :
   // il faisait lire chaque jeton recu. On annonce le debut et la fin du tour.
@@ -242,7 +241,7 @@
 
   // Echap arrete le tour en cours, sauf s'il sert d'abord a fermer un panneau.
   $effect(() => {
-    if (!enCours) return;
+    if (!enCours && reprise !== 'encours') return;
     const surTouche = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !reglagesOuverts && !consentOuvert) interrompre();
     };
@@ -531,13 +530,14 @@
     }
     if (sessionId && messagesRes && messagesRes.status === 'fulfilled') {
       const messages = messagesRes.value as AgentMessage[];
-      const aReprendre = tourRecentInacheve(messages);
-      items = depuisMessages(messages, { clore: !aReprendre });
+      // Un tour tourne sur le serveur : le fil s'arrête au message envoyé, et le
+      // rattachement rejoue le tour depuis son début.
+      const aSuivre = sessionSauvegardee?.tour_en_cours === true && !tourTermine(messages);
+      items = depuisMessages(messages, { clore: !aSuivre });
       chargement = false;
-      if (aReprendre) {
-        void reprendreApresCoupure('rechargement').then((retrouve) => {
-          if (!retrouve) items = cloturerSansReponse(items);
-        });
+      if (aSuivre) {
+        dernierSeq = -1;
+        void rattacher('rechargement');
       }
     } else if (sessionId) {
       chargement = false;
@@ -577,81 +577,162 @@
     phase = s.phase ?? null;
   }
 
-  /** Délais entre deux relectures, en millisecondes. Total un peu moins d'une minute. */
-  const DELAIS_REPRISE = [1000, 2000, 3000, 5000, 8000, 13000, 21000];
+  /** Délais entre deux tentatives de rattachement, en millisecondes. Le dernier se
+   * répète tant que la connexion ne revient pas : l'agent continue sur le
+   * serveur, abandonner ne servirait à rien. */
+  const DELAIS_REPRISE = [500, 1000, 2000, 3000, 5000, 8000, 13000, 21000];
 
-  /** Pourquoi on relit la session : une coupure du flux, ou une conversation
-   * rouverte pendant que le serveur termine son tour. */
+  /** Pourquoi on se rattache : une coupure du flux, ou une conversation rouverte
+   * pendant que le serveur travaille. */
   let motifReprise = $state<'coupure' | 'rechargement'>('coupure');
 
-  /** Au-delà, un tour inachevé ne reviendra plus : on le clôt au lieu d'attendre. */
-  const FRAICHEUR_TOUR_MS = 10 * 60 * 1000;
+  /** Numéro du dernier événement reçu du tour. Le serveur les numérote : après
+   * une coupure, on lui demande la suite à partir du suivant. */
+  let dernierSeq = -1;
 
-  /** Le serveur termine-t-il peut-être encore le dernier tour ?
-   *
-   * Rouvrir une conversation pendant qu'il travaille affichait ses appels en
-   * échec, avec « Aucun résultat reçu », alors que les résultats arrivaient.
-   */
-  function tourRecentInacheve(messages: AgentMessage[]): boolean {
-    if (messages.length === 0 || tourTermine(messages)) return false;
-    const brut = messages[messages.length - 1].created_at;
-    // Les dates du serveur sont en UTC, sans fuseau écrit.
-    const quand = Date.parse(/[zZ]$|[+-]\d\d:\d\d$/.test(brut) ? brut : `${brut}Z`);
-    return Number.isFinite(quand) && Date.now() - quand < FRAICHEUR_TOUR_MS;
+  /** Le flux a-t-il rendu l'événement qui clôt le tour ? Un flux fermé sans lui a
+   * été coupé en route (proxy à cinq minutes, veille), même sans erreur réseau. */
+  let tourClos = false;
+
+  /** Applique un événement du tour, qu'il arrive en direct ou en rattrapage. */
+  async function traiter(evenement: AgentEventNumerote) {
+    if (typeof evenement.seq === 'number') dernierSeq = evenement.seq;
+    if (
+      evenement.type === 'done' ||
+      evenement.type === 'error' ||
+      evenement.type === 'continuation'
+    ) {
+      tourClos = true;
+    }
+    if (evenement.type === 'session' && !sessionId) {
+      sessionId = evenement.payload.id;
+      if (titreInitial && sessionId) {
+        // L'echec etait avale : la conversation gardait le debut du message
+        // pour titre, sans que rien ne le dise.
+        await agentApi.sessions
+          .update(sessionId, { title: titreInitial })
+          .catch(() =>
+            toast.danger(
+              "Le nom n'a pas pu être enregistré. Renommez la conversation depuis son en-tête."
+            )
+          );
+      }
+      onsession?.(sessionId);
+    }
+    if (evenement.type === 'discovery_active') {
+      decouverte = evenement.payload;
+      banniereMode = 'decouverte';
+    }
+    if (evenement.type === 'gratuit_actif') {
+      decouverte = evenement.payload;
+      banniereMode = 'gratuit';
+    }
+    items = appliquer(items, evenement);
   }
 
-  /** Rattrape un tour dont le flux a été coupé.
+  /** Attend `ms`, ou moins si la connexion revient ou si la page redevient visible.
    *
-   * Le serveur termine et persiste le tour même quand le client se déconnecte
-   * (`_persister_tour`) : il n'y a donc rien à rejouer, il suffit de relire la
-   * session. Pas de tampon en mémoire côté serveur, donc rien à perdre à un
-   * redéploiement. Rend `true` si la réponse a été retrouvée.
+   * Un téléphone déverrouillé n'a aucune raison d'attendre la fin d'un délai
+   * compté pendant qu'il dormait.
    */
-  async function reprendreApresCoupure(
-    motif: 'coupure' | 'rechargement' = 'coupure'
-  ): Promise<boolean> {
-    if (!sessionId) return false;
+  function attendreReprise(ms: number): Promise<void> {
+    return new Promise((fin) => {
+      const finir = () => {
+        clearTimeout(minuteur);
+        window.removeEventListener('online', finir);
+        document.removeEventListener('visibilitychange', surVisibilite);
+        fin();
+      };
+      const surVisibilite = () => {
+        if (document.visibilityState === 'visible') finir();
+      };
+      const minuteur = setTimeout(finir, ms);
+      window.addEventListener('online', finir);
+      document.addEventListener('visibilitychange', surVisibilite);
+    });
+  }
+
+  /** Relit la conversation en base, qui fait foi quand plus rien n'est rejouable. */
+  async function relireConversation(id: string) {
+    const messages = await agentApi.sessions.messages(id).catch(() => null);
+    if (!messages || sessionId !== id) return;
+    items = depuisMessages(messages);
+    auBas = true;
+  }
+
+  /** Se rattache au tour qui tourne sur le serveur et rejoue ce qui manque.
+   *
+   * Le tour ne dépend plus de la connexion : téléphone verrouillé, réseau perdu,
+   * proxy qui coupe au bout de cinq minutes, il continue. On redemande la suite
+   * jusqu'au retour de la connexion. Quand le serveur n'a plus rien à rejouer
+   * (tour fini depuis longtemps, redémarrage), la conversation en base fait foi.
+   */
+  async function rattacher(motif: 'coupure' | 'rechargement' = 'coupure') {
+    const id = sessionId;
+    if (!id) return;
     motifReprise = motif;
     reprise = 'encours';
+    const local = new AbortController();
+    controleur = local;
     try {
-      for (const delai of DELAIS_REPRISE) {
-        await new Promise((r) => setTimeout(r, delai));
-        const messages = await agentApi.sessions.messages(sessionId).catch(() => null);
-        if (!messages) continue;
-        if (tourTermine(messages)) {
-          items = depuisMessages(messages);
-          auBas = true;
-          return true;
+      for (let essai = 0; !local.signal.aborted; essai += 1) {
+        tourClos = false;
+        try {
+          for await (const evenement of agentApi.suivreTour({
+            session_id: id,
+            depuis: dernierSeq + 1,
+            signal: local.signal,
+          })) {
+            if (reprise === 'encours') {
+              reprise = 'idle';
+              enCours = true;
+            }
+            await traiter(evenement);
+          }
+          if (tourClos) return;
+        } catch (e) {
+          if ((e as Error)?.name === 'AbortError') return;
+          if (e instanceof ApiError) {
+            await relireConversation(id);
+            return;
+          }
         }
+        enCours = false;
+        reprise = 'encours';
+        await attendreReprise(DELAIS_REPRISE[Math.min(essai, DELAIS_REPRISE.length - 1)]);
       }
-      return false;
     } finally {
       reprise = 'idle';
+      enCours = false;
+      if (controleur === local) controleur = null;
     }
   }
 
-  /** Traite l'échec d'un flux : abandon volontaire, reprise, ou échec définitif.
+  /** Traite l'échec d'un flux : abandon volontaire, refus, ou coupure à rattraper.
    *
    * Une `ApiError` vient du contrôle de statut, avant que le corps ne s'ouvre :
-   * la requête a été refusée, aucun tour n'a démarré, il n'y a rien à relire.
-   * Seule une coupure en cours de flux vaut une reprise.
+   * la requête a été refusée et aucun tour n'a démarré, sauf `tour_en_cours`, où
+   * un tour lancé ailleurs tourne déjà. Toute autre erreur est une coupure.
    */
-  async function surCoupure(e: unknown) {
+  async function surCoupure(e: unknown, message: string) {
     if ((e as Error)?.name === 'AbortError') return;
     // Le flux est mort : plus rien n'arrive, l'indicateur de frappe mentirait.
     enCours = false;
+    if (e instanceof ApiError && e.code === 'tour_en_cours' && sessionId) {
+      // Le message n'a pas été inscrit : il revient dans la saisie, et on suit le
+      // tour qui occupe la conversation.
+      saisie = message;
+      toast.info(e.message);
+      await relireConversation(sessionId);
+      dernierSeq = -1;
+      await rattacher('rechargement');
+      return;
+    }
     if (e instanceof ApiError) {
       items = [...items, { kind: 'error', text: e.message }];
       return;
     }
-    if (await reprendreApresCoupure()) return;
-    items = [
-      ...items,
-      {
-        kind: 'error',
-        text: "La connexion s'est coupée et la réponse n'est pas encore revenue. Le serveur termine le tour de son côté : rechargez la page dans un instant pour la relire.",
-      },
-    ];
+    await rattacher();
   }
 
   async function envoyer(event: SubmitEvent) {
@@ -675,6 +756,8 @@
     items = [...items, { kind: 'user', text: message }];
     enCours = true;
     annonce = 'Message envoyé. L’agent travaille.';
+    dernierSeq = -1;
+    tourClos = false;
     controleur = new AbortController();
     try {
       for await (const evenement of agentApi.streamChat({
@@ -691,33 +774,14 @@
         agent_slug: agentChoisi || undefined,
         signal: controleur.signal,
       })) {
-        if (evenement.type === 'session' && !sessionId) {
-          sessionId = evenement.payload.id;
-          if (titreInitial && sessionId) {
-            // L'echec etait avale : la conversation gardait le debut du message
-            // pour titre, sans que rien ne le dise.
-            await agentApi.sessions
-              .update(sessionId, { title: titreInitial })
-              .catch(() =>
-                toast.danger(
-                  "Le nom n'a pas pu être enregistré. Renommez la conversation depuis son en-tête."
-                )
-              );
-          }
-          onsession?.(sessionId);
-        }
-        if (evenement.type === 'discovery_active') {
-          decouverte = evenement.payload;
-          banniereMode = 'decouverte';
-        }
-        if (evenement.type === 'gratuit_actif') {
-          decouverte = evenement.payload;
-          banniereMode = 'gratuit';
-        }
-        items = appliquer(items, evenement);
+        await traiter(evenement);
+      }
+      if (!tourClos && sessionId) {
+        enCours = false;
+        await rattacher();
       }
     } catch (e) {
-      await surCoupure(e);
+      await surCoupure(e, message);
     } finally {
       enCours = false;
       controleur = null;
@@ -732,7 +796,19 @@
     }
   }
 
-  function interrompre() {
+  /** Arrête le tour. Fermer la connexion ne suffit plus : le serveur continue sans
+   * le client. On lui demande d'arrêter, et le flux se clôt de lui-même une fois
+   * le travail déjà fait enregistré. Sans réseau, on cesse au moins d'écouter. */
+  async function interrompre() {
+    if (!enCours && reprise !== 'encours') return;
+    if (sessionId) {
+      try {
+        await agentApi.sessions.arreter(sessionId);
+        return;
+      } catch {
+        // Plus de tour à arrêter, ou pas de réseau.
+      }
+    }
     controleur?.abort();
   }
 
@@ -1057,8 +1133,21 @@
               </div>
             </div>
           {:else if item.kind === 'assistant'}
+            {@const note = notesTours.get(i)}
             <div class="group min-w-0 text-sm">
               <AgentMarkdown texte={item.text} />
+              <!-- Pas de note sur le tour qui tourne encore : son bilan changerait a
+                 chaque action. -->
+              {#if note && !((enCours || reprise === 'encours') && i > indexDernierUtilisateur)}
+                {#if note.bilan}
+                  <p class="mt-2 text-xs text-ink-tertiary">{note.bilan}</p>
+                {/if}
+                {#if note.sansSource}
+                  <p class="mt-2 text-xs text-amber-700 dark:text-amber-400">
+                    Rédigé sans rien consulter : aucune source ne vérifie cette réponse.
+                  </p>
+                {/if}
+              {/if}
               <!-- Pas de copie sur la reponse qui s'ecrit encore : on copierait
                  une moitie de phrase. -->
               {#if !(enCours && i === affichables.length - 1)}
@@ -1167,8 +1256,8 @@
             <LogoLoader size={20} />
             <span>
               {motifReprise === 'rechargement'
-                ? 'L’agent termine un tour commencé plus tôt, on récupère sa réponse…'
-                : 'Connexion perdue. La réponse continue côté serveur, on la récupère…'}
+                ? 'L’agent travaille sur un tour commencé plus tôt, on le rejoint…'
+                : 'Connexion perdue. L’agent continue sur le serveur : la suite s’affiche dès le retour de la connexion…'}
             </span>
           </div>
         {/if}
@@ -1314,12 +1403,10 @@
             {ficheOuverte ? 'Masquer la fiche' : 'Voir la fiche'}
           </button>
           <span class="flex-1"></span>
-          {#if enCours}
+          {#if enCours || reprise === 'encours'}
             <Button size="sm" variant="ghost" onclick={interrompre}>Arrêter</Button>
           {:else}
-            <Button size="sm" type="submit" disabled={!saisie.trim() || reprise === 'encours'}
-              >Envoyer</Button
-            >
+            <Button size="sm" type="submit" disabled={!saisie.trim()}>Envoyer</Button>
           {/if}
         </div>
       </form>

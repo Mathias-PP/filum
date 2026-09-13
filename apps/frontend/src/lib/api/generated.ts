@@ -21,6 +21,50 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/agent/sessions/{session_id}/flux': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Suivre Tour
+     * @description Reprend le flux d'un tour à partir de l'événement numéro `depuis`.
+     *
+     *     Un téléphone mis en veille, un proxy qui coupe au bout de cinq minutes : le
+     *     tour a continué, et le client redemande ce qu'il n'a pas reçu. 404 quand
+     *     aucun tour n'est rejouable : la conversation en base fait alors foi.
+     */
+    get: operations['suivre_tour_api_v1_agent_sessions__session_id__flux_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/agent/sessions/{session_id}/arreter': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Arreter Tour
+     * @description Arrête le tour en cours. Fermer la connexion ne l'arrête plus.
+     */
+    post: operations['arreter_tour_api_v1_agent_sessions__session_id__arreter_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/agent/definitions': {
     parameters: {
       query?: never;
@@ -1982,6 +2026,11 @@ export interface components {
       /** Phase */
       phase?: string | null;
       /**
+       * Tour En Cours
+       * @default false
+       */
+      tour_en_cours: boolean;
+      /**
        * Created At
        * Format: date-time
        */
@@ -3781,6 +3830,68 @@ export interface operations {
         content: {
           'application/json': unknown;
         };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  suivre_tour_api_v1_agent_sessions__session_id__flux_get: {
+    parameters: {
+      query?: {
+        depuis?: number;
+      };
+      header?: never;
+      path: {
+        session_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': unknown;
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  arreter_tour_api_v1_agent_sessions__session_id__arreter_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        session_id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Validation Error */
       422: {
