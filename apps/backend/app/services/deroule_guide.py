@@ -6,14 +6,15 @@ verbatims et ne cherchait jamais ce qui nuance. Les outils de deroule
 (`fiche_etapes`, `fiche_state`) n'ont pas ete appeles une seule fois : un petit
 modele ne decouvre pas seul un deroule decrit dans un fichier.
 
-Ici le serveur tient l'ordre. Une question devient une fiche sujet en cinq
+Ici le serveur tient l'ordre. Une question devient une fiche sujet en quatre
 etapes, et chaque etape est une boucle d'agent qui ne voit que ses outils :
 
 1. recherche : la fiche existante ou creee, et des sources dont une qui nuance ;
-2. sources : `add_source` sans position ;
-3. extraits : `find_passage` puis `add_excerpt` ;
-4. positions : `update_source`, qui exige deja un extrait ;
-5. bilan : la reponse au createur, tiree des seuls extraits poses.
+2. exploration : `propose_passages` sur chaque adresse, puis `add_source` avec
+   ses extraits, seulement si la page en porte. Poser les sources a une etape
+   et chercher leurs extraits a la suivante laissait des sources vides ;
+3. positions : `update_source`, qui exige deja un extrait ;
+4. bilan : la reponse au createur, tiree des seuls extraits poses.
 
 Le compte rendu de chaque etape sert de contexte a la suivante. Le deroule
 tourne dans le tour detache du chat : reprise apres une coupure, fiche en
@@ -60,7 +61,7 @@ _USAGE_PHILUM = re.compile(
 )
 
 #: Au-dela, un premier message est une consigne detaillee, pas une question a
-#: documenter : le deroule ne doit pas la reduire a cinq etapes fixes.
+#: documenter : le deroule ne doit pas la reduire a des etapes fixes.
 _QUESTION_LONGUEUR_MAX = 300
 
 
@@ -115,28 +116,22 @@ ETAPES: tuple[Etape, ...] = (
         ),
     ),
     Etape(
-        id="sources",
-        titre="Sources",
-        outils=("add_source", "list_sources", "get_url_metadata"),
+        id="exploration",
+        titre="Exploration",
+        outils=("propose_passages", "add_source", "list_sources", "find_passage", "add_excerpt"),
         consigne=(
-            "1. Pour chaque adresse retenue à l'étape de recherche, appelle "
-            "add_source(card_slug, url, metadata_from='page'), sans position.\n"
-            "2. Une adresse refusée : passe à la suivante.\n"
-            "3. Termine par les sources ajoutées, une par ligne, avec leur identifiant."
-        ),
-    ),
-    Etape(
-        id="extraits",
-        titre="Extraits",
-        outils=("list_sources", "find_passage", "add_excerpt", "fetch_url"),
-        consigne=(
-            "1. Appelle list_sources pour avoir les identifiants.\n"
-            "2. Pour chaque source, appelle find_passage avec ce qu'elle doit établir "
-            "pour répondre à la question, puis add_excerpt avec un des passages rendus, "
-            "recopié tel quel.\n"
-            "3. Pose les passages qui portent la réponse, et ceux qui la nuancent. Si "
-            "find_passage ne rend rien, passe à la source suivante.\n"
-            "4. Termine par les extraits posés, source par source."
+            "Pour chaque adresse retenue à l'étape de recherche :\n"
+            "1. Appelle propose_passages(url, questions) avec la question du créateur "
+            "et les aspects de la question que cette source peut éclairer.\n"
+            "2. Retiens tous les passages qui répondent vraiment, et ceux qui nuancent.\n"
+            "3. S'il en reste au moins un, appelle add_source(card_slug, url, "
+            "metadata_from='page', excerpts=[{\"text\": passage recopié tel quel, "
+            '"context": ce que le passage établit}]), sans position.\n'
+            "4. Sinon, n'ajoute pas la source : une source sans extrait est refusée.\n"
+            "5. Pour un passage de plus sur une source déjà posée, find_passage puis "
+            "add_excerpt.\n"
+            "Termine par deux listes : les sources ajoutées avec leur nombre d'extraits, "
+            "et les adresses écartées avec la raison."
         ),
     ),
     Etape(
@@ -212,7 +207,7 @@ async def derouler(
     replis: list[AgentProvider] | None = None,
     registre: dict[str, AgentTool] | None = None,
 ) -> None:
-    """Deroule les cinq etapes, et verse le fil du tour dans `ajouts`.
+    """Deroule les etapes, et verse le fil du tour dans `ajouts`.
 
     `ajouts` et `heures` sont remplis au fil des etapes plutot que rendus : un
     tour arrete en cours d'etape doit laisser en base ce qui a deja ete ecrit.

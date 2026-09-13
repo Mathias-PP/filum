@@ -41,7 +41,7 @@ from app.models.user import User
 from app.schemas.biblio_card import CardCreate, ContentType, Platform, Visibility
 from app.services import metadonnees_source
 from app.services.card import CardService
-from app.services.card_link import effective_linked_card_id
+from app.services.card_link import effective_linked_card_id, parse_public_card_path
 from app.services.content_identity import extract_doi, normalize_url
 from app.services.excerpt_guards import LONGUEUR_MIN_AUTONOME_MOTS, passage_a_besoin_de_contexte
 from app.services.excerpt_indexing import indexer_sans_bruit
@@ -528,8 +528,14 @@ async def add_source(
     published_at: str | None = None,
     archive_url: str | None = None,
     excerpts: list[dict[str, Any]] | None = None,
+    exiger_extrait: bool = False,
 ) -> dict[str, Any]:
-    """Ajoute une source a la fiche, apres avoir verifie que son adresse existe.
+    """Ajoute une source a la fiche avec ses extraits, apres avoir verifie que son adresse existe.
+
+    Une source n'entre qu'avec au moins un extrait retrouve dans sa page :
+    appelle d'abord `propose_passages(url, questions)`, puis passe les passages
+    retenus dans `excerpts`. Sans extrait retrouve, rien n'est ecrit. Seul un
+    lien vers une autre fiche Philum s'ajoute sans extrait.
 
     `metadata_from` dit qui fait foi pour le titre, les auteurs, la date, la
     revue et l'editeur, et ces cinq champs sont remplis par l'origine choisie,
@@ -600,6 +606,12 @@ async def add_source(
         await verifier_que_la_source_existe(url, doi)
     except SourceInexistanteError as exc:
         raise ToolError(str(exc)) from exc
+
+    # Une IA (agent du chat, client MCP) ne pose pas de source nue ; le createur,
+    # depuis l'interface, le peut. Un lien vers une autre fiche Philum est une
+    # connexion, pas une citation : ses extraits vivent dans la fiche liee.
+    if exiger_extrait and not parse_public_card_path(url):
+        await _exiger_un_extrait_retrouve(url, excerpts)
 
     max_position = await db.scalar(
         select(func.max(Source.position)).where(Source.biblio_card_id == card.id)
@@ -680,11 +692,59 @@ async def add_source(
         reponse["metadata_ecarts"] = ecarts_metadonnees
     if excerpts:
         reponse |= await _extraits_a_la_volee(db, user, source, excerpts)
+    if exiger_extrait and not reponse.get("excerpts") and not parse_public_card_path(url):
+        # Passage retrouve a la verification mais refuse a l'ecriture (contexte
+        # manquant, doublon) : la source vient de naitre et rien ne la cite
+        # encore, elle part entierement plutot que de rester nue.
+        await db.delete(source)
+        await db.commit()
+        raise ToolError(_refus_sans_extrait(reponse.get("excerpts_refuses", [])))
     if source.stance and not reponse.get("excerpts"):
         source.stance = None
         await db.commit()
         reponse["stance_non_posee"] = _POSITION_SANS_EXTRAIT
     return reponse
+
+
+#: Refus rendu a une IA qui pose une source sans extrait retrouve.
+_SOURCE_SANS_EXTRAIT = (
+    "Source non ajoutee : une source posee par une IA doit porter au moins un "
+    "extrait retrouve dans la page. Appelle d'abord propose_passages(url, questions), "
+    'puis add_source avec excerpts=[{"text": passage recopie tel quel, "context": '
+    "ce qu'il etablit}]. Si aucun passage ne repond, n'ajoute pas cette source et "
+    "passe a la candidate suivante."
+)
+
+
+def _refus_sans_extrait(refuses: list[dict[str, str]]) -> str:
+    if not refuses:
+        return _SOURCE_SANS_EXTRAIT
+    detail = " | ".join(f"extrait {r['rang']} : {r['raison']}" for r in refuses)
+    return f"{_SOURCE_SANS_EXTRAIT} Extraits refuses : {detail}"
+
+
+async def _exiger_un_extrait_retrouve(url: str, demandes: list[dict[str, Any]] | None) -> None:
+    """Leve si aucun extrait demande ne se retrouve dans la page. N'ecrit rien.
+
+    Verifier avant d'ecrire evite de creer puis retirer une source, et de payer
+    la resolution des metadonnees d'une adresse qui ne portera rien. Le texte
+    de la page est memorise : `add_excerpt` le relit ensuite sans nouvel appel.
+    """
+    if not demandes:
+        raise ToolError(_SOURCE_SANS_EXTRAIT)
+    refuses: list[dict[str, str]] = []
+    for rang, demande in enumerate(demandes, start=1):
+        texte = str(demande.get("text") or "") if isinstance(demande, dict) else ""
+        if not texte.strip():
+            refuses.append({"rang": str(rang), "raison": "extrait vide."})
+            continue
+        try:
+            await _prelever_ou_refuser(url, texte)
+        except ToolError as exc:
+            refuses.append({"rang": str(rang), "raison": str(exc)})
+            continue
+        return
+    raise ToolError(_refus_sans_extrait(refuses))
 
 
 async def _extraits_a_la_volee(
@@ -889,6 +949,59 @@ async def find_passage(
         resultat["message"] = (
             "Aucun passage de la page ne ressemble a cette recherche : ce que vous "
             "cherchez n'est probablement pas dans cette source."
+        )
+    return resultat
+
+
+async def propose_passages(
+    db: AsyncSession,
+    user: User,
+    *,
+    url: str,
+    questions: list[str],
+) -> dict[str, Any]:
+    """Propose, pour chaque question, les passages exacts de la page les plus proches par le sens.
+
+    A appeler sur une adresse candidate AVANT de l'ajouter comme source : une
+    source n'entre qu'avec au moins un extrait retrouve. Chaque passage rendu
+    est une tranche exacte de la page : retiens tous ceux qui repondent
+    vraiment, ceux qui nuancent compris, et passe-les tels quels dans
+    `add_source(..., excerpts=[...])`. `questions` : la question de la fiche,
+    et les aspects que cette source peut eclairer. Ne pose rien.
+    """
+    from app.services import excerpt_insertion
+    from app.services.passages_candidats import proposer
+
+    adresse = (url or "").strip()
+    if not adresse:
+        raise ToolError("Une adresse est requise.")
+    if not any((q or "").strip() for q in questions or []):
+        raise ToolError("Au moins une question est requise : elle dit ce que la page doit etablir.")
+    page_text, _refuse, complet = await excerpt_insertion.texte_de_page(adresse)
+    if not page_text.strip():
+        raise ToolError(
+            "Le texte de cette page n'a pu etre obtenu par aucune voie : elle ne peut "
+            "pas porter d'extrait. Cherche une autre adresse pour le meme contenu "
+            "(depot en acces libre, version de l'editeur), sinon passe a la candidate "
+            "suivante."
+        )
+    candidats = await proposer(page_text, questions)
+    resultat: dict[str, Any] = {
+        "url": adresse,
+        "texte_complet": complet,
+        "passages": [
+            {"question": c.question, "texte": c.texte, "score": c.score} for c in candidats
+        ],
+    }
+    if not candidats:
+        resultat["message"] = (
+            "Aucun passage de cette page ne repond aux questions : n'ajoute pas cette "
+            "source, passe a la candidate suivante."
+        )
+    elif not complet:
+        resultat["message"] = (
+            "Seul le resume de cette page a pu etre lu : les passages viennent du resume. "
+            "Une version integrale (depot en acces libre) en porterait sans doute d'autres."
         )
     return resultat
 
@@ -2242,12 +2355,15 @@ async def add_sources_batch(
     *,
     card_slug: str,
     sources: list[dict[str, Any]],
+    exiger_extrait: bool = False,
 ) -> dict[str, Any]:
-    """Ajoute plusieurs sources a une fiche, apres avoir verifie leurs adresses.
+    """Ajoute plusieurs sources a une fiche, avec leurs extraits, apres avoir verifie leurs adresses.
 
     Chaque entree suit la meme signature que `add_source` (metadata_from, url,
     title, authors, doi, category, author_kind, format, stance, annotation,
-    journal, published_at, archive_url), verification d'existence comprise :
+    journal, published_at, archive_url, excerpts), verification d'existence
+    comprise. Une entree sans extrait retrouve dans sa page part dans `failed`
+    et n'ecrit rien, sauf un lien vers une autre fiche Philum. De meme :
     une entree dont l'adresse ne mene nulle part part dans `failed` et n'ecrit
     rien. Ce qui echoue est retourne dans `failed` avec la raison, ce qui
     reussit dans `created` (avec les IDs).
@@ -2305,6 +2421,13 @@ async def add_sources_batch(
         if isinstance(existences[i], SourceInexistanteError):
             failed.append({"index": i, "url": url, "reason": str(existences[i])})
             continue
+        demandes = sd.get("excerpts") if isinstance(sd.get("excerpts"), list) else None
+        if exiger_extrait and not parse_public_card_path(url):
+            try:
+                await _exiger_un_extrait_retrouve(url, demandes)
+            except ToolError as exc:
+                failed.append({"index": i, "url": url, "reason": str(exc)})
+                continue
         try:
             linked_card_id = await effective_linked_card_id(
                 db,
@@ -2377,6 +2500,16 @@ async def add_sources_batch(
             "url": url,
             "title": source.title,
         }
+        if demandes:
+            entree |= await _extraits_a_la_volee(db, user, source, demandes)
+        if exiger_extrait and not entree.get("excerpts") and not parse_public_card_path(url):
+            # Retrouve a la verification, refuse a l'ecriture : meme regle que
+            # `add_source`, la source nee dans ce lot repart sans laisser de trace.
+            await db.delete(source)
+            await db.flush()
+            raison = _refus_sans_extrait(entree.get("excerpts_refuses", []))
+            failed.append({"index": i, "url": url, "reason": raison})
+            continue
         if position_declaree:
             entree["stance_non_posee"] = _POSITION_SANS_EXTRAIT
         if ecarts_metadonnees:

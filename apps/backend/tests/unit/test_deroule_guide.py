@@ -137,12 +137,11 @@ async def _derouler(db_session, test_user, reponses: list[dict]):
 
 
 @pytest.mark.asyncio
-async def test_les_cinq_etapes_se_deroulent_dans_l_ordre(db_session, test_user):
+async def test_les_etapes_se_deroulent_dans_l_ordre(db_session, test_user):
     reponses = [
         _appel("create_card", {"card_kind": "sujet", "slug": "prevention-arthrose"}),
         _texte("https://a.test : référence"),
-        _texte("Source ajoutée : s1"),
-        _texte("Un extrait posé."),
+        _texte("Source ajoutée : s1, deux extraits."),
         _texte("Position appuie posée."),
         _texte("Bilan : la source dit ceci."),
     ]

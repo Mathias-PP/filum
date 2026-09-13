@@ -65,6 +65,18 @@ _PARAMETRES_MASQUES: dict[str, frozenset[str]] = {
     "verify_excerpts": frozenset({"provided_text"}),
     "suggest_excerpts": frozenset({"provided_text"}),
     "annotate_excerpt": frozenset({"provided_text"}),
+    "add_source": frozenset({"exiger_extrait"}),
+    "add_sources_batch": frozenset({"exiger_extrait"}),
+}
+
+#: Valeurs que l'enveloppe impose, hors de portee du modele.
+#:
+#: Une source sans extrait n'apporte presque rien a une fiche. Le createur peut
+#: en poser une depuis l'interface, pour la completer plus tard ; une IA, non :
+#: elle cherche d'abord les passages, et n'ajoute que les sources qui en portent.
+_PARAMETRES_IMPOSES: dict[str, dict[str, Any]] = {
+    "add_source": {"exiger_extrait": True},
+    "add_sources_batch": {"exiger_extrait": True},
 }
 
 #: Actions sensibles : toujours soumises à validation humaine (approbation
@@ -258,13 +270,16 @@ def _suite(nom: str, resultat: dict[str, Any]) -> str | None:
     """
     if nom in ("add_source", "update_source") and resultat.get("id"):
         return (
-            f'Suite : find_passage(source_id="{resultat["id"]}", query=...) pour trouver '
-            "le passage exact a citer, puis add_excerpt avec ce passage recopie tel quel."
+            f"Suite : si la source porte d'autres passages utiles, find_passage(source_id=\""
+            f'{resultat["id"]}", query=...) puis add_excerpt avec le passage recopie tel '
+            "quel ; sinon, la candidate suivante."
         )
     if nom == "create_card" and resultat.get("slug"):
         return (
-            f'Suite : add_source(card_slug="{resultat["slug"]}", ...) pour chaque source '
-            "trouvee par un outil, sans position tant qu'aucun extrait n'est pose."
+            "Suite : pour chaque adresse trouvee par un outil, propose_passages(url, "
+            f'questions), puis add_source(card_slug="{resultat["slug"]}", url, '
+            "metadata_from, excerpts=[...]) avec les passages qui repondent. Sans passage "
+            "qui repond, n'ajoute pas la source."
         )
     if nom == "add_excerpt" and resultat.get("source_id"):
         return (
@@ -335,6 +350,7 @@ def _envelopper(fonction, *, avec_utilisateur: bool) -> tuple[dict[str, Any], An
             kwargs = _coercer(args, proprietes)
         except ValueError as exc:
             return {"error": str(exc)}
+        kwargs |= _PARAMETRES_IMPOSES.get(fonction.__name__, {})
         try:
             resultat = (
                 await fonction(ctx.db, ctx.user, **kwargs)
@@ -371,6 +387,7 @@ _ECRITURE = (
     "update_excerpt",
     "suggest_excerpts",
     "find_passage",
+    "propose_passages",
     "annotate_excerpt",
     "parse_biblio",
     "add_sources_batch",

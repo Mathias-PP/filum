@@ -256,7 +256,7 @@ async def chat_agent(
         replis = await ordonner_pour_chat(db, current_user.id, prefere=provider.id)
 
     # Une demande de fiche, ou une question de fond en tete de conversation, part
-    # dans le deroule guide : cinq etapes tenues par le serveur, chacune avec
+    # dans le deroule guide : des etapes tenues par le serveur, chacune avec
     # ses seuls outils. Laisse libre, l'agent repondait de memoire.
     guide = deroule_guide.est_demande_de_fiche(
         body.message,
