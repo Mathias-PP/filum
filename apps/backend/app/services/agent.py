@@ -66,6 +66,13 @@ from app.services.llm_adapters import (
 from app.services.llm_adapters import (
     parse_blocking_response as _adapter_parse_blocking,
 )
+from app.services.profil_modele import (
+    ESSENTIEL,
+    PETIT_MODELE,
+    chemins_de_contexte,
+    description_courte,
+    est_petit_modele,
+)
 from app.services.token_meter import TokenMeter
 
 logger = logging.getLogger(__name__)
@@ -1397,10 +1404,30 @@ async def boucle(
     if agent_def is not None:
         registre = filtrer(registre, agent_def.tools)
     outils_api = registre_api(registre)
+    # Un petit modele recoit un contexte a sa taille : voir `profil_modele`.
+    petit = est_petit_modele(modele or provider.model)
+    if petit:
+        outils_api = [
+            {
+                **outil,
+                "function": {
+                    **outil["function"],
+                    "description": description_courte(outil["function"]["description"]),
+                },
+            }
+            for outil in outils_api
+        ]
     workspace_ctx = await _priming_workspace(
-        db, user.id, agent_def.context if agent_def is not None else None
+        db,
+        user.id,
+        chemins_de_contexte(agent_def.context if agent_def is not None else None, petit),
     )
-    systeme = _contexte_temporel() + _SYSTEME + await _contexte_objectif(db, user.id, session_id)
+    systeme = (
+        _contexte_temporel()
+        + _SYSTEME
+        + (ESSENTIEL if petit else "")
+        + await _contexte_objectif(db, user.id, session_id)
+    )
     if agent_def is not None:
         systeme += f"\n\n---\n## Ton rôle : {agent_def.name}\n{agent_def.system_prompt.strip()}\n"
     # Graphe memoire : 3 tables, 1 requete recursive. Le parcours est fait en SQL
@@ -1417,7 +1444,9 @@ async def boucle(
             ),
             "",
         )
-        if q:
+        # Douze faits ajoutes d'office sont du bruit pour un petit modele, qui
+        # peine deja a suivre ses consignes : `recall_memory` reste appelable.
+        if q and not petit:
             # `top_k` borne le contexte injecte. Il etait laisse a son defaut,
             # et l'entete annoncait « 2 ms » en dur alors que `Facts.ms` porte la
             # mesure : deux facons de dire au modele quelque chose de faux sur ce
@@ -1467,6 +1496,9 @@ async def boucle(
 
     async def _boucler() -> None:
         nonlocal rejeu_fait
+        # Pose dans la tache de la boucle, dont les appels d'outils heritent le
+        # contexte : rien ne fuit vers un autre tour.
+        PETIT_MODELE.set(petit)
         # Utiliser le quota_tours si défini dans agent_def, sinon utiliser MAX_TOURS
         quota_tours = agent_def.quota_tours if agent_def else MAX_TOURS
         a_ecrit = False
