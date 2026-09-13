@@ -104,7 +104,9 @@ async def test_register_puis_authorize_puis_token_donne_un_jwt(client, test_user
     client_data = r.json()
     client_id = client_data["client_id"]
     assert client_data["token_endpoint_auth_method"] == "none"
-    assert client_data.get("client_secret") is None  # client public, pas de secret
+    # Client public : le champ est absent, pas `null`. Le SDK MCP de Claude Code
+    # refuse la connexion entiere sur `"client_secret": null`.
+    assert "client_secret" not in client_data
 
     # 2. authorize : simule le clic « Autoriser » de l'user via POST consent.
     #    L'user est deja logue (via override get_current_user).
