@@ -70,8 +70,9 @@ class Settings(BaseSettings):
     # fait quand la nouvelle série est complète.
     embedding_model: str = "gemini-embedding-001"
 
-    # OpenAlex exige une cle d'API depuis le 2026-02-13. Sans cle, 100 credits
-    # par jour ; avec une cle gratuite (openalex.org/settings/api), 100 000.
+    # OpenAlex exige une cle d'API depuis le 2026-02-13 ; la gratuite
+    # (openalex.org/settings/api) donne 1 $ d'usage par jour. Secret : elle vit
+    # dans le .env de la VM, part en en-tete Authorization, jamais dans une URL.
     openalex_api_key: str = ""
 
     # GROBID (parsing structuré des références d'un PDF). Le Space officiel
