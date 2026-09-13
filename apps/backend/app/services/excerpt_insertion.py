@@ -35,6 +35,7 @@ et c'est la difference que Philum a pour objet de tenir.
 
 from __future__ import annotations
 
+import re
 import time
 from dataclasses import dataclass
 from difflib import SequenceMatcher
@@ -123,6 +124,76 @@ def _ressemblance(page: str, demande: str) -> float:
     return SequenceMatcher(None, " ".join(page.split()), " ".join(demande.split())).ratio()
 
 
+#: Part des mots de la demande qu'un passage de la page doit porter pour etre
+#: montre comme le plus proche. En dessous, le passage n'aurait presque rien de
+#: commun avec la demande, et le montrer ferait croire a une piste.
+PART_MOTS_COMMUNS = 0.5
+
+#: Passages gardes apres le tri par mots communs, avant la comparaison fine,
+#: qui coute trop cher pour etre faite sur chaque phrase d'une longue page.
+_CANDIDATS = 12
+
+#: Au-dela, le passage montre est coupe a un mot : un debut de passage reste un
+#: verbatim, et un refus qui recopie une page entiere ne se lit plus.
+_LONGUEUR_MONTREE = 500
+
+_FIN_DE_PHRASE = re.compile(r"(?<=[.!?;])\s+|\n\s*\n")
+_MOT = re.compile(r"\w+")
+
+
+def _mots(texte: str) -> set[str]:
+    return {m.lower() for m in _MOT.findall(texte) if len(m) > 2}
+
+
+def _couper(texte: str) -> str:
+    if len(texte) <= _LONGUEUR_MONTREE:
+        return texte
+    coupe = texte[:_LONGUEUR_MONTREE]
+    return coupe[: coupe.rfind(" ")] if " " in coupe else coupe
+
+
+def passages_proches(page_text: str, demande: str, limite: int = 3) -> list[str]:
+    """Les passages de la page qui ressemblent le plus a `demande`, tels quels.
+
+    Mesure du 2026-09-13 : 73 refus « ce passage ne figure pas dans la source »
+    sur 83 appels a `add_excerpt` dans une seule conversation. Apres chaque
+    refus, le modele reecrivait une variante de sa paraphrase au lieu de relire
+    la page, parce que le refus ne lui montrait rien a copier. Chaque passage
+    rendu ici est une tranche exacte de la page : le recopier suffit a le poser.
+    """
+    mots_demande = _mots(demande)
+    if not mots_demande or not page_text.strip():
+        return []
+    bornes = [0, *(m.end() for m in _FIN_DE_PHRASE.finditer(page_text)), len(page_text)]
+    phrases = [(bornes[k], bornes[k + 1]) for k in range(len(bornes) - 1)]
+    mots_phrases = [_mots(page_text[d:f]) for d, f in phrases]
+    taille = max(1, min(4, len([p for p in _FIN_DE_PHRASE.split(demande.strip()) if p.strip()])))
+
+    candidats: list[tuple[float, int, int]] = []
+    for k in range(len(phrases)):
+        fin = min(k + taille, len(phrases))
+        communs = set().union(*mots_phrases[k:fin]) & mots_demande
+        part = len(communs) / len(mots_demande)
+        if part >= PART_MOTS_COMMUNS:
+            candidats.append((part, phrases[k][0], phrases[fin - 1][1]))
+    candidats.sort(reverse=True)
+
+    notes: list[tuple[float, str]] = []
+    for _part, debut, fin in candidats[:_CANDIDATS]:
+        passage = page_text[debut:fin].strip()
+        if passage:
+            notes.append((_ressemblance(passage, demande), passage))
+    notes.sort(key=lambda note: note[0], reverse=True)
+    rendus: list[str] = []
+    for _note, passage in notes:
+        montre = _couper(passage)
+        if montre not in rendus:
+            rendus.append(montre)
+        if len(rendus) >= limite:
+            break
+    return rendus
+
+
 def _prelever(page_text: str, demande: str, complet: bool) -> Prelevement:
     ancrage: Ancrage | None = ancrer(
         page_text, Selecteurs(quote=demande, prefix="", suffix="", offset=None)
@@ -153,6 +224,15 @@ def _prelever(page_text: str, demande: str, complet: bool) -> Prelevement:
             "extrait est un verbatim : recopiez les caracteres de la source, "
             "sans traduire ni reformuler. La traduction et la paraphrase vont "
             f"dans `context`. Ce que la source porte reellement : {ancrage.texte[:300]!r}"
+        )
+    proches = passages_proches(page_text, demande, limite=1)
+    if proches:
+        raise PassageIntrouvableError(
+            "Ce passage ne figure pas dans la source. Le passage de la page qui lui "
+            f"ressemble le plus est : {proches[0]!r}. S'il dit ce que vous vouliez "
+            "citer, recopiez-le tel quel, sans rien changer ; la traduction et la "
+            "paraphrase vont dans `context`. Sinon, ce que vous citez n'est pas dans "
+            "cette source."
         )
     raise PassageIntrouvableError(
         "Ce passage ne figure pas dans la source. Causes les plus frequentes : "

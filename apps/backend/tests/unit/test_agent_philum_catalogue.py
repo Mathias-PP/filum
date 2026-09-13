@@ -27,6 +27,18 @@ class TestCatalogueCompletude:
         outils = {t.name for t in philum_tools()}
         assert "delete_excerpt" in outils
 
+    def test_la_recherche_de_verbatim_est_outillee(self):
+        """Sans elle, un refus d'extrait laisse le modele reecrire sa paraphrase."""
+        outils = {t.name for t in philum_tools()}
+        assert "find_passage" in outils
+
+    def test_l_agent_ne_fournit_pas_lui_meme_le_texte_de_la_source(self):
+        """Mesure du 2026-09-13 : l'agent passait sa propre paraphrase comme
+        texte de la source, et les suggestions portaient sur ce qu'il avait ecrit."""
+        outils = {t.name: t for t in philum_tools()}
+        for nom in ("verify_excerpts", "suggest_excerpts", "annotate_excerpt"):
+            assert "provided_text" not in outils[nom].parameters["properties"], nom
+
 
 class TestDescriptions:
     def test_description_non_tronquee(self):

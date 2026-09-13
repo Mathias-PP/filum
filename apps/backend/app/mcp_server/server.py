@@ -588,6 +588,15 @@ async def archive_sources(source_ids: list[str]) -> dict[str, Any]:
 
 
 @outil()
+async def find_passage(source_id: str, query: str) -> dict[str, Any]:
+    """Cherche dans la source les passages qui ressemblent a `query`, et les rend
+    tels que la page les porte, prets a citer avec `add_excerpt`."""
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.find_passage(db, user, source_id=source_id, query=query)
+
+
+@outil()
 async def suggest_excerpts(
     source_id: str,
     provided_text: str | None = None,

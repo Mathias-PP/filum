@@ -703,6 +703,48 @@ async def add_excerpt(
     }
 
 
+async def find_passage(
+    db: AsyncSession,
+    user: User,
+    *,
+    source_id: str,
+    query: str,
+) -> dict[str, Any]:
+    """Cherche dans la source les passages qui ressemblent a `query`, et les rend tels que la page les porte.
+
+    A appeler avant `add_excerpt` quand on ne tient pas le verbatim exact :
+    chaque passage rendu est une tranche de la page, `add_excerpt` l'accepte
+    recopie tel quel. `query` peut etre une paraphrase, une traduction ou
+    quelques mots-cles. Ne pose rien et n'ecrit rien.
+    """
+    from app.services import excerpt_insertion
+
+    source = await _source_du_createur(db, user, source_id)
+    corps = (query or "").strip()
+    if not corps:
+        raise ToolError("Une recherche vide ne trouve rien.")
+    page_text, _refuse, complet = await excerpt_insertion.texte_de_page(source.url)
+    if not page_text.strip():
+        raise ToolError(
+            "Le texte de cette source n'a pu etre obtenu par aucune voie : il n'y a "
+            "rien ou chercher. Citez une autre adresse pour le meme contenu, ou "
+            "laissez le createur coller le passage depuis l'interface."
+        )
+    passages = excerpt_insertion.passages_proches(page_text, corps, limite=5)
+    resultat: dict[str, Any] = {
+        "source_id": source_id,
+        "passages": passages,
+        "page_text_length": len(page_text),
+        "texte_complet": complet,
+    }
+    if not passages:
+        resultat["message"] = (
+            "Aucun passage de la page ne ressemble a cette recherche : ce que vous "
+            "cherchez n'est probablement pas dans cette source."
+        )
+    return resultat
+
+
 #: Meme borne que le schema CardBase.content_text. 500 000 caracteres = un
 #: roman entier ; au-dela, c'est un corpus, sa voie est le decoupage en fiches.
 _MAX_CONTENT_TEXT = 500_000
