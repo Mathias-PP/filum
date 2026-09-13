@@ -58,9 +58,20 @@
   interface Props {
     card: CardDetail;
     onSelect?: (source: Source | null) => void;
+    /**
+     * Petit cadre, dans le panneau de fiche de l'agent : ni recherche, ni
+     * réglages, ni légende, ni panneau de détail, ni voisinage. Le graphe y
+     * montre la forme de la bibliographie qui se construit, rien de plus.
+     */
+    compact?: boolean;
   }
 
-  let { card, onSelect }: Props = $props();
+  let { card, onSelect, compact = false }: Props = $props();
+
+  // Tailles minimales du cadre. Celles de la page publique (320 × 360)
+  // dépassaient le petit cadre du panneau de l'agent, haut de 176 px.
+  const LARGEUR_MIN = $derived(compact ? 200 : 320);
+  const HAUTEUR_MIN = $derived(compact ? 120 : 360);
 
   type NodeKind = 'card' | 'source' | 'junction';
 
@@ -2072,14 +2083,14 @@
   onMount(() => {
     if (!container) return;
     const rect = container.getBoundingClientRect();
-    width = Math.max(rect.width, 320);
-    height = Math.max(rect.height, 360);
+    width = Math.max(rect.width, LARGEUR_MIN);
+    height = Math.max(rect.height, HAUTEUR_MIN);
     mountGraph();
 
     resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        const nextW = Math.max(entry.contentRect.width, 320);
-        const nextH = Math.max(entry.contentRect.height, 360);
+        const nextW = Math.max(entry.contentRect.width, LARGEUR_MIN);
+        const nextH = Math.max(entry.contentRect.height, HAUTEUR_MIN);
         if (Math.abs(nextW - width) < 4 && Math.abs(nextH - height) < 4) continue;
         width = nextW;
         height = nextH;
@@ -2102,9 +2113,13 @@
     // quelque chose de neuf, pour ne pas réanimer pour rien. Les auteurs de la
     // racine en font partie — les étiquettes sont posées impérativement par d3,
     // sans remontage le nœud garderait le nom de son créateur.
-    void loadNeighborhood().then(() => {
-      if (neighborCards.size > 0 || rootAuthors) mountGraph();
-    });
+    // En compact, pas de voisinage : il n'est pas affiché, et le graphe se
+    // remonte à chaque action de l'agent, ce qui referait l'appel à chaque fois.
+    if (!compact) {
+      void loadNeighborhood().then(() => {
+        if (neighborCards.size > 0 || rootAuthors) mountGraph();
+      });
+    }
   });
 
   onDestroy(() => {
@@ -2130,6 +2145,23 @@
   $effect(() => {
     $theme;
     if (!svgEl) return;
+    remount();
+  });
+
+  // Sources ajoutées ou retirées pendant que la fiche se construit, dans le
+  // panneau de l'agent : la topologie change, la simulation doit repartir pour
+  // que le nouveau nœud apparaisse. Sur la page publique, la fiche ne change
+  // pas et cet effet ne remonte jamais rien.
+  let empreinteSources: string | null = null;
+  $effect(() => {
+    const empreinte = card.sources.map((s) => s.id).join(',');
+    if (!svgEl) return;
+    if (empreinteSources === null) {
+      empreinteSources = empreinte;
+      return;
+    }
+    if (empreinte === empreinteSources) return;
+    empreinteSources = empreinte;
     remount();
   });
 
@@ -2263,6 +2295,7 @@
   <div
     bind:this={overlayEl}
     class="absolute left-3 flex flex-col items-start gap-1.5"
+    class:hidden={compact}
     style="top: {overlayTop}px"
   >
     <div
@@ -2606,6 +2639,7 @@
   <div
     bind:this={controlsEl}
     class="absolute right-3 flex flex-col gap-1.5"
+    class:hidden={compact}
     style="top: {overlayTop}px"
   >
     <button
@@ -2668,6 +2702,7 @@
 
   <div
     class="glass glass-panel absolute bottom-3 left-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs rounded-md px-2.5 py-1.5"
+    class:hidden={compact}
   >
     {#each legendEntries as c (c.label)}
       <span class="inline-flex items-center gap-1.5 text-ink-primary">
@@ -2756,23 +2791,27 @@
     </div>
   {/if}
 
-  <SourceDetailPanel
-    source={selectedSource}
-    {card}
-    anchor={panelAnchor}
-    containerWidth={width}
-    containerHeight={height}
-    onClose={() => selectSource(null)}
-    onSelect={(s) => selectSource(s)}
-  />
+  <!-- Les panneaux de détail sont dimensionnés pour la page publique : dans le
+       cadre compact, ils seraient coupés par ses bords. -->
+  {#if !compact}
+    <SourceDetailPanel
+      source={selectedSource}
+      {card}
+      anchor={panelAnchor}
+      containerWidth={width}
+      containerHeight={height}
+      onClose={() => selectSource(null)}
+      onSelect={(s) => selectSource(s)}
+    />
 
-  <CardDetailPanel
-    info={selectedCard}
-    anchor={panelAnchor}
-    containerWidth={width}
-    containerHeight={height}
-    onClose={() => (selectedCard = null)}
-    pinned={selectedCard ? pinnedCardIds.includes(selectedCard.id) : false}
-    onTogglePin={togglePin}
-  />
+    <CardDetailPanel
+      info={selectedCard}
+      anchor={panelAnchor}
+      containerWidth={width}
+      containerHeight={height}
+      onClose={() => (selectedCard = null)}
+      pinned={selectedCard ? pinnedCardIds.includes(selectedCard.id) : false}
+      onTogglePin={togglePin}
+    />
+  {/if}
 </div>

@@ -1,7 +1,9 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { page } from '$app/stores';
   import { api } from '$lib/api';
-  import type { Card, Source } from '$lib/api/types';
+  import type { Card, CardDetail, Source } from '$lib/api/types';
+  import { comparerFiches, type Cible } from '$lib/agent/suiviFiche';
   import { CLASSES_VERDICT, lireVerdict } from '$lib/utils/excerpt-verdict';
   import { stanceStyle } from '$lib/utils/stance';
   import { montrerAvisRetractation, retractionBadge } from '$lib/utils/retraction';
@@ -20,12 +22,52 @@
   let fiche = $state<Card | null>(null);
   let sources = $state<Source[]>([]);
   let etat = $state<'vide' | 'chargement' | 'pret' | 'introuvable' | 'erreur'>('vide');
-  // Sources modifiées par la dernière action : elles s'éclairent un instant.
-  let recentes = $state<Set<string>>(new Set());
+  // Ce que la dernière action a modifié : éclairé un instant.
+  let sourcesRecentes = $state<Set<string>>(new Set());
+  let extraitsRecents = $state<Set<string>>(new Set());
+  let minuterieEclairage: ReturnType<typeof setTimeout> | undefined;
+
+  // Suivi automatique, actif par défaut : la fiche défile jusqu'à l'élément que
+  // l'agent vient d'ajouter. Sans lui, un extrait posé au bas d'une fiche de
+  // quinze sources passait inaperçu. Désactivé, on navigue sans être déplacé.
+  let suivi = $state(true);
+  let derniereCible: Cible | null = null;
+  let defilement = $state<HTMLDivElement | null>(null);
+
+  // Graphe en tête de panneau, repliable indépendamment du panneau. Le choix
+  // est retenu dans le navigateur : qui l'a replié ne veut pas le revoir à
+  // chaque conversation.
+  const PREFERENCE_GRAPHE = 'philum:fiche-graphe';
+  let grapheOuvert = $state(lirePreferenceGraphe());
+  // Composant chargé à la demande, comme sur la page publique : c'est un
+  // bundle d3 que le panneau n'a pas à payer tant que le graphe est replié.
+  let Graphe = $state<any>(null);
+
+  function lirePreferenceGraphe(): boolean {
+    try {
+      return localStorage.getItem(PREFERENCE_GRAPHE) !== 'replie';
+    } catch {
+      return true;
+    }
+  }
+
+  function basculerGraphe() {
+    grapheOuvert = !grapheOuvert;
+    try {
+      localStorage.setItem(PREFERENCE_GRAPHE, grapheOuvert ? 'ouvert' : 'replie');
+    } catch {
+      // Préférence non retenue : le graphe se rouvrira à la prochaine visite.
+    }
+  }
+
+  $effect(() => {
+    if (grapheOuvert && !Graphe) {
+      void import('$lib/components/SourceGraph.svelte').then((m) => (Graphe = m.default));
+    }
+  });
 
   // Les outils nomment la fiche par son slug, l'API la lit par son id.
   const ids = new Map<string, string>();
-  let signatures = new Map<string, string>();
   let jeton = 0;
 
   async function idDe(s: string): Promise<string | null> {
@@ -36,16 +78,21 @@
     return ids.get(s) ?? null;
   }
 
-  function signature(s: Source): string {
-    return JSON.stringify([
-      s.title,
-      s.stance,
-      s.retraction_status,
-      s.oa_status,
-      s.archive_status,
-      s.annotation,
-      s.excerpts.map((e) => [e.id, e.text, e.context, e.verified_status]),
-    ]);
+  async function suivre(cible: Cible) {
+    await tick();
+    const selecteur =
+      cible.kind === 'extrait' ? `[data-extrait="${cible.id}"]` : `[data-source="${cible.id}"]`;
+    const element = defilement?.querySelector<HTMLElement>(selecteur);
+    if (!element) return;
+    const reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    element.scrollIntoView({ block: 'center', behavior: reduit ? 'auto' : 'smooth' });
+  }
+
+  function basculerSuivi() {
+    suivi = !suivi;
+    // Reprendre le suivi recale tout de suite sur le dernier ajout, plutôt que
+    // d'attendre la prochaine action de l'agent.
+    if (suivi && derniereCible) void suivre(derniereCible);
   }
 
   async function charger(s: string) {
@@ -60,24 +107,24 @@
       }
       const [lue, liste] = await Promise.all([api.cards.get(id), api.sources.list(id)]);
       if (moi !== jeton) return;
-      const changees = new Set<string>();
-      const nouvelles = new Map<string, string>();
-      for (const source of liste) {
-        const sig = signature(source);
-        nouvelles.set(source.id, sig);
-        // Pas d'éclairage au premier affichage ni au changement de fiche :
-        // seulement ce qu'une action vient de modifier.
-        if (fiche?.id === lue.id && signatures.get(source.id) !== sig) changees.add(source.id);
-      }
-      signatures = nouvelles;
+      // Pas d'éclairage ni de défilement au premier affichage ni au changement
+      // de fiche : seulement ce qu'une action vient de modifier.
+      const ecart = comparerFiches(fiche?.id === lue.id ? sources : null, liste);
       fiche = lue;
       sources = liste;
       etat = 'pret';
-      if (changees.size > 0) {
-        recentes = changees;
-        setTimeout(() => {
-          if (moi === jeton) recentes = new Set();
+      if (ecart.sources.size > 0 || ecart.extraits.size > 0) {
+        sourcesRecentes = ecart.sources;
+        extraitsRecents = ecart.extraits;
+        clearTimeout(minuterieEclairage);
+        minuterieEclairage = setTimeout(() => {
+          sourcesRecentes = new Set();
+          extraitsRecents = new Set();
         }, 2500);
+      }
+      if (ecart.cible) {
+        derniereCible = ecart.cible;
+        if (suivi) await suivre(ecart.cible);
       }
     } catch {
       // Une lecture ratée garde l'affichage précédent : la suivante rattrapera.
@@ -98,6 +145,8 @@
     return () => clearTimeout(minuterie);
   });
 
+  $effect(() => () => clearTimeout(minuterieEclairage));
+
   const nbExtraits = $derived(sources.reduce((n, s) => n + s.excerpts.length, 0));
   const nbRetrouves = $derived(
     sources.reduce(
@@ -111,6 +160,37 @@
   const nbArchivees = $derived(sources.filter((s) => s.archive_status === 'archived').length);
   const nbLibres = $derived(sources.filter((s) => openAccessBadge(s.oa_status)?.isFree).length);
   const nbRetractees = $derived(sources.filter((s) => s.retraction_status === 'retracted').length);
+
+  // Le graphe attend une fiche complète, telle que la page publique la reçoit.
+  // Le panneau la reconstitue avec ce qu'il lit déjà : la fiche, ses sources
+  // et le créateur connecté, brouillons compris.
+  const ficheDetaillee = $derived.by<CardDetail | null>(() => {
+    if (!fiche) return null;
+    const moi = $page.data.user;
+    const compter = (genre: string) => sources.filter((s) => s.author_kind === genre).length;
+    const archivables = sources.filter((s) => s.url).length;
+    return {
+      ...fiche,
+      creator: {
+        slug: moi?.username ?? '',
+        display_name: moi?.display_name ?? null,
+        bio: null,
+        avatar_url: moi?.avatar_url ?? null,
+        public_key: '',
+      },
+      sources,
+      stats: {
+        total_sources: sources.length,
+        chercheur: compter('chercheur'),
+        media: compter('media'),
+        institution_publique: compter('institution_publique'),
+        individu: compter('individu'),
+        archived_count: nbArchivees,
+        archivable_count: archivables,
+        all_archived: archivables > 0 && nbArchivees >= archivables,
+      },
+    };
+  });
 </script>
 
 <aside
@@ -123,6 +203,56 @@
     >
       Fiche en direct
     </p>
+    <!-- Un œil ouvert tant que la fiche suit l'agent, barré quand on navigue
+         librement : c'est le regard qu'on délègue ou qu'on reprend. -->
+    <button
+      type="button"
+      class="shrink-0 rounded p-1 transition-colors hover:text-ink-primary"
+      class:text-info={suivi}
+      class:bg-info-bg={suivi}
+      class:text-ink-tertiary={!suivi}
+      aria-pressed={suivi}
+      aria-label={suivi ? 'Arrêter de suivre les modifications' : 'Suivre les modifications'}
+      title={suivi
+        ? 'Suivi activé : la fiche défile jusqu’à chaque ajout de l’agent. Cliquer pour naviguer librement.'
+        : 'Navigation libre : la fiche ne bouge plus. Cliquer pour suivre à nouveau les ajouts de l’agent.'}
+      onclick={basculerSuivi}
+    >
+      {#if suivi}
+        <svg
+          viewBox="0 0 24 24"
+          width="16"
+          height="16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      {:else}
+        <svg
+          viewBox="0 0 24 24"
+          width="16"
+          height="16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M3 3l18 18" />
+          <path
+            d="M10.6 5.1A10.4 10.4 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6A17.5 17.5 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"
+          />
+          <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+        </svg>
+      {/if}
+    </button>
     {#if fiche}
       <a
         href="/dashboard/new/{fiche.id}/sources"
@@ -141,7 +271,51 @@
     </button>
   </div>
 
+  {#if fiche && etat === 'pret'}
+    <!-- Le graphe reste en tête pendant que la liste défile : il montre la forme
+         de la bibliographie qui se construit, la liste montre son détail. -->
+    <section class="shrink-0 border-b border-border" aria-label="Graphe de la fiche">
+      <button
+        type="button"
+        class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-ink-tertiary hover:text-ink-primary"
+        aria-expanded={grapheOuvert}
+        aria-controls="graphe-fiche-vivante"
+        title={grapheOuvert ? 'Réduire le graphe' : 'Afficher le graphe'}
+        onclick={basculerGraphe}
+      >
+        <svg
+          viewBox="0 0 24 24"
+          width="12"
+          height="12"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          aria-hidden="true"
+          class={grapheOuvert
+            ? 'shrink-0 transition-transform'
+            : 'shrink-0 -rotate-90 transition-transform'}
+        >
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+        <span class="flex-1">Graphe</span>
+        {#if !grapheOuvert}
+          <span>{sources.length} source{sources.length > 1 ? 's' : ''}</span>
+        {/if}
+      </button>
+      {#if grapheOuvert}
+        <div id="graphe-fiche-vivante" class="relative h-44 overflow-hidden border-t border-border">
+          {#if Graphe && ficheDetaillee}
+            <Graphe card={ficheDetaillee} compact />
+          {:else}
+            <p class="p-3 text-xs text-ink-tertiary">Chargement du graphe…</p>
+          {/if}
+        </div>
+      {/if}
+    </section>
+  {/if}
+
   <div
+    bind:this={defilement}
     class="min-h-0 flex-1 overflow-y-auto px-3 py-3"
     aria-live="polite"
     aria-busy={etat === 'chargement'}
@@ -194,8 +368,9 @@
       {:else}
         <ol class="mt-3 space-y-3">
           {#each sources as source, rang (source.id)}
-            {@const eclairee = recentes.has(source.id)}
+            {@const eclairee = sourcesRecentes.has(source.id)}
             <li
+              data-source={source.id}
               class="rounded-lg border p-2 transition-shadow duration-500"
               class:border-border={!eclairee}
               class:border-info={eclairee}
@@ -244,7 +419,13 @@
                 <ul class="mt-2 space-y-1.5">
                   {#each source.excerpts as extrait (extrait.id)}
                     {@const verdict = lireVerdict(extrait)}
-                    <li class="text-xs">
+                    {@const neuf = extraitsRecents.has(extrait.id)}
+                    <li
+                      data-extrait={extrait.id}
+                      class="rounded text-xs transition-colors duration-500"
+                      class:bg-info-bg={neuf}
+                      class:px-1={neuf}
+                    >
                       <p class="italic text-ink-secondary [overflow-wrap:anywhere]">
                         « {extrait.text} »
                       </p>
