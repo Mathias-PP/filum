@@ -78,9 +78,15 @@ _TIMEOUT = 60.0
 #: Plafond de la taille d'un message ``tool`` renvoyé au modèle (le contexte
 #: coûte des tokens, et les résultats d'outils sont bavards).
 TOOL_RESULT_MAX = 120_000
-#: Mur d'horloge sur l'intégralité de la boucle (5 min). Empêche une boucle
-#: de tourner indéfiniment si le modèle produit des tool calls en boucle.
-BOUCLE_TIMEOUT = 300.0
+#: Mur d'horloge sur l'intégralité de la boucle. Empêche une boucle de tourner
+#: indéfiniment si le modèle produit des tool calls en boucle.
+#:
+#: Il valait 300 s, la durée d'une connexion : le tour d'une conversation réelle
+#: a été coupé à 309 s au milieu d'une fiche. Depuis que le tour vit sans le
+#: client et qu'« Arrêter » passe par le serveur, la borne ordinaire est
+#: `agent_max_tours` et sa pause « Continuer » ; ce mur ne rattrape plus qu'une
+#: boucle qui ne progresse pas.
+BOUCLE_TIMEOUT = 1200.0
 
 #: Budget par appel d'outil.
 #:
@@ -1635,7 +1641,8 @@ async def boucle(
     try:
         await asyncio.wait_for(_boucler(), timeout=BOUCLE_TIMEOUT)
     except asyncio.CancelledError:
-        # Annulation propre (disconnect SSE, arrêt serveur) : pas une erreur.
+        # Annulation propre (« Arrêter », arrêt du serveur) : pas une erreur. La
+        # connexion du client, elle, n'annule plus rien.
         await emit({"type": "error", "payload": {"message": "Communication interrompue."}})
         raise
     except TimeoutError:
@@ -1643,7 +1650,13 @@ async def boucle(
         await emit(
             {
                 "type": "error",
-                "payload": {"message": "L'agent a mis trop de temps à répondre. Réessayez."},
+                "payload": {
+                    "message": (
+                        f"L'agent travaille depuis {BOUCLE_TIMEOUT / 60:.0f} minutes sans finir : "
+                        "le tour est arrêté, le travail déjà fait est conservé. "
+                        "Envoyez « continue » pour reprendre."
+                    )
+                },
             }
         )
     except Exception as exc:  # noqa: BLE001 -- un échec de boucle doit être visible, pas silencieux
