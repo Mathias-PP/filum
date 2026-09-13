@@ -50,6 +50,7 @@ from app.services import (
     agent_sessions,
     agent_tours,
     agent_workspace,
+    deroule_guide,
 )
 from app.services.agent import boucle
 from app.services.agent_discovery import (
@@ -254,6 +255,14 @@ async def chat_agent(
         # Le mode decouverte n'expose qu'une cle, qu'on ne choisit pas.
         replis = await ordonner_pour_chat(db, current_user.id, prefere=provider.id)
 
+    # Une demande de fiche, ou une question de fond en tete de conversation, part
+    # dans le deroule guide : cinq etapes tenues par le serveur, chacune avec
+    # ses seuls outils. Laisse libre, l'agent repondait de memoire.
+    guide = deroule_guide.est_demande_de_fiche(
+        body.message,
+        premier_message=not any(m.get("role") == "user" for m in messages),
+    )
+
     # Reserve avant toute ecriture : un second envoi pendant qu'un tour tourne
     # reinscrivait le message, et le modele recevait deux fois la meme demande.
     try:
@@ -324,6 +333,9 @@ async def chat_agent(
         # actionnable ; le except ci-dessous reste pour les vraies levées.
         reactions: list[agent_gratuit.Reaction] = []
         issue = "annule"
+        # Le deroule guide ne passe pas par `messages` : chaque etape a le sien.
+        ajouts_guides: list[dict[str, Any]] = []
+        heures_guides: list[datetime] = []
 
         # L'heure a laquelle chaque message du tour est apparu. Le tour s'ecrit
         # en base a la fin : sans elles, tous ses messages portaient l'heure de
@@ -372,20 +384,36 @@ async def chat_agent(
                 utilisateur = await db_tour.get(User, creator_id)
                 if utilisateur is None:
                     raise RuntimeError("Utilisateur introuvable pour ce tour.")
-                await boucle(
-                    db_tour,
-                    utilisateur,
-                    provider,
-                    messages,
-                    emit,
-                    approuver,
-                    transport=transport,
-                    modele=modele,
-                    agent_def=agent_def,
-                    ancre_tokens=ancre_tokens,
-                    session_id=session_id,
-                    replis=replis,
-                )
+                if guide:
+                    await deroule_guide.derouler(
+                        db_tour,
+                        utilisateur,
+                        provider,
+                        body.message,
+                        emit,
+                        approuver,
+                        ajouts_guides,
+                        heures_guides,
+                        transport=transport,
+                        modele=modele,
+                        session_id=session_id,
+                        replis=replis,
+                    )
+                else:
+                    await boucle(
+                        db_tour,
+                        utilisateur,
+                        provider,
+                        messages,
+                        emit,
+                        approuver,
+                        transport=transport,
+                        modele=modele,
+                        agent_def=agent_def,
+                        ancre_tokens=ancre_tokens,
+                        session_id=session_id,
+                        replis=replis,
+                    )
                 issue = "complet"
                 if reactions and mode_gratuit is not None:
                     # Le repos le plus long l'emporte : si un tour a vu passer
@@ -422,8 +450,8 @@ async def chat_agent(
                 # Instantané avant tout ``await`` : une boucle annulée peut
                 # encore ajouter un message à sa prochaine reprise.
                 horodater()
-                ajouts = messages[depart:]
-                heures = horodatages[depart:]
+                ajouts = ajouts_guides if guide else messages[depart:]
+                heures = heures_guides if guide else horodatages[depart:]
                 if issue != "complet":
                     # Les écritures d'outils sont déjà en base : sans ce
                     # rattrapage, la source que l'agent vient de créer existe

@@ -221,6 +221,11 @@ export type AgentEvent =
       type: 'done';
       payload: { reason: string; usage?: { prompt_tokens: number; completion_tokens: number } };
     }
+  | {
+      /** Le déroulé guidé d'une fiche sujet passe à l'étape suivante. */
+      type: 'etape_guidee';
+      payload: { etape: string; titre: string; rang: number; total: number };
+    }
   | { type: 'error'; payload: { message: string } };
 
 export interface WorkspaceTreeEntry {
