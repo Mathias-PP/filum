@@ -228,6 +228,66 @@ def _coercer_valeur(nom: str, valeur: Any, attendu: str) -> Any:
     return valeur
 
 
+#: Ce que dit un outil de lecture qui ne trouve rien, a la place d'un `null`.
+#:
+#: Mesure du 2026-09-13 : `get_card` et `get_source` ont rendu `null` trois
+#: fois dans une meme conversation. `get_card` ignore les brouillons, et le
+#: modele concluait que la fiche qu'il venait de creer n'existait pas.
+_VIDE_PAR_OUTIL: dict[str, str] = {
+    "get_card": (
+        "Aucune fiche publiee et publique sous ce createur et ce slug. Pour une fiche "
+        "du createur, brouillon compris, appelle get_my_card(slug)."
+    ),
+    "get_source": (
+        "Aucune source publique sous cet identifiant. Pour une source d'une fiche du "
+        "createur, list_sources(card_slug) donne les identifiants valides."
+    ),
+    "search_cards": (
+        "Aucune fiche publique ne correspond. Les brouillons du createur ne sont pas "
+        "dans cet index : list_my_cards les liste."
+    ),
+}
+
+
+def _suite(nom: str, resultat: dict[str, Any]) -> str | None:
+    """L'appel qui suit normalement une ecriture reussie.
+
+    Un grand modele deduit l'etape suivante ; un petit la lit. Mesure : l'agent
+    posait des sources sans jamais chercher leurs passages, puis reformulait
+    les extraits de memoire.
+    """
+    if nom in ("add_source", "update_source") and resultat.get("id"):
+        return (
+            f'Suite : find_passage(source_id="{resultat["id"]}", query=...) pour trouver '
+            "le passage exact a citer, puis add_excerpt avec ce passage recopie tel quel."
+        )
+    if nom == "create_card" and resultat.get("slug"):
+        return (
+            f'Suite : add_source(card_slug="{resultat["slug"]}", ...) pour chaque source '
+            "trouvee par un outil, sans position tant qu'aucun extrait n'est pose."
+        )
+    if nom == "add_excerpt" and resultat.get("source_id"):
+        return (
+            "Suite : un autre extrait de cette source si elle en porte, sinon "
+            f'update_source(source_id="{resultat["source_id"]}", stance=...) si '
+            "l'extrait justifie une position."
+        )
+    return None
+
+
+def _guider(nom: str, resultat: Any) -> dict[str, Any]:
+    """Remplace un resultat vide par un message, et ajoute la suite d'une ecriture."""
+    if resultat is None:
+        return {"error": _VIDE_PAR_OUTIL.get(nom, f"{nom} n'a rien trouve.")}
+    if isinstance(resultat, list):
+        if not resultat and nom in _VIDE_PAR_OUTIL:
+            return {"results": [], "message": _VIDE_PAR_OUTIL[nom]}
+        return cast("dict[str, Any]", resultat)
+    if isinstance(resultat, dict) and "error" not in resultat and (suite := _suite(nom, resultat)):
+        return {**resultat, "suite": suite}
+    return cast("dict[str, Any]", resultat)
+
+
 def _envelopper(fonction, *, avec_utilisateur: bool) -> tuple[dict[str, Any], Any]:
     """Schéma JSON des paramètres + execute qui délègue à la fonction MCP."""
     hints = get_type_hints(fonction)
@@ -281,7 +341,7 @@ def _envelopper(fonction, *, avec_utilisateur: bool) -> tuple[dict[str, Any], An
                 if avec_utilisateur
                 else await fonction(ctx.db, **kwargs)
             )
-            return cast("dict[str, Any]", resultat)
+            return _guider(fonction.__name__, resultat)
         except ToolError as exc:
             return {"error": str(exc)}
         except Exception as exc:  # noqa: BLE001  # message lisible par le modèle
