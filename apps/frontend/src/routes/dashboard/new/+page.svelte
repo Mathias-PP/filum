@@ -173,7 +173,7 @@
         suggestNotice =
           'Ce site a refusé la lecture automatique de la page. ' +
           'Astuce : la plupart des éditeurs proposent un bouton « Cite » ou ' +
-          '« Export » qui télécharge un fichier .ris ou .bib — vous pourrez ' +
+          '« Export » qui télécharge un fichier .ris ou .bib : vous pourrez ' +
           "l'importer à l'étape suivante. En attendant, saisissez le titre " +
           'et les auteurs à la main.';
       } else if (!meta.title && !meta.description && !meta.authors) {

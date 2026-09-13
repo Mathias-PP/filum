@@ -530,7 +530,9 @@
                 {authorLabel(majorityAuthor.key)}
               </p>
             {:else}
-              <p class="text-xl sm:text-2xl font-bold text-ink-tertiary">—</p>
+              <p class="text-xl sm:text-2xl font-bold text-ink-tertiary" title="Non déterminé">
+                n. d.
+              </p>
               <p class="text-xs sm:text-sm text-ink-tertiary">Type d'auteur</p>
             {/if}
           </div>
@@ -546,7 +548,9 @@
                 {categoryLabel(majorityCategory.key)}
               </p>
             {:else}
-              <p class="text-xl sm:text-2xl font-bold text-ink-tertiary">—</p>
+              <p class="text-xl sm:text-2xl font-bold text-ink-tertiary" title="Non déterminé">
+                n. d.
+              </p>
               <p class="text-xs sm:text-sm text-ink-tertiary">Catégorie</p>
             {/if}
           </div>

@@ -648,10 +648,10 @@ async def suggest_source_excerpts(
     if include_card:
         card = await db.scalar(select(BiblioCard).where(BiblioCard.id == source.biblio_card_id))
         if card:
-            entete_fiche = " — ".join(filter(None, [card.title, card.description]))
+            entete_fiche = " · ".join(filter(None, [card.title, card.description]))
             if entete_fiche:
                 morceaux_contexte.append(f"Fiche du createur : {entete_fiche}")
-    context = " — ".join(morceaux_contexte) or None
+    context = " · ".join(morceaux_contexte) or None
 
     deja_cites: list[str] | None = None
     if include_existing:
@@ -747,7 +747,7 @@ async def annotate_excerpt(
     if not entourage:
         # A defaut du texte d'ou vient le passage, ce que la fiche sait de la
         # source vaut mieux que rien : titre et annotation situent deja.
-        entourage = " — ".join(filter(None, [source.title, source.annotation]))
+        entourage = " · ".join(filter(None, [source.title, source.annotation]))
 
     annotation = await suggest_annotation(payload.text, entourage)
     if annotation is None:

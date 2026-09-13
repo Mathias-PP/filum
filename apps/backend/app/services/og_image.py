@@ -57,7 +57,7 @@ def generate_og_image(title: str, creator: str | None = None) -> bytes:
             fill=ACCENT_COLOR,
         )
 
-    footer_text = "filum.app — bibliographie vérifiable"
+    footer_text = "filum.app · bibliographie vérifiable"
     draw.text((40, HEIGHT - 40), footer_text, font=small_font, fill=(100, 116, 139))
 
     buf = io.BytesIO()

@@ -315,5 +315,5 @@ class TestDeuxVoix:
             anchor_offset=None,
         )
         body = _md(annotation="Ce que le createur en dit.", excerpts=[extrait])
-        assert "**Note du créateur** — Ce que le createur en dit." in body
-        assert "**Extrait** — « Ce que la source dit. »" in body
+        assert "**Note du créateur** : Ce que le createur en dit." in body
+        assert "**Extrait** : « Ce que la source dit. »" in body

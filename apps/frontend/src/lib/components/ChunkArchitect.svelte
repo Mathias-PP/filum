@@ -320,7 +320,7 @@
     avant meme d'avoir de quoi decouper.
   -->
   <label class="block text-xs text-ink-secondary">
-    Texte du contenu original — laissez vide pour tenter de lire la page
+    Texte du contenu original : laissez vide pour tenter de lire la page
     <textarea
       bind:value={sourceText}
       rows="4"
@@ -360,7 +360,7 @@
     }}
   >
     <label for="chunk-file" class="cursor-pointer">
-      … ou déposez le document ici — <span class="underline">parcourir</span>
+      … ou déposez le document ici, ou <span class="underline">parcourir</span>
       <span class="block text-ink-placeholder"
         >PDF, Word (.docx), OpenDocument (.odt), .txt, .md</span
       >
@@ -453,7 +453,7 @@
 
   {#if chunks.length}
     <p class="text-xs text-ink-secondary">
-      {chunks.length} morceau{chunks.length > 1 ? 'x' : ''} — {remaining} place{remaining > 1
+      {chunks.length} morceau{chunks.length > 1 ? 'x' : ''}, {remaining} place{remaining > 1
         ? 's'
         : ''} restante{remaining > 1 ? 's' : ''}
     </p>
@@ -483,7 +483,7 @@
                 type="text"
                 value={chunk.title ?? ''}
                 maxlength={200}
-                placeholder="Intitulé — 2 à 6 mots pour retrouver ce passage"
+                placeholder="Intitulé : 2 à 6 mots pour retrouver ce passage"
                 oninput={(e) => setTitle(i, e.currentTarget.value)}
                 class="w-full rounded border border-border bg-surface-primary px-2 py-1 text-xs font-medium text-ink-primary placeholder:text-ink-placeholder"
               />
@@ -513,7 +513,7 @@
                   </span>
                 {:else if parIA.has(cle(chunk))}
                   <span class="text-xs text-ink-tertiary italic">
-                    Proposé par un modèle — à relire : cette prose voisine un verbatim.
+                    Proposé par un modèle, à relire : cette prose voisine un verbatim.
                   </span>
                 {/if}
               </div>
