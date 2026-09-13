@@ -181,6 +181,86 @@ async def _contexte_objectif(db: AsyncSession, creator_id: UUID, session_id: UUI
     return bloc
 
 
+#: Outils dont l'argument `slug` désigne une fiche du créateur.
+_OUTILS_A_SLUG_DE_FICHE = frozenset({"create_card", "get_my_card", "update_card", "publish_card"})
+
+#: Sources rappelées au plus. Au-delà, la liste devient un inventaire que le
+#: modèle ne relit pas : `list_sources` la rend en entier à la demande.
+_SOURCES_RAPPELEES_MAX = 40
+
+
+def _slug_de_la_conversation(messages: list[dict[str, Any]]) -> str | None:
+    """La dernière fiche que la conversation a désignée dans un appel d'outil."""
+    for message in reversed(messages):
+        for appel in reversed(message.get("tool_calls") or []):
+            fonction = (appel.get("function") or {}) if isinstance(appel, dict) else {}
+            brut = fonction.get("arguments") or {}
+            try:
+                args = json.loads(brut) if isinstance(brut, str) else brut
+            except ValueError:
+                continue
+            if not isinstance(args, dict):
+                continue
+            valeur = args.get("card_slug")
+            if not valeur and fonction.get("name") in _OUTILS_A_SLUG_DE_FICHE:
+                valeur = args.get("slug")
+            if isinstance(valeur, str) and valeur.strip():
+                return valeur.strip()
+    return None
+
+
+async def _contexte_fiche_en_cours(
+    db: AsyncSession, creator_id: UUID, messages: list[dict[str, Any]]
+) -> str:
+    """La fiche travaillée et les identifiants de ses sources, relus en base.
+
+    Mesure du 2026-09-13 : des identifiants d'extrait ou de source tronqués ou
+    inventés, et `get_source` appelé trois fois pour rien. Un modèle qui retient
+    mal un UUID de trente-six caractères le relit ici à chaque tour, tel que la
+    base le porte.
+    """
+    slug = _slug_de_la_conversation(messages)
+    if slug is None:
+        return ""
+    card = await db.scalar(
+        select(BiblioCard).where(
+            BiblioCard.user_id == creator_id,
+            BiblioCard.slug == slug,
+            BiblioCard.deleted_at.is_(None),
+        )
+    )
+    if card is None:
+        return ""
+    sources = (
+        await db.execute(
+            select(Source.id, Source.title, Source.url, Source.stance)
+            .where(Source.biblio_card_id == card.id, Source.deleted_at.is_(None))
+            .order_by(Source.position)
+            .limit(_SOURCES_RAPPELEES_MAX)
+        )
+    ).all()
+    comptes = await db.execute(
+        select(SourceExcerpt.source_id, func.count())
+        .where(SourceExcerpt.source_id.in_([s.id for s in sources]))
+        .group_by(SourceExcerpt.source_id)
+    )
+    extraits: dict[UUID, int] = {source_id: int(n) for source_id, n in comptes.all()}
+    bloc = f"\n\n---\n## Fiche en cours\nslug : {slug} ({card.title})\n"
+    if not sources:
+        bloc += "Aucune source pour l'instant.\n"
+    else:
+        bloc += "Sources :\n"
+        for s in sources:
+            n = extraits.get(s.id, 0)
+            ligne = f"- {s.title or s.url} : source_id={s.id}, {n} extrait{'s' if n > 1 else ''}"
+            if s.stance:
+                ligne += f", position {s.stance}"
+            bloc += ligne + "\n"
+    return bloc + (
+        "\nCes identifiants viennent de la base : recopie-les en entier, n'en invente pas.\n"
+    )
+
+
 #: Une annonce de résultat déjà obtenu, au passé.
 #:
 #: La règle 1 du prompt système l'interdit déjà, et une conversation réelle de
@@ -1427,6 +1507,7 @@ async def boucle(
         + _SYSTEME
         + (ESSENTIEL if petit else "")
         + await _contexte_objectif(db, user.id, session_id)
+        + await _contexte_fiche_en_cours(db, user.id, messages)
     )
     if agent_def is not None:
         systeme += f"\n\n---\n## Ton rôle : {agent_def.name}\n{agent_def.system_prompt.strip()}\n"
