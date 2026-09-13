@@ -132,7 +132,9 @@ async def oauth_authorize(
             }
         )
         return_to = f"/api/v1/oauth/authorize?{original_query}"
-        login_url = f"/api/v1/auth/google/login?return_to={return_to}"
+        # Encode : `return_to` porte lui-meme `?` et `&`, qui sinon se melaient
+        # aux parametres de la connexion et tronquaient le chemin de retour.
+        login_url = "/api/v1/auth/google/login?" + urlencode({"return_to": return_to})
         return RedirectResponse(url=login_url, status_code=302)
 
     # Page consent minimaliste.
@@ -276,11 +278,29 @@ def _base_url(request: Request) -> str:
     return f"{scheme}://{host}"
 
 
+def _origine_du_navigateur(request: Request) -> str:
+    """L'origine ou le navigateur du createur porte sa session Philum.
+
+    La session vit sur le domaine du site (le proxy `/api` du front la rend
+    first-party), pas sur celui de l'API. Une page d'autorisation servie par
+    l'API ne voyait donc jamais le createur connecte, l'envoyait se connecter,
+    et le retour Google tombait sur le site sans le cookie d'etat pose par
+    l'API : `invalid_state`. Servie par le site, elle voit la session.
+
+    En developpement et en test, le front n'est pas en HTTPS : on reste sur
+    l'origine de la requete.
+    """
+    from app.core.config import get_settings
+
+    site = get_settings().frontend_base_url.strip().rstrip("/")
+    return site if site.startswith("https://") else _base_url(request)
+
+
 def build_authorization_server_metadata(request: Request) -> dict[str, Any]:
     base = _base_url(request)
     return {
         "issuer": base,
-        "authorization_endpoint": f"{base}/api/v1/oauth/authorize",
+        "authorization_endpoint": f"{_origine_du_navigateur(request)}/api/v1/oauth/authorize",
         "token_endpoint": f"{base}/api/v1/oauth/token",
         "registration_endpoint": f"{base}/api/v1/oauth/register",
         "response_types_supported": ["code"],

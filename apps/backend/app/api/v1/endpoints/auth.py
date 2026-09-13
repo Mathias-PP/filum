@@ -26,6 +26,32 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 STATE_COOKIE = "filum_oauth_state"
 STATE_EXPIRE_MINUTES = 10
+
+#: Ou revenir apres la connexion Google, quand elle a ete demandee par une page
+#: d'autorisation OAuth (client MCP). Sans lui, un createur non connecte qui
+#: autorisait Claude Code se retrouvait sur le tableau de bord, et le client
+#: attendait une autorisation qui ne venait jamais.
+RETURN_TO_COOKIE = "filum_oauth_return_to"
+_RETOURS_AUTORISES = ("/api/v1/oauth/authorize?",)
+
+
+def _retour_autorise(chemin: str | None) -> str | None:
+    """Le chemin de retour, s'il reste sur Philum et vise l'autorisation OAuth.
+
+    Liste fermee : un `return_to` libre ferait de la connexion une redirection
+    ouverte vers n'importe quel site.
+    """
+    if not chemin or "//" in chemin or "\\" in chemin:
+        return None
+    return chemin if chemin.startswith(_RETOURS_AUTORISES) else None
+
+
+def _destination_apres_connexion(request: Request) -> str:
+    """Le retour demande par une page d'autorisation, sinon l'accueil connecte."""
+    retour = _retour_autorise(request.cookies.get(RETURN_TO_COOKIE))
+    return retour or f"{settings.frontend_base_url}/auth/callback"
+
+
 GOOGLE_JWKS_URI = "https://www.googleapis.com/oauth2/v3/certs"
 
 
@@ -84,6 +110,7 @@ def _set_state_cookie(response: Response, state: str) -> None:
 
 def _delete_state_cookie(response: Response) -> None:
     response.delete_cookie(key=STATE_COOKIE, path="/")
+    response.delete_cookie(key=RETURN_TO_COOKIE, path="/")
 
 
 def _generate_state() -> str:
@@ -126,7 +153,7 @@ def _public_callback_url(request: Request) -> str:
 
 @router.get("/google/login")
 @limiter.limit(f"{settings.rate_limit_per_minute}/minute")
-async def google_login(request: Request):
+async def google_login(request: Request, return_to: str | None = Query(None)):
     if not settings.google_client_id:
         raise HTTPException(
             status_code=500,
@@ -148,6 +175,14 @@ async def google_login(request: Request):
 
     response = RedirectResponse(url=auth_url, status_code=302)
     _set_state_cookie(response, state)
+    if retour := _retour_autorise(return_to):
+        response.set_cookie(
+            key=RETURN_TO_COOKIE,
+            value=retour,
+            httponly=True,
+            max_age=STATE_EXPIRE_MINUTES * 60,
+            **_session_cookie_config(),
+        )
     return response
 
 
@@ -254,9 +289,7 @@ async def google_callback(
         existing_user = await auth_service.get_user_by_google_id(google_sub)
         if existing_user:
             session_token = auth_service.create_session(existing_user.id)
-            response = RedirectResponse(
-                url=f"{settings.frontend_base_url}/auth/callback", status_code=303
-            )
+            response = RedirectResponse(url=_destination_apres_connexion(request), status_code=303)
             _delete_state_cookie(response)
             _set_session_cookie(response, session_token)
             return response
@@ -289,9 +322,7 @@ async def google_callback(
             ) from e
 
         session_token = auth_service.create_session(user.id)
-        response = RedirectResponse(
-            url=f"{settings.frontend_base_url}/auth/callback", status_code=303
-        )
+        response = RedirectResponse(url=_destination_apres_connexion(request), status_code=303)
         _delete_state_cookie(response)
         _set_session_cookie(response, session_token)
         return response
