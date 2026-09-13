@@ -188,7 +188,7 @@ class CardService:
 
         # Registre chronologique (voir .docs/20-profils-et-feed.md) : une
         # entree par publication effective d'une fiche publique. Republier
-        # une fiche deja publiee n'en cree pas une seconde — le feed est un
+        # une fiche deja publiee n'en cree pas une seconde : le feed est un
         # horodatage du premier passage au public, pas un journal d'edition.
         # Les fiches privees n'entrent jamais dans le feed.
         if not was_already_published and card.visibility == "public":

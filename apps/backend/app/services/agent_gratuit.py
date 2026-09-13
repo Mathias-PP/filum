@@ -1,7 +1,7 @@
 """Mode gratuit : rotation de lanes serveur sans clé côté utilisateur.
 
 Différence fondamentale avec le mode découverte (``agent_discovery``) :
-ici l'utilisateur doit **consentir explicitement** — les fournisseurs
+ici l'utilisateur doit **consentir explicitement** : les fournisseurs
 gratuits (Z.ai tier gratuit aujourd'hui) se réservent le droit de conserver
 les échanges et de les utiliser pour entraîner leurs modèles. Le consentement
 est versionné : si le texte du warning change, il faut reconsentir.

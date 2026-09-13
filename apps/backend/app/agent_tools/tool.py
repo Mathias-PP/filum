@@ -15,7 +15,7 @@ class ToolContext:
     """Contexte d'exécution d'un outil.
 
     Porte la session DB et le créateur qui appelle : un outil n'a jamais accès
-    à autre chose — un agent ne peut pas écrire hors de son propre périmètre.
+    à autre chose : un agent ne peut pas écrire hors de son propre périmètre.
     ``creator_id`` est conservé pour les outils du workspace (== ``user.id``).
     """
 

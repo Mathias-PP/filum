@@ -2,17 +2,17 @@
 
 Un extrait qui ne porte que son texte se retrouve par recherche exacte, et
 cesse d'etre retrouvable des que la page corrige une coquille ou change de
-gabarit. L'extrait devient alors indiscernable d'une citation inventee — le
+gabarit. L'extrait devient alors indiscernable d'une citation inventee : le
 mode d'echec meme que Philum existe pour eliminer.
 
 L'architecture est celle d'Hypothes.is, dont la specification est publique :
 on stocke *plusieurs* selecteurs pour la meme cible et on les essaie du moins
 cher au plus robuste.
 
-  1. **Citation** — le texte exact, aux espaces pres. Robuste au deplacement,
+  1. **Citation** : le texte exact, aux espaces pres. Robuste au deplacement,
      mais muet si un seul mot a change. Le voisinage (`prefix`/`suffix`)
      departage les occurrences multiples, et l'offset d'origine les ex aequo.
-  2. **Approche** — plus proche voisin. Seul recours quand le texte lui-meme a
+  2. **Approche** : plus proche voisin. Seul recours quand le texte lui-meme a
      change ; il rend `exact=False`, car l'appelant doit pouvoir dire a la
      personne que la source ne porte plus tout a fait ces mots.
 
@@ -129,8 +129,8 @@ def _par_citation(
             score += SequenceMatcher(None, avant[-len(prefix_norm) :], prefix_norm).ratio()
         if suffix_norm:
             score += SequenceMatcher(None, apres[: len(suffix_norm)], suffix_norm).ratio()
-        # A voisinage egal — deux passages identiques dans un contexte lui aussi
-        # identique — la position d'origine tranche. C'est tout ce que l'offset
+        # A voisinage egal : deux passages identiques dans un contexte lui aussi
+        # identique : la position d'origine tranche. C'est tout ce que l'offset
         # sert encore a faire une fois la page modifiee : un indice, pas une
         # adresse.
         proximite = -abs(debut - sel.offset) if sel.offset is not None else 0

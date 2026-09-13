@@ -379,7 +379,7 @@ async def _resume_approbation(
             ids = args.get("source_ids") or []
             n = len(ids) if isinstance(ids, list) else 0
             return f"Déclencher l'archivage Wayback de {n} source{'s' if n > 1 else ''} ?"
-    except Exception:  # noqa: BLE001 — un résumé raté ne doit pas bloquer l'approbation
+    except Exception:  # noqa: BLE001  # un résumé raté ne doit pas bloquer l'approbation
         logger.exception("resume_approbation a échoué pour %s", tool_name)
     return f"Exécuter l'action sensible {tool_name} ?"
 

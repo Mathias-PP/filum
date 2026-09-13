@@ -97,5 +97,5 @@ async def executer(
         }
     try:
         return await outil.execute(ctx, args)
-    except Exception as exc:  # noqa: BLE001 — l'agent lit l'erreur, la boucle continue
+    except Exception as exc:  # noqa: BLE001  # l'agent lit l'erreur, la boucle continue
         return {"error": f"L'outil {name} a échoué : {exc}"}

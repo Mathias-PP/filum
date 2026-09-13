@@ -1,4 +1,4 @@
-"""Feed chronologique public — un registre, pas un fil algorithmique.
+"""Feed chronologique public : un registre, pas un fil algorithmique.
 
 Voir `.docs/20-profils-et-feed.md`. Une entree = une publication effective
 d'une fiche publique. Ordre strictement anti-chronologique, jamais autre.
@@ -48,7 +48,7 @@ class FeedResponse(BaseModel):
 
 def _base() -> Select[Any]:
     # On ne trie et ne renvoie que les evenements dont la fiche est encore
-    # visible et publique — une fiche depubliee ou passee en prive doit
+    # visible et publique : une fiche depubliee ou passee en prive doit
     # disparaitre du feed (question ouverte Q-feed-1 tranchee ici en faveur
     # du retrait plutot que du marquage « depubliee »).
     return (

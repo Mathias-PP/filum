@@ -60,7 +60,7 @@ def looks_like_citation_blob(title: str | None) -> bool:
 
 
 _INITIAL_RE = re.compile(r"^[A-Z]\.[A-Z]?\.?$")
-# Particules de noms de famille composés (surname prefixes) — francais/allemand/
+# Particules de noms de famille composés (surname prefixes) : francais/allemand/
 # neerlandais/italien. Doivent etre attachees au nom de famille meme si elles
 # apparaissent comme mot separe : "van der Meere J." → famille = "van der meere".
 _PARTICLES = {
@@ -358,7 +358,7 @@ def same_ref(a: ImportedRef, b: ImportedRef) -> bool:
     # Titre normalise identique. Deux voies pour valider le match :
     # (a) meme premier auteur normalise (fort si les deux sont presents), ou
     # (b) titre long (>=40 chars normalises soit >~5 mots) et annees non-contradictoires
-    #     — un titre long unique est un identifiant fiable meme sans auteur.
+    #     - un titre long unique est un identifiant fiable meme sans auteur.
     authors_a = norm_authors_list(a.authors, max_authors=2)
     authors_b = norm_authors_list(b.authors, max_authors=2)
     if authors_a and authors_b:
