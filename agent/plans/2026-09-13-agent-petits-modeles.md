@@ -198,6 +198,33 @@ Le modèle rédige seulement la phrase d'introduction et les limites.
 
 ---
 
+## Avancement
+
+- Point 1 (mur de 5 minutes) : #657, déployé.
+- Points 2 et 3 (profil petit, résultats fenêtrés) : #658, déployé.
+- Point 5 (`suite`, plus de `null` muet) : #659. Les identifiants rappelés dans
+  le prompt restent à faire.
+
+## Déroulé guidé : ce qui existe déjà
+
+**Lu** : un orchestrateur existe (`services/agent_fiche.py`, route
+`POST /agent/fiche`). Il lance une boucle par étage (01-brief à 07-publication)
+avec le `CONTEXT.md` de l'étage pour consigne. Il ne sert pas en l'état :
+
+- **aucune interface ne l'appelle** (aucune occurrence de la route dans le front) ;
+- **il documente un contenu** (`content_url` obligatoire) : une question comme
+  « comment prévenir l'arthrose ? » n'y entre pas ;
+- **il exige une clé par défaut** (`resoudre_defaut`) : le mode gratuit, celui
+  des conversations « arthrose », en est exclu ;
+- **chaque étage voit tous les outils**, sans restriction ;
+- **les règles d'étage citent 25 fois des noms d'outils MCP** (`mcp__philum__…`)
+  que l'agent ne porte pas sous ce nom : elles ont été écrites pour un client
+  MCP externe, pas pour la boucle de Philum ;
+- **son flux SSE annule le run quand la connexion tombe**, le défaut que #652 a
+  corrigé pour le chat.
+
+Le déroulé guidé est donc à construire, plus qu'à brancher.
+
 ## Découpage proposé
 
 | # | Contenu | Pourquoi dans cet ordre |

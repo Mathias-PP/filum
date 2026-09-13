@@ -1167,6 +1167,15 @@
               <span>{texteCompaction(item.retires, item.elagues)}</span>
               <span class="h-px flex-1 bg-border"></span>
             </div>
+          {:else if item.kind === 'etape'}
+            <!-- Le deroule guide d'une fiche sujet : cinq etapes tenues par le
+             serveur. Le dire ici, sinon le createur voit l'agent changer de
+             travail sans savoir pourquoi. -->
+            <div class="flex items-center gap-3 py-1 text-xs font-medium text-ink-secondary">
+              <span class="h-px flex-1 bg-border"></span>
+              <span>Déroulé guidé, étape {item.rang} sur {item.total} : {item.titre}</span>
+              <span class="h-px flex-1 bg-border"></span>
+            </div>
           {:else if item.kind === 'controle'}
             <!-- La reponse au-dessus annoncait une action que rien n'avait executee.
              Sans cette marque, la reponse suivante contredit la precedente et

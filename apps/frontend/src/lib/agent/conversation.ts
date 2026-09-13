@@ -33,6 +33,7 @@ export type ChatItem =
   | { kind: 'error'; text: string }
   | { kind: 'compaction'; retires: number; elagues: number }
   | { kind: 'controle' }
+  | { kind: 'etape'; titre: string; rang: number; total: number }
   | { kind: 'repli'; quitte: string; pris: string; raison: string }
   | { kind: 'continuation'; message: string; tours: number };
 
@@ -129,6 +130,19 @@ export function appliquer(items: ChatItem[], event: AgentEvent): ChatItem[] {
           quitte: event.payload.quitte,
           pris: event.payload.pris,
           raison: event.payload.raison,
+        },
+      ];
+
+    case 'etape_guidee':
+      // Une ligne dans le fil : le créateur voit où en est le déroulé, et le
+      // prochain `message_delta` ouvre une bulle neuve sous l'étape.
+      return [
+        ...items,
+        {
+          kind: 'etape',
+          titre: event.payload.titre,
+          rang: event.payload.rang,
+          total: event.payload.total,
         },
       ];
 
