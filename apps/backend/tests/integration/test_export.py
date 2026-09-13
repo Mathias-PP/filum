@@ -297,7 +297,7 @@ async def test_export_apa_text(client, published_card, test_user):
     body = resp.text
     # L'en-tete nomme le style : une bibliographie collee dans un document
     # perd sinon la trace de la convention qui l'a produite.
-    assert body.startswith("Bibliographie (APA 7) —")
+    assert body.startswith("Bibliographie (APA 7) :")
     assert "https://" in body
 
 
@@ -318,7 +318,7 @@ async def test_export_chaque_style_de_citation(client, published_card, test_user
         params={"format": style},
     )
     assert resp.status_code == 200
-    assert resp.text.startswith(f"Bibliographie ({libelle}) —")
+    assert resp.text.startswith(f"Bibliographie ({libelle}) :")
     assert "https://" in resp.text
     assert resp.headers["content-disposition"].endswith(f'.{style}.txt"')
 
@@ -344,7 +344,7 @@ async def test_export_txt_avec_style_explicite(client, published_card, test_user
         params={"format": "txt", "style": style},
     )
     assert resp.status_code == 200
-    assert resp.text.startswith(f"Bibliographie ({libelle}) —")
+    assert resp.text.startswith(f"Bibliographie ({libelle}) :")
     assert resp.headers["content-disposition"].endswith(f'.{style}.txt"')
 
 
@@ -355,7 +355,7 @@ async def test_export_txt_sans_style_prend_apa_par_defaut(client, published_card
         params={"format": "txt"},
     )
     assert resp.status_code == 200
-    assert resp.text.startswith("Bibliographie (APA 7) —")
+    assert resp.text.startswith("Bibliographie (APA 7) :")
     assert resp.headers["content-disposition"].endswith('.apa.txt"')
 
 

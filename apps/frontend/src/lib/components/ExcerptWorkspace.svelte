@@ -496,7 +496,7 @@
       ></textarea>
       <div class="flex items-center justify-between gap-2">
         <p class="text-xs text-ink-tertiary">
-          {texte.length}/1000 — « Relire la source » retrouvera ce passage tant qu’il est verbatim.
+          {texte.length}/1000. « Relire la source » retrouvera ce passage tant qu’il est verbatim.
         </p>
         <Button
           type="button"

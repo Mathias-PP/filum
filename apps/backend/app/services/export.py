@@ -432,7 +432,7 @@ def export_bibtex(card: BiblioCard, style: str = "apa") -> str:
                 fields[bib_key] = item[csl_key_name]
         body = ",\n".join(f"  {k} = {{{_bibtex_escape(v)}}}" for k, v in fields.items())
         entries.append(f"@{entry_type}{{{item['id']},\n{body}\n}}")
-    header = f"% Bibliographie Philum — {card.title}\n% {len(card.sources)} sources\n\n"
+    header = f"% Bibliographie Philum : {card.title}\n% {len(card.sources)} sources\n\n"
     return header + "\n\n".join(entries) + "\n"
 
 
@@ -539,7 +539,7 @@ def export_bibliography(card: BiblioCard, public_url: str, style: str) -> str:
     lien que Philum sert a etablir.
     """
     lines = [
-        f"Bibliographie ({citation_styles.STYLES[style]}) — {card.title}",
+        f"Bibliographie ({citation_styles.STYLES[style]}) : {card.title}",
         f"Fiche Philum : {public_url}",
         "",
     ]
@@ -709,7 +709,7 @@ def _excerpt_lines(source: Source) -> list[str]:
     """
     lines: list[str] = []
     for e in sorted(source.excerpts, key=lambda e: e.position):
-        intitule = f"**{e.title}** — " if e.title else "**Extrait** — "
+        intitule = f"**{e.title}** : " if e.title else "**Extrait** : "
         marque = " *(proposé par IA)*" if e.suggested_by_ai else ""
         texte = " ".join(e.text.split())
         lines.append(f"  - > {intitule}« {texte} »{marque}")
@@ -771,7 +771,7 @@ def _source_lines(source: Source, scope: ExportScope, style: str = "apa") -> lis
         # de citation : l'un est ce que la source dit, l'autre ce que le
         # createur en dit. Les confondre attribuerait a un auteur des mots
         # qu'il n'a pas ecrits — le contraire exact de ce que Philum sert.
-        lines.append(f"  - > **Note du créateur** — {source.annotation}")
+        lines.append(f"  - > **Note du créateur** : {source.annotation}")
     if scope.excerpts:
         lines += _excerpt_lines(source)
     if scope.archives and source.archive_url:
@@ -815,7 +815,7 @@ def _neighbour_lines(v: NeighbourCard, base_url: str, style: str = "apa") -> lis
     adresse = f"{base_url}/@{v.card.user.username}/{v.card.slug}"
     entete = f"Par @{v.card.user.username}"
     if v.card.content_url:
-        entete += f" — contenu : {v.card.content_url}"
+        entete += f", contenu : {v.card.content_url}"
     lines = [f"#### [{v.card.title}]({adresse})", "", entete, ""]
     if v.scope.references_only:
         # Perimetre reduit au minimum : la liste nue suffit, l'entete « Sources »
@@ -929,10 +929,10 @@ def _docx_source(s: Source, i: int, scope: ExportScope, style: str = "apa") -> l
         label = f"Accès ouvert ({s.oa_status})" if s.oa_status else "Accès ouvert"
         paragraphs.append(_docx_p(_docx_run(f"{label} : {s.oa_url}")))
     if scope.annotations and s.annotation:
-        paragraphs.append(_docx_p(_docx_run(f"Note du créateur — {s.annotation}", italic=True)))
+        paragraphs.append(_docx_p(_docx_run(f"Note du créateur : {s.annotation}", italic=True)))
     if scope.excerpts:
         for e in sorted(s.excerpts, key=lambda e: e.position):
-            intitule = f"{e.title} — " if e.title else ""
+            intitule = f"{e.title} : " if e.title else ""
             marque = " (proposé par IA)" if e.suggested_by_ai else ""
             paragraphs.append(
                 _docx_p(
@@ -973,13 +973,13 @@ def _docx_neighbourhood(voisinage: Neighbourhood, base_url: str, style: str = "a
                 paragraphs.append(
                     _docx_p(
                         _docx_run(v.card.title, bold=True),
-                        _docx_run(f" — par @{v.card.user.username}"),
+                        _docx_run(f", par @{v.card.user.username}"),
                     )
                 )
                 paragraphs.append(_docx_p(_docx_run(adresse)))
                 if v.scope.references_only:
                     for s in v.card.sources:
-                        paragraphs.append(_docx_p(_docx_run(f"— {s.title or s.url}")))
+                        paragraphs.append(_docx_p(_docx_run(f"- {s.title or s.url}")))
                 else:
                     for j, s in enumerate(v.card.sources, start=1):
                         paragraphs += _docx_source(s, j, v.scope, style)
@@ -1015,7 +1015,7 @@ def export_docx(
     creator = card.user.display_name or card.user.username
     meta = f"Fiche bibliographique de {creator}"
     if card.published_at:
-        meta += f" — publiée le {card.published_at.date().isoformat()}"
+        meta += f", publiée le {card.published_at.date().isoformat()}"
     paragraphs.append(_docx_p(_docx_run(meta, italic=True)))
     if card.description:
         paragraphs.append(_docx_p(_docx_run(card.description)))
@@ -1025,7 +1025,7 @@ def export_docx(
     paragraphs.append(
         _docx_p(
             _docx_run(
-                f"Sources ({len(card.sources)}) — style {citation_styles.STYLES[style]}",
+                f"Sources ({len(card.sources)}), style {citation_styles.STYLES[style]}",
                 bold=True,
                 size=28,
             )
@@ -1038,7 +1038,7 @@ def export_docx(
     if neighbourhood is not None:
         paragraphs += _docx_neighbourhood(neighbourhood, public_url.rsplit("/@", 1)[0], style)
 
-    paragraphs.append(_docx_p(_docx_run(f"Exporté depuis Philum — {public_url}", italic=True)))
+    paragraphs.append(_docx_p(_docx_run(f"Exporté depuis Philum : {public_url}", italic=True)))
 
     document = (
         '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'

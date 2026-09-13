@@ -210,7 +210,7 @@ def web_tools() -> list[AgentTool]:
             AgentTool(
                 name="web_search",
                 description=(
-                    "Recherche web. Rend des URLs brutes, titres et snippets — jamais une "
+                    "Recherche web. Rend des URLs brutes, titres et snippets, jamais une "
                     "synthèse : vérifie ensuite ce que tu cites via fetch_url ou "
                     "find_cards_citing."
                 ),

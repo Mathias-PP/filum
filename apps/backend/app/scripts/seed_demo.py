@@ -249,7 +249,7 @@ def _demo_sources() -> list[dict]:
         {
             "url": "https://www.ninds.nih.gov/health-information/public-education/brain-basics/brain-basics-understanding-sleep",
             "title": "Brain Basics: Understanding Sleep",
-            "authors": "NIH — National Institute of Neurological Disorders and Stroke",
+            "authors": "NIH, National Institute of Neurological Disorders and Stroke",
             "format": SourceFormat.TEXTE.value,
             "category": SourceCategory.PAGE_WEB.value,
             "author_kind": AuthorKind.INSTITUTION_PUBLIQUE.value,
@@ -265,7 +265,7 @@ def _demo_sources() -> list[dict]:
         },
         {
             "url": "https://memorylab.stanford.edu/",
-            "title": "Stanford Memory Lab — Anthony Wagner, Principal Investigator",
+            "title": "Stanford Memory Lab : Anthony Wagner, Principal Investigator",
             "authors": "Stanford University",
             "format": SourceFormat.TEXTE.value,
             "category": SourceCategory.PAGE_WEB.value,
@@ -311,7 +311,7 @@ def _demo_sources() -> list[dict]:
                 "light-triggered-genes-reveal-the-hidden-workings-of-memory-20171214/"
             ),
             "title": "Light-Triggered Genes Reveal the Hidden Workings of Memory",
-            "authors": "Elizabeth Svoboda — Quanta Magazine",
+            "authors": "Elizabeth Svoboda (Quanta Magazine)",
             "published_at": date(2017, 12, 14),
             "stance": SourceStance.MENTIONNE.value,
             "format": SourceFormat.TEXTE.value,
@@ -336,7 +336,7 @@ def _demo_sources() -> list[dict]:
                 "et-si-le-sommeil-nous-aidait-a-faire-le-tri-dans-nos-souvenirs"
             ),
             "title": "Et si le sommeil nous aidait à faire le tri dans nos souvenirs ?",
-            "authors": "Alexandra Gros — CNRS Le Journal",
+            "authors": "Alexandra Gros (CNRS Le Journal)",
             "format": SourceFormat.TEXTE.value,
             "category": SourceCategory.ARTICLE_PRESSE.value,
             "author_kind": AuthorKind.MEDIA.value,
@@ -355,7 +355,7 @@ def _demo_sources() -> list[dict]:
         {
             "url": "https://time.com/6171190/new-science-of-forgetting/",
             "title": "The New Science of Forgetting",
-            "authors": "Corinne Purtill — TIME",
+            "authors": "Corinne Purtill (TIME)",
             "published_at": date(2022, 4, 28),
             "stance": SourceStance.MENTIONNE.value,
             "format": SourceFormat.TEXTE.value,
@@ -382,7 +382,7 @@ def _demo_sources() -> list[dict]:
         {
             "url": "https://radiolab.org/podcast/memory-and-forgetting",
             "title": "Memory and Forgetting",
-            "authors": "Jad Abumrad & Robert Krulwich — Radiolab (WNYC)",
+            "authors": "Jad Abumrad & Robert Krulwich, Radiolab (WNYC)",
             "format": SourceFormat.AUDIO.value,
             "category": SourceCategory.PODCAST.value,
             "author_kind": AuthorKind.MEDIA.value,
@@ -404,7 +404,7 @@ def _demo_sources() -> list[dict]:
         },
         {
             "url": "https://tonegawalab.mit.edu/susumu-tonegawa/",
-            "title": "Susumu Tonegawa — Picower Institute, MIT",
+            "title": "Susumu Tonegawa : Picower Institute, MIT",
             "authors": "Tonegawa Lab, MIT",
             "format": SourceFormat.TEXTE.value,
             "category": SourceCategory.PAGE_WEB.value,
@@ -456,7 +456,7 @@ def _demo_sources() -> list[dict]:
         {
             "url": "https://www.pbs.org/wgbh/nova/video/memory-hackers/",
             "title": "Memory Hackers",
-            "authors": "NOVA PBS — Documentaire",
+            "authors": "NOVA PBS (documentaire)",
             "format": SourceFormat.VIDEO.value,
             "category": SourceCategory.DOCUMENTAIRE.value,
             "author_kind": AuthorKind.MEDIA.value,
@@ -496,7 +496,7 @@ def _demo_sources() -> list[dict]:
         },
         {
             "url": "https://www.faculty.uci.edu/profile/?facultyId=4901",
-            "title": "Elizabeth F. Loftus — University of California, Irvine",
+            "title": "Elizabeth F. Loftus : University of California, Irvine",
             "authors": "University of California, Irvine",
             "format": SourceFormat.TEXTE.value,
             "category": SourceCategory.PAGE_WEB.value,
@@ -511,7 +511,7 @@ def _demo_sources() -> list[dict]:
         },
         {
             "url": "https://commons.wikimedia.org/wiki/File:CajalHippocampus.jpeg",
-            "title": "Dessin du circuit neuronal de l'hippocampe — Santiago Ramón y Cajal, 1911",
+            "title": "Dessin du circuit neuronal de l'hippocampe (Santiago Ramón y Cajal, 1911)",
             "authors": "Santiago Ramón y Cajal",
             "stance": SourceStance.CONTEXTE.value,
             "published_at": date(1911, 1, 1),
@@ -521,7 +521,7 @@ def _demo_sources() -> list[dict]:
             "annotation": (
                 "Planche du prix Nobel de médecine 1906, fondateur de la neuroscience "
                 "moderne, tirée de l'« Histologie du Système Nerveux de l'Homme et des "
-                "Vertébrés ». Elle représente la circuiterie hippocampique — le siège "
+                "Vertébrés ». Elle représente la circuiterie hippocampique, le siège "
                 "anatomique de la mémoire décrit par Wiltgen et al."
             ),
             "is_pivot": False,

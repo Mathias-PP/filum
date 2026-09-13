@@ -585,10 +585,10 @@ class LlmAnnotation(BaseModel):
 _ANNOTATION_SYSTEM_PROMPT = (
     "On te donne un passage extrait d'un document, et l'entourage d'ou il vient. "
     "Tu produis deux choses. `title` : un intitulé de repérage de 2 à 6 mots, "
-    "dans la langue du passage, qui nomme ce dont il parle — ni résumé ni "
+    "dans la langue du passage, qui nomme ce dont il parle, ni résumé ni "
     "accroche, il sert à retrouver le passage dans une liste. `context` : UNE "
     "phrase, 40 mots maximum, qui situe le passage pour quelqu'un qui le "
-    "rencontre seul, hors de son document — de quel texte il vient, de quoi il "
+    "rencontre seul, hors de son document : de quel texte il vient, de quoi il "
     "traite, à quoi renvoient ses pronoms et ses démonstratifs. Réponds "
     "UNIQUEMENT avec le JSON demandé. Règles strictes : ne réutilise pas les "
     "mots du passage pour les paraphraser, apporte ce qu'il ne dit pas ; "
@@ -596,7 +596,7 @@ _ANNOTATION_SYSTEM_PROMPT = (
     "suffit pas à situer honnêtement le passage, rends null plutôt qu'une "
     "approximation. Cas particulier : si le passage est court (< 15 mots) ou "
     "contient un pronom ou un démonstratif dont l'antécédent est hors du "
-    "passage, la `context` DOIT nommer cet antécédent en clair — sans quoi "
+    "passage, la `context` DOIT nommer cet antécédent en clair, sans quoi "
     "l'extrait cité seul devient un contresens (« cela améliore la mémoire » "
     "sans « cela » explicite est un piège plus qu'une aide)."
 )

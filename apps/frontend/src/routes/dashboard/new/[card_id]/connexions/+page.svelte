@@ -145,8 +145,8 @@
         <section>
           <h2 class="mb-1 text-sm font-semibold text-ink-primary">Fiches qui vous citent</h2>
           <p class="mb-3 text-xs text-ink-tertiary">
-            Ces connexions appartiennent à la bibliographie d'autres créateurs — vous les voyez,
-            vous ne pouvez pas les modifier.
+            Ces connexions appartiennent à la bibliographie d'autres créateurs : vous les voyez,
+            mais vous ne pouvez pas les modifier.
           </p>
           <ul class="divide-y divide-border rounded-xl border border-border bg-surface-primary">
             {#each data.incoming as c (c.source_id)}
