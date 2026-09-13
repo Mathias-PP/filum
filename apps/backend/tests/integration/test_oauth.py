@@ -155,6 +155,9 @@ async def test_register_puis_authorize_puis_token_donne_un_jwt(client, test_user
     assert r.status_code == 200, r.text
     token_data = r.json()
     assert token_data["token_type"] == "Bearer"
+    # Sans scope demande, le champ est absent, pas `null` : le SDK MCP de Claude
+    # Code rejette le jeton sur `"scope": null`.
+    assert "scope" not in token_data
     assert token_data["expires_in"] > 0
 
     # Le JWT contient bien l'user
