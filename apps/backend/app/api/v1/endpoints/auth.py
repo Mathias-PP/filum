@@ -98,22 +98,22 @@ def _public_callback_url(request: Request) -> str:
     headers with its own internal hostname before the request reaches
     FastAPI. So a previous attempt that read those headers always got
     ``filum-production-xxxx.up.railway.app`` back, and Google was told
-    to redirect users there — bypassing the SvelteKit proxy at the
+    to redirect users there, bypassing the SvelteKit proxy at the
     public Vercel domain, posting cookies on the wrong host, and
     producing ``invalid_state`` on the callback.
 
     Resolution order:
-      1. ``X-Filum-Public-Origin`` — custom header set by our SvelteKit
+      1. ``X-Filum-Public-Origin`` : custom header set by our SvelteKit
          proxy (apps/frontend/src/routes/api/[...path]/+server.ts).
          Non-standard, so Railway leaves it alone.
-      2. ``frontend_base_url`` setting — required to be set on the
+      2. ``frontend_base_url`` setting : required to be set on the
          backend deployment to the public frontend origin in any case
          (the post-OAuth response already redirects to
          ``{frontend_base_url}/auth/callback``, so this env var is
          already canonical).
 
     No fall-back to ``backend_base_url`` because that's exactly the
-    Railway internal hostname that caused the bug — pointing OAuth
+    Railway internal hostname that caused the bug : pointing OAuth
     there is never correct in this deployment.
     """
     proxied_origin = request.headers.get("x-filum-public-origin")
@@ -213,7 +213,7 @@ async def google_callback(
             )
 
         # Verify id_token signature via Google's JWKS. The JWKS fetch is a
-        # synchronous urllib call inside PyJWT — run it in a worker thread so
+        # synchronous urllib call inside PyJWT : run it in a worker thread so
         # it doesn't block the event loop for the whole round-trip to Google.
         try:
             jwks_client = PyJWKClient(GOOGLE_JWKS_URI)
@@ -263,7 +263,7 @@ async def google_callback(
 
         # The service slugifies this and resolves username collisions; we
         # only pass a *preferred* base (the email's local part). Email
-        # uniqueness is still enforced at the DB level — if the same email
+        # uniqueness is still enforced at the DB level : if the same email
         # is linked to two different Google accounts we surface a clear 409.
         preferred_username = email.split("@")[0] if email else f"user-{google_sub[:12]}"
         try:

@@ -2,7 +2,7 @@
 
 Chaque créateur a une copie persistée en base du template ICM (see
 `app/agent_workspace_seed/`) : AGENTS.md, CONTEXT.md, `shared/`, `stages/`,
-`_core/`. Il s'agit d'un filesystem logique — pas de disque — dont les chemins
+`_core/`. Il s'agit d'un filesystem logique, pas de disque, dont les chemins
 sont strictement normalisés : relatifs, sans remontée hors racine, racines
 fermées. Le `sha256` de chaque fichier traçe son contenu pour l'audit de
 l'agent.

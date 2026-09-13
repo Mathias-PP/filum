@@ -3,7 +3,7 @@
 Le backend n'appelle jamais un provider directement : il parle à LiteLLM
 (`litellm_base_url`) avec un alias de tâche comme nom de modèle
 (cf. .docs/17-llm-strategy.md). Si `litellm_base_url` est vide, toute la
-couche LLM est désactivée et les appels retournent None — l'application
+couche LLM est désactivée et les appels retournent None : l'application
 fonctionne à l'identique sans proxy (dev local, CI, Railway historique).
 """
 
@@ -32,8 +32,8 @@ _MAX_INPUT_CHARS = 40_000
 #:
 #: La couche ne leve jamais et rend None : le motif d'un echec ne survit donc
 #: nulle part hors des logs, qu'il faut aller lire en SSH. Or ces motifs sont
-#: peu nombreux et se distinguent d'un mot — cle refusee, modele inconnu,
-#: quota epuise — et chacun appelle une correction differente.
+#: peu nombreux et se distinguent d'un mot : cle refusee, modele inconnu,
+#: quota epuise, et chacun appelle une correction differente.
 derniere_panne: dict[str, object] | None = None
 
 
@@ -51,8 +51,8 @@ def url_chat(base: str) -> str:
 
     Un proxy LiteLLM s'annonce par son hôte nu (`http://litellm:4000`) et
     attend qu'on préfixe `/v1`. Un provider visé directement s'annonce déjà
-    par un chemin complet — Gemini expose sa surface OpenAI sous
-    `/v1beta/openai` — et y ajouter `/v1` donne un 404 sans rien qui le dise.
+    par un chemin complet : Gemini expose sa surface OpenAI sous
+    `/v1beta/openai`, et y ajouter `/v1` donne un 404 sans rien qui le dise.
     La présence d'un chemin dans la racine tranche entre les deux cas.
     """
     base = base.rstrip("/")
@@ -279,7 +279,7 @@ async def parse_reference_block(block_text: str) -> LlmBiblioRef | None:
       - la ref a donc URL mais pas de title/authors.
 
     Le bloc doit être court (<500 chars). Retourne ``None`` si LLM désactivé
-    ou en cas d'erreur — l'appelant garde la ref sans metadata.
+    ou en cas d'erreur : l'appelant garde la ref sans metadata.
     """
     settings = get_settings()
     if not settings.litellm_base_url:
@@ -317,7 +317,7 @@ async def parse_reference_block(block_text: str) -> LlmBiblioRef | None:
 async def parse_bibliography(text: str) -> list[LlmBiblioRef] | None:
     """Extrait les références via l'alias `biblio-parse`. Never raises.
 
-    Retourne None si la couche LLM est désactivée ou en cas d'erreur —
+    Retourne None si la couche LLM est désactivée ou en cas d'erreur :
     l'appelant garde le résultat du parsing déterministe.
     """
     settings = get_settings()
@@ -703,7 +703,7 @@ async def classify_url_type(url: str, context: str = "") -> str | None:
 async def extract_metadata(page_text: str, url: str) -> LlmSourceMetadata | None:
     """Extrait les métadonnées via l'alias `metadata-extract`. Never raises.
 
-    Retourne None si la couche LLM est désactivée ou en cas d'erreur —
+    Retourne None si la couche LLM est désactivée ou en cas d'erreur :
     l'appelant (extracteur heuristique) reste la source de vérité.
     """
     settings = get_settings()

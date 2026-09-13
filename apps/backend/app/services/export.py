@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
 #: Les colonnes que toute source porte, quel que soit le perimetre demande.
 #: L'ordre historique est fige : des fichiers en circulation s'y adossent, et
-#: `annotation` y reste meme quand le perimetre l'exclut — la colonne est alors
+#: `annotation` y reste meme quand le perimetre l'exclut : la colonne est alors
 #: vide, ce qui se lit comme « rien a dire », pas comme « colonne disparue ».
 CSV_COLUMNS = [
     "position",
@@ -86,7 +86,7 @@ def _source_row(
 ) -> list[str]:
     """Une ligne de source.
 
-    `shape` sert quand plusieurs perimetres se rangent sous un meme en-tete —
+    `shape` sert quand plusieurs perimetres se rangent sous un meme en-tete :
     les degres d'un voisinage n'ont pas tous le meme. La forme vient alors du
     plus large, et ce qu'un degre exclut se rend vide : une colonne absente se
     lirait « ce format ne sait pas porter ca », une colonne vide « il n'y a
@@ -563,7 +563,7 @@ _STANCE_LABELS = {
 #: chaque source. Mesure sur une fiche reelle de 185 references : les etats
 #: « vérification impossible » y etaient universels et ajoutaient 370 lignes
 #: qui n'affirmaient rien, noyant les quelques faits qui, eux, comptent.
-#: Le detail par source est reserve aux *trouvailles* — une retractation, un
+#: Le detail par source est reserve aux *trouvailles* : une retractation, un
 #: texte integral gratuit. Le bilan reste au complet ci-dessous, donc rien
 #: n'est tu : c'est la place de l'information qui change, pas son existence.
 _RETRACTION_TALLY = {
@@ -652,7 +652,7 @@ def _source_details(
 
     C'est le markdown qu'un agent conversationnel lira pour decider ce qu'il
     ose affirmer d'une reference : y taire une retractation serait le pire
-    resultat possible pour Philum. Tout s'ecrit en texte plutot qu'en lien —
+    resultat possible pour Philum. Tout s'ecrit en texte plutot qu'en lien :
     `parse_markdown` recolte toute URL du document, et une metadonnee ne doit
     pas renaitre en source fantome au reimport. L'acces ouvert fait seul
     exception : c'est le texte integral gratuit, l'omettre couterait plus que
@@ -702,7 +702,7 @@ def _excerpt_lines(source: Source) -> list[str]:
 
     Le titre de l'extrait precede le texte quand il existe. L'ancrage n'est pas
     rendu : il n'a de sens que pour une machine, et le Markdown est ici lu par
-    un humain — le JSON le porte pour l'autre usage.
+    un humain : le JSON le porte pour l'autre usage.
 
     La mise en situation sort du bloc de citation : dans le bloc, elle se
     lirait comme faisant partie du verbatim.
@@ -770,7 +770,7 @@ def _source_lines(source: Source, scope: ExportScope, style: str = "apa") -> lis
         # Nommee, parce que l'extrait juste en dessous porte la meme marque
         # de citation : l'un est ce que la source dit, l'autre ce que le
         # createur en dit. Les confondre attribuerait a un auteur des mots
-        # qu'il n'a pas ecrits — le contraire exact de ce que Philum sert.
+        # qu'il n'a pas ecrits : le contraire exact de ce que Philum sert.
         lines.append(f"  - > **Note du créateur** : {source.annotation}")
     if scope.excerpts:
         lines += _excerpt_lines(source)
@@ -780,7 +780,7 @@ def _source_lines(source: Source, scope: ExportScope, style: str = "apa") -> lis
 
 
 #: Intitules des deux sens. Ecrits en toutes lettres parce que « fiches liees »
-#: ne dirait pas laquelle s'appuie sur l'autre — et c'est tout ce qui compte.
+#: ne dirait pas laquelle s'appuie sur l'autre, et c'est tout ce qui compte.
 _DIRECTION_TITRES = {
     "cited": "Fiches citées par celle-ci",
     "citing": "Fiches qui citent celle-ci",
@@ -892,7 +892,7 @@ def _docx_p(*runs: str) -> str:
 def _docx_source(s: Source, i: int, scope: ExportScope, style: str = "apa") -> list[str]:
     """Une source, avec tout ce qui change ce qu'on ose en affirmer.
 
-    Le Word disait le titre, les auteurs et l'adresse — soit moins que le
+    Le Word disait le titre, les auteurs et l'adresse, soit moins que le
     Markdown, qui porte en plus le DOI, la position declaree et l'acces
     ouvert. Un document lu hors ligne est pourtant le pire endroit ou taire
     une retractation : personne n'ira verifier ailleurs.
@@ -1180,7 +1180,7 @@ def _neighbour_source_rows(
 ) -> list[list[str]]:
     """Les sources des fiches voisines.
 
-    Sans elles, demander un degre n'aurait rapporte au tableur que des titres —
+    Sans elles, demander un degre n'aurait rapporte au tableur que des titres :
     or on ne va pas chercher une fiche voisine pour son titre, mais pour ce
     qu'elle cite.
     """
@@ -1221,7 +1221,7 @@ def export_xlsx(
     """Le classeur : une feuille par nature d'information.
 
     Un tableur n'a pas de place pour l'imbrication, et c'est pourquoi le XLSX
-    en disait moins que tous les autres formats — extraits et fiches voisines
+    en disait moins que tous les autres formats : extraits et fiches voisines
     n'ont simplement pas de colonne dans un tableau de sources. Ils ont chacun
     leur feuille, reliees par `source_position` et par le degre.
     """

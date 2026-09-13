@@ -7,7 +7,7 @@ Gwern), c'est-a-dire un ecran vide la ou la page cite des dizaines de pieces.
 
 Ces liens ne sont pas une bibliographie deposee : sur l'essai mesure, la
 moitie pointait vers Wikipedia pour definir un terme, et il s'y melait du
-Patreon. Ce module ne cherche donc pas a trancher ce qui est une source — il
+Patreon. Ce module ne cherche donc pas a trancher ce qui est une source : il
 ecarte ce qui ne peut pas en etre une (navigation, renvois internes, boutons
 de partage, ancres vides) et laisse l'auteur·ice arbitrer le reste a l'ecran.
 C'est aussi pourquoi ce repli n'est branche que sur les pages sans section, et
@@ -45,7 +45,7 @@ _CHROME_TAGS = ("nav", "header", "footer", "aside", "script", "style", "noscript
 # Un lien vers le meme site n'est le plus souvent qu'un renvoi editorial
 # (« lire aussi »). Mais une institution cite ses propres rapports : la fiche
 # depression de l'OMS renvoie a cinq publications de l'OMS, qui sont bien ses
-# sources, et l'ecran n'en montrait qu'une. On distingue par la position — un
+# sources, et l'ecran n'en montrait qu'une. On distingue par la position : un
 # lien pose au milieu d'une phrase de texte courant est une citation, un lien
 # isole dans un bloc court est de la navigation.
 _INLINE_SURROUNDING_MIN = 80
@@ -112,7 +112,7 @@ def extract_body_links(html: str, source_url: str) -> list[ImportedRef]:
         # Le texte du lien n'est pas un titre : « at least $3 billion » ne
         # nomme pas le rapport vise. Il part dans `raw_text` (contexte de
         # citation) et le titre reste vide pour que le backfill aille chercher
-        # le vrai titre du document — ce que renseigner `title` empecherait.
+        # le vrai titre du document, ce que renseigner `title` empecherait.
         ref = ImportedRef(url=href, raw_text=label if label != href else None)
         (internal if is_internal else refs).append(ref)
 

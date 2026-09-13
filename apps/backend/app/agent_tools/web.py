@@ -1,6 +1,6 @@
 """Outils web de l'agent : recherche web et lecture d'URL.
 
-`web_search` rend des **URLs brutes** + titres + snippets — jamais une
+`web_search` rend des **URLs brutes** + titres + snippets, jamais une
 synthèse : la vérification passe par les oracles Philum, pas par la parole du
 provider. La résolution se fait à l'exécution sur l'API dédiée configurée
 (`agent_web_search_provider` + `agent_web_search_api_key`, env du backend) ;
@@ -138,7 +138,7 @@ async def _execute_web_search(ctx: ToolContext, args: dict[str, Any]) -> dict[st
         }
     try:
         resultats = await _rechercher(provider, cle, query.strip())
-    except Exception as exc:  # noqa: BLE001 — message lisible par le modèle
+    except Exception as exc:  # noqa: BLE001  # message lisible par le modèle
         return {"error": f"Recherche web indisponible : {exc}"}
     return {"query": query, "results": resultats}
 

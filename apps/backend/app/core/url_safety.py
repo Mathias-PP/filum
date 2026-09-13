@@ -1,11 +1,11 @@
 """SSRF protection for user-supplied URLs.
 
 The backend hits arbitrary URLs in two places:
-  1. `/api/v1/sources/extract` — no-auth metadata extraction (OG tags,
+  1. `/api/v1/sources/extract` : no-auth metadata extraction (OG tags,
      JSON-LD, Crossref). An attacker could supply `http://127.0.0.1:8000/health`
      or `http://169.254.169.254/latest/meta-data/` (AWS metadata) to probe
      the internal network or leak cloud secrets.
-  2. `WaybackService.archive_url` — same surface for any URL persisted to
+  2. `WaybackService.archive_url` : same surface for any URL persisted to
      a `Source.url` field via authenticated endpoints.
 
 The check resolves the hostname and refuses any request whose final IP is

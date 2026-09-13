@@ -1068,7 +1068,7 @@ async def delete_excerpt(
     a zero sans perdre l'historique de la source.
 
     `excerpt_id` doit être l'UUID du champ `id` retourné par `get_source` ou
-    `add_excerpt` — jamais la position d'affichage.
+    `add_excerpt`, jamais la position d'affichage.
     """
     try:
         eid = UUID(excerpt_id)
@@ -1113,7 +1113,7 @@ async def update_excerpt(
     Un champ laisse a None reste inchange.
 
     `excerpt_id` doit être l'UUID du champ `id` retourné par `get_source` ou
-    `add_excerpt` — jamais la position d'affichage.
+    `add_excerpt`, jamais la position d'affichage.
     """
     try:
         eid = UUID(excerpt_id)
