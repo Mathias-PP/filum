@@ -51,6 +51,10 @@ router = APIRouter(tags=["oauth"])
 @router.post(
     "/oauth/register",
     response_model=ClientRegistrationResponse,
+    # Un client public n'a pas de secret : le champ doit etre absent, pas `null`.
+    # Le SDK MCP de Claude Code valide `client_secret` comme une chaine quand il
+    # est present, et refusait toute la connexion sur `"client_secret": null`.
+    response_model_exclude_none=True,
     status_code=status.HTTP_201_CREATED,
 )
 async def oauth_register(
