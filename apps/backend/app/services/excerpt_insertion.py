@@ -120,6 +120,19 @@ async def texte_de_page(url: str | None) -> tuple[str, bool, bool]:
     return texte, refuse, complet
 
 
+_CESURE_DE_LIGNE = re.compile(r"(?<=[^\W\d_])-[ \t]*\n\s*(?=[a-zàâäçéèêëîïôöùûüÿœæ])")
+
+
+def texte_lisible(texte: str) -> str:
+    """Le passage tel qu'il s'affiche : cesures recollees, sauts de ligne reduits.
+
+    Mesure du 2026-09-13 : un extrait « Les 10 messages clés » inscrit avec les
+    sauts de ligne bruts du PDF. Seuls les blancs et les cesures de fin de ligne
+    changent, pas un mot : l'ancrage les ignore, l'extrait reste retrouve.
+    """
+    return " ".join(_CESURE_DE_LIGNE.sub("", texte.replace("­", "")).split())
+
+
 def _ressemblance(page: str, demande: str) -> float:
     return SequenceMatcher(None, " ".join(page.split()), " ".join(demande.split())).ratio()
 
@@ -202,7 +215,7 @@ def _prelever(page_text: str, demande: str, complet: bool) -> Prelevement:
         ancrage.exact or _ressemblance(ancrage.texte, demande) >= SEUIL_TYPOGRAPHIQUE
     ):
         return Prelevement(
-            texte=ancrage.texte,
+            texte=texte_lisible(ancrage.texte),
             selecteurs=selecteurs_pour(page_text, ancrage.start, ancrage.end),
         )
 
