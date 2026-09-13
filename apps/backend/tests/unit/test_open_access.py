@@ -131,7 +131,7 @@ class TestCheckOpenAccess:
             def json(self):
                 raise ValueError("not json")
 
-        async def get(self, url):
+        async def get(self, url, **_kwargs):
             return Broken()
 
         monkeypatch.setattr("httpx.AsyncClient.get", get)
@@ -146,7 +146,7 @@ def _fake_get(*, status_code: int, payload: dict):
         def json(self):
             return payload
 
-    async def get(self, url):
+    async def get(self, url, **_kwargs):
         return Response()
 
     return get

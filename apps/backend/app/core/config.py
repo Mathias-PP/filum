@@ -70,6 +70,10 @@ class Settings(BaseSettings):
     # fait quand la nouvelle série est complète.
     embedding_model: str = "gemini-embedding-001"
 
+    # OpenAlex exige une cle d'API depuis le 2026-02-13. Sans cle, 100 credits
+    # par jour ; avec une cle gratuite (openalex.org/settings/api), 100 000.
+    openalex_api_key: str = ""
+
     # GROBID (parsing structuré des références d'un PDF). Le Space officiel
     # kermitt2/grobid est PAUSED (2026-07) ; zfhxi/grobid est un duplicate
     # public réveillable. Les Spaces HF gratuits dorment (cold start ~2 min) :
