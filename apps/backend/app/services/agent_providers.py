@@ -3,7 +3,7 @@
 Un créateur enregistre ses comptes IA (clé API, modèle, endpoint) ; Philum ne
 fait jamais l'inférence lui-même. La clé est chiffrée AES-GCM à la création
 (``KeyManager(master_encryption_key)``) et ne sort jamais en clair de ce
-service — seule la forme masquée (``sk-…1234``) atteint les endpoints.
+service : seule la forme masquée (``sk-…1234``) atteint les endpoints.
 
 **Le provider est le cerveau, Philum est les mains et la preuve.**
 """
@@ -407,7 +407,7 @@ async def tester(
     # Sur succès, on chauffe le cache /models pour ce provider : le sélecteur
     # de modèle sera instantané au prochain affichage. On rafraîchit toujours
     # (refresh=True) car un test réussi signale que la clé/base_url viennent
-    # potentiellement d'être fixées — la ligne de cache précédente peut être
+    # potentiellement d'être fixées : la ligne de cache précédente peut être
     # périmée. `lister_modeles` ne lève jamais, on peut donc chaîner sans try.
     if result.ok:
         modeles = await lister_modeles(
@@ -474,7 +474,7 @@ _CADRAGES: dict[int, str] = {
 
 # Codes d'erreur normalises par les fournisseurs OpenAI-compat. Le code precise
 # ce que le status HTTP ne dit pas : HTTP 429 recouvre à la fois "crédit épuisé"
-# (recharger) et "limite de débit" (attendre) — deux réponses opposées pour
+# (recharger) et "limite de débit" (attendre) : deux réponses opposées pour
 # l'utilisateur. Verifie en prod le 2026-08-21 chez OpenAI, Groq, Cerebras.
 _CADRAGES_CODE: dict[str, str] = {
     "invalid_api_key": "Clé API invalide ou révoquée.",
@@ -567,7 +567,7 @@ async def lister_modeles(
 
     Cache TTL 15 min par (createur, provider) : le sélecteur de modèle sera
     servi depuis la mémoire à la deuxième ouverture. Seuls les résultats
-    ``source == "provider"`` sont mis en cache — une erreur ne colle jamais,
+    ``source == "provider"`` sont mis en cache : une erreur ne colle jamais,
     l'utilisateur qui vient de fixer sa clé doit voir le résultat immédiatement.
     ``refresh=True`` force le rappel réseau (utilisé par ``tester()``).
     """

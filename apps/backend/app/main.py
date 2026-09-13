@@ -245,7 +245,7 @@ async def llm_diagnose():
                 "Renseigner litellm_base_url (ex. "
                 "https://generativelanguage.googleapis.com/v1beta/openai), "
                 "litellm_master_key (la cle du provider) et llm_direct_model "
-                "(ex. gemini-3.6-flash) — cf. ADR-035."
+                "(ex. gemini-3.6-flash), cf. ADR-035."
             ),
         }
 
@@ -323,7 +323,7 @@ async def publish_diagnose():
             # the same UPDATE (naive datetime, enum coercion) but stays inside
             # the transaction, and the rollback below reverts it. The previous
             # version called publish_card(), whose internal commit made the
-            # "rollback" a no-op — every diagnose hit silently published a card.
+            # "rollback" a no-op : every diagnose hit silently published a card.
             username = card.user.username
             card_slug = card.slug
             card.published_at = datetime.now(UTC).replace(tzinfo=None)
@@ -381,7 +381,7 @@ async def seed_health():
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     errors = exc.errors()
     # Le ctx pydantic peut contenir l'exception levée par un field_validator
-    # custom (non sérialisable JSON) — on le stringifie.
+    # custom (non sérialisable JSON) : on le stringifie.
     for e in errors:
         ctx = e.get("ctx")
         if isinstance(ctx, dict):

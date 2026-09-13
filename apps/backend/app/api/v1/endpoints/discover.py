@@ -1,8 +1,8 @@
 """Annuaire public des fiches : une surface anonyme, humaine et machine.
 
 Jusqu'ici on ne pouvait atteindre une fiche qu'en connaissant son adresse.
-Tout etait deja public — le HTML est rendu cote serveur, le JSON-LD porte la
-bibliographie complete — mais rien ne permettait de *trouver* une fiche. Cet
+Tout etait deja public : le HTML est rendu cote serveur, le JSON-LD porte la
+bibliographie complete, mais rien ne permettait de *trouver* une fiche. Cet
 endpoint sert les deux publics d'un meme corps de requete : la page /discover
 du site, et un agent conversationnel qui cherche de quoi etayer une reponse.
 D'ou le champ `url` dans chaque resultat : de quoi citer sans second appel.

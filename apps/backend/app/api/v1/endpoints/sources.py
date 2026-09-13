@@ -127,7 +127,7 @@ async def extract_url_metadata(
     etc.) is rejected up-front. See `app.core.url_safety`.
     """
     try:
-        # assert_url_is_safe does a blocking socket.getaddrinfo (DNS) — run it
+        # assert_url_is_safe does a blocking socket.getaddrinfo (DNS) : run it
         # in a worker thread so slow DNS doesn't stall the event loop.
         await asyncio.to_thread(assert_url_is_safe, str(url))
     except UnsafeUrlError as e:

@@ -1106,7 +1106,7 @@ export interface paths {
      * @description Le meme decoupage, a partir d'un document depose.
      *
      *     Un chapitre ne se colle pas : au-dela de quelques pages, le collage devient
-     *     la corvee qui fait renoncer. Le fichier est lu puis jete — rien n'en est
+     *     la corvee qui fait renoncer. Le fichier est lu puis jete : rien n'en est
      *     conserve, seul son texte sert d'assise au decoupage.
      */
     post: operations['chunk_uploaded_document_api_v1_sources__source_id__excerpts_chunk_file_post'];
@@ -1526,7 +1526,7 @@ export interface paths {
     get: operations['get_my_linked_accounts_api_v1_users_me_linked_accounts_get'];
     /**
      * Replace My Linked Accounts
-     * @description Remplace la liste complète (sémantique PUT — simple pour la v0).
+     * @description Remplace la liste complète (sémantique PUT, simple pour la v0).
      */
     put: operations['replace_my_linked_accounts_api_v1_users_me_linked_accounts_put'];
     post?: never;

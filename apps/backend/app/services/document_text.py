@@ -2,7 +2,7 @@
 
 Mesure du 2026-08-08 sur dix URLs : cinq ne rendent aucun texte exploitable
 (NYT, ScienceDirect, treasury.gov et Cell a zero caractere, YouTube 313). Le
-decoupage en extraits, lui, est purement algorithmique — il ne lui manque que
+decoupage en extraits, lui, est purement algorithmique : il ne lui manque que
 le texte. Coller le passage marche deja ; deposer le PDF ou le .docx qu'on a
 sous la main marche mieux, parce qu'un chapitre entier ne se colle pas.
 
@@ -10,7 +10,7 @@ Ce que ce module refuse de faire, et pourquoi :
 
 - **Aucune OCR.** Un PDF scanne ne rend rien ici, et le dit. Deviner le texte
   d'une image ferait citer a un auteur des mots produits par un modele de
-  reconnaissance — exactement ce qu'un extrait est cense empecher.
+  reconnaissance : exactement ce qu'un extrait est cense empecher.
 - **Aucune troncature silencieuse.** Au-dela du plafond on refuse. Un document
   coupe en son milieu donnerait un decoupage qui se lit comme complet.
 - **Aucun rendu de mise en forme.** On veut le texte tel qu'il se lit, parce
@@ -18,7 +18,7 @@ Ce que ce module refuse de faire, et pourquoi :
 
 Le `.docx` et l'`.odt` sont lus sans dependance : ce sont des archives ZIP
 contenant du XML, et l'export Word du projet est deja construit ainsi. Le XML
-vient d'un fichier fourni par l'utilisateur, donc `defusedxml` — `xml.etree`
+vient d'un fichier fourni par l'utilisateur, donc `defusedxml` : `xml.etree`
 de la stdlib reste vulnerable a l'expansion d'entites.
 """
 

@@ -3,8 +3,8 @@
 `build_card_graph` sert a *dessiner* : il confond les deux sens du lien parce
 qu'un lecteur qui regarde une constellation se moque de savoir par quel bout il
 est entre. Un export ne peut pas se le permettre. « Les fiches qui citent
-celle-ci » et « les fiches qu'elle cite » ne disent pas la meme chose — l'une
-est sa posterite, l'autre ses fondations — et melanger les deux dans un meme
+celle-ci » et « les fiches qu'elle cite » ne disent pas la meme chose : l'une
+est sa posterite, l'autre ses fondations, et melanger les deux dans un meme
 fichier produirait une liste dont on ne saurait plus lire le sens.
 
 Le parcours est donc oriente, avec une profondeur propre a chaque sens :
@@ -18,7 +18,7 @@ extraits, le degre 2 en references seules, par exemple.
 
 Une fiche n'apparait qu'une fois, au degre ou elle est atteinte en premier, et
 jamais dans les deux sens : le degre le plus court gagne. Sans cette regle, un
-cycle de fiches qui se citent mutuellement — frequent et legitime — ferait
+cycle de fiches qui se citent mutuellement, frequent et legitime, ferait
 gonfler l'export sans rien y ajouter.
 """
 
@@ -70,11 +70,11 @@ def parse_degrees(spec: str | None) -> dict[int, ExportScope]:
 
     Trois ecritures, de la plus courte a la plus precise :
 
-    - `None` ou `""` : aucun voisin. C'est le defaut — emporter le voisinage
+    - `None` ou `""` : aucun voisin. C'est le defaut : emporter le voisinage
       d'une fiche tres citee sans l'avoir demande serait une surprise couteuse.
     - `"2"` : les degres 1 et 2, perimetre complet pour chacun.
     - `"1:excerpts,archives|2:"` : un perimetre par degre. Apres le `:`, la
-      meme grammaire que `?include=` — vide veut donc dire « references seules ».
+      meme grammaire que `?include=` : vide veut donc dire « references seules ».
 
     Un degre au-dela de `MAX_DEGREE`, ou nul, est refuse plutot que rabote : un
     export silencieusement moins profond que demande se lit comme un voisinage
@@ -112,7 +112,7 @@ def _valider_degre(degre: int) -> None:
 
 
 async def _load_cards(db: AsyncSession, ids: set[UUID]) -> dict[UUID, BiblioCard]:
-    """Les fiches demandees, sources et extraits charges — publiques seulement.
+    """Les fiches demandees, sources et extraits charges : publiques seulement.
 
     Le filtre publie/public est ici et non chez l'appelant : l'export est servi
     sur une route publique, et un voisinage qui revelerait l'existence d'un
@@ -178,7 +178,7 @@ async def collect_neighbourhood(
     Les deux parcours partagent l'ensemble des fiches deja vues : une fiche que
     la racine cite *et* qui la cite n'est rapportee qu'une fois, du cote ou elle
     a ete atteinte au degre le plus court. Le sens descendant est parcouru en
-    premier, et departage donc a egalite — ce sont les fondations d'un propos,
+    premier, et departage donc a egalite : ce sont les fondations d'un propos,
     plus proches de ce que la fiche affirme que sa posterite.
     """
     voisinage = Neighbourhood()
@@ -207,7 +207,7 @@ async def collect_neighbourhood(
             scope = degres.get(degre)
             if scope is None:
                 # Degre traverse mais non demande : on continue a marcher sans
-                # rien emporter. « 2:references » sans « 1: » a un sens — on
+                # rien emporter. « 2:references » sans « 1: » a un sens : on
                 # veut les voisins des voisins, pas les voisins.
                 continue
             for card_id in sorted(fiches, key=str):

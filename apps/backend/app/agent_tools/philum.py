@@ -277,7 +277,7 @@ def _envelopper(fonction, *, avec_utilisateur: bool) -> tuple[dict[str, Any], An
             return cast("dict[str, Any]", resultat)
         except ToolError as exc:
             return {"error": str(exc)}
-        except Exception as exc:  # noqa: BLE001 — message lisible par le modèle
+        except Exception as exc:  # noqa: BLE001  # message lisible par le modèle
             return {"error": f"{fonction.__name__} a échoué : {exc}"}
 
     return {"type": "object", "properties": proprietes, "required": requis}, _execute

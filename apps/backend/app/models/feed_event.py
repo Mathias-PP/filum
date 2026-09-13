@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.database import Base
 
-# Voir `.docs/20-profils-et-feed.md` — cette table est un registre chronologique,
+# Voir `.docs/20-profils-et-feed.md` : cette table est un registre chronologique,
 # jamais un fil algorithmique. `kind` reste ouvert pour accueillir des types
 # futurs (`card_updated`, `claim_verified`) sans migration structurelle.
 
@@ -36,5 +36,5 @@ class FeedEvent(Base):
     )
     occurred_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
     # Non NULL si la fiche a ete depubliee apres coup. L'entree reste, on ne
-    # peut pas effacer le passe — meme logique que l'attestation de contenu.
+    # peut pas effacer le passe : meme logique que l'attestation de contenu.
     unpublished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

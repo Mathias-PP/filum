@@ -3,7 +3,7 @@
 Une fiche Philum porte plus qu'une bibliographie : des extraits verbatim, des
 archives, des verdicts de retractation et d'acces ouvert, les annotations du
 createur. Jusqu'ici l'export decidait seul de ce qu'il en gardait, et le meme
-fichier servait deux besoins opposes — coller une liste de references en fin
+fichier servait deux besoins opposes : coller une liste de references en fin
 d'article, ou emporter la fiche entiere pour la relire ailleurs.
 
 Le perimetre rend ce choix explicite. `?include=` vide donne la bibliographie
@@ -54,7 +54,7 @@ def parse_scope(include: str | None) -> ExportScope:
     """`?include=excerpts,archives` -> un perimetre. `None` -> tout.
 
     `include=` vide n'est pas `None` : c'est le choix explicite de n'emporter
-    que les references. Les cles inconnues sont refusees plutot qu'ignorees —
+    que les references. Les cles inconnues sont refusees plutot qu'ignorees :
     une faute de frappe qui retire silencieusement une section donnerait un
     export incomplet dont personne ne verrait qu'il l'est.
     """

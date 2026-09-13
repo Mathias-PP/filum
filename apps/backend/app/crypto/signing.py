@@ -60,8 +60,8 @@ class SigningService:
 
         Used by CardService.verify_card(): we only have the user's raw public
         key (64 hex chars = 32 bytes), not a private PEM. Wrapping the raw key
-        in `BEGIN PRIVATE KEY` headers and calling from_pem() — as the old
-        verify_card code did — always fails, so signed cards were silently
+        in `BEGIN PRIVATE KEY` headers and calling from_pem(), as the old
+        verify_card code did, always fails, so signed cards were silently
         unverifiable in production.
         """
         if isinstance(data, str):

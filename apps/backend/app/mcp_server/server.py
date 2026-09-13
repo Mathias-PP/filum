@@ -1,4 +1,4 @@
-"""Serveur MCP Philum — lecture publique du graphe de fiches."""
+"""Serveur MCP Philum : lecture publique du graphe de fiches."""
 
 from __future__ import annotations
 

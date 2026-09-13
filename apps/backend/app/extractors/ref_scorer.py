@@ -1,4 +1,4 @@
-"""Scoring syntaxique universel — dernier filet anti-artefacts.
+"""Scoring syntaxique universel : dernier filet anti-artefacts.
 
 Ne juge PAS le type de source (livre, tweet, reportage, article
 scientifique) mais UNIQUEMENT la coherence syntaxique du titre : le
@@ -100,7 +100,7 @@ def should_drop(ref: ImportedRef, threshold: float = 0.4) -> bool:
 
     Un DOI resolvable prime sur toute heuristique typographique : il designe
     une oeuvre enregistree, et le titre reste rattrapable par resolution. Ce
-    scoring ne juge que la coherence d'un titre — il n'a pas autorite pour
+    scoring ne juge que la coherence d'un titre : il n'a pas autorite pour
     supprimer une reference qui porte deja son identifiant.
     """
     if ref.url and _doi_from_url(ref.url):

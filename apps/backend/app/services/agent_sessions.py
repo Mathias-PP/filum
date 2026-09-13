@@ -472,7 +472,7 @@ async def objectif_courant(
     """
     try:
         session = await obtenir(db, creator_id, session_id)
-    except Exception:  # noqa: BLE001 — l'absence d'objectif n'est pas une erreur ici
+    except Exception:  # noqa: BLE001  # l'absence d'objectif n'est pas une erreur ici
         return None, None
     return session.objectif, session.phase
 

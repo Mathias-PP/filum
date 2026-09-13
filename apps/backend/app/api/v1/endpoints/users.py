@@ -54,7 +54,7 @@ async def replace_my_linked_accounts(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Remplace la liste complète (sémantique PUT — simple pour la v0)."""
+    """Remplace la liste complète (sémantique PUT, simple pour la v0)."""
     existing = await _linked_accounts_for(db, current_user.id)
     for acc in existing:
         await db.delete(acc)

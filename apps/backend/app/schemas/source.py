@@ -125,7 +125,7 @@ class SourceBase(BaseModel):
     parent_source_id: UUID | None = None
     # Fiche Philum que cette source designe (meta-graphe). Choisie au picker ou
     # deduite de l'URL quand elle pointe vers une fiche Philum. Doit appartenir
-    # a l'utilisateur ou etre publiee — verifie cote endpoint.
+    # a l'utilisateur ou etre publiee : verifie cote endpoint.
     linked_card_id: UUID | None = None
     # Metadonnees bibliographiques optionnelles (exports BibTeX/CSL/APA).
     journal: str | None = Field(default=None, max_length=300)
@@ -182,7 +182,7 @@ class SourceExcerptResponse(BaseModel):
     position: int
     text: str
     title: str | None = None
-    #: Une phrase qui situe le passage pour qui le rencontre hors de sa page —
+    #: Une phrase qui situe le passage pour qui le rencontre hors de sa page :
     #: en export, en reponse MCP, dans un moteur. Champ separe du verbatim et
     #: jamais recolle dedans : `text` reste exactement ce que la source dit.
     context: str | None = None

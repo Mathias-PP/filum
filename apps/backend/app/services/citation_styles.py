@@ -15,7 +15,7 @@ Une limite assumee, et signalee ici parce qu'elle serait autrement invisible :
 un champ absent est omis, jamais devine. Une source sans annee ne recoit pas
 une annee plausible, elle porte la marque d'absence propre au style (« s. d. »,
 « n.d. »). Inventer une date pour satisfaire un gabarit produirait une
-reference bien formee et fausse — exactement ce que Philum existe pour eviter.
+reference bien formee et fausse : exactement ce que Philum existe pour eviter.
 """
 
 from __future__ import annotations
@@ -51,7 +51,7 @@ def _noms(source: Source) -> list[dict[str, str]]:
 
 
 def _joindre(parts: list[str], dernier: str) -> str:
-    """« A, B et C » — `dernier` etant le liant avant le dernier nom."""
+    """« A, B et C » : `dernier` etant le liant avant le dernier nom."""
     parts = [p for p in parts if p]
     if not parts:
         return ""

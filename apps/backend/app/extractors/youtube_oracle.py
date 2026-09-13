@@ -92,8 +92,8 @@ def _squash(s: str) -> str:
 def is_creator_self_link(url: str, title: str | None, channel_name: str | None) -> bool:
     """True si le lien pointe vers une propriete de l'auteur·ice de la video.
 
-    La fin d'une description YouTube est un bloc de signature — Patreon, site
-    perso, comptes sociaux, boutique — reconduit a l'identique d'une video a
+    La fin d'une description YouTube est un bloc de signature : Patreon, site
+    perso, comptes sociaux, boutique : reconduit a l'identique d'une video a
     l'autre. Mesure du 2026-08-07 : 11 des 16 sources extraites d'une video
     3Blue1Brown en venaient. Ce bloc ne dit rien de ce sur quoi cette video-la
     s'appuie, et il noie les quelques vraies sources.

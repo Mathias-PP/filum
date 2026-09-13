@@ -598,7 +598,7 @@ async def _load_public_card(
 
     « Publiee » dit que le travail est acheve, « publique » qu'il est offert au
     monde : une fiche peut etre l'un sans etre l'autre. Chaque porte de sortie
-    doit donc verifier les deux — et repondre 404 plutot que 403, pour ne pas
+    doit donc verifier les deux, et repondre 404 plutot que 403, pour ne pas
     confirmer a un visiteur non autorise qu'une fiche existe a cette adresse.
 
     Ce controle etait recopie a chaque route publique. L'export l'avait oublie
@@ -964,4 +964,4 @@ async def create_claim_request(
 
 # Card-level /verify endpoint removed (ADR-019 pivot to content attestations).
 # Verification now lives at GET /attestations/{id}/verify. The frontend no
-# longer calls /verify on cards — removing the dead endpoint avoids confusion.
+# longer calls /verify on cards : removing the dead endpoint avoids confusion.

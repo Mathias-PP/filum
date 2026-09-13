@@ -79,6 +79,6 @@ async def texte_resume_crossref(doi: str | None) -> str:
         if reponse.status_code != 200:
             return ""
         return texte_du_resume(reponse.json().get("message", {}).get("abstract"))
-    except Exception as e:  # noqa: BLE001 — un etage de repli ne casse pas la lecture
+    except Exception as e:  # noqa: BLE001  # un etage de repli ne casse pas la lecture
         logger.debug("Crossref abstract lookup failed for doi=%s: %s", doi, e)
         return ""

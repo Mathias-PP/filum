@@ -156,7 +156,7 @@ async def parse_import_file(
     result = parse_file(file.filename, data, forced_format=detected)
     if detected == "pdf":
         # GROBID segmente la biblio du PDF en refs structurees (titre, auteurs,
-        # annee, DOI) — bien mieux que le scan regex, qui rate les refs sans
+        # annee, DOI) : bien mieux que le scan regex, qui rate les refs sans
         # URL/DOI dans le texte. Fusion : les refs GROBID (titrees) passent
         # d'abord, la dedup par DOI absorbe les doublons du scan regex.
         # Indisponible (Space endormi, timeout) → refs regex seules.
@@ -324,7 +324,7 @@ _URL_BACKFILL_CONCURRENCY = 12
 # (`scripts/probe_titres_manquants.py`) : 77 candidats, 60 visites, 17 ecartes,
 # dont cinq pages Wikipedia qui rendent leur titre en une requete. Le plafond
 # se justifiait par « une biblio de cette taille vient forcement d'une source
-# structuree deja traitee » — un essai web de 78 liens nus, sans un seul DOI,
+# structuree deja traitee » : un essai web de 78 liens nus, sans un seul DOI,
 # dit le contraire. Le budget ci-dessous tient la promesse que le plafond
 # tentait de tenir, sans en payer le prix.
 _URL_BACKFILL_BUDGET_S = 45.0
@@ -442,7 +442,7 @@ async def _backfill_crossref_metadata(refs: list[ImportedRef]) -> None:
     await asyncio.gather(*(_backfill_one_crossref(ref, sem) for ref in refs))
     # 2e passe a concurrence reduite : sur 145 refs, ~10 lookups echouent de
     # maniere transitoire (timeout sous concurrence 10) et les trous changent
-    # a chaque run — un retry sequentiel-ish les recupere quasi tous.
+    # a chaque run : un retry sequentiel-ish les recupere quasi tous.
     remaining = [
         r
         for r in refs
@@ -472,7 +472,7 @@ def _s2_ref_to_imported_ref(s2_ref: SemanticScholarRef) -> ImportedRef | None:
     """Convertit une SemanticScholarRef → ImportedRef. None si pas d'URL."""
     if not s2_ref.url:
         # Livre / chapitre sans DOI : garde-la pour edition manuelle (url="").
-        # Le titre seul suffit — exiger aussi les auteurs faisait perdre des
+        # Le titre seul suffit : exiger aussi les auteurs faisait perdre des
         # refs reelles (objectif : exhaustivite, l'user complete a la main).
         if s2_ref.title:
             return ImportedRef(

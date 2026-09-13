@@ -5,7 +5,7 @@ Deux chemins, du plus explicite au plus implicite :
 1. L'URL de la source EST une fiche Philum (/@{username}/{slug}). La detection
    est restreinte aux hosts de notre propre frontend pour eviter les faux
    positifs (medium.com/@user/slug a la meme forme de path).
-2. L'URL de la source designe le meme contenu qu'une fiche existante — meme
+2. L'URL de la source designe le meme contenu qu'une fiche existante : meme
    DOI, ou meme URL normalisee que son ``content_url``. Une reference vers un
    article et la fiche qui documente cet article sont le meme objet ; sans
    cette resolution le meta-graphe l'affiche deux fois, une fois comme fiche
@@ -89,7 +89,7 @@ async def assert_linked_card_allowed(
     """Verifie qu'une fiche peut etre designee par une source. Leve ValueError sinon.
 
     Une fiche est une cible legitime si elle appartient a l'utilisateur (y
-    compris en brouillon) ou si elle est publiee et publique — c'est-a-dire
+    compris en brouillon) ou si elle est publiee et publique, c'est-a-dire
     exactement ce que le picker propose. Sans cette verification, un id
     devine permettrait de rattacher une source a une fiche privee d'autrui
     et d'en confirmer l'existence.

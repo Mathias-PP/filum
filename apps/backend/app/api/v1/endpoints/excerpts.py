@@ -3,12 +3,12 @@
 La suggestion IA repère des citations *verbatim* dans le texte de la source
 (alias LiteLLM `excerpt-suggest`). Anti-hallucination : chaque extrait
 proposé est vérifié par recherche exacte (espaces normalisés) dans le texte
-récupéré — un extrait introuvable est écarté, jamais exposé.
+récupéré : un extrait introuvable est écarté, jamais exposé.
 
 L'emplacement (voisinage + offset) est **persisté** depuis #333 : sans lui, un
 extrait ne se retrouvait qu'au mot près et devenait introuvable dès que la page
 corrigeait une coquille. `/verify` s'en sert pour ré-ancrer les extraits dans la
-page telle qu'elle est aujourd'hui — cf. `app/services/excerpt_anchor.py`.
+page telle qu'elle est aujourd'hui : cf. `app/services/excerpt_anchor.py`.
 """
 
 from __future__ import annotations
@@ -67,7 +67,7 @@ class ExcerptCreate(BaseModel):
     annotated_by_ai: bool = False
     # Voisinage et position du passage dans le texte d'ou il vient. Facultatifs :
     # un extrait saisi a la main, sans que le texte de la source soit connu, n'en
-    # a pas — et l'ecran doit alors le dire plutot que de faire semblant.
+    # a pas, et l'ecran doit alors le dire plutot que de faire semblant.
     anchor_prefix: str | None = Field(default=None, max_length=500)
     anchor_suffix: str | None = Field(default=None, max_length=500)
     anchor_offset: int | None = Field(default=None, ge=0)
@@ -115,7 +115,7 @@ class ChunkResponse(BaseModel):
     suggested_size: int
     # Mesure du 2026-08-08 : la prod ne definit aucune variable LiteLLM, donc
     # la suggestion d'intitules n'y rend rien. Une case a cocher qui promet un
-    # service absent est du meme genre qu'un titre faux — elle se lit comme une
+    # service absent est du meme genre qu'un titre faux : elle se lit comme une
     # offre. L'ecran a besoin de le savoir pour le dire.
     llm_enabled: bool
 
@@ -407,7 +407,7 @@ async def chunk_uploaded_document(
     """Le meme decoupage, a partir d'un document depose.
 
     Un chapitre ne se colle pas : au-dela de quelques pages, le collage devient
-    la corvee qui fait renoncer. Le fichier est lu puis jete — rien n'en est
+    la corvee qui fait renoncer. Le fichier est lu puis jete : rien n'en est
     conserve, seul son texte sert d'assise au decoupage.
     """
     await _get_owned_source(source_id, current_user, db)
@@ -469,7 +469,7 @@ class ExcerptCheck(BaseModel):
     excerpt_id: UUID
     #: `found` : le passage est dans la page. `moved` : il y est, mais plus tout
     #: a fait dans ces mots. `missing` : il n'y est pas. `unreadable` : la page
-    #: n'a pas rendu de texte — **on ne sait pas**, ce qui n'est pas la meme
+    #: n'a pas rendu de texte : **on ne sait pas**, ce qui n'est pas la meme
     #: chose que « absent ». Confondre les deux ferait passer une source
     #: inaccessible pour une citation inventee.
     status: str
@@ -630,8 +630,8 @@ async def suggest_source_excerpts(
         # sur le collage. Un `422` y coupait court.
         #
         # `llm_enabled` dit ici l'etat reel du serveur et non un `True` de
-        # commodite : sans modele configure — cas de la prod, mesure le
-        # 2026-08-08 — l'ecran afficherait « aucun passage citable repere »
+        # commodite : sans modele configure (cas de la prod, mesure le
+        # 2026-08-08), l'ecran afficherait « aucun passage citable repere »
         # pour une absence de modele, en donnant la mauvaise cause a lire.
         return ExcerptSuggestResponse(
             suggestions=[],

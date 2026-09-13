@@ -1,7 +1,7 @@
 """Extraction structurée des références d'un PDF via GROBID.
 
 GROBID (grobid.readthedocs.io) segmente la bibliographie d'un PDF en
-références structurées (titre, auteurs, année, DOI) — bien plus fiable que
+références structurées (titre, auteurs, année, DOI) : bien plus fiable que
 le scan regex des URLs/DOIs. On l'appelle via le Space Hugging Face public
 ``kermitt2/grobid`` (gratuit, sans clé). Ce Space dort après inactivité
 (cold start ~2 min) : tout échec, timeout ou réponse non-TEI est traité
@@ -43,7 +43,7 @@ def _parse_tei(xml_text: str) -> list[ImportedRef] | None:
     try:
         # `defusedxml` et non `xml.etree` : ce XML derive d'un PDF fourni par
         # l'utilisateur, donc d'une entree non fiable, et la stdlib expanse
-        # les entites internes — un fichier de quelques kilo-octets suffit a
+        # les entites internes : un fichier de quelques kilo-octets suffit a
         # epuiser la memoire du conteneur (« billion laughs »).
         # `ET` reste importe pour les types et `ParseError`, que defusedxml
         # releve tel quel.

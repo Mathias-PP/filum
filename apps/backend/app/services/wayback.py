@@ -149,7 +149,7 @@ async def _entrevoir(url: str, timeout: float) -> tuple[str, str | None] | None:
                 if len(body) >= _OCTETS_ENTETE:
                     break
         return final, _meta_refresh_target(body)
-    except Exception as e:  # noqa: BLE001 — l'URL d'origine reste utilisable.
+    except Exception as e:  # noqa: BLE001  # l'URL d'origine reste utilisable.
         logger.info("Resolve failed for %s: %s %s", url, type(e).__name__, e)
         return None
 
@@ -273,7 +273,7 @@ class WaybackService:
     Flow per URL:
       1. Trigger Save Page Now (SPN) via a GET to ``web.archive.org/save/<url>``.
          No API key required; rate-limited and slow but free. We fire and
-         forget (timeout short, errors swallowed) — its only purpose is to
+         forget (timeout short, errors swallowed) : its only purpose is to
          *request* a fresh snapshot.
       2. Poll the `wayback/available` API with growing back-offs until either
          a snapshot is found or all attempts are exhausted. SPN typically
@@ -366,10 +366,10 @@ class WaybackService:
         # capture existante qu'on ne verrait jamais.
         url = strip_tracking_params(url)
 
-        # Step 1 — trigger Save Page Now (best effort).
+        # Step 1 : trigger Save Page Now (best effort).
         await self._trigger_save(url)
 
-        # Step 2 — poll the availability API until we see a snapshot or run
+        # Step 2 : poll the availability API until we see a snapshot or run
         # out of retries.
         for delay in self.POLL_DELAYS:
             await asyncio.sleep(delay)
@@ -436,9 +436,9 @@ class WaybackService:
                 timeout=self.TIMEOUT, follow_redirects=False, headers=self._auth_headers()
             ) as client:
                 # GET works for SPN public endpoint. We don't care about the
-                # response body — only whether the request was accepted.
+                # response body : only whether the request was accepted.
                 response = await client.get(f"{self.SAVE_URL}/{url}")
-        except Exception as e:  # noqa: BLE001 — best-effort, log and continue.
+        except Exception as e:  # noqa: BLE001  # best-effort, log and continue.
             logger.info(f"Wayback SPN trigger failed for {url} (will still poll): {e}")
             return
 
@@ -491,7 +491,7 @@ class WaybackService:
             return response.json()
         except ThrottledError:
             raise
-        except Exception as e:  # noqa: BLE001 — l'autre canal a peut-etre mieux.
+        except Exception as e:  # noqa: BLE001  # l'autre canal a peut-etre mieux.
             # Le type, pas seulement le message : un `ReadTimeout` a un message
             # vide, et sans son nom le journal n'apprend rien a qui cherche.
             logger.info(
@@ -705,7 +705,7 @@ async def _run_batch(pairs: list[tuple[UUID, str]]) -> None:
     try:
         async with async_session_maker() as db:
             await WaybackService(db, get_settings().wayback_api_key).archive_batch(pairs)
-    except Exception as e:  # noqa: BLE001 — une tache de fond ne remonte a personne.
+    except Exception as e:  # noqa: BLE001  # une tache de fond ne remonte a personne.
         logger.warning("Wayback batch crashed: %s", e)
     finally:
         _in_flight.difference_update(sid for sid, _ in pairs)

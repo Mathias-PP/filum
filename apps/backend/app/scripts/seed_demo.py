@@ -106,7 +106,7 @@ def _demo_sources() -> list[dict]:
     their children).
     """
     return [
-        # --- Tier 1 — Foundational peer-reviewed ---
+        # --- Tier 1 : Foundational peer-reviewed ---
         {
             "url": "https://www.science.org/doi/10.1126/science.1067020",
             "title": "The Molecular Biology of Memory Storage: A Dialogue Between Genes and Synapses",
@@ -245,7 +245,7 @@ def _demo_sources() -> list[dict]:
             ),
             #: Sans extrait : learnmem.cshlp.org ne rend rien depuis un serveur.
         },
-        # --- Tier 2 — Institutional ---
+        # --- Tier 2 : Institutional ---
         {
             "url": "https://www.ninds.nih.gov/health-information/public-education/brain-basics/brain-basics-understanding-sleep",
             "title": "Brain Basics: Understanding Sleep",
@@ -304,7 +304,7 @@ def _demo_sources() -> list[dict]:
                 ),
             ],
         },
-        # --- Tier 3 — Press ---
+        # --- Tier 3 : Press ---
         {
             "url": (
                 "https://www.quantamagazine.org/"
@@ -378,7 +378,7 @@ def _demo_sources() -> list[dict]:
                 )
             ],
         },
-        # --- Tier 4 — Original ---
+        # --- Tier 4 : Original ---
         {
             "url": "https://radiolab.org/podcast/memory-and-forgetting",
             "title": "Memory and Forgetting",
@@ -452,7 +452,7 @@ def _demo_sources() -> list[dict]:
                 ),
             ],
         },
-        # --- Tier 5 — Non-academic (video, documentary, image) ---
+        # --- Tier 5 : Non-academic (video, documentary, image) ---
         {
             "url": "https://www.pbs.org/wgbh/nova/video/memory-hackers/",
             "title": "Memory Hackers",

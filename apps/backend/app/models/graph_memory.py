@@ -15,7 +15,7 @@ from app.models.excerpt_embedding import EMBEDDING_TYPE
 class GraphEntity(Base):
     """Noeud du graphe memoire (STARTER: 3 tables).
 
-    Identite hachee uuid5(type + normalise(name)) — deux fiches qui
+    Identite hachee uuid5(type + normalise(name)) : deux fiches qui
     parlent du meme concept partagent le meme noeud, sans ML.
     """
 

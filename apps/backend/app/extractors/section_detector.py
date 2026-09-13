@@ -220,7 +220,7 @@ def is_ref_in_section(ref: ImportedRef, section: SectionBoundary) -> bool:
     """
     haystack = _norm_search(section.text)
 
-    # 1. DOI ou URL exact — signal le plus fiable, gagne toujours.
+    # 1. DOI ou URL exact : signal le plus fiable, gagne toujours.
     doi = _doi_from_url(ref.url) if ref.url else None
     if doi and doi in haystack:
         return True

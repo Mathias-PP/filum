@@ -2,7 +2,7 @@
 
 L'agent lit/écrit les fichiers de configuration du créateur (le « cerveau »
 du workspace ICM) via ces outils. Les descriptions orientent le modèle vers
-les règles du workspace avant d'écrire — même logique que le MCP.
+les règles du workspace avant d'écrire, même logique que le MCP.
 """
 
 from __future__ import annotations

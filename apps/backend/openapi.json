@@ -3080,7 +3080,7 @@
           "excerpts"
         ],
         "summary": "Chunk Uploaded Document",
-        "description": "Le meme decoupage, a partir d'un document depose.\n\nUn chapitre ne se colle pas : au-dela de quelques pages, le collage devient\nla corvee qui fait renoncer. Le fichier est lu puis jete — rien n'en est\nconserve, seul son texte sert d'assise au decoupage.",
+        "description": "Le meme decoupage, a partir d'un document depose.\n\nUn chapitre ne se colle pas : au-dela de quelques pages, le collage devient\nla corvee qui fait renoncer. Le fichier est lu puis jete : rien n'en est\nconserve, seul son texte sert d'assise au decoupage.",
         "operationId": "chunk_uploaded_document_api_v1_sources__source_id__excerpts_chunk_file_post",
         "parameters": [
           {
@@ -4248,7 +4248,7 @@
           "users"
         ],
         "summary": "Replace My Linked Accounts",
-        "description": "Remplace la liste complète (sémantique PUT — simple pour la v0).",
+        "description": "Remplace la liste complète (sémantique PUT, simple pour la v0).",
         "operationId": "replace_my_linked_accounts_api_v1_users_me_linked_accounts_put",
         "requestBody": {
           "content": {
