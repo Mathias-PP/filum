@@ -224,7 +224,13 @@ async def oauth_consent(
     return RedirectResponse(url=f"{redirect_uri}?{urlencode(params)}", status_code=302)
 
 
-@router.post("/oauth/token", response_model=TokenResponse)
+@router.post(
+    "/oauth/token",
+    response_model=TokenResponse,
+    # Meme piege qu'a l'inscription : sans scope demande, le champ doit etre
+    # absent. Le SDK MCP de Claude Code rejetait le jeton sur `"scope": null`.
+    response_model_exclude_none=True,
+)
 async def oauth_token(
     grant_type: str = Form(...),
     code: str = Form(...),
