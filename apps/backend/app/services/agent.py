@@ -1625,6 +1625,9 @@ async def boucle(
                 "payload": {
                     "message": f'Pause après {MAX_TOURS} actions : l\'agent a beaucoup travaillé et peut continuer. Cliquez sur Continuer ou envoyez "continue".',
                     "tours": MAX_TOURS,
+                    # Sans elle, un tour mis en pause n'etait jamais compte : en
+                    # prod le 2026-09-13, 16 reponses sur 24 sans jetons.
+                    "usage": usage_total,
                 },
             }
         )

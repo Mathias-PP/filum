@@ -429,6 +429,27 @@ async def create_card(
     }
 
 
+#: Mesure du 2026-09-13 : les neuf sources de deux fiches medicales etaient
+#: toutes « appuie », dont une sans aucun extrait et une sur une page illisible
+#: au moment de l'ajout. Une position se justifie par ce que la source dit.
+_POSITION_SANS_EXTRAIT = (
+    "Position non posee : une source sans extrait ne montre rien qui la justifie. "
+    "Posez d'abord un extrait qui la porte (add_excerpt), puis declarez la position "
+    "avec update_source."
+)
+
+
+async def _nombre_extraits(db: AsyncSession, source_id: UUID) -> int:
+    return (
+        await db.scalar(
+            select(func.count())
+            .select_from(SourceExcerpt)
+            .where(SourceExcerpt.source_id == source_id)
+        )
+        or 0
+    )
+
+
 async def _resoudre_metadonnees(
     metadata_from: str,
     *,
@@ -659,6 +680,10 @@ async def add_source(
         reponse["metadata_ecarts"] = ecarts_metadonnees
     if excerpts:
         reponse |= await _extraits_a_la_volee(db, user, source, excerpts)
+    if source.stance and not reponse.get("excerpts"):
+        source.stance = None
+        await db.commit()
+        reponse["stance_non_posee"] = _POSITION_SANS_EXTRAIT
     return reponse
 
 
@@ -1174,7 +1199,10 @@ async def update_source(
     if stance is not None:
         # Chaine vide = retire la position declaree, revient au silence
         # explicite.
-        source.stance = _valeur_enum("stance", stance, SourceStance)
+        position = _valeur_enum("stance", stance, SourceStance)
+        if position and not await _nombre_extraits(db, source.id):
+            raise ToolError(_POSITION_SANS_EXTRAIT)
+        source.stance = position
     if annotation is not None:
         source.annotation = annotation or None
     if published_at is not None:
@@ -2328,7 +2356,8 @@ async def add_sources_batch(
             format=fmt,
             category=categorie,
             author_kind=nature_auteur,
-            stance=position_declaree,
+            # Un lot ne porte pas d'extraits : aucune position n'y est justifiee.
+            stance=None,
             annotation=sd.get("annotation"),
             journal=retenues.get("journal"),
             publisher=retenues.get("publisher"),
@@ -2348,6 +2377,8 @@ async def add_sources_batch(
             "url": url,
             "title": source.title,
         }
+        if position_declaree:
+            entree["stance_non_posee"] = _POSITION_SANS_EXTRAIT
         if ecarts_metadonnees:
             entree["metadata_ecarts"] = ecarts_metadonnees
         created.append(entree)

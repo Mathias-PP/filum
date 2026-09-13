@@ -25,6 +25,7 @@ from __future__ import annotations
 import contextlib
 import json
 import logging
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
@@ -324,12 +325,23 @@ async def chat_agent(
         reactions: list[agent_gratuit.Reaction] = []
         issue = "annule"
 
+        # L'heure a laquelle chaque message du tour est apparu. Le tour s'ecrit
+        # en base a la fin : sans elles, tous ses messages portaient l'heure de
+        # fin (09:02:14 a 09:02:24 pour un tour commence a 08:57).
+        horodatages: list[datetime] = []
+
+        def horodater() -> None:
+            maintenant = datetime.now(UTC).replace(tzinfo=None)
+            while len(horodatages) < len(messages):
+                horodatages.append(maintenant)
+
         async def emit(event: dict[str, Any]) -> None:
+            horodater()
             genre = event.get("type")
             if genre == "message_delta":
                 charge = event["payload"]
                 deltas.setdefault(int(charge.get("tour") or 0), []).append(charge["delta"])
-            elif genre == "done":
+            elif genre in ("done", "continuation"):
                 u = event.get("payload", {}).get("usage")
                 if isinstance(u, dict):
                     usage_capture.append(u)
@@ -409,7 +421,9 @@ async def chat_agent(
             finally:
                 # Instantané avant tout ``await`` : une boucle annulée peut
                 # encore ajouter un message à sa prochaine reprise.
+                horodater()
                 ajouts = messages[depart:]
+                heures = horodatages[depart:]
                 if issue != "complet":
                     # Les écritures d'outils sont déjà en base : sans ce
                     # rattrapage, la source que l'agent vient de créer existe
@@ -431,7 +445,7 @@ async def chat_agent(
                 # tout `await` non protégé relèverait aussitôt sans rien écrire.
                 with anyio.CancelScope(shield=True):
                     try:
-                        await _persister_tour(creator_id, session_id, ajouts, texte, usage)
+                        await _persister_tour(creator_id, session_id, ajouts, texte, usage, heures)
                     except Exception:  # noqa: BLE001  # la fin du tour doit partir quand meme
                         logger.exception("Persistance du tour impossible, session %s", session_id)
                     if mode_decouverte and issue == "complet":
@@ -559,8 +573,11 @@ async def _persister_tour(
     ajouts: list[dict[str, Any]],
     reponse_finale: str,
     usage: dict[str, Any] | None = None,
+    heures: list[datetime] | None = None,
 ) -> None:
     """Ecrit le tour en base, append-only, dans l'ordre ou il s'est produit.
+
+    `heures[i]` est l'heure a laquelle `ajouts[i]` est apparu pendant le tour.
 
     La reponse textuelle finale n'est pas dans ``messages`` : la boucle
     l'emet en ``message_delta`` sans la rajouter a l'historique. On la
@@ -572,7 +589,9 @@ async def _persister_tour(
     """
     async with async_session_maker() as db:
         session = await agent_sessions.obtenir(db, creator_id, session_id)
-        for message in ajouts:
+        heures = heures or []
+        for rang, message in enumerate(ajouts):
+            heure = heures[rang] if rang < len(heures) else None
             # Le prompt systeme est reconstruit en tete a chaque tour. Un message
             # systeme ecrit ici serait rejoue en second, et Gemini refuse un
             # historique qui en porte deux. La boucle en insere un quand elle
@@ -588,6 +607,7 @@ async def _persister_tour(
                     content=message.get("content") or "",
                     tool_name=message.get("name"),
                     tool_call_id=message.get("tool_call_id"),
+                    created_at=heure,
                 )
             else:
                 await agent_sessions.ajouter_message(
@@ -596,6 +616,7 @@ async def _persister_tour(
                     role=message.get("role") or "assistant",
                     content=message.get("content") or "",
                     tool_calls=message.get("tool_calls"),
+                    created_at=heure,
                 )
         if reponse_finale:
             prompt_tokens: int | None = None

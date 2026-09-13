@@ -243,4 +243,38 @@ faux.
 - **A2** : une réponse longue d'un tour sans aucun appel d'outil porte « Rédigé
   sans rien consulter ».
 
-Reste : lots 3, 4 et 5.
+Mergée (#652) et déployée le 2026-09-13.
+
+### Lot 3 : `feat/agent-verbatims`, mergé (#653) et déployé
+
+B1 à B4 : césures de PDF recollées à l'ancrage, passage le plus proche montré
+dès le premier refus, outil `find_passage`, `add_excerpt` suspendu après trois
+refus sur une source jusqu'à une recherche, lecture identique sans écriture
+reprise du cache, `provided_text` masqué à l'agent sur `suggest_excerpts` et
+`annotate_excerpt`.
+
+### Lot 4 : `fix/agent-donnees-fiche` (#654)
+
+C1 à C4 : fiche au titre du même sujet refusée en nommant l'existante
+(`confirm_distinct` pour un autre angle), adresse du contenu refusée comme
+source d'une fiche contenu, titre proposé gardé et signalé quand l'origine ne
+rend rien (à la création seulement), extrait inscrit sans césures ni sauts de
+ligne bruts. Non traité : exiger une mise en situation quand la langue de
+l'extrait diffère de celle de la fiche.
+
+### Lot 5 : `fix/agent-hygiene-conversation`
+
+- **A3** : `update_source` refuse une position sur une source sans extrait ;
+  `add_source` ne la pose pas si aucun extrait n'est passé, `add_sources_batch`
+  jamais, et la réponse le dit.
+- **D3, horodatage** : chaque message garde l'heure où il est apparu pendant le
+  tour, et non l'heure de l'écriture en fin de tour.
+- **D3, consommation** : **mesuré** en prod, 8 réponses finales sur 24 portent
+  leurs jetons ; les 16 autres sont les tours coupés ou mis en pause, qui
+  n'émettaient jamais `done`. La coupure est réglée par #652 ; la pause porte
+  désormais `usage`. Le fournisseur n'était pas en cause : Z.ai et Mistral
+  rendent la consommation en fin de flux sans `stream_options`.
+- **D2** : réglé par le 409 `tour_en_cours` de #652.
+- **A3, recherche de nuance** : la règle existe déjà
+  (`shared/chercher-la-contradiction.md`, étape 03) ; non rendue obligatoire
+  dans cette PR.
