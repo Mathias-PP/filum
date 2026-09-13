@@ -44,6 +44,95 @@
         }
       }
     },
+    "/api/v1/agent/sessions/{session_id}/flux": {
+      "get": {
+        "tags": [
+          "agent-chat"
+        ],
+        "summary": "Suivre Tour",
+        "description": "Reprend le flux d'un tour à partir de l'événement numéro `depuis`.\n\nUn téléphone mis en veille, un proxy qui coupe au bout de cinq minutes : le\ntour a continué, et le client redemande ce qu'il n'a pas reçu. 404 quand\naucun tour n'est rejouable : la conversation en base fait alors foi.",
+        "operationId": "suivre_tour_api_v1_agent_sessions__session_id__flux_get",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "depuis",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Depuis"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agent/sessions/{session_id}/arreter": {
+      "post": {
+        "tags": [
+          "agent-chat"
+        ],
+        "summary": "Arreter Tour",
+        "description": "Arrête le tour en cours. Fermer la connexion ne l'arrête plus.",
+        "operationId": "arreter_tour_api_v1_agent_sessions__session_id__arreter_post",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/agent/definitions": {
       "get": {
         "tags": [
@@ -5216,6 +5305,11 @@
               }
             ],
             "title": "Phase"
+          },
+          "tour_en_cours": {
+            "type": "boolean",
+            "title": "Tour En Cours",
+            "default": false
           },
           "created_at": {
             "type": "string",

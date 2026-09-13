@@ -86,6 +86,102 @@ export function resumerActivite(bloc: BlocActivite): string {
   return `${tete} : ${detail}`;
 }
 
+interface Compte {
+  un: string;
+  plusieurs: string;
+}
+
+const MODIFICATION: Compte = { un: 'modification', plusieurs: 'modifications' };
+const SUPPRESSION: Compte = { un: 'suppression', plusieurs: 'suppressions' };
+const SOURCE_AJOUTEE: Compte = { un: 'source ajoutée', plusieurs: 'sources ajoutées' };
+const EXTRAIT_REFUSE: Compte = { un: 'extrait refusé', plusieurs: 'extraits refusés' };
+const ECRITURE_ECHOUEE: Compte = { un: 'écriture en échec', plusieurs: 'écritures en échec' };
+
+/** Les outils qui écrivent dans les fiches, et ce qu'une réussite compte. */
+const ECRITURES: Record<string, Compte> = {
+  create_card: { un: 'fiche créée', plusieurs: 'fiches créées' },
+  publish_card: { un: 'fiche publiée', plusieurs: 'fiches publiées' },
+  restore_card: { un: 'fiche restaurée', plusieurs: 'fiches restaurées' },
+  add_source: SOURCE_AJOUTEE,
+  add_sources_batch: SOURCE_AJOUTEE,
+  add_excerpt: { un: 'extrait posé', plusieurs: 'extraits posés' },
+  update_card: MODIFICATION,
+  update_source: MODIFICATION,
+  update_excerpt: MODIFICATION,
+  annotate_excerpt: MODIFICATION,
+  set_content_text: MODIFICATION,
+  delete_card: SUPPRESSION,
+  delete_source: SUPPRESSION,
+  delete_excerpt: SUPPRESSION,
+};
+
+/** « Bilan : 2 sources ajoutées, 3 extraits posés, 5 extraits refusés. »
+ *
+ * Compté sur les résultats des outils, pas sur ce que dit le modèle : une
+ * réponse annonçait trois extraits dans la fiche, dont un jamais posé sur une
+ * page jamais lue. Le bilan est ce que la réponse ne peut pas contredire. Rien
+ * quand le tour n'a rien tenté d'écrire.
+ */
+export function bilanDesAppels(appels: AppelOutil[]): string | null {
+  const comptes = new Map<Compte, number>();
+  const ajouter = (compte: Compte, n: number) =>
+    comptes.set(compte, (comptes.get(compte) ?? 0) + n);
+  for (const appel of appels) {
+    const compte = ECRITURES[appel.name];
+    if (!compte || appel.result === null) continue;
+    if (estEchec(appel)) {
+      ajouter(appel.name === 'add_excerpt' ? EXTRAIT_REFUSE : ECRITURE_ECHOUEE, 1);
+      continue;
+    }
+    const lot = appel.args.sources;
+    ajouter(compte, appel.name === 'add_sources_batch' && Array.isArray(lot) ? lot.length || 1 : 1);
+  }
+  if (comptes.size === 0) return null;
+  const parties = [...comptes].map(([compte, n]) => `${n} ${n > 1 ? compte.plusieurs : compte.un}`);
+  return `Bilan : ${parties.join(', ')}.`;
+}
+
+export interface NoteTour {
+  bilan: string | null;
+  /** La réponse affirme sans que le tour ait rien lu ni rien appelé. */
+  sansSource: boolean;
+}
+
+/** En dessous, une réponse sans outil est une salutation ou une question en
+ * retour, pas un contenu à vérifier. */
+const LONGUEUR_AFFIRMATIVE = 280;
+
+/** Annote la dernière réponse de chaque tour : son bilan, ou l'absence de source.
+ *
+ * Rend une table indexée comme `affichables`. La première réponse d'une
+ * conversation réelle listait des conseils médicaux sans une source ni un
+ * appel d'outil : la consigne « rien de mémoire » existe, elle ne garantit rien,
+ * alors l'interface le montre.
+ */
+export function annoterTours(affichables: Affichable[]): Map<number, NoteTour> {
+  const notes = new Map<number, NoteTour>();
+  let appels: AppelOutil[] = [];
+  let reponse = -1;
+  const clore = () => {
+    if (reponse >= 0) {
+      const texte = (affichables[reponse] as { text: string }).text;
+      const bilan = bilanDesAppels(appels);
+      const sansSource = appels.length === 0 && texte.trim().length >= LONGUEUR_AFFIRMATIVE;
+      if (bilan || sansSource) notes.set(reponse, { bilan, sansSource });
+    }
+    appels = [];
+    reponse = -1;
+  };
+  affichables.forEach((item, i) => {
+    if (item.kind === 'user') clore();
+    else if (item.kind === 'activite')
+      for (const groupe of item.groupes) appels.push(...groupe.entrees);
+    else if (item.kind === 'assistant') reponse = i;
+  });
+  clore();
+  return notes;
+}
+
 /** État d'un groupe, pour l'en-tête replié. */
 export function etatGroupe(groupe: GroupeOutils): { echecs: number; enCours: number } {
   let echecs = 0;

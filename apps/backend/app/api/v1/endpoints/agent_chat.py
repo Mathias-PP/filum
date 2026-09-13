@@ -11,6 +11,10 @@ d'événements (``text/event-stream``) produits par la boucle de l'agent :
 - ``done`` (motif ``complete``) : fin normale ;
 - ``error`` : erreur provider ou borne atteinte.
 
+Le tour tourne dans une tache detachee de la connexion (`agent_tours`) : un
+client coupe le rattrape par ``GET /agent/sessions/{id}/flux?depuis=N``, et
+seul ``POST /agent/sessions/{id}/arreter`` l'arrete.
+
 Avec une session, l'historique vient de la base et le tour y est écrit en
 append-only. L'approbation suspend réellement la boucle : elle attend
 ``POST /agent/approve`` et refuse au bout de ``agent_approvals.DELAI_MAX``.
@@ -18,9 +22,9 @@ append-only. L'approbation suspend réellement la boucle : elle attend
 
 from __future__ import annotations
 
-import asyncio
 import contextlib
 import json
+import logging
 from typing import Any
 from uuid import UUID
 
@@ -43,6 +47,7 @@ from app.services import (
     agent_definitions,
     agent_gratuit,
     agent_sessions,
+    agent_tours,
     agent_workspace,
 )
 from app.services.agent import boucle
@@ -76,6 +81,13 @@ _MESSAGE_CLE_GRATUITE_REFUSEE = (
 settings = get_settings()
 
 router = APIRouter(prefix="/agent", tags=["agent-chat"])
+
+logger = logging.getLogger(__name__)
+
+#: Evenements qui closent un tour. Publies seulement une fois le tour ecrit en base.
+_TERMINAUX = frozenset({"done", "error", "continuation"})
+
+_ENTETES_SSE = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
 
 
 def get_approver():
@@ -136,6 +148,8 @@ async def chat_agent(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={"code": "session_not_found", "message": str(exc)},
             ) from exc
+        if agent_tours.en_cours(session.id):
+            raise _conflit_tour()
         # L'historique persisté fait autorité : ce que le client renvoie
         # pourrait avoir été retouché en route.
         messages = await agent_sessions.historique_pour_modele(db, current_user.id, session.id)
@@ -239,46 +253,87 @@ async def chat_agent(
         # Le mode decouverte n'expose qu'une cle, qu'on ne choisit pas.
         replis = await ordonner_pour_chat(db, current_user.id, prefere=provider.id)
 
-    messages.append({"role": "user", "content": body.message})
-    await agent_sessions.ajouter_message(db, session, role="user", content=body.message)
-    # Le workspace n'etait amorce qu'en ouvrant la page Workspace ou la page
-    # Agents. Un createur qui va droit au chat n'y passe jamais : `shared/`
-    # restait vide et l'agent ecrivait du contenu editorial sans avoir lu la
-    # ligne qui devait le guider.
-    #
-    # Ici et pas dans `boucle` : la boucle tourne pendant le flux SSE, et une
-    # ecriture ouverte pendant tout le flux garde le verrou d'ecriture SQLite,
-    # ce qui fait echouer la persistance du tour en « database is locked ».
-    # A cet endroit la transaction se ferme avant que le flux commence.
-    await agent_workspace.assurer_workspace(db, current_user.id)
-    await db.commit()
+    # Reserve avant toute ecriture : un second envoi pendant qu'un tour tourne
+    # reinscrivait le message, et le modele recevait deux fois la meme demande.
+    try:
+        tour = agent_tours.reserver(session.id, current_user.id)
+    except agent_tours.TourEnCoursError as exc:
+        raise _conflit_tour() from exc
+
+    try:
+        messages.append({"role": "user", "content": body.message})
+        await agent_sessions.ajouter_message(db, session, role="user", content=body.message)
+        # Le workspace n'etait amorce qu'en ouvrant la page Workspace ou la page
+        # Agents. Un createur qui va droit au chat n'y passe jamais : `shared/`
+        # restait vide et l'agent ecrivait du contenu editorial sans avoir lu la
+        # ligne qui devait le guider.
+        #
+        # Ici et pas dans `boucle` : la boucle tourne pendant le flux SSE, et une
+        # ecriture ouverte pendant tout le flux garde le verrou d'ecriture SQLite,
+        # ce qui fait echouer la persistance du tour en « database is locked ».
+        # A cet endroit la transaction se ferme avant que le flux commence.
+        await agent_workspace.assurer_workspace(db, current_user.id)
+        await db.commit()
+    except BaseException:
+        agent_tours.liberer(tour)
+        raise
     # `boucle` insère le prompt système en tête : le tour commence donc un cran
     # plus loin que la longueur d'avant l'appel.
     depart = len(messages) + 1
     approuver = fabrique_approbation(current_user.id)
+    # Valeurs lues maintenant : la session de base de la requete se ferme avec
+    # elle, et le tour lui survit.
+    creator_id = current_user.id
+    session_id = session.id
+    modele = body.model_override or session.model_override or None
 
-    async def gen():
-        queue: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
-        reponse_finale: list[str] = []
+    if mode_decouverte:
+        tour.publier(
+            {
+                "type": "discovery_active",
+                "payload": {
+                    "provider_public_name": nom_public_provider(),
+                    "retention_notice": "Ce provider peut utiliser vos echanges pour ameliorer son modele.",
+                },
+            }
+        )
+    if mode_gratuit is not None:
+        tour.publier(
+            {
+                "type": "gratuit_actif",
+                "payload": {
+                    "provider_public_name": mode_gratuit.lane.label_public,
+                    "retention_notice": (
+                        "Ce fournisseur gratuit peut conserver vos echanges et les "
+                        "utiliser pour entrainer ses modeles."
+                    ),
+                },
+            }
+        )
+
+    async def travail(publier: agent_tours.Publier) -> None:
+        deltas: dict[int, list[str]] = {}
         usage_capture: list[dict[str, Any]] = []
-
-        async def emit(event: dict[str, Any]) -> None:
-            if event.get("type") == "message_delta":
-                reponse_finale.append(event["payload"]["delta"])
-            elif event.get("type") == "done":
-                u = event.get("payload", {}).get("usage")
-                if isinstance(u, dict):
-                    usage_capture.append(u)
-            await queue.put(event)
-
+        # Retenus jusqu'a la persistance : un client qui voit `done` peut
+        # renvoyer aussitot, et il doit alors trouver le tour ecrit et libre.
+        terminaux: list[dict[str, Any]] = []
         # `boucle` ne leve PAS d'exception sur une erreur provider : elle emet
         # un evenement `error` puis retourne normalement. On surveille donc
         # l'emission pour poser le cooldown et traduire l'erreur en message
         # actionnable ; le except ci-dessous reste pour les vraies levées.
         reactions: list[agent_gratuit.Reaction] = []
+        issue = "annule"
 
-        async def emit_surveille(event: dict[str, Any]) -> None:
-            if mode_gratuit is not None and event.get("type") == "error":
+        async def emit(event: dict[str, Any]) -> None:
+            genre = event.get("type")
+            if genre == "message_delta":
+                charge = event["payload"]
+                deltas.setdefault(int(charge.get("tour") or 0), []).append(charge["delta"])
+            elif genre == "done":
+                u = event.get("payload", {}).get("usage")
+                if isinstance(u, dict):
+                    usage_capture.append(u)
+            elif genre == "error" and mode_gratuit is not None:
                 charge = event.get("payload", {})
                 statut = charge.get("statut")
                 reaction = agent_gratuit.reagir(
@@ -295,24 +350,31 @@ async def chat_agent(
                             else _MESSAGE_SURCHARGE_GRATUIT
                         },
                     }
-            await emit(event)
+            if genre in _TERMINAUX:
+                terminaux.append(event)
+            else:
+                publier(event)
 
-        async def runner() -> None:
+        async with async_session_maker() as db_tour:
             try:
+                utilisateur = await db_tour.get(User, creator_id)
+                if utilisateur is None:
+                    raise RuntimeError("Utilisateur introuvable pour ce tour.")
                 await boucle(
-                    db,
-                    current_user,
+                    db_tour,
+                    utilisateur,
                     provider,
                     messages,
-                    emit_surveille,
+                    emit,
                     approuver,
                     transport=transport,
-                    modele=body.model_override or session.model_override or None,
+                    modele=modele,
                     agent_def=agent_def,
                     ancre_tokens=ancre_tokens,
-                    session_id=session.id,
+                    session_id=session_id,
                     replis=replis,
                 )
+                issue = "complet"
                 if reactions and mode_gratuit is not None:
                     # Le repos le plus long l'emporte : si un tour a vu passer
                     # une cle refusee, l'oublier au profit d'un simple pic de
@@ -321,97 +383,141 @@ async def chat_agent(
                         r.cooldown_minutes for r in reactions if r.cooldown_minutes is not None
                     )
                     with contextlib.suppress(Exception):
-                        await agent_gratuit.signaler_echec(db, mode_gratuit.lane, minutes)
-            except Exception as exc:
+                        await agent_gratuit.signaler_echec(db_tour, mode_gratuit.lane, minutes)
+            except Exception as exc:  # noqa: BLE001  # le tour doit se clore et se dire
+                issue = "echec"
+                logger.exception("Tour de l'agent en echec sur la session %s", session_id)
                 # Une exception a traverse : le statut HTTP n'a pas survecu, il
                 # ne reste que le message. `reagir` refuse de mettre une lane au
                 # repos sur un texte qu'il ne reconnait pas, ce qui evite qu'un
                 # bug de Philum passe pour une panne du fournisseur.
                 reaction = agent_gratuit.reagir(None, str(exc))
                 if mode_gratuit is not None and reaction.cooldown_minutes is not None:
-                    # Best-effort : si la session DB est deja fermee (client
-                    # parti), tant pis, le cooldown ratera ce tour-ci.
                     with contextlib.suppress(Exception):
                         await agent_gratuit.signaler_echec(
-                            db, mode_gratuit.lane, reaction.cooldown_minutes
+                            db_tour, mode_gratuit.lane, reaction.cooldown_minutes
                         )
-                raise
-            finally:
-                await queue.put(None)
-
-        task = asyncio.create_task(runner())
-        yield _sse({"type": "session", "payload": {"id": str(session.id)}})
-        if mode_decouverte:
-            yield _sse(
-                {
-                    "type": "discovery_active",
-                    "payload": {
-                        "provider_public_name": nom_public_provider(),
-                        "retention_notice": "Ce provider peut utiliser vos echanges pour ameliorer son modele.",
-                    },
-                }
-            )
-        if mode_gratuit is not None:
-            yield _sse(
-                {
-                    "type": "gratuit_actif",
-                    "payload": {
-                        "provider_public_name": mode_gratuit.lane.label_public,
-                        "retention_notice": (
-                            "Ce fournisseur gratuit peut conserver vos echanges et les "
-                            "utiliser pour entrainer ses modeles."
-                        ),
-                    },
-                }
-            )
-        # Sans ce `finally`, un client qui ferme l'onglet laisse la boucle
-        # tourner jusqu'a 24 tours : elle continue de facturer le provider et
-        # d'ecrire via une session de base que FastAPI a deja fermee.
-        persiste = False
-        try:
-            while True:
-                event = await queue.get()
-                if event is None:
-                    break
-                yield _sse(event)
-            await task
-            usage = usage_capture[0] if usage_capture else None
-            # Session de base dédiée : pas la session FastAPI (`db`), qui peut
-            # être fermée quand l'utilisateur a quitté avant la fin du flux.
-            await _persister_tour(
-                current_user.id, session.id, messages[depart:], "".join(reponse_finale), usage
-            )
-            persiste = True
-            if mode_decouverte:
-                async with async_session_maker() as db_dedie:
-                    await consommer_message(db_dedie, current_user.id)
-        finally:
-            task.cancel()
-            if not persiste:
-                # Le client est parti en cours de tour. Les écritures d'outils,
-                # elles, sont déjà en base : sans ce rattrapage, la source que
-                # l'agent vient de créer existe mais ne figure nulle part dans
-                # la conversation, et le tour suivant la recréerait.
-                #
-                # Instantané avant tout ``await`` : la boucle annulée peut
-                # encore ajouter un message à sa prochaine reprise.
-                ajouts = _blocs_complets(messages[depart:])
-                # Bouclier obligatoire : on arrive ici par annulation, et tout
-                # `await` non protege releverait aussitot sans rien ecrire.
-                with anyio.CancelScope(shield=True), contextlib.suppress(Exception):
-                    await _persister_tour(
-                        current_user.id,
-                        session.id,
-                        ajouts,
-                        _texte_interrompu("".join(reponse_finale)),
-                        usage_capture[0] if usage_capture else None,
+                if not terminaux:
+                    terminaux.append(
+                        {
+                            "type": "error",
+                            "payload": {
+                                "message": "Erreur interne de l'agent. Le travail déjà fait est conservé."
+                            },
+                        }
                     )
+            finally:
+                # Instantané avant tout ``await`` : une boucle annulée peut
+                # encore ajouter un message à sa prochaine reprise.
+                ajouts = messages[depart:]
+                if issue != "complet":
+                    # Les écritures d'outils sont déjà en base : sans ce
+                    # rattrapage, la source que l'agent vient de créer existe
+                    # mais ne figure nulle part dans la conversation.
+                    ajouts = _blocs_complets(ajouts)
+                texte = _reponse_finale(deltas, ajouts)
+                if issue == "annule":
+                    texte = _texte_interrompu(texte)
+                    terminaux = [
+                        {
+                            "type": "error",
+                            "payload": {
+                                "message": "Tour arrêté. Le travail déjà fait est conservé."
+                            },
+                        }
+                    ]
+                usage = usage_capture[0] if usage_capture else None
+                # Bouclier obligatoire : on arrive ici aussi par annulation, et
+                # tout `await` non protégé relèverait aussitôt sans rien écrire.
+                with anyio.CancelScope(shield=True):
+                    try:
+                        await _persister_tour(creator_id, session_id, ajouts, texte, usage)
+                    except Exception:  # noqa: BLE001  # la fin du tour doit partir quand meme
+                        logger.exception("Persistance du tour impossible, session %s", session_id)
+                    if mode_decouverte and issue == "complet":
+                        with contextlib.suppress(Exception):
+                            async with async_session_maker() as db_dedie:
+                                await consommer_message(db_dedie, creator_id)
+                for event in terminaux:
+                    publier(event)
 
-    return StreamingResponse(
-        gen(),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    agent_tours.lancer(tour, travail)
+
+    async def gen():
+        yield _sse({"type": "session", "payload": {"id": str(session_id)}})
+        # Quitter ce générateur ne touche plus au tour : il continue sans le
+        # client, qui le rattrape par `GET /agent/sessions/{id}/flux`.
+        async for event in tour.suivre():
+            yield _sse(event)
+
+    return StreamingResponse(gen(), media_type="text/event-stream", headers=_ENTETES_SSE)
+
+
+@router.get("/sessions/{session_id}/flux")
+async def suivre_tour(
+    session_id: UUID,
+    depuis: int = 0,
+    current_user: User = Depends(get_current_user),
+):
+    """Reprend le flux d'un tour à partir de l'événement numéro `depuis`.
+
+    Un téléphone mis en veille, un proxy qui coupe au bout de cinq minutes : le
+    tour a continué, et le client redemande ce qu'il n'a pas reçu. 404 quand
+    aucun tour n'est rejouable : la conversation en base fait alors foi.
+    """
+    tour = agent_tours.obtenir(session_id, current_user.id)
+    if tour is None:
+        raise _aucun_tour()
+
+    async def gen():
+        async for event in tour.suivre(depuis):
+            yield _sse(event)
+
+    return StreamingResponse(gen(), media_type="text/event-stream", headers=_ENTETES_SSE)
+
+
+@router.post("/sessions/{session_id}/arreter", status_code=status.HTTP_204_NO_CONTENT)
+async def arreter_tour(session_id: UUID, current_user: User = Depends(get_current_user)):
+    """Arrête le tour en cours. Fermer la connexion ne l'arrête plus."""
+    if not agent_tours.arreter(session_id, current_user.id):
+        raise _aucun_tour()
+
+
+def _conflit_tour() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail={
+            "code": "tour_en_cours",
+            "message": "L'agent termine encore la réponse précédente. Elle s'affiche dès qu'elle est prête.",
+        },
     )
+
+
+def _aucun_tour() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail={"code": "aucun_tour", "message": "Aucun tour en cours sur cette conversation."},
+    )
+
+
+def _reponse_finale(deltas: dict[int, list[str]], ajouts: list[dict[str, Any]]) -> str:
+    """Le texte du dernier appel au modèle, et lui seul.
+
+    Tous les morceaux du tour étaient recollés : le plan écrit avant d'agir,
+    les phrases de transition entre deux outils, puis la conclusion. Le plan
+    annonçait des extraits qui n'ont jamais été posés, et se lisait comme le
+    bilan. Les textes intermédiaires sont déjà dans l'historique, portés par
+    les messages qui appellent les outils.
+    """
+    if not deltas:
+        return ""
+    texte = "".join(deltas[max(deltas)])
+    # Le dernier appel a pu demander des outils (tour coupé, pause) : son texte
+    # est alors déjà écrit avec eux, le reprendre le doublerait.
+    precedents = [m.get("content") or "" for m in ajouts if m.get("role") == "assistant"]
+    if precedents and precedents[-1].strip() == texte.strip():
+        return ""
+    return texte
 
 
 def _blocs_complets(ajouts: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -444,7 +550,7 @@ def _texte_interrompu(texte: str) -> str:
     """
     if not texte:
         return ""
-    return f"{texte}\n\n[Réponse interrompue : la connexion a été coupée avant la fin.]"
+    return f"{texte}\n\n[Réponse interrompue : le tour a été arrêté avant la fin.]"
 
 
 async def _persister_tour(

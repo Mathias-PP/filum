@@ -26,7 +26,7 @@ from app.schemas.agent_chat import (
     AgentSessionUpdate,
     AgentSessionUsage,
 )
-from app.services import agent_approvals, agent_sessions
+from app.services import agent_approvals, agent_sessions, agent_tours
 
 settings = get_settings()
 
@@ -65,12 +65,14 @@ async def lire_session(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        return await agent_sessions.obtenir(db, current_user.id, session_id)
+        session = await agent_sessions.obtenir(db, current_user.id, session_id)
     except agent_sessions.AgentSessionNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"code": "session_not_found", "message": str(exc)},
         ) from exc
+    lue = AgentSessionRead.model_validate(session)
+    return lue.model_copy(update={"tour_en_cours": agent_tours.en_cours(session.id)})
 
 
 @router.patch("/sessions/{session_id}", response_model=AgentSessionRead)
