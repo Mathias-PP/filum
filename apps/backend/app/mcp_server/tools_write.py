@@ -177,6 +177,80 @@ def _identite(url: str | None, doi: str | None) -> str | None:
     return None
 
 
+#: Mots qui ne disent rien du sujet d'un titre.
+_MOTS_VIDES = frozenset(
+    [
+        "les",
+        "des",
+        "une",
+        "pour",
+        "avec",
+        "sans",
+        "sur",
+        "dans",
+        "par",
+        "aux",
+        "est",
+        "sont",
+        "qui",
+        "que",
+        "quoi",
+        "comment",
+        "pourquoi",
+        "quel",
+        "quelle",
+        "quels",
+        "quelles",
+        "the",
+        "and",
+        "for",
+        "with",
+        "how",
+        "why",
+        "what",
+    ]
+)
+
+#: Part de mots significatifs partages au-dela de laquelle deux titres parlent
+#: du meme sujet. « Prévention de l'arthrose » et « Prévention de l'arthrose :
+#: stratégies scientifiques » partagent tous les mots du premier.
+_PART_TITRE_COMMUN = 0.6
+
+
+def _mots_du_titre(titre: str) -> set[str]:
+    import re
+    import unicodedata
+
+    sans_accents = unicodedata.normalize("NFKD", titre).encode("ascii", "ignore").decode().lower()
+    return {m for m in re.findall(r"[a-z0-9]+", sans_accents) if len(m) > 2} - _MOTS_VIDES
+
+
+async def _fiches_proches(db: AsyncSession, user: User, titre: str) -> list[BiblioCard]:
+    """Les fiches du createur dont le titre porte le meme sujet.
+
+    Mesure du 2026-09-13 : une seconde fiche « Prévention de l'arthrose :
+    stratégies scientifiques » creee trois minutes apres « Prévention de
+    l'arthrose », sans que l'agent ait cherche l'existant.
+    """
+    mots = _mots_du_titre(titre)
+    if len(mots) < 2:
+        return []
+    fiches = await db.scalars(
+        select(BiblioCard).where(BiblioCard.user_id == user.id, BiblioCard.deleted_at.is_(None))
+    )
+    proches = []
+    for fiche in fiches:
+        autres = _mots_du_titre(fiche.title or "")
+        if len(autres) < 2:
+            continue
+        communs = len(mots & autres)
+        if communs / min(len(mots), len(autres)) >= 1 or communs / len(mots | autres) >= (
+            _PART_TITRE_COMMUN
+        ):
+            proches.append(fiche)
+    return proches
+
+
 async def _identites_deja_citees(db: AsyncSession, card_id: UUID) -> set[str]:
     stmt = select(Source.url, Source.doi).where(
         Source.biblio_card_id == card_id, Source.deleted_at.is_(None)
@@ -288,8 +362,13 @@ async def create_card(
     platform: str | None = None,
     content_type: str | None = None,
     visibility: str = "public",
+    confirm_distinct: bool = False,
 ) -> dict[str, Any]:
     """Cree un brouillon. La publication est un geste distinct (`publish_card`).
+
+    Refuse un titre trop proche d'une fiche que le createur a deja, en la
+    nommant : completez-la plutot que d'en ouvrir une seconde. Passez
+    `confirm_distinct=true` seulement si c'est vraiment un autre angle.
 
     `card_kind` dit ce que la fiche documente, et c'est le premier choix a
     faire :
@@ -327,6 +406,13 @@ async def create_card(
     #: le doublon, et le MCP doit le refuser pareil.
     if await service.get_card_by_slug(user.username, payload.slug, published_only=False):
         raise ToolError(f"Une fiche {slug!r} existe deja chez {user.username}.")
+    if not confirm_distinct and (proches := await _fiches_proches(db, user, title)):
+        noms = ", ".join(f"« {c.title} » ({c.slug})" for c in proches)
+        raise ToolError(
+            f"Vous avez deja une fiche sur ce sujet : {noms}. Completez-la (add_source "
+            "sur son slug) plutot que d'en ouvrir une seconde. Si c'est vraiment un "
+            "autre angle, refaites l'appel avec confirm_distinct=true."
+        )
     try:
         card = await service.create_card(user.id, payload)
     except IntegrityError as exc:
@@ -372,9 +458,27 @@ async def _resoudre_metadonnees(
         champ: (getattr(metadonnees, champ, None) or None)
         for champ in metadonnees_source.CHAMPS_RESOLUS
     }
+    # Un titre que l'origine ne rend pas est garde tel que propose, et signale.
+    # Mesure du 2026-09-13 : un PDF de recommandations est reste sans titre, le
+    # resolveur n'ayant rien lu, alors que le modele l'avait donne juste.
+    declares: list[str] = []
+    titre_propose = (propose.get("title") or "").strip()
+    if not retenues.get("title") and titre_propose:
+        retenues["title"] = titre_propose
+        declares.append("title")
     signales = [
         {"champ": e.champ, "propose": e.propose, "retenu": e.retenu or ""}
         for e in metadonnees_source.ecarts(metadonnees, propose)
+        if e.champ not in declares
+    ]
+    signales += [
+        {
+            "champ": champ,
+            "propose": retenues[champ] or "",
+            "retenu": retenues[champ] or "",
+            "note": "declare, non resolu : l'origine n'a rien rendu, verifiez-le",
+        }
+        for champ in declares
     ]
     return retenues, signales
 
@@ -450,6 +554,19 @@ async def add_source(
     cle = _identite(url, doi)
     if cle and cle in await _identites_deja_citees(db, card.id):
         raise ToolError(f"Cette source figure deja dans {card_slug!r}.")
+    # Mesure du 2026-09-13 : une fiche « contenu » avait la page de l'OMS pour
+    # contenu documente, et cette meme page pour source. Une question n'est pas
+    # un contenu : c'etait une fiche sujet.
+    if (
+        cle
+        and card.card_kind == CardKind.CONTENU.value
+        and cle == _identite(card.content_url, None)
+    ):
+        raise ToolError(
+            "Cette adresse est le contenu que documente la fiche, pas une de ses "
+            "sources. Si la fiche repond a une question plutot qu'elle ne documente "
+            "un contenu precis, c'est une fiche sujet (card_kind='sujet')."
+        )
 
     # Apres le doublon, avant l'ecriture : inutile de joindre le reseau pour une
     # source deja citee, et hors de question d'ecrire une source introuvable.
