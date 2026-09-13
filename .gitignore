@@ -137,3 +137,5 @@ _pr_body.md
 # Artefacts de tests locaux
 test.db
 test.db-journal
+# Banc d'essai de l'agent (app/scripts/banc_agent.py) : base et resultats locaux.
+banc-resultats/

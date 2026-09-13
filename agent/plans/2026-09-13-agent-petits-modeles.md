@@ -202,8 +202,13 @@ Le modèle rédige seulement la phrase d'introduction et les limites.
 
 - Point 1 (mur de 5 minutes) : #657, déployé.
 - Points 2 et 3 (profil petit, résultats fenêtrés) : #658, déployé.
-- Point 5 (`suite`, plus de `null` muet) : #659. Les identifiants rappelés dans
-  le prompt restent à faire.
+- Point 5 (`suite`, plus de `null` muet) : #659, déployé.
+- Point 5.3 (fiche en cours et identifiants rappelés à chaque tour) : #661, déployé.
+- Point 4 (déroulé guidé d'une fiche sujet, déclenché automatiquement) : #660,
+  déployé.
+- Point 0 (banc d'essai) : `app/scripts/banc_agent.py`, à lancer depuis un poste
+  de développement avec une clé de modèle. Aucune mesure n'a encore été faite :
+  les effets des points ci-dessus restent à chiffrer.
 
 ## Déroulé guidé : ce qui existe déjà
 
