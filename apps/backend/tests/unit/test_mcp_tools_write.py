@@ -586,11 +586,11 @@ async def test_update_source_pose_stance_et_annotation(db_session, test_user, fi
         db_session,
         test_user,
         source_id=src["id"],
-        stance="appuie",
         annotation="Ce papier fige la mesure.",
         is_pivot=True,
     )
-    assert result["stance"] == "appuie"
+    # La position exige un extrait : voir test_hygiene_conversation.py.
+    assert result["stance"] is None
     assert result["annotation"] == "Ce papier fige la mesure."
     assert result["is_pivot"] is True
 
@@ -1111,7 +1111,9 @@ async def test_list_sources_refuse_non_proprietaire(
 
 @pytest.mark.asyncio
 async def test_search_my_excerpts_trouve_par_texte(db_session, test_user, fiche_brouillon):
-    src = await ajouter_source(db_session, test_user, card_slug="fiche-en-cours", url="https://a.org")
+    src = await ajouter_source(
+        db_session, test_user, card_slug="fiche-en-cours", url="https://a.org"
+    )
     await add_excerpt(
         db_session,
         test_user,
@@ -1127,7 +1129,9 @@ async def test_search_my_excerpts_trouve_par_texte(db_session, test_user, fiche_
 async def test_search_my_excerpts_isole_par_user(
     db_session, test_user, fiche_brouillon, autre_utilisateur
 ):
-    src = await ajouter_source(db_session, test_user, card_slug="fiche-en-cours", url="https://a.org")
+    src = await ajouter_source(
+        db_session, test_user, card_slug="fiche-en-cours", url="https://a.org"
+    )
     await add_excerpt(
         db_session,
         test_user,
@@ -1162,7 +1166,9 @@ async def test_delete_card_refuse_non_proprietaire(
 
 @pytest.mark.asyncio
 async def test_archive_sources_accepte_les_sources_du_user(db_session, test_user, fiche_brouillon):
-    src = await ajouter_source(db_session, test_user, card_slug="fiche-en-cours", url="https://a.org")
+    src = await ajouter_source(
+        db_session, test_user, card_slug="fiche-en-cours", url="https://a.org"
+    )
     result = await archive_sources(db_session, test_user, source_ids=[src["id"]])
     assert src["id"] in result["accepted"]
     assert result["refused"] == []
@@ -1172,7 +1178,9 @@ async def test_archive_sources_accepte_les_sources_du_user(db_session, test_user
 async def test_archive_sources_refuse_les_sources_d_autrui(
     db_session, test_user, fiche_brouillon, autre_utilisateur
 ):
-    src = await ajouter_source(db_session, test_user, card_slug="fiche-en-cours", url="https://a.org")
+    src = await ajouter_source(
+        db_session, test_user, card_slug="fiche-en-cours", url="https://a.org"
+    )
     result = await archive_sources(db_session, autre_utilisateur, source_ids=[src["id"]])
     assert result["accepted"] == []
     assert len(result["refused"]) == 1
@@ -1363,7 +1371,9 @@ async def test_add_source_stance_vide_vaut_silence(db_session, test_user, fiche_
 async def test_update_source_refuse_une_valeur_hors_vocabulaire(
     db_session, test_user, fiche_brouillon
 ):
-    src = await ajouter_source(db_session, test_user, card_slug="fiche-en-cours", url="https://a.org/u")
+    src = await ajouter_source(
+        db_session, test_user, card_slug="fiche-en-cours", url="https://a.org/u"
+    )
     with pytest.raises(ToolError, match="Valeurs acceptees"):
         await update_source(db_session, test_user, source_id=src["id"], stance="soutient")
 
@@ -1386,8 +1396,16 @@ async def test_add_sources_batch_rejette_dans_failed_sans_bloquer_le_lot(
         test_user,
         card_slug="fiche-en-cours",
         sources=[
-            {"metadata_from": "createur", "url": "https://a.org/ok", "stance": "soutient"},  # refuse
-            {"metadata_from": "createur", "url": "https://a.org/bon", "stance": "appuie"},  # accepte
+            {
+                "metadata_from": "createur",
+                "url": "https://a.org/ok",
+                "stance": "soutient",
+            },  # refuse
+            {
+                "metadata_from": "createur",
+                "url": "https://a.org/bon",
+                "stance": "appuie",
+            },  # accepte
         ],
     )
     assert [c["url"] for c in result["created"]] == ["https://a.org/bon"]

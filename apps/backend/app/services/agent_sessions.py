@@ -306,8 +306,12 @@ async def ajouter_message(
     tool_call_id: str | None = None,
     prompt_tokens: int | None = None,
     completion_tokens: int | None = None,
+    created_at: datetime | None = None,
 ) -> AgentMessage:
-    """Ajoute un message. Append-only : aucune mise à jour d'un message existant."""
+    """Ajoute un message. Append-only : aucune mise à jour d'un message existant.
+
+    `created_at` : l'heure où le message est apparu, quand il est écrit plus tard.
+    """
     message = AgentMessage(
         session_id=session.id,
         role=role,
@@ -318,6 +322,8 @@ async def ajouter_message(
         prompt_tokens=prompt_tokens,
         completion_tokens=completion_tokens,
     )
+    if created_at is not None:
+        message.created_at = created_at
     db.add(message)
     session.last_message_at = datetime.now(UTC).replace(tzinfo=None)
     await db.commit()
