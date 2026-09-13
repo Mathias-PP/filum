@@ -341,7 +341,7 @@
 
   // Bornage. Une fiche de 152 références affichées d'un coup ne montre rien :
   // les nœuds se touchent et les étiquettes se recouvrent. Le graphe s'ouvre
-  // sur une portion lisible et annonce ce qu'il garde en réserve — l'inverse
+  // sur une portion lisible et annonce ce qu'il garde en réserve : l'inverse
   // d'un masquage silencieux. Le plafond se règle : c'est au lecteur de dire
   // où passe, pour lui, la limite du lisible. `0` = aucun plafond.
   let sourceCap = $state<number>(GRAPH_SOURCE_CAP);
@@ -457,7 +457,7 @@
 
   // Légende des traits. Absente tant qu'aucune source n'a de rapport déclaré :
   // une légende qui explique une couleur invisible n'apprend rien et occupe la
-  // place sur les fiches — la majorité — qui n'annotent pas leur bibliographie.
+  // place sur les fiches, la majorité, qui n'annotent pas leur bibliographie.
   const stanceLegend = $derived.by(() => {
     const present = new Set(visibleSources.map((s) => s.stance).filter(Boolean));
     return STANCE_ORDER.filter((k) => present.has(k)).map((k) => ({
@@ -507,9 +507,9 @@
 
   // --- Recherche dans le graphe ---------------------------------------------
   //
-  // La recherche porte sur tout ce qui identifie une référence — titre, auteurs,
+  // La recherche porte sur tout ce qui identifie une référence : titre, auteurs,
   // revue, éditeur, DOI, URL, année, et les libellés lisibles du type d'auteur /
-  // format / catégorie — parce qu'on cherche avec le mot qu'on a en tête, pas
+  // format / catégorie, parce qu'on cherche avec le mot qu'on a en tête, pas
   // avec le champ où il est rangé.
   let query = $state('');
   /** `id de nœud -> texte cherchable`, reconstruit à chaque montage du graphe. */
@@ -564,7 +564,7 @@
    * Une fiche citée par une autre est aussi une référence du graphe : la
    * citation lui a donné un type d'auteur, un format et une catégorie. Rien
    * ne justifie alors de la peindre en ardoise à part, hors du code couleur
-   * commun — ce qui la désigne comme fiche est son anneau, pas son fond. La
+   * commun : ce qui la désigne comme fiche est son anneau, pas son fond. La
    * fiche consultée, elle, n'est citée par rien à l'écran : faute de
    * classification saisie, elle garde son indigo.
    */
@@ -798,7 +798,7 @@
    * Le chassis du graphe etait peint en nuances figees : `#ffffff` pour les
    * halos, `#0f172a` / `#475569` / `#64748b` pour les libelles. Ces valeurs
    * disent « blanc » et « presque noir » la ou le role est « la couleur du
-   * fond » et « la couleur du texte » — et un role, lui, s'inverse avec le
+   * fond » et « la couleur du texte », et un role, lui, s'inverse avec le
    * theme. En sombre les libelles devenaient invisibles et les halos des
    * taches claires.
    *
@@ -866,7 +866,7 @@
     // dépliées. Ce sont elles qui déterminent quelles autres fiches entrent
     // dans le graphe.
     // En « Cité par » (entrant), les sources sortantes de la racine ne sont
-    // pas la question — les afficher étale des nœuds éloignés qui n'ont rien
+    // pas la question : les afficher étale des nœuds éloignés qui n'ont rien
     // à voir avec les fiches citantes, et le graphe dézoome pour rien. Les
     // fiches dépliées ou épinglées, elles, gardent leurs sources : c'est un
     // acte explicite qui prime sur le filtre de sens.
@@ -878,7 +878,7 @@
     // et celles à un saut de l'une de ces ancres. Le sens de citation choisi
     // filtre le voisinage : en « Cite » on ne voit que les cibles sortantes,
     // en « Cité par » que les sources entrantes. Les épinglées passent dans
-    // les deux cas — les épingler est un geste explicite qu'on ne défait pas
+    // les deux cas : les épingler est un geste explicite qu'on ne défait pas
     // en changeant de mode.
     const anchorIds = new Set<string>([card.id, ...expandedCardIds, ...pinnedCardIds]);
     const visibleCardIds = new Set<string>(anchorIds);
@@ -1057,7 +1057,7 @@
   function ticked(svgRoot: SVGSVGElement, nodes: GraphNode[], links: GraphLink[]) {
     const svg = select(svgRoot);
 
-    // Pin only the junction at 60% — children are free but bound by a strong sibling link
+    // Pin only the junction at 60% : children are free but bound by a strong sibling link
     for (const fork of forks) {
       const jx = nodes.find((n) => n.id === fork.junctionId);
       if (!jx) continue;
@@ -1199,7 +1199,7 @@
     }
 
     // Filet de rupture : l'échelle s'interrompt ici. Sans ce signe, la colonne
-    // « sans date » se lit comme la première décennie de la frise — mesuré à
+    // « sans date » se lit comme la première décennie de la frise : mesuré à
     // l'usage sur une frise 1935-2021, où elle passait pour « 1940-1960 ».
     if (chrono.breakX !== null) {
       g.append('line')
@@ -1316,7 +1316,7 @@
 
     // Élagage de gauche à droite. Une graduation poussée hors cadre par la
     // navigation ne doit pas s'écraser contre le bord, et deux années trop
-    // proches se chevauchaient en une bouillie de chiffres — « 20202026 » là
+    // proches se chevauchaient en une bouillie de chiffres : « 20202026 » là
     // où la frise s'achevait sur l'année de la fiche. Mieux vaut une règle
     // moins graduée qu'une règle illisible.
     let lastRight = -Infinity;
@@ -1339,7 +1339,7 @@
    * Écarte les nœuds dont les étiquettes se recouvrent.
    *
    * `forceCollide` raisonne en cercles ; une étiquette est une boîte large et
-   * plate. Un rayon assez grand pour dégager « NIH — National Institute of
+   * plate. Un rayon assez grand pour dégager « NIH, National Institute of
    * Neurological… » aurait éparpillé tout le graphe. On déplace donc chaque
    * paire selon l'axe où le recouvrement est le moindre : deux étiquettes
    * larges se séparent verticalement, ce qui les empile au lieu de les
@@ -1423,7 +1423,7 @@
     // En frise, l'abscisse EST la date. Une simple force de rappel ne suffit
     // pas : le lien qui relie une source à la fiche qui la cite tire vers
     // l'autre bout de la frise, et l'équilibre se pose à côté de l'année. Le
-    // bandeau annonçait alors une date que le nœud démentait — Cajal, 1911, se
+    // bandeau annonçait alors une date que le nœud démentait : Cajal, 1911, se
     // posait sous 1950. Chaque nœud daté est donc rivé à son année ; seuls les
     // nœuds sans date (jonctions comprises) restent libres.
     if (chrono) {
@@ -1457,7 +1457,7 @@
     chronoBreakX = null;
 
     // Le graphe apparaît d'un bloc. Allumer les nœuds un à un laissait les
-    // liens — dessinés d'emblée — flotter entre des extrémités encore
+    // liens, dessinés d'emblée, flotter entre des extrémités encore
     // invisibles, et durait quinze secondes sur une fiche de 300 références.
     // Flèches de sens pour les arêtes fiche → fiche. Un marqueur SVG n'hérite
     // pas du stroke de son trait : on en déclare un par couleur de rapport.
@@ -1604,7 +1604,7 @@
 
     // Halo de la fiche consultée : un anneau plein, là où les fiches voisines
     // portent un anneau pointillé ou pâle. Redondant avec la couleur du fond,
-    // à dessein — la distinction doit tenir même en vision des couleurs réduite.
+    // à dessein : la distinction doit tenir même en vision des couleurs réduite.
     nodeG
       .filter((d) => d.id === cardId)
       .insert('circle', ':first-child')
@@ -1630,7 +1630,7 @@
     // celui de ses sources : il annonce ce que le clic révèle.
     // Au premier plan : la pastille est une commande, pas une décoration. Un
     // nœud voisin dessiné après elle la recouvrait, et l'action annoncée
-    // devenait injoignable là où le graphe est dense — c'est-à-dire là où
+    // devenait injoignable là où le graphe est dense, c'est-à-dire là où
     // déplier une fiche sert le plus.
     const expandableG = nodeG.filter((d) => !!d.expandable).raise();
     expandableG
@@ -1713,7 +1713,7 @@
     // Tant que chaque libellé vivait dans le groupe de son nœud, le nœud suivant
     // le recouvrait : « Corinne Purtill » se lisait « Corinne Purtill…ME », le
     // milieu du nom disparaissant sous une sphère voisine. Le halo blanc ne
-    // pouvait rien contre ça — il dégage la lettre du fond, pas d'un objet peint
+    // pouvait rien contre ça : il dégage la lettre du fond, pas d'un objet peint
     // par-dessus. Les séparer règle le cas quel que soit l'ordre des nœuds.
     const labelG = root
       .append('g')
@@ -1733,12 +1733,12 @@
       .attr('y', (d) => -(d.radius + 8))
       // Un cran au-dessus du nom d'auteur d'une source (11), et soumis à la
       // même densité : en taille fixe, l'étiquette de fiche restait à 12 pendant
-      // que celles des sources tombaient à 8 sur une grosse fiche — un écart de
+      // que celles des sources tombaient à 8 sur une grosse fiche : un écart de
       // moitié, là où le nœud de fiche n'a besoin que de se distinguer.
       .attr('font-size', 12 * labelScale)
       .attr('font-weight', 600)
       .attr('fill', jeton('--text-primary'))
-      // Halo blanc permanent — cf. `title-label` pour le pourquoi.
+      // Halo blanc permanent : cf. `title-label` pour le pourquoi.
       .style('paint-order', 'stroke')
       .attr('stroke', couleurDuFond())
       .attr('stroke-width', 3)
@@ -1802,7 +1802,7 @@
       // Halo blanc permanent : un libellé qui croise un lien devenait illisible,
       // le trait passant au milieu des lettres. `paint-order: stroke` dessine le
       // contour *sous* le remplissage, de sorte que le halo dégage la lettre
-      // sans l'épaissir — et sans réordonner le DOM, ce que `ticked` interdit
+      // sans l'épaissir, et sans réordonner le DOM, ce que `ticked` interdit
       // (sa liaison de données se fait par index).
       .style('paint-order', 'stroke')
       .attr('stroke', couleurDuFond())
@@ -1814,7 +1814,7 @@
     // Date sous chaque nœud, au même seuil de zoom que le nom d'auteur : situer
     // une référence dans le temps compte autant que savoir qui l'a écrite, et
     // en mode réseau c'est la seule façon de le lire. « s. d. » quand la date
-    // est inconnue — une place vide se confondrait avec un défaut d'affichage.
+    // est inconnue : une place vide se confondrait avec un défaut d'affichage.
     labelG
       .filter((d) => d.kind !== 'junction')
       .append('text')
@@ -1906,7 +1906,7 @@
       // hauteur, et perdait la moitié de la largeur en marges vides. Rapprocher
       // la nuée d'une ellipse de même aspect que le cadre laisse le zoom monter
       // d'autant, ce qui écarte les nœuds à l'écran sans les écarter dans la
-      // simulation — et sans rapetisser le texte, contrairement à un simple
+      // simulation, et sans rapetisser le texte, contrairement à un simple
       // allongement des liens.
       .force(
         'flatten',
@@ -1957,7 +1957,7 @@
     // Dégagement final des étiquettes, une fois la simulation froide.
     //
     // Pendant le refroidissement la séparation s'efface avec alpha, comme
-    // toute autre force — sans quoi elle continuerait de pousser un graphe déjà
+    // toute autre force, sans quoi elle continuerait de pousser un graphe déjà
     // arrêté et, en frise, éloignerait les nœuds de leur date. Elle s'achève
     // donc ici, seule, quand plus aucune force ne la contredit : c'est là
     // qu'elle peut résoudre les derniers recouvrements sans rien déranger.
@@ -2111,7 +2111,7 @@
 
     // Le voisinage arrive après coup : on ne remonte le graphe que s'il révèle
     // quelque chose de neuf, pour ne pas réanimer pour rien. Les auteurs de la
-    // racine en font partie — les étiquettes sont posées impérativement par d3,
+    // racine en font partie : les étiquettes sont posées impérativement par d3,
     // sans remontage le nœud garderait le nom de son créateur.
     // En compact, pas de voisinage : il n'est pas affiché, et le graphe se
     // remonte à chaque action de l'agent, ce qui referait l'appel à chaque fois.
@@ -2141,7 +2141,7 @@
 
   // Les halos du SVG sont peints une fois, avec la valeur lue au dessin. Sans
   // ce redessin, basculer le thème laisserait des halos clairs sur fond sombre
-  // jusqu'au prochain remontage — c'est-à-dire, en pratique, jamais.
+  // jusqu'au prochain remontage, c'est-à-dire, en pratique, jamais.
   $effect(() => {
     $theme;
     if (!svgEl) return;
@@ -2486,7 +2486,7 @@
       Replié par défaut, à la différence des autres réglages : c'est le seul
       qui déploie une rangée entière de commandes, et il ne sert qu'une fois.
       Le chiffre reste inscrit sur le bouton, donc l'état courant se lit sans
-      déplier — et le bouton lui-même dit que le réglage existe.
+      déplier, et le bouton lui-même dit que le réglage existe.
     -->
         {#if totalSources > 1}
           <div class="flex flex-col items-start gap-1.5">

@@ -7,7 +7,7 @@ import type { RequestHandler } from './$types';
  *
  * Adresse devinable au meme titre que le `.md`. Reachable soit directement,
  * soit via l'URL canonique quand un client envoie `Accept:
- * application/vnd.philum+json` — la reecriture est dans hooks.server.ts.
+ * application/vnd.philum+json` : la reecriture est dans hooks.server.ts.
  */
 export const GET: RequestHandler = async ({ fetch, params }) => {
   const res = await fetch(`/api/v1/@${params.creator}/${params.card}/export?format=philum`);

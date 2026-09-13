@@ -1,14 +1,14 @@
 /**
  * Premier test de composant du projet.
  *
- * Le backlog portait « Test composant Svelte 5 incompat — à réécrire avec API
+ * Le backlog portait « Test composant Svelte 5 incompat : à réécrire avec API
  * testing-library compatible Svelte 5 ». Vérifié le 2026-08-07 : il n'y avait
  * plus aucun test de composant à réécrire, seulement `@testing-library/svelte`
  * installé et jamais appelé. L'absence se lisait comme une incompatibilité.
  *
  * Ce test prouve que la chaîne fonctionne, et verrouille au passage #317 :
  * `impact_factor`, `subscribers_count` et `views_count` n'ont jamais été
- * renseignés par du code de production — seul le seed de démo leur donnait une
+ * renseignés par du code de production : seul le seed de démo leur donnait une
  * valeur, en dur. Les réafficher remettrait un chiffre sans provenance sur une
  * fiche qui promet la traçabilité.
  */

@@ -2,7 +2,7 @@
   interface Step {
     label: string;
     description?: string;
-    /** Rend l'étape cliquable (cercle + texte) — nécessite onStepClick. */
+    /** Rend l'étape cliquable (cercle + texte) : nécessite onStepClick. */
     clickable?: boolean;
   }
 

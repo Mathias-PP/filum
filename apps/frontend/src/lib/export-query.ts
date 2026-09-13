@@ -2,7 +2,7 @@
  *
  * Séparé du composant parce que c'est la seule partie qui peut se tromper
  * silencieusement : une virgule oubliée, un degré mal numéroté, et le fichier
- * téléchargé n'est pas celui qu'on a demandé — sans rien qui le signale.
+ * téléchargé n'est pas celui qu'on a demandé, sans rien qui le signale.
  *
  * La grammaire est celle du backend (`app/services/export_scope.py` et
  * `export_neighbourhood.py`). Deux règles s'y jouent :
@@ -82,7 +82,7 @@ export interface ExportRequest {
    * ris et csl la portent dans un champ note (`annote`, `N1`, `note`). */
   style?: string;
   scope: Scope;
-  /** Les fiches que celle-ci cite — un périmètre par degré, dans l'ordre. */
+  /** Les fiches que celle-ci cite : un périmètre par degré, dans l'ordre. */
   cited: Scope[];
   /** Les fiches qui citent celle-ci. */
   citing: Scope[];

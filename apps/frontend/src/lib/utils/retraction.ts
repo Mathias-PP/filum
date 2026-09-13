@@ -19,7 +19,7 @@ export interface RetractionBadge {
  *
  * Les trois avis portent un fond colore, clair dans les deux themes : la
  * nuance y est figee a raison, elle ne s'inverse pas. Les deux non-avis sont
- * du texte nu pose sur la surface de la page, donc des jetons — `text-neutral-*`
+ * du texte nu pose sur la surface de la page, donc des jetons : `text-neutral-*`
  * y laissait la lisibilite dependre du theme.
  *
  * Les deux non-avis partagent le meme jeton : `ink-placeholder` mesurait 2,17:1

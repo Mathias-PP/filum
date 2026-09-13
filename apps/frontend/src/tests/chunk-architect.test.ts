@@ -2,7 +2,7 @@
  * Le découpage manuel manipule des bornes dans un texte que la personne a
  * collé. Le risque propre à cet écran n'est pas le plantage : c'est qu'un
  * déplacement de borne fasse apparaître à l'écran un texte qui n'est pas
- * celui de la source — un mot avalé, une phrase dupliquée. Un extrait cité
+ * celui de la source : un mot avalé, une phrase dupliquée. Un extrait cité
  * sur une fiche Philum se lit comme du verbatim ; il doit en être.
  *
  * D'où l'invariant tenu ici : après n'importe quelle suite de « couper »,
@@ -146,7 +146,7 @@ describe('ChunkArchitect', () => {
 
   it('un morceau déjà ajouté ne peut pas l’être une seconde fois', async () => {
     // Vérifié au navigateur : le morceau ajouté était fusionné avec son
-    // voisin, donc son texte restait affiché — et un second clic sur
+    // voisin, donc son texte restait affiché, et un second clic sur
     // « Ajouter » produisait un extrait qui chevauchait le premier. Deux
     // extraits qui se recouvrent se lisent sur la fiche comme deux passages
     // distincts de la source.
@@ -174,7 +174,7 @@ describe('ChunkArchitect', () => {
 
   it('remonte de quoi retrouver le passage dans une page qui aura bougé', async () => {
     // Un extrait qui ne porte que son texte cesse d'être retrouvable dès que
-    // la source corrige une coquille — et se lit alors comme une citation
+    // la source corrige une coquille, et se lit alors comme une citation
     // inventée. Le voisinage relevé ici est ce qui l'en préserve.
     let ancrage: { prefix: string; suffix: string; offset: number } | null = null;
     render(ChunkArchitect, {
@@ -216,8 +216,8 @@ describe('ChunkArchitect', () => {
   //
   // Un chapitre ne se colle pas. Le risque propre à ce chemin n'est pas
   // l'erreur visible : c'est le texte extrait qui n'atterrirait pas dans le
-  // champ de collage. Tout l'aval — redécouper, changer d'unité, relire les
-  // extraits — travaille dessus ; sans lui, le premier réglage modifié
+  // champ de collage. Tout l'aval (redécouper, changer d'unité, relire les
+  // extraits) travaille dessus ; sans lui, le premier réglage modifié
   // redemanderait le fichier, sans que rien ne dise pourquoi.
 
   function deposer(vue: { container: HTMLElement }, nom: string) {

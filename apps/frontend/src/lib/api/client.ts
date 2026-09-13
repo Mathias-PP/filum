@@ -359,7 +359,7 @@ export const api = {
      * d'aujourd'hui.
      *
      * Les quatre états ne se replient pas l'un sur l'autre : `unreadable` dit
-     * que la page n'a rendu aucun texte — on ne sait pas — là où `missing` dit
+     * que la page n'a rendu aucun texte, on ne sait pas, là où `missing` dit
      * que le passage n'y est pas. Les confondre ferait passer une source
      * inaccessible pour une citation inventée.
      */
@@ -374,7 +374,7 @@ export const api = {
      * Propose un intitulé et une phrase de mise en situation pour un passage.
      *
      * Ne persiste rien : la réponse remplit des champs que l'auteur·ice relit,
-     * corrige ou vide. `surrounding` est le texte d'où vient le passage —
+     * corrige ou vide. `surrounding` est le texte d'où vient le passage :
      * sans lui un modèle ne peut que le paraphraser, alors que tout l'objet
      * de la mise en situation est de dire ce que le passage suppose connu.
      */
@@ -412,7 +412,7 @@ export const api = {
     /**
      * Découpe le texte d'une source en extraits proposables.
      *
-     * Sans `text`, le serveur tente de lire la page — mesuré le 2026-08-08 :
+     * Sans `text`, le serveur tente de lire la page. Mesuré le 2026-08-08 :
      * cinq URLs sur dix n'en rendent rien. Avec `text`, rien ne dépend du site,
      * ce qui est le seul chemin qui marche derrière un anti-crawler.
      */
