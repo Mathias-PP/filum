@@ -8,7 +8,7 @@
  *
  * Le seul classement admis est celui que la créatrice ou le créateur a
  * lui-même déclaré : les sources marquées « clé » passent devant. Pour tout le
- * reste, l'ordre est celui de la fiche — décider laquelle des références de
+ * reste, l'ordre est celui de la fiche : décider laquelle des références de
  * quelqu'un d'autre « compte » supposerait un jugement que Philum n'a pas à
  * porter.
  */
@@ -37,7 +37,7 @@ export interface CapResult<T> {
 }
 
 /**
- * Garde `cap` références — les sources clés d'abord, puis l'ordre de la fiche —
+ * Garde `cap` références (les sources clés d'abord, puis l'ordre de la fiche)
  * plus les parents dont elles dépendent.
  *
  * Sans cette remontée, une source secondaire retenue verrait son parent
@@ -94,7 +94,7 @@ function withAncestors<T extends Capable>(sources: T[], selected: T[]): T[] {
  *
  * Le filtre s'appuie sur la seule marque que la créatrice ou le créateur a
  * posée : rien n'est deviné. Une liste sans aucune marque est rendue telle
- * quelle — filtrer sur un critère absent viderait le graphe au lieu de le
+ * quelle : filtrer sur un critère absent viderait le graphe au lieu de le
  * resserrer.
  */
 export function keySourcesOnly<T extends Capable>(sources: T[]): T[] {

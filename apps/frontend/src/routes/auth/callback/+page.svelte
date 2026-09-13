@@ -18,7 +18,7 @@
     }
 
     // The backend already set the session cookie and redirected here
-    // — check /auth/me to hydrate the store and redirect to dashboard
+    // - check /auth/me to hydrate the store and redirect to dashboard
     try {
       const user = await api.auth.me();
       if (user) {

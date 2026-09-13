@@ -3,7 +3,7 @@
  *
  * Une citation affichée nue demande de croire sur parole. Philum relit chaque
  * extrait dans la source ; encore faut-il que le résultat parvienne à celui qui
- * en a besoin. Quatre verdicts, plus l'absence de verdict — et cette absence est
+ * en a besoin. Quatre verdicts, plus l'absence de verdict, et cette absence est
  * la plus importante des cinq : sans elle, une citation jamais vérifiée se lit
  * exactement comme une citation vérifiée.
  *

@@ -6,12 +6,12 @@ import type { RequestHandler } from './$types';
  *
  * Un agent conversationnel a qui on donne `/@createur/fiche` recupere du HTML :
  * il doit en extraire la bibliographie, et c'est la qu'il invente. Suffixer
- * `.md` lui rend le meme contenu deja structure — titres, liste de sources,
- * DOI, rétractations, archives — sans qu'il ait a deviner un schema d'API.
+ * `.md` lui rend le meme contenu deja structure : titres, liste de sources,
+ * DOI, rétractations, archives, sans qu'il ait a deviner un schema d'API.
  *
  * Le corps vient de l'export markdown du backend : une seule serialisation,
  * donc aucune divergence possible entre ce qu'on telecharge et ce qu'on lit.
- * Seule difference, l'entete — un export se telecharge, cette adresse se lit
+ * Seule difference, l'entete : un export se telecharge, cette adresse se lit
  * sur place, d'ou l'absence de `content-disposition: attachment`.
  */
 export const GET: RequestHandler = async ({ fetch, params }) => {

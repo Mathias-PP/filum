@@ -1,7 +1,7 @@
 /**
  * Un jeton de texte n'est pas lisible dans l'absolu : il l'est *contre une
  * surface*. `--text-tertiary` avait ete regle a #757575 parce qu'il donnait
- * 4,61:1 — sur blanc pur. Mesure au navigateur le 2026-08-08 : la meme nuance
+ * 4,61:1, sur blanc pur. Mesure au navigateur le 2026-08-08 : la meme nuance
  * tombait a **4,41:1** des qu'elle etait posee sur `--bg-secondary`, qui est la
  * surface la plus courante de l'application. Un seuil qui ne tient que sur le
  * fond le plus favorable ne tient pas.

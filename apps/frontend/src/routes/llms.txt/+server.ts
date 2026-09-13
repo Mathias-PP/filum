@@ -5,7 +5,7 @@ import type { RequestHandler } from './$types';
  *
  * Aucun grand acteur (OpenAI, Google, Anthropic, Meta, Mistral) ne s'engage a
  * lire llms.txt ; leurs robots explorent le HTML. Ce fichier ne remplace donc
- * ni le rendu serveur, ni le JSON-LD, ni le sitemap — il coute vingt lignes et
+ * ni le rendu serveur, ni le JSON-LD, ni le sitemap : il coute vingt lignes et
  * dit a un agent curieux ou sont les portes d'entree machine.
  */
 /** Le serveur MCP est monte sur l'hote de l'API, pas derriere le proxy /api du
@@ -34,13 +34,13 @@ complete dans \`citation[]\`.
 
 ## Acces machine
 
-- Fiche en markdown: \`GET ${o}/@<createur>/<fiche>.md\` — la meme fiche, deja
+- Fiche en markdown: \`GET ${o}/@<createur>/<fiche>.md\` : la meme fiche, deja
   structuree (sources, DOI, statut de retractation, archives). C'est la porte
   d'entree la plus simple : suffixez \`.md\` a n'importe quelle adresse de fiche.
-- Alternative sans \`@\`: \`GET ${o}/c/<createur>/<fiche>.md\` — meme contenu, meme
+- Alternative sans \`@\`: \`GET ${o}/c/<createur>/<fiche>.md\` : meme contenu, meme
   format. Reservee aux agents qui traitent \`@\` comme le separateur \`user@host\`
   de la RFC 3986 et refusent de fetcher l'URL canonique.
-- Fiche en JSON-LD Philum: \`GET ${o}/@<createur>/<fiche>.philum.json\` — la meme
+- Fiche en JSON-LD Philum: \`GET ${o}/@<createur>/<fiche>.philum.json\` : la meme
   fiche en \`application/vnd.philum+json\`, contenant schema.org Article + les
   champs Philum (stance, retraction, archive) que l'export \`.md\` ne peut pas
   rendre. C'est le format le plus riche pour un agent : chaque source y
@@ -49,21 +49,21 @@ complete dans \`citation[]\`.
 - Content negotiation: envoyer \`Accept: text/markdown\` ou
   \`Accept: application/vnd.philum+json\` sur l'URL canonique
   \`${o}/@<createur>/<fiche>\` renvoie directement le format demande.
-- Feed JSON: \`GET ${o}/api/v1/feed?limit=&before=\` — pagination par curseur
+- Feed JSON: \`GET ${o}/api/v1/feed?limit=&before=\` : pagination par curseur
   (\`before\` = ISO timestamp de la derniere entree vue). Un agent qui veut
   suivre les publications recentes de Philum devrait interroger cet endpoint,
   jamais scraper la page \`/feed\`.
 - Recherche de createurs: \`GET ${o}/api/v1/discover/creators?q=&limit=&offset=\`
-- Recherche JSON: \`GET ${o}/api/v1/discover?q=<termes>\` — sans authentification
+- Recherche JSON: \`GET ${o}/api/v1/discover?q=<termes>\`, sans authentification
 - Facettes: \`GET ${o}/api/v1/discover/facets\`
 - Fiche: \`GET ${o}/api/v1/@<createur>/<fiche>\`
 - Bibliographie exportable: \`GET ${o}/api/v1/@<createur>/<fiche>/export?format=<json|philum|md|pdf|csv|xlsx|docx|bibtex|ris|csl|apa|mla|chicago>\`
-  — \`&include=\` choisit ce que l'export emporte (extraits, fiabilite, annotations,
+  \`&include=\` choisit ce que l'export emporte (extraits, fiabilite, annotations,
   archives), \`&cited=\`/\`&citing=\` y ajoutent les fiches voisines par degre. Aucun
   format ne perd d'information qu'il pourrait porter : le tableur rend les extraits
   et les voisines en feuilles separees, le document Word les rend en sections.
 - Schema complet: [OpenAPI](${o}/api/v1/openapi.json)
-- Serveur MCP (lecture seule, sans authentification): \`${MCP_URL}\` — \`get_source\`
+- Serveur MCP (lecture seule, sans authentification): \`${MCP_URL}\` : \`get_source\`
   y rend le verbatim de chaque extrait avec sa mise en situation, le statut de
   retractation, l'acces ouvert et la relation declaree a la source.
 

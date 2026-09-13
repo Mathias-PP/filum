@@ -6,7 +6,7 @@ import type { RequestHandler } from './$types';
  *
  * Cette entree existe pour les agents qui refusent de fetcher une URL
  * contenant « @ ». Le 301 est cachable et transmet « Bing / Google /
- * Bingbot » a l'adresse canonique — voir aussi `[card].md/+server.ts`
+ * Bingbot » a l'adresse canonique : voir aussi `[card].md/+server.ts`
  * qui, lui, sert le contenu directement sans redirection (les crawlers
  * d'IA ne suivent pas tous les redirections HTML).
  */

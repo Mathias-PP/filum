@@ -134,11 +134,11 @@
 
 @layer utilities {
   :root {
-    /* Design system tokens (RGB triples — use rgb(var(--token) / alpha)) */
+    /* Design system tokens (RGB triples : use rgb(var(--token) / alpha)) */
     /* Ne jamais nommer un jeton `--color-*` ici : depuis Tailwind v4,
        `--color-*` est l'espace de noms du theme, et une declaration de ce nom
        dans `:root` ecrase la variable generee par `@theme`. Six alias hérités
-       le faisaient — `--color-border: var(--border)` rendait un triplet nu,
+       le faisaient : `--color-border: var(--border)` rendait un triplet nu,
        invalide comme couleur, si bien que `border-border` retombait sur
        `currentColor` : les contours de carte viraient au noir du texte. */
     --bg-primary: 255 255 255;
@@ -193,13 +193,13 @@
   }
 
   .dark {
-    --bg-primary: 26 26 30; /* #1A1A1E — surface card */
-    --bg-secondary: 20 20 26; /* #14141A — body (lightened from #0F0F11) */
-    --bg-tertiary: 37 37 41; /* #252529 — hover/panel */
-    --bg-surface-secondary: 26 26 36; /* #1A1A24 — alternate surface */
+    --bg-primary: 26 26 30; /* #1A1A1E : surface card */
+    --bg-secondary: 20 20 26; /* #14141A : body (lightened from #0F0F11) */
+    --bg-tertiary: 37 37 41; /* #252529 : hover/panel */
+    --bg-surface-secondary: 26 26 36; /* #1A1A24 : alternate surface */
     --text-primary: 245 245 245; /* #F5F5F5 (lightened from #EDEDED) */
     --text-secondary: 156 163 175; /* #9CA3AF */
-    --text-tertiary: 139 146 161; /* #8B92A1 — 5,52:1, l'ancien #6B7280 tombait à 3,57:1 */
+    --text-tertiary: 139 146 161; /* #8B92A1 : 5,52:1, l'ancien #6B7280 tombait à 3,57:1 */
     --text-placeholder: 82 88 100; /* plus discret que le texte d'aide */
     --border: 45 45 50; /* #2D2D32 */
     --border-strong: 61 61 66; /* #3D3D42 */
@@ -370,7 +370,7 @@
   }
 }
 
-/* CTA section — dark navy bg in both modes, white text */
+/* CTA section : dark navy bg in both modes, white text */
 .cta-section {
   background: #1a2a4a;
   color: white;

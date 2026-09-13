@@ -4,7 +4,7 @@
   Trois chemins y mènent, parce que ce sont trois gestes distincts : coller un
   passage qu'on a déjà isolé, verser un texte long et le découper, ou laisser
   un modèle proposer. Les deux premiers ne dépendent d'aucun serveur tiers ni
-  d'aucun modèle — mesure du 2026-08-08 : cinq URLs sur dix ne rendent aucun
+  d'aucun modèle. Mesure du 2026-08-08 : cinq URLs sur dix ne rendent aucun
   texte exploitable, et un modèle peut toujours manquer sur un déploiement.
 
   L'intitulé et la mise en situation se lisent hors des guillemets. Ils ne
@@ -14,7 +14,7 @@
   « Relire la source » relit la page telle qu'elle est aujourd'hui et cherche
   chaque citation. Les quatre verdicts restent distincts jusqu'à l'affichage :
   « illisible » n'est pas « introuvable ». Les confondre ferait passer une
-  source inaccessible pour une citation inventée — l'accusation que Philum ne
+  source inaccessible pour une citation inventée : l'accusation que Philum ne
   doit jamais porter à tort.
 -->
 <script lang="ts">
@@ -102,7 +102,7 @@
   /**
    * `ancrage` n'existe que pour un passage repéré dans le texte de la page.
    * Une saisie à la main n'en a pas : le serveur enregistre alors une citation
-   * sans ancrage, ce qui se lit comme non vérifiable — et non comme fausse.
+   * sans ancrage, ce qui se lit comme non vérifiable, et non comme fausse.
    */
   async function ajouter(
     contenu: string,
@@ -236,7 +236,7 @@
     <div class="flex items-center gap-1">
       <!--
         `secondary` et non `ghost` : en ghost, ces deux actions se lisaient
-        comme du texte de navigation, pas comme des boutons — verifie au
+        comme du texte de navigation, pas comme des boutons : verifie au
         navigateur.
       -->
       <Button
@@ -351,7 +351,7 @@
               {:else}
                 <!--
                 À défaut de relecture dans cette session, ce que le lecteur voit
-                sur la fiche publique — y compris « Jamais relu ». Sans cela
+                sur la fiche publique, y compris « Jamais relu ». Sans cela
                 l'auteur·ice ignorerait ce que sa fiche affirme en son nom.
               -->
                 {@const p = lireVerdict(excerpt)}

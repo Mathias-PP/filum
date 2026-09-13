@@ -32,7 +32,7 @@ function makeSource(overrides: Partial<Source> = {}): Source {
   };
 }
 
-describe('compareCell — une cellule sans valeur dit pourquoi', () => {
+describe('compareCell : une cellule sans valeur dit pourquoi', () => {
   it('ne rend jamais une étiquette vide, quelle que soit la colonne', () => {
     // Le défaut de SciSpace est un `N/A` indifférencié ; le nôtre serait une
     // case blanche, qui se lirait comme un défaut d'affichage.

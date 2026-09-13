@@ -4,7 +4,7 @@
    *
    * Pendant du `SourceDetailPanel` : mêmes règles de placement et de fermeture,
    * pour qu'un clic sur une fiche et un clic sur une source se répondent. Le
-   * contenu diffère parce qu'une fiche se lit autrement qu'une source — ses
+   * contenu diffère parce qu'une fiche se lit autrement qu'une source : ses
    * auteurs sont ceux du contenu documenté, son créateur Philum est une
    * information distincte, et son intérêt tient au nombre de sources qu'elle
    * porte.
@@ -12,7 +12,7 @@
   export interface CardPanelInfo {
     id: string;
     title: string;
-    /** Auteurs du contenu documenté — jamais le créateur de la fiche. */
+    /** Auteurs du contenu documenté, jamais le créateur de la fiche. */
     authors: string | null;
     creatorName: string | null;
     creatorSlug: string;

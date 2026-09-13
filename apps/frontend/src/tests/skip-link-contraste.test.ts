@@ -6,7 +6,7 @@
  *
  * Mesure du 2026-08-08 en mode sombre sur la fiche de demo : `color: white`
  * sur `background: rgb(var(--text-primary))` rendait blanc sur #F5F5F5, soit
- * **1,09:1**. En mode clair la meme regle donnait 17:1 — le defaut ne pouvait
+ * **1,09:1**. En mode clair la meme regle donnait 17:1 ; le defaut ne pouvait
  * apparaitre que dans un theme, et seulement au focus clavier.
  *
  * La regle tenue ici : les deux couleurs viennent de jetons qui s'inversent

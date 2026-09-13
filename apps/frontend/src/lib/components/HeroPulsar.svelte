@@ -63,7 +63,7 @@
   let webglReady = $state(false);
   let fallbackForced = $state(false);
 
-  // Tuned defaults — validated in the sandbox.
+  // Tuned defaults : validated in the sandbox.
   const BLOOM_STRENGTH = 0.3;
   const PULSE_SPEED = 0.25;
   const ORBIT_SPEED = 0.12;
@@ -85,7 +85,7 @@
   const FORK_TWIN_A_COLOR_IDX = 3;
   const FORK_TWIN_B_COLOR_IDX = 4;
 
-  // Palette tunée — chroma poussée, jamais fluo. Inspiration data-viz 2026
+  // Palette tunée : chroma poussée, jamais fluo. Inspiration data-viz 2026
   // (Linear / Vercel / OpenAI) : couleurs matérielles, contours nets.
   const NODE_COLORS: [number, number, number][] = [
     [0.32, 0.56, 1.0], // electric cobalt
@@ -104,7 +104,7 @@
     return [v[0] / m, v[1] / m, v[2] / m];
   })();
 
-  // VIRTUAL FORK BASE — point M qui orbite le pulsar mais n'est jamais rendu
+  // VIRTUAL FORK BASE : point M qui orbite le pulsar mais n'est jamais rendu
   // comme nœud. L'axe pulsar↔M sert d'axe de rotation pour les deux twins.
   const VIRTUAL_FORK = {
     baseAngle: 1.3,
@@ -149,7 +149,7 @@
     // Trails orbitaux : 8 nœuds × 6 history points = 48 entries (ordre natif).
     uniform vec4 uTrails[48];
     uniform vec3 uTrailColors[8];
-    // Identité (colorIdx) du nœud occupant chaque slot trié — sert à dériver
+    // Identité (colorIdx) du nœud occupant chaque slot trié : sert à dériver
     // biome et seed de manière STABLE indépendamment du tri back-to-front.
     uniform float uNodeIdx[8];
     // Ancre par slot trié : (x, y, z, r). Z permet le test d'occlusion 3D
@@ -723,7 +723,7 @@
     let cancelled = false;
     let dispose: (() => void) | undefined;
 
-    // Lazy import OGL — keeps the chunk off the initial bundle of every other route.
+    // Lazy import OGL : keeps the chunk off the initial bundle of every other route.
     import('ogl')
       .then(({ Renderer, Program, Mesh, Triangle, Vec2, Vec3 }) => {
         if (cancelled || !canvasEl || !wrapEl) return;
@@ -740,7 +740,7 @@
 
         const geometry = new Triangle(gl);
 
-        // OGL detects array uniforms via Array.isArray() — plain Array required.
+        // OGL detects array uniforms via Array.isArray() : plain Array required.
         const nodesArr: number[][] = Array.from({ length: 8 }, () => [0, 0, 0, 0.05]);
         const colorsArr: number[][] = Array.from({ length: 8 }, (_, i) => {
           const c = NODE_COLORS[i % NODE_COLORS.length];
@@ -1342,7 +1342,7 @@
           rafId = requestAnimationFrame(loop);
         }
 
-        // First frame — set webglReady so the fallback SVG fades out.
+        // First frame : set webglReady so the fallback SVG fades out.
         loop(performance.now());
         webglReady = true;
 
@@ -1372,7 +1372,7 @@
 <div class="hero-pulsar" bind:this={wrapEl}>
   <!-- SVG fallback: renders on first paint so LCP isn't blocked by the WebGL
        module download. Fades out once the canvas has its first frame.
-       Transparent background — relies on the host's bg to show through. -->
+       Transparent background : relies on the host's bg to show through. -->
   <svg
     viewBox="0 0 480 420"
     preserveAspectRatio="xMidYMid slice"
@@ -1429,7 +1429,7 @@
 </div>
 
 <style>
-  /* Wrapper is fully transparent — width/height/aspect controlled by parent.
+  /* Wrapper is fully transparent : width/height/aspect controlled by parent.
      No background, no border: the WebGL canvas fades to transparent at the
      edges (premultiplied alpha) and the host's section background shows
      through, so the visual integrates seamlessly with the page. */

@@ -2,7 +2,7 @@
   Découper soi-même le texte d'une source en extraits citables.
 
   Mesure du 2026-08-08, sur dix URLs dont les quatre personas de l'audit :
-  cinq ne rendent aucun texte exploitable — NYT, ScienceDirect, treasury.gov et
+  cinq ne rendent aucun texte exploitable : NYT, ScienceDirect, treasury.gov et
   Cell rendent zéro caractère, YouTube 313. La suggestion automatique, qui lit
   la page, échoue donc une fois sur deux, et une capture Wayback ne rattraperait
   ni ScienceDirect ni Cell dont le texte est derrière un paywall.
@@ -38,8 +38,8 @@
   /**
    * Ce qu'on ajoute autour d'un passage sans y toucher.
    *
-   * `title` repère, `context` situe : un extrait voyage seul — export, réponse
-   * MCP, moteur — et « ce modèle distingue trois composantes » ne nomme ni son
+   * `title` repère, `context` situe : un extrait voyage seul (export, réponse
+   * MCP, moteur), et « ce modèle distingue trois composantes » ne nomme ni son
    * objet ni son auteur. Les deux restent facultatifs, et `parIA` dit leur
    * origine : cette prose côtoie du verbatim, et rien ne doit laisser attribuer
    * à la source des mots qu'elle n'a pas écrits.
@@ -177,8 +177,8 @@
    * Dépose d'un document : le serveur en tire le texte, qui atterrit dans le
    * champ de collage.
    *
-   * Y faire atterrir le texte n'est pas cosmétique : tout l'aval — redécouper,
-   * changer d'unité, relire les extraits — travaille sur `sourceText`. Sans cela,
+   * Y faire atterrir le texte n'est pas cosmétique : tout l'aval (redécouper,
+   * changer d'unité, relire les extraits) travaille sur `sourceText`. Sans cela,
    * la première modification de réglage redemanderait le fichier.
    */
   async function deposer(file: File | null | undefined) {
@@ -258,7 +258,7 @@
    *
    * Le texte entier part avec : sans lui, un modèle ne peut que paraphraser le
    * passage, alors que tout l'objet de la mise en situation est de dire ce que
-   * le passage suppose connu. Rien n'est enregistré — les champs se relisent et
+   * le passage suppose connu. Rien n'est enregistré : les champs se relisent et
    * se corrigent avant l'ajout.
    */
   async function annoter(i: number) {
@@ -299,7 +299,7 @@
       );
       // Le morceau reste à sa place, marqué. Il ne peut pas être retiré de la
       // liste : les bornes partitionnent le texte, et en ôter un segment
-      // recollerait ses voisins — c'est ce que faisait `merge()` ici, si bien
+      // recollerait ses voisins : c'est ce que faisait `merge()` ici, si bien
       // que le passage ajouté restait affiché dans le morceau voisin et
       // pouvait être ajouté une seconde fois, les deux extraits se
       // chevauchant sans que rien ne le signale.
@@ -332,7 +332,7 @@
   <!--
     Le dépôt de fichier, à côté du collage et non à sa place : un chapitre ne se
     colle pas, mais un paragraphe ne se met pas dans un fichier. Les deux gestes
-    aboutissent au même endroit — le texte de la source, dans le champ ci-dessus.
+    aboutissent au même endroit : le texte de la source, dans le champ ci-dessus.
   -->
   <div
     role="button"

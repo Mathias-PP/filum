@@ -6,7 +6,7 @@
  * frise illisible. Mais tronquer une chaîne à la 22e lettre coupe au milieu
  * d'un nom ; il faut donc savoir où finit un auteur et où commence le suivant.
  *
- * Les imports viennent de partout — Crossref rend « Smith, J.; Doe, A. »,
+ * Les imports viennent de partout : Crossref rend « Smith, J.; Doe, A. »,
  * un scraping HTML « John Smith, Jane Doe », une saisie manuelle « Smith J.,
  * Doe A. ». Aucun format n'est garanti. La règle est donc conservatrice : en
  * cas de doute, on préfère rendre la chaîne entière plutôt qu'un nom coupé en
@@ -54,7 +54,7 @@ export function splitAuthors(authors: string | null | undefined): string[] {
 /**
  * Rendu de la liste selon ce que le lecteur a demandé à voir.
  *
- * Aucun des deux drapeaux : la chaîne d'origine, inchangée — ne rien réduire
+ * Aucun des deux drapeaux : la chaîne d'origine, inchangée ; ne rien réduire
  * reste une option, et c'est la seule qui ne perd aucune information.
  */
 export function authorSummary(

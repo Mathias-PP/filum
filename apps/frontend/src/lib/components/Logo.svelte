@@ -1,12 +1,12 @@
 <script lang="ts">
   // ====================================================================
-  // Philum v1 — logo canonique (design validé en /sandbox/customize)
+  // Philum v1 : logo canonique (design validé en /sandbox/customize)
   //
   // Composition : Pulsar-graph (graph-mark)
-  //   - Pulsar central (12, 12) — nœud créateur·ice
-  //   - 2 nœuds normaux : NE (20, 7) + WSW (5, 15) — sources isolées
-  //   - Y-fork NW (jonction 7,5 → twins 4,2.5 et 9.5,1.5) — paire citée
-  //   - Parent SE (17, 18) + lune (20.5, 20.5) — source qui en cite une autre
+  //   - Pulsar central (12, 12) : nœud créateur·ice
+  //   - 2 nœuds normaux, NE (20, 7) + WSW (5, 15) : sources isolées
+  //   - Y-fork NW (jonction 7,5 → twins 4,2.5 et 9.5,1.5) : paire citée
+  //   - Parent SE (17, 18) + lune (20.5, 20.5) : source qui en cite une autre
   //
   // Style : palette Z13 auteur-kind + stroke fond blanc V18 + dark rim fin
   //         + (variant 'color' uniquement) pulsar 3D via radial gradient.

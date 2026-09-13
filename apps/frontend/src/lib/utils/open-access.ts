@@ -10,7 +10,7 @@ export interface OpenAccessBadge {
 }
 
 /**
- * Sept états, sept affirmations différentes — et un huitième, `null`, qui
+ * Sept états, sept affirmations différentes, et un huitième, `null`, qui
  * n'affirme rien.
  *
  * `closed` est une information positive et datée : OpenAlex connaît cette
@@ -53,7 +53,7 @@ const BADGES: Record<OpenAccessStatus, OpenAccessBadge> = {
   },
   bronze: {
     label: 'Lisible gratuitement',
-    help: 'Lisible sans payer chez l’éditeur, mais sans licence de réutilisation — l’accès peut être retiré.',
+    help: 'Lisible sans payer chez l’éditeur, mais sans licence de réutilisation : l’accès peut être retiré.',
     className: 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200',
     isFree: true,
   },

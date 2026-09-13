@@ -8,13 +8,13 @@
  * pas s'attribuer la paternité de ce qui est cité).
  *
  * Contrat : **on ne retombe jamais sur le créateur.** Faute d'auteurs
- * déclarés, on retombe sur le titre du contenu — même règle que pour les
+ * déclarés, on retombe sur le titre du contenu, même règle que pour les
  * sources (`SourceGraph.authorLabel`). Si le titre manque aussi, chaîne vide.
  * Mieux vaut un nœud sans étiquette qu'un nœud qui ment sur l'auteur.
  *
  * Régression historique : ce fichier a plusieurs fois été « corrigé » vers un
  * fallback créateur (test explicite le codifiant), puis re-corrigé. Le
- * fallback n'a jamais été acceptable — même règle qu'ADR-019 et #448 pour la
+ * fallback n'a jamais été acceptable, même règle qu'ADR-019 et #448 pour la
  * meta `citation_author`. Verrouillé par tests, ne pas revenir en arrière.
  */
 export interface CardLabelInput {

@@ -51,7 +51,7 @@
   const creatorSlug = $derived(data.creatorSlug);
   const cardSlug = $derived(data.cardSlug);
 
-  // Valeur majoritaire (et son %) parmi les sources — affichée dans les
+  // Valeur majoritaire (et son %) parmi les sources : affichée dans les
   // indicateurs à la place des anciens compteurs fixes Chercheurs/Institutions.
   function majority<K extends string>(keys: K[]): { key: K; pct: number } | null {
     if (keys.length === 0) return null;
@@ -71,7 +71,7 @@
   const majorityAuthor = $derived(majority(card.sources.map((s) => s.author_kind)));
   const majorityCategory = $derived(majority(card.sources.map((s) => s.category)));
 
-  // Relative — routed through the SvelteKit /api proxy for first-party cookies.
+  // Relative : routed through the SvelteKit /api proxy for first-party cookies.
   const API_BASE = '';
   const ogImageUrl = $derived(
     `${API_BASE}/api/v1/og?title=${encodeURIComponent(card.title)}&creator=${encodeURIComponent(card.creator.display_name ?? card.creator.slug)}`
@@ -112,7 +112,7 @@
     // `tick()` et non `requestAnimationFrame` : la liste n'a pas encore de boîte
     // de rendu tant que Svelte n'a pas retiré sa classe `hidden`, et
     // `scrollIntoView` sur un élément sans géométrie ne fait rien du tout. Sans
-    // ce saut, le clic dans le tableau semble n'avoir aucun effet — la source
+    // ce saut, le clic dans le tableau semble n'avoir aucun effet : la source
     // dépliée se trouve des milliers de pixels plus bas.
     await tick();
     document.getElementById(`source-${id}`)?.scrollIntoView({ block: 'center' });
@@ -162,7 +162,7 @@
    *
    * L'adresse `.md` sert le même contenu déjà structuré, avec DOI, statut de
    * rétractation et archives. La phrase qui l'accompagne dit à l'agent ce
-   * qu'il tient — sans elle, il traite l'URL comme une page quelconque. */
+   * qu'il tient : sans elle, il traite l'URL comme une page quelconque. */
   function copyForAI() {
     const url = `${$page.url.origin}/@${creatorSlug}/${cardSlug}.md`;
     copyText(

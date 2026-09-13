@@ -7,7 +7,7 @@
   import { page } from '$app/stores';
   import { Logo, Button, Toast, ThemeToggle } from '$lib/components';
 
-  // Relative — routed through the SvelteKit /api proxy for first-party cookies.
+  // Relative : routed through the SvelteKit /api proxy for first-party cookies.
   const API_BASE = '';
   const googleLoginUrl = `${API_BASE}/api/v1/auth/google/login`;
 
@@ -330,7 +330,7 @@
     z-index: 100;
     /* La paire du theme, inversee. `color: white` tenait tant que le fond
        etait sombre ; en mode sombre `--text-primary` passe a #F5F5F5 et le
-       lien devenait blanc sur blanc — 1,09:1, et invisible par construction
+       lien devenait blanc sur blanc (1,09:1), et invisible par construction
        puisqu'il ne parait qu'au focus clavier. */
     background: rgb(var(--text-primary));
     color: rgb(var(--bg-primary));

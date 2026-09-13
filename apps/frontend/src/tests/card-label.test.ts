@@ -5,7 +5,7 @@ import { cardNodeLabel } from '$lib/utils/card-label';
 /**
  * Le contrat de `cardNodeLabel` est **inversé** par rapport à sa version
  * historique : on ne retombe **jamais** sur le créateur Philum. Le fallback
- * créateur a été ajouté puis retiré plusieurs fois — chaque réapparition a
+ * créateur a été ajouté puis retiré plusieurs fois : chaque réapparition a
  * produit le même bug (fiche seed « Early detection of multiple cancers » qui
  * affichait « Mathias » comme auteur sur le graphe alors qu'il n'a rien écrit
  * de l'article). Ces tests figent le contrat : `authors → title → rien`,

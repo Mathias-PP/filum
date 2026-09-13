@@ -4,10 +4,10 @@
  * Deux formats, deux rôles distincts, à ne surtout pas mélanger :
  *
  * - **Highwire** (`<meta name="citation_*">`) décrit *une seule* ressource par
- *   page — ici le contenu que la fiche documente. C'est ce que lit Google
+ *   page : ici le contenu que la fiche documente. C'est ce que lit Google
  *   Scholar, qui exige au minimum titre + premier auteur + année.
  * - **COinS** (`<span class="Z3988" title="…">`) décrit *N* ressources dans le
- *   corps de la page — ici chaque source de la bibliographie. Le connecteur
+ *   corps de la page : ici chaque source de la bibliographie. Le connecteur
  *   Zotero les détecte comme autant d'items sélectionnables.
  *
  * Ordre de résolution du connecteur Zotero :
@@ -29,7 +29,7 @@ const INITIALS_SHAPE = /^([A-ZÀ-Þ]\.?[-\s]?)+$/;
  *
  * La forme seule ne suffit pas : « DUPONT » a la même forme qu'une suite
  * d'initiales. On exige donc un point, ou une longueur de deux caractères au
- * plus — sinon un nom de famille en capitales serait recollé au précédent.
+ * plus, sinon un nom de famille en capitales serait recollé au précédent.
  */
 function isInitialsOnly(part: string): boolean {
   if (!INITIALS_SHAPE.test(part)) return false;
@@ -139,7 +139,7 @@ const JOURNAL_CATEGORIES: ReadonlySet<SourceCategory> = new Set<SourceCategory>(
  * Valeur de l'attribut `title` d'un span COinS pour une source.
  *
  * Trois contextes OpenURL selon la nature de la source : `journal` pour ce qui
- * est article, `book` pour les livres, et Dublin Core pour tout le reste —
+ * est article, `book` pour les livres, et Dublin Core pour tout le reste :
  * vidéos, podcasts, pages web. Le contexte `dc` est ce qui rend le dispositif
  * agnostique : sans lui, une source YouTube devrait mentir sur son genre.
  */

@@ -148,7 +148,7 @@
       userCards = await api.cards.list();
     } catch (err) {
       // Session expirée : sans cette redirection, le dashboard affichait
-      // "Aucune fiche" — les créateurs croyaient leurs fiches supprimées.
+      // "Aucune fiche" : les créateurs croyaient leurs fiches supprimées.
       if (err instanceof ApiError && err.status === 401) {
         auth.reset();
         toast.danger('Votre session a expiré. Reconnectez-vous pour retrouver vos fiches.');

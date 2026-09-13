@@ -1,7 +1,7 @@
 /**
  * Depuis Tailwind v4, `--color-*` n'est plus un nom libre : c'est l'espace de
  * noms du theme. Une variable de ce nom declaree ailleurs que dans `@theme`
- * ecrase celle que `@theme` genere, et le fait silencieusement — la classe
+ * ecrase celle que `@theme` genere, et le fait silencieusement : la classe
  * existe toujours dans le CSS produit, seule sa valeur change.
  *
  * C'est ainsi que six alias herites de la v3 ont survecu a la migration :

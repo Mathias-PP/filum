@@ -2,7 +2,7 @@ import type { RequestHandler } from './$types';
 
 /**
  * Sans robots.txt, un crawler doit deviner. Les fiches etaient deja rendues
- * cote serveur, JSON-LD compris, mais rien ne disait ou les trouver — et le
+ * cote serveur, JSON-LD compris, mais rien ne disait ou les trouver, et le
  * tableau de bord, lui, n'a rien a faire dans un index.
  *
  * Les robots des IA generatives (GPTBot, ClaudeBot, PerplexityBot...) ne sont

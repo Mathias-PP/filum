@@ -4,7 +4,7 @@
  * L'agent répond en markdown (titres, listes, gras, liens, extraits de code)
  * mais la bulle ne doit JAMAIS injecter de HTML brut : le texte vient d'un
  * modèle, pas d'un auteur de confiance. Ce module rend donc des structures
- * typées que le composant Svelte transforme en éléments réels — aucun
+ * typées que le composant Svelte transforme en éléments réels : aucun
  * `{@html}`, donc aucune surface XSS. Le sous-ensemble couvert est celui que
  * les modèles produisent en pratique dans un chat ; tout le reste reste du
  * texte lisible.

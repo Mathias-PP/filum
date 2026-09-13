@@ -2,7 +2,7 @@
   Le panneau d'export à la carte.
 
   Le menu « Exporter » sert le cas courant : un clic, un format, tout le
-  contenu. Ce panneau sert l'autre cas — celui où on sait exactement ce qu'on
+  contenu. Ce panneau sert l'autre cas : celui où on sait exactement ce qu'on
   veut emporter, et où emporter le reste serait du bruit.
 
   Deux choix y sont exposés que l'API distingue et que l'interface doit
