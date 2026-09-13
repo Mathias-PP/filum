@@ -108,6 +108,7 @@ async def test_un_titre_que_l_origine_ne_rend_pas_est_garde_et_signale(monkeypat
         url="https://example.org/recommandations.pdf",
         doi=None,
         propose={"title": "Recommandations arthrose", "authors": None},
+        garder_titre_propose=True,
     )
     assert retenues["title"] == "Recommandations arthrose"
     assert [s["champ"] for s in signales if "note" in s] == ["title"]

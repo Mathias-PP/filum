@@ -435,8 +435,13 @@ async def _resoudre_metadonnees(
     url: str | None,
     doi: str | None,
     propose: dict[str, str | None],
+    garder_titre_propose: bool = False,
 ) -> tuple[dict[str, str | None], list[dict[str, str]]]:
     """Rend les valeurs a ecrire, et les ecarts a signaler a l'appelant.
+
+    `garder_titre_propose` vaut pour une source qui nait : sans titre elle
+    serait illisible dans la fiche. Une correction, elle, doit rester refusee
+    quand l'origine ne confirme rien.
 
     Sur `createur`, les valeurs proposees passent telles quelles : c'est la
     porte de sortie assumee, et elle est sensible. Sur les autres origines, le
@@ -463,7 +468,7 @@ async def _resoudre_metadonnees(
     # resolveur n'ayant rien lu, alors que le modele l'avait donne juste.
     declares: list[str] = []
     titre_propose = (propose.get("title") or "").strip()
-    if not retenues.get("title") and titre_propose:
+    if garder_titre_propose and not retenues.get("title") and titre_propose:
         retenues["title"] = titre_propose
         declares.append("title")
     signales = [
@@ -602,6 +607,7 @@ async def add_source(
             "journal": journal,
             "published_at": published_at,
         },
+        garder_titre_propose=True,
     )
     date_publication = _valeur_date(retenues.get("published_at"))
 
@@ -2246,6 +2252,7 @@ async def add_sources_batch(
                     champ: sd.get(champ)
                     for champ in ("title", "authors", "journal", "published_at")
                 },
+                garder_titre_propose=True,
             )
             for sd in sources
         ),
