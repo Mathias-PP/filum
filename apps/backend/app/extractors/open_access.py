@@ -24,6 +24,8 @@ from enum import Enum
 
 import httpx
 
+from app.extractors.openalex_client import parametres_openalex
+
 logger = logging.getLogger(__name__)
 
 _TIMEOUT = 10.0
@@ -131,7 +133,9 @@ async def check_open_access(doi: str | None) -> OpenAccessResult:
         return OpenAccessResult(status=OpenAccessStatus.UNVERIFIABLE)
     try:
         async with httpx.AsyncClient(headers=_HEADERS, timeout=_TIMEOUT) as client:
-            r = await client.get(f"https://api.openalex.org/works/doi:{cleaned}")
+            r = await client.get(
+                f"https://api.openalex.org/works/doi:{cleaned}", params=parametres_openalex()
+            )
         if r.status_code != 200:
             return OpenAccessResult(status=OpenAccessStatus.UNVERIFIABLE)
         work = r.json()

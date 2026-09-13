@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import html
 import json
 import logging
 import re
@@ -521,7 +522,7 @@ def _extract_pii(url: str) -> str | None:
 
 def _parse_crossref_work(data: dict) -> ExtractedMetadata:
     title_list = data.get("title") or []
-    title = title_list[0] if title_list else None
+    title = texte_sans_balises(title_list[0]) if title_list else None
     authors_raw = data.get("author") or []
     authors = (
         ", ".join(
@@ -918,6 +919,40 @@ def _iso_date_prefix(raw: str | None) -> str | None:
         return None
 
 
+_BALISE = re.compile(r"<[^>]+>")
+
+
+def texte_sans_balises(texte: str | None) -> str | None:
+    """Un titre sans balises HTML ni sauts de ligne de mise en page.
+
+    Crossref depose les titres tels que l'editeur les balise : mesure du
+    2026-09-13, `<i>Fusobacterium</i>\\n                    infection facilitates...`
+    inscrit tel quel dans une fiche. L'italique d'un nom d'espece ne porte
+    aucune information que le texte seul n'a pas.
+    """
+    if not texte:
+        return None
+    propre = " ".join(html.unescape(_BALISE.sub("", str(texte))).split())
+    return propre or None
+
+
+def auteur_lisible(valeur: str | None) -> str | None:
+    """L'auteur declare par la page, s'il nomme quelqu'un plutot qu'une adresse.
+
+    `article:author` est une propriete Open Graph faite pour pointer un profil :
+    beaucoup de sites y mettent leur page Facebook. Mesure du 2026-09-13 sur
+    le dossier Inserm, dont la source portait « https://www.facebook.com/inserm.fr »
+    pour auteur alors que son JSON-LD disait « Inserm ».
+    """
+    propre = (valeur or "").strip()
+    if not propre:
+        return None
+    minuscule = propre.lower()
+    if "://" in minuscule or minuscule.startswith("www.") or minuscule.startswith("@"):
+        return None
+    return propre
+
+
 async def _html_scrape(url: str) -> ExtractedMetadata | None:
     try:
         async with httpx.AsyncClient(
@@ -970,7 +1005,10 @@ async def _html_scrape(url: str) -> ExtractedMetadata | None:
             if (content := str(tag.get("content", "")).strip())
         ]
         authors_raw = (
-            "; ".join(citation_authors) or _meta("author") or _meta("article:author") or None
+            "; ".join(citation_authors)
+            or auteur_lisible(_meta("author"))
+            or auteur_lisible(_meta("article:author"))
+            or None
         )
         # `citation_online_date` est la derniere revision de la page (2023 chez
         # arXiv pour un article de 2017), pas la parution de l'oeuvre : la
@@ -989,8 +1027,8 @@ async def _html_scrape(url: str) -> ExtractedMetadata | None:
             title = title or jsonld_meta.title
             description = description or jsonld_meta.description
             published_at = published_at or jsonld_meta.published_at
-            if authors_raw is None and jsonld_meta.authors:
-                authors_raw = jsonld_meta.authors
+            if authors_raw is None:
+                authors_raw = auteur_lisible(jsonld_meta.authors)
 
         page_text = soup.get_text(separator=" ", strip=True) or None
         if _looks_like_challenge_page(str(title) if title else None, page_text):
