@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 from typing import Any
 
 import httpx
@@ -22,6 +23,12 @@ import httpx
 from app.agent_tools.tool import AgentTool, ToolContext
 from app.core.config import get_settings
 from app.core.url_safety import UnsafeUrlError, assert_url_is_safe
+from app.services.profil_modele import (
+    EXTRAIT_RECHERCHE_PETIT,
+    FENETRE_LECTURE_PETIT,
+    PETIT_MODELE,
+    RESULTATS_RECHERCHE_PETIT,
+)
 from app.services.texte_invisible import assainir
 
 logger = logging.getLogger(__name__)
@@ -140,6 +147,11 @@ async def _execute_web_search(ctx: ToolContext, args: dict[str, Any]) -> dict[st
         resultats = await _rechercher(provider, cle, query.strip())
     except Exception as exc:  # noqa: BLE001  # message lisible par le modèle
         return {"error": f"Recherche web indisponible : {exc}"}
+    if PETIT_MODELE.get():
+        resultats = [
+            {**r, "snippet": (r.get("snippet") or "")[:EXTRAIT_RECHERCHE_PETIT]}
+            for r in resultats[:RESULTATS_RECHERCHE_PETIT]
+        ]
     return {"query": query, "results": resultats}
 
 
@@ -186,6 +198,8 @@ async def _execute_fetch_url(ctx: ToolContext, args: dict[str, Any]) -> dict[str
         await asyncio.to_thread(assert_url_is_safe, url)
     except UnsafeUrlError as exc:
         return {"error": f"URL refusée (SSRF) : {exc}"}
+    if PETIT_MODELE.get():
+        return await _fenetre_de_page(url, args.get("page"))
     from app.api.v1.endpoints.excerpts import _texte_de_la_source
 
     texte, refuse, _complet = await _texte_de_la_source(url)
@@ -193,6 +207,39 @@ async def _execute_fetch_url(ctx: ToolContext, args: dict[str, Any]) -> dict[str
         return {"error": await _pourquoi_illisible(url, refuse), "blocked": refuse}
     tronque = len(texte) > _TEXT_MAX
     return {"url": url, "text": texte[:_TEXT_MAX], "truncated": tronque, "blocked": refuse}
+
+
+async def _fenetre_de_page(url: str, page: Any) -> dict[str, Any]:
+    """Une fenetre de la page, pour un petit modele, avec de quoi lire la suite.
+
+    Le texte vient du cache de `texte_de_page` : lire la page 2, puis poser un
+    extrait par `find_passage`, ne telecharge la page qu'une fois.
+    """
+    from app.services import excerpt_insertion
+
+    texte, refuse, _complet = await excerpt_insertion.texte_de_page(url)
+    if not texte.strip():
+        return {"error": await _pourquoi_illisible(url, refuse), "blocked": refuse}
+    try:
+        numero = max(1, int(page)) if page is not None else 1
+    except (TypeError, ValueError):
+        numero = 1
+    pages = max(1, math.ceil(len(texte) / FENETRE_LECTURE_PETIT))
+    numero = min(numero, pages)
+    debut = (numero - 1) * FENETRE_LECTURE_PETIT
+    resultat: dict[str, Any] = {
+        "url": url,
+        "text": texte[debut : debut + FENETRE_LECTURE_PETIT],
+        "page": numero,
+        "pages": pages,
+        "blocked": refuse,
+    }
+    if numero < pages:
+        resultat["suite"] = (
+            f"Page {numero} sur {pages}. fetch_url avec page={numero + 1} pour lire la "
+            "suite. Pour citer un passage, find_passage cherche dans toute la page."
+        )
+    return resultat
 
 
 def web_tools() -> list[AgentTool]:
@@ -235,7 +282,13 @@ def web_tools() -> list[AgentTool]:
             parameters={
                 "type": "object",
                 "properties": {
-                    "url": {"type": "string", "description": "L'URL à lire (http/https)."}
+                    "url": {"type": "string", "description": "L'URL à lire (http/https)."},
+                    "page": {
+                        "type": "integer",
+                        "description": (
+                            "Page à lire quand la réponse en annonce plusieurs (1 par défaut)."
+                        ),
+                    },
                 },
                 "required": ["url"],
             },
