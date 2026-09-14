@@ -7,11 +7,19 @@ import pytest
 from app.agent_tools.recherche import recherche_tools
 from app.agent_tools.tool import ToolContext
 from app.extractors.recherche_litterature import Candidate
+from app.mcp_server import tools_write
 from app.mcp_server.tools_write import add_source, create_card
 from app.services import excerpt_insertion, recherche_approfondie
 from app.services.fusion_candidates import identite
 from app.services.profil_modele import PETIT_MODELE
-from app.services.recherche_approfondie import REPONSE, Journal, Passage, Recherche, SourceTrouvee
+from app.services.recherche_approfondie import (
+    REPONSE,
+    Journal,
+    Passage,
+    Recherche,
+    SourceTrouvee,
+    garder,
+)
 
 PASSAGE = "Les emissions du transport ont baisse d'environ 11 % apres la taxe carbone."
 
@@ -146,3 +154,80 @@ async def test_les_sources_deja_posees_sur_la_fiche_sont_reconnues(
     cle = identite(Candidate(url="https://exemple.test/taxe", titre=None, famille=""))
     assert vus["deja"] == {cle: posee["id"]}
     assert rendu["sources_pertinentes"] == 0 and rendu["message"]
+
+
+AUTRE = "Les exemptions accordees a l'industrie ont limite l'effet de la taxe carbone."
+
+
+def _recherche_numerotee(url: str) -> Recherche:
+    return Recherche(
+        id="r-retenir",
+        sous_question="Effet sur le transport ?",
+        sources=[
+            SourceTrouvee(
+                candidate=Candidate(url=url, titre="Etude", famille="web"),
+                url_lue=url,
+                passages=[
+                    Passage(PASSAGE, REPONSE, 0.8, numero=1),
+                    Passage(AUTRE, REPONSE, 0.7, numero=2),
+                ],
+                tour=1,
+                texte_complet=True,
+            )
+        ],
+        journal=Journal(arret="saturation"),
+        card_slug="taxe",
+    )
+
+
+@pytest.mark.asyncio
+async def test_retenir_pose_les_passages_designes_avec_le_texte_de_la_page(
+    db_session, test_user, monkeypatch
+):
+    async def page(url):
+        return f"{PASSAGE} {AUTRE}", False, True
+
+    async def existe(url, doi):
+        return None
+
+    async def metadonnees(metadata_from, **_):
+        return {"title": "Etude"}, {}
+
+    monkeypatch.setattr(excerpt_insertion, "texte_de_page", page)
+    monkeypatch.setattr(tools_write, "verifier_que_la_source_existe", existe)
+    monkeypatch.setattr(tools_write, "_resoudre_metadonnees", metadonnees)
+    excerpt_insertion.vider_le_cache()
+    await create_card(db_session, test_user, slug="taxe", title="Taxe", card_kind="sujet")
+    garder(_recherche_numerotee("https://exemple.test/etude"))
+    ctx = ToolContext(db=db_session, user=test_user, creator_id=test_user.id)
+
+    premier = await _outil("retenir").execute(
+        ctx,
+        {"recherche_id": "r-retenir", "passages": [{"id": 1, "contexte": "Baisse mesuree"}, 99]},
+    )
+    # La meme source recoit ensuite un autre passage, sans etre ajoutee deux fois.
+    second = await _outil("retenir").execute(
+        ctx, {"recherche_id": "r-retenir", "passages": [{"id": 2, "contexte": "Limite"}]}
+    )
+
+    assert "error" not in premier, premier
+    assert premier["card_slug"] == "taxe"
+    assert (premier["sources_ajoutees"], premier["extraits_poses"]) == (1, 1)
+    assert premier["ids_inconnus"] == [99]
+    assert (second["sources_ajoutees"], second["extraits_poses"]) == (0, 1)
+    assert second["sources"][0]["source_id"] == premier["sources"][0]["source_id"]
+
+
+@pytest.mark.asyncio
+async def test_retenir_dit_ce_qui_manque_sans_rien_ecrire():
+    rendu = await _outil("retenir").execute(_vide(), {"recherche_id": "absente", "passages": [1]})
+    assert "Relance rechercher" in rendu["error"]
+    sans_fiche = _recherche_numerotee("https://exemple.test/etude")
+    sans_fiche.card_slug = None
+    garder(sans_fiche)
+    rendu = await _outil("retenir").execute(_vide(), {"recherche_id": "r-retenir", "passages": [1]})
+    assert "card_slug" in rendu["error"]
+    rendu = await _outil("retenir").execute(
+        _vide(), {"recherche_id": "r-retenir", "card_slug": "taxe", "passages": []}
+    )
+    assert "passages" in rendu["error"]

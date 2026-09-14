@@ -37,7 +37,7 @@
   let saisie = $state('');
   // Même méthode de recherche, budgets et corpus au choix du créateur.
   let modeRecherche = $state<'approfondi' | 'rapide'>('approfondi');
-  // Vide : les références sérieuses d'abord, et l'agent demande si la question
+  // Vide : publications et sites d'institutions d'abord, et l'agent demande si la question
   // ne dit pas clairement quelles sources conviennent.
   let sourcesRecherche = $state<'' | 'egale' | 'litterature' | 'web'>('');
   let enCours = $state(false);
@@ -1511,7 +1511,7 @@
             title="Par défaut, les articles scientifiques et les sites d’institutions passent d’abord, et l’agent vous demande quand la question ne dit pas quelles sources conviennent."
             class="shrink-0 rounded-full border border-border bg-surface-primary px-2 py-1 text-xs text-ink-secondary"
           >
-            <option value="">Sources sérieuses d’abord</option>
+            <option value="">Publications et institutions d’abord</option>
             <option value="egale">Toutes à égalité</option>
             <option value="litterature">Littérature scientifique seulement</option>
             <option value="web">Web seulement</option>

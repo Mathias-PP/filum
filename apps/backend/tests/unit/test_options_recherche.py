@@ -34,23 +34,23 @@ def test_les_familles_choisies_filtrent_les_corpus():
     }
 
 
-def test_sans_choix_les_references_serieuses_passent_d_abord_et_le_cadrage_peut_demander():
+def test_sans_choix_les_publications_passent_d_abord_et_le_cadrage_peut_demander():
     defaut = options_demandees("approfondi", [], None)
-    assert defaut == Options() and defaut.serieuses_d_abord and not defaut.sources_choisies
+    assert defaut == Options() and defaut.publications_d_abord and not defaut.sources_choisies
     assert options_demandees("approfondi", [], "egale") == Options(
-        serieuses_d_abord=False, sources_choisies=True
+        publications_d_abord=False, sources_choisies=True
     )
     assert options_demandees("rapide", ["web"], None).sources_choisies
 
 
 def test_la_reponse_du_createur_devient_des_options():
-    egalite, _serieuses, litterature = (
+    egalite, _publications, litterature = (
         list(CHOIX_SOURCES)[1],
         list(CHOIX_SOURCES)[0],
         list(CHOIX_SOURCES)[2],
     )
     assert options_choisies(Options(mode="rapide"), egalite) == Options(
-        mode="rapide", serieuses_d_abord=False, sources_choisies=True
+        mode="rapide", publications_d_abord=False, sources_choisies=True
     )
     assert options_choisies(Options(), litterature).sources == frozenset({"litterature"})
     assert options_choisies(Options(), "Des podcasts") is None

@@ -461,7 +461,7 @@ def _pages_melangees(textes: dict[str, str]) -> list[str]:
 
 
 @pytest.mark.asyncio
-async def test_les_references_serieuses_sont_lues_d_abord_sans_exclure_les_autres(pages_web):
+async def test_les_publications_et_institutions_sont_lues_d_abord_sans_exclure_les_autres(pages_web):
     textes, lues = pages_web
     adresses = _pages_melangees(textes)
 
@@ -474,11 +474,11 @@ async def test_les_references_serieuses_sont_lues_d_abord_sans_exclure_les_autre
 
 
 @pytest.mark.asyncio
-async def test_les_references_serieuses_sont_rendues_en_tete_sauf_toutes_a_egalite(pages_web):
+async def test_les_publications_et_institutions_sont_rendues_en_tete_sauf_toutes_a_egalite(pages_web):
     textes, _lues = pages_web
     corpus = _corpus(_pages_melangees(textes))
 
-    serieuses = await rechercher_sous_question(
+    publications = await rechercher_sous_question(
         SOUS_QUESTION, ["taxe"], [CONTRADICTION], corpus=corpus, expansion=False
     )
     egales = await rechercher_sous_question(
@@ -487,12 +487,12 @@ async def test_les_references_serieuses_sont_rendues_en_tete_sauf_toutes_a_egali
         [CONTRADICTION],
         corpus=corpus,
         expansion=False,
-        serieuses_d_abord=False,
+        publications_d_abord=False,
     )
 
-    assert [s.url_lue for s in serieuses.sources] == [ARTICLE_UTILE, BLOG[0], BLOG[2]]
-    assert serieuses.sources[0].en_dict()["reference"] == "article scientifique"
-    assert "reference" not in serieuses.sources[1].en_dict()
+    assert [s.url_lue for s in publications.sources] == [ARTICLE_UTILE, BLOG[0], BLOG[2]]
+    assert publications.sources[0].en_dict()["reference"] == "article scientifique"
+    assert "reference" not in publications.sources[1].en_dict()
     assert [s.url_lue for s in egales.sources] == [BLOG[0], ARTICLE_UTILE, BLOG[2]]
 
 
@@ -507,3 +507,18 @@ def test_la_nature_d_une_reference_se_lit_dans_les_faits():
     assert nature_reconnue(candidate("https://www.who.int/news/x")) == "institution publique"
     assert nature_reconnue(candidate("https://cs.stanford.edu/x")) == "université ou école"
     assert nature_reconnue(candidate("https://blog.vendeur.com/agents")) is None
+
+
+@pytest.mark.asyncio
+async def test_chaque_passage_porte_un_id_unique_dans_l_ordre_rendu(pages_web):
+    textes, _lues = pages_web
+    recherche = await rechercher_sous_question(
+        SOUS_QUESTION,
+        ["taxe"],
+        [CONTRADICTION],
+        corpus=_corpus(_pages_melangees(textes)),
+        expansion=False,
+    )
+    numeros = [p.numero for s in recherche.sources for p in s.passages]
+    assert numeros == list(range(1, len(numeros) + 1))
+    assert recherche.sources[0].en_dict()["passages"][0]["id"] == 1

@@ -13,8 +13,9 @@ modele, petit surtout, ne suit pas une methode decrite dans une consigne :
    lue par la cascade de Philum, decoupee en passages, et chaque passage est
    compare par le sens a la sous-question et aux formulations de contradiction.
 4. **Classement** : les sources sont rendues dans l'ordre de leur meilleur
-   passage ; le modele lit ces passages et ne pose que ceux qui repondent. Il
-   est le dernier etage du classement, dans toutes les langues.
+   passage, chaque passage numerote ; le modele lit ces passages et designe par
+   leur numero ceux qui repondent. Il est le dernier etage du classement, dans
+   toutes les langues.
 5. **Suivi des citations et des liens** (PaperQA2, Undermind) : les sources
    pertinentes menent a ce qui les cite, a ce qu'elles citent et aux liens de
    leur corps de texte. Une source que plusieurs sources pertinentes designent
@@ -22,7 +23,7 @@ modele, petit surtout, ne suit pas une methode decrite dans une consigne :
 6. **Arret par saturation** (Undermind) : la lecture s'arrete quand un lot
    n'apporte aucune source pertinente nouvelle, les tours de suivi quand un tour
    n'en apporte aucune. La courbe des decouvertes dit ce qui reste probablement.
-7. **References serieuses d'abord** (Focus « Academic » de Perplexity, choix
+7. **Publications et institutions d'abord** (Focus « Academic » de Perplexity, choix
    par defaut de Philum) : articles, preprints, institutions publiques et
    universites sont lus avant les autres pages, chaque groupe jusqu'a sa propre
    saturation, et rendus en tete. Prioriser n'exclut pas : les autres pages
@@ -40,7 +41,7 @@ import asyncio
 import logging
 import time
 from collections.abc import Awaitable, Callable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from uuid import uuid4
 
 from app.core.nature_source import nature_corrigee
@@ -72,7 +73,7 @@ DELAI_FINITION = 45.0
 REPONSE = "reponse"
 NUANCE = "nuance"
 
-#: Ce qu'une reference serieuse est, dit au modele avec ses passages.
+#: La nature d'une publication ou d'un site d'institution, dite au modele avec ses passages.
 _REFERENCES = {
     "article-scientifique": "article scientifique",
     "preprint": "preprint",
@@ -82,7 +83,7 @@ _REFERENCES = {
 
 
 def nature_reconnue(candidate: Candidate) -> str | None:
-    """La nature d'une reference serieuse, ou None pour une autre page. Fonction pure.
+    """Publication ou site d'institution : sa nature ; None pour une autre page. Fonction pure.
 
     Un corpus de litterature ne rend que des publications ; une page du web l'est
     quand son DOI, sa revue ou son domaine le disent (`nature_corrigee`).
@@ -118,6 +119,8 @@ class Passage:
     question: str = ""
     #: Jugement du reclasseur, quand il a pu passer sur toute la recherche.
     pertinence: float | None = None
+    #: Numero dans la recherche : le modele designe par lui les passages a poser.
+    numero: int = 0
 
     @property
     def classement(self) -> float:
@@ -135,7 +138,7 @@ class SourceTrouvee:
     texte_complet: bool
     source_id: str | None = None
     retractation: str | None = None
-    #: Nature de la reference serieuse (`nature_reconnue`), None pour une autre page.
+    #: Nature de la publication ou de l'institution (`nature_reconnue`), None sinon.
     reference: str | None = None
 
     @property
@@ -162,6 +165,7 @@ class SourceTrouvee:
             "texte_complet": self.texte_complet,
             "passages": [
                 {
+                    "id": p.numero,
                     "texte": p.texte,
                     "role": p.role,
                     "score": p.score,
@@ -224,6 +228,8 @@ class Recherche:
     #: Identites de toutes les candidates vues, lues ou non : le banc y mesure ce
     #: que la collecte a trouve, avant ce que la lecture a retenu.
     vues: frozenset[str] = frozenset()
+    #: La fiche ou poser les passages retenus, quand la recherche a ete lancee pour elle.
+    card_slug: str | None = None
 
 
 def estimer_restantes(courbe: list[int]) -> float | None:
@@ -341,9 +347,9 @@ class _Etat:
         exclure: frozenset[str],
         lot: int,
         echeance: float,
-        serieuses_d_abord: bool = True,
+        publications_d_abord: bool = True,
     ) -> None:
-        self.serieuses_d_abord = serieuses_d_abord
+        self.publications_d_abord = publications_d_abord
         self.sous_question = sous_question
         self.contradictions = contradictions
         self.deja = deja
@@ -365,7 +371,7 @@ class _Etat:
         return retenues
 
     async def explorer(self, candidates: list[Candidate], tour: int) -> list[SourceTrouvee]:
-        """Lit les candidates d'un tour, les references serieuses d'abord.
+        """Lit les candidates d'un tour, les publications et les sites d'institutions d'abord.
 
         Chaque groupe est lu jusqu'a sa propre saturation : des articles qui ne
         repondent plus n'arretent pas la lecture des autres pages, ils passent
@@ -373,7 +379,7 @@ class _Etat:
         de la fusion.
         """
         trouvees: list[SourceTrouvee] = []
-        if self.serieuses_d_abord:
+        if self.publications_d_abord:
             natures = {id(c): nature_reconnue(c) for c in candidates}
             groupes = [
                 [c for c in candidates if natures[id(c)] is not None],
@@ -583,14 +589,14 @@ async def rechercher_sous_question(
     expansion: bool = True,
     lot: int = LOT_LECTURE,
     delai: float = DELAI_RECHERCHE,
-    serieuses_d_abord: bool = True,
+    publications_d_abord: bool = True,
 ) -> Recherche:
     """La recherche complete d'une sous-question. Ne leve pas pour un corpus ou une page en panne.
 
     `deja` : identites (voir `fusion_candidates.identite`) des sources deja posees
     sur la fiche, vers leur identifiant. `exclure` : identites a ne jamais lire
     (le banc y met la revue dont les references servent de reference).
-    `serieuses_d_abord` : les references serieuses lues et rendues en tete.
+    `publications_d_abord` : publications et sites d'institutions lus et rendus en tete.
     """
     debut = time.monotonic()
     corpus = corpus if corpus is not None else corpus_configures()
@@ -605,7 +611,7 @@ async def rechercher_sous_question(
         exclure,
         lot,
         debut + delai,
-        serieuses_d_abord=serieuses_d_abord,
+        publications_d_abord=publications_d_abord,
     )
 
     taches = [(nom, formulation) for formulation in formulations for nom in corpus]
@@ -677,8 +683,16 @@ async def rechercher_sous_question(
         source.passages.sort(key=lambda p: -p.classement)
     sources = sorted(
         trouvees_toutes,
-        key=lambda s: (serieuses_d_abord and s.reference is None, -s.meilleur, s.tour),
+        key=lambda s: (publications_d_abord and s.reference is None, -s.meilleur, s.tour),
     )
+    # Numeros dans l'ordre de lecture du modele, uniques dans la recherche.
+    numero = 0
+    for source in sources:
+        numerotes = []
+        for passage in source.passages:
+            numero += 1
+            numerotes.append(replace(passage, numero=numero))
+        source.passages = numerotes
     etat.journal.duree_s = round(time.monotonic() - debut, 1)
     return Recherche(
         id=uuid4().hex[:12],

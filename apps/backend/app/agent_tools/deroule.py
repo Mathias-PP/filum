@@ -115,8 +115,8 @@ def deroule_tools() -> list[AgentTool]:
             name="demander_sources",
             description=(
                 "Demande au créateur quelles sources la recherche doit privilégier ; le serveur "
-                "lui propose les choix. Par défaut, la littérature scientifique et les références "
-                "sérieuses passent d'abord. Appelle-le quand la question n'est pas clairement "
+                "lui propose les choix. Par défaut, les publications scientifiques et les sites "
+                "d'institutions passent d'abord. Appelle-le quand la question n'est pas clairement "
                 "scientifique, technique ou pointue, ou qu'elle est ambiguë ou incomplète."
             ),
             parameters={"type": "object", "properties": {}, "required": []},

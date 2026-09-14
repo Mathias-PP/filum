@@ -26,6 +26,14 @@ describe('bilan d’un tour', () => {
     expect(bilan).toBe('Bilan : 2 sources ajoutées, 2 extraits posés, 3 extraits refusés.');
   });
 
+  it('compte les sources et les extraits posés par un seul appel à retenir', () => {
+    const bilan = bilanDesAppels([
+      outil('retenir', { sources_ajoutees: 2, extraits_poses: 5 }),
+      outil('retenir', { error: 'Aucun extrait posé', sources_ajoutees: 0, extraits_poses: 0 }),
+    ]);
+    expect(bilan).toBe('Bilan : 2 sources ajoutées, 5 extraits posés, 1 écriture en échec.');
+  });
+
   it('ne dit rien d’un tour qui n’a rien tenté d’écrire', () => {
     expect(bilanDesAppels([outil('get_source'), outil('web_search')])).toBeNull();
   });

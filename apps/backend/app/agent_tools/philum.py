@@ -107,6 +107,8 @@ OUTILS_QUI_ECRIVENT: frozenset[str] = frozenset(
         "add_source",
         "add_sources_batch",
         "add_excerpt",
+        # Pose les passages designes dans une recherche (`agent_tools/recherche.py`).
+        "retenir",
         "update_excerpt",
         "annotate_excerpt",
         "set_content_text",

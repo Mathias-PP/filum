@@ -710,7 +710,7 @@ async def test_une_question_peu_pointue_demande_les_sources_et_la_reponse_regle_
             db_session, test_user, reponses, attendre=attendre
         )
         # Lues par `rechercher` pour le reste du tour.
-        assert OPTIONS_RECHERCHE.get() == Options(serieuses_d_abord=False, sources_choisies=True)
+        assert OPTIONS_RECHERCHE.get() == Options(publications_d_abord=False, sources_choisies=True)
     finally:
         OPTIONS_RECHERCHE.reset(jeton)
     assert "demander_sources" in {t["function"]["name"] for t in corps[0]["tools"]}
@@ -720,7 +720,7 @@ async def test_une_question_peu_pointue_demande_les_sources_et_la_reponse_regle_
 
 
 @pytest.mark.asyncio
-async def test_sans_reponse_les_references_serieuses_restent_d_abord(db_session, test_user):
+async def test_sans_reponse_les_publications_restent_d_abord(db_session, test_user):
     reponses = [_appel("demander_sources", {}), _texte("Demandé."), _texte("Rien.")]
 
     async def attendre(request_id):
@@ -734,7 +734,7 @@ async def test_sans_reponse_les_references_serieuses_restent_d_abord(db_session,
         assert OPTIONS_RECHERCHE.get() is None
     finally:
         OPTIONS_RECHERCHE.reset(jeton)
-    assert "références sérieuses passent d'abord" in _consignes(corps)[2]
+    assert "sites d'institutions passent d'abord" in _consignes(corps)[2]
 
 
 @pytest.mark.asyncio

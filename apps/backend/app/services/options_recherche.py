@@ -5,8 +5,8 @@ approfondie, et un choix des sources (Focus chez Perplexity, groupes chez
 Scira). Chez Philum, la méthode ne change pas d'un mode à l'autre, seuls les
 budgets changent ; et sans choix, tous les corpus sont interrogés.
 
-Sans choix non plus, la littérature scientifique et les références sérieuses
-passent d'abord : elles sont lues et rendues avant les autres, qui restent
+Sans choix non plus, les publications scientifiques et les sites d'institutions
+passent d'abord : ils sont lus et rendus avant les autres pages, qui restent
 cherchées. Quand la question ne dit pas clairement quelles sources conviennent,
 le cadrage le demande au créateur (`demander_sources`).
 
@@ -24,7 +24,7 @@ from dataclasses import dataclass, replace
 RAPIDE = "rapide"
 APPROFONDI = "approfondi"
 
-#: Toutes les sources à égalité, sans priorité aux références sérieuses.
+#: Toutes les sources à égalité, sans priorité aux publications et aux institutions.
 EGALE = "egale"
 
 #: Les corpus de chaque famille proposée au créateur.
@@ -39,8 +39,8 @@ class Options:
     mode: str = APPROFONDI
     #: Familles retenues ; vide : toutes.
     sources: frozenset[str] = frozenset()
-    #: Les références sérieuses lues et rendues d'abord ; faux : toutes à égalité.
-    serieuses_d_abord: bool = True
+    #: Publications et sites d'institutions lus et rendus d'abord ; faux : toutes à égalité.
+    publications_d_abord: bool = True
     #: Le créateur a choisi ses sources : le cadrage ne les lui redemande pas.
     sources_choisies: bool = False
 
@@ -53,7 +53,7 @@ class Options:
 #: conviennent, avec leur effet. Tenus par le serveur : la réponse se traduit en
 #: options sans que le modèle ait à l'interpréter.
 CHOIX_SOURCES: dict[str, tuple[frozenset[str], bool]] = {
-    "Littérature scientifique et références sérieuses d'abord": (frozenset(), True),
+    "Publications scientifiques et sites d'institutions d'abord": (frozenset(), True),
     "Toutes les sources à égalité, presse, blogs et documentation compris": (frozenset(), False),
     "Littérature scientifique seulement": (frozenset({"litterature"}), True),
 }
@@ -72,14 +72,14 @@ def options_demandees(mode: str, sources: Iterable[str], priorite: str | None) -
     """Les options d'une requête du chat. Fonction pure.
 
     Une famille de sources ou une priorité explicite est un choix du créateur ;
-    sans l'un ni l'autre, les références sérieuses passent d'abord et le cadrage
-    peut demander.
+    sans l'un ni l'autre, les publications et les sites d'institutions passent
+    d'abord et le cadrage peut demander.
     """
     familles = frozenset(sources)
     return Options(
         mode=mode,
         sources=familles,
-        serieuses_d_abord=priorite != EGALE,
+        publications_d_abord=priorite != EGALE,
         sources_choisies=bool(familles) or priorite is not None,
     )
 
@@ -89,9 +89,9 @@ def options_choisies(options: Options, choix: str) -> Options | None:
     effet = CHOIX_SOURCES.get(choix)
     if effet is None:
         return None
-    sources, serieuses_d_abord = effet
+    sources, publications_d_abord = effet
     return replace(
-        options, sources=sources, serieuses_d_abord=serieuses_d_abord, sources_choisies=True
+        options, sources=sources, publications_d_abord=publications_d_abord, sources_choisies=True
     )
 
 

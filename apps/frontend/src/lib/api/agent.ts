@@ -316,8 +316,8 @@ export interface ReponseGuidee {
 export interface OptionsRecherche {
   mode: 'rapide' | 'approfondi';
   sources: Array<'litterature' | 'web'>;
-  /** `egale` : toutes les sources à égalité. Absent : les références sérieuses d'abord. */
-  priorite?: 'serieuses' | 'egale' | null;
+  /** `egale` : toutes les sources à égalité. Absent : publications et sites d'institutions d'abord. */
+  priorite?: 'publications' | 'egale' | null;
 }
 
 export interface ChatInput {

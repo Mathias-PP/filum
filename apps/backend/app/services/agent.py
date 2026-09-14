@@ -109,6 +109,8 @@ TIMEOUT_OUTIL = 60.0
 #: qui l'atteindrait ne servirait à rien, la boucle serait coupée avant que le
 #: modèle ait pu lire l'erreur.
 TIMEOUTS_PAR_OUTIL: dict[str, float] = {
+    # Chaque source posee joint son adresse et relit sa page avant d'ecrire.
+    "retenir": 300.0,
     "fetch_url": 120.0,
     "web_search": 90.0,
     "import_from_content_url": 180.0,

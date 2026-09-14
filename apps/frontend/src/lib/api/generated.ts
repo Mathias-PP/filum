@@ -3334,9 +3334,9 @@ export interface components {
       sources?: ('litterature' | 'web')[];
       /**
        * Priorite
-       * @description `serieuses` : la littérature scientifique et les références sérieuses d'abord. `egale` : toutes les sources à égalité. Null : les sérieuses d'abord, et l'agent demande quand la question ne dit pas clairement quelles sources conviennent.
+       * @description `publications` : les publications scientifiques et les sites d'institutions d'abord. `egale` : toutes les sources à égalité. Null : les publications d'abord, et l'agent demande quand la question ne dit pas clairement quelles sources conviennent.
        */
-      priorite?: ('serieuses' | 'egale') | null;
+      priorite?: ('publications' | 'egale') | null;
     };
     /**
      * Platform

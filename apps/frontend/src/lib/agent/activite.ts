@@ -96,6 +96,7 @@ const SUPPRESSION: Compte = { un: 'suppression', plusieurs: 'suppressions' };
 const SOURCE_AJOUTEE: Compte = { un: 'source ajoutée', plusieurs: 'sources ajoutées' };
 const EXTRAIT_REFUSE: Compte = { un: 'extrait refusé', plusieurs: 'extraits refusés' };
 const ECRITURE_ECHOUEE: Compte = { un: 'écriture en échec', plusieurs: 'écritures en échec' };
+const EXTRAIT_POSE: Compte = { un: 'extrait posé', plusieurs: 'extraits posés' };
 
 /** Les outils qui écrivent dans les fiches, et ce qu'une réussite compte. */
 const ECRITURES: Record<string, Compte> = {
@@ -104,7 +105,8 @@ const ECRITURES: Record<string, Compte> = {
   restore_card: { un: 'fiche restaurée', plusieurs: 'fiches restaurées' },
   add_source: SOURCE_AJOUTEE,
   add_sources_batch: SOURCE_AJOUTEE,
-  add_excerpt: { un: 'extrait posé', plusieurs: 'extraits posés' },
+  add_excerpt: EXTRAIT_POSE,
+  retenir: EXTRAIT_POSE,
   update_card: MODIFICATION,
   update_source: MODIFICATION,
   update_excerpt: MODIFICATION,
@@ -129,6 +131,16 @@ export function bilanDesAppels(appels: AppelOutil[]): string | null {
   for (const appel of appels) {
     const compte = ECRITURES[appel.name];
     if (!compte || appel.result === null) continue;
+    if (appel.name === 'retenir') {
+      // Un appel pose plusieurs sources et extraits : le serveur les compte.
+      const nombre = (valeur: unknown) => (typeof valeur === 'number' ? valeur : 0);
+      const ajoutees = nombre(appel.result.sources_ajoutees);
+      const poses = nombre(appel.result.extraits_poses);
+      if (ajoutees) ajouter(SOURCE_AJOUTEE, ajoutees);
+      if (poses) ajouter(EXTRAIT_POSE, poses);
+      if (!poses) ajouter(ECRITURE_ECHOUEE, 1);
+      continue;
+    }
     if (estEchec(appel)) {
       ajouter(appel.name === 'add_excerpt' ? EXTRAIT_REFUSE : ECRITURE_ECHOUEE, 1);
       continue;

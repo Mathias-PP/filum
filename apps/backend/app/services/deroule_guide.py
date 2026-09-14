@@ -17,8 +17,8 @@ et chaque etape est une boucle d'agent qui ne voit que ses outils :
    (Perplexity Deep Research, Gemini, Scira) ;
 3. exploration, une boucle d'agent par sous-question : `rechercher` execute la
    methode de recherche cote serveur (`services/recherche_approfondie.py`) et
-   rend des passages exacts ; l'agent pose ceux qui repondent avec
-   `add_source`. Elle tourne par passes : tant qu'une passe couvre une
+   rend des passages exacts et numerotes ; l'agent designe ceux qui repondent
+   avec `retenir`, et le serveur les pose. Elle tourne par passes : tant qu'une passe couvre une
    sous-question jusque-la vide et qu'il en reste, la suivante relance celles
    qui restent avec d'autres formulations. Aucun nombre de passes fixe
    d'avance : une passe qui ne couvre rien de neuf arrete l'exploration ;
@@ -127,8 +127,8 @@ ETAPES: tuple[Etape, ...] = (
         outils=("demander_precision", "demander_sources"),
         consigne=(
             f"1. {_CADRAGE_ANGLES}\n"
-            "2. Par défaut, la recherche privilégie la littérature scientifique et les "
-            "références sérieuses (revues, institutions publiques, universités). Si la "
+            "2. Par défaut, la recherche privilégie les publications scientifiques et les "
+            "sites d'institutions (institutions publiques, universités). Si la "
             "question n'est pas clairement scientifique, technique ou pointue, ou si elle est "
             "ambiguë ou incomplète, appelle demander_sources : le créateur choisira.\n"
             "3. Si aucun de ces cas ne se présente, n'appelle aucun outil.\n"
@@ -160,7 +160,7 @@ ETAPES: tuple[Etape, ...] = (
         outils=(
             "rechercher",
             "suite_recherche",
-            "add_source",
+            "retenir",
             "add_excerpt",
             "list_sources",
             "find_passage",
@@ -174,14 +174,13 @@ ETAPES: tuple[Etape, ...] = (
             "   - requetes_contradiction : des formulations qui cherchent ce qui contredit ou "
             "nuance le propos dominant (limites, critiques, résultats contraires). Si rien "
             "n'est trouvé, dis-le et continue : cela ne bloque pas.\n"
-            "2. Pour chaque source rendue, garde les passages qui répondent vraiment à la "
-            "sous-question ou la nuancent ; écarte ceux qui ne font que l'effleurer.\n"
-            "3. Source nouvelle : add_source(card_slug, url, metadata_from='page', "
-            'excerpts=[{"text": passage recopié tel quel, "context": ce que le passage '
-            "établit}]), avec l'url rendue par rechercher et sans position. Source déjà "
-            "sur la fiche (source_id rendu) : add_excerpt(source_id, text) pour chaque "
-            "passage retenu.\n"
-            "4. Une source dont aucun passage ne répond n'est pas ajoutée.\n"
+            "2. Dans chaque page de résultats, choisis les passages qui répondent vraiment à "
+            "la sous-question ou la nuancent ; écarte ceux qui ne font que l'effleurer.\n"
+            '3. Appelle une seule fois retenir(recherche_id, passages=[{"id": id du passage, '
+            '"contexte": ce que le passage établit}]) avec tous les passages retenus de la '
+            "page. Le serveur ajoute les sources et leurs extraits avec le texte de la page : "
+            "ne recopie rien.\n"
+            "4. Si aucun passage d'une page ne répond, n'appelle pas retenir pour elle.\n"
             "5. Si le résultat annonce une page suivante, appelle suite_recherche et "
             "traite-la de même.\n"
             "Termine par : les sources ajoutées avec leur nombre d'extraits, les sources "
@@ -246,7 +245,7 @@ _CONSIGNE_PAR_MANQUE = {
         "aucune source ne nuance la réponse : appelle rechercher avec la question de la "
         "fiche pour sous_question et des requetes_contradiction variées (limites, "
         "critiques, résultats contraires, dans les langues où le sujet est étudié), puis "
-        "pose les passages qui nuancent"
+        "retiens avec retenir les passages qui nuancent"
     ),
     relecture.SOURCE_SANS_POSITION: (
         "source citée sans position : pose sa position avec update_source"
@@ -639,8 +638,8 @@ async def derouler(
             )
         else:
             comptes_rendus.append(
-                "## Sources\nPas de réponse : la littérature scientifique et les références "
-                "sérieuses passent d'abord."
+                "## Sources\nPas de réponse : les publications scientifiques et les sites "
+                "d'institutions passent d'abord."
             )
 
     async def valider_plan() -> None:

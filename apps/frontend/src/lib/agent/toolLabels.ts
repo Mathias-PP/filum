@@ -164,6 +164,10 @@ const ACTIONS: Record<
   suite_recherche: {
     action: 'Lit la suite des résultats de recherche',
   },
+  retenir: {
+    action: 'Pose les passages retenus sur',
+    objet: (a, r) => texteArg(r ?? {}, 'card_slug') ?? texteArg(a, 'card_slug'),
+  },
   demarrer_fiche_sujet: {
     action: 'Lance la fiche sur',
     objet: (a) => texteArg(a, 'question'),
