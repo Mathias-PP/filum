@@ -125,6 +125,23 @@ def _relais_de_lecture_hors_ligne(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def _archive_hors_ligne_pour_les_metadonnees(monkeypatch):
+    """Coupe l'archive du web pour la lecture des metadonnees.
+
+    Depuis que l'apercu d'import et l'origine `page` passent par la meme
+    lecture que le texte (page directe, relais, archive), tout test dont la page
+    directe echoue interrogerait web.archive.org, dont l'index met jusqu'a une
+    minute a repondre. Les tests de la lecture elle-meme rebranchent la voie.
+    """
+    from app.extractors import lecture_page
+
+    async def _aucune_capture(url: str | None) -> None:
+        return None
+
+    monkeypatch.setattr(lecture_page, "html_archive", _aucune_capture)
+
+
+@pytest.fixture(autouse=True)
 def _existence_des_sources_admise(monkeypatch):
     """Admet l'existence des adresses citees par les tests, sans reseau.
 

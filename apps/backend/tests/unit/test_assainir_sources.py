@@ -55,11 +55,41 @@ async def _lire(db_session) -> Source:
 @pytest.mark.asyncio
 async def test_sans_ecrire_la_passe_liste_sans_rien_changer(db_session, source_ancienne):
     corrections = await assainir(db_session, ecrire=False, resoudre=False)
-    assert [(c.titre_avant, c.titre_apres) for c in corrections] == [
-        ("Checking your browser - reCAPTCHA", None)
+    assert [c.ecarts() for c in corrections] == [
+        {
+            "title": ("Checking your browser - reCAPTCHA", None),
+            "authors": ("https://www.facebook.com/inserm.fr", None),
+        }
     ]
     db_session.expire_all()
     assert (await _lire(db_session)).title == "Checking your browser - reCAPTCHA"
+
+
+@pytest.mark.asyncio
+async def test_la_passe_corrige_la_nature_et_retrouve_le_doi_pubmed(
+    db_session, source_ancienne, monkeypatch
+):
+    # Une ligne d'avant la regle de nature : un article PMC classe « page-web / individu ».
+    await db_session.execute(
+        text("UPDATE sources SET category = 'page-web', author_kind = 'individu', doi = NULL")
+    )
+    await db_session.commit()
+    db_session.expire_all()
+
+    async def doi_ncbi(url):
+        return "10.12688/f1000research.17242.1"
+
+    async def resoudre(origine, *, url, doi):
+        return None
+
+    monkeypatch.setattr(assainir_sources, "resolve_doi_from_pubmed", doi_ncbi)
+    monkeypatch.setattr(assainir_sources.metadonnees_source, "resoudre", resoudre)
+    await assainir(db_session, ecrire=True, resoudre=True)
+    db_session.expire_all()
+
+    source = await _lire(db_session)
+    assert source.doi == "10.12688/f1000research.17242.1"
+    assert (source.category, source.author_kind) == ("article-scientifique", "chercheur")
 
 
 @pytest.mark.asyncio

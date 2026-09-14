@@ -5,11 +5,12 @@ from enum import Enum
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, event
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from app.core.champs_bibliographiques import auteurs_bibliographiques, titre_bibliographique
+from app.core.nature_source import nature_corrigee
 from app.db.database import Base
 
 if TYPE_CHECKING:
@@ -261,3 +262,25 @@ class Source(Base):
 
     def __repr__(self) -> str:
         return f"<Source {self.title or self.url[:30]}>"
+
+
+@event.listens_for(Source, "before_insert")
+@event.listens_for(Source, "before_update")
+def _imposer_la_nature(_mapper, _connexion, source: Source) -> None:
+    """Format, categorie et auteur corriges quand une valeur neutre contredit les faits.
+
+    A l'enregistrement plutot qu'a l'affectation : la regle croise l'adresse, le
+    DOI et la revue, que les chemins d'ecriture affectent dans n'importe quel
+    ordre (cf. core/nature_source.py). Un choix informatif n'est jamais ecrase.
+    """
+    nature = nature_corrigee(
+        url=source.url,
+        doi=source.doi,
+        journal=source.journal,
+        format=source.format,
+        category=source.category,
+        author_kind=source.author_kind,
+    )
+    source.format = nature.format
+    source.category = nature.category
+    source.author_kind = nature.author_kind

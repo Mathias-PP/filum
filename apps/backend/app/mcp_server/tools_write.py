@@ -519,8 +519,8 @@ async def add_source(
     title: str | None = None,
     authors: str | None = None,
     doi: str | None = None,
-    category: str = "article-scientifique",
-    author_kind: str = "chercheur",
+    category: str = "page-web",
+    author_kind: str = "individu",
     format: str = "texte",
     stance: str | None = None,
     annotation: str | None = None,
@@ -620,13 +620,14 @@ async def add_source(
 
     # Validation enum avant ecriture (cf. _valeur_enum) : refuser ici plutot
     # que de rendre la fiche entiere illisible a la prochaine lecture.
+    # Valeurs neutres a defaut : `Source` corrige a l'enregistrement celles que
+    # les faits contredisent (DOI, hebergeur, domaine public), cf.
+    # core/nature_source.py. « article-scientifique / chercheur » par defaut
+    # classait ameli ou l'OMS comme un article de chercheur.
     fmt = _valeur_enum("format", format, SourceFormat) or SourceFormat.TEXTE.value
-    categorie = (
-        _valeur_enum("category", category, SourceCategory)
-        or SourceCategory.ARTICLE_SCIENTIFIQUE.value
-    )
+    categorie = _valeur_enum("category", category, SourceCategory) or SourceCategory.PAGE_WEB.value
     nature_auteur = (
-        _valeur_enum("author_kind", author_kind, AuthorKind) or AuthorKind.CHERCHEUR.value
+        _valeur_enum("author_kind", author_kind, AuthorKind) or AuthorKind.INDIVIDU.value
     )
     position_declaree = _valeur_enum("stance", stance, SourceStance)
 
@@ -1302,12 +1303,11 @@ async def update_source(
         source.journal = journal or None
     if category is not None:
         source.category = (
-            _valeur_enum("category", category, SourceCategory)
-            or SourceCategory.ARTICLE_SCIENTIFIQUE.value
+            _valeur_enum("category", category, SourceCategory) or SourceCategory.PAGE_WEB.value
         )
     if author_kind is not None:
         source.author_kind = (
-            _valeur_enum("author_kind", author_kind, AuthorKind) or AuthorKind.CHERCHEUR.value
+            _valeur_enum("author_kind", author_kind, AuthorKind) or AuthorKind.INDIVIDU.value
         )
     if format is not None:
         source.format = _valeur_enum("format", format, SourceFormat) or SourceFormat.TEXTE.value
@@ -2451,11 +2451,11 @@ async def add_sources_batch(
             fmt = _valeur_enum("format", sd.get("format"), SourceFormat) or SourceFormat.TEXTE.value
             categorie = (
                 _valeur_enum("category", sd.get("category"), SourceCategory)
-                or SourceCategory.ARTICLE_SCIENTIFIQUE.value
+                or SourceCategory.PAGE_WEB.value
             )
             nature_auteur = (
                 _valeur_enum("author_kind", sd.get("author_kind"), AuthorKind)
-                or AuthorKind.CHERCHEUR.value
+                or AuthorKind.INDIVIDU.value
             )
             position_declaree = _valeur_enum("stance", sd.get("stance"), SourceStance)
         except ToolError as exc:
