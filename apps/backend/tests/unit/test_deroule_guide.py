@@ -16,9 +16,10 @@ from app.agent_tools.tool import AgentTool, ToolContext
 from app.core.config import get_settings
 from app.crypto.keygen import KeyManager
 from app.models.agent_provider import AgentProvider
-from app.services import deroule_guide
+from app.services import deroule_guide, relecture
 from app.services.couverture import Couverture, SousQuestion
 from app.services.deroule_guide import ETAPES, est_demande_de_fiche, relancer_une_passe
+from app.services.relecture import Manque
 
 
 @pytest.mark.parametrize(
@@ -261,4 +262,74 @@ async def test_le_deroule_s_arrete_quand_une_passe_n_ajoute_rien(
         db_session, test_user, reponses, slug="taxe-carbone"
     )
     assert _etapes(events).count("exploration") == 1
+    assert events[-1]["type"] == "done"
+
+
+NUANCE = Manque(relecture.SANS_NUANCE, "Taxe carbone", "exploration")
+SANS_POSITION = Manque(relecture.SOURCE_SANS_POSITION, "Etude (source_id=s1)", "positions")
+VIDE = Manque(relecture.SOUS_QUESTION_VIDE, INDUSTRIE, "exploration")
+
+
+def _grilles(monkeypatch, *grilles: list[Manque]) -> None:
+    """Rend les grilles dans l'ordre des lectures, puis garde la derniere."""
+    file = list(grilles)
+
+    async def grille(db, creator_id, slug):
+        return file.pop(0) if len(file) > 1 else file[0]
+
+    monkeypatch.setattr(deroule_guide.relecture, "grille", grille)
+
+
+def _reponses_jusqu_aux_positions() -> list[dict]:
+    return [
+        _appel("create_card", {"card_kind": "sujet", "slug": "taxe-carbone"}),
+        _texte("Fiche taxe-carbone, plan posé."),
+        _texte("https://a.test : transport"),
+        _texte("Source ajoutée."),
+        _texte("Positions posées."),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_la_relecture_relance_les_etapes_tant_qu_elle_comble_un_manque(
+    db_session, test_user, monkeypatch
+):
+    # Lectures : avant la relecture, apres le tour 1, apres le tour 2, bilan.
+    _grilles(monkeypatch, [NUANCE, SANS_POSITION], [NUANCE], [NUANCE], [NUANCE, VIDE])
+    reponses = _reponses_jusqu_aux_positions() + [
+        _texte("Relecture 1 : aucune nuance trouvée."),
+        _texte("Relecture 1 : position posée."),
+        _texte("Relecture 2 : toujours aucune nuance."),
+        _texte("Relecture 2 : rien à poser."),
+        _texte("Bilan."),
+    ]
+    events, _ajouts, _heures, corps = await _derouler(
+        db_session, test_user, reponses, slug="taxe-carbone"
+    )
+
+    titres = [e["payload"]["titre"] for e in events if e["type"] == "etape_guidee"]
+    assert "Relecture 1, exploration" in titres and "Relecture 2, positions" in titres
+    assert "Relecture 3, exploration" not in titres
+    assert events[-1]["type"] == "done"
+    consignes = [next(m for m in c["messages"] if m["role"] == "user")["content"] for c in corps]
+    bilan = consignes[-1]
+    assert "aucune source qui nuance" in bilan and INDUSTRIE in bilan
+
+
+@pytest.mark.asyncio
+async def test_la_relecture_s_arrete_quand_un_tour_ne_comble_rien(
+    db_session, test_user, monkeypatch
+):
+    _grilles(monkeypatch, [SANS_POSITION], [SANS_POSITION])
+    reponses = _reponses_jusqu_aux_positions() + [
+        _texte("Relecture 1 : la position n'a pas pu être posée."),
+        _texte("Bilan."),
+    ]
+    events, _ajouts, _heures, _corps = await _derouler(
+        db_session, test_user, reponses, slug="taxe-carbone"
+    )
+    titres = [e["payload"]["titre"] for e in events if e["type"] == "etape_guidee"]
+    assert titres.count("Relecture 1, positions") == 1
+    assert not any(t.startswith("Relecture 2") for t in titres)
+    assert "Relecture 1, exploration" not in titres
     assert events[-1]["type"] == "done"

@@ -16,8 +16,12 @@ et chaque etape est une boucle d'agent qui ne voit que ses outils :
    qu'une passe couvre une sous-question jusque-la vide et qu'il en reste, la
    suivante cible celles qui restent. Aucun nombre de passes fixe d'avance :
    une passe qui ne couvre rien de neuf arrete l'exploration ;
-4. positions : `update_source`, qui exige deja un extrait ;
-5. bilan : la reponse au createur, tiree des seuls extraits poses.
+4. positions : `update_source`, qui exige deja un extrait. Suit une relecture :
+   la grille de `services/relecture.py` nomme les manques (source sans
+   extrait, sans position, aucune nuance, retractation en appui), et les etapes
+   qui les comblent sont relancees tant qu'une relecture en comble au moins un ;
+5. bilan : la reponse au createur, tiree des seuls extraits poses, avec ce qui
+   manque encore.
 
 Le compte rendu de chaque etape sert de contexte a la suivante. Le deroule
 tourne dans le tour detache du chat : reprise apres une coupure, fiche en
@@ -40,10 +44,11 @@ from app.agent_tools.registry import construire_registre, filtrer
 from app.agent_tools.tool import AgentTool
 from app.models.agent_provider import AgentProvider
 from app.models.user import User
-from app.services import couverture
+from app.services import couverture, relecture
 from app.services.agent import Approuver, Emitter, boucle
 from app.services.agent_definitions import AgentDefinition
 from app.services.couverture import Couverture
+from app.services.relecture import Manque
 
 logger = logging.getLogger(__name__)
 
@@ -152,7 +157,8 @@ ETAPES: tuple[Etape, ...] = (
         consigne=(
             "Pour chaque adresse retenue :\n"
             "1. Appelle propose_passages(url, questions) avec les sous-questions que "
-            "cette source peut éclairer.\n"
+            "cette source peut éclairer. Une question de réserve est ajoutée d'office : "
+            "ses passages sont ceux qui nuancent.\n"
             "2. Retiens tous les passages qui répondent vraiment, et ceux qui nuancent.\n"
             "3. S'il en reste au moins un, appelle add_source(card_slug, url, "
             "metadata_from='page', excerpts=[{\"text\": passage recopié tel quel, "
@@ -186,7 +192,8 @@ ETAPES: tuple[Etape, ...] = (
             "uniquement sur les extraits posés :\n"
             "1. la réponse à la question, sous-question par sous-question ;\n"
             "2. ce qui la nuance ;\n"
-            "3. les sous-questions restées sans extrait, et ce qui n'a pas pu être cité ;\n"
+            "3. ce qui manque encore : sous-questions sans extrait, manques de la "
+            "relecture, passages qui n'ont pas pu être cités ;\n"
             "4. les limites.\n"
             "N'ajoute rien qui ne soit dans un extrait. Pas de plan, pas d'annonce de "
             "ce que tu vas faire."
@@ -194,11 +201,42 @@ ETAPES: tuple[Etape, ...] = (
     ),
 )
 
+_ETAPE_PAR_ID = {etape.id: etape for etape in ETAPES}
+_RANG_PAR_ID = {etape.id: rang for rang, etape in enumerate(ETAPES, start=1)}
+
 #: Outils dont les arguments nomment la fiche travaillee.
 _OUTILS_QUI_NOMMENT_LA_FICHE = {
     "get_my_card": "slug",
     "add_source": "card_slug",
     "definir_plan": "slug",
+}
+
+#: Ce que l'etape doit faire de chaque manque, dit au modele.
+_CONSIGNE_PAR_MANQUE = {
+    relecture.SOURCE_SANS_EXTRAIT: (
+        "source sans extrait : cherche ses passages avec find_passage puis pose-les avec "
+        "add_excerpt ; si aucun ne répond à la question, dis-le"
+    ),
+    relecture.SANS_NUANCE: (
+        "aucune source ne nuance la réponse : cherche avec web_search des limites, des "
+        "réserves ou des résultats contraires, puis explore les adresses trouvées"
+    ),
+    relecture.SOURCE_SANS_POSITION: (
+        "source citée sans position : pose sa position avec update_source"
+    ),
+    relecture.RETRACTATION: (
+        "source rétractée posée en appui : passe-la en stance='contexte' avec update_source"
+    ),
+}
+
+#: Libelle court de chaque manque, pour le bilan.
+_LIBELLE_MANQUE = {
+    relecture.SOUS_QUESTION_VIDE: "sous-question sans extrait",
+    relecture.SOURCE_SANS_EXTRAIT: "source sans extrait",
+    relecture.SOURCE_SANS_POSITION: "source sans position",
+    relecture.POSITION_SANS_APPUI: "position sans extrait qui la justifie",
+    relecture.SANS_NUANCE: "aucune source qui nuance",
+    relecture.RETRACTATION: "source rétractée en appui",
 }
 
 
@@ -215,6 +253,10 @@ def relancer_une_passe(avant: Couverture | None, apres: Couverture | None) -> bo
     vides_avant = set(avant.vides())
     vides_apres = set(apres.vides())
     return bool(vides_apres) and bool(vides_avant - vides_apres)
+
+
+def _comblables(manques: list[Manque]) -> list[Manque]:
+    return [m for m in manques if m.genre in relecture.COMBLABLES]
 
 
 def _bloc_couverture(etat: Couverture | None, *, relance: bool = False) -> str:
@@ -235,6 +277,21 @@ def _bloc_couverture(etat: Couverture | None, *, relance: bool = False) -> str:
     return bloc
 
 
+def _bloc_manques(manques: list[Manque]) -> str:
+    lignes = [f"- {_CONSIGNE_PAR_MANQUE[m.genre]} : {m.cible}" for m in manques]
+    return (
+        "La relecture de la fiche a trouvé ces manques. Traite-les, et seulement eux :\n"
+        + "\n".join(lignes)
+    )
+
+
+def _bloc_restants(manques: list[Manque]) -> str:
+    if not manques:
+        return ""
+    lignes = [f"- {_LIBELLE_MANQUE.get(m.genre, m.genre)} : {m.cible}" for m in manques]
+    return "Ce qui manque encore à la fiche, à dire au créateur :\n" + "\n".join(lignes)
+
+
 async def _couverture(db: AsyncSession, user: User, slug: str | None) -> Couverture | None:
     if not slug:
         return None
@@ -243,6 +300,16 @@ async def _couverture(db: AsyncSession, user: User, slug: str | None) -> Couvert
     except Exception:  # noqa: BLE001  # la couverture guide, elle ne bloque jamais le deroule
         logger.warning("Couverture illisible pour %s", slug, exc_info=True)
         return None
+
+
+async def _grille(db: AsyncSession, user: User, slug: str | None) -> list[Manque]:
+    if not slug:
+        return []
+    try:
+        return await relecture.grille(db, user.id, slug)
+    except Exception:  # noqa: BLE001  # la relecture guide, elle ne bloque jamais le deroule
+        logger.warning("Relecture illisible pour %s", slug, exc_info=True)
+        return []
 
 
 def _consigne(
@@ -414,12 +481,47 @@ async def derouler(
                 return True
             avant, passe = apres, passe + 1
 
+    async def relire() -> bool:
+        """Relance les etapes qui comblent les manques, tant qu'une relecture en comble.
+
+        Chaque tour relance doit avoir fait baisser le nombre de manques
+        comblables : la relecture finit, sans nombre de tours fixe d'avance.
+        """
+        avant = _comblables(await _grille(db, user, etat["slug"]))
+        tour = 1
+        while avant:
+            a_explorer = [m for m in avant if m.etape == "exploration"]
+            if a_explorer:
+                etape = _ETAPE_PAR_ID["exploration"]
+                titre = f"Relecture {tour}, exploration"
+                if not await executer(
+                    etape, _RANG_PAR_ID[etape.id], titre, _bloc_manques(a_explorer), None
+                ):
+                    return False
+            a_positionner = [m for m in avant if m.etape == "positions"]
+            # Une exploration de relecture a pu poser des sources : elles attendent
+            # leur position meme si la grille d'avant ne les connaissait pas.
+            if a_positionner or a_explorer:
+                etape = _ETAPE_PAR_ID["positions"]
+                titre = f"Relecture {tour}, positions"
+                supplement = _bloc_manques(a_positionner) if a_positionner else ""
+                if not await executer(etape, _RANG_PAR_ID[etape.id], titre, supplement, None):
+                    return False
+            apres = _comblables(await _grille(db, user, etat["slug"]))
+            if len(apres) >= len(avant):
+                return True
+            avant, tour = apres, tour + 1
+        return True
+
     for rang, etape in enumerate(ETAPES, start=1):
         if etape.id == "exploration":
             if not await explorer(etape, rang):
                 return
         else:
             supplement = _bloc_couverture(await _couverture(db, user, etat["slug"]))
+            if etape.id == "bilan":
+                restants = _bloc_restants(await _grille(db, user, etat["slug"]))
+                supplement = "\n\n".join(b for b in (supplement, restants) if b)
             if not await executer(etape, rang, etape.titre, supplement, None):
                 return
         if etape.id == "plan" and not etat["slug"]:
@@ -435,6 +537,8 @@ async def derouler(
                     },
                 }
             )
+            return
+        if etape.id == "positions" and not await relire():
             return
 
     await emit({"type": "done", "payload": {"reason": "complete", "usage": usage_total}})

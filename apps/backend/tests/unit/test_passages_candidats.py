@@ -6,7 +6,7 @@ import pytest
 
 from app.mcp_server.tools_write import propose_passages
 from app.services import embeddings, excerpt_insertion, passages_candidats
-from app.services.passages_candidats import proposer
+from app.services.passages_candidats import proposer, questions_avec_reserve
 
 PAGE = (
     "La taxe carbone suedoise, introduite en 1991, a ete relevee plusieurs fois. "
@@ -55,6 +55,33 @@ async def test_sans_embeddings_le_classement_par_mots_prend_le_relais(monkeypatc
     candidats = await proposer(PAGE, ["exemptions industrie lourde taxe"])
     assert candidats and candidats[0].methode == "mots"
     assert candidats[0].texte in PAGE
+
+
+@pytest.mark.asyncio
+async def test_une_source_dense_passe_en_extraction_exhaustive_sans_redite(sens):
+    paragraphes = [
+        f"Le transport routier du canton {i} a reduit ses emissions de {i} points cette annee."
+        for i in range(10)
+    ] + [
+        f"L'industrie du canton {i} a obtenu une exemption de {i} points sur la meme periode."
+        for i in range(10)
+    ]
+    page = "\n\n".join(paragraphes)
+
+    candidats = await proposer(page, ["effet sur le transport", "effet sur l'industrie"])
+
+    transport = [c for c in candidats if c.question == "effet sur le transport"]
+    assert len(transport) == 10 > passages_candidats.PASSAGES_PAR_QUESTION
+    textes = [c.texte for c in candidats]
+    assert len(textes) == len(set(textes)) == 20
+
+
+def test_la_question_de_reserve_est_ajoutee_d_office():
+    assert questions_avec_reserve(["La taxe carbone a-t-elle reduit les emissions ?", " "]) == [
+        "La taxe carbone a-t-elle reduit les emissions ?",
+        "Limites, réserves ou résultats contraires : La taxe carbone a-t-elle reduit les emissions ?",
+    ]
+    assert questions_avec_reserve(["  "]) == []
 
 
 @pytest.mark.asyncio
