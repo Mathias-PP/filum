@@ -118,6 +118,23 @@
     document.getElementById(`source-${id}`)?.scrollIntoView({ block: 'center' });
   }
 
+  // Un renvoi de la réponse de l'agent vise `#extrait-<id>` : la source qui porte
+  // l'extrait s'ouvre, et la page descend jusqu'au passage cité.
+  let ancreTraitee = false;
+  $effect(() => {
+    if (!browser || ancreTraitee || !card) return;
+    const ancre = window.location.hash;
+    if (!ancre.startsWith('#extrait-')) return;
+    ancreTraitee = true;
+    const extraitId = ancre.slice('#extrait-'.length);
+    const source = card.sources.find((s) => s.excerpts?.some((e) => e.id === extraitId));
+    if (!source) return;
+    void openSourceFromTable(source.id).then(async () => {
+      await tick();
+      document.getElementById(`extrait-${extraitId}`)?.scrollIntoView({ block: 'center' });
+    });
+  });
+
   $effect(() => {
     if (browser && !GraphComponent) {
       import('$lib/components/SourceGraph.svelte').then((m) => {
@@ -756,7 +773,8 @@
                         {#each source.excerpts as excerpt (excerpt.id)}
                           {@const verdict = lireVerdict(excerpt)}
                           <li
-                            class="bg-surface-secondary border border-border rounded-md p-3 text-sm"
+                            id="extrait-{excerpt.id}"
+                            class="scroll-mt-20 bg-surface-secondary border border-border rounded-md p-3 text-sm"
                           >
                             {#if excerpt.title}
                               <p class="mb-1 text-xs font-medium text-ink-primary">

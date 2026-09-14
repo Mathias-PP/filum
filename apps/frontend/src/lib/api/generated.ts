@@ -441,6 +441,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/agent/repondre': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Repondre Question
+     * @description Répond à une question du déroulé guidé (précision, plan), pour ce créateur seul.
+     */
+    post: operations['repondre_question_api_v1_agent_repondre_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/agent/workspace/tree': {
     parameters: {
       query?: never;
@@ -1846,6 +1866,10 @@ export interface components {
        * @description Agent nommé à utiliser (fichier `agents/<slug>.yaml`). Null : l'agent déjà attaché à la session, sinon l'assistant généraliste.
        */
       agent_slug?: string | null;
+      /** @description Mode et sources de la recherche. Null : méthode complète. */
+      recherche?: components['schemas']['OptionsRecherche'] | null;
+      /** @description Prolonge la fiche par cette sous-question, en déroulé guidé. */
+      approfondir?: components['schemas']['SuiteFiche'] | null;
     };
     /** AgentDefinitionList */
     AgentDefinitionList: {
@@ -3292,6 +3316,24 @@ export interface components {
     OpenAccessStatus:
       'diamond' | 'gold' | 'green' | 'hybrid' | 'bronze' | 'open' | 'closed' | 'unverifiable';
     /**
+     * OptionsRecherche
+     * @description Comment chercher : même méthode, budgets et corpus au choix du créateur.
+     */
+    OptionsRecherche: {
+      /**
+       * Mode
+       * @description `rapide` : une passe, sans suivi des citations ni relecture ni pause de validation. `approfondi` : la méthode complète.
+       * @default approfondi
+       * @enum {string}
+       */
+      mode: 'rapide' | 'approfondi';
+      /**
+       * Sources
+       * @description Familles de corpus à interroger. Vide : toutes.
+       */
+      sources?: ('litterature' | 'web')[];
+    };
+    /**
      * Platform
      * @enum {string}
      */
@@ -3345,6 +3387,18 @@ export interface components {
       | 'mistral'
       | 'cerebras'
       | 'custom';
+    /**
+     * ReponseGuidee
+     * @description La réponse du créateur à une question du déroulé (précision, plan).
+     */
+    ReponseGuidee: {
+      /** Request Id */
+      request_id: string;
+      /** Choix */
+      choix?: string | null;
+      /** Sous Questions */
+      sous_questions?: string[] | null;
+    };
     /**
      * RetractionStatus
      * @description Etat de l'article aux yeux de Crossref / Retraction Watch.
@@ -3618,6 +3672,16 @@ export interface components {
       context_before: string;
       /** Context After */
       context_after: string;
+    };
+    /**
+     * SuiteFiche
+     * @description Prolonger une fiche existante par une sous-question de plus.
+     */
+    SuiteFiche: {
+      /** Card Slug */
+      card_slug: string;
+      /** Sous Question */
+      sous_question: string;
     };
     /**
      * TestProviderBody
@@ -4657,6 +4721,37 @@ export interface operations {
     requestBody: {
       content: {
         'application/json': components['schemas']['AgentApprovalDecision'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  repondre_question_api_v1_agent_repondre_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ReponseGuidee'];
       };
     };
     responses: {

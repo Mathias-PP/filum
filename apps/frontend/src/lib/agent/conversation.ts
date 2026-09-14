@@ -7,7 +7,7 @@
  * qu'on puisse le tester sans navigateur ni réseau.
  */
 
-import type { AgentEvent, AgentMessage } from '$lib/api/agent';
+import type { AgentEvent, AgentMessage, ReponseGuidee } from '$lib/api/agent';
 
 export type ChatItem =
   | { kind: 'user'; text: string }
@@ -34,6 +34,19 @@ export type ChatItem =
   | { kind: 'compaction'; retires: number; elagues: number }
   | { kind: 'controle' }
   | { kind: 'etape'; titre: string; rang: number; total: number }
+  | {
+      kind: 'question';
+      requestId: string;
+      genre: 'precision' | 'plan';
+      question: string;
+      options: string[];
+      sousQuestions: string[];
+      expiresAt?: number;
+      /** `false` tant que le déroulé attend ; la réponse, ou `null` sans réponse. */
+      resolue: boolean;
+      reponse: ReponseGuidee | null;
+    }
+  | { kind: 'suites'; cardSlug: string; questions: string[] }
   | { kind: 'repli'; quitte: string; pris: string; raison: string }
   | { kind: 'continuation'; message: string; tours: number };
 
@@ -144,6 +157,46 @@ export function appliquer(items: ChatItem[], event: AgentEvent): ChatItem[] {
           rang: event.payload.rang,
           total: event.payload.total,
         },
+      ];
+
+    case 'question_guidee':
+      return [
+        ...items,
+        {
+          kind: 'question',
+          requestId: event.payload.request_id,
+          genre: event.payload.genre,
+          question: event.payload.question ?? '',
+          options: event.payload.options ?? [],
+          sousQuestions: event.payload.sous_questions ?? [],
+          expiresAt: event.payload.expires_at,
+          resolue: false,
+          reponse: null,
+        },
+      ];
+
+    case 'question_resolue': {
+      const cible = trouverDernier(
+        items,
+        (item) => item.kind === 'question' && item.requestId === event.payload.request_id
+      );
+      if (cible < 0) return items;
+      const item = items[cible] as Extract<ChatItem, { kind: 'question' }>;
+      return remplacer(items, cible, { ...item, resolue: true, reponse: event.payload.reponse });
+    }
+
+    case 'reponse_verifiee': {
+      // Le texte diffusé en direct portait des renvois bruts : la version vérifiée,
+      // aux liens vers les extraits, le remplace. C'est aussi elle qui est en base.
+      const cible = trouverDernier(items, (item) => item.kind === 'assistant');
+      if (cible < 0) return items;
+      return remplacer(items, cible, { kind: 'assistant', text: event.payload.texte });
+    }
+
+    case 'suites_proposees':
+      return [
+        ...items,
+        { kind: 'suites', cardSlug: event.payload.card_slug, questions: event.payload.questions },
       ];
 
     case 'controle_relance':

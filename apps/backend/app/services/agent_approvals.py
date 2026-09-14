@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from typing import Any
 from uuid import UUID
 
 logger = logging.getLogger(__name__)
@@ -56,6 +57,36 @@ def resoudre(request_id: str, creator_id: UUID, approuve: bool) -> None:
     if not future.done():
         future.set_result(approuve)
     _EN_ATTENTE.pop(request_id, None)
+
+
+#: Questions du déroulé guidé (précision, plan) : même attente, réponse riche.
+_REPONSES: dict[str, tuple[UUID, asyncio.Future[dict[str, Any]]]] = {}
+
+
+def resoudre_reponse(request_id: str, creator_id: UUID, reponse: dict[str, Any]) -> None:
+    """Répond à une question en attente. Lève si elle n'existe pas ou n'est pas à ce créateur."""
+    entree = _REPONSES.get(request_id)
+    if entree is None or entree[0] != creator_id:
+        raise ApprovalInconnueError("Aucune question en attente sous cet identifiant.")
+    _, future = entree
+    if not future.done():
+        future.set_result(reponse)
+    _REPONSES.pop(request_id, None)
+
+
+async def attendre_reponse(
+    request_id: str, creator_id: UUID, *, delai: float = DELAI_MAX
+) -> dict[str, Any] | None:
+    """Suspend jusqu'à la réponse du créateur. ``None`` au-delà du délai : le déroulé continue."""
+    future: asyncio.Future[dict[str, Any]] = asyncio.get_running_loop().create_future()
+    _REPONSES[request_id] = (creator_id, future)
+    try:
+        return await asyncio.wait_for(future, timeout=delai)
+    except TimeoutError:
+        logger.info("Question %s sans réponse après %.0fs, le déroulé continue", request_id, delai)
+        return None
+    finally:
+        _REPONSES.pop(request_id, None)
 
 
 async def attendre(request_id: str, creator_id: UUID, *, delai: float = DELAI_MAX) -> bool:

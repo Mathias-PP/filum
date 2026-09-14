@@ -7,6 +7,7 @@
     type AgentMessage,
     type AgentProvider,
     type AgentSessionUsage,
+    type ReponseGuidee,
   } from '$lib/api/agent';
   import { ApiError } from '$lib/api';
   import { appliquer, depuisMessages, tourTermine, type ChatItem } from '$lib/agent/conversation';
@@ -15,6 +16,7 @@
   import Button from '../Button.svelte';
   import { toast } from '../Toast.svelte';
   import ApprovalCard from './ApprovalCard.svelte';
+  import QuestionGuidee from './QuestionGuidee.svelte';
   import BlocActivite from './BlocActivite.svelte';
   import CopierBouton from './CopierBouton.svelte';
   import FicheVivante from './FicheVivante.svelte';
@@ -34,6 +36,9 @@
 
   let items = $state<ChatItem[]>([]);
   let saisie = $state('');
+  // Même méthode de recherche, budgets et corpus au choix du créateur.
+  let modeRecherche = $state<'approfondi' | 'rapide'>('approfondi');
+  let sourcesRecherche = $state<'' | 'litterature' | 'web'>('');
   let enCours = $state(false);
   let chargement = $state(Boolean(sessionId));
   let controleur: AbortController | null = null;
@@ -749,7 +754,10 @@
   }
 
   /** Envoie un message et déroule le tour : commun à l'envoi, à « Continuer » et à « Réessayer ». */
-  async function lancerTour(message: string) {
+  async function lancerTour(
+    message: string,
+    approfondir?: { card_slug: string; sous_question: string }
+  ) {
     // Envoyer pendant une reprise ferait écraser le fil par la relecture.
     if (enCours || reprise === 'encours') return;
     auBas = true;
@@ -772,6 +780,11 @@
               model_override: modeleChoisi || undefined,
             }),
         agent_slug: agentChoisi || undefined,
+        recherche: {
+          mode: modeRecherche,
+          sources: sourcesRecherche ? [sourcesRecherche] : [],
+        },
+        approfondir,
         signal: controleur.signal,
       })) {
         await traiter(evenement);
@@ -818,6 +831,22 @@
     } catch (e) {
       toast.danger(e instanceof ApiError ? e.message : "Cette demande n'attend plus de reponse.");
     }
+  }
+
+  async function repondreQuestion(requestId: string, reponse: ReponseGuidee) {
+    try {
+      await agentApi.repondre(requestId, reponse);
+    } catch (e) {
+      toast.danger(e instanceof ApiError ? e.message : "Cette question n'attend plus de réponse.");
+    }
+  }
+
+  /** Prolonge la fiche par une sous-question proposée sous le bilan. */
+  function approfondir(cardSlug: string, sousQuestion: string) {
+    void lancerTour(`Approfondir la fiche : ${sousQuestion}`, {
+      card_slug: cardSlug,
+      sous_question: sousQuestion,
+    });
   }
 
   function continuer() {
@@ -1194,6 +1223,36 @@
               <span>{item.quitte} n'a pas répondu, {item.pris} prend le relais. {item.raison}</span>
               <span class="h-px flex-1 bg-border"></span>
             </div>
+          {:else if item.kind === 'question'}
+            <QuestionGuidee
+              genre={item.genre}
+              question={item.question}
+              options={item.options}
+              sousQuestions={item.sousQuestions}
+              resolue={item.resolue}
+              reponse={item.reponse}
+              onrepondre={(reponse) => repondreQuestion(item.requestId, reponse)}
+            />
+          {:else if item.kind === 'suites'}
+            <!-- Les questions liées de Perplexity, tenues par la fiche : chacune
+             prolonge la fiche par une sous-question, en déroulé guidé. -->
+            <div class="space-y-1.5">
+              <p class="text-xs font-medium text-ink-secondary">Pour aller plus loin</p>
+              <ul class="space-y-1">
+                {#each item.questions as suite, rang (rang)}
+                  <li>
+                    <button
+                      type="button"
+                      class="w-full rounded-lg border border-border px-3 py-1.5 text-left text-sm text-ink-primary hover:border-info disabled:opacity-50"
+                      disabled={enCours || reprise === 'encours'}
+                      onclick={() => approfondir(item.cardSlug, suite)}
+                    >
+                      {suite}
+                    </button>
+                  </li>
+                {/each}
+              </ul>
+            </div>
           {:else if item.kind === 'approval'}
             <ApprovalCard
               tool={item.tool}
@@ -1411,6 +1470,24 @@
           >
             {ficheOuverte ? 'Masquer la fiche' : 'Voir la fiche'}
           </button>
+          <select
+            bind:value={modeRecherche}
+            aria-label="Mode de recherche"
+            title="Rapide : une passe, sans suivi des citations ni relecture. Approfondie : la méthode complète."
+            class="shrink-0 rounded-full border border-border bg-surface-primary px-2 py-1 text-xs text-ink-secondary"
+          >
+            <option value="approfondi">Approfondie</option>
+            <option value="rapide">Rapide</option>
+          </select>
+          <select
+            bind:value={sourcesRecherche}
+            aria-label="Sources interrogées"
+            class="shrink-0 rounded-full border border-border bg-surface-primary px-2 py-1 text-xs text-ink-secondary"
+          >
+            <option value="">Toutes les sources</option>
+            <option value="litterature">Littérature scientifique</option>
+            <option value="web">Web</option>
+          </select>
           <span class="flex-1"></span>
           {#if enCours || reprise === 'encours'}
             <Button size="sm" variant="ghost" onclick={interrompre}>Arrêter</Button>

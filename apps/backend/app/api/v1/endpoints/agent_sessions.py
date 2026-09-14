@@ -25,6 +25,7 @@ from app.schemas.agent_chat import (
     AgentSessionRead,
     AgentSessionUpdate,
     AgentSessionUsage,
+    ReponseGuidee,
 )
 from app.services import agent_approvals, agent_sessions, agent_tours
 
@@ -162,4 +163,25 @@ async def repondre_approbation(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"code": "approval_not_found", "message": str(exc)},
+        ) from exc
+
+
+@router.post("/repondre", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit(f"{settings.rate_limit_per_minute}/minute")
+async def repondre_question(
+    request: Request,
+    body: ReponseGuidee,
+    current_user: User = Depends(get_current_user),
+):
+    """Répond à une question du déroulé guidé (précision, plan), pour ce créateur seul."""
+    try:
+        agent_approvals.resoudre_reponse(
+            body.request_id,
+            current_user.id,
+            body.model_dump(exclude={"request_id"}, exclude_none=True),
+        )
+    except agent_approvals.ApprovalInconnueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "question_not_found", "message": str(exc)},
         ) from exc

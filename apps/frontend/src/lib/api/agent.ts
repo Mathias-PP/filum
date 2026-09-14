@@ -226,6 +226,32 @@ export type AgentEvent =
       type: 'etape_guidee';
       payload: { etape: string; titre: string; rang: number; total: number };
     }
+  | {
+      /** Le déroulé attend le créateur : préciser l'angle, ou valider le plan. */
+      type: 'question_guidee';
+      payload: {
+        request_id: string;
+        genre: 'precision' | 'plan';
+        question?: string;
+        options?: string[];
+        sous_questions?: string[];
+        expires_at?: number;
+      };
+    }
+  | {
+      type: 'question_resolue';
+      payload: { request_id: string; reponse: ReponseGuidee | null };
+    }
+  | {
+      /** La réponse du bilan, ses renvois vérifiés et changés en liens vers les extraits. */
+      type: 'reponse_verifiee';
+      payload: { texte: string; cites: number; retires: number };
+    }
+  | {
+      /** Des sous-questions pour prolonger la fiche, à lancer en un clic. */
+      type: 'suites_proposees';
+      payload: { card_slug: string; questions: string[] };
+    }
   | { type: 'error'; payload: { message: string } };
 
 export interface WorkspaceTreeEntry {
@@ -270,12 +296,27 @@ export interface WorkspaceSyncResult {
   divergents: string[];
 }
 
+/** Réponse du créateur à une question du déroulé guidé. */
+export interface ReponseGuidee {
+  choix?: string;
+  sous_questions?: string[];
+}
+
+/** Même méthode, budgets et corpus au choix. Sources vides : toutes. */
+export interface OptionsRecherche {
+  mode: 'rapide' | 'approfondi';
+  sources: Array<'litterature' | 'web'>;
+}
+
 export interface ChatInput {
   message: string;
   session_id?: string;
   provider_id?: string;
   model_override?: string;
   agent_slug?: string;
+  recherche?: OptionsRecherche;
+  /** Prolonge une fiche par une sous-question, en déroulé guidé. */
+  approfondir?: { card_slug: string; sous_question: string };
   signal?: AbortSignal;
 }
 
@@ -355,6 +396,13 @@ export const agentApi = {
     request<void>('/agent/approve', {
       method: 'POST',
       body: JSON.stringify({ request_id: requestId, approved }),
+    }),
+
+  /** Répond à une question du déroulé guidé (précision, plan). */
+  repondre: (requestId: string, reponse: ReponseGuidee) =>
+    request<void>('/agent/repondre', {
+      method: 'POST',
+      body: JSON.stringify({ request_id: requestId, ...reponse }),
     }),
 
   /** Mode gratuit : lanes serveur sans clé utilisateur, derrière un
@@ -444,6 +492,8 @@ async function* streamChat({
   provider_id,
   model_override,
   agent_slug,
+  recherche,
+  approfondir,
   signal,
 }: ChatInput): AsyncGenerator<AgentEvent> {
   const body: Record<string, unknown> = { message };
@@ -451,6 +501,8 @@ async function* streamChat({
   if (provider_id) body.provider_id = provider_id;
   if (model_override) body.model_override = model_override;
   if (agent_slug) body.agent_slug = agent_slug;
+  if (recherche) body.recherche = recherche;
+  if (approfondir) body.approfondir = approfondir;
   const response = await fetch(`${API_BASE}/agent/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

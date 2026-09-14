@@ -62,6 +62,7 @@ from app.services.agent_discovery import (
     verifier_quota,
 )
 from app.services.agent_providers import obtenir_pour_chat, ordonner_pour_chat, resoudre_defaut
+from app.services.options_recherche import OPTIONS_RECHERCHE, Options
 
 #: Message remplace a l'utilisateur quand la lane gratuite echoue : l'erreur
 #: technique brute (« Le fournisseur (zai) refuse... ») ne dit rien d'actionnable.
@@ -108,6 +109,18 @@ def get_approver():
     return pour
 
 
+def get_attente():
+    """Fabrique l'attente des réponses aux questions du déroulé. Surchargeable en test."""
+
+    def pour(creator_id):
+        async def attendre(request_id: str) -> dict[str, Any] | None:
+            return await agent_approvals.attendre_reponse(request_id, creator_id)
+
+        return attendre
+
+    return pour
+
+
 def _sse(event: dict[str, Any]) -> str:
     """Un evenement SSE. `default=str` n'est pas une commodite, c'est un fusible.
 
@@ -129,6 +142,7 @@ async def chat_agent(
     db: AsyncSession = Depends(get_db),
     transport: httpx.AsyncBaseTransport | None = Depends(get_http_client),
     fabrique_approbation=Depends(get_approver),
+    fabrique_attente=Depends(get_attente),
 ):
     if body.session_id is None:
         session = await agent_sessions.creer(
@@ -258,9 +272,21 @@ async def chat_agent(
     # Une demande de fiche, ou une question de fond en tete de conversation, part
     # dans le deroule guide : des etapes tenues par le serveur, chacune avec
     # ses seuls outils. Laisse libre, l'agent repondait de memoire.
-    guide = deroule_guide.est_demande_de_fiche(
+    # Une suite proposee sous un bilan prolonge la fiche : elle aussi part dans
+    # le deroule, cible sur sa sous-question.
+    guide = body.approfondir is not None or deroule_guide.est_demande_de_fiche(
         body.message,
         premier_message=not any(m.get("role") == "user" for m in messages),
+    )
+    options = (
+        Options(mode=body.recherche.mode, sources=frozenset(body.recherche.sources))
+        if body.recherche
+        else Options()
+    )
+    suite = (
+        deroule_guide.Suite(body.approfondir.card_slug, body.approfondir.sous_question)
+        if body.approfondir
+        else None
     )
 
     # Reserve avant toute ecriture : un second envoi pendant qu'un tour tourne
@@ -291,6 +317,7 @@ async def chat_agent(
     # plus loin que la longueur d'avant l'appel.
     depart = len(messages) + 1
     approuver = fabrique_approbation(current_user.id)
+    attendre = fabrique_attente(current_user.id)
     # Valeurs lues maintenant : la session de base de la requete se ferme avec
     # elle, et le tour lui survit.
     creator_id = current_user.id
@@ -336,6 +363,11 @@ async def chat_agent(
         # Le deroule guide ne passe pas par `messages` : chaque etape a le sien.
         ajouts_guides: list[dict[str, Any]] = []
         heures_guides: list[datetime] = []
+        # La reponse du bilan une fois ses renvois verifies et changes en liens :
+        # c'est elle qui s'ecrit en base, pas le texte brut diffuse en direct.
+        reponse_verifiee: list[str] = []
+        # Le mode et les sources valent pour tout le tour, outils compris.
+        OPTIONS_RECHERCHE.set(options)
 
         # L'heure a laquelle chaque message du tour est apparu. Le tour s'ecrit
         # en base a la fin : sans elles, tous ses messages portaient l'heure de
@@ -353,6 +385,10 @@ async def chat_agent(
             if genre == "message_delta":
                 charge = event["payload"]
                 deltas.setdefault(int(charge.get("tour") or 0), []).append(charge["delta"])
+            elif genre == "reponse_verifiee":
+                texte_lie = event.get("payload", {}).get("texte")
+                if isinstance(texte_lie, str) and texte_lie:
+                    reponse_verifiee.append(texte_lie)
             elif genre in ("done", "continuation"):
                 u = event.get("payload", {}).get("usage")
                 if isinstance(u, dict):
@@ -398,6 +434,9 @@ async def chat_agent(
                         modele=modele,
                         session_id=session_id,
                         replis=replis,
+                        options=options,
+                        suite=suite,
+                        attendre=attendre,
                     )
                 else:
                     await boucle(
@@ -458,6 +497,8 @@ async def chat_agent(
                     # mais ne figure nulle part dans la conversation.
                     ajouts = _blocs_complets(ajouts)
                 texte = _reponse_finale(deltas, ajouts)
+                if reponse_verifiee and texte:
+                    texte = reponse_verifiee[-1]
                 if issue == "annule":
                     texte = _texte_interrompu(texte)
                     terminaux = [

@@ -12,6 +12,7 @@ from collections.abc import Iterable
 from typing import Any
 
 from app.agent_tools.couverture import couverture_tools
+from app.agent_tools.deroule import deroule_tools
 from app.agent_tools.fiche import fiche_tools
 from app.agent_tools.objectif import objectif_tools
 from app.agent_tools.philum import est_sensible, philum_tools
@@ -32,6 +33,7 @@ def construire_registre() -> dict[str, AgentTool]:
         + objectif_tools()
         + couverture_tools()
         + recherche_tools()
+        + deroule_tools()
     ):
         outils[outil.name] = outil
     return outils

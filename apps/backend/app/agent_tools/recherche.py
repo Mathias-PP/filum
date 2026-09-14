@@ -103,7 +103,12 @@ async def _identites_de_la_fiche(ctx: ToolContext, card_slug: str) -> dict[str, 
 async def _execute_rechercher(ctx: ToolContext, args: dict[str, Any]) -> dict[str, Any]:
     from fastmcp.exceptions import ToolError
 
-    from app.services.recherche_approfondie import garder, rechercher_sous_question
+    from app.services.options_recherche import filtrer_corpus, options_courantes
+    from app.services.recherche_approfondie import (
+        corpus_configures,
+        garder,
+        rechercher_sous_question,
+    )
 
     sous_question = str(args.get("sous_question") or "").strip()
     requetes = _liste(args.get("requetes"))
@@ -136,7 +141,16 @@ async def _execute_rechercher(ctx: ToolContext, args: dict[str, Any]) -> dict[st
             deja = await _identites_de_la_fiche(ctx, card_slug)
         except ToolError as exc:
             return {"error": str(exc)}
-    recherche = await rechercher_sous_question(sous_question, requetes, contradictions, deja=deja)
+    options = options_courantes()
+    recherche = await rechercher_sous_question(
+        sous_question,
+        requetes,
+        contradictions,
+        deja=deja,
+        corpus=filtrer_corpus(corpus_configures(), options),
+        # Mode rapide : même méthode, sans les tours de suivi des citations.
+        expansion=not options.rapide,
+    )
     garder(recherche)
     return _page(recherche, 1)
 
