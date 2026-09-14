@@ -150,7 +150,7 @@ const ACTIONS: Record<
     objet: (_a, r) => titreDepuisResultat(r) ?? 'cette source',
   },
   definir_plan: {
-    action: 'Pose le plan de la fiche',
+    action: 'Pose les questions de la fiche',
     objet: (a) => (typeof a.slug === 'string' ? a.slug : null),
   },
   propose_passages: {
@@ -164,6 +164,10 @@ const ACTIONS: Record<
   suite_recherche: {
     action: 'Lit la suite des résultats de recherche',
   },
+  retenir: {
+    action: 'Pose les passages retenus sur',
+    objet: (a, r) => texteArg(r ?? {}, 'card_slug') ?? texteArg(a, 'card_slug'),
+  },
   demarrer_fiche_sujet: {
     action: 'Lance la fiche sur',
     objet: (a) => texteArg(a, 'question'),
@@ -171,6 +175,9 @@ const ACTIONS: Record<
   demander_precision: {
     action: 'Demande une précision :',
     objet: (a) => texteArg(a, 'question'),
+  },
+  demander_sources: {
+    action: 'Demande quelles sources privilégier',
   },
   proposer_suites: {
     action: 'Propose des suites à la fiche',

@@ -314,9 +314,15 @@
         {/if}
       </button>
       {#if grapheOuvert}
-        <div id="graphe-fiche-vivante" class="relative h-44 overflow-hidden border-t border-border">
+        <!-- Le même graphe que la page de fiche : nœuds cliquables, détail des
+             sources et de leurs extraits, recherche, légende, plein écran. Le
+             cadre est assez haut pour ses panneaux ; il se replie au besoin. -->
+        <div
+          id="graphe-fiche-vivante"
+          class="relative h-[28rem] overflow-hidden border-t border-border"
+        >
           {#if Graphe && ficheDetaillee}
-            <Graphe card={ficheDetaillee} compact />
+            <Graphe card={ficheDetaillee} />
           {:else}
             <p class="p-3 text-xs text-ink-tertiary">Chargement du graphe…</p>
           {/if}
@@ -377,7 +383,10 @@
       {#if couverture && resume}
         <!-- Le plan posé par l'agent : ce que la fiche doit traiter, et ce qui
              reste sans extrait. Un compte par sous-question, pas un score. -->
-        <section class="mt-3 rounded-lg border border-border p-2" aria-label="Plan de la fiche">
+        <section
+          class="mt-3 rounded-lg border border-border p-2"
+          aria-label="Questions de la fiche"
+        >
           <p class="text-xs font-medium text-ink-secondary">{resume}</p>
           <ul class="mt-1.5 space-y-1">
             {#each couverture.sous_questions as sousQuestion (sousQuestion.texte)}

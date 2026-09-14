@@ -50,6 +50,10 @@ async def _execute_demander_precision(ctx: ToolContext, args: dict[str, Any]) ->
     return {"posee": True, "message": "La question part au créateur. Termine l'étape."}
 
 
+async def _execute_demander_sources(ctx: ToolContext, args: dict[str, Any]) -> dict[str, Any]:
+    return {"posee": True, "message": "La question part au créateur. Termine l'étape."}
+
+
 async def _execute_proposer_suites(ctx: ToolContext, args: dict[str, Any]) -> dict[str, Any]:
     questions = _liste(args.get("questions"))
     if not questions:
@@ -106,6 +110,18 @@ def deroule_tools() -> list[AgentTool]:
             },
             output="posee",
             execute=_execute_demander_precision,
+        ),
+        AgentTool(
+            name="demander_sources",
+            description=(
+                "Demande au créateur quelles sources la recherche doit privilégier ; le serveur "
+                "lui propose les choix. Par défaut, les publications scientifiques et les sites "
+                "d'institutions passent d'abord. Appelle-le quand la question n'est pas clairement "
+                "scientifique, technique ou pointue, ou qu'elle est ambiguë ou incomplète."
+            ),
+            parameters={"type": "object", "properties": {}, "required": []},
+            output="posee",
+            execute=_execute_demander_sources,
         ),
         AgentTool(
             name="proposer_suites",

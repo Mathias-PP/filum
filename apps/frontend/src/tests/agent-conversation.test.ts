@@ -426,3 +426,17 @@ describe('interactions du déroulé guidé', () => {
     ]);
   });
 });
+
+describe('déroulé coupé ou arrêté', () => {
+  it('une étape coupée se note, et une fiche arrêtée propose de reprendre', () => {
+    let items = appliquer([], {
+      type: 'etape_coupee',
+      payload: { titre: 'Exploration : transport', message: 'coupée après 20 minutes' },
+    });
+    items = appliquer(items, { type: 'reprise_possible', payload: { card_slug: 'taxe' } });
+    expect(items).toEqual([
+      { kind: 'coupure', titre: 'Exploration : transport', message: 'coupée après 20 minutes' },
+      { kind: 'reprise', cardSlug: 'taxe' },
+    ]);
+  });
+});

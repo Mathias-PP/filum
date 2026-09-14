@@ -19,6 +19,7 @@ tools:
   - find_cards_citing
   - rechercher
   - suite_recherche
+  - retenir
   - web_search
   - fetch_url
   - get_url_metadata

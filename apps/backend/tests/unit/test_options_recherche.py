@@ -9,10 +9,13 @@ import pytest
 
 from app.services import agent_approvals
 from app.services.options_recherche import (
+    CHOIX_SOURCES,
     OPTIONS_RECHERCHE,
     Options,
     filtrer_corpus,
+    options_choisies,
     options_courantes,
+    options_demandees,
 )
 
 CORPUS = {"openalex": 1, "europepmc": 2, "semantic_scholar": 3, "web": 4}
@@ -29,6 +32,28 @@ def test_les_familles_choisies_filtrent_les_corpus():
         "europepmc",
         "semantic_scholar",
     }
+
+
+def test_sans_choix_les_publications_passent_d_abord_et_le_cadrage_peut_demander():
+    defaut = options_demandees("approfondi", [], None)
+    assert defaut == Options() and defaut.publications_d_abord and not defaut.sources_choisies
+    assert options_demandees("approfondi", [], "egale") == Options(
+        publications_d_abord=False, sources_choisies=True
+    )
+    assert options_demandees("rapide", ["web"], None).sources_choisies
+
+
+def test_la_reponse_du_createur_devient_des_options():
+    egalite, _publications, litterature = (
+        list(CHOIX_SOURCES)[1],
+        list(CHOIX_SOURCES)[0],
+        list(CHOIX_SOURCES)[2],
+    )
+    assert options_choisies(Options(mode="rapide"), egalite) == Options(
+        mode="rapide", publications_d_abord=False, sources_choisies=True
+    )
+    assert options_choisies(Options(), litterature).sources == frozenset({"litterature"})
+    assert options_choisies(Options(), "Des podcasts") is None
 
 
 def test_hors_chat_la_methode_est_complete():

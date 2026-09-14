@@ -252,6 +252,16 @@ export type AgentEvent =
       type: 'suites_proposees';
       payload: { card_slug: string; questions: string[] };
     }
+  | {
+      /** Une étape coupée par le mur de temps : ce qui est posé reste, la fiche continue. */
+      type: 'etape_coupee';
+      payload: { titre: string; message: string };
+    }
+  | {
+      /** Le déroulé s'est arrêté : la fiche peut reprendre là où elle en était. */
+      type: 'reprise_possible';
+      payload: { card_slug: string };
+    }
   | { type: 'error'; payload: { message: string } };
 
 export interface WorkspaceTreeEntry {
@@ -306,6 +316,8 @@ export interface ReponseGuidee {
 export interface OptionsRecherche {
   mode: 'rapide' | 'approfondi';
   sources: Array<'litterature' | 'web'>;
+  /** `egale` : toutes les sources à égalité. Absent : publications et sites d'institutions d'abord. */
+  priorite?: 'publications' | 'egale' | null;
 }
 
 export interface ChatInput {
@@ -316,7 +328,7 @@ export interface ChatInput {
   agent_slug?: string;
   recherche?: OptionsRecherche;
   /** Prolonge une fiche par une sous-question, en déroulé guidé. */
-  approfondir?: { card_slug: string; sous_question: string };
+  approfondir?: { card_slug: string; sous_question?: string };
   signal?: AbortSignal;
 }
 

@@ -484,6 +484,17 @@ async def _resoudre_metadonnees(
         champ: (getattr(metadonnees, champ, None) or None)
         for champ in metadonnees_source.CHAMPS_RESOLUS
     }
+    # Une page sans date mais porteuse d'un DOI (adresse doi.org, lien d'editeur)
+    # se date par sa notice Crossref. Mesure du 2026-09-14 : 299 sources de
+    # production restaient « s.d. » avec un DOI dans leur adresse.
+    identifiant = extract_doi(doi) or extract_doi(url)
+    if origine == MetadataOrigin.PAGE.value and not retenues.get("published_at") and identifiant:
+        from app.extractors.url_extractor import crossref_lookup
+
+        notice = await crossref_lookup(identifiant)
+        if notice is not None:
+            retenues["published_at"] = notice.published_at or None
+            retenues["journal"] = retenues.get("journal") or notice.journal or None
     # Un titre que l'origine ne rend pas est garde tel que propose, et signale.
     # Mesure du 2026-09-13 : un PDF de recommandations est reste sans titre, le
     # resolveur n'ayant rien lu, alors que le modele l'avait donne juste.
@@ -672,7 +683,9 @@ async def add_source(
         publisher=retenues.get("publisher"),
         metadata_origin=metadata_from,
         published_at=date_publication,
-        doi=doi,
+        # Le DOI porte par l'adresse est retenu : sans lui, la source ne pouvait
+        # plus etre datee ni verifiee (retractation, acces libre) par son DOI.
+        doi=doi or extract_doi(url),
         linked_card_id=linked_card_id,
         archive_url=manual_archive,
         archive_status="archived" if manual_archive else "pending",

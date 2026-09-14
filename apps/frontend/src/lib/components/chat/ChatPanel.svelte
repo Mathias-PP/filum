@@ -18,7 +18,6 @@
   import ApprovalCard from './ApprovalCard.svelte';
   import QuestionGuidee from './QuestionGuidee.svelte';
   import BlocActivite from './BlocActivite.svelte';
-  import CopierBouton from './CopierBouton.svelte';
   import FicheVivante from './FicheVivante.svelte';
   import { appelsTermines, slugFicheCourante } from '$lib/agent/ficheCourante';
   import AgentMarkdown from './AgentMarkdown.svelte';
@@ -38,7 +37,9 @@
   let saisie = $state('');
   // Même méthode de recherche, budgets et corpus au choix du créateur.
   let modeRecherche = $state<'approfondi' | 'rapide'>('approfondi');
-  let sourcesRecherche = $state<'' | 'litterature' | 'web'>('');
+  // Vide : publications et sites d'institutions d'abord, et l'agent demande si la question
+  // ne dit pas clairement quelles sources conviennent.
+  let sourcesRecherche = $state<'' | 'egale' | 'litterature' | 'web'>('');
   let enCours = $state(false);
   let chargement = $state(Boolean(sessionId));
   let controleur: AbortController | null = null;
@@ -756,7 +757,7 @@
   /** Envoie un message et déroule le tour : commun à l'envoi, à « Continuer » et à « Réessayer ». */
   async function lancerTour(
     message: string,
-    approfondir?: { card_slug: string; sous_question: string }
+    approfondir?: { card_slug: string; sous_question?: string }
   ) {
     // Envoyer pendant une reprise ferait écraser le fil par la relecture.
     if (enCours || reprise === 'encours') return;
@@ -782,7 +783,11 @@
         agent_slug: agentChoisi || undefined,
         recherche: {
           mode: modeRecherche,
-          sources: sourcesRecherche ? [sourcesRecherche] : [],
+          sources:
+            sourcesRecherche === 'litterature' || sourcesRecherche === 'web'
+              ? [sourcesRecherche]
+              : [],
+          priorite: sourcesRecherche === 'egale' ? 'egale' : null,
         },
         approfondir,
         signal: controleur.signal,
@@ -839,6 +844,11 @@
     } catch (e) {
       toast.danger(e instanceof ApiError ? e.message : "Cette question n'attend plus de réponse.");
     }
+  }
+
+  /** Reprend une fiche arrêtée : ses questions encore sans extrait, puis positions et bilan. */
+  function reprendreFiche(cardSlug: string) {
+    void lancerTour('Reprendre la fiche', { card_slug: cardSlug });
   }
 
   /** Prolonge la fiche par une sous-question proposée sous le bilan. */
@@ -1145,11 +1155,12 @@
           {#if item.kind === 'user'}
             <div class="group border-l-2 border-info pl-3 text-sm text-ink-primary">
               <p class="whitespace-pre-wrap [overflow-wrap:anywhere]">{item.text}</p>
-              <div
-                class="mt-1 flex gap-1 opacity-60 group-hover:opacity-100 focus-within:opacity-100"
-              >
-                <CopierBouton texte={item.text} />
-                {#if !enCours && i === indexDernierUtilisateur}
+              <!-- Pas de bouton « Copier » sous chaque message : il prenait une ligne
+                 par message pour un geste rare, que la sélection du texte permet. -->
+              {#if !enCours && i === indexDernierUtilisateur}
+                <div
+                  class="mt-1 flex gap-1 opacity-60 group-hover:opacity-100 focus-within:opacity-100"
+                >
                   <button
                     type="button"
                     class="rounded px-1.5 py-0.5 text-xs text-ink-tertiary hover:bg-surface-tertiary hover:text-ink-primary"
@@ -1158,8 +1169,8 @@
                   >
                     Reprendre
                   </button>
-                {/if}
-              </div>
+                </div>
+              {/if}
             </div>
           {:else if item.kind === 'assistant'}
             {@const note = notesTours.get(i)}
@@ -1176,13 +1187,6 @@
                     Rédigé sans rien consulter : aucune source ne vérifie cette réponse.
                   </p>
                 {/if}
-              {/if}
-              <!-- Pas de copie sur la reponse qui s'ecrit encore : on copierait
-                 une moitie de phrase. -->
-              {#if !(enCours && i === affichables.length - 1)}
-                <div class="mt-1 flex opacity-60 group-hover:opacity-100 focus-within:opacity-100">
-                  <CopierBouton texte={item.text} />
-                </div>
               {/if}
             </div>
           {:else if item.kind === 'activite'}
@@ -1252,6 +1256,28 @@
                   </li>
                 {/each}
               </ul>
+            </div>
+          {:else if item.kind === 'coupure'}
+            <!-- Une étape trop longue a été coupée : pas une erreur, la fiche continue
+             avec ce qui est posé. -->
+            <div class="flex items-center gap-3 py-1 text-xs text-amber-700 dark:text-amber-400">
+              <span class="h-px flex-1 bg-border"></span>
+              <span>{item.titre} : {item.message}</span>
+              <span class="h-px flex-1 bg-border"></span>
+            </div>
+          {:else if item.kind === 'reprise'}
+            <div class="rounded-lg border border-border px-3 py-2 text-sm">
+              <p class="text-ink-secondary">
+                La fiche s’est arrêtée en cours de route. Ce qui est posé est conservé.
+              </p>
+              <div class="mt-2">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={enCours || reprise === 'encours'}
+                  onclick={() => reprendreFiche(item.cardSlug)}>Reprendre la fiche</Button
+                >
+              </div>
             </div>
           {:else if item.kind === 'approval'}
             <ApprovalCard
@@ -1482,11 +1508,13 @@
           <select
             bind:value={sourcesRecherche}
             aria-label="Sources interrogées"
+            title="Par défaut, les articles scientifiques et les sites d’institutions passent d’abord, et l’agent vous demande quand la question ne dit pas quelles sources conviennent."
             class="shrink-0 rounded-full border border-border bg-surface-primary px-2 py-1 text-xs text-ink-secondary"
           >
-            <option value="">Toutes les sources</option>
-            <option value="litterature">Littérature scientifique</option>
-            <option value="web">Web</option>
+            <option value="">Publications et institutions d’abord</option>
+            <option value="egale">Toutes à égalité</option>
+            <option value="litterature">Littérature scientifique seulement</option>
+            <option value="web">Web seulement</option>
           </select>
           <span class="flex-1"></span>
           {#if enCours || reprise === 'encours'}

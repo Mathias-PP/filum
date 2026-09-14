@@ -109,6 +109,8 @@ TIMEOUT_OUTIL = 60.0
 #: qui l'atteindrait ne servirait à rien, la boucle serait coupée avant que le
 #: modèle ait pu lire l'erreur.
 TIMEOUTS_PAR_OUTIL: dict[str, float] = {
+    # Chaque source posee joint son adresse et relit sa page avant d'ecrire.
+    "retenir": 300.0,
     "fetch_url": 120.0,
     "web_search": 90.0,
     "import_from_content_url": 180.0,
@@ -117,8 +119,9 @@ TIMEOUTS_PAR_OUTIL: dict[str, float] = {
     "verify_excerpts": 180.0,
     "suggest_excerpts": 120.0,
     "get_url_metadata": 90.0,
-    # `DELAI_RECHERCHE` (480 s) plus la verification des retractations et le
-    # rendu : la recherche rend ce qu'elle a avant que l'outil ne soit coupe.
+    # `DELAI_RECHERCHE` (480 s, lots de lecture compris) plus `DELAI_FINITION`
+    # (45 s, reclassement et retractations en parallele) : la recherche rend ce
+    # qu'elle a avant que l'outil ne soit coupe.
     "rechercher": 540.0,
 }
 
@@ -1774,11 +1777,14 @@ async def boucle(
             {
                 "type": "error",
                 "payload": {
+                    # Le deroule guide le reconnait : une etape coupee n'arrete pas
+                    # la fiche, les etapes suivantes reprennent ce qui est pose.
+                    "code": "delai_boucle",
                     "message": (
                         f"L'agent travaille depuis {BOUCLE_TIMEOUT / 60:.0f} minutes sans finir : "
                         "le tour est arrêté, le travail déjà fait est conservé. "
                         "Envoyez « continue » pour reprendre."
-                    )
+                    ),
                 },
             }
         )

@@ -13,8 +13,9 @@ modele, petit surtout, ne suit pas une methode decrite dans une consigne :
    lue par la cascade de Philum, decoupee en passages, et chaque passage est
    compare par le sens a la sous-question et aux formulations de contradiction.
 4. **Classement** : les sources sont rendues dans l'ordre de leur meilleur
-   passage ; le modele lit ces passages et ne pose que ceux qui repondent. Il
-   est le dernier etage du classement, dans toutes les langues.
+   passage, chaque passage numerote ; le modele lit ces passages et designe par
+   leur numero ceux qui repondent. Il est le dernier etage du classement, dans
+   toutes les langues.
 5. **Suivi des citations et des liens** (PaperQA2, Undermind) : les sources
    pertinentes menent a ce qui les cite, a ce qu'elles citent et aux liens de
    leur corps de texte. Une source que plusieurs sources pertinentes designent
@@ -22,6 +23,12 @@ modele, petit surtout, ne suit pas une methode decrite dans une consigne :
 6. **Arret par saturation** (Undermind) : la lecture s'arrete quand un lot
    n'apporte aucune source pertinente nouvelle, les tours de suivi quand un tour
    n'en apporte aucune. La courbe des decouvertes dit ce qui reste probablement.
+7. **Publications et institutions d'abord** (Focus « Academic » de Perplexity, choix
+   par defaut de Philum) : articles, preprints, institutions publiques et
+   universites sont lus avant les autres pages, chaque groupe jusqu'a sa propre
+   saturation, et rendus en tete. Prioriser n'exclut pas : les autres pages
+   restent lues dans le temps qui reste. La nature se lit dans les faits (DOI,
+   revue, corpus, domaine), par `core/nature_source.py`.
 
 Rien ici ne depend d'une langue ni d'une formulation : ce qui demande de
 comprendre la question (formulations, contradiction, jugement final) vient du
@@ -34,9 +41,10 @@ import asyncio
 import logging
 import time
 from collections.abc import Awaitable, Callable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from uuid import uuid4
 
+from app.core.nature_source import nature_corrigee
 from app.extractors.recherche_litterature import Candidate
 from app.services.fusion_candidates import fusionner, identite
 
@@ -56,8 +64,47 @@ LOT_LECTURE = 6
 #: a tort.
 DELAI_RECHERCHE = 480.0
 
+#: Budget du reclassement et de la verification des retractations, qui tournent
+#: en parallele apres la lecture. Avec `DELAI_RECHERCHE`, la recherche rend son
+#: resultat avant le budget de l'outil (`TIMEOUTS_PAR_OUTIL["rechercher"]`) :
+#: une recherche coupee par l'outil perdrait tout ce qu'elle a lu.
+DELAI_FINITION = 45.0
+
 REPONSE = "reponse"
 NUANCE = "nuance"
+
+#: La nature d'une publication ou d'un site d'institution, dite au modele avec ses passages.
+_REFERENCES = {
+    "article-scientifique": "article scientifique",
+    "preprint": "preprint",
+    "institution-publique": "institution publique",
+    "ecole": "université ou école",
+}
+
+
+def nature_reconnue(candidate: Candidate) -> str | None:
+    """Publication ou site d'institution : sa nature ; None pour une autre page. Fonction pure.
+
+    Un corpus de litterature ne rend que des publications ; une page du web l'est
+    quand son DOI, sa revue ou son domaine le disent (`nature_corrigee`).
+    """
+    adresses: list[str | None] = [a for a in (candidate.url, candidate.acces_libre_url) if a]
+    for adresse in adresses or [None]:
+        nature = nature_corrigee(
+            url=adresse,
+            doi=candidate.doi,
+            journal=candidate.revue,
+            format=None,
+            category=None,
+            author_kind=None,
+        )
+        if nature.category in _REFERENCES:
+            return _REFERENCES[nature.category]
+        if nature.author_kind in _REFERENCES:
+            return _REFERENCES[nature.author_kind]
+    if candidate.famille != "web":
+        return _REFERENCES["article-scientifique"]
+    return None
 
 
 @dataclass(frozen=True)
@@ -72,6 +119,8 @@ class Passage:
     question: str = ""
     #: Jugement du reclasseur, quand il a pu passer sur toute la recherche.
     pertinence: float | None = None
+    #: Numero dans la recherche : le modele designe par lui les passages a poser.
+    numero: int = 0
 
     @property
     def classement(self) -> float:
@@ -89,6 +138,8 @@ class SourceTrouvee:
     texte_complet: bool
     source_id: str | None = None
     retractation: str | None = None
+    #: Nature de la publication ou de l'institution (`nature_reconnue`), None sinon.
+    reference: str | None = None
 
     @property
     def meilleur(self) -> float:
@@ -99,6 +150,7 @@ class SourceTrouvee:
         rendu: dict[str, object] = {
             "url": self.url_lue,
             "titre": c.titre,
+            "reference": self.reference,
             "doi": c.doi,
             "annee": c.annee,
             "type": c.type,
@@ -113,6 +165,7 @@ class SourceTrouvee:
             "texte_complet": self.texte_complet,
             "passages": [
                 {
+                    "id": p.numero,
                     "texte": p.texte,
                     "role": p.role,
                     "score": p.score,
@@ -132,6 +185,11 @@ class Journal:
     candidates_vues: int = 0
     lues: int = 0
     illisibles: int = 0
+    #: Candidates dont la lecture a ete coupee par le delai.
+    hors_delai: int = 0
+    #: Lectures classees par mots communs, faute de service d'embeddings : moins
+    #: fines, et a dire pour ne pas faire passer ce classement pour le vrai.
+    lectures_par_mots: int = 0
     pertinentes_par_tour: list[int] = field(default_factory=list)
     #: Sources pertinentes cumulees apres chaque candidate lisible.
     courbe: list[int] = field(default_factory=list)
@@ -149,6 +207,8 @@ class Journal:
             "candidates_vues": self.candidates_vues,
             "candidates_lues": self.lues,
             "candidates_illisibles": self.illisibles,
+            "candidates_coupees_par_le_delai": self.hors_delai or None,
+            "lectures_classees_par_mots_faute_d_embeddings": self.lectures_par_mots or None,
             "sources_pertinentes_par_tour": self.pertinentes_par_tour,
             "raison_de_l_arret": self.arret,
             "reclassement": self.reclassement or None,
@@ -168,6 +228,8 @@ class Recherche:
     #: Identites de toutes les candidates vues, lues ou non : le banc y mesure ce
     #: que la collecte a trouve, avant ce que la lecture a retenu.
     vues: frozenset[str] = frozenset()
+    #: La fiche ou poser les passages retenus, quand la recherche a ete lancee pour elle.
+    card_slug: str | None = None
 
 
 def estimer_restantes(courbe: list[int]) -> float | None:
@@ -223,19 +285,29 @@ def corpus_configures() -> dict[str, Chercheur]:
 
 
 def _adresses_a_lire(candidate: Candidate) -> list[str]:
-    """Ou lire la candidate, dans l'ordre. Une adresse d'API ne se lit pas comme une page."""
-    adresses = [candidate.url, candidate.acces_libre_url]
+    """Ou lire la candidate, dans l'ordre. Une adresse d'API ne se lit pas comme une page.
+
+    La version en acces libre passe d'abord : l'adresse de l'editeur d'un article
+    payant ne rend souvent, au bout de la cascade, que son resume (Crossref).
+    """
+    adresses = [candidate.acces_libre_url, candidate.url]
     lisibles = [a for a in adresses if a and "api.semanticscholar.org" not in a]
     return list(dict.fromkeys(lisibles))
 
 
 async def _lire(
     candidate: Candidate, sous_question: str, contradictions: list[str]
-) -> tuple[str, list[Passage], bool] | None:
-    """L'adresse lue, les passages pertinents, et si le texte est entier ; None si illisible."""
+) -> tuple[str, list[Passage], bool, bool] | None:
+    """L'adresse lue, ses passages, si le texte est entier et s'il a ete classe par mots.
+
+    None si aucune adresse ne rend de texte. Un texte entier l'emporte toujours
+    sur un texte partiel (un resume) : les adresses suivantes ne sont essayees
+    que tant qu'aucune n'a rendu le texte entier.
+    """
     from app.services import excerpt_insertion
     from app.services.passages_candidats import proposer
 
+    meilleure: tuple[str, str, bool] | None = None
     for adresse in _adresses_a_lire(candidate):
         try:
             texte, _refuse, complet = await excerpt_insertion.texte_de_page(adresse)
@@ -244,19 +316,26 @@ async def _lire(
             continue
         if not texte.strip():
             continue
-        questions = [sous_question, *contradictions]
-        candidats = await proposer(texte, questions)
-        passages = [
-            Passage(
-                c.texte,
-                REPONSE if c.question == sous_question else NUANCE,
-                c.score,
-                question=c.question,
-            )
-            for c in candidats
-        ]
-        return adresse, passages, complet
-    return None
+        if complet:
+            meilleure = (adresse, texte, True)
+            break
+        if meilleure is None or len(texte) > len(meilleure[1]):
+            meilleure = (adresse, texte, False)
+    if meilleure is None:
+        return None
+    adresse, texte, complet = meilleure
+    candidats = await proposer(texte, [sous_question, *contradictions])
+    passages = [
+        Passage(
+            c.texte,
+            REPONSE if c.question == sous_question else NUANCE,
+            c.score,
+            question=c.question,
+        )
+        for c in candidats
+    ]
+    par_mots = any(c.methode == "mots" for c in candidats)
+    return adresse, passages, complet, par_mots
 
 
 class _Etat:
@@ -268,7 +347,9 @@ class _Etat:
         exclure: frozenset[str],
         lot: int,
         echeance: float,
+        publications_d_abord: bool = True,
     ) -> None:
+        self.publications_d_abord = publications_d_abord
         self.sous_question = sous_question
         self.contradictions = contradictions
         self.deja = deja
@@ -290,26 +371,67 @@ class _Etat:
         return retenues
 
     async def explorer(self, candidates: list[Candidate], tour: int) -> list[SourceTrouvee]:
-        """Lit les candidates par lots, jusqu'au premier lot lisible qui n'apporte rien."""
+        """Lit les candidates d'un tour, les publications et les sites d'institutions d'abord.
+
+        Chaque groupe est lu jusqu'a sa propre saturation : des articles qui ne
+        repondent plus n'arretent pas la lecture des autres pages, ils passent
+        seulement avant elles. Toutes a egalite : un seul groupe, dans l'ordre
+        de la fusion.
+        """
         trouvees: list[SourceTrouvee] = []
+        if self.publications_d_abord:
+            natures = {id(c): nature_reconnue(c) for c in candidates}
+            groupes = [
+                [c for c in candidates if natures[id(c)] is not None],
+                [c for c in candidates if natures[id(c)] is None],
+            ]
+        else:
+            groupes = [candidates]
+        for groupe in groupes:
+            if self.delai_atteint:
+                break
+            await self._lire_jusqu_a_saturation(groupe, tour, trouvees)
+        self.journal.pertinentes_par_tour.append(len(trouvees))
+        return trouvees
+
+    async def _lire_jusqu_a_saturation(
+        self, candidates: list[Candidate], tour: int, trouvees: list[SourceTrouvee]
+    ) -> None:
+        """Lit par lots, jusqu'au premier lot lisible qui n'apporte rien."""
         for debut in range(0, len(candidates), self.lot):
-            if time.monotonic() >= self.echeance:
+            restant = self.echeance - time.monotonic()
+            if restant <= 0:
                 self.delai_atteint = True
                 break
             lot = candidates[debut : debut + self.lot]
-            lectures = await asyncio.gather(
-                *(_lire(c, self.sous_question, self.contradictions) for c in lot),
-                return_exceptions=True,
-            )
+            # Le lot est borne par le temps restant, pas seulement verifie entre deux
+            # lots : une page qui descend toute la cascade (relais, archive) coute
+            # plusieurs minutes, et un lot lent faisait deborder le budget de l'outil.
+            taches = [
+                asyncio.ensure_future(_lire(c, self.sous_question, self.contradictions))
+                for c in lot
+            ]
+            _faites, en_retard = await asyncio.wait(taches, timeout=restant)
+            for tache in en_retard:
+                tache.cancel()
+            if en_retard:
+                await asyncio.gather(*en_retard, return_exceptions=True)
+                self.delai_atteint = True
+                self.journal.hors_delai += len(en_retard)
             lisibles = 0
             nouvelles = 0
-            for candidate, lecture in zip(lot, lectures, strict=True):
+            for candidate, tache in zip(lot, taches, strict=True):
+                if tache in en_retard:
+                    continue
                 self.journal.lues += 1
-                if isinstance(lecture, BaseException) or lecture is None:
+                lecture = None if tache.exception() is not None else tache.result()
+                if lecture is None:
                     self.journal.illisibles += 1
                     continue
                 lisibles += 1
-                adresse, passages, complet = lecture
+                adresse, passages, complet, par_mots = lecture
+                if par_mots:
+                    self.journal.lectures_par_mots += 1
                 cle = identite(candidate)
                 if passages and cle not in self.pertinentes:
                     source = SourceTrouvee(
@@ -319,19 +441,59 @@ class _Etat:
                         tour=tour,
                         texte_complet=complet,
                         source_id=self.deja.get(cle),
+                        reference=nature_reconnue(candidate),
                     )
                     self.pertinentes[cle] = source
                     trouvees.append(source)
                     nouvelles += 1
                 self.journal.courbe.append(len(self.pertinentes))
-            if lisibles and not nouvelles:
+            if self.delai_atteint or (lisibles and not nouvelles):
                 break
-        self.journal.pertinentes_par_tour.append(len(trouvees))
-        return trouvees
 
 
-async def _voisins(sources: list[SourceTrouvee]) -> list[list[Candidate]]:
-    """Ce que citent les sources pertinentes, ce qui les cite, et les liens de leurs pages."""
+async def _borner[T](coroutine: Awaitable[T], etat: _Etat) -> T | None:
+    """Le resultat de `coroutine` dans le temps restant, ou None si le delai est atteint."""
+    restant = etat.echeance - time.monotonic()
+    if restant <= 0:
+        etat.delai_atteint = True
+        if asyncio.iscoroutine(coroutine):
+            coroutine.close()
+        return None
+    try:
+        return await asyncio.wait_for(coroutine, timeout=restant)
+    except TimeoutError:
+        etat.delai_atteint = True
+        return None
+
+
+async def _ordonner_par_pertinence(candidates: list[Candidate], question: str) -> list[Candidate]:
+    """Les candidates dans l'ordre de proximite de leur titre avec la question.
+
+    Les voisins d'une source arrivent tries par date ou par citations, pas par
+    pertinence : lus dans cet ordre, un premier lot hors sujet arretait le tour
+    avant les voisins utiles. Le titre (ou le texte du lien) est compare a la
+    question ; sans embeddings, l'ordre d'arrivee reste. Tri stable.
+    """
+    from app.services import embeddings
+
+    if len(candidates) < 2:
+        return candidates
+    textes = [" ".join(t for t in (c.titre, c.apercu) if t) or c.url for c in candidates]
+    vecteurs = await embeddings.embed([question, *textes])
+    if vecteurs is None:
+        return candidates
+    cible, autres = vecteurs[0], vecteurs[1:]
+    notes = [sum(x * y for x, y in zip(cible, v, strict=True)) for v in autres]
+    rangs = sorted(range(len(candidates)), key=lambda rang: -notes[rang])
+    return [candidates[rang] for rang in rangs]
+
+
+async def _voisins(sources: list[SourceTrouvee], question: str) -> list[list[Candidate]]:
+    """Ce que citent les sources pertinentes, ce qui les cite, et les liens de leurs pages.
+
+    Les articles citants se cherchent par pertinence avec la question : un article
+    tres cite en compte des milliers, et les plus recents ne sont pas les plus utiles.
+    """
     from app.extractors import body_links, recherche_litterature
     from app.services.content_identity import extract_doi
 
@@ -341,7 +503,9 @@ async def _voisins(sources: list[SourceTrouvee]) -> list[list[Candidate]]:
         doi = source.candidate.doi or extract_doi(source.url_lue)
         if doi:
             for sens, raison in (("citants", "cite"), ("references", "citee par")):
-                voisins = await recherche_litterature.voisinage_openalex(doi, sens=sens)
+                voisins = await recherche_litterature.voisinage_openalex(
+                    doi, sens=sens, requete=question if sens == "citants" else None
+                )
                 for voisin in voisins:
                     voisin.raisons = [f"{raison} « {titre} »"]
                 listes.append(voisins)
@@ -425,12 +589,14 @@ async def rechercher_sous_question(
     expansion: bool = True,
     lot: int = LOT_LECTURE,
     delai: float = DELAI_RECHERCHE,
+    publications_d_abord: bool = True,
 ) -> Recherche:
     """La recherche complete d'une sous-question. Ne leve pas pour un corpus ou une page en panne.
 
     `deja` : identites (voir `fusion_candidates.identite`) des sources deja posees
     sur la fiche, vers leur identifiant. `exclure` : identites a ne jamais lire
     (le banc y met la revue dont les references servent de reference).
+    `publications_d_abord` : publications et sites d'institutions lus et rendus en tete.
     """
     debut = time.monotonic()
     corpus = corpus if corpus is not None else corpus_configures()
@@ -438,7 +604,15 @@ async def rechercher_sous_question(
         dict.fromkeys(q.strip() for q in [*requetes, *requetes_contradiction] if q.strip())
     )
     contradictions = [q.strip() for q in requetes_contradiction if q.strip()]
-    etat = _Etat(sous_question, contradictions, deja or {}, exclure, lot, debut + delai)
+    etat = _Etat(
+        sous_question,
+        contradictions,
+        deja or {},
+        exclure,
+        lot,
+        debut + delai,
+        publications_d_abord=publications_d_abord,
+    )
 
     taches = [(nom, formulation) for formulation in formulations for nom in corpus]
     etat.journal.requetes = len(taches)
@@ -466,11 +640,17 @@ async def rechercher_sous_question(
         etat.journal.arret = "suivi des citations et des liens desactive"
     while expansion and trouvees and not etat.delai_atteint:
         tour += 1
-        suivantes = etat.nouvelles(fusionner(await _voisins(trouvees)))
+        voisins = await _borner(_voisins(trouvees, sous_question), etat)
+        if voisins is None:
+            break
+        suivantes = etat.nouvelles(fusionner(voisins))
         if not suivantes:
             etat.journal.arret = f"tour {tour} : plus aucune candidate nouvelle a suivre"
             break
-        trouvees = await etat.explorer(suivantes, tour)
+        ordonnees = await _borner(_ordonner_par_pertinence(suivantes, sous_question), etat)
+        if ordonnees is None:
+            break
+        trouvees = await etat.explorer(ordonnees, tour)
         if not trouvees:
             etat.journal.arret = (
                 f"saturation : le tour {tour} n'a apporte aucune source pertinente nouvelle"
@@ -483,11 +663,36 @@ async def rechercher_sous_question(
         etat.journal.arret = "saturation : le premier tour n'a apporte aucune source pertinente"
 
     trouvees_toutes = list(etat.pertinentes.values())
-    etat.journal.reclassement = await _reclasser(trouvees_toutes)
+
+    async def reclasser_a_temps() -> str:
+        try:
+            return await asyncio.wait_for(_reclasser(trouvees_toutes), timeout=DELAI_FINITION)
+        except TimeoutError:
+            return "reclasseur trop lent : ordre par proximite de sens"
+
+    async def retractations_a_temps() -> None:
+        try:
+            await asyncio.wait_for(_retractations(trouvees_toutes), timeout=DELAI_FINITION)
+        except TimeoutError:
+            logger.info("Retractations non verifiees a temps pour « %s »", sous_question)
+
+    etat.journal.reclassement, _ = await asyncio.gather(
+        reclasser_a_temps(), retractations_a_temps()
+    )
     for source in trouvees_toutes:
         source.passages.sort(key=lambda p: -p.classement)
-    sources = sorted(trouvees_toutes, key=lambda s: (-s.meilleur, s.tour))
-    await _retractations(sources)
+    sources = sorted(
+        trouvees_toutes,
+        key=lambda s: (publications_d_abord and s.reference is None, -s.meilleur, s.tour),
+    )
+    # Numeros dans l'ordre de lecture du modele, uniques dans la recherche.
+    numero = 0
+    for source in sources:
+        numerotes = []
+        for passage in source.passages:
+            numero += 1
+            numerotes.append(replace(passage, numero=numero))
+        source.passages = numerotes
     etat.journal.duree_s = round(time.monotonic() - debut, 1)
     return Recherche(
         id=uuid4().hex[:12],

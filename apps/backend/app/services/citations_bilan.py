@@ -25,7 +25,12 @@ from app.core.config import get_settings
 from app.models.biblio_card import BiblioCard
 from app.models.source import Source
 
-RENVOI = re.compile(r"\s*\[extrait:([0-9a-fA-F-]{36})\]")
+_UUID = r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+
+#: Un renvoi, sous les variantes qu'un modele ecrit en pratique : espaces autour
+#: des deux-points, pluriel, plusieurs identifiants separes par une virgule ou un
+#: point-virgule. Un renvoi mal reconnu restait affiche brut dans la reponse.
+RENVOI = re.compile(rf"\s*\[\s*extraits?\s*:\s*({_UUID}(?:\s*[,;]\s*{_UUID})*)\s*\]", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -46,12 +51,15 @@ def lier_renvois(texte: str, extraits: set[str], adresse: str) -> ReponseLiee:
 
     def remplacer(m: re.Match[str]) -> str:
         nonlocal retires
-        identifiant = m.group(1).lower()
-        if identifiant not in extraits:
-            retires += 1
-            return ""
-        numero = numeros.setdefault(identifiant, len(numeros) + 1)
-        return f" [{numero}]({adresse}#extrait-{identifiant})"
+        liens: list[str] = []
+        for brut in re.findall(_UUID, m.group(1)):
+            identifiant = brut.lower()
+            if identifiant not in extraits:
+                retires += 1
+                continue
+            numero = numeros.setdefault(identifiant, len(numeros) + 1)
+            liens.append(f"[{numero}]({adresse}#extrait-{identifiant})")
+        return " " + " ".join(liens) if liens else ""
 
     lie = RENVOI.sub(remplacer, texte)
     if retires:

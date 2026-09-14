@@ -9104,6 +9104,22 @@
             "maxItems": 2,
             "title": "Sources",
             "description": "Familles de corpus à interroger. Vide : toutes."
+          },
+          "priorite": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "publications",
+                  "egale"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priorite",
+            "description": "`publications` : les publications scientifiques et les sites d'institutions d'abord. `egale` : toutes les sources à égalité. Null : les publications d'abord, et l'agent demande quand la question ne dit pas clairement quelles sources conviennent."
           }
         },
         "additionalProperties": false,
@@ -9197,7 +9213,8 @@
             "anyOf": [
               {
                 "items": {
-                  "type": "string"
+                  "type": "string",
+                  "maxLength": 500
                 },
                 "type": "array",
                 "maxItems": 40
@@ -10290,20 +10307,27 @@
             "title": "Card Slug"
           },
           "sous_question": {
-            "type": "string",
-            "maxLength": 500,
-            "minLength": 1,
-            "title": "Sous Question"
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sous Question",
+            "description": "Sans sous-question : reprendre les questions de la fiche encore sans extrait."
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "card_slug",
-          "sous_question"
+          "card_slug"
         ],
         "title": "SuiteFiche",
-        "description": "Prolonger une fiche existante par une sous-question de plus."
+        "description": "Prolonger une fiche existante par une sous-question, ou la reprendre là où elle s'est arrêtée."
       },
       "TestProviderBody": {
         "properties": {

@@ -3332,6 +3332,11 @@ export interface components {
        * @description Familles de corpus à interroger. Vide : toutes.
        */
       sources?: ('litterature' | 'web')[];
+      /**
+       * Priorite
+       * @description `publications` : les publications scientifiques et les sites d'institutions d'abord. `egale` : toutes les sources à égalité. Null : les publications d'abord, et l'agent demande quand la question ne dit pas clairement quelles sources conviennent.
+       */
+      priorite?: ('publications' | 'egale') | null;
     };
     /**
      * Platform
@@ -3675,13 +3680,16 @@ export interface components {
     };
     /**
      * SuiteFiche
-     * @description Prolonger une fiche existante par une sous-question de plus.
+     * @description Prolonger une fiche existante par une sous-question, ou la reprendre là où elle s'est arrêtée.
      */
     SuiteFiche: {
       /** Card Slug */
       card_slug: string;
-      /** Sous Question */
-      sous_question: string;
+      /**
+       * Sous Question
+       * @description Sans sous-question : reprendre les questions de la fiche encore sans extrait.
+       */
+      sous_question?: string | null;
     };
     /**
      * TestProviderBody

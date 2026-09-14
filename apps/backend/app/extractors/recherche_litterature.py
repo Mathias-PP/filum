@@ -264,12 +264,14 @@ _IDENTIFIANTS_PAR_FILTRE = 100
 
 
 async def voisinage_openalex(
-    doi: str, *, sens: str, limite: int = PAGE_OPENALEX
+    doi: str, *, sens: str, limite: int = PAGE_OPENALEX, requete: str | None = None
 ) -> list[Candidate]:
     """Les references d'un article (`references`) ou les articles qui le citent (`citants`).
 
     Les citants sont tries du plus recent au plus ancien : c'est la ou vivent les
     confirmations, les nuances et les contradictions posterieures a l'article.
+    Avec `requete`, ils sont cherches par pertinence avec elle : un article tres
+    cite en compte des milliers, et une page n'en montre que deux cents.
     Les references sont triees par citations : ce sont les fondements. Toutes
     les references sont demandees, par paquets de cent identifiants : une revue
     en cite souvent davantage, et les tronquer perdait des fondements au hasard.
@@ -294,11 +296,15 @@ async def voisinage_openalex(
             for debut in range(0, len(references), _IDENTIFIANTS_PAR_FILTRE)
         ]
         tri = "cited_by_count:desc"
+    parametres: dict[str, object] = {"per_page": limite, "select": _CHAMPS_OPENALEX}
+    if sens == "citants" and requete and requete.strip():
+        parametres |= {"search": requete.strip()}
+        tri = "relevance_score:desc"
     travaux: list[dict] = []
     for filtre in filtres:
         charge = await _get_json(
             _OPENALEX,
-            params={"filter": filtre, "sort": tri, "per_page": limite, "select": _CHAMPS_OPENALEX},
+            params={**parametres, "filter": filtre, "sort": tri},
             entetes=entetes_openalex(),
         )
         travaux += [w for w in (charge or {}).get("results") or [] if isinstance(w, dict)]
@@ -306,7 +312,8 @@ async def voisinage_openalex(
         travaux.sort(key=lambda w: w.get("cited_by_count") or 0, reverse=True)
     raison = "cite l'article pivot" if sens == "citants" else "cite par l'article pivot"
     candidates = []
-    for w in travaux[:limite]:
+    # Les references ne sont jamais tronquees : chaque paquet a deja sa page.
+    for w in travaux if sens == "references" else travaux[:limite]:
         if c := candidate_openalex(w):
             c.raisons.append(raison)
             candidates.append(c)

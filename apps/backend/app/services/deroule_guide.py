@@ -17,8 +17,8 @@ et chaque etape est une boucle d'agent qui ne voit que ses outils :
    (Perplexity Deep Research, Gemini, Scira) ;
 3. exploration, une boucle d'agent par sous-question : `rechercher` execute la
    methode de recherche cote serveur (`services/recherche_approfondie.py`) et
-   rend des passages exacts ; l'agent pose ceux qui repondent avec
-   `add_source`. Elle tourne par passes : tant qu'une passe couvre une
+   rend des passages exacts et numerotes ; l'agent designe ceux qui repondent
+   avec `retenir`, et le serveur les pose. Elle tourne par passes : tant qu'une passe couvre une
    sous-question jusque-la vide et qu'il en reste, la suivante relance celles
    qui restent avec d'autres formulations. Aucun nombre de passes fixe
    d'avance : une passe qui ne couvre rien de neuf arrete l'exploration ;
@@ -60,10 +60,16 @@ from app.agent_tools.tool import AgentTool
 from app.models.agent_provider import AgentProvider
 from app.models.user import User
 from app.services import agent_approvals, citations_bilan, couverture, relecture
-from app.services.agent import Approuver, Emitter, boucle
+from app.services.agent import BOUCLE_TIMEOUT, Approuver, Emitter, boucle
 from app.services.agent_definitions import AgentDefinition
 from app.services.couverture import Couverture
-from app.services.options_recherche import Options
+from app.services.options_recherche import (
+    CHOIX_SOURCES,
+    OPTIONS_RECHERCHE,
+    QUESTION_SOURCES,
+    Options,
+    options_choisies,
+)
 from app.services.relecture import Manque
 
 logger = logging.getLogger(__name__)
@@ -83,10 +89,11 @@ class Etape:
 
 @dataclass(frozen=True)
 class Suite:
-    """Prolonger une fiche existante par une sous-question."""
+    """Prolonger une fiche existante par une sous-question, ou la reprendre sans elle."""
 
     card_slug: str
-    sous_question: str
+    #: `None` : reprise d'une fiche arretee, sur ses questions encore sans extrait.
+    sous_question: str | None = None
 
 
 _CONSIGNE_COMMUNE = (
@@ -95,24 +102,43 @@ _CONSIGNE_COMMUNE = (
     "compte rendu qu'elle demande. N'invente ni adresse, ni fait, ni verbatim."
 )
 
+_CADRAGE_ANGLES = (
+    "Lis la question du créateur. Si elle admet des angles très différents qui mèneraient "
+    "à des fiches différentes (public visé, période, lieu, sens d'un terme, portée), appelle "
+    "demander_precision(question, options) avec ces angles, chacun en une phrase courte."
+)
+
+#: Le cadrage quand le createur a deja choisi ses sources : rien a lui redemander.
+_CADRAGE_SOURCES_CHOISIES = Etape(
+    id="cadrage",
+    titre="Cadrage",
+    outils=("demander_precision",),
+    consigne=(
+        f"1. {_CADRAGE_ANGLES}\n"
+        "2. Si la question est claire, n'appelle aucun outil.\n"
+        "3. Termine en une phrase : l'angle que la fiche prendra, ou la précision demandée."
+    ),
+)
+
 ETAPES: tuple[Etape, ...] = (
     Etape(
         id="cadrage",
         titre="Cadrage",
-        outils=("demander_precision",),
+        outils=("demander_precision", "demander_sources"),
         consigne=(
-            "1. Lis la question du créateur. Si elle admet des angles très différents qui "
-            "mèneraient à des fiches différentes (public visé, période, lieu, sens d'un "
-            "terme, portée), appelle demander_precision(question, options) avec ces angles, "
-            "chacun en une phrase courte.\n"
-            "2. Si la question est claire, n'appelle aucun outil.\n"
-            "3. Termine en une phrase : l'angle que la fiche prendra, ou la précision "
-            "demandée."
+            f"1. {_CADRAGE_ANGLES}\n"
+            "2. Par défaut, la recherche privilégie les publications scientifiques et les "
+            "sites d'institutions (institutions publiques, universités). Si la "
+            "question n'est pas clairement scientifique, technique ou pointue, ou si elle est "
+            "ambiguë ou incomplète, appelle demander_sources : le créateur choisira.\n"
+            "3. Si aucun de ces cas ne se présente, n'appelle aucun outil.\n"
+            "4. Termine en une phrase : l'angle que la fiche prendra, ou les précisions "
+            "demandées."
         ),
     ),
     Etape(
         id="plan",
-        titre="Plan",
+        titre="Questions à explorer",
         outils=("list_my_cards", "get_my_card", "create_card", "definir_plan"),
         consigne=(
             "1. Appelle list_my_cards. Si une fiche porte déjà ce sujet, appelle "
@@ -134,7 +160,7 @@ ETAPES: tuple[Etape, ...] = (
         outils=(
             "rechercher",
             "suite_recherche",
-            "add_source",
+            "retenir",
             "add_excerpt",
             "list_sources",
             "find_passage",
@@ -148,14 +174,13 @@ ETAPES: tuple[Etape, ...] = (
             "   - requetes_contradiction : des formulations qui cherchent ce qui contredit ou "
             "nuance le propos dominant (limites, critiques, résultats contraires). Si rien "
             "n'est trouvé, dis-le et continue : cela ne bloque pas.\n"
-            "2. Pour chaque source rendue, garde les passages qui répondent vraiment à la "
-            "sous-question ou la nuancent ; écarte ceux qui ne font que l'effleurer.\n"
-            "3. Source nouvelle : add_source(card_slug, url, metadata_from='page', "
-            'excerpts=[{"text": passage recopié tel quel, "context": ce que le passage '
-            "établit}]), avec l'url rendue par rechercher et sans position. Source déjà "
-            "sur la fiche (source_id rendu) : add_excerpt(source_id, text) pour chaque "
-            "passage retenu.\n"
-            "4. Une source dont aucun passage ne répond n'est pas ajoutée.\n"
+            "2. Dans chaque page de résultats, choisis les passages qui répondent vraiment à "
+            "la sous-question ou la nuancent ; écarte ceux qui ne font que l'effleurer.\n"
+            '3. Appelle une seule fois retenir(recherche_id, passages=[{"id": id du passage, '
+            '"contexte": ce que le passage établit}]) avec tous les passages retenus de la '
+            "page. Le serveur ajoute les sources et leurs extraits avec le texte de la page : "
+            "ne recopie rien.\n"
+            "4. Si aucun passage d'une page ne répond, n'appelle pas retenir pour elle.\n"
             "5. Si le résultat annonce une page suivante, appelle suite_recherche et "
             "traite-la de même.\n"
             "Termine par : les sources ajoutées avec leur nombre d'extraits, les sources "
@@ -208,7 +233,7 @@ _OUTILS_QUI_NOMMENT_LA_FICHE = {
 }
 
 #: Outils d'interaction : le deroule lit leurs arguments et agit lui-meme.
-_OUTILS_D_INTERACTION = frozenset({"demander_precision", "proposer_suites"})
+_OUTILS_D_INTERACTION = frozenset({"demander_precision", "demander_sources", "proposer_suites"})
 
 #: Ce que l'etape doit faire de chaque manque, dit au modele.
 _CONSIGNE_PAR_MANQUE = {
@@ -220,7 +245,7 @@ _CONSIGNE_PAR_MANQUE = {
         "aucune source ne nuance la réponse : appelle rechercher avec la question de la "
         "fiche pour sous_question et des requetes_contradiction variées (limites, "
         "critiques, résultats contraires, dans les langues où le sujet est étudié), puis "
-        "pose les passages qui nuancent"
+        "retiens avec retenir les passages qui nuancent"
     ),
     relecture.SOURCE_SANS_POSITION: (
         "source citée sans position : pose sa position avec update_source"
@@ -483,6 +508,23 @@ async def derouler(
                     for cle in usage_total:
                         usage_total[cle] += int(usage.get(cle) or 0)
                 return
+            elif genre == "error" and charge.get("code") == "delai_boucle":
+                # Mesure du 2026-09-14 : une exploration riche (43 sources) a
+                # atteint le mur de la boucle, et la fiche entiere s'arretait a sa
+                # premiere sous-question. Ce qui est pose est garde, la suite continue.
+                await emit(
+                    {
+                        "type": "etape_coupee",
+                        "payload": {
+                            "titre": titre,
+                            "message": (
+                                f"coupée après {BOUCLE_TIMEOUT / 60:.0f} minutes, ce qui est "
+                                "posé est conservé et la fiche continue"
+                            ),
+                        },
+                    }
+                )
+                return
             elif genre == "error":
                 _echec.append(str(charge.get("message", "")))
             await emit(event)
@@ -561,20 +603,44 @@ async def derouler(
         return reponse
 
     async def cadrer() -> None:
+        nonlocal options
         precision = etat["interactions"].pop("demander_precision", None)
-        if not precision:
+        if precision:
+            reponse = await poser(
+                "precision",
+                {"question": precision.get("question"), "options": precision.get("options") or []},
+            )
+            choix = " ".join(str((reponse or {}).get("choix") or "").split())
+            comptes_rendus.append(
+                f"## Précision du créateur\n{choix}"
+                if choix
+                else "## Précision du créateur\nPas de réponse : prends l'angle le plus large, "
+                "et dis-le au bilan."
+            )
+        if etat["interactions"].pop("demander_sources", None) is None:
             return
+        # Les choix sont ceux du serveur : la reponse devient des options de
+        # recherche, lues par `rechercher` pour le reste du tour.
         reponse = await poser(
-            "precision",
-            {"question": precision.get("question"), "options": precision.get("options") or []},
+            "precision", {"question": QUESTION_SOURCES, "options": list(CHOIX_SOURCES)}
         )
         choix = " ".join(str((reponse or {}).get("choix") or "").split())
-        comptes_rendus.append(
-            f"## Précision du créateur\n{choix}"
-            if choix
-            else "## Précision du créateur\nPas de réponse : prends l'angle le plus large, "
-            "et dis-le au bilan."
-        )
+        choisies = options_choisies(options or Options(), choix)
+        if choisies is not None:
+            options = choisies
+            OPTIONS_RECHERCHE.set(choisies)
+            comptes_rendus.append(f"## Sources choisies par le créateur\n{choix}")
+        elif choix:
+            # Une reponse libre ne change pas les corpus : elle guide les formulations.
+            comptes_rendus.append(
+                f"## Sources demandées par le créateur\n{choix}\nOriente les formulations "
+                "des recherches vers ces sources."
+            )
+        else:
+            comptes_rendus.append(
+                "## Sources\nPas de réponse : les publications scientifiques et les sites "
+                "d'institutions passent d'abord."
+            )
 
     async def valider_plan() -> None:
         slug = etat["slug"]
@@ -586,7 +652,10 @@ async def derouler(
         reponse = await poser(
             "plan",
             {
-                "question": "Voici le plan de la fiche. Corrigez-le, ou lancez la recherche.",
+                "question": (
+                    "Voici les questions que la recherche va explorer. Modifiez-les, ou "
+                    "lancez la recherche."
+                ),
                 "sous_questions": plan,
             },
         )
@@ -600,7 +669,7 @@ async def derouler(
         except ValueError:
             return
         comptes_rendus.append(
-            "## Plan corrigé par le créateur\n" + "\n".join(f"- {q}" for q in retenues)
+            "## Questions corrigées par le créateur\n" + "\n".join(f"- {q}" for q in retenues)
         )
 
     async def explorer(etape: Etape, rang: int) -> bool:
@@ -608,8 +677,11 @@ async def derouler(
         avant = await _couverture(db, user, etat["slug"])
         passe = 1
         while True:
-            if suite is not None:
+            if suite is not None and suite.sous_question:
                 cibles = [suite.sous_question] if passe == 1 else []
+            elif suite is not None and passe == 1:
+                # Reprise : les questions encore sans extrait, rien si tout est couvert.
+                cibles = avant.vides() if avant else [question]
             elif passe == 1:
                 plan = [q.texte for q in avant.sous_questions] if avant else []
                 cibles = plan or [question]
@@ -629,8 +701,8 @@ async def derouler(
                 )
                 if not await executer(etape, rang, titre, supplement, passe):
                     return False
-            # Mode rapide et suite : une seule passe, sur ce qui a ete demande.
-            if options.rapide or suite is not None:
+            # Mode rapide et suite ciblee : une seule passe, sur ce qui a ete demande.
+            if options.rapide or (suite is not None and suite.sous_question):
                 return True
             apres = await _couverture(db, user, etat["slug"])
             if not relancer_une_passe(avant, apres):
@@ -706,17 +778,25 @@ async def derouler(
             )
             return
         plan = await couverture.lire_plan(db, user.id, suite.card_slug)
-        if suite.sous_question not in plan:
+        if suite.sous_question and suite.sous_question not in plan:
             await couverture.ecrire_plan(db, user.id, suite.card_slug, [*plan, suite.sous_question])
             await db.commit()
+
+    async def proposer_reprise() -> None:
+        """Le deroule s'arrete sur une erreur : la fiche pourra reprendre ou elle en etait."""
+        if etat["slug"]:
+            await emit({"type": "reprise_possible", "payload": {"card_slug": etat["slug"]}})
 
     for rang, etape in enumerate(ETAPES, start=1):
         if etape.id in ("cadrage", "plan") and (
             suite is not None or (options.rapide and etape.id == "cadrage")
         ):
             continue
+        if etape.id == "cadrage" and options.sources_choisies:
+            etape = _CADRAGE_SOURCES_CHOISIES
         if etape.id == "exploration":
             if not await explorer(etape, rang):
+                await proposer_reprise()
                 return
         else:
             supplement = _bloc_couverture(await _couverture(db, user, etat["slug"]))
@@ -728,6 +808,7 @@ async def derouler(
                 extraits = _bloc_extraits(await _extraits_ranges(db, user, etat["slug"]))
                 supplement = "\n\n".join(b for b in (extraits, supplement, restants) if b)
             if not await executer(etape, rang, etape.titre, supplement, None):
+                await proposer_reprise()
                 return
         if etape.id == "cadrage":
             await cadrer()
@@ -749,6 +830,7 @@ async def derouler(
             if not options.rapide:
                 await valider_plan()
         if etape.id == "positions" and not options.rapide and not await relire():
+            await proposer_reprise()
             return
         if etape.id == "bilan":
             await conclure()

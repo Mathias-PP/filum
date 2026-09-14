@@ -9,7 +9,7 @@ bornée dans les deux cas pour protéger le contexte.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -45,15 +45,26 @@ class OptionsRecherche(BaseModel):
         max_length=2,
         description="Familles de corpus à interroger. Vide : toutes.",
     )
+    priorite: Literal["publications", "egale"] | None = Field(
+        default=None,
+        description="`publications` : les publications scientifiques et les sites d'institutions "
+        "d'abord. `egale` : toutes les sources à égalité. Null : les publications d'abord, et "
+        "l'agent demande quand la question ne dit pas clairement quelles sources conviennent.",
+    )
 
 
 class SuiteFiche(BaseModel):
-    """Prolonger une fiche existante par une sous-question de plus."""
+    """Prolonger une fiche existante par une sous-question, ou la reprendre là où elle s'est arrêtée."""
 
     model_config = ConfigDict(extra="forbid")
 
     card_slug: str = Field(min_length=1, max_length=120, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
-    sous_question: str = Field(min_length=1, max_length=500)
+    sous_question: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=500,
+        description="Sans sous-question : reprendre les questions de la fiche encore sans extrait.",
+    )
 
 
 class AgentChatRequest(BaseModel):
@@ -178,7 +189,9 @@ class ReponseGuidee(BaseModel):
 
     request_id: str = Field(min_length=1, max_length=64)
     choix: str | None = Field(default=None, max_length=500)
-    sous_questions: list[str] | None = Field(default=None, max_length=40)
+    sous_questions: list[Annotated[str, Field(max_length=500)]] | None = Field(
+        default=None, max_length=40
+    )
 
 
 class AgentSessionUsage(BaseModel):
