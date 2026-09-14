@@ -14,7 +14,7 @@ export function resumeCouverture(couverture: CouvertureFiche | null): string | n
   if (couvertes === total) {
     return total > 1
       ? `Les ${total} ${sujet} du plan ont au moins un extrait`
-      : 'La sous-question du plan a au moins un extrait';
+      : 'La sous-question a au moins un extrait';
   }
   return `${couvertes} ${sujet} sur ${total} avec au moins un extrait`;
 }

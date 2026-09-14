@@ -3675,13 +3675,16 @@ export interface components {
     };
     /**
      * SuiteFiche
-     * @description Prolonger une fiche existante par une sous-question de plus.
+     * @description Prolonger une fiche existante par une sous-question, ou la reprendre là où elle s'est arrêtée.
      */
     SuiteFiche: {
       /** Card Slug */
       card_slug: string;
-      /** Sous Question */
-      sous_question: string;
+      /**
+       * Sous Question
+       * @description Sans sous-question : reprendre les questions de la fiche encore sans extrait.
+       */
+      sous_question?: string | null;
     };
     /**
      * TestProviderBody

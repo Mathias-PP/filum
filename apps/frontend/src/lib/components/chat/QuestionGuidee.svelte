@@ -47,8 +47,8 @@
           : 'Sans réponse : la fiche prend l’angle le plus large.'}
       {:else}
         {reponse?.sous_questions?.length
-          ? 'Plan validé, la recherche est lancée.'
-          : 'Sans réponse : la recherche suit le plan proposé.'}
+          ? 'Questions validées, la recherche est lancée.'
+          : 'Sans réponse : la recherche suit les questions proposées.'}
       {/if}
     </p>
   {:else if genre === 'precision'}
@@ -112,7 +112,7 @@
       >
     </div>
     <p class="mt-2 text-xs text-ink-tertiary">
-      Sans réponse sous 5 minutes, la recherche suit le plan proposé.
+      Sans réponse sous 5 minutes, la recherche suit les questions proposées.
     </p>
   {/if}
 </div>

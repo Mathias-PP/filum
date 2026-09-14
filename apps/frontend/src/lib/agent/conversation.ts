@@ -47,6 +47,8 @@ export type ChatItem =
       reponse: ReponseGuidee | null;
     }
   | { kind: 'suites'; cardSlug: string; questions: string[] }
+  | { kind: 'coupure'; titre: string; message: string }
+  | { kind: 'reprise'; cardSlug: string }
   | { kind: 'repli'; quitte: string; pris: string; raison: string }
   | { kind: 'continuation'; message: string; tours: number };
 
@@ -198,6 +200,15 @@ export function appliquer(items: ChatItem[], event: AgentEvent): ChatItem[] {
         ...items,
         { kind: 'suites', cardSlug: event.payload.card_slug, questions: event.payload.questions },
       ];
+
+    case 'etape_coupee':
+      return [
+        ...items,
+        { kind: 'coupure', titre: event.payload.titre, message: event.payload.message },
+      ];
+
+    case 'reprise_possible':
+      return [...items, { kind: 'reprise', cardSlug: event.payload.card_slug }];
 
     case 'controle_relance':
       // La marque se pose après l'annonce fautive, donc le prochain

@@ -10291,20 +10291,27 @@
             "title": "Card Slug"
           },
           "sous_question": {
-            "type": "string",
-            "maxLength": 500,
-            "minLength": 1,
-            "title": "Sous Question"
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sous Question",
+            "description": "Sans sous-question : reprendre les questions de la fiche encore sans extrait."
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "card_slug",
-          "sous_question"
+          "card_slug"
         ],
         "title": "SuiteFiche",
-        "description": "Prolonger une fiche existante par une sous-question de plus."
+        "description": "Prolonger une fiche existante par une sous-question, ou la reprendre là où elle s'est arrêtée."
       },
       "TestProviderBody": {
         "properties": {

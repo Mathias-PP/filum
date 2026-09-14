@@ -48,12 +48,17 @@ class OptionsRecherche(BaseModel):
 
 
 class SuiteFiche(BaseModel):
-    """Prolonger une fiche existante par une sous-question de plus."""
+    """Prolonger une fiche existante par une sous-question, ou la reprendre là où elle s'est arrêtée."""
 
     model_config = ConfigDict(extra="forbid")
 
     card_slug: str = Field(min_length=1, max_length=120, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
-    sous_question: str = Field(min_length=1, max_length=500)
+    sous_question: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=500,
+        description="Sans sous-question : reprendre les questions de la fiche encore sans extrait.",
+    )
 
 
 class AgentChatRequest(BaseModel):

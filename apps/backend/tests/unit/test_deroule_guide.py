@@ -412,7 +412,7 @@ async def test_le_plan_est_montre_au_createur_qui_le_corrige(db_session, test_us
     question = next(e for e in events if e["type"] == "question_guidee")["payload"]
     assert question["genre"] == "plan" and question["sous_questions"] == [TRANSPORT, INDUSTRIE]
     assert ecrits == [[INDUSTRIE]]
-    assert "Plan corrigé par le créateur" in _consignes(corps)[3]
+    assert "Questions corrigées par le créateur" in _consignes(corps)[3]
 
 
 @pytest.mark.asyncio
@@ -588,3 +588,103 @@ async def test_sans_decision_de_l_agent_la_conversation_reste_libre(db_session, 
     assert not guide
     assert not _etapes(events)
     assert events[-1]["type"] == "done"
+
+
+def _fausse_boucle(vus: list[str], *, coupure: int | None = None, erreur: int | None = None):
+    """Une boucle sans modele : l'etape plan cree la fiche, les autres rendent un texte."""
+
+    async def boucle(db, user, provider, messages, emit, approuver, **options):
+        etape = options["agent_def"].slug
+        vus.append(etape)
+        if etape == "deroule-plan":
+            await emit(
+                {
+                    "type": "tool_result",
+                    "payload": {"name": "create_card", "result": {"slug": "taxe-carbone"}},
+                }
+            )
+        if etape == "deroule-exploration":
+            rang = vus.count(etape)
+            if rang == coupure:
+                await emit(
+                    {"type": "error", "payload": {"code": "delai_boucle", "message": "trop long"}}
+                )
+                return
+            if rang == erreur:
+                await emit({"type": "error", "payload": {"message": "fournisseur en panne"}})
+                return
+        await emit({"type": "message_delta", "payload": {"delta": f"{etape} fait.", "tour": 1}})
+        await emit({"type": "done", "payload": {"usage": {}}})
+
+    return boucle
+
+
+async def _derouler_sans_modele(db_session, test_user, monkeypatch, boucle, **options):
+    monkeypatch.setattr(deroule_guide, "boucle", boucle)
+    events: list[dict] = []
+
+    async def emit(event):
+        events.append(event)
+
+    async def refuse(request_id, tool, args):
+        return False
+
+    await deroule_guide.derouler(
+        db_session, test_user, None, "Taxe carbone ?", emit, refuse, [], [], registre={}, **options
+    )
+    return events
+
+
+@pytest.mark.asyncio
+async def test_une_exploration_coupee_par_le_mur_de_temps_n_arrete_pas_la_fiche(
+    db_session, test_user, monkeypatch
+):
+    _couvertures(monkeypatch, _etat(), _etat())
+    vus: list[str] = []
+    events = await _derouler_sans_modele(
+        db_session, test_user, monkeypatch, _fausse_boucle(vus, coupure=1)
+    )
+    coupure = next(e for e in events if e["type"] == "etape_coupee")["payload"]
+    assert TRANSPORT in coupure["titre"]
+    assert _etapes(events)[-2:] == ["positions", "bilan"]
+    assert vus.count("deroule-exploration") == 2
+    assert not any(e["type"] in ("error", "reprise_possible") for e in events)
+    assert events[-1]["type"] == "done"
+
+
+@pytest.mark.asyncio
+async def test_une_fiche_arretee_par_une_erreur_propose_de_reprendre(
+    db_session, test_user, monkeypatch
+):
+    _couvertures(monkeypatch, _etat(), _etat())
+    events = await _derouler_sans_modele(
+        db_session, test_user, monkeypatch, _fausse_boucle([], erreur=1)
+    )
+    assert {"type": "reprise_possible", "payload": {"card_slug": "taxe-carbone"}} in events
+    assert "done" not in [e["type"] for e in events]
+
+
+@pytest.mark.asyncio
+async def test_la_reprise_explore_les_questions_encore_sans_extrait(
+    db_session, test_user, monkeypatch
+):
+    _couvertures(monkeypatch, _etat(TRANSPORT))
+
+    async def lire_plan(db, creator_id, slug):
+        return [TRANSPORT, INDUSTRIE]
+
+    async def ecrire_plan(db, creator_id, slug, sous_questions):
+        raise AssertionError("une reprise ne touche pas aux questions de la fiche")
+
+    monkeypatch.setattr(deroule_guide.couverture, "lire_plan", lire_plan)
+    monkeypatch.setattr(deroule_guide.couverture, "ecrire_plan", ecrire_plan)
+    events = await _derouler_sans_modele(
+        db_session,
+        test_user,
+        monkeypatch,
+        _fausse_boucle([]),
+        suite=deroule_guide.Suite("taxe-carbone"),
+    )
+    titres = [e["payload"]["titre"] for e in events if e["type"] == "etape_guidee"]
+    assert titres[0] == f"Exploration : {INDUSTRIE}"
+    assert _etapes(events) == ["exploration", "positions", "bilan"]

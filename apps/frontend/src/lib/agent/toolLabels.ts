@@ -150,7 +150,7 @@ const ACTIONS: Record<
     objet: (_a, r) => titreDepuisResultat(r) ?? 'cette source',
   },
   definir_plan: {
-    action: 'Pose le plan de la fiche',
+    action: 'Pose les questions de la fiche',
     objet: (a) => (typeof a.slug === 'string' ? a.slug : null),
   },
   propose_passages: {

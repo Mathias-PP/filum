@@ -32,6 +32,10 @@ logger = logging.getLogger(__name__)
 
 _SEPARATEURS_D_AUTEURS = re.compile(r"\s*(?:[,;]|\bet\b|\band\b|&)\s*", re.IGNORECASE)
 
+#: L'en-tete du relais de lecture (Jina Reader) date la page quand elle le dit :
+#: sans lui, une page lue par le relais perdait sa date avec son HTML.
+_DATE_RELAIS = re.compile(r"^Published Time:\s*(.+)$", re.MULTILINE)
+
 
 def _pour_recherche(texte: str) -> str:
     return " ".join(texte.replace("’", "'").split()).lower()
@@ -95,7 +99,14 @@ async def metadonnees_de_la_page(url: str, *, avec_modele: bool = True) -> Extra
     if meta is None:
         relayee = await page_par_relais(url)
         if relayee is not None and relayee[0]:
-            meta = ExtractedMetadata(title=clean_title(relayee[0], None, url), page_text=relayee[1])
+            date_relais = _DATE_RELAIS.search(relayee[1][:3000])
+            meta = ExtractedMetadata(
+                title=clean_title(relayee[0], None, url),
+                page_text=relayee[1],
+                published_at=(
+                    url_extractor._iso_date_prefix(date_relais.group(1)) if date_relais else None
+                ),
+            )
             logger.info("Metadonnees lues par le relais url=%s", url)
 
     if meta is None:

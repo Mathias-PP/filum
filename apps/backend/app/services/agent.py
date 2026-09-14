@@ -1775,11 +1775,14 @@ async def boucle(
             {
                 "type": "error",
                 "payload": {
+                    # Le deroule guide le reconnait : une etape coupee n'arrete pas
+                    # la fiche, les etapes suivantes reprennent ce qui est pose.
+                    "code": "delai_boucle",
                     "message": (
                         f"L'agent travaille depuis {BOUCLE_TIMEOUT / 60:.0f} minutes sans finir : "
                         "le tour est arrêté, le travail déjà fait est conservé. "
                         "Envoyez « continue » pour reprendre."
-                    )
+                    ),
                 },
             }
         )

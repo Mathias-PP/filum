@@ -60,7 +60,7 @@ from app.agent_tools.tool import AgentTool
 from app.models.agent_provider import AgentProvider
 from app.models.user import User
 from app.services import agent_approvals, citations_bilan, couverture, relecture
-from app.services.agent import Approuver, Emitter, boucle
+from app.services.agent import BOUCLE_TIMEOUT, Approuver, Emitter, boucle
 from app.services.agent_definitions import AgentDefinition
 from app.services.couverture import Couverture
 from app.services.options_recherche import Options
@@ -83,10 +83,11 @@ class Etape:
 
 @dataclass(frozen=True)
 class Suite:
-    """Prolonger une fiche existante par une sous-question."""
+    """Prolonger une fiche existante par une sous-question, ou la reprendre sans elle."""
 
     card_slug: str
-    sous_question: str
+    #: `None` : reprise d'une fiche arretee, sur ses questions encore sans extrait.
+    sous_question: str | None = None
 
 
 _CONSIGNE_COMMUNE = (
@@ -112,7 +113,7 @@ ETAPES: tuple[Etape, ...] = (
     ),
     Etape(
         id="plan",
-        titre="Plan",
+        titre="Questions à explorer",
         outils=("list_my_cards", "get_my_card", "create_card", "definir_plan"),
         consigne=(
             "1. Appelle list_my_cards. Si une fiche porte déjà ce sujet, appelle "
@@ -483,6 +484,23 @@ async def derouler(
                     for cle in usage_total:
                         usage_total[cle] += int(usage.get(cle) or 0)
                 return
+            elif genre == "error" and charge.get("code") == "delai_boucle":
+                # Mesure du 2026-09-14 : une exploration riche (43 sources) a
+                # atteint le mur de la boucle, et la fiche entiere s'arretait a sa
+                # premiere sous-question. Ce qui est pose est garde, la suite continue.
+                await emit(
+                    {
+                        "type": "etape_coupee",
+                        "payload": {
+                            "titre": titre,
+                            "message": (
+                                f"coupée après {BOUCLE_TIMEOUT / 60:.0f} minutes, ce qui est "
+                                "posé est conservé et la fiche continue"
+                            ),
+                        },
+                    }
+                )
+                return
             elif genre == "error":
                 _echec.append(str(charge.get("message", "")))
             await emit(event)
@@ -586,7 +604,10 @@ async def derouler(
         reponse = await poser(
             "plan",
             {
-                "question": "Voici le plan de la fiche. Corrigez-le, ou lancez la recherche.",
+                "question": (
+                    "Voici les questions que la recherche va explorer. Modifiez-les, ou "
+                    "lancez la recherche."
+                ),
                 "sous_questions": plan,
             },
         )
@@ -600,7 +621,7 @@ async def derouler(
         except ValueError:
             return
         comptes_rendus.append(
-            "## Plan corrigé par le créateur\n" + "\n".join(f"- {q}" for q in retenues)
+            "## Questions corrigées par le créateur\n" + "\n".join(f"- {q}" for q in retenues)
         )
 
     async def explorer(etape: Etape, rang: int) -> bool:
@@ -608,8 +629,11 @@ async def derouler(
         avant = await _couverture(db, user, etat["slug"])
         passe = 1
         while True:
-            if suite is not None:
+            if suite is not None and suite.sous_question:
                 cibles = [suite.sous_question] if passe == 1 else []
+            elif suite is not None and passe == 1:
+                # Reprise : les questions encore sans extrait, rien si tout est couvert.
+                cibles = avant.vides() if avant else [question]
             elif passe == 1:
                 plan = [q.texte for q in avant.sous_questions] if avant else []
                 cibles = plan or [question]
@@ -629,8 +653,8 @@ async def derouler(
                 )
                 if not await executer(etape, rang, titre, supplement, passe):
                     return False
-            # Mode rapide et suite : une seule passe, sur ce qui a ete demande.
-            if options.rapide or suite is not None:
+            # Mode rapide et suite ciblee : une seule passe, sur ce qui a ete demande.
+            if options.rapide or (suite is not None and suite.sous_question):
                 return True
             apres = await _couverture(db, user, etat["slug"])
             if not relancer_une_passe(avant, apres):
@@ -706,9 +730,14 @@ async def derouler(
             )
             return
         plan = await couverture.lire_plan(db, user.id, suite.card_slug)
-        if suite.sous_question not in plan:
+        if suite.sous_question and suite.sous_question not in plan:
             await couverture.ecrire_plan(db, user.id, suite.card_slug, [*plan, suite.sous_question])
             await db.commit()
+
+    async def proposer_reprise() -> None:
+        """Le deroule s'arrete sur une erreur : la fiche pourra reprendre ou elle en etait."""
+        if etat["slug"]:
+            await emit({"type": "reprise_possible", "payload": {"card_slug": etat["slug"]}})
 
     for rang, etape in enumerate(ETAPES, start=1):
         if etape.id in ("cadrage", "plan") and (
@@ -717,6 +746,7 @@ async def derouler(
             continue
         if etape.id == "exploration":
             if not await explorer(etape, rang):
+                await proposer_reprise()
                 return
         else:
             supplement = _bloc_couverture(await _couverture(db, user, etat["slug"]))
@@ -728,6 +758,7 @@ async def derouler(
                 extraits = _bloc_extraits(await _extraits_ranges(db, user, etat["slug"]))
                 supplement = "\n\n".join(b for b in (extraits, supplement, restants) if b)
             if not await executer(etape, rang, etape.titre, supplement, None):
+                await proposer_reprise()
                 return
         if etape.id == "cadrage":
             await cadrer()
@@ -749,6 +780,7 @@ async def derouler(
             if not options.rapide:
                 await valider_plan()
         if etape.id == "positions" and not options.rapide and not await relire():
+            await proposer_reprise()
             return
         if etape.id == "bilan":
             await conclure()

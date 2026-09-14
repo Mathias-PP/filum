@@ -1000,6 +1000,100 @@ async def _html_scrape(url: str) -> ExtractedMetadata | None:
         return None
 
 
+#: Balises meta qui datent la parution, dans l'ordre de confiance : Highwire et
+#: Dublin Core d'abord (faites pour la bibliographie), Open Graph ensuite, puis
+#: les conventions d'editeurs relevees le 2026-09-14 sur des sources restees
+#: « s.d. » (Salesforce `published_date`, Microsoft Learn `ms.date`), et celles
+#: de Parse.ly et Sailthru, tres repandues dans la presse. `citation_online_date`
+#: n'y est pas : c'est la derniere revision de la page, pas la parution.
+_METAS_PARUTION = (
+    "citation_publication_date",
+    "citation_date",
+    "dc.date.issued",
+    "dcterms.issued",
+    "dc.date",
+    "dcterms.date",
+    "dcterms.created",
+    "article:published_time",
+    "og:article:published_time",
+    "datepublished",
+    "published_date",
+    "publish_date",
+    "publication_date",
+    "pubdate",
+    "parsely-pub-date",
+    "sailthru.date",
+    "ms.date",
+    "date",
+)
+
+#: Faute de parution declaree, la derniere mise a jour date le contenu tel qu'il
+#: est cite : c'est la date que retiennent les normes de citation d'une page web
+#: (Martin Fowler ne declare que `og:article:modified_time`). Toujours apres.
+_METAS_MISE_A_JOUR = (
+    "article:modified_time",
+    "og:article:modified_time",
+    "og:updated_time",
+    "datemodified",
+    "modified_date",
+    "last-modified",
+    "updated_at",
+)
+
+
+def _date_de_publication(soup: BeautifulSoup) -> str | None:
+    """La date de parution que la page declare, ou sa derniere mise a jour, en AAAA-MM-JJ.
+
+    Le JSON-LD est parcouru en profondeur et quel que soit le type : Salesforce
+    range `datePublished` dans une `WebPage` imbriquee sous un `Article`, que la
+    lecture par types de premier niveau manquait.
+    """
+    metas: dict[str, str] = {}
+    for tag in soup.find_all("meta"):
+        nom = str(tag.get("name") or tag.get("property") or tag.get("itemprop") or "")
+        contenu = str(tag.get("content") or "").strip()
+        if nom.strip() and contenu:
+            metas.setdefault(nom.strip().lower(), contenu)
+
+    parutions: list[str] = []
+    mises_a_jour: list[str] = []
+    for script in soup.find_all("script", type="application/ld+json"):
+        try:
+            donnees = json.loads(script.get_text(strip=True) or "null")
+        except json.JSONDecodeError:
+            continue
+        a_voir: list[object] = [donnees]
+        while a_voir:
+            element = a_voir.pop(0)
+            if isinstance(element, dict):
+                for cle, liste in (
+                    ("datePublished", parutions),
+                    ("dateCreated", parutions),
+                    ("dateModified", mises_a_jour),
+                ):
+                    if isinstance(element.get(cle), str):
+                        liste.append(element[cle])
+                a_voir.extend(element.values())
+            elif isinstance(element, list):
+                a_voir.extend(element)
+
+    balises_time = [
+        str(t.get("datetime"))
+        for t in soup.select("time[itemprop=datePublished][datetime], time[pubdate][datetime]")
+    ]
+    candidates = [
+        *(metas.get(nom) for nom in _METAS_PARUTION),
+        *parutions,
+        *balises_time,
+        *(metas.get(nom) for nom in _METAS_MISE_A_JOUR),
+        *mises_a_jour,
+    ]
+    for brute in candidates:
+        if date_iso := _iso_date_prefix(brute):
+            return date_iso
+    return None
+
+
 def _metadonnees_du_html(page_html: str, url: str) -> ExtractedMetadata:
     """Titre, auteurs, date et texte d'une page HTML, ou un refus si c'est un obstacle.
 
@@ -1037,16 +1131,9 @@ def _metadonnees_du_html(page_html: str, url: str) -> ExtractedMetadata:
         or auteur_lisible(_meta("article:author"))
         or None
     )
-    # `citation_online_date` est la derniere revision de la page (2023 chez
-    # arXiv pour un article de 2017), pas la parution de l'oeuvre : la
-    # prendre ferait glisser l'article sur la frise chronologique.
-    published_at_raw = (
-        _meta("citation_publication_date")
-        or _meta("citation_date")
-        or _meta("article:published_time")
-        or _meta("datePublished")
-    )
-    published_at = _iso_date_prefix(published_at_raw)
+    # Parution declaree d'abord, derniere mise a jour a defaut : voir
+    # `_date_de_publication`, qui ecarte `citation_online_date`.
+    published_at = _date_de_publication(soup)
 
     # Supplement with JSON-LD structured data (richer, same HTTP response)
     jsonld_meta = _parse_jsonld_metadata(soup)
