@@ -9,7 +9,7 @@ bornée dans les deux cas pour protéger le contexte.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -178,7 +178,9 @@ class ReponseGuidee(BaseModel):
 
     request_id: str = Field(min_length=1, max_length=64)
     choix: str | None = Field(default=None, max_length=500)
-    sous_questions: list[str] | None = Field(default=None, max_length=40)
+    sous_questions: list[Annotated[str, Field(max_length=500)]] | None = Field(
+        default=None, max_length=40
+    )
 
 
 class AgentSessionUsage(BaseModel):

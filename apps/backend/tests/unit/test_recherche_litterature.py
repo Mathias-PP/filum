@@ -204,3 +204,22 @@ async def test_les_references_d_un_article_sans_references_ne_font_pas_d_appel_d
     _transport(monkeypatch, gestionnaire)
     assert await voisinage_openalex("10.1000/pivot", sens="references") == []
     assert len(vues) == 1
+
+
+@pytest.mark.asyncio
+async def test_les_citants_se_cherchent_par_pertinence_avec_la_question(monkeypatch):
+    vues: list[httpx.URL] = []
+
+    def gestionnaire(requete):
+        vues.append(requete.url)
+        if "/works/doi:" in str(requete.url):
+            return httpx.Response(
+                200, json={"id": "https://openalex.org/W42", "referenced_works": []}
+            )
+        return httpx.Response(200, json={"results": [TRAVAIL]})
+
+    _transport(monkeypatch, gestionnaire)
+    await voisinage_openalex("10.1000/pivot", sens="citants", requete="effet sur le transport")
+    assert vues[-1].params["search"] == "effet sur le transport"
+    assert vues[-1].params["sort"] == "relevance_score:desc"
+    assert vues[-1].params["filter"] == "cites:W42"

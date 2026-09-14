@@ -9197,7 +9197,8 @@
             "anyOf": [
               {
                 "items": {
-                  "type": "string"
+                  "type": "string",
+                  "maxLength": 500
                 },
                 "type": "array",
                 "maxItems": 40

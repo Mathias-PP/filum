@@ -117,8 +117,9 @@ TIMEOUTS_PAR_OUTIL: dict[str, float] = {
     "verify_excerpts": 180.0,
     "suggest_excerpts": 120.0,
     "get_url_metadata": 90.0,
-    # `DELAI_RECHERCHE` (480 s) plus la verification des retractations et le
-    # rendu : la recherche rend ce qu'elle a avant que l'outil ne soit coupe.
+    # `DELAI_RECHERCHE` (480 s, lots de lecture compris) plus `DELAI_FINITION`
+    # (45 s, reclassement et retractations en parallele) : la recherche rend ce
+    # qu'elle a avant que l'outil ne soit coupe.
     "rechercher": 540.0,
 }
 

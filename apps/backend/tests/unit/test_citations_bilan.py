@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.services.citations_bilan import lier_renvois
+from app.services.citations_bilan import RENVOI, lier_renvois
 
 A = "11111111-1111-4111-8111-111111111111"
 B = "22222222-2222-4222-8222-222222222222"
@@ -29,3 +29,12 @@ def test_un_renvoi_vers_rien_est_retire_et_la_reponse_le_dit():
 
 def test_un_texte_sans_renvoi_reste_intact():
     assert lier_renvois("Rien à citer.", {A}, FICHE).texte == "Rien à citer."
+
+
+def test_les_variantes_d_ecriture_des_renvois_sont_reconnues():
+    texte = f"Fait. [extrait: {A}] Autre. [Extraits : {A}, {B}] Faux. [extrait:{A};{INVENTE}]"
+    lie = lier_renvois(texte, {A, B}, FICHE)
+    assert not RENVOI.search(lie.texte)
+    assert lie.cites == 2 and lie.retires == 1
+    assert f"Autre. [1]({FICHE}#extrait-{A}) [2]({FICHE}#extrait-{B})" in lie.texte
+    assert f"Faux. [1]({FICHE}#extrait-{A})" in lie.texte

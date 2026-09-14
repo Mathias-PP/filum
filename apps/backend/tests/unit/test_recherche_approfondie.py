@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
+import time
+
 import pytest
 
 from app.extractors import body_links, recherche_litterature, retraction
@@ -324,3 +327,119 @@ def passages_candidats_passage(texte: str):
     from app.services.recherche_approfondie import Passage
 
     return Passage(texte, REPONSE, 0.9)
+
+
+@pytest.mark.asyncio
+async def test_une_version_en_acces_libre_passe_avant_le_resume_de_l_editeur(
+    pages_web, monkeypatch
+):
+    _textes, lues = pages_web
+
+    async def texte_de_page(url):
+        lues.append(url)
+        if url == "https://oa.test/texte":
+            return f"Introduction. {TRANSPORT}", False, True
+        return TRANSPORT, True, False
+
+    monkeypatch.setattr(excerpt_insertion, "texte_de_page", texte_de_page)
+
+    async def chercher(requete):
+        return [
+            Candidate(
+                url="https://doi.org/10.1/ferme",
+                titre="Article payant",
+                famille="litterature",
+                doi="10.1/ferme",
+                acces_libre_url="https://oa.test/texte",
+            )
+        ]
+
+    recherche = await rechercher_sous_question(
+        SOUS_QUESTION, ["taxe"], [CONTRADICTION], corpus={"openalex": chercher}, expansion=False
+    )
+    assert recherche.sources[0].url_lue == "https://oa.test/texte"
+    assert recherche.sources[0].texte_complet
+    assert lues == ["https://oa.test/texte"]
+
+
+@pytest.mark.asyncio
+async def test_sans_texte_entier_le_texte_le_plus_long_est_garde(pages_web, monkeypatch):
+    async def texte_de_page(url):
+        if url == "https://oa.test/court":
+            return TRANSPORT, False, False
+        return f"{TRANSPORT} {INDUSTRIE}", True, False
+
+    monkeypatch.setattr(excerpt_insertion, "texte_de_page", texte_de_page)
+
+    async def chercher(requete):
+        return [
+            Candidate(
+                url="https://doi.org/10.1/ferme",
+                titre="Article",
+                famille="litterature",
+                acces_libre_url="https://oa.test/court",
+            )
+        ]
+
+    recherche = await rechercher_sous_question(
+        SOUS_QUESTION, ["taxe"], [CONTRADICTION], corpus={"openalex": chercher}, expansion=False
+    )
+    assert recherche.sources[0].url_lue == "https://doi.org/10.1/ferme"
+    assert not recherche.sources[0].texte_complet
+
+
+@pytest.mark.asyncio
+async def test_une_lecture_trop_lente_est_coupee_au_delai(pages_web, monkeypatch):
+    async def lente(url):
+        await asyncio.sleep(5)
+        return TRANSPORT, False, True
+
+    monkeypatch.setattr(excerpt_insertion, "texte_de_page", lente)
+    debut = time.monotonic()
+    recherche = await rechercher_sous_question(
+        SOUS_QUESTION, ["taxe"], [CONTRADICTION], corpus=_corpus(["https://a.test/a"]), delai=0.2
+    )
+    assert time.monotonic() - debut < 2
+    assert recherche.journal.hors_delai == 1
+    assert "delai" in recherche.journal.arret
+    assert recherche.journal.en_dict()["candidates_coupees_par_le_delai"] == 1
+
+
+@pytest.mark.asyncio
+async def test_le_suivi_lit_d_abord_les_voisins_proches_de_la_sous_question(pages_web, monkeypatch):
+    textes, lues = pages_web
+    textes["https://doi.org/10.1/pivot"] = TRANSPORT
+    textes["https://doi.org/10.1/proche"] = f"Resultat. {TRANSPORT}"
+    textes["https://doi.org/10.1/loin"] = HORS_SUJET
+    recu: dict[str, object] = {}
+
+    async def voisins(doi, *, sens, requete=None, **_):
+        recu[sens] = requete
+        if doi == "10.1/pivot" and sens == "citants":
+            return [
+                Candidate(
+                    url="https://doi.org/10.1/loin",
+                    titre="Le prix du pain",
+                    famille="litterature",
+                    doi="10.1/loin",
+                ),
+                Candidate(
+                    url="https://doi.org/10.1/proche",
+                    titre="Taxe et emissions du transport",
+                    famille="litterature",
+                    doi="10.1/proche",
+                ),
+            ]
+        return []
+
+    monkeypatch.setattr(recherche_litterature, "voisinage_openalex", voisins)
+    recherche = await rechercher_sous_question(
+        SOUS_QUESTION,
+        ["taxe"],
+        [CONTRADICTION],
+        corpus={"litterature": _doi_corpus("https://doi.org/10.1/pivot", "10.1/pivot")},
+        lot=1,
+    )
+    assert recu["citants"] == SOUS_QUESTION and recu["references"] is None
+    assert lues.index("https://doi.org/10.1/proche") < lues.index("https://doi.org/10.1/loin")
+    assert "https://doi.org/10.1/proche" in [s.url_lue for s in recherche.sources]
