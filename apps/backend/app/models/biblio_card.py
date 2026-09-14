@@ -120,10 +120,6 @@ class BiblioCard(Base):
     #: Rendu sur la fiche publique et indexable par les tools MCP en aval.
     #: Longueur pratique bornee cote endpoint (upload/paste), pas cote colonne.
     content_text: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # Synthese ancree : chaque phrase finit par ses renvois `[extrait:<id>]`, et
-    # n'est posee qu'apres verification (cf. services/synthese.py). NULL = pas
-    # de synthese, etat normal d'une fiche.
-    synthese: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(
         String(20),
         default="draft",

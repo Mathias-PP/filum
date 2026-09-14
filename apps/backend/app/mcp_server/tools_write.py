@@ -1009,44 +1009,6 @@ async def propose_passages(
     return resultat
 
 
-async def poser_synthese(
-    db: AsyncSession,
-    user: User,
-    *,
-    card_slug: str,
-    text: str,
-) -> dict[str, Any]:
-    """Pose la synthese de la fiche, si chaque phrase renvoie a un extrait de la fiche qui la soutient.
-
-    Ecris la synthese phrase par phrase, chaque phrase finissant par un ou
-    plusieurs renvois `[extrait:<id>]` (identifiants des extraits de cette
-    fiche). Un titre de section commence par `#` et n'a pas de renvoi. Avant
-    d'etre posee, la synthese est verifiee : une phrase sans renvoi, un renvoi
-    hors de la fiche ou vers un extrait qui n'est plus retrouve dans sa source,
-    une phrase qui ne dit pas ce que disent ses extraits la font refuser, avec
-    la liste des phrases a corriger. Rien n'est ecrit tant qu'une phrase echoue.
-    """
-    from app.services.synthese import verifier
-
-    card = await _fiche_du_createur(db, user, card_slug)
-    texte = (text or "").strip()
-    phrases, problemes, soutien_verifie = await verifier(db, user.id, card.slug, texte)
-    if problemes:
-        details = "\n".join(
-            f"- phrase {p.rang} « {p.phrase[:120]} » : {p.raison}" if p.rang else f"- {p.raison}"
-            for p in problemes
-        )
-        raise ToolError(f"Synthèse non posée, à corriger :\n{details}")
-    card.synthese = texte
-    await db.commit()
-    return {
-        "card_slug": card.slug,
-        "phrases": len(phrases),
-        "extraits_cites": len({r for p in phrases for r in p.renvois}),
-        "soutien_verifie": soutien_verifie,
-    }
-
-
 #: Meme borne que le schema CardBase.content_text. 500 000 caracteres = un
 #: roman entier ; au-dela, c'est un corpus, sa voie est le decoupage en fiches.
 _MAX_CONTENT_TEXT = 500_000
@@ -1813,7 +1775,6 @@ async def get_my_card(db: AsyncSession, user: User, *, card_slug: str) -> dict[s
         "author_kind": card.author_kind,
         "format": card.format,
         "description": card.description,
-        "synthese": card.synthese,
         "content_text": contenu[:CONTENU_MAX],
         "content_text_longueur": len(contenu),
         "content_text_tronque": len(contenu) > CONTENU_MAX,

@@ -76,8 +76,8 @@ class Settings(BaseSettings):
     openalex_api_key: str = ""
 
     # Semantic Scholar : la recherche de passages (`/snippet/search`) repond 429
-    # sans cle (mesure du 2026-09-14). Cle gratuite sur demande ; vide = l'arbitre
-    # de recherche saute cette approche. Secret, envoye en en-tete `x-api-key`.
+    # sans cle (mesure du 2026-09-14). Cle gratuite sur demande ; vide = la
+    # recherche se passe de ce corpus. Secret, envoye en en-tete `x-api-key`.
     semantic_scholar_api_key: str = ""
 
     # GROBID (parsing structuré des références d'un PDF). Le Space officiel

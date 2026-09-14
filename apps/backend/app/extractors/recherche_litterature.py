@@ -256,12 +256,23 @@ async def chercher_passages_s2(requete: str, *, limite: int = 10) -> list[Candid
     return [c for m in correspondances if isinstance(m, dict) and (c := candidate_passage_s2(m))]
 
 
-async def voisinage_openalex(doi: str, *, sens: str, limite: int = 10) -> list[Candidate]:
+#: Plus grande page que rend OpenAlex : un voisinage tient en un appel par sens.
+PAGE_OPENALEX = 200
+
+#: Un filtre OpenAlex accepte jusqu'a 100 identifiants separes par « | ».
+_IDENTIFIANTS_PAR_FILTRE = 100
+
+
+async def voisinage_openalex(
+    doi: str, *, sens: str, limite: int = PAGE_OPENALEX
+) -> list[Candidate]:
     """Les references d'un article (`references`) ou les articles qui le citent (`citants`).
 
     Les citants sont tries du plus recent au plus ancien : c'est la ou vivent les
     confirmations, les nuances et les contradictions posterieures a l'article.
-    Les references sont triees par citations : ce sont les fondements.
+    Les references sont triees par citations : ce sont les fondements. Toutes
+    les references sont demandees, par paquets de cent identifiants : une revue
+    en cite souvent davantage, et les tronquer perdait des fondements au hasard.
     """
     propre = _doi_nu(doi)
     if not propre or sens not in ("references", "citants"):
@@ -275,22 +286,28 @@ async def voisinage_openalex(doi: str, *, sens: str, limite: int = 10) -> list[C
         return []
     identifiant = str(travail["id"]).rsplit("/", 1)[-1]
     if sens == "citants":
-        filtre, tri = f"cites:{identifiant}", "publication_date:desc"
+        filtres, tri = [f"cites:{identifiant}"], "publication_date:desc"
     else:
         references = [str(w).rsplit("/", 1)[-1] for w in (travail.get("referenced_works") or [])]
-        if not references:
-            return []
-        # Un filtre OpenAlex accepte jusqu'a 100 identifiants separes par « | ».
-        filtre, tri = f"openalex_id:{'|'.join(references[:100])}", "cited_by_count:desc"
-    charge = await _get_json(
-        _OPENALEX,
-        params={"filter": filtre, "sort": tri, "per_page": limite, "select": _CHAMPS_OPENALEX},
-        entetes=entetes_openalex(),
-    )
+        filtres = [
+            "openalex_id:" + "|".join(references[debut : debut + _IDENTIFIANTS_PAR_FILTRE])
+            for debut in range(0, len(references), _IDENTIFIANTS_PAR_FILTRE)
+        ]
+        tri = "cited_by_count:desc"
+    travaux: list[dict] = []
+    for filtre in filtres:
+        charge = await _get_json(
+            _OPENALEX,
+            params={"filter": filtre, "sort": tri, "per_page": limite, "select": _CHAMPS_OPENALEX},
+            entetes=entetes_openalex(),
+        )
+        travaux += [w for w in (charge or {}).get("results") or [] if isinstance(w, dict)]
+    if len(filtres) > 1:
+        travaux.sort(key=lambda w: w.get("cited_by_count") or 0, reverse=True)
     raison = "cite l'article pivot" if sens == "citants" else "cite par l'article pivot"
     candidates = []
-    for w in (charge or {}).get("results") or []:
-        if isinstance(w, dict) and (c := candidate_openalex(w)):
+    for w in travaux[:limite]:
+        if c := candidate_openalex(w):
             c.raisons.append(raison)
             candidates.append(c)
     return candidates

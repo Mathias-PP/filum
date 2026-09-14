@@ -2343,8 +2343,6 @@ export interface components {
       content_url: string | null;
       /** Content Text */
       content_text?: string | null;
-      /** Synthese */
-      synthese?: string | null;
       /** Content Authors */
       content_authors?: string | null;
       platform?: components['schemas']['Platform'] | null;
@@ -2419,8 +2417,6 @@ export interface components {
       content_url: string | null;
       /** Content Text */
       content_text?: string | null;
-      /** Synthese */
-      synthese?: string | null;
       /** Content Authors */
       content_authors?: string | null;
       platform?: components['schemas']['Platform'] | null;

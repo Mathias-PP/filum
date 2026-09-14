@@ -10,18 +10,22 @@ Ici le serveur tient l'ordre. Une question devient une fiche sujet par etapes,
 et chaque etape est une boucle d'agent qui ne voit que ses outils :
 
 1. plan : la fiche existante ou creee, et ses sous-questions (`definir_plan`) ;
-2. recherche : des adresses pour chaque sous-question, dont une qui nuance ;
-3. exploration : `propose_passages` sur chaque adresse, puis `add_source` avec
-   ses extraits, seulement si la page en porte. Elle tourne par passes : tant
-   qu'une passe couvre une sous-question jusque-la vide et qu'il en reste, la
-   suivante cible celles qui restent. Aucun nombre de passes fixe d'avance :
-   une passe qui ne couvre rien de neuf arrete l'exploration ;
-4. positions : `update_source`, qui exige deja un extrait. Suit une relecture :
+2. exploration, une boucle d'agent par sous-question : `rechercher` execute la
+   methode de recherche cote serveur (`services/recherche_approfondie.py`) et
+   rend des passages exacts ; l'agent pose ceux qui repondent avec
+   `add_source`. Elle tourne par passes : tant qu'une passe couvre une
+   sous-question jusque-la vide et qu'il en reste, la suivante relance celles
+   qui restent avec d'autres formulations. Aucun nombre de passes fixe
+   d'avance : une passe qui ne couvre rien de neuf arrete l'exploration ;
+3. positions : `update_source`, qui exige deja un extrait. Suit une relecture :
    la grille de `services/relecture.py` nomme les manques (source sans
    extrait, sans position, aucune nuance, retractation en appui), et les etapes
    qui les comblent sont relancees tant qu'une relecture en comble au moins un ;
-5. bilan : la reponse au createur, tiree des seuls extraits poses, avec ce qui
+4. bilan : la reponse au createur, tiree des seuls extraits poses, avec ce qui
    manque encore.
+
+Une boucle par sous-question donne a chaque recherche son propre budget de
+temps et un contexte court, lisible par un petit modele.
 
 Le compte rendu de chaque etape sert de contexte a la suivante. Le deroule
 tourne dans le tour detache du chat : reprise apres une coupure, fiche en
@@ -42,8 +46,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent_tools.registry import construire_registre, filtrer
 from app.agent_tools.tool import AgentTool
-from app.agent_tools.web import fournisseurs_web
-from app.extractors.recherche_litterature import s2_disponible
 from app.models.agent_provider import AgentProvider
 from app.models.user import User
 from app.services import couverture, relecture
@@ -51,7 +53,6 @@ from app.services.agent import Approuver, Emitter, boucle
 from app.services.agent_definitions import AgentDefinition
 from app.services.couverture import Couverture
 from app.services.relecture import Manque
-from app.services.strategie_recherche import bloc_strategie, strategie
 
 logger = logging.getLogger(__name__)
 
@@ -133,50 +134,38 @@ ETAPES: tuple[Etape, ...] = (
         ),
     ),
     Etape(
-        id="recherche",
-        titre="Recherche",
-        outils=("chercher_sources", "references", "web_search", "search_cards", "get_my_card"),
-        consigne=(
-            "1. Pour chaque sous-question du plan, appelle chercher_sources(requete) avec "
-            "une requête précise : l'outil interroge les corpus que la stratégie désigne "
-            "et fusionne leurs résultats. Pour une perspective ou une contradiction, "
-            "dis-le dans la requête (par exemple « limites de … », « critiques de … »).\n"
-            "2. Quand une candidate est un article pivot (très cité, synthèse, "
-            "méta-analyse), appelle references(doi, sens='citants') pour ce qui le "
-            "confirme ou le contredit, et sens='references' pour ses fondements.\n"
-            "3. Sans résultat utile, reformule la requête. N'invente aucune adresse.\n"
-            "4. Termine par les adresses retenues, une par ligne : l'adresse, sa famille "
-            "(philum, litterature, biomedical, web), puis la sous-question qu'elle "
-            "éclaire. Écris « nuance » devant celles qui nuancent."
-        ),
-    ),
-    Etape(
         id="exploration",
         titre="Exploration",
         outils=(
-            "propose_passages",
+            "rechercher",
+            "suite_recherche",
             "add_source",
+            "add_excerpt",
             "list_sources",
             "find_passage",
-            "add_excerpt",
-            "chercher_sources",
-            "references",
-            "web_search",
         ),
         consigne=(
-            "Pour chaque adresse retenue :\n"
-            "1. Appelle propose_passages(url, questions) avec les sous-questions que "
-            "cette source peut éclairer. Une question de réserve est ajoutée d'office : "
-            "ses passages sont ceux qui nuancent.\n"
-            "2. Retiens tous les passages qui répondent vraiment, et ceux qui nuancent.\n"
-            "3. S'il en reste au moins un, appelle add_source(card_slug, url, "
-            "metadata_from='page', excerpts=[{\"text\": passage recopié tel quel, "
-            '"context": ce que le passage établit}]), sans position.\n'
-            "4. Sinon, n'ajoute pas la source : une source sans extrait est refusée.\n"
-            "5. Pour un passage de plus sur une source déjà posée, find_passage puis "
-            "add_excerpt.\n"
-            "Termine par deux listes : les sources ajoutées avec leur nombre d'extraits, "
-            "et les adresses écartées avec la raison."
+            "1. Appelle rechercher(card_slug, sous_question, requetes, "
+            "requetes_contradiction) pour la sous-question travaillée.\n"
+            "   - requetes : plusieurs formulations qui diffèrent vraiment : vocabulaire "
+            "technique du domaine, synonymes, noms de mesures, d'études ou "
+            "d'institutions, et les langues dans lesquelles ce sujet est étudié.\n"
+            "   - requetes_contradiction : des formulations qui cherchent ce qui contredit ou "
+            "nuance le propos dominant (limites, critiques, résultats contraires). Si rien "
+            "n'est trouvé, dis-le et continue : cela ne bloque pas.\n"
+            "2. Pour chaque source rendue, garde les passages qui répondent vraiment à la "
+            "sous-question ou la nuancent ; écarte ceux qui ne font que l'effleurer.\n"
+            "3. Source nouvelle : add_source(card_slug, url, metadata_from='page', "
+            'excerpts=[{"text": passage recopié tel quel, "context": ce que le passage '
+            "établit}]), avec l'url rendue par rechercher et sans position. Source déjà "
+            "sur la fiche (source_id rendu) : add_excerpt(source_id, text) pour chaque "
+            "passage retenu.\n"
+            "4. Une source dont aucun passage ne répond n'est pas ajoutée.\n"
+            "5. Si le résultat annonce une page suivante, appelle suite_recherche et "
+            "traite-la de même.\n"
+            "Termine par : les sources ajoutées avec leur nombre d'extraits, les sources "
+            "écartées avec la raison, puis la raison de l'arrêt de la recherche et "
+            "l'estimation de ce qui reste, telles que le journal les donne."
         ),
     ),
     Etape(
@@ -195,20 +184,17 @@ ETAPES: tuple[Etape, ...] = (
     Etape(
         id="bilan",
         titre="Bilan",
-        outils=("get_my_card", "poser_synthese"),
+        outils=("get_my_card",),
         consigne=(
-            "1. Écris la synthèse de la fiche à partir des extraits regroupés ci-dessus : "
-            "pour chaque sous-question qui a des extraits, une ligne de titre « # "
-            "sous-question », puis des phrases courtes qui disent ce que disent ces "
-            "extraits, ce qui nuance comme ce qui appuie. Chaque phrase finit par "
-            "[extrait:<id>] de l'extrait (ou des extraits) qui la soutient. Aucune "
-            "phrase sans extrait.\n"
-            "2. Appelle poser_synthese(card_slug, text). Si elle est refusée, corrige "
-            "exactement les phrases signalées, puis rappelle-la.\n"
-            "3. Réponds ensuite au créateur : la réponse à la question, ce qui la "
-            "nuance, ce qui manque encore (sous-questions sans extrait, manques de la "
-            "relecture) et les limites. N'ajoute rien qui ne soit dans un extrait. Pas "
-            "d'annonce de ce que tu vas faire."
+            "Lis la fiche avec get_my_card, puis réponds au créateur en t'appuyant "
+            "uniquement sur les extraits posés :\n"
+            "1. la réponse à la question, sous-question par sous-question ;\n"
+            "2. ce qui la nuance ;\n"
+            "3. ce qui manque encore : sous-questions sans extrait, manques de la "
+            "relecture, passages qui n'ont pas pu être cités ;\n"
+            "4. les limites.\n"
+            "N'ajoute rien qui ne soit dans un extrait. Pas de plan, pas d'annonce de "
+            "ce que tu vas faire."
         ),
     ),
 )
@@ -221,6 +207,7 @@ _OUTILS_QUI_NOMMENT_LA_FICHE = {
     "get_my_card": "slug",
     "add_source": "card_slug",
     "definir_plan": "slug",
+    "rechercher": "card_slug",
 }
 
 #: Ce que l'etape doit faire de chaque manque, dit au modele.
@@ -230,8 +217,10 @@ _CONSIGNE_PAR_MANQUE = {
         "add_excerpt ; si aucun ne répond à la question, dis-le"
     ),
     relecture.SANS_NUANCE: (
-        "aucune source ne nuance la réponse : cherche avec web_search des limites, des "
-        "réserves ou des résultats contraires, puis explore les adresses trouvées"
+        "aucune source ne nuance la réponse : appelle rechercher avec la question de la "
+        "fiche pour sous_question et des requetes_contradiction variées (limites, "
+        "critiques, résultats contraires, dans les langues où le sujet est étudié), puis "
+        "pose les passages qui nuancent"
     ),
     relecture.SOURCE_SANS_POSITION: (
         "source citée sans position : pose sa position avec update_source"
@@ -271,20 +260,26 @@ def _comblables(manques: list[Manque]) -> list[Manque]:
     return [m for m in manques if m.genre in relecture.COMBLABLES]
 
 
-def _bloc_couverture(etat: Couverture | None, *, relance: bool = False) -> str:
+def _bloc_couverture(etat: Couverture | None) -> str:
     if etat is None or not etat.sous_questions:
         return ""
     lignes = [
         f"- {q.texte} : {q.extraits} extrait{'s' if q.extraits > 1 else ''}"
         for q in etat.sous_questions
     ]
-    bloc = "Plan de la fiche, et extraits déjà posés par sous-question :\n" + "\n".join(lignes)
+    return "Plan de la fiche, et extraits déjà posés par sous-question :\n" + "\n".join(lignes)
+
+
+def _bloc_sous_question(sous_question: str, *, relance: bool) -> str:
+    bloc = f"Sous-question travaillée : {sous_question}"
     if relance:
+        # La replanification de Gemini Deep Research, tenue par le serveur : ce
+        # qui n'a rien donne se cherche autrement, pas une seconde fois pareil.
         bloc += (
-            "\n\nCette passe cible les sous-questions encore sans extrait : "
-            + " ; ".join(etat.vides())
-            + ". Cherche avec web_search des adresses qui les éclairent, puis explore-les "
-            "comme ci-dessous. Les sources déjà ajoutées n'ont pas à être reprises."
+            "\nLes recherches précédentes n'ont posé aucun extrait pour elle. Formule "
+            "autrement : autre vocabulaire, autre discipline qui étudie le même phénomène, "
+            "autre langue, ou la même question redéfinie. Les sources déjà ajoutées n'ont "
+            "pas à être reprises."
         )
     return bloc
 
@@ -302,39 +297,6 @@ def _bloc_restants(manques: list[Manque]) -> str:
         return ""
     lignes = [f"- {_LIBELLE_MANQUE.get(m.genre, m.genre)} : {m.cible}" for m in manques]
     return "Ce qui manque encore à la fiche, à dire au créateur :\n" + "\n".join(lignes)
-
-
-#: Longueur d'un extrait montre dans la consigne du bilan. Borne de lisibilite de
-#: la consigne : l'identifiant suffit a citer, le debut du passage a le reconnaitre.
-_EXTRAIT_MONTRE = 300
-
-
-def _bloc_extraits(groupes: list[tuple[str, list[couverture.ExtraitRange]]]) -> str:
-    if not any(extraits for _q, extraits in groupes):
-        return ""
-    morceaux = ["Extraits de la fiche, rangés par sous-question (identifiant, puis passage) :"]
-    for question, extraits in groupes:
-        if not extraits:
-            continue
-        morceaux.append(f"# {question}")
-        for e in extraits:
-            passage = (
-                e.texte if len(e.texte) <= _EXTRAIT_MONTRE else e.texte[:_EXTRAIT_MONTRE] + "…"
-            )
-            morceaux.append(f"- [extrait:{e.id}] « {passage} » ({e.source})")
-    return "\n".join(morceaux)
-
-
-async def _extraits_ranges(
-    db: AsyncSession, user: User, slug: str | None
-) -> list[tuple[str, list[couverture.ExtraitRange]]]:
-    if not slug:
-        return []
-    try:
-        return await couverture.extraits_par_sous_question(db, user.id, slug)
-    except Exception:  # noqa: BLE001  # le rangement guide la synthese, il ne bloque jamais le deroule
-        logger.warning("Extraits illisibles pour %s", slug, exc_info=True)
-        return []
 
 
 async def _couverture(db: AsyncSession, user: User, slug: str | None) -> Couverture | None:
@@ -514,13 +476,29 @@ async def derouler(
         return True
 
     async def explorer(etape: Etape, rang: int) -> bool:
+        """Une boucle par sous-question, par passes, tant qu'une passe couvre du neuf."""
         avant = await _couverture(db, user, etat["slug"])
         passe = 1
         while True:
-            titre = etape.titre if passe == 1 else f"{etape.titre}, passe {passe}"
-            supplement = _bloc_couverture(avant, relance=passe > 1)
-            if not await executer(etape, rang, titre, supplement, passe):
-                return False
+            if passe == 1:
+                plan = [q.texte for q in avant.sous_questions] if avant else []
+                cibles = plan or [question]
+            else:
+                cibles = avant.vides() if avant else []
+            for sous_question in cibles:
+                titre = f"{etape.titre} : {sous_question}"
+                if passe > 1:
+                    titre += f", passe {passe}"
+                supplement = "\n\n".join(
+                    b
+                    for b in (
+                        _bloc_couverture(avant),
+                        _bloc_sous_question(sous_question, relance=passe > 1),
+                    )
+                    if b
+                )
+                if not await executer(etape, rang, titre, supplement, passe):
+                    return False
             apres = await _couverture(db, user, etat["slug"])
             if not relancer_une_passe(avant, apres):
                 return True
@@ -563,28 +541,10 @@ async def derouler(
             if not await explorer(etape, rang):
                 return
         else:
-            etat_couverture = await _couverture(db, user, etat["slug"])
-            supplement = _bloc_couverture(etat_couverture)
-            if etape.id == "recherche":
-                # L'arbitre choisit les corpus et leur ordre selon la question et
-                # son plan ; sa decision est dite au modele avec ses raisons.
-                sous_questions = (
-                    [q.texte for q in etat_couverture.sous_questions] if etat_couverture else []
-                )
-                approches = strategie(
-                    question,
-                    sous_questions,
-                    web_disponible=bool(fournisseurs_web()),
-                    passages_disponibles=s2_disponible(),
-                )
-                supplement = "\n\n".join(b for b in (bloc_strategie(approches), supplement) if b)
+            supplement = _bloc_couverture(await _couverture(db, user, etat["slug"]))
             if etape.id == "bilan":
                 restants = _bloc_restants(await _grille(db, user, etat["slug"]))
-                # Les citations rangees par sous-question avant d'ecrire, comme Ai2
-                # Scholar QA : la synthese se redige depuis ces extraits et leurs
-                # identifiants, pas depuis la memoire du modele.
-                extraits = _bloc_extraits(await _extraits_ranges(db, user, etat["slug"]))
-                supplement = "\n\n".join(b for b in (extraits, supplement, restants) if b)
+                supplement = "\n\n".join(b for b in (supplement, restants) if b)
             if not await executer(etape, rang, etape.titre, supplement, None):
                 return
         if etape.id == "plan" and not etat["slug"]:

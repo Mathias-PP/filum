@@ -37,9 +37,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent_tools.couverture import OUTILS_COUVERTURE
-from app.agent_tools.litterature import OUTILS_LITTERATURE
 from app.agent_tools.objectif import OUTILS_OBJECTIF
 from app.agent_tools.philum import OUTILS_QUI_ECRIVENT, est_sensible
+from app.agent_tools.recherche import OUTILS_RECHERCHE
 from app.agent_tools.registry import construire_registre, executer, filtrer, registre_api
 from app.agent_tools.tool import AgentTool, ToolContext
 from app.core.config import get_settings
@@ -117,6 +117,9 @@ TIMEOUTS_PAR_OUTIL: dict[str, float] = {
     "verify_excerpts": 180.0,
     "suggest_excerpts": 120.0,
     "get_url_metadata": 90.0,
+    # `DELAI_RECHERCHE` (480 s) plus la verification des retractations et le
+    # rendu : la recherche rend ce qu'elle a avant que l'outil ne soit coupe.
+    "rechercher": 540.0,
 }
 
 _SYSTEME = (
@@ -1207,8 +1210,8 @@ LECTURES_REPRISES: frozenset[str] = frozenset(
         "get_url_metadata",
         "find_passage",
         "propose_passages",
-        "chercher_sources",
-        "references",
+        "rechercher",
+        "suite_recherche",
         "verify_excerpts",
         "web_search",
         "fetch_url",
@@ -1260,7 +1263,7 @@ class MemoireAppels:
 #: ensembles répondent à deux questions différentes, les confondre casserait
 #: silencieusement l'un des deux.
 OUTILS_NON_PARALLELISABLES: frozenset[str] = (
-    OUTILS_QUI_ECRIVENT | OUTILS_OBJECTIF | OUTILS_COUVERTURE | OUTILS_LITTERATURE
+    OUTILS_QUI_ECRIVENT | OUTILS_OBJECTIF | OUTILS_COUVERTURE | OUTILS_RECHERCHE
 )
 
 

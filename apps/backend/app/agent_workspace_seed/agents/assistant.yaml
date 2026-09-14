@@ -17,6 +17,8 @@ tools:
   - get_source
   - search_my_excerpts
   - find_cards_citing
+  - rechercher
+  - suite_recherche
   - web_search
   - fetch_url
   - get_url_metadata

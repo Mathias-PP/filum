@@ -22,7 +22,6 @@
   import { coinsTitle } from '$lib/utils/coins';
   import { STANCE_STYLES } from '$lib/utils/stance';
   import { libelleExtraits } from '$lib/utils/extraits';
-  import { lireSynthese } from '$lib/utils/synthese';
   import {
     freeReadUrl,
     licenseLabel,
@@ -79,7 +78,6 @@
   );
 
   let expandedSource = $state<string | null>(null);
-  const synthese = $derived(lireSynthese(card.synthese));
   let descriptionExpanded = $state(false);
   let GraphComponent = $state<any>(null);
   let ConstellationComponent = $state<any>(null);
@@ -118,16 +116,6 @@
     // dépliée se trouve des milliers de pixels plus bas.
     await tick();
     document.getElementById(`source-${id}`)?.scrollIntoView({ block: 'center' });
-  }
-
-  // Un renvoi de la synthèse dépose le lecteur sur l'extrait cité : la source
-  // qui le porte est dépliée, puis la page défile jusqu'au passage lui-même.
-  async function ouvrirExtrait(extraitId: string) {
-    const porteuse = card.sources.find((s) => s.excerpts?.some((e) => e.id === extraitId));
-    if (!porteuse) return;
-    await openSourceFromTable(porteuse.id);
-    await tick();
-    document.getElementById(`extrait-${extraitId}`)?.scrollIntoView({ block: 'center' });
   }
 
   $effect(() => {
@@ -376,31 +364,6 @@
                   </button>
                 {/if}
               </div>
-            {/if}
-            {#if synthese}
-              <!--
-                Chaque phrase finit par ses notes : un clic déplie la source et
-                dépose le lecteur sur l'extrait verbatim qui la soutient. Le
-                serveur a refusé toute phrase sans extrait avant de la publier.
-              -->
-              <section class="mt-3 max-w-prose text-sm text-ink-secondary" aria-label="Synthèse">
-                <p class="text-xs uppercase tracking-wide text-ink-tertiary mb-1">
-                  Synthèse, phrase par phrase adossée aux extraits
-                </p>
-                {#each synthese.paragraphes as paragraphe, rangParagraphe (rangParagraphe)}
-                  <p class="mt-1.5 leading-relaxed">
-                    {#each paragraphe as morceau, rangMorceau (rangMorceau)}
-                      {morceau.texte}{#each morceau.notes as note (note)}<button
-                          type="button"
-                          class="align-super text-[0.65rem] text-info hover:underline px-0.5"
-                          title="Voir l’extrait cité"
-                          onclick={() => ouvrirExtrait(synthese.extraits[note - 1])}
-                          >[{note}]</button
-                        >{/each}{' '}
-                    {/each}
-                  </p>
-                {/each}
-              </section>
             {/if}
           </div>
           <div class="relative shrink-0 print:hidden">
@@ -793,8 +756,7 @@
                         {#each source.excerpts as excerpt (excerpt.id)}
                           {@const verdict = lireVerdict(excerpt)}
                           <li
-                            id="extrait-{excerpt.id}"
-                            class="bg-surface-secondary border border-border rounded-md p-3 text-sm scroll-mt-20"
+                            class="bg-surface-secondary border border-border rounded-md p-3 text-sm"
                           >
                             {#if excerpt.title}
                               <p class="mb-1 text-xs font-medium text-ink-primary">

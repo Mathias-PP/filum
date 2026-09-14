@@ -601,19 +601,6 @@ async def find_passage(source_id: str, query: str) -> dict[str, Any]:
 
 
 @outil()
-async def poser_synthese(card_slug: str, text: str) -> dict[str, Any]:
-    """Pose la synthese d'une fiche, phrase par phrase adossee a ses extraits.
-
-    Chaque phrase finit par `[extrait:<id>]` (un ou plusieurs). La synthese est
-    refusee, avec la liste des phrases a corriger, si une phrase n'a pas de
-    renvoi, renvoie hors de la fiche, ou ne dit pas ce que disent ses extraits.
-    """
-    async with _session() as db:
-        user = await exiger_utilisateur(db)
-        return await tools_write.poser_synthese(db, user, card_slug=card_slug, text=text)
-
-
-@outil()
 async def propose_passages(url: str, questions: list[str]) -> dict[str, Any]:
     """Propose, pour chaque question, les passages exacts d'une page les plus
     proches par le sens, prets a passer dans `add_source(..., excerpts=...)`.

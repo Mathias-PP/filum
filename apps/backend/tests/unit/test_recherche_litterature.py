@@ -165,6 +165,33 @@ async def test_les_citants_d_un_article_pivot_sont_les_plus_recents(monkeypatch)
 
 
 @pytest.mark.asyncio
+async def test_toutes_les_references_sont_demandees_par_paquets_de_cent(monkeypatch):
+    references = [f"https://openalex.org/W{n}" for n in range(150)]
+    filtres: list[str] = []
+
+    def gestionnaire(requete):
+        if "/works/doi:" in str(requete.url):
+            return httpx.Response(
+                200, json={"id": "https://openalex.org/W42", "referenced_works": references}
+            )
+        filtre = requete.url.params["filter"]
+        filtres.append(filtre)
+        rang = len(filtres)
+        travail = {
+            **TRAVAIL,
+            "doi": f"https://doi.org/10.1000/ref{rang}",
+            "cited_by_count": 10 * rang,
+        }
+        return httpx.Response(200, json={"results": [travail]})
+
+    _transport(monkeypatch, gestionnaire)
+    candidates = await voisinage_openalex("10.1000/pivot", sens="references")
+
+    assert [f.count("|") + 1 for f in filtres] == [100, 50]
+    assert [c.doi for c in candidates] == ["10.1000/ref2", "10.1000/ref1"]
+
+
+@pytest.mark.asyncio
 async def test_les_references_d_un_article_sans_references_ne_font_pas_d_appel_de_liste(
     monkeypatch,
 ):
