@@ -66,7 +66,16 @@ class Passage:
     #: `reponse` : le passage eclaire la sous-question ; `nuance` : il repond a
     #: une formulation de contradiction.
     role: str
+    #: Proximite de sens avec la question (embeddings).
     score: float
+    #: La question que le passage eclaire le mieux.
+    question: str = ""
+    #: Jugement du reclasseur, quand il a pu passer sur toute la recherche.
+    pertinence: float | None = None
+
+    @property
+    def classement(self) -> float:
+        return self.pertinence if self.pertinence is not None else self.score
 
 
 @dataclass
@@ -83,7 +92,7 @@ class SourceTrouvee:
 
     @property
     def meilleur(self) -> float:
-        return max((p.score for p in self.passages), default=0.0)
+        return max((p.classement for p in self.passages), default=0.0)
 
     def en_dict(self) -> dict[str, object]:
         c = self.candidate
@@ -103,7 +112,13 @@ class SourceTrouvee:
             "source_id": self.source_id,
             "texte_complet": self.texte_complet,
             "passages": [
-                {"texte": p.texte, "role": p.role, "score": p.score} for p in self.passages
+                {
+                    "texte": p.texte,
+                    "role": p.role,
+                    "score": p.score,
+                    **({"pertinence": round(p.pertinence, 3)} if p.pertinence is not None else {}),
+                }
+                for p in self.passages
             ],
         }
         return {cle: valeur for cle, valeur in rendu.items() if valeur not in (None, [], "")}
@@ -121,6 +136,8 @@ class Journal:
     #: Sources pertinentes cumulees apres chaque candidate lisible.
     courbe: list[int] = field(default_factory=list)
     arret: str = ""
+    #: Le reclasseur qui a ordonne les passages, ou pourquoi il n'a pas servi.
+    reclassement: str = ""
     duree_s: float = 0.0
 
     def en_dict(self) -> dict[str, object]:
@@ -134,6 +151,7 @@ class Journal:
             "candidates_illisibles": self.illisibles,
             "sources_pertinentes_par_tour": self.pertinentes_par_tour,
             "raison_de_l_arret": self.arret,
+            "reclassement": self.reclassement or None,
             "sources_pertinentes_restantes_estimees": (
                 round(restantes, 1) if restantes is not None else "saturation non visible"
             ),
@@ -229,7 +247,12 @@ async def _lire(
         questions = [sous_question, *contradictions]
         candidats = await proposer(texte, questions)
         passages = [
-            Passage(c.texte, REPONSE if c.question == sous_question else NUANCE, c.score)
+            Passage(
+                c.texte,
+                REPONSE if c.question == sous_question else NUANCE,
+                c.score,
+                question=c.question,
+            )
             for c in candidats
         ]
         return adresse, passages, complet
@@ -343,6 +366,38 @@ async def _voisins(sources: list[SourceTrouvee]) -> list[list[Candidate]]:
     return [liste for r in reponses if isinstance(r, list) for liste in r]
 
 
+async def _reclasser(sources: list[SourceTrouvee]) -> str:
+    """Reclasse tous les passages, question par question. Rend ce qui s'est passe, pour le journal.
+
+    Tout ou rien : si une seule question echoue, aucun score du reclasseur n'est
+    pose, sinon des sources jugees par deux echelles differentes seraient
+    comparees entre elles.
+    """
+    from dataclasses import replace
+
+    from app.services import reclassement
+
+    if not reclassement.reclasseur_disponible():
+        return "aucun reclasseur configure : ordre par proximite de sens"
+    par_question: dict[str, list[tuple[int, int]]] = {}
+    for rang_source, source in enumerate(sources):
+        for rang_passage, passage in enumerate(source.passages):
+            par_question.setdefault(passage.question, []).append((rang_source, rang_passage))
+    pertinences: dict[tuple[int, int], float] = {}
+    for question, places in par_question.items():
+        textes = [sources[s].passages[p].texte for s, p in places]
+        scores = await reclassement.reclasser(question, textes)
+        if scores is None:
+            return "reclasseur indisponible : ordre par proximite de sens"
+        pertinences.update(zip(places, scores, strict=True))
+    for rang_source, source in enumerate(sources):
+        source.passages = [
+            replace(passage, pertinence=pertinences[(rang_source, rang_passage)])
+            for rang_passage, passage in enumerate(source.passages)
+        ]
+    return reclassement.MODELE_RECLASSEMENT
+
+
 async def _retractations(sources: list[SourceTrouvee]) -> None:
     from app.extractors import retraction
 
@@ -427,7 +482,11 @@ async def rechercher_sous_question(
     elif not etat.journal.arret:
         etat.journal.arret = "saturation : le premier tour n'a apporte aucune source pertinente"
 
-    sources = sorted(etat.pertinentes.values(), key=lambda s: (-s.meilleur, s.tour))
+    trouvees_toutes = list(etat.pertinentes.values())
+    etat.journal.reclassement = await _reclasser(trouvees_toutes)
+    for source in trouvees_toutes:
+        source.passages.sort(key=lambda p: -p.classement)
+    sources = sorted(trouvees_toutes, key=lambda s: (-s.meilleur, s.tour))
     await _retractations(sources)
     etat.journal.duree_s = round(time.monotonic() - debut, 1)
     return Recherche(
