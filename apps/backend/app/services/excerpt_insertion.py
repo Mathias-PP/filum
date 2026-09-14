@@ -51,12 +51,17 @@ SEUIL_TYPOGRAPHIQUE = 0.95
 
 #: Duree de vie du texte d'une page en memoire. Ajouter dix extraits d'un meme
 #: article est le geste normal ; sans ce cache, il coute dix telechargements.
-#: Court, parce qu'une page qui change pendant le tour doit pouvoir etre relue.
-_TTL_SECONDES = 300
+#: La recherche d'une sous-question lit ses pages, puis l'agent en pose les
+#: passages une a une, parfois plusieurs minutes plus tard : relire la page a la
+#: pose referait le telechargement et pourrait rendre un texte qui a bouge
+#: depuis la lecture. Trente minutes couvrent une sous-question entiere.
+_TTL_SECONDES = 1800
 
-#: Borne du cache. Une page peut peser plusieurs centaines de milliers de
-#: caracteres : quelques entrees suffisent, un cache non borne fuit.
-_TAILLE_CACHE = 8
+#: Borne du cache, en caracteres plutot qu'en nombre de pages : une page pese
+#: de quelques milliers a plusieurs centaines de milliers de caracteres, et une
+#: recherche en lit des dizaines. Le conteneur backend est limite a 450 Mo ; six
+#: millions de caracteres tiennent en 6 a 24 Mo selon l'alphabet de la page.
+_BUDGET_CARACTERES = 6_000_000
 
 _cache: dict[str, tuple[float, str, bool, bool]] = {}
 
@@ -114,9 +119,12 @@ async def texte_de_page(url: str | None) -> tuple[str, bool, bool]:
         return en_cache[1], en_cache[2], en_cache[3]
 
     texte, refuse, complet = await _texte_de_la_source(url)
-    if len(_cache) >= _TAILLE_CACHE:
-        _cache.pop(next(iter(_cache)), None)
+    _cache.pop(cle, None)
     _cache[cle] = (maintenant, texte, refuse, complet)
+    # Les plus anciennes pages sortent d'abord ; la derniere lue reste toujours,
+    # meme seule au-dessus du budget, sinon elle serait relue a la pose suivante.
+    while len(_cache) > 1 and sum(len(e[1]) for e in _cache.values()) > _BUDGET_CARACTERES:
+        _cache.pop(next(iter(_cache)))
     return texte, refuse, complet
 
 

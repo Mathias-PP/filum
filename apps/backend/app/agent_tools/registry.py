@@ -15,6 +15,7 @@ from app.agent_tools.couverture import couverture_tools
 from app.agent_tools.fiche import fiche_tools
 from app.agent_tools.objectif import objectif_tools
 from app.agent_tools.philum import est_sensible, philum_tools
+from app.agent_tools.recherche import recherche_tools
 from app.agent_tools.tool import AgentTool, ToolContext
 from app.agent_tools.web import web_tools
 from app.agent_tools.workspace import workspace_tools
@@ -30,6 +31,7 @@ def construire_registre() -> dict[str, AgentTool]:
         + fiche_tools()
         + objectif_tools()
         + couverture_tools()
+        + recherche_tools()
     ):
         outils[outil.name] = outil
     return outils

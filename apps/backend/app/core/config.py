@@ -75,6 +75,17 @@ class Settings(BaseSettings):
     # dans le .env de la VM, part en en-tete Authorization, jamais dans une URL.
     openalex_api_key: str = ""
 
+    # Semantic Scholar : la recherche de passages (`/snippet/search`) repond 429
+    # sans cle (mesure du 2026-09-14). Cle gratuite sur demande ; vide = la
+    # recherche se passe de ce corpus. Secret, envoye en en-tete `x-api-key`.
+    semantic_scholar_api_key: str = ""
+
+    # Jina Reranker : reclassement des passages trouves par la recherche (etage
+    # de jugement fin, comme Consensus ou Ai2). Cle gratuite sans carte bancaire
+    # (releve du 2026-09-14) ; vide = classement par la seule proximite de sens.
+    # Secret, envoye en en-tete `Authorization`.
+    jina_api_key: str = ""
+
     # GROBID (parsing structuré des références d'un PDF). Le Space officiel
     # kermitt2/grobid est PAUSED (2026-07) ; zfhxi/grobid est un duplicate
     # public réveillable. Les Spaces HF gratuits dorment (cold start ~2 min) :

@@ -126,10 +126,72 @@ async def _rechercher_brut(provider: str, cle: str, query: str) -> list[dict[str
     raise ValueError(f"Provider de recherche web inconnu : {provider!r}.")
 
 
+def fournisseurs_web() -> list[tuple[str, str]]:
+    """Les moteurs configures, en paires (fournisseur, cle).
+
+    `agent_web_search_provider` et `agent_web_search_api_key` acceptent des listes
+    separees par des virgules, dans le meme ordre (« tavily,brave » et
+    « cle1,cle2 »). Un seul fournisseur reste la configuration par defaut.
+    """
+    noms = [n.strip().lower() for n in settings.agent_web_search_provider.split(",") if n.strip()]
+    cles = [c.strip() for c in settings.agent_web_search_api_key.split(",")]
+    return [(nom, cles[rang]) for rang, nom in enumerate(noms) if rang < len(cles) and cles[rang]]
+
+
+async def rechercher_web_fusionne(query: str) -> tuple[list[dict[str, str]], list[str]]:
+    """Les resultats de tous les moteurs configures, fusionnes par rangs reciproques.
+
+    Etude du 2026-09-14 : chaque moteur a ses angles morts, et les comparatifs
+    placent Tavily sous Brave, Exa ou Parallel sur les questions a plusieurs
+    sauts. Plusieurs moteurs fusionnes couvrent plus ; un moteur en panne ou a
+    quota n'empeche pas les autres. Rend aussi les moteurs qui ont repondu.
+    """
+    from app.services.content_identity import normalize_url
+    from app.services.fusion_candidates import CONSTANTE_RRF
+
+    fournisseurs = fournisseurs_web()
+    reponses = await asyncio.gather(
+        *(_rechercher(provider, cle, query) for provider, cle in fournisseurs),
+        return_exceptions=True,
+    )
+    scores: dict[str, float] = {}
+    fusion: dict[str, dict[str, str]] = {}
+    repondu: list[str] = []
+    for (provider, _cle), reponse in zip(fournisseurs, reponses, strict=True):
+        if isinstance(reponse, BaseException):
+            logger.info("recherche web : %s muet (%s)", provider, reponse)
+            continue
+        repondu.append(provider)
+        for rang, resultat in enumerate(reponse, start=1):
+            cle_url = normalize_url(resultat.get("url")) or resultat.get("url", "")
+            if not cle_url:
+                continue
+            scores[cle_url] = scores.get(cle_url, 0.0) + 1.0 / (CONSTANTE_RRF + rang)
+            deja = fusion.setdefault(cle_url, {**resultat, "moteurs": provider})
+            if deja is not resultat and provider not in deja["moteurs"].split(","):
+                deja["moteurs"] += f",{provider}"
+                deja["snippet"] = deja.get("snippet") or resultat.get("snippet", "")
+    ordonnes = sorted(fusion, key=lambda cle_url: scores[cle_url], reverse=True)
+    return [fusion[cle_url] for cle_url in ordonnes], repondu
+
+
 async def _execute_web_search(ctx: ToolContext, args: dict[str, Any]) -> dict[str, Any]:
     query = args.get("query")
     if not isinstance(query, str) or not query.strip():
         return {"error": "web_search attend query (str)."}
+    if len(fournisseurs_web()) > 1:
+        try:
+            fusionnes, repondu = await rechercher_web_fusionne(query.strip())
+        except Exception as exc:  # noqa: BLE001  # message lisible par le modèle
+            return {"error": f"Recherche web indisponible : {exc}"}
+        if not repondu:
+            return {"error": "Recherche web indisponible : aucun moteur n'a répondu."}
+        if PETIT_MODELE.get():
+            fusionnes = [
+                {**r, "snippet": (r.get("snippet") or "")[:EXTRAIT_RECHERCHE_PETIT]}
+                for r in fusionnes[:RESULTATS_RECHERCHE_PETIT]
+            ]
+        return {"query": query, "results": fusionnes, "moteurs": repondu}
     provider = settings.agent_web_search_provider.strip().lower()
     cle = settings.agent_web_search_api_key.strip()
     if not provider or not cle:

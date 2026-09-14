@@ -157,6 +157,13 @@ const ACTIONS: Record<
     action: 'Cherche les passages utiles dans',
     objet: (a) => (typeof a.url === 'string' ? a.url : 'une page'),
   },
+  rechercher: {
+    action: 'Cherche des sources sur',
+    objet: (a) => texteArg(a, 'sous_question'),
+  },
+  suite_recherche: {
+    action: 'Lit la suite des résultats de recherche',
+  },
   annotate_excerpt: {
     action: 'Annote un extrait',
     objet: (_a, r) => titreDepuisResultat(r),

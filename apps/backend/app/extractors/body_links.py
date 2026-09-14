@@ -119,3 +119,36 @@ def extract_body_links(html: str, source_url: str) -> list[ImportedRef]:
     if len(internal) <= _INTERNAL_LINKS_MAX:
         refs.extend(internal)
     return refs
+
+
+async def liens_de_la_page(url: str) -> list[ImportedRef]:
+    """Les liens cites dans le corps d'une page web. Ne leve jamais.
+
+    Un billet ou un article de presse cite ses pieces en liant les mots du
+    texte : suivre ces liens mene aux sources de la source. Seule la page
+    directe est lue (pas le relais ni l'archive) : un lien se lit dans le HTML,
+    et la recherche qui appelle cette fonction a deja lu le texte de la page.
+    """
+    import asyncio
+
+    import httpx
+
+    from app.core.url_safety import SAFE_REDIRECT_HOOKS, UnsafeUrlError, assert_url_is_safe
+    from app.extractors.url_extractor import _HEADERS, _TIMEOUT
+
+    try:
+        await asyncio.to_thread(assert_url_is_safe, url)
+        async with httpx.AsyncClient(
+            headers=_HEADERS,
+            timeout=_TIMEOUT,
+            follow_redirects=True,
+            event_hooks=SAFE_REDIRECT_HOOKS,
+        ) as client:
+            reponse = await client.get(url)
+    except (UnsafeUrlError, httpx.HTTPError):
+        return []
+    if not (200 <= reponse.status_code < 300):
+        return []
+    if "text/html" not in reponse.headers.get("content-type", ""):
+        return []
+    return extract_body_links(reponse.text, str(reponse.url))

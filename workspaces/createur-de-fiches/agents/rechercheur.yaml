@@ -4,6 +4,8 @@ contract: "Trouve des sources candidates sur un sujet et vérifie qu'elles exist
 layer: L2
 model_hint: null
 tools:
+  - rechercher
+  - suite_recherche
   - web_search
   - fetch_url
   - get_url_metadata
