@@ -1106,6 +1106,41 @@
         }
       }
     },
+    "/api/v1/agent/repondre": {
+      "post": {
+        "tags": [
+          "agent-sessions"
+        ],
+        "summary": "Repondre Question",
+        "description": "Répond à une question du déroulé guidé (précision, plan), pour ce créateur seul.",
+        "operationId": "repondre_question_api_v1_agent_repondre_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReponseGuidee"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/agent/workspace/tree": {
       "get": {
         "tags": [
@@ -4759,6 +4794,28 @@
             ],
             "title": "Agent Slug",
             "description": "Agent nommé à utiliser (fichier `agents/<slug>.yaml`). Null : l'agent déjà attaché à la session, sinon l'assistant généraliste."
+          },
+          "recherche": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OptionsRecherche"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Mode et sources de la recherche. Null : méthode complète."
+          },
+          "approfondir": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SuiteFiche"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Prolonge la fiche par cette sous-question, en déroulé guidé."
           }
         },
         "additionalProperties": false,
@@ -9023,6 +9080,37 @@
         "title": "OpenAccessStatus",
         "description": "Route d'acces libre a la reference, selon OpenAlex.\n\n`CLOSED` (verifie, rien de gratuit) et `UNVERIFIABLE` (verification\nimpossible) sont deux affirmations differentes : les confondre pourrait\ndetourner le lecteur d'une version libre qui existe."
       },
+      "OptionsRecherche": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "rapide",
+              "approfondi"
+            ],
+            "title": "Mode",
+            "description": "`rapide` : une passe, sans suivi des citations ni relecture ni pause de validation. `approfondi` : la méthode complète.",
+            "default": "approfondi"
+          },
+          "sources": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "litterature",
+                "web"
+              ]
+            },
+            "type": "array",
+            "maxItems": 2,
+            "title": "Sources",
+            "description": "Familles de corpus à interroger. Vide : toutes."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "OptionsRecherche",
+        "description": "Comment chercher : même méthode, budgets et corpus au choix du créateur."
+      },
       "Platform": {
         "type": "string",
         "enum": [
@@ -9084,6 +9172,50 @@
           "custom"
         ],
         "title": "ProviderKind"
+      },
+      "ReponseGuidee": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Request Id"
+          },
+          "choix": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Choix"
+          },
+          "sous_questions": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array",
+                "maxItems": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sous Questions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "request_id"
+        ],
+        "title": "ReponseGuidee",
+        "description": "La réponse du créateur à une question du déroulé (précision, plan)."
       },
       "RetractionStatus": {
         "type": "string",
@@ -10147,6 +10279,31 @@
           "context_after"
         ],
         "title": "SuggestedExcerpt"
+      },
+      "SuiteFiche": {
+        "properties": {
+          "card_slug": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "title": "Card Slug"
+          },
+          "sous_question": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Sous Question"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "card_slug",
+          "sous_question"
+        ],
+        "title": "SuiteFiche",
+        "description": "Prolonger une fiche existante par une sous-question de plus."
       },
       "TestProviderBody": {
         "properties": {

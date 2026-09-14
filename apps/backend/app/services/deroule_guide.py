@@ -9,37 +9,49 @@ modele ne decouvre pas seul un deroule decrit dans un fichier.
 Ici le serveur tient l'ordre. Une question devient une fiche sujet par etapes,
 et chaque etape est une boucle d'agent qui ne voit que ses outils :
 
-1. plan : la fiche existante ou creee, et ses sous-questions (`definir_plan`) ;
-2. exploration, une boucle d'agent par sous-question : `rechercher` execute la
+1. cadrage : si la question admet des angles tres differents, le modele pose
+   une question a choix au createur (`demander_precision`), et sa reponse
+   guide la suite (Open Deep Research, Morphic) ;
+2. plan : la fiche existante ou creee, et ses sous-questions (`definir_plan`).
+   Le plan est montre au createur, qui peut le corriger avant la recherche
+   (Perplexity Deep Research, Gemini, Scira) ;
+3. exploration, une boucle d'agent par sous-question : `rechercher` execute la
    methode de recherche cote serveur (`services/recherche_approfondie.py`) et
    rend des passages exacts ; l'agent pose ceux qui repondent avec
    `add_source`. Elle tourne par passes : tant qu'une passe couvre une
    sous-question jusque-la vide et qu'il en reste, la suivante relance celles
    qui restent avec d'autres formulations. Aucun nombre de passes fixe
    d'avance : une passe qui ne couvre rien de neuf arrete l'exploration ;
-3. positions : `update_source`, qui exige deja un extrait. Suit une relecture :
+4. positions : `update_source`, qui exige deja un extrait. Suit une relecture :
    la grille de `services/relecture.py` nomme les manques (source sans
    extrait, sans position, aucune nuance, retractation en appui), et les etapes
    qui les comblent sont relancees tant qu'une relecture en comble au moins un ;
-4. bilan : la reponse au createur, tiree des seuls extraits poses, avec ce qui
-   manque encore.
+5. bilan : la reponse au createur, tiree des seuls extraits poses, chaque
+   phrase renvoyant a l'extrait qui la soutient ; les renvois sont verifies et
+   deviennent des liens (`services/citations_bilan.py`), et des sous-questions
+   de suite sont proposees (`proposer_suites`).
+
+Le mode rapide garde la methode et retire les budgets : ni cadrage, ni plan a
+valider, une seule passe, ni suivi des citations, ni relecture. Une suite
+prolonge une fiche existante par une sous-question : ni cadrage ni plan.
 
 Une boucle par sous-question donne a chaque recherche son propre budget de
-temps et un contexte court, lisible par un petit modele.
-
-Le compte rendu de chaque etape sert de contexte a la suivante. Le deroule
-tourne dans le tour detache du chat : reprise apres une coupure, fiche en
-direct et bouton « Arrêter » restent ceux de la conversation.
+temps et un contexte court, lisible par un petit modele. Le compte rendu de
+chaque etape sert de contexte a la suivante. Le deroule tourne dans le tour
+detache du chat : reprise apres une coupure, fiche en direct et bouton
+« Arrêter » restent ceux de la conversation.
 """
 
 from __future__ import annotations
 
 import logging
 import re
+import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -48,13 +60,18 @@ from app.agent_tools.registry import construire_registre, filtrer
 from app.agent_tools.tool import AgentTool
 from app.models.agent_provider import AgentProvider
 from app.models.user import User
-from app.services import couverture, relecture
+from app.services import agent_approvals, citations_bilan, couverture, relecture
 from app.services.agent import Approuver, Emitter, boucle
 from app.services.agent_definitions import AgentDefinition
 from app.services.couverture import Couverture
+from app.services.options_recherche import Options
 from app.services.relecture import Manque
 
 logger = logging.getLogger(__name__)
+
+#: Attend la reponse du createur a une question du deroule, par son identifiant.
+#: `None` : pas de reponse (delai, ou personne pour repondre), le deroule continue.
+Attendre = Callable[[str], Awaitable[dict[str, Any] | None]]
 
 #: Une demande explicite de fiche, avec ou sans l'orthographe exacte.
 _DEMANDE_DE_FICHE = re.compile(
@@ -108,6 +125,14 @@ class Etape:
     consigne: str
 
 
+@dataclass(frozen=True)
+class Suite:
+    """Prolonger une fiche existante par une sous-question."""
+
+    card_slug: str
+    sous_question: str
+
+
 _CONSIGNE_COMMUNE = (
     "Tu déroules une étape de la création d'une fiche sujet Philum. Fais seulement "
     "ce que l'étape demande, avec les outils qu'elle te donne, puis termine par le "
@@ -115,6 +140,20 @@ _CONSIGNE_COMMUNE = (
 )
 
 ETAPES: tuple[Etape, ...] = (
+    Etape(
+        id="cadrage",
+        titre="Cadrage",
+        outils=("demander_precision",),
+        consigne=(
+            "1. Lis la question du créateur. Si elle admet des angles très différents qui "
+            "mèneraient à des fiches différentes (public visé, période, lieu, sens d'un "
+            "terme, portée), appelle demander_precision(question, options) avec ces angles, "
+            "chacun en une phrase courte.\n"
+            "2. Si la question est claire, n'appelle aucun outil.\n"
+            "3. Termine en une phrase : l'angle que la fiche prendra, ou la précision "
+            "demandée."
+        ),
+    ),
     Etape(
         id="plan",
         titre="Plan",
@@ -184,17 +223,19 @@ ETAPES: tuple[Etape, ...] = (
     Etape(
         id="bilan",
         titre="Bilan",
-        outils=("get_my_card",),
+        outils=("get_my_card", "proposer_suites"),
         consigne=(
-            "Lis la fiche avec get_my_card, puis réponds au créateur en t'appuyant "
-            "uniquement sur les extraits posés :\n"
-            "1. la réponse à la question, sous-question par sous-question ;\n"
-            "2. ce qui la nuance ;\n"
-            "3. ce qui manque encore : sous-questions sans extrait, manques de la "
-            "relecture, passages qui n'ont pas pu être cités ;\n"
-            "4. les limites.\n"
-            "N'ajoute rien qui ne soit dans un extrait. Pas de plan, pas d'annonce de "
-            "ce que tu vas faire."
+            "1. Appelle d'abord proposer_suites(questions) avec des sous-questions que la "
+            "fiche ne couvre pas encore et qui la prolongeraient.\n"
+            "2. Puis réponds au créateur en t'appuyant uniquement sur les extraits posés, "
+            "rangés ci-dessus par sous-question avec leur identifiant :\n"
+            "   - un titre « ## » par sous-question qui a des extraits, puis ce que disent "
+            "ces extraits, ce qui appuie comme ce qui nuance ;\n"
+            "   - chaque phrase qui s'appuie sur un extrait finit par [extrait:<id>] de cet "
+            "extrait, ou de plusieurs ; n'écris rien qu'aucun extrait ne soutient ;\n"
+            "   - ce qui manque encore (sous-questions sans extrait, manques de la "
+            "relecture) et les limites.\n"
+            "Pas de plan, pas d'annonce de ce que tu vas faire."
         ),
     ),
 )
@@ -209,6 +250,9 @@ _OUTILS_QUI_NOMMENT_LA_FICHE = {
     "definir_plan": "slug",
     "rechercher": "card_slug",
 }
+
+#: Outils d'interaction : le deroule lit leurs arguments et agit lui-meme.
+_OUTILS_D_INTERACTION = frozenset({"demander_precision", "proposer_suites"})
 
 #: Ce que l'etape doit faire de chaque manque, dit au modele.
 _CONSIGNE_PAR_MANQUE = {
@@ -299,6 +343,39 @@ def _bloc_restants(manques: list[Manque]) -> str:
     return "Ce qui manque encore à la fiche, à dire au créateur :\n" + "\n".join(lignes)
 
 
+#: Longueur d'un extrait montre dans la consigne du bilan. Borne de lisibilite de
+#: la consigne : l'identifiant suffit a citer, le debut du passage a le reconnaitre.
+_EXTRAIT_MONTRE = 300
+
+
+def _bloc_extraits(groupes: list[tuple[str, list[couverture.ExtraitRange]]]) -> str:
+    if not any(extraits for _q, extraits in groupes):
+        return ""
+    morceaux = ["Extraits de la fiche, rangés par sous-question (identifiant, puis passage) :"]
+    for question, extraits in groupes:
+        if not extraits:
+            continue
+        morceaux.append(f"# {question}")
+        for e in extraits:
+            passage = (
+                e.texte if len(e.texte) <= _EXTRAIT_MONTRE else e.texte[:_EXTRAIT_MONTRE] + "…"
+            )
+            morceaux.append(f"- [extrait:{e.id}] « {passage} » ({e.source})")
+    return "\n".join(morceaux)
+
+
+async def _extraits_ranges(
+    db: AsyncSession, user: User, slug: str | None
+) -> list[tuple[str, list[couverture.ExtraitRange]]]:
+    if not slug:
+        return []
+    try:
+        return await couverture.extraits_par_sous_question(db, user.id, slug)
+    except Exception:  # noqa: BLE001  # le rangement guide le bilan, il ne bloque jamais le deroule
+        logger.warning("Extraits illisibles pour %s", slug, exc_info=True)
+        return []
+
+
 async def _couverture(db: AsyncSession, user: User, slug: str | None) -> Couverture | None:
     if not slug:
         return None
@@ -367,6 +444,9 @@ async def derouler(
     session_id: UUID | None = None,
     replis: list[AgentProvider] | None = None,
     registre: dict[str, AgentTool] | None = None,
+    options: Options | None = None,
+    suite: Suite | None = None,
+    attendre: Attendre | None = None,
 ) -> None:
     """Deroule les etapes, et verse le fil du tour dans `ajouts`.
 
@@ -374,10 +454,19 @@ async def derouler(
     tour arrete en cours d'etape doit laisser en base ce qui a deja ete ecrit.
     Les numeros de tour des evenements sont decales d'une etape a l'autre, pour
     que la reponse finale reste le texte du dernier appel au modele.
+
+    `attendre` recoit les reponses du createur aux questions du deroule ; sans
+    lui (banc, tests), aucune pause : les questions ne sont pas posees.
     """
     registre = registre or construire_registre()
+    options = options or Options()
     comptes_rendus: list[str] = []
-    etat: dict[str, Any] = {"slug": None, "decalage": 0}
+    etat: dict[str, Any] = {
+        "slug": suite.card_slug if suite else None,
+        "decalage": 0,
+        "texte": "",
+        "interactions": {},
+    }
     usage_total = {"prompt_tokens": 0, "completion_tokens": 0}
 
     async def executer(
@@ -395,11 +484,13 @@ async def derouler(
         await emit({"type": "etape_guidee", "payload": charge_etape})
         textes: dict[int, list[str]] = {}
         echec: list[str] = []
+        appels: dict[str, dict[str, Any]] = {}
 
         async def capter(
             event: dict[str, Any],
             _textes: dict[int, list[str]] = textes,
             _echec: list[str] = echec,
+            _appels: dict[str, dict[str, Any]] = appels,
         ) -> None:
             genre = event.get("type")
             charge = event.get("payload") or {}
@@ -409,14 +500,25 @@ async def derouler(
             if genre == "message_delta":
                 _textes.setdefault(charge["tour"], []).append(charge["delta"])
             elif genre == "tool_call":
-                champ = _OUTILS_QUI_NOMMENT_LA_FICHE.get(str(charge.get("name")))
+                nom = str(charge.get("name"))
+                champ = _OUTILS_QUI_NOMMENT_LA_FICHE.get(nom)
                 valeur = (charge.get("arguments") or {}).get(champ) if champ else None
                 if isinstance(valeur, str) and valeur.strip() and etat["slug"] is None:
                     etat["slug"] = valeur.strip()
-            elif genre == "tool_result" and charge.get("name") == "create_card":
-                slug = (charge.get("result") or {}).get("slug")
-                if isinstance(slug, str) and slug:
-                    etat["slug"] = slug
+                if nom in _OUTILS_D_INTERACTION:
+                    _appels[nom] = dict(charge.get("arguments") or {})
+            elif genre == "tool_result":
+                nom = str(charge.get("name"))
+                resultat = charge.get("result") or {}
+                if nom == "create_card":
+                    slug = resultat.get("slug")
+                    if isinstance(slug, str) and slug:
+                        etat["slug"] = slug
+                if nom in _OUTILS_D_INTERACTION and nom in _appels:
+                    if "error" in resultat:
+                        _appels.pop(nom)
+                    else:
+                        etat["interactions"][nom] = _appels[nom]
             elif genre in ("done", "continuation"):
                 # Une seule fin pour le deroule entier : celle du bilan.
                 usage = charge.get("usage")
@@ -469,18 +571,89 @@ async def derouler(
         if textes:
             etat["decalage"] = max(textes)
         compte_rendu = "".join(textes[max(textes)]).strip() if textes else ""
+        etat["texte"] = compte_rendu
         if rang < len(ETAPES) and compte_rendu:
             ajouts.append({"role": "assistant", "content": compte_rendu})
             heures.append(datetime.now(UTC).replace(tzinfo=None))
             comptes_rendus.append(f"## {titre}\n{compte_rendu}")
         return True
 
+    async def poser(genre: str, charge: dict[str, Any]) -> dict[str, Any] | None:
+        """Pose une question au createur et attend sa reponse. None sans reponse."""
+        if attendre is None:
+            return None
+        request_id = uuid4().hex
+        await emit(
+            {
+                "type": "question_guidee",
+                "payload": {
+                    "request_id": request_id,
+                    "genre": genre,
+                    "expires_at": time.time() + agent_approvals.DELAI_MAX,
+                    **charge,
+                },
+            }
+        )
+        reponse = await attendre(request_id)
+        await emit(
+            {
+                "type": "question_resolue",
+                "payload": {"request_id": request_id, "reponse": reponse},
+            }
+        )
+        return reponse
+
+    async def cadrer() -> None:
+        precision = etat["interactions"].pop("demander_precision", None)
+        if not precision:
+            return
+        reponse = await poser(
+            "precision",
+            {"question": precision.get("question"), "options": precision.get("options") or []},
+        )
+        choix = " ".join(str((reponse or {}).get("choix") or "").split())
+        comptes_rendus.append(
+            f"## Précision du créateur\n{choix}"
+            if choix
+            else "## Précision du créateur\nPas de réponse : prends l'angle le plus large, "
+            "et dis-le au bilan."
+        )
+
+    async def valider_plan() -> None:
+        slug = etat["slug"]
+        if not slug or attendre is None:
+            return
+        plan = await couverture.lire_plan(db, user.id, slug)
+        if not plan:
+            return
+        reponse = await poser(
+            "plan",
+            {
+                "question": "Voici le plan de la fiche. Corrigez-le, ou lancez la recherche.",
+                "sous_questions": plan,
+            },
+        )
+        corrigees = [" ".join(str(q).split()) for q in (reponse or {}).get("sous_questions") or []]
+        corrigees = [q for q in corrigees if q]
+        if not corrigees or corrigees == plan:
+            return
+        try:
+            retenues = await couverture.ecrire_plan(db, user.id, slug, corrigees)
+            await db.commit()
+        except ValueError:
+            return
+        comptes_rendus.append(
+            "## Plan corrigé par le créateur\n" + "\n".join(f"- {q}" for q in retenues)
+        )
+
     async def explorer(etape: Etape, rang: int) -> bool:
         """Une boucle par sous-question, par passes, tant qu'une passe couvre du neuf."""
         avant = await _couverture(db, user, etat["slug"])
         passe = 1
         while True:
-            if passe == 1:
+            if suite is not None:
+                cibles = [suite.sous_question] if passe == 1 else []
+            elif passe == 1:
                 plan = [q.texte for q in avant.sous_questions] if avant else []
                 cibles = plan or [question]
             else:
@@ -499,6 +672,9 @@ async def derouler(
                 )
                 if not await executer(etape, rang, titre, supplement, passe):
                     return False
+            # Mode rapide et suite : une seule passe, sur ce qui a ete demande.
+            if options.rapide or suite is not None:
+                return True
             apres = await _couverture(db, user, etat["slug"])
             if not relancer_une_passe(avant, apres):
                 return True
@@ -536,7 +712,52 @@ async def derouler(
             avant, tour = apres, tour + 1
         return True
 
+    async def conclure() -> None:
+        """Lie les renvois du bilan aux extraits, et propose les suites."""
+        slug = etat["slug"]
+        texte = etat["texte"]
+        if slug and texte and citations_bilan.RENVOI.search(texte):
+            try:
+                lie = await citations_bilan.lier(db, user.id, user.username, slug, texte)
+            except Exception:  # noqa: BLE001  # un lien rate ne doit pas perdre la reponse
+                logger.warning("Renvois du bilan illisibles pour %s", slug, exc_info=True)
+            else:
+                await emit(
+                    {
+                        "type": "reponse_verifiee",
+                        "payload": {"texte": lie.texte, "cites": lie.cites, "retires": lie.retires},
+                    }
+                )
+        suites = etat["interactions"].pop("proposer_suites", None)
+        questions = [
+            " ".join(str(q).split())
+            for q in (suites or {}).get("questions") or []
+            if str(q).strip()
+        ]
+        if slug and questions:
+            await emit(
+                {"type": "suites_proposees", "payload": {"card_slug": slug, "questions": questions}}
+            )
+
+    if suite is not None:
+        if await _couverture(db, user, suite.card_slug) is None:
+            await emit(
+                {
+                    "type": "error",
+                    "payload": {"message": f"La fiche « {suite.card_slug} » est introuvable."},
+                }
+            )
+            return
+        plan = await couverture.lire_plan(db, user.id, suite.card_slug)
+        if suite.sous_question not in plan:
+            await couverture.ecrire_plan(db, user.id, suite.card_slug, [*plan, suite.sous_question])
+            await db.commit()
+
     for rang, etape in enumerate(ETAPES, start=1):
+        if etape.id in ("cadrage", "plan") and (
+            suite is not None or (options.rapide and etape.id == "cadrage")
+        ):
+            continue
         if etape.id == "exploration":
             if not await explorer(etape, rang):
                 return
@@ -544,24 +765,35 @@ async def derouler(
             supplement = _bloc_couverture(await _couverture(db, user, etat["slug"]))
             if etape.id == "bilan":
                 restants = _bloc_restants(await _grille(db, user, etat["slug"]))
-                supplement = "\n\n".join(b for b in (supplement, restants) if b)
+                # Les citations rangees par sous-question avant d'ecrire, comme Ai2
+                # Scholar QA : la reponse se redige depuis ces extraits et leurs
+                # identifiants, pas depuis la memoire du modele.
+                extraits = _bloc_extraits(await _extraits_ranges(db, user, etat["slug"]))
+                supplement = "\n\n".join(b for b in (extraits, supplement, restants) if b)
             if not await executer(etape, rang, etape.titre, supplement, None):
                 return
-        if etape.id == "plan" and not etat["slug"]:
-            await emit(
-                {
-                    "type": "error",
-                    "payload": {
-                        "message": (
-                            "Aucune fiche n'a été créée ni retenue à l'étape du plan : "
-                            "le déroulé guidé s'arrête là. Reformulez la question, ou "
-                            "demandez la fiche explicitement."
-                        )
-                    },
-                }
-            )
+        if etape.id == "cadrage":
+            await cadrer()
+        if etape.id == "plan":
+            if not etat["slug"]:
+                await emit(
+                    {
+                        "type": "error",
+                        "payload": {
+                            "message": (
+                                "Aucune fiche n'a été créée ni retenue à l'étape du plan : "
+                                "le déroulé guidé s'arrête là. Reformulez la question, ou "
+                                "demandez la fiche explicitement."
+                            )
+                        },
+                    }
+                )
+                return
+            if not options.rapide:
+                await valider_plan()
+        if etape.id == "positions" and not options.rapide and not await relire():
             return
-        if etape.id == "positions" and not await relire():
-            return
+        if etape.id == "bilan":
+            await conclure()
 
     await emit({"type": "done", "payload": {"reason": "complete", "usage": usage_total}})

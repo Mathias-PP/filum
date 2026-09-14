@@ -12,13 +12,15 @@ from datetime import datetime
 import httpx
 import pytest
 
+from app.agent_tools.deroule import deroule_tools
 from app.agent_tools.tool import AgentTool, ToolContext
 from app.core.config import get_settings
 from app.crypto.keygen import KeyManager
 from app.models.agent_provider import AgentProvider
-from app.services import deroule_guide, relecture
+from app.services import citations_bilan, deroule_guide, relecture
 from app.services.couverture import Couverture, SousQuestion
 from app.services.deroule_guide import ETAPES, est_demande_de_fiche, relancer_une_passe
+from app.services.options_recherche import Options
 from app.services.relecture import Manque
 
 
@@ -87,7 +89,9 @@ def _appel(nom: str, arguments: dict) -> dict:
     }
 
 
-async def _derouler(db_session, test_user, reponses: list[dict], slug="prevention-arthrose"):
+async def _derouler(
+    db_session, test_user, reponses: list[dict], slug="prevention-arthrose", **options
+):
     cle = KeyManager(get_settings().master_encryption_key).encrypt_private_key("sk-test-12345678")
     provider = AgentProvider(
         creator_id=test_user.id,
@@ -122,6 +126,7 @@ async def _derouler(db_session, test_user, reponses: list[dict], slug="preventio
         "definir_plan": _outil("definir_plan", {"slug": slug, "sous_questions": []}),
         "add_source": _outil("add_source", {"id": "s1"}),
         "rechercher": _outil("rechercher", {"sources": []}),
+        **{outil.name: outil for outil in deroule_tools()},
     }
     ajouts: list[dict] = []
     heures: list[datetime] = []
@@ -136,6 +141,7 @@ async def _derouler(db_session, test_user, reponses: list[dict], slug="preventio
         heures,
         transport=httpx.MockTransport(handler),
         registre=registre,
+        **options,
     )
     return events, ajouts, heures, corps
 
@@ -147,6 +153,7 @@ def _etapes(events: list[dict]) -> list[str]:
 @pytest.mark.asyncio
 async def test_les_etapes_se_deroulent_dans_l_ordre(db_session, test_user):
     reponses = [
+        _texte("La question est claire."),
         _appel("create_card", {"card_kind": "sujet", "slug": "prevention-arthrose"}),
         _texte("Fiche prevention-arthrose, plan posé."),
         _texte("Source ajoutée : s1, deux extraits."),
@@ -160,8 +167,10 @@ async def test_les_etapes_se_deroulent_dans_l_ordre(db_session, test_user):
     # Sans plan, l'exploration porte sur la question elle-meme.
     assert (
         "Sous-question travaillée : comment prévenir l'arthrose?"
-        in next(m for m in corps[2]["messages"] if m["role"] == "user")["content"]
+        in next(m for m in corps[3]["messages"] if m["role"] == "user")["content"]
     )
+    # Sans reponse attendue, aucune question n'est posee.
+    assert not any(e["type"] == "question_guidee" for e in events)
     assert [e["type"] for e in events].count("done") == 1
     assert events[-1]["type"] == "done"
     # Chaque etape ne voit que ses outils.
@@ -169,7 +178,7 @@ async def test_les_etapes_se_deroulent_dans_l_ordre(db_session, test_user):
     assert noms_etape_1 <= set(ETAPES[0].outils)
     assert "add_excerpt" not in noms_etape_1
     # La fiche creee est donnee aux etapes suivantes.
-    consigne_etape_2 = next(m for m in corps[2]["messages"] if m["role"] == "user")["content"]
+    consigne_etape_2 = next(m for m in corps[3]["messages"] if m["role"] == "user")["content"]
     assert "prevention-arthrose" in consigne_etape_2
     # Les numeros de tour croissent d'une etape a l'autre : la reponse finale
     # reste le texte du bilan.
@@ -184,9 +193,9 @@ async def test_les_etapes_se_deroulent_dans_l_ordre(db_session, test_user):
 @pytest.mark.asyncio
 async def test_sans_fiche_le_deroule_s_arrete_apres_le_plan(db_session, test_user):
     events, _ajouts, _heures, _corps = await _derouler(
-        db_session, test_user, [_texte("Je n'ai rien trouvé.")]
+        db_session, test_user, [_texte("Claire."), _texte("Je n'ai rien trouvé.")]
     )
-    assert _etapes(events) == ["plan"]
+    assert _etapes(events) == ["cadrage", "plan"]
     assert events[-1]["type"] == "error"
     assert "done" not in [e["type"] for e in events]
 
@@ -234,6 +243,7 @@ async def test_l_exploration_tourne_une_boucle_par_sous_question_du_plan(
 ):
     _couvertures(monkeypatch, _etat(), _etat())
     reponses = [
+        _texte("Claire."),
         _appel("create_card", {"card_kind": "sujet", "slug": "taxe-carbone"}),
         _texte("Fiche taxe-carbone, plan posé."),
         _texte("Transport : une source."),
@@ -246,10 +256,10 @@ async def test_l_exploration_tourne_une_boucle_par_sous_question_du_plan(
     )
     assert _etapes(events).count("exploration") == 2
     consignes = _consignes(corps)
-    assert f"Sous-question travaillée : {TRANSPORT}" in consignes[2]
-    assert f"Sous-question travaillée : {INDUSTRIE}" in consignes[3]
-    assert "rechercher" in {t["function"]["name"] for t in corps[2]["tools"]}
-    assert "rechercher" not in {t["function"]["name"] for t in corps[0]["tools"]}
+    assert f"Sous-question travaillée : {TRANSPORT}" in consignes[3]
+    assert f"Sous-question travaillée : {INDUSTRIE}" in consignes[4]
+    assert "rechercher" in {t["function"]["name"] for t in corps[3]["tools"]}
+    assert "rechercher" not in {t["function"]["name"] for t in corps[1]["tools"]}
 
 
 @pytest.mark.asyncio
@@ -259,6 +269,7 @@ async def test_le_deroule_relance_une_passe_sur_les_sous_questions_vides(
     # Lectures : avant la passe 1, apres la passe 1, apres la passe 2.
     _couvertures(monkeypatch, _etat(), _etat(TRANSPORT), _etat(TRANSPORT))
     reponses = [
+        _texte("Claire."),
         _appel("create_card", {"card_kind": "sujet", "slug": "taxe-carbone"}),
         _texte("Fiche taxe-carbone, plan posé."),
         _texte("Source ajoutée sur le transport."),
@@ -285,6 +296,7 @@ async def test_le_deroule_s_arrete_quand_une_passe_n_ajoute_rien(
 ):
     _couvertures(monkeypatch, _etat(), _etat())
     reponses = [
+        _texte("Claire."),
         _appel("create_card", {"card_kind": "sujet", "slug": "taxe-carbone"}),
         _texte("Fiche taxe-carbone, plan posé."),
         _texte("Aucune source ne portait de passage sur le transport."),
@@ -317,6 +329,7 @@ def _grilles(monkeypatch, *grilles: list[Manque]) -> None:
 
 def _reponses_jusqu_aux_positions() -> list[dict]:
     return [
+        _texte("Claire."),
         _appel("create_card", {"card_kind": "sujet", "slug": "taxe-carbone"}),
         _texte("Fiche taxe-carbone, plan posé."),
         _texte("Source ajoutée."),
@@ -366,4 +379,156 @@ async def test_la_relecture_s_arrete_quand_un_tour_ne_comble_rien(
     assert titres.count("Relecture 1, positions") == 1
     assert not any(t.startswith("Relecture 2") for t in titres)
     assert "Relecture 1, exploration" not in titres
+    assert events[-1]["type"] == "done"
+
+
+@pytest.mark.asyncio
+async def test_une_precision_part_au_createur_et_guide_la_suite(db_session, test_user):
+    reponses = [
+        _appel("demander_precision", {"question": "Pour qui ?", "options": ["Adultes", "Enfants"]}),
+        _texte("Précision demandée."),
+        _texte("Je n'ai rien trouvé."),
+    ]
+    posees: list[str] = []
+
+    async def attendre(request_id):
+        posees.append(request_id)
+        return {"choix": "Adultes"}
+
+    events, _ajouts, _heures, corps = await _derouler(
+        db_session, test_user, reponses, attendre=attendre
+    )
+    question = next(e for e in events if e["type"] == "question_guidee")["payload"]
+    assert question["genre"] == "precision"
+    assert question["options"] == ["Adultes", "Enfants"]
+    assert posees == [question["request_id"]]
+    assert any(e["type"] == "question_resolue" for e in events)
+    assert "Précision du créateur\nAdultes" in _consignes(corps)[2]
+
+
+@pytest.mark.asyncio
+async def test_le_plan_est_montre_au_createur_qui_le_corrige(db_session, test_user, monkeypatch):
+    _couvertures(monkeypatch, _etat(), _etat())
+    ecrits: list[list[str]] = []
+
+    async def lire_plan(db, creator_id, slug):
+        return [TRANSPORT, INDUSTRIE]
+
+    async def ecrire_plan(db, creator_id, slug, sous_questions):
+        ecrits.append(sous_questions)
+        return sous_questions
+
+    monkeypatch.setattr(deroule_guide.couverture, "lire_plan", lire_plan)
+    monkeypatch.setattr(deroule_guide.couverture, "ecrire_plan", ecrire_plan)
+
+    async def attendre(request_id):
+        return {"sous_questions": [INDUSTRIE]}
+
+    reponses = [
+        _texte("Claire."),
+        _appel("create_card", {"card_kind": "sujet", "slug": "taxe-carbone"}),
+        _texte("Plan posé."),
+        _texte("Transport."),
+        _texte("Industrie."),
+        _texte("Positions."),
+        _texte("Bilan."),
+    ]
+    events, _ajouts, _heures, corps = await _derouler(
+        db_session, test_user, reponses, slug="taxe-carbone", attendre=attendre
+    )
+    question = next(e for e in events if e["type"] == "question_guidee")["payload"]
+    assert question["genre"] == "plan" and question["sous_questions"] == [TRANSPORT, INDUSTRIE]
+    assert ecrits == [[INDUSTRIE]]
+    assert "Plan corrigé par le créateur" in _consignes(corps)[3]
+
+
+@pytest.mark.asyncio
+async def test_le_mode_rapide_garde_la_methode_et_retire_les_budgets(
+    db_session, test_user, monkeypatch
+):
+    # En mode approfondi, cette couverture relancerait une passe sur l'industrie.
+    _couvertures(monkeypatch, _etat(), _etat(TRANSPORT))
+    _grilles(monkeypatch, [SANS_POSITION])
+    reponses = [
+        _appel("create_card", {"card_kind": "sujet", "slug": "taxe-carbone"}),
+        _texte("Plan posé."),
+        _texte("Transport."),
+        _texte("Industrie."),
+        _texte("Positions."),
+        _texte("Bilan."),
+    ]
+
+    async def attendre(request_id):
+        raise AssertionError("le mode rapide ne pose aucune question")
+
+    events, _ajouts, _heures, _corps = await _derouler(
+        db_session,
+        test_user,
+        reponses,
+        slug="taxe-carbone",
+        options=Options(mode="rapide"),
+        attendre=attendre,
+    )
+    titres = [e["payload"]["titre"] for e in events if e["type"] == "etape_guidee"]
+    assert "cadrage" not in _etapes(events)
+    assert _etapes(events).count("exploration") == 2
+    assert not any(t.startswith("Relecture") for t in titres)
+    assert events[-1]["type"] == "done"
+
+
+@pytest.mark.asyncio
+async def test_une_suite_explore_seulement_sa_sous_question(db_session, test_user, monkeypatch):
+    _couvertures(monkeypatch, _etat(TRANSPORT))
+    ecrits: list[list[str]] = []
+
+    async def lire_plan(db, creator_id, slug):
+        return [TRANSPORT]
+
+    async def ecrire_plan(db, creator_id, slug, sous_questions):
+        ecrits.append(sous_questions)
+        return sous_questions
+
+    monkeypatch.setattr(deroule_guide.couverture, "lire_plan", lire_plan)
+    monkeypatch.setattr(deroule_guide.couverture, "ecrire_plan", ecrire_plan)
+    reponses = [_texte("Industrie : une source."), _texte("Positions."), _texte("Bilan.")]
+
+    events, _ajouts, _heures, corps = await _derouler(
+        db_session,
+        test_user,
+        reponses,
+        slug="taxe-carbone",
+        suite=deroule_guide.Suite("taxe-carbone", INDUSTRIE),
+    )
+    assert _etapes(events) == ["exploration", "positions", "bilan"]
+    assert ecrits == [[TRANSPORT, INDUSTRIE]]
+    assert f"Sous-question travaillée : {INDUSTRIE}" in _consignes(corps)[0]
+
+
+@pytest.mark.asyncio
+async def test_le_bilan_lie_ses_renvois_et_propose_des_suites(db_session, test_user, monkeypatch):
+    _couvertures(monkeypatch, _etat(), _etat())
+    identifiant = "11111111-1111-4111-8111-111111111111"
+
+    async def lier(db, creator_id, username, slug, texte):
+        assert f"[extrait:{identifiant}]" in texte
+        return citations_bilan.ReponseLiee("La taxe marche. [1](https://philum.test/x)", 1, 0)
+
+    monkeypatch.setattr(deroule_guide.citations_bilan, "lier", lier)
+    reponses = [
+        _texte("Claire."),
+        _appel("create_card", {"card_kind": "sujet", "slug": "taxe-carbone"}),
+        _texte("Plan posé."),
+        _texte("Transport."),
+        _texte("Industrie."),
+        _texte("Positions."),
+        _appel("proposer_suites", {"questions": ["Et chez les enfants ?"]}),
+        _texte(f"La taxe marche. [extrait:{identifiant}]"),
+    ]
+    events, _ajouts, _heures, _corps = await _derouler(
+        db_session, test_user, reponses, slug="taxe-carbone"
+    )
+    verifiee = next(e for e in events if e["type"] == "reponse_verifiee")["payload"]
+    assert verifiee["texte"] == "La taxe marche. [1](https://philum.test/x)"
+    suites = next(e for e in events if e["type"] == "suites_proposees")["payload"]
+    assert suites == {"card_slug": "taxe-carbone", "questions": ["Et chez les enfants ?"]}
     assert events[-1]["type"] == "done"

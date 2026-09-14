@@ -382,3 +382,47 @@ describe('reprise après coupure', () => {
     expect(tourTermine([])).toBe(false);
   });
 });
+
+describe('interactions du déroulé guidé', () => {
+  const precision: AgentEvent = {
+    type: 'question_guidee',
+    payload: {
+      request_id: 'q1',
+      genre: 'precision',
+      question: 'Pour qui ?',
+      options: ['Adultes', 'Enfants'],
+    },
+  };
+
+  it('une question attend, puis garde la réponse du créateur', () => {
+    let items = appliquer([], precision);
+    expect(items).toEqual([
+      expect.objectContaining({ kind: 'question', requestId: 'q1', resolue: false }),
+    ]);
+    items = appliquer(items, {
+      type: 'question_resolue',
+      payload: { request_id: 'q1', reponse: { choix: 'Adultes' } },
+    });
+    expect(items[0]).toMatchObject({ resolue: true, reponse: { choix: 'Adultes' } });
+  });
+
+  it('la réponse vérifiée remplace le texte diffusé, et les suites s’ajoutent', () => {
+    let items: ChatItem[] = [{ kind: 'assistant', text: 'La taxe marche. [extrait:abc]' }];
+    items = appliquer(items, {
+      type: 'reponse_verifiee',
+      payload: {
+        texte: 'La taxe marche. [1](https://philum.test/@moi/taxe#extrait-abc)',
+        cites: 1,
+        retires: 0,
+      },
+    });
+    items = appliquer(items, {
+      type: 'suites_proposees',
+      payload: { card_slug: 'taxe', questions: ['Et chez les enfants ?'] },
+    });
+    expect(items).toEqual([
+      { kind: 'assistant', text: 'La taxe marche. [1](https://philum.test/@moi/taxe#extrait-abc)' },
+      { kind: 'suites', cardSlug: 'taxe', questions: ['Et chez les enfants ?'] },
+    ]);
+  });
+});

@@ -30,6 +30,32 @@ class AgentChatMessage(BaseModel):
         return v
 
 
+class OptionsRecherche(BaseModel):
+    """Comment chercher : même méthode, budgets et corpus au choix du créateur."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    mode: Literal["rapide", "approfondi"] = Field(
+        default="approfondi",
+        description="`rapide` : une passe, sans suivi des citations ni relecture ni pause "
+        "de validation. `approfondi` : la méthode complète.",
+    )
+    sources: list[Literal["litterature", "web"]] = Field(
+        default_factory=list,
+        max_length=2,
+        description="Familles de corpus à interroger. Vide : toutes.",
+    )
+
+
+class SuiteFiche(BaseModel):
+    """Prolonger une fiche existante par une sous-question de plus."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    card_slug: str = Field(min_length=1, max_length=120, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+    sous_question: str = Field(min_length=1, max_length=500)
+
+
 class AgentChatRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -55,6 +81,13 @@ class AgentChatRequest(BaseModel):
         pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$",
         description="Agent nommé à utiliser (fichier `agents/<slug>.yaml`). "
         "Null : l'agent déjà attaché à la session, sinon l'assistant généraliste.",
+    )
+    recherche: OptionsRecherche | None = Field(
+        default=None, description="Mode et sources de la recherche. Null : méthode complète."
+    )
+    approfondir: SuiteFiche | None = Field(
+        default=None,
+        description="Prolonge la fiche par cette sous-question, en déroulé guidé.",
     )
 
     @field_validator("message")
@@ -136,6 +169,16 @@ class AgentApprovalDecision(BaseModel):
 
     request_id: str = Field(min_length=1, max_length=64)
     approved: bool
+
+
+class ReponseGuidee(BaseModel):
+    """La réponse du créateur à une question du déroulé (précision, plan)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    request_id: str = Field(min_length=1, max_length=64)
+    choix: str | None = Field(default=None, max_length=500)
+    sous_questions: list[str] | None = Field(default=None, max_length=40)
 
 
 class AgentSessionUsage(BaseModel):
