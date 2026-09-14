@@ -48,6 +48,20 @@ def test_un_segment_d_adresse_n_est_pas_un_titre():
             "Posttetanic Potentiation at Aplysia Synapses",
         ),
         ("Guerre &amp; paix : la r&eacute;ception russe", "Guerre & paix : la réception russe"),
+        # Cas releves par la passe a blanc du 2026-09-14 sur la production.
+        (
+            "Long-Term Synaptic Tagging in Hippocampal CA1 Neurons in Slices<i>In Vitro</i>",
+            "Long-Term Synaptic Tagging in Hippocampal CA1 Neurons in Slices In Vitro",
+        ),
+        (
+            "PKMζ Maintains Late Long-Term Potentiation by\n  <i>N</i>\n  -Ethylmaleimide-Sensitive Factor",
+            "PKMζ Maintains Late Long-Term Potentiation by N-Ethylmaleimide-Sensitive Factor",
+        ),
+        (
+            "Involvement of Pre- and Postsynaptic Mechanisms",
+            "Involvement of Pre- and Postsynaptic Mechanisms",
+        ),
+        ("in dendrites (n > 6,000)", "in dendrites (n > 6,000)"),
     ],
 )
 def test_les_balises_et_entites_sont_retirees(brut, attendu):
