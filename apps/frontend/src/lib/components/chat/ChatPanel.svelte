@@ -1447,30 +1447,71 @@
         class="rounded-xl border border-border bg-surface-primary px-3 py-2 shadow-sm focus-within:border-info"
         onsubmit={envoyer}
       >
-        <textarea
-          bind:this={champSaisie}
-          bind:value={saisie}
-          rows="1"
-          aria-label="Message à l'agent"
-          placeholder="Que doit faire l'agent ?"
-          class="block w-full resize-none bg-transparent py-1 text-sm text-ink-primary outline-none touch-manipulation placeholder:text-ink-tertiary"
-          style="overflow-y: hidden;"
-          oninput={(e) => {
-            ajusterHauteur(e.currentTarget);
-            ecrireBrouillon(cleBrouillon, e.currentTarget.value);
-          }}
-          onkeydown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
-              e.preventDefault();
-              if (!enCours && saisie.trim()) {
-                e.currentTarget.form?.requestSubmit();
+        <!-- L'envoi vit à droite du champ, sur sa ligne : placé au bout des
+           réglages, il sortait de l'écran d'un téléphone. Le champ est en 16 px
+           sous `sm` : en dessous, Safari sur iPhone zoome la page à la saisie. -->
+        <div class="flex items-end gap-2">
+          <textarea
+            bind:this={champSaisie}
+            bind:value={saisie}
+            rows="1"
+            aria-label="Message à l'agent"
+            placeholder="Que doit faire l'agent ?"
+            class="block min-w-0 flex-1 resize-none bg-transparent py-1 text-base text-ink-primary outline-none touch-manipulation placeholder:text-ink-tertiary sm:text-sm"
+            style="overflow-y: hidden;"
+            oninput={(e) => {
+              ajusterHauteur(e.currentTarget);
+              ecrireBrouillon(cleBrouillon, e.currentTarget.value);
+            }}
+            onkeydown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+                e.preventDefault();
+                if (!enCours && saisie.trim()) {
+                  e.currentTarget.form?.requestSubmit();
+                }
               }
-            }
-          }}></textarea>
-        <div class="mt-1 flex items-center gap-2">
+            }}></textarea>
+          {#if enCours || reprise === 'encours'}
+            <button
+              type="button"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border-strong text-ink-primary hover:bg-surface-tertiary"
+              aria-label="Arrêter"
+              title="Arrêter"
+              onclick={interrompre}
+            >
+              <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+                <rect x="3" y="3" width="10" height="10" rx="1.5" fill="currentColor" />
+              </svg>
+            </button>
+          {:else}
+            <button
+              type="submit"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-black text-white hover:opacity-90 active:opacity-80 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-black"
+              aria-label="Envoyer"
+              title="Envoyer"
+              disabled={!saisie.trim()}
+            >
+              <svg
+                viewBox="0 0 16 16"
+                width="14"
+                height="14"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M8 13V3M3.5 7.5L8 3l4.5 4.5" />
+              </svg>
+            </button>
+          {/if}
+        </div>
+        <!-- Les réglages passent à la ligne plutôt que de pousser hors de l'écran. -->
+        <div class="mt-1 flex flex-wrap items-center gap-1.5">
           <button
             type="button"
-            class="flex min-w-0 items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs text-ink-secondary hover:border-info hover:text-ink-primary"
+            class="flex min-w-0 max-w-full items-center gap-1.5 rounded-full border border-border px-2.5 py-1 text-xs text-ink-secondary hover:border-info hover:text-ink-primary"
             aria-expanded={reglagesOuverts}
             aria-controls="reglages-agent"
             title="Agent, clé, modèle et mode gratuit"
@@ -1516,12 +1557,6 @@
             <option value="litterature">Littérature scientifique seulement</option>
             <option value="web">Web seulement</option>
           </select>
-          <span class="flex-1"></span>
-          {#if enCours || reprise === 'encours'}
-            <Button size="sm" variant="ghost" onclick={interrompre}>Arrêter</Button>
-          {:else}
-            <Button size="sm" type="submit" disabled={!saisie.trim()}>Envoyer</Button>
-          {/if}
         </div>
       </form>
     </div>

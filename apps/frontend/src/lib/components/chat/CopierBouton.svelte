@@ -1,6 +1,7 @@
 <script lang="ts">
   interface Props {
     texte: string;
+    /** Ce que dit le bouton aux lecteurs d'écran et au survol. */
     libelle?: string;
     class?: string;
   }
@@ -20,13 +21,47 @@
     }
     setTimeout(() => (etat = 'repos'), 1500);
   }
+
+  const annonce = $derived(
+    etat === 'copie' ? 'Copié' : etat === 'refus' ? 'Copie impossible' : libelle
+  );
 </script>
 
+<!-- Un symbole plutôt qu'un mot : le geste est rare, il ne doit pas prendre de place. -->
 <button
   type="button"
-  class="rounded px-1.5 py-0.5 text-xs text-ink-tertiary hover:bg-surface-tertiary hover:text-ink-primary {classe}"
+  class="inline-flex h-6 w-6 items-center justify-center rounded text-ink-tertiary hover:bg-surface-tertiary hover:text-ink-primary {classe}"
   onclick={copier}
+  title={annonce}
+  aria-label={annonce}
   aria-live="polite"
 >
-  {etat === 'copie' ? 'Copié' : etat === 'refus' ? 'Copie impossible' : libelle}
+  {#if etat === 'copie'}
+    <svg
+      viewBox="0 0 16 16"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.8"
+      aria-hidden="true"
+    >
+      <path d="M3 8.5l3 3 7-7" />
+    </svg>
+  {:else if etat === 'refus'}
+    <span aria-hidden="true" class="text-xs font-semibold">!</span>
+  {:else}
+    <svg
+      viewBox="0 0 16 16"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.4"
+      aria-hidden="true"
+    >
+      <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" />
+      <path d="M10.5 3.5V3a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6.5a1 1 0 0 0 1 1h.5" />
+    </svg>
+  {/if}
 </button>

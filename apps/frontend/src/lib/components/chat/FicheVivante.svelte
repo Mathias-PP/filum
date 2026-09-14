@@ -6,7 +6,8 @@
   import type { Card, CardDetail, Source } from '$lib/api/types';
   import { libelleExtraits, resumeCouverture } from '$lib/agent/couverture';
   import { comparerFiches, type Cible } from '$lib/agent/suiviFiche';
-  import { CLASSES_VERDICT, lireVerdict } from '$lib/utils/excerpt-verdict';
+  import { lireVerdict } from '$lib/utils/excerpt-verdict';
+  import VerdictExtrait from '$lib/components/VerdictExtrait.svelte';
   import { stanceStyle } from '$lib/utils/stance';
   import { montrerAvisRetractation, retractionBadge } from '$lib/utils/retraction';
   import { openAccessBadge } from '$lib/utils/open-access';
@@ -477,14 +478,8 @@
                       class:px-1={neuf}
                     >
                       <p class="italic text-ink-secondary [overflow-wrap:anywhere]">
-                        « {extrait.text} »
+                        « {extrait.text} » <VerdictExtrait {verdict} />
                       </p>
-                      <span
-                        class="mt-0.5 inline-block rounded px-1.5 py-0.5 {CLASSES_VERDICT[
-                          verdict.ton
-                        ]}"
-                        title={verdict.detail}>{verdict.label}</span
-                      >
                     </li>
                   {/each}
                 </ul>

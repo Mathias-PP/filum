@@ -137,7 +137,7 @@
       <input
         type="search"
         bind:value={recherche}
-        class="mb-3 w-full rounded border border-border bg-surface-primary px-2 py-1 text-sm"
+        class="mb-3 w-full rounded border border-border bg-surface-primary px-2 py-1 text-base sm:text-sm"
         placeholder="Chercher une conversation"
         aria-label="Chercher une conversation"
       />

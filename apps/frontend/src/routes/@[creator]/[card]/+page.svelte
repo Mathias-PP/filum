@@ -34,7 +34,8 @@
     retractionBadge,
     retractionTitle,
   } from '$lib/utils/retraction';
-  import { CLASSES_VERDICT, lireVerdict } from '$lib/utils/excerpt-verdict';
+  import { lireVerdict } from '$lib/utils/excerpt-verdict';
+  import VerdictExtrait from '$lib/components/VerdictExtrait.svelte';
   import { tick } from 'svelte';
   import { slide } from 'svelte/transition';
   import { page } from '$app/stores';
@@ -789,7 +790,14 @@
                                 {/if}
                               </p>
                             {/if}
-                            <p class="italic text-ink-secondary">«&nbsp;{excerpt.text}&nbsp;»</p>
+                            <!--
+                              Le verdict suit la citation, en un symbole : la phrase
+                              de relecture et sa date s'ouvrent au survol ou par un
+                              appui long.
+                            -->
+                            <p class="italic text-ink-secondary">
+                              «&nbsp;{excerpt.text}&nbsp;» <VerdictExtrait {verdict} />
+                            </p>
                             {#if excerpt.context}
                               <!--
                                 Hors des guillemets et sans italique : cette phrase
@@ -799,17 +807,6 @@
                               -->
                               <p class="mt-1 text-xs text-ink-tertiary">{excerpt.context}</p>
                             {/if}
-                            <!--
-                              Le verdict suit la citation plutôt qu'il ne la
-                              précède : c'est le passage qu'on vient lire, la
-                              relecture est ce qu'on en pense après.
-                            -->
-                            <p
-                              class="mt-2 text-xs {CLASSES_VERDICT[verdict.ton]}"
-                              title={verdict.detail}
-                            >
-                              {verdict.label}
-                            </p>
                           </li>
                         {/each}
                       </ul>
