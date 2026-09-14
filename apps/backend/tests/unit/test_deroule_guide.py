@@ -19,36 +19,9 @@ from app.crypto.keygen import KeyManager
 from app.models.agent_provider import AgentProvider
 from app.services import citations_bilan, deroule_guide, relecture
 from app.services.couverture import Couverture, SousQuestion
-from app.services.deroule_guide import ETAPES, est_demande_de_fiche, relancer_une_passe
+from app.services.deroule_guide import ETAPES, converser_ou_derouler, relancer_une_passe
 from app.services.options_recherche import Options
 from app.services.relecture import Manque
-
-
-@pytest.mark.parametrize(
-    ("message", "premier"),
-    [
-        ("comment prévenir l'arthrose?", True),
-        ("Fait une fiche pour répondre à la question : comment prévenir l'arthrose ?", False),
-        ("Crée une fiche sur l'effet Warburg", False),
-        ("Pourquoi le ciel est-il bleu ?", True),
-    ],
-)
-def test_une_demande_de_fiche_est_reconnue(message, premier):
-    assert est_demande_de_fiche(message, premier_message=premier)
-
-
-@pytest.mark.parametrize(
-    ("message", "premier"),
-    [
-        ("comment prévenir l'arthrose?", False),
-        ("Comment je publie ma fiche ?", True),
-        ("Crée une fiche pour cette vidéo : https://youtu.be/abc", True),
-        ("Merci, c'est parfait.", True),
-        ("Quelle clé dois-je utiliser ?", True),
-    ],
-)
-def test_le_reste_reste_une_conversation_libre(message, premier):
-    assert not est_demande_de_fiche(message, premier_message=premier)
 
 
 def _outil(nom: str, resultat: dict) -> AgentTool:
@@ -531,4 +504,87 @@ async def test_le_bilan_lie_ses_renvois_et_propose_des_suites(db_session, test_u
     assert verifiee["texte"] == "La taxe marche. [1](https://philum.test/x)"
     suites = next(e for e in events if e["type"] == "suites_proposees")["payload"]
     assert suites == {"card_slug": "taxe-carbone", "questions": ["Et chez les enfants ?"]}
+    assert events[-1]["type"] == "done"
+
+
+async def _converser(db_session, test_user, reponses: list[dict], message: str):
+    cle = KeyManager(get_settings().master_encryption_key).encrypt_private_key("sk-test-12345678")
+    provider = AgentProvider(
+        creator_id=test_user.id,
+        provider="openai",
+        display_name="openai",
+        base_url="https://api.openai.com",
+        model="gpt-4o",
+        api_key_enc=cle,
+        is_default=True,
+    )
+    db_session.add(provider)
+    await db_session.commit()
+    suite = iter(reponses)
+    corps: list[dict] = []
+
+    def handler(request):
+        corps.append(json.loads(request.content))
+        return httpx.Response(200, json=next(suite))
+
+    events: list[dict] = []
+
+    async def emit(event):
+        events.append(event)
+
+    async def refuse(request_id, tool, args):
+        return False
+
+    registre = {
+        "create_card": _outil("create_card", {"slug": "x"}),
+        "list_my_cards": _outil("list_my_cards", {"cards": []}),
+        **{outil.name: outil for outil in deroule_tools()},
+    }
+    messages = [{"role": "user", "content": message}]
+    guide = await converser_ou_derouler(
+        db_session,
+        test_user,
+        provider,
+        messages,
+        emit,
+        refuse,
+        [],
+        [],
+        transport=httpx.MockTransport(handler),
+        registre=registre,
+    )
+    return guide, events, corps
+
+
+@pytest.mark.asyncio
+async def test_l_agent_confie_une_question_au_deroule_dans_n_importe_quelle_langue(
+    db_session, test_user
+):
+    reponses = [
+        _appel("demarrer_fiche_sujet", {"question": "Does intermittent fasting help weight loss?"}),
+        _texte("La fiche est lancée."),
+        _texte("Claire."),
+        _texte("Je n'ai rien trouvé."),
+    ]
+    guide, events, corps = await _converser(
+        db_session, test_user, reponses, "Does intermittent fasting help weight loss?"
+    )
+    assert guide
+    assert _etapes(events) == ["cadrage", "plan"]
+    # La fin de la conversation ne clot pas le tour : le deroule a pris la suite.
+    assert "done" not in [e["type"] for e in events]
+    assert (
+        "Question du créateur : Does intermittent fasting help weight loss?" in _consignes(corps)[2]
+    )
+    tours = [e["payload"]["tour"] for e in events if e["type"] == "message_delta"]
+    assert tours == sorted(tours) and len(set(tours)) == len(tours)
+
+
+@pytest.mark.asyncio
+async def test_sans_decision_de_l_agent_la_conversation_reste_libre(db_session, test_user):
+    guide, events, _corps = await _converser(
+        db_session, test_user, [_texte("Bonjour !")], "Bonjour"
+    )
+    assert not guide
+    assert not _etapes(events)
     assert events[-1]["type"] == "done"

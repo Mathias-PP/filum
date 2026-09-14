@@ -164,6 +164,10 @@ const ACTIONS: Record<
   suite_recherche: {
     action: 'Lit la suite des résultats de recherche',
   },
+  demarrer_fiche_sujet: {
+    action: 'Lance la fiche sur',
+    objet: (a) => texteArg(a, 'question'),
+  },
   demander_precision: {
     action: 'Demande une précision :',
     objet: (a) => texteArg(a, 'question'),
