@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from app.scripts.banc_agent import QUESTIONS, _tableau, mesurer
-from app.services.deroule_guide import est_demande_de_fiche
+from app.scripts.banc_agent import _tableau, mesurer
 
 
 def test_mesurer_compte_les_refus_d_extraits_les_jetons_et_les_relances():
@@ -24,10 +23,6 @@ def test_mesurer_compte_les_refus_d_extraits_les_jetons_et_les_relances():
 
 def test_sans_extrait_tente_la_part_de_refus_n_existe_pas():
     assert mesurer([])["part_extraits_refuses"] is None
-
-
-def test_les_questions_du_banc_partent_toutes_dans_le_deroule_guide():
-    assert all(est_demande_de_fiche(q, premier_message=True) for q in QUESTIONS)
 
 
 def test_le_tableau_porte_une_ligne_par_demande():

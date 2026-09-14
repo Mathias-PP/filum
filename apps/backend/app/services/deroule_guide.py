@@ -45,7 +45,6 @@ detache du chat : reprise apres une coupure, fiche en direct et bouton
 from __future__ import annotations
 
 import logging
-import re
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
@@ -72,49 +71,6 @@ logger = logging.getLogger(__name__)
 #: Attend la reponse du createur a une question du deroule, par son identifiant.
 #: `None` : pas de reponse (delai, ou personne pour repondre), le deroule continue.
 Attendre = Callable[[str], Awaitable[dict[str, Any] | None]]
-
-#: Une demande explicite de fiche, avec ou sans l'orthographe exacte.
-_DEMANDE_DE_FICHE = re.compile(
-    r"\b(?:fais|fait|faire|cr[ée]{1,2}[erz]{0,2}|pr[ée]pare|r[ée]dige|monte|construi\w*)\b"
-    r"[^.?!\n]{0,40}\bfiche\b",
-    re.IGNORECASE,
-)
-
-#: Une question de fond, en tete d'une conversation neuve.
-_QUESTION = re.compile(
-    r"^\s*(?:comment|pourquoi|quels?|quelles?|qu['’]est-ce|est-ce que|faut-il|"
-    r"peut-on|combien|existe-t-il|y a-t-il)\b.*\?\s*$",
-    re.IGNORECASE | re.DOTALL,
-)
-
-#: Une question qui porte sur Philum lui-meme, pas sur un sujet a documenter.
-_USAGE_PHILUM = re.compile(
-    r"\b(?:philum|fiches?|extraits?|sources?|publier|publication|cl[ée]s?|agents?|"
-    r"mode gratuit|compte|workspace)\b",
-    re.IGNORECASE,
-)
-
-#: Au-dela, un premier message est une consigne detaillee, pas une question a
-#: documenter : le deroule ne doit pas la reduire a des etapes fixes.
-_QUESTION_LONGUEUR_MAX = 300
-
-
-def est_demande_de_fiche(message: str, *, premier_message: bool) -> bool:
-    """Le message demande-t-il une fiche sujet ?
-
-    Une adresse dans le message designe un contenu a documenter, que le deroule
-    sujet ne traite pas : la conversation reste libre.
-    """
-    if "http://" in message or "https://" in message:
-        return False
-    if _DEMANDE_DE_FICHE.search(message):
-        return True
-    return (
-        premier_message
-        and len(message) <= _QUESTION_LONGUEUR_MAX
-        and bool(_QUESTION.match(message))
-        and not _USAGE_PHILUM.search(message)
-    )
 
 
 @dataclass(frozen=True)
@@ -447,6 +403,7 @@ async def derouler(
     options: Options | None = None,
     suite: Suite | None = None,
     attendre: Attendre | None = None,
+    decalage_initial: int = 0,
 ) -> None:
     """Deroule les etapes, et verse le fil du tour dans `ajouts`.
 
@@ -463,7 +420,7 @@ async def derouler(
     comptes_rendus: list[str] = []
     etat: dict[str, Any] = {
         "slug": suite.card_slug if suite else None,
-        "decalage": 0,
+        "decalage": decalage_initial,
         "texte": "",
         "interactions": {},
     }
@@ -797,3 +754,107 @@ async def derouler(
             await conclure()
 
     await emit({"type": "done", "payload": {"reason": "complete", "usage": usage_total}})
+
+
+async def converser_ou_derouler(
+    db: AsyncSession,
+    user: User,
+    provider: AgentProvider,
+    messages: list[dict[str, Any]],
+    emit: Emitter,
+    approuver: Approuver,
+    ajouts: list[dict[str, Any]],
+    heures: list[datetime],
+    *,
+    transport: httpx.AsyncBaseTransport | None = None,
+    modele: str | None = None,
+    agent_def: AgentDefinition | None = None,
+    ancre_tokens: tuple[int, int] | None = None,
+    session_id: UUID | None = None,
+    replis: list[AgentProvider] | None = None,
+    registre: dict[str, AgentTool] | None = None,
+    options: Options | None = None,
+    attendre: Attendre | None = None,
+) -> bool:
+    """La conversation, et le deroule guide quand l'agent decide qu'une question appelle une fiche.
+
+    Une liste de mots interrogatifs francais decidait avant : une question en
+    anglais, une forme affirmative ou un second message passaient a cote. Comme
+    Vane (classifieur) et Scira (routeur), c'est desormais le modele qui decide,
+    dans toutes les langues : il appelle `demarrer_fiche_sujet(question)`, et le
+    deroule prend la suite dans le meme tour, sans appel de plus quand il n'y a
+    rien a documenter.
+
+    L'outil est ajoute a tout agent : lancer une fiche est une capacite du chat.
+    Rend vrai quand le deroule a tourne ; ses messages vont dans `ajouts`, ceux
+    de la conversation restent dans `messages`.
+    """
+    from dataclasses import replace
+
+    from app.agent_tools.deroule import OUTIL_DEMARRAGE
+
+    if agent_def is not None and OUTIL_DEMARRAGE not in agent_def.tools:
+        agent_def = replace(agent_def, tools=(*agent_def.tools, OUTIL_DEMARRAGE))
+    questions: list[str] = []
+    en_attente: dict[str, str] = {}
+    fins: list[dict[str, Any]] = []
+    etat = {"tour": 0, "interrompu": False}
+
+    async def capter(event: dict[str, Any]) -> None:
+        genre = event.get("type")
+        charge = event.get("payload") or {}
+        if isinstance(charge.get("tour"), int):
+            etat["tour"] = max(int(etat["tour"]), charge["tour"])
+        if genre == "tool_call" and charge.get("name") == OUTIL_DEMARRAGE:
+            en_attente["question"] = " ".join(
+                str((charge.get("arguments") or {}).get("question") or "").split()
+            )
+        elif genre == "tool_result" and charge.get("name") == OUTIL_DEMARRAGE:
+            if "error" not in (charge.get("result") or {}) and en_attente.get("question"):
+                questions.append(en_attente["question"])
+        elif genre == "done":
+            # Retenu : si le deroule prend la suite, c'est sa fin qui clot le tour.
+            fins.append(event)
+            return
+        elif genre in ("error", "continuation"):
+            etat["interrompu"] = True
+        await emit(event)
+
+    await boucle(
+        db,
+        user,
+        provider,
+        messages,
+        capter,
+        approuver,
+        transport=transport,
+        registre=registre,
+        modele=modele,
+        agent_def=agent_def,
+        ancre_tokens=ancre_tokens,
+        session_id=session_id,
+        replis=replis,
+    )
+    if not questions or etat["interrompu"]:
+        for event in fins:
+            await emit(event)
+        return False
+    await derouler(
+        db,
+        user,
+        provider,
+        questions[-1],
+        emit,
+        approuver,
+        ajouts,
+        heures,
+        transport=transport,
+        modele=modele,
+        session_id=session_id,
+        replis=replis,
+        registre=registre,
+        options=options,
+        attendre=attendre,
+        decalage_initial=int(etat["tour"]),
+    )
+    return True

@@ -154,8 +154,7 @@ async def jouer(question: str, *, fournisseur: str, base_url: str, modele: str, 
     from app.models.agent_provider import AgentProvider
     from app.models.user import User
     from app.services import agent_workspace
-    from app.services.agent import boucle
-    from app.services.deroule_guide import derouler, est_demande_de_fiche
+    from app.services.deroule_guide import converser_ou_derouler
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
@@ -196,14 +195,18 @@ async def jouer(question: str, *, fournisseur: str, base_url: str, modele: str, 
             api_key_enc=KeyManager(get_settings().master_encryption_key).encrypt_private_key(cle),
             is_default=True,
         )
-        guide = est_demande_de_fiche(question, premier_message=True)
         debut = time.monotonic()
-        if guide:
-            await derouler(db, utilisateur, provider, question, emit, refuser, [], [])
-        else:
-            await boucle(
-                db, utilisateur, provider, [{"role": "user", "content": question}], emit, refuser
-            )
+        # Le modele decide lui-meme de confier la question au deroule guide.
+        guide = await converser_ou_derouler(
+            db,
+            utilisateur,
+            provider,
+            [{"role": "user", "content": question}],
+            emit,
+            refuser,
+            [],
+            [],
+        )
         duree = round(time.monotonic() - debut, 1)
         fiches = await _mesurer_fiches(db, utilisateur.id)
     return {"question": question, "guide": guide, "duree_s": duree, **mesurer(evenements), **fiches}

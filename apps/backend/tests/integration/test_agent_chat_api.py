@@ -393,10 +393,9 @@ async def test_la_consigne_de_controle_ne_reste_pas_dans_l_historique(
 
     events = _lire_evenements(response.text)
     assert any(e["type"] == "controle_relance" for e in events)
-    # « crée une fiche » part dans le déroulé guidé : le cadrage annonce une fiche
-    # sans l'avoir créée (appel 1), il est relancé (appel 2), puis le plan ne pose
-    # aucune fiche et le déroulé s'arrête (appel 3).
-    assert appels["n"] == 3
+    # Le modèle n'appelle pas `demarrer_fiche_sujet` : la conversation reste libre,
+    # l'annonce non tenue est relancée une fois.
+    assert appels["n"] == 2
 
     session_id = next(e["payload"]["id"] for e in events if e["type"] == "session")
     roles = [r for r, _ in await _messages_persistes(session_id)]

@@ -52,7 +52,6 @@ from app.services import (
     agent_workspace,
     deroule_guide,
 )
-from app.services.agent import boucle
 from app.services.agent_discovery import (
     ErreurQuota,
     consommer_message,
@@ -269,15 +268,11 @@ async def chat_agent(
         # Le mode decouverte n'expose qu'une cle, qu'on ne choisit pas.
         replis = await ordonner_pour_chat(db, current_user.id, prefere=provider.id)
 
-    # Une demande de fiche, ou une question de fond en tete de conversation, part
-    # dans le deroule guide : des etapes tenues par le serveur, chacune avec
-    # ses seuls outils. Laisse libre, l'agent repondait de memoire.
-    # Une suite proposee sous un bilan prolonge la fiche : elle aussi part dans
-    # le deroule, cible sur sa sous-question.
-    guide = body.approfondir is not None or deroule_guide.est_demande_de_fiche(
-        body.message,
-        premier_message=not any(m.get("role") == "user" for m in messages),
-    )
+    # Une suite proposee sous un bilan prolonge la fiche : elle part droit dans le
+    # deroule guide, cible sur sa sous-question. Tout autre message ouvre la
+    # conversation, et c'est l'agent qui confie une question au deroule quand
+    # elle appelle une fiche (`converser_ou_derouler`), dans toutes les langues.
+    guide = body.approfondir is not None
     options = (
         Options(mode=body.recherche.mode, sources=frozenset(body.recherche.sources))
         if body.recherche
@@ -439,19 +434,23 @@ async def chat_agent(
                         attendre=attendre,
                     )
                 else:
-                    await boucle(
+                    await deroule_guide.converser_ou_derouler(
                         db_tour,
                         utilisateur,
                         provider,
                         messages,
                         emit,
                         approuver,
+                        ajouts_guides,
+                        heures_guides,
                         transport=transport,
                         modele=modele,
                         agent_def=agent_def,
                         ancre_tokens=ancre_tokens,
                         session_id=session_id,
                         replis=replis,
+                        options=options,
+                        attendre=attendre,
                     )
                 issue = "complet"
                 if reactions and mode_gratuit is not None:
@@ -489,8 +488,9 @@ async def chat_agent(
                 # Instantané avant tout ``await`` : une boucle annulée peut
                 # encore ajouter un message à sa prochaine reprise.
                 horodater()
-                ajouts = ajouts_guides if guide else messages[depart:]
-                heures = heures_guides if guide else horodatages[depart:]
+                # La conversation d'abord, puis le deroule qu'elle a pu lancer.
+                ajouts = messages[depart:] + ajouts_guides
+                heures = horodatages[depart:] + heures_guides
                 if issue != "complet":
                     # Les écritures d'outils sont déjà en base : sans ce
                     # rattrapage, la source que l'agent vient de créer existe

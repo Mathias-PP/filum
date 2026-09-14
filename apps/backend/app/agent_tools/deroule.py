@@ -20,6 +20,23 @@ def _liste(valeur: Any) -> list[str]:
     return [" ".join(str(v).split()) for v in valeur if str(v).strip()]
 
 
+#: L'outil par lequel l'agent confie une question au deroule guide.
+OUTIL_DEMARRAGE = "demarrer_fiche_sujet"
+
+
+async def _execute_demarrer_fiche_sujet(ctx: ToolContext, args: dict[str, Any]) -> dict[str, Any]:
+    question = " ".join(str(args.get("question") or "").split())
+    if not question:
+        return {"error": "demarrer_fiche_sujet attend question : la question à documenter."}
+    return {
+        "demarre": True,
+        "message": (
+            "Le déroulé guidé prend la suite dès la fin de ce tour. Dis seulement, en une "
+            "phrase, que la fiche est lancée ; n'appelle aucun autre outil."
+        ),
+    }
+
+
 async def _execute_demander_precision(ctx: ToolContext, args: dict[str, Any]) -> dict[str, Any]:
     question = " ".join(str(args.get("question") or "").split())
     options = _liste(args.get("options"))
@@ -42,6 +59,32 @@ async def _execute_proposer_suites(ctx: ToolContext, args: dict[str, Any]) -> di
 
 def deroule_tools() -> list[AgentTool]:
     return [
+        AgentTool(
+            name=OUTIL_DEMARRAGE,
+            description=(
+                "Lance le déroulé guidé d'une fiche sujet : plan, recherche des sources et de "
+                "leurs passages exacts, positions, relecture, bilan. Appelle-le dès que le "
+                "créateur veut qu'une question soit documentée avec des sources (comprendre un "
+                "sujet, vérifier une affirmation, répondre à une question de fond), dans "
+                "n'importe quelle langue et sous n'importe quelle forme. Pas pour utiliser "
+                "Philum, modifier une fiche existante ou documenter un contenu par son adresse."
+            ),
+            parameters={
+                "type": "object",
+                "properties": {
+                    "question": {
+                        "type": "string",
+                        "description": (
+                            "La question à documenter, reformulée pour se comprendre sans le "
+                            "reste de la conversation."
+                        ),
+                    }
+                },
+                "required": ["question"],
+            },
+            output="demarre",
+            execute=_execute_demarrer_fiche_sujet,
+        ),
         AgentTool(
             name="demander_precision",
             description=(
