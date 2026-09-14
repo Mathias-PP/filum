@@ -241,6 +241,51 @@
         }
       }
     },
+    "/api/v1/agent/fiche/{slug}/couverture": {
+      "get": {
+        "tags": [
+          "agent-fiche"
+        ],
+        "summary": "Couverture Fiche",
+        "description": "Pour chaque sous-question du plan de la fiche, les extraits qui l'éclairent.",
+        "operationId": "couverture_fiche_api_v1_agent_fiche__slug__couverture_get",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Slug"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Couverture Fiche Api V1 Agent Fiche  Slug  Couverture Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/agent/fiche": {
       "post": {
         "tags": [

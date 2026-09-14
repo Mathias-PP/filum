@@ -17,7 +17,8 @@ from app.core.config import get_settings
 from app.crypto.keygen import KeyManager
 from app.models.agent_provider import AgentProvider
 from app.services import deroule_guide
-from app.services.deroule_guide import ETAPES, est_demande_de_fiche
+from app.services.couverture import Couverture, SousQuestion
+from app.services.deroule_guide import ETAPES, est_demande_de_fiche, relancer_une_passe
 
 
 @pytest.mark.parametrize(
@@ -85,7 +86,7 @@ def _appel(nom: str, arguments: dict) -> dict:
     }
 
 
-async def _derouler(db_session, test_user, reponses: list[dict]):
+async def _derouler(db_session, test_user, reponses: list[dict], slug="prevention-arthrose"):
     cle = KeyManager(get_settings().master_encryption_key).encrypt_private_key("sk-test-12345678")
     provider = AgentProvider(
         creator_id=test_user.id,
@@ -114,10 +115,12 @@ async def _derouler(db_session, test_user, reponses: list[dict]):
         return False
 
     registre = {
-        "create_card": _outil("create_card", {"slug": "prevention-arthrose"}),
+        "create_card": _outil("create_card", {"slug": slug}),
         "list_my_cards": _outil("list_my_cards", {"cards": []}),
-        "get_my_card": _outil("get_my_card", {"slug": "prevention-arthrose"}),
+        "get_my_card": _outil("get_my_card", {"slug": slug}),
+        "definir_plan": _outil("definir_plan", {"slug": slug, "sous_questions": []}),
         "add_source": _outil("add_source", {"id": "s1"}),
+        "propose_passages": _outil("propose_passages", {"passages": []}),
     }
     ajouts: list[dict] = []
     heures: list[datetime] = []
@@ -136,10 +139,15 @@ async def _derouler(db_session, test_user, reponses: list[dict]):
     return events, ajouts, heures, corps
 
 
+def _etapes(events: list[dict]) -> list[str]:
+    return [e["payload"]["etape"] for e in events if e["type"] == "etape_guidee"]
+
+
 @pytest.mark.asyncio
 async def test_les_etapes_se_deroulent_dans_l_ordre(db_session, test_user):
     reponses = [
         _appel("create_card", {"card_kind": "sujet", "slug": "prevention-arthrose"}),
+        _texte("Fiche prevention-arthrose, plan posé."),
         _texte("https://a.test : référence"),
         _texte("Source ajoutée : s1, deux extraits."),
         _texte("Position appuie posée."),
@@ -147,8 +155,7 @@ async def test_les_etapes_se_deroulent_dans_l_ordre(db_session, test_user):
     ]
     events, ajouts, heures, corps = await _derouler(db_session, test_user, reponses)
 
-    etapes = [e["payload"]["etape"] for e in events if e["type"] == "etape_guidee"]
-    assert etapes == [e.id for e in ETAPES]
+    assert _etapes(events) == [e.id for e in ETAPES]
     assert [e["type"] for e in events].count("done") == 1
     assert events[-1]["type"] == "done"
     # Chaque etape ne voit que ses outils.
@@ -169,11 +176,89 @@ async def test_les_etapes_se_deroulent_dans_l_ordre(db_session, test_user):
 
 
 @pytest.mark.asyncio
-async def test_sans_fiche_le_deroule_s_arrete_apres_la_recherche(db_session, test_user):
-    events, ajouts, _heures, _corps = await _derouler(
+async def test_sans_fiche_le_deroule_s_arrete_apres_le_plan(db_session, test_user):
+    events, _ajouts, _heures, _corps = await _derouler(
         db_session, test_user, [_texte("Je n'ai rien trouvé.")]
     )
-    etapes = [e["payload"]["etape"] for e in events if e["type"] == "etape_guidee"]
-    assert etapes == ["recherche"]
+    assert _etapes(events) == ["plan"]
     assert events[-1]["type"] == "error"
     assert "done" not in [e["type"] for e in events]
+
+
+TRANSPORT = "La taxe carbone réduit-elle les émissions du transport ?"
+INDUSTRIE = "Quel effet la taxe a-t-elle eu sur l'industrie lourde ?"
+
+
+def _etat(*couvertes: str) -> Couverture:
+    return Couverture(
+        slug="taxe-carbone",
+        sous_questions=[
+            SousQuestion(q, int(q in couvertes), int(q in couvertes))
+            for q in (TRANSPORT, INDUSTRIE)
+        ],
+        sources_sans_extrait=0,
+        extraits=len(couvertes),
+    )
+
+
+def _couvertures(monkeypatch, *etats: Couverture) -> None:
+    """Rend les etats dans l'ordre des lectures, puis garde le dernier."""
+    file = list(etats)
+
+    async def calculer(db, creator_id, slug):
+        return file.pop(0) if len(file) > 1 else file[0]
+
+    monkeypatch.setattr(deroule_guide.couverture, "calculer", calculer)
+
+
+def test_une_passe_est_relancee_tant_qu_elle_couvre_du_neuf():
+    assert relancer_une_passe(_etat(), _etat(TRANSPORT))
+    assert not relancer_une_passe(_etat(TRANSPORT), _etat(TRANSPORT))
+    assert not relancer_une_passe(_etat(), _etat(TRANSPORT, INDUSTRIE))
+    assert not relancer_une_passe(None, _etat())
+
+
+@pytest.mark.asyncio
+async def test_le_deroule_relance_une_passe_sur_les_sous_questions_vides(
+    db_session, test_user, monkeypatch
+):
+    # Lectures : recherche, avant la passe 1, apres la passe 1, apres la passe 2.
+    _couvertures(monkeypatch, _etat(), _etat(), _etat(TRANSPORT), _etat(TRANSPORT))
+    reponses = [
+        _appel("create_card", {"card_kind": "sujet", "slug": "taxe-carbone"}),
+        _texte("Fiche taxe-carbone, plan posé."),
+        _texte("https://a.test : transport"),
+        _texte("Source ajoutée sur le transport."),
+        _texte("Rien trouvé sur l'industrie."),
+        _texte("Positions posées."),
+        _texte("Bilan."),
+    ]
+    events, _ajouts, _heures, corps = await _derouler(
+        db_session, test_user, reponses, slug="taxe-carbone"
+    )
+
+    assert _etapes(events).count("exploration") == 2
+    assert events[-1]["type"] == "done"
+    consignes = [next(m for m in c["messages"] if m["role"] == "user")["content"] for c in corps]
+    relance = next(c for c in consignes if "passe 2" in c)
+    assert INDUSTRIE in relance.split("encore sans extrait")[1]
+
+
+@pytest.mark.asyncio
+async def test_le_deroule_s_arrete_quand_une_passe_n_ajoute_rien(
+    db_session, test_user, monkeypatch
+):
+    _couvertures(monkeypatch, _etat(), _etat(), _etat())
+    reponses = [
+        _appel("create_card", {"card_kind": "sujet", "slug": "taxe-carbone"}),
+        _texte("Fiche taxe-carbone, plan posé."),
+        _texte("https://a.test : transport"),
+        _texte("Aucune source ne portait de passage."),
+        _texte("Aucune position."),
+        _texte("Bilan : rien n'a pu être cité."),
+    ]
+    events, _ajouts, _heures, _corps = await _derouler(
+        db_session, test_user, reponses, slug="taxe-carbone"
+    )
+    assert _etapes(events).count("exploration") == 1
+    assert events[-1]["type"] == "done"

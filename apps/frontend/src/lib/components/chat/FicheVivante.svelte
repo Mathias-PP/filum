@@ -2,7 +2,9 @@
   import { tick } from 'svelte';
   import { page } from '$app/stores';
   import { api } from '$lib/api';
+  import { agentApi, type CouvertureFiche } from '$lib/api/agent';
   import type { Card, CardDetail, Source } from '$lib/api/types';
+  import { libelleExtraits, resumeCouverture } from '$lib/agent/couverture';
   import { comparerFiches, type Cible } from '$lib/agent/suiviFiche';
   import { CLASSES_VERDICT, lireVerdict } from '$lib/utils/excerpt-verdict';
   import { stanceStyle } from '$lib/utils/stance';
@@ -21,6 +23,9 @@
 
   let fiche = $state<Card | null>(null);
   let sources = $state<Source[]>([]);
+  // Plan de la fiche et extraits par sous-question, quand l'agent en a posé un.
+  let couverture = $state<CouvertureFiche | null>(null);
+  const resume = $derived(resumeCouverture(couverture));
   let etat = $state<'vide' | 'chargement' | 'pret' | 'introuvable' | 'erreur'>('vide');
   // Ce que la dernière action a modifié : éclairé un instant.
   let sourcesRecentes = $state<Set<string>>(new Set());
@@ -105,8 +110,14 @@
         etat = 'introuvable';
         return;
       }
-      const [lue, liste] = await Promise.all([api.cards.get(id), api.sources.list(id)]);
+      // La couverture est un plus : sans plan ou en erreur, la fiche s'affiche quand même.
+      const [lue, liste, couv] = await Promise.all([
+        api.cards.get(id),
+        api.sources.list(id),
+        agentApi.fiche.couverture(s).catch(() => null),
+      ]);
       if (moi !== jeton) return;
+      couverture = couv;
       // Pas d'éclairage ni de défilement au premier affichage ni au changement
       // de fiche : seulement ce qu'une action vient de modifier.
       const ecart = comparerFiches(fiche?.id === lue.id ? sources : null, liste);
@@ -362,6 +373,36 @@
           ? 's'
           : ''} sur {nbExtraits} · {nbRetractees} rétractée{nbRetractees > 1 ? 's' : ''}
       </p>
+
+      {#if couverture && resume}
+        <!-- Le plan posé par l'agent : ce que la fiche doit traiter, et ce qui
+             reste sans extrait. Un compte par sous-question, pas un score. -->
+        <section class="mt-3 rounded-lg border border-border p-2" aria-label="Plan de la fiche">
+          <p class="text-xs font-medium text-ink-secondary">{resume}</p>
+          <ul class="mt-1.5 space-y-1">
+            {#each couverture.sous_questions as sousQuestion (sousQuestion.texte)}
+              <li class="flex items-start gap-2 text-xs">
+                <span
+                  class="mt-1 h-2 w-2 shrink-0 rounded-full"
+                  class:bg-success={sousQuestion.extraits > 0}
+                  class:border={sousQuestion.extraits === 0}
+                  class:border-ink-tertiary={sousQuestion.extraits === 0}
+                  aria-hidden="true"
+                ></span>
+                <span class="min-w-0 flex-1 text-ink-primary [overflow-wrap:anywhere]"
+                  >{sousQuestion.texte}</span
+                >
+                <span
+                  class="shrink-0"
+                  class:text-ink-secondary={sousQuestion.extraits > 0}
+                  class:text-ink-tertiary={sousQuestion.extraits === 0}
+                  >{libelleExtraits(sousQuestion.extraits)}</span
+                >
+              </li>
+            {/each}
+          </ul>
+        </section>
+      {/if}
 
       {#if sources.length === 0}
         <p class="mt-4 text-sm text-ink-tertiary">Pas encore de source.</p>

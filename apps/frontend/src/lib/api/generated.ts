@@ -119,6 +119,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/v1/agent/fiche/{slug}/couverture': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Couverture Fiche
+     * @description Pour chaque sous-question du plan de la fiche, les extraits qui l'éclairent.
+     */
+    get: operations['couverture_fiche_api_v1_agent_fiche__slug__couverture_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/v1/agent/fiche': {
     parameters: {
       query?: never;
@@ -3956,6 +3976,39 @@ export interface operations {
     };
   };
   etat_fiche_api_v1_agent_fiche__slug__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        slug: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': {
+            [key: string]: unknown;
+          };
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  couverture_fiche_api_v1_agent_fiche__slug__couverture_get: {
     parameters: {
       query?: never;
       header?: never;

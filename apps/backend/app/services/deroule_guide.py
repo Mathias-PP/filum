@@ -6,15 +6,18 @@ verbatims et ne cherchait jamais ce qui nuance. Les outils de deroule
 (`fiche_etapes`, `fiche_state`) n'ont pas ete appeles une seule fois : un petit
 modele ne decouvre pas seul un deroule decrit dans un fichier.
 
-Ici le serveur tient l'ordre. Une question devient une fiche sujet en quatre
-etapes, et chaque etape est une boucle d'agent qui ne voit que ses outils :
+Ici le serveur tient l'ordre. Une question devient une fiche sujet par etapes,
+et chaque etape est une boucle d'agent qui ne voit que ses outils :
 
-1. recherche : la fiche existante ou creee, et des sources dont une qui nuance ;
-2. exploration : `propose_passages` sur chaque adresse, puis `add_source` avec
-   ses extraits, seulement si la page en porte. Poser les sources a une etape
-   et chercher leurs extraits a la suivante laissait des sources vides ;
-3. positions : `update_source`, qui exige deja un extrait ;
-4. bilan : la reponse au createur, tiree des seuls extraits poses.
+1. plan : la fiche existante ou creee, et ses sous-questions (`definir_plan`) ;
+2. recherche : des adresses pour chaque sous-question, dont une qui nuance ;
+3. exploration : `propose_passages` sur chaque adresse, puis `add_source` avec
+   ses extraits, seulement si la page en porte. Elle tourne par passes : tant
+   qu'une passe couvre une sous-question jusque-la vide et qu'il en reste, la
+   suivante cible celles qui restent. Aucun nombre de passes fixe d'avance :
+   une passe qui ne couvre rien de neuf arrete l'exploration ;
+4. positions : `update_source`, qui exige deja un extrait ;
+5. bilan : la reponse au createur, tiree des seuls extraits poses.
 
 Le compte rendu de chaque etape sert de contexte a la suivante. Le deroule
 tourne dans le tour detache du chat : reprise apres une coupure, fiche en
@@ -23,6 +26,7 @@ direct et bouton « Arrêter » restent ceux de la conversation.
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -36,8 +40,12 @@ from app.agent_tools.registry import construire_registre, filtrer
 from app.agent_tools.tool import AgentTool
 from app.models.agent_provider import AgentProvider
 from app.models.user import User
+from app.services import couverture
 from app.services.agent import Approuver, Emitter, boucle
 from app.services.agent_definitions import AgentDefinition
+from app.services.couverture import Couverture
+
+logger = logging.getLogger(__name__)
 
 #: Une demande explicite de fiche, avec ou sans l'orthographe exacte.
 _DEMANDE_DE_FICHE = re.compile(
@@ -99,30 +107,52 @@ _CONSIGNE_COMMUNE = (
 
 ETAPES: tuple[Etape, ...] = (
     Etape(
-        id="recherche",
-        titre="Recherche",
-        outils=("list_my_cards", "get_my_card", "create_card", "web_search", "search_cards"),
+        id="plan",
+        titre="Plan",
+        outils=("list_my_cards", "get_my_card", "create_card", "definir_plan"),
         consigne=(
             "1. Appelle list_my_cards. Si une fiche porte déjà ce sujet, appelle "
             "get_my_card avec son slug et ne crée rien.\n"
             "2. Sinon, crée une fiche sujet avec create_card(card_kind='sujet'). Le "
             "titre reprend la question.\n"
-            "3. Fais plusieurs recherches avec web_search : au moins une pour les "
-            "sources de référence, et au moins une pour ce qui nuance, contredit ou "
-            "limite la réponse. Sans outil web_search, dis-le et arrête-toi.\n"
-            "4. Termine par les sources retenues, une par ligne : l'adresse, puis ce "
-            "qu'elle apporte en quelques mots. Écris « nuance » devant celles qui "
+            "3. Appelle definir_plan(slug, sous_questions) : décompose la question en "
+            "sous-questions, une par aspect distinct qu'une réponse complète doit "
+            "traiter (par exemple causes, mécanismes, effets mesurés, limites, "
+            "contexte historique ou juridique, controverses). Autant de sous-questions "
+            "que la question en appelle, chacune assez précise pour qu'une source "
+            "puisse l'éclairer.\n"
+            "4. Termine par le slug de la fiche, puis les sous-questions, une par ligne."
+        ),
+    ),
+    Etape(
+        id="recherche",
+        titre="Recherche",
+        outils=("web_search", "search_cards", "get_my_card"),
+        consigne=(
+            "1. Pour chaque sous-question du plan, fais au moins une recherche avec "
+            "web_search. Fais aussi au moins une recherche pour ce qui nuance, "
+            "contredit ou limite la réponse. Sans outil web_search, dis-le et "
+            "arrête-toi.\n"
+            "2. Termine par les adresses retenues, une par ligne : l'adresse, puis la "
+            "sous-question qu'elle éclaire. Écris « nuance » devant celles qui "
             "nuancent. Aucune adresse qu'une recherche n'a pas rendue."
         ),
     ),
     Etape(
         id="exploration",
         titre="Exploration",
-        outils=("propose_passages", "add_source", "list_sources", "find_passage", "add_excerpt"),
+        outils=(
+            "propose_passages",
+            "add_source",
+            "list_sources",
+            "find_passage",
+            "add_excerpt",
+            "web_search",
+        ),
         consigne=(
-            "Pour chaque adresse retenue à l'étape de recherche :\n"
-            "1. Appelle propose_passages(url, questions) avec la question du créateur "
-            "et les aspects de la question que cette source peut éclairer.\n"
+            "Pour chaque adresse retenue :\n"
+            "1. Appelle propose_passages(url, questions) avec les sous-questions que "
+            "cette source peut éclairer.\n"
             "2. Retiens tous les passages qui répondent vraiment, et ceux qui nuancent.\n"
             "3. S'il en reste au moins un, appelle add_source(card_slug, url, "
             "metadata_from='page', excerpts=[{\"text\": passage recopié tel quel, "
@@ -154,9 +184,9 @@ ETAPES: tuple[Etape, ...] = (
         consigne=(
             "Lis la fiche avec get_my_card, puis réponds au créateur en t'appuyant "
             "uniquement sur les extraits posés :\n"
-            "1. la réponse à la question, source par source ;\n"
+            "1. la réponse à la question, sous-question par sous-question ;\n"
             "2. ce qui la nuance ;\n"
-            "3. ce qui n'a pas été trouvé ou pas pu être cité ;\n"
+            "3. les sous-questions restées sans extrait, et ce qui n'a pas pu être cité ;\n"
             "4. les limites.\n"
             "N'ajoute rien qui ne soit dans un extrait. Pas de plan, pas d'annonce de "
             "ce que tu vas faire."
@@ -165,18 +195,75 @@ ETAPES: tuple[Etape, ...] = (
 )
 
 #: Outils dont les arguments nomment la fiche travaillee.
-_OUTILS_QUI_NOMMENT_LA_FICHE = {"get_my_card": "slug", "add_source": "card_slug"}
+_OUTILS_QUI_NOMMENT_LA_FICHE = {
+    "get_my_card": "slug",
+    "add_source": "card_slug",
+    "definir_plan": "slug",
+}
 
 
-def _consigne(etape: Etape, rang: int, question: str, slug: str | None, contexte: str) -> str:
+def relancer_une_passe(avant: Couverture | None, apres: Couverture | None) -> bool:
+    """Une nouvelle passe d'exploration vaut-elle d'etre lancee ?
+
+    Oui tant qu'il reste des sous-questions vides et que la derniere passe en a
+    couvert au moins une qui l'etait. Chaque passe relancee couvre donc une
+    sous-question de plus : l'exploration finit, sans nombre de passes fixe.
+    Sans plan, une seule passe.
+    """
+    if avant is None or apres is None:
+        return False
+    vides_avant = set(avant.vides())
+    vides_apres = set(apres.vides())
+    return bool(vides_apres) and bool(vides_avant - vides_apres)
+
+
+def _bloc_couverture(etat: Couverture | None, *, relance: bool = False) -> str:
+    if etat is None or not etat.sous_questions:
+        return ""
+    lignes = [
+        f"- {q.texte} : {q.extraits} extrait{'s' if q.extraits > 1 else ''}"
+        for q in etat.sous_questions
+    ]
+    bloc = "Plan de la fiche, et extraits déjà posés par sous-question :\n" + "\n".join(lignes)
+    if relance:
+        bloc += (
+            "\n\nCette passe cible les sous-questions encore sans extrait : "
+            + " ; ".join(etat.vides())
+            + ". Cherche avec web_search des adresses qui les éclairent, puis explore-les "
+            "comme ci-dessous. Les sources déjà ajoutées n'ont pas à être reprises."
+        )
+    return bloc
+
+
+async def _couverture(db: AsyncSession, user: User, slug: str | None) -> Couverture | None:
+    if not slug:
+        return None
+    try:
+        return await couverture.calculer(db, user.id, slug)
+    except Exception:  # noqa: BLE001  # la couverture guide, elle ne bloque jamais le deroule
+        logger.warning("Couverture illisible pour %s", slug, exc_info=True)
+        return None
+
+
+def _consigne(
+    etape: Etape,
+    rang: int,
+    titre: str,
+    question: str,
+    slug: str | None,
+    contexte: str,
+    supplement: str,
+) -> str:
     morceaux = [
-        f"Étape {rang} sur {len(ETAPES)} : {etape.titre}.",
+        f"Étape {rang} sur {len(ETAPES)} : {titre}.",
         f"Question du créateur : {question}",
     ]
     if slug:
         morceaux.append(f"Fiche travaillée : {slug}")
     if contexte:
         morceaux.append(f"Ce que les étapes précédentes ont produit :\n{contexte}")
+    if supplement:
+        morceaux.append(supplement)
     morceaux.append(etape.consigne)
     return "\n\n".join(morceaux)
 
@@ -219,18 +306,19 @@ async def derouler(
     etat: dict[str, Any] = {"slug": None, "decalage": 0}
     usage_total = {"prompt_tokens": 0, "completion_tokens": 0}
 
-    for rang, etape in enumerate(ETAPES, start=1):
-        await emit(
-            {
-                "type": "etape_guidee",
-                "payload": {
-                    "etape": etape.id,
-                    "titre": etape.titre,
-                    "rang": rang,
-                    "total": len(ETAPES),
-                },
-            }
-        )
+    async def executer(
+        etape: Etape, rang: int, titre: str, supplement: str, passe: int | None
+    ) -> bool:
+        """Une boucle d'agent pour une etape. Faux quand le deroule doit s'arreter."""
+        charge_etape: dict[str, Any] = {
+            "etape": etape.id,
+            "titre": titre,
+            "rang": rang,
+            "total": len(ETAPES),
+        }
+        if passe is not None:
+            charge_etape["passe"] = passe
+        await emit({"type": "etape_guidee", "payload": charge_etape})
         textes: dict[int, list[str]] = {}
         echec: list[str] = []
 
@@ -270,7 +358,13 @@ async def derouler(
             {
                 "role": "user",
                 "content": _consigne(
-                    etape, rang, question, etat["slug"], "\n\n".join(comptes_rendus)
+                    etape,
+                    rang,
+                    titre,
+                    question,
+                    etat["slug"],
+                    "\n\n".join(comptes_rendus),
+                    supplement,
                 ),
             }
         ]
@@ -297,21 +391,44 @@ async def derouler(
             heures.extend([datetime.now(UTC).replace(tzinfo=None)] * len(nouveaux))
 
         if echec:
-            return
+            return False
         if textes:
             etat["decalage"] = max(textes)
         compte_rendu = "".join(textes[max(textes)]).strip() if textes else ""
         if rang < len(ETAPES) and compte_rendu:
             ajouts.append({"role": "assistant", "content": compte_rendu})
             heures.append(datetime.now(UTC).replace(tzinfo=None))
-            comptes_rendus.append(f"## {etape.titre}\n{compte_rendu}")
-        if etape.id == "recherche" and not etat["slug"]:
+            comptes_rendus.append(f"## {titre}\n{compte_rendu}")
+        return True
+
+    async def explorer(etape: Etape, rang: int) -> bool:
+        avant = await _couverture(db, user, etat["slug"])
+        passe = 1
+        while True:
+            titre = etape.titre if passe == 1 else f"{etape.titre}, passe {passe}"
+            supplement = _bloc_couverture(avant, relance=passe > 1)
+            if not await executer(etape, rang, titre, supplement, passe):
+                return False
+            apres = await _couverture(db, user, etat["slug"])
+            if not relancer_une_passe(avant, apres):
+                return True
+            avant, passe = apres, passe + 1
+
+    for rang, etape in enumerate(ETAPES, start=1):
+        if etape.id == "exploration":
+            if not await explorer(etape, rang):
+                return
+        else:
+            supplement = _bloc_couverture(await _couverture(db, user, etat["slug"]))
+            if not await executer(etape, rang, etape.titre, supplement, None):
+                return
+        if etape.id == "plan" and not etat["slug"]:
             await emit(
                 {
                     "type": "error",
                     "payload": {
                         "message": (
-                            "Aucune fiche n'a été créée ni retenue à l'étape de recherche : "
+                            "Aucune fiche n'a été créée ni retenue à l'étape du plan : "
                             "le déroulé guidé s'arrête là. Reformulez la question, ou "
                             "demandez la fiche explicitement."
                         )

@@ -29,7 +29,7 @@ from app.core.rate_limit import limiter
 from app.db.database import get_db
 from app.models.user import User
 from app.schemas.agent_chat import AgentFicheRequest
-from app.services import agent_fiche, agent_sessions
+from app.services import agent_fiche, agent_sessions, couverture
 from app.services.agent_providers import resoudre_defaut
 
 settings = get_settings()
@@ -49,6 +49,19 @@ async def etat_fiche(
 ) -> dict[str, Any]:
     """Où en est le run : quels étages ont déposé leur compte rendu."""
     return await agent_fiche.etat(db, current_user.id, slug)
+
+
+@router.get("/{slug}/couverture")
+async def couverture_fiche(
+    slug: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, Any]:
+    """Pour chaque sous-question du plan de la fiche, les extraits qui l'éclairent."""
+    resultat = await couverture.calculer(db, current_user.id, slug)
+    if resultat is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Fiche introuvable.")
+    return resultat.en_dict()
 
 
 @router.post("")

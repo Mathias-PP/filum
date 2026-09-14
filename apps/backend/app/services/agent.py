@@ -36,6 +36,7 @@ import httpx
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agent_tools.couverture import OUTILS_COUVERTURE
 from app.agent_tools.objectif import OUTILS_OBJECTIF
 from app.agent_tools.philum import OUTILS_QUI_ECRIVENT, est_sensible
 from app.agent_tools.registry import construire_registre, executer, filtrer, registre_api
@@ -1255,7 +1256,9 @@ class MemoireAppels:
 #: annonces non tenues et ne doit compter que les écritures éditoriales. Les deux
 #: ensembles répondent à deux questions différentes, les confondre casserait
 #: silencieusement l'un des deux.
-OUTILS_NON_PARALLELISABLES: frozenset[str] = OUTILS_QUI_ECRIVENT | OUTILS_OBJECTIF
+OUTILS_NON_PARALLELISABLES: frozenset[str] = (
+    OUTILS_QUI_ECRIVENT | OUTILS_OBJECTIF | OUTILS_COUVERTURE
+)
 
 
 def _lot_parallelisable(appels: list[_Appel]) -> bool:
