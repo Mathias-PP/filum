@@ -9104,6 +9104,22 @@
             "maxItems": 2,
             "title": "Sources",
             "description": "Familles de corpus à interroger. Vide : toutes."
+          },
+          "priorite": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "serieuses",
+                  "egale"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priorite",
+            "description": "`serieuses` : la littérature scientifique et les références sérieuses d'abord. `egale` : toutes les sources à égalité. Null : les sérieuses d'abord, et l'agent demande quand la question ne dit pas clairement quelles sources conviennent."
           }
         },
         "additionalProperties": false,

@@ -20,7 +20,7 @@ from app.models.agent_provider import AgentProvider
 from app.services import citations_bilan, deroule_guide, relecture
 from app.services.couverture import Couverture, SousQuestion
 from app.services.deroule_guide import ETAPES, converser_ou_derouler, relancer_une_passe
-from app.services.options_recherche import Options
+from app.services.options_recherche import CHOIX_SOURCES, OPTIONS_RECHERCHE, Options
 from app.services.relecture import Manque
 
 
@@ -688,3 +688,60 @@ async def test_la_reprise_explore_les_questions_encore_sans_extrait(
     titres = [e["payload"]["titre"] for e in events if e["type"] == "etape_guidee"]
     assert titres[0] == f"Exploration : {INDUSTRIE}"
     assert _etapes(events) == ["exploration", "positions", "bilan"]
+
+
+@pytest.mark.asyncio
+async def test_une_question_peu_pointue_demande_les_sources_et_la_reponse_regle_la_recherche(
+    db_session, test_user
+):
+    reponses = [
+        _appel("demander_sources", {}),
+        _texte("Sources demandées."),
+        _texte("Je n'ai rien trouvé."),
+    ]
+    egalite = list(CHOIX_SOURCES)[1]
+
+    async def attendre(request_id):
+        return {"choix": egalite}
+
+    jeton = OPTIONS_RECHERCHE.set(None)
+    try:
+        events, _ajouts, _heures, corps = await _derouler(
+            db_session, test_user, reponses, attendre=attendre
+        )
+        # Lues par `rechercher` pour le reste du tour.
+        assert OPTIONS_RECHERCHE.get() == Options(serieuses_d_abord=False, sources_choisies=True)
+    finally:
+        OPTIONS_RECHERCHE.reset(jeton)
+    assert "demander_sources" in {t["function"]["name"] for t in corps[0]["tools"]}
+    question = next(e for e in events if e["type"] == "question_guidee")["payload"]
+    assert question["options"] == list(CHOIX_SOURCES)
+    assert f"Sources choisies par le créateur\n{egalite}" in _consignes(corps)[2]
+
+
+@pytest.mark.asyncio
+async def test_sans_reponse_les_references_serieuses_restent_d_abord(db_session, test_user):
+    reponses = [_appel("demander_sources", {}), _texte("Demandé."), _texte("Rien.")]
+
+    async def attendre(request_id):
+        return None
+
+    jeton = OPTIONS_RECHERCHE.set(None)
+    try:
+        _events, _ajouts, _heures, corps = await _derouler(
+            db_session, test_user, reponses, attendre=attendre
+        )
+        assert OPTIONS_RECHERCHE.get() is None
+    finally:
+        OPTIONS_RECHERCHE.reset(jeton)
+    assert "références sérieuses passent d'abord" in _consignes(corps)[2]
+
+
+@pytest.mark.asyncio
+async def test_des_sources_deja_choisies_ne_sont_pas_redemandees(db_session, test_user):
+    reponses = [_texte("Claire."), _texte("Je n'ai rien trouvé.")]
+    _events, _ajouts, _heures, corps = await _derouler(
+        db_session, test_user, reponses, options=Options(sources_choisies=True)
+    )
+    assert {t["function"]["name"] for t in corps[0]["tools"]} == {"demander_precision"}
+    assert "demander_sources" not in _consignes(corps)[0]

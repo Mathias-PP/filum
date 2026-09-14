@@ -61,7 +61,7 @@ from app.services.agent_discovery import (
     verifier_quota,
 )
 from app.services.agent_providers import obtenir_pour_chat, ordonner_pour_chat, resoudre_defaut
-from app.services.options_recherche import OPTIONS_RECHERCHE, Options
+from app.services.options_recherche import OPTIONS_RECHERCHE, Options, options_demandees
 
 #: Message remplace a l'utilisateur quand la lane gratuite echoue : l'erreur
 #: technique brute (« Le fournisseur (zai) refuse... ») ne dit rien d'actionnable.
@@ -274,7 +274,7 @@ async def chat_agent(
     # elle appelle une fiche (`converser_ou_derouler`), dans toutes les langues.
     guide = body.approfondir is not None
     options = (
-        Options(mode=body.recherche.mode, sources=frozenset(body.recherche.sources))
+        options_demandees(body.recherche.mode, body.recherche.sources, body.recherche.priorite)
         if body.recherche
         else Options()
     )

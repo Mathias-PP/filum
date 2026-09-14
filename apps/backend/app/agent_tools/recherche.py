@@ -150,6 +150,7 @@ async def _execute_rechercher(ctx: ToolContext, args: dict[str, Any]) -> dict[st
         corpus=filtrer_corpus(corpus_configures(), options),
         # Mode rapide : même méthode, sans les tours de suivi des citations.
         expansion=not options.rapide,
+        serieuses_d_abord=options.serieuses_d_abord,
     )
     garder(recherche)
     return _page(recherche, 1)
@@ -183,7 +184,9 @@ def recherche_tools() -> list[AgentTool]:
                 "passages exacts, classés par pertinence. Le serveur interroge tous les corpus "
                 "(web, OpenAlex, Europe PMC, Semantic Scholar), lit les pages, suit les "
                 "citations et les liens des sources pertinentes et s'arrête quand plus rien de "
-                "nouveau n'arrive. Chaque passage rendu est une tranche exacte de la page : "
+                "nouveau n'arrive. Sauf choix contraire du créateur, les références sérieuses "
+                "(articles, institutions publiques, universités) sont lues et rendues d'abord, "
+                "leur nature dans reference. Chaque passage rendu est une tranche exacte de la page : "
                 "recopie tels quels ceux qui répondent vraiment dans add_source(url, "
                 "excerpts=[...]), ou add_excerpt(source_id, text) quand la source est déjà sur "
                 "la fiche."

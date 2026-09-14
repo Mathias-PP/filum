@@ -63,7 +63,13 @@ from app.services import agent_approvals, citations_bilan, couverture, relecture
 from app.services.agent import BOUCLE_TIMEOUT, Approuver, Emitter, boucle
 from app.services.agent_definitions import AgentDefinition
 from app.services.couverture import Couverture
-from app.services.options_recherche import Options
+from app.services.options_recherche import (
+    CHOIX_SOURCES,
+    OPTIONS_RECHERCHE,
+    QUESTION_SOURCES,
+    Options,
+    options_choisies,
+)
 from app.services.relecture import Manque
 
 logger = logging.getLogger(__name__)
@@ -96,19 +102,38 @@ _CONSIGNE_COMMUNE = (
     "compte rendu qu'elle demande. N'invente ni adresse, ni fait, ni verbatim."
 )
 
+_CADRAGE_ANGLES = (
+    "Lis la question du créateur. Si elle admet des angles très différents qui mèneraient "
+    "à des fiches différentes (public visé, période, lieu, sens d'un terme, portée), appelle "
+    "demander_precision(question, options) avec ces angles, chacun en une phrase courte."
+)
+
+#: Le cadrage quand le createur a deja choisi ses sources : rien a lui redemander.
+_CADRAGE_SOURCES_CHOISIES = Etape(
+    id="cadrage",
+    titre="Cadrage",
+    outils=("demander_precision",),
+    consigne=(
+        f"1. {_CADRAGE_ANGLES}\n"
+        "2. Si la question est claire, n'appelle aucun outil.\n"
+        "3. Termine en une phrase : l'angle que la fiche prendra, ou la précision demandée."
+    ),
+)
+
 ETAPES: tuple[Etape, ...] = (
     Etape(
         id="cadrage",
         titre="Cadrage",
-        outils=("demander_precision",),
+        outils=("demander_precision", "demander_sources"),
         consigne=(
-            "1. Lis la question du créateur. Si elle admet des angles très différents qui "
-            "mèneraient à des fiches différentes (public visé, période, lieu, sens d'un "
-            "terme, portée), appelle demander_precision(question, options) avec ces angles, "
-            "chacun en une phrase courte.\n"
-            "2. Si la question est claire, n'appelle aucun outil.\n"
-            "3. Termine en une phrase : l'angle que la fiche prendra, ou la précision "
-            "demandée."
+            f"1. {_CADRAGE_ANGLES}\n"
+            "2. Par défaut, la recherche privilégie la littérature scientifique et les "
+            "références sérieuses (revues, institutions publiques, universités). Si la "
+            "question n'est pas clairement scientifique, technique ou pointue, ou si elle est "
+            "ambiguë ou incomplète, appelle demander_sources : le créateur choisira.\n"
+            "3. Si aucun de ces cas ne se présente, n'appelle aucun outil.\n"
+            "4. Termine en une phrase : l'angle que la fiche prendra, ou les précisions "
+            "demandées."
         ),
     ),
     Etape(
@@ -209,7 +234,7 @@ _OUTILS_QUI_NOMMENT_LA_FICHE = {
 }
 
 #: Outils d'interaction : le deroule lit leurs arguments et agit lui-meme.
-_OUTILS_D_INTERACTION = frozenset({"demander_precision", "proposer_suites"})
+_OUTILS_D_INTERACTION = frozenset({"demander_precision", "demander_sources", "proposer_suites"})
 
 #: Ce que l'etape doit faire de chaque manque, dit au modele.
 _CONSIGNE_PAR_MANQUE = {
@@ -579,20 +604,44 @@ async def derouler(
         return reponse
 
     async def cadrer() -> None:
+        nonlocal options
         precision = etat["interactions"].pop("demander_precision", None)
-        if not precision:
+        if precision:
+            reponse = await poser(
+                "precision",
+                {"question": precision.get("question"), "options": precision.get("options") or []},
+            )
+            choix = " ".join(str((reponse or {}).get("choix") or "").split())
+            comptes_rendus.append(
+                f"## Précision du créateur\n{choix}"
+                if choix
+                else "## Précision du créateur\nPas de réponse : prends l'angle le plus large, "
+                "et dis-le au bilan."
+            )
+        if etat["interactions"].pop("demander_sources", None) is None:
             return
+        # Les choix sont ceux du serveur : la reponse devient des options de
+        # recherche, lues par `rechercher` pour le reste du tour.
         reponse = await poser(
-            "precision",
-            {"question": precision.get("question"), "options": precision.get("options") or []},
+            "precision", {"question": QUESTION_SOURCES, "options": list(CHOIX_SOURCES)}
         )
         choix = " ".join(str((reponse or {}).get("choix") or "").split())
-        comptes_rendus.append(
-            f"## Précision du créateur\n{choix}"
-            if choix
-            else "## Précision du créateur\nPas de réponse : prends l'angle le plus large, "
-            "et dis-le au bilan."
-        )
+        choisies = options_choisies(options or Options(), choix)
+        if choisies is not None:
+            options = choisies
+            OPTIONS_RECHERCHE.set(choisies)
+            comptes_rendus.append(f"## Sources choisies par le créateur\n{choix}")
+        elif choix:
+            # Une reponse libre ne change pas les corpus : elle guide les formulations.
+            comptes_rendus.append(
+                f"## Sources demandées par le créateur\n{choix}\nOriente les formulations "
+                "des recherches vers ces sources."
+            )
+        else:
+            comptes_rendus.append(
+                "## Sources\nPas de réponse : la littérature scientifique et les références "
+                "sérieuses passent d'abord."
+            )
 
     async def valider_plan() -> None:
         slug = etat["slug"]
@@ -744,6 +793,8 @@ async def derouler(
             suite is not None or (options.rapide and etape.id == "cadrage")
         ):
             continue
+        if etape.id == "cadrage" and options.sources_choisies:
+            etape = _CADRAGE_SOURCES_CHOISIES
         if etape.id == "exploration":
             if not await explorer(etape, rang):
                 await proposer_reprise()

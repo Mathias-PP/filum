@@ -17,6 +17,7 @@ from app.services.recherche_approfondie import (
     REPONSE,
     SourceTrouvee,
     estimer_restantes,
+    nature_reconnue,
     pages,
     rechercher_sous_question,
 )
@@ -443,3 +444,66 @@ async def test_le_suivi_lit_d_abord_les_voisins_proches_de_la_sous_question(page
     assert recu["citants"] == SOUS_QUESTION and recu["references"] is None
     assert lues.index("https://doi.org/10.1/proche") < lues.index("https://doi.org/10.1/loin")
     assert "https://doi.org/10.1/proche" in [s.url_lue for s in recherche.sources]
+
+
+ARTICLE_UTILE = "https://www.nature.com/articles/b"
+ARTICLE_HORS_SUJET = "https://www.nature.com/articles/a"
+BLOG = ["https://blog.test/1", "https://blog.test/2", "https://blog.test/3"]
+
+
+def _pages_melangees(textes: dict[str, str]) -> list[str]:
+    textes[BLOG[0]] = TRANSPORT
+    textes[BLOG[1]] = HORS_SUJET
+    textes[ARTICLE_UTILE] = TRANSPORT
+    textes[ARTICLE_HORS_SUJET] = HORS_SUJET
+    textes[BLOG[2]] = TRANSPORT
+    return [BLOG[0], BLOG[1], ARTICLE_UTILE, ARTICLE_HORS_SUJET, BLOG[2]]
+
+
+@pytest.mark.asyncio
+async def test_les_references_serieuses_sont_lues_d_abord_sans_exclure_les_autres(pages_web):
+    textes, lues = pages_web
+    adresses = _pages_melangees(textes)
+
+    await rechercher_sous_question(
+        SOUS_QUESTION, ["taxe"], [CONTRADICTION], corpus=_corpus(adresses), lot=1, expansion=False
+    )
+
+    # Chaque groupe s'arrete a sa propre saturation : les articles, puis les autres pages.
+    assert lues == [ARTICLE_UTILE, ARTICLE_HORS_SUJET, BLOG[0], BLOG[1]]
+
+
+@pytest.mark.asyncio
+async def test_les_references_serieuses_sont_rendues_en_tete_sauf_toutes_a_egalite(pages_web):
+    textes, _lues = pages_web
+    corpus = _corpus(_pages_melangees(textes))
+
+    serieuses = await rechercher_sous_question(
+        SOUS_QUESTION, ["taxe"], [CONTRADICTION], corpus=corpus, expansion=False
+    )
+    egales = await rechercher_sous_question(
+        SOUS_QUESTION,
+        ["taxe"],
+        [CONTRADICTION],
+        corpus=corpus,
+        expansion=False,
+        serieuses_d_abord=False,
+    )
+
+    assert [s.url_lue for s in serieuses.sources] == [ARTICLE_UTILE, BLOG[0], BLOG[2]]
+    assert serieuses.sources[0].en_dict()["reference"] == "article scientifique"
+    assert "reference" not in serieuses.sources[1].en_dict()
+    assert [s.url_lue for s in egales.sources] == [BLOG[0], ARTICLE_UTILE, BLOG[2]]
+
+
+def test_la_nature_d_une_reference_se_lit_dans_les_faits():
+    def candidate(url: str, famille: str = "web") -> Candidate:
+        return Candidate(url=url, titre="t", famille=famille, sources=[famille])
+
+    assert nature_reconnue(candidate("https://openalex.org/W1", "litterature")) == (
+        "article scientifique"
+    )
+    assert nature_reconnue(candidate("https://arxiv.org/abs/2401.1")) == "preprint"
+    assert nature_reconnue(candidate("https://www.who.int/news/x")) == "institution publique"
+    assert nature_reconnue(candidate("https://cs.stanford.edu/x")) == "université ou école"
+    assert nature_reconnue(candidate("https://blog.vendeur.com/agents")) is None

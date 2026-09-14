@@ -172,6 +172,9 @@ const ACTIONS: Record<
     action: 'Demande une précision :',
     objet: (a) => texteArg(a, 'question'),
   },
+  demander_sources: {
+    action: 'Demande quelles sources privilégier',
+  },
   proposer_suites: {
     action: 'Propose des suites à la fiche',
   },

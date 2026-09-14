@@ -37,7 +37,9 @@
   let saisie = $state('');
   // Même méthode de recherche, budgets et corpus au choix du créateur.
   let modeRecherche = $state<'approfondi' | 'rapide'>('approfondi');
-  let sourcesRecherche = $state<'' | 'litterature' | 'web'>('');
+  // Vide : les références sérieuses d'abord, et l'agent demande si la question
+  // ne dit pas clairement quelles sources conviennent.
+  let sourcesRecherche = $state<'' | 'egale' | 'litterature' | 'web'>('');
   let enCours = $state(false);
   let chargement = $state(Boolean(sessionId));
   let controleur: AbortController | null = null;
@@ -781,7 +783,11 @@
         agent_slug: agentChoisi || undefined,
         recherche: {
           mode: modeRecherche,
-          sources: sourcesRecherche ? [sourcesRecherche] : [],
+          sources:
+            sourcesRecherche === 'litterature' || sourcesRecherche === 'web'
+              ? [sourcesRecherche]
+              : [],
+          priorite: sourcesRecherche === 'egale' ? 'egale' : null,
         },
         approfondir,
         signal: controleur.signal,
@@ -1502,11 +1508,13 @@
           <select
             bind:value={sourcesRecherche}
             aria-label="Sources interrogées"
+            title="Par défaut, les articles scientifiques et les sites d’institutions passent d’abord, et l’agent vous demande quand la question ne dit pas quelles sources conviennent."
             class="shrink-0 rounded-full border border-border bg-surface-primary px-2 py-1 text-xs text-ink-secondary"
           >
-            <option value="">Toutes les sources</option>
-            <option value="litterature">Littérature scientifique</option>
-            <option value="web">Web</option>
+            <option value="">Sources sérieuses d’abord</option>
+            <option value="egale">Toutes à égalité</option>
+            <option value="litterature">Littérature scientifique seulement</option>
+            <option value="web">Web seulement</option>
           </select>
           <span class="flex-1"></span>
           {#if enCours || reprise === 'encours'}

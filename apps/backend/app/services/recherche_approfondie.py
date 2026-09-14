@@ -22,6 +22,12 @@ modele, petit surtout, ne suit pas une methode decrite dans une consigne :
 6. **Arret par saturation** (Undermind) : la lecture s'arrete quand un lot
    n'apporte aucune source pertinente nouvelle, les tours de suivi quand un tour
    n'en apporte aucune. La courbe des decouvertes dit ce qui reste probablement.
+7. **References serieuses d'abord** (Focus « Academic » de Perplexity, choix
+   par defaut de Philum) : articles, preprints, institutions publiques et
+   universites sont lus avant les autres pages, chaque groupe jusqu'a sa propre
+   saturation, et rendus en tete. Prioriser n'exclut pas : les autres pages
+   restent lues dans le temps qui reste. La nature se lit dans les faits (DOI,
+   revue, corpus, domaine), par `core/nature_source.py`.
 
 Rien ici ne depend d'une langue ni d'une formulation : ce qui demande de
 comprendre la question (formulations, contradiction, jugement final) vient du
@@ -37,6 +43,7 @@ from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
 from uuid import uuid4
 
+from app.core.nature_source import nature_corrigee
 from app.extractors.recherche_litterature import Candidate
 from app.services.fusion_candidates import fusionner, identite
 
@@ -64,6 +71,39 @@ DELAI_FINITION = 45.0
 
 REPONSE = "reponse"
 NUANCE = "nuance"
+
+#: Ce qu'une reference serieuse est, dit au modele avec ses passages.
+_REFERENCES = {
+    "article-scientifique": "article scientifique",
+    "preprint": "preprint",
+    "institution-publique": "institution publique",
+    "ecole": "université ou école",
+}
+
+
+def nature_reconnue(candidate: Candidate) -> str | None:
+    """La nature d'une reference serieuse, ou None pour une autre page. Fonction pure.
+
+    Un corpus de litterature ne rend que des publications ; une page du web l'est
+    quand son DOI, sa revue ou son domaine le disent (`nature_corrigee`).
+    """
+    adresses: list[str | None] = [a for a in (candidate.url, candidate.acces_libre_url) if a]
+    for adresse in adresses or [None]:
+        nature = nature_corrigee(
+            url=adresse,
+            doi=candidate.doi,
+            journal=candidate.revue,
+            format=None,
+            category=None,
+            author_kind=None,
+        )
+        if nature.category in _REFERENCES:
+            return _REFERENCES[nature.category]
+        if nature.author_kind in _REFERENCES:
+            return _REFERENCES[nature.author_kind]
+    if candidate.famille != "web":
+        return _REFERENCES["article-scientifique"]
+    return None
 
 
 @dataclass(frozen=True)
@@ -95,6 +135,8 @@ class SourceTrouvee:
     texte_complet: bool
     source_id: str | None = None
     retractation: str | None = None
+    #: Nature de la reference serieuse (`nature_reconnue`), None pour une autre page.
+    reference: str | None = None
 
     @property
     def meilleur(self) -> float:
@@ -105,6 +147,7 @@ class SourceTrouvee:
         rendu: dict[str, object] = {
             "url": self.url_lue,
             "titre": c.titre,
+            "reference": self.reference,
             "doi": c.doi,
             "annee": c.annee,
             "type": c.type,
@@ -298,7 +341,9 @@ class _Etat:
         exclure: frozenset[str],
         lot: int,
         echeance: float,
+        serieuses_d_abord: bool = True,
     ) -> None:
+        self.serieuses_d_abord = serieuses_d_abord
         self.sous_question = sous_question
         self.contradictions = contradictions
         self.deja = deja
@@ -320,8 +365,33 @@ class _Etat:
         return retenues
 
     async def explorer(self, candidates: list[Candidate], tour: int) -> list[SourceTrouvee]:
-        """Lit les candidates par lots, jusqu'au premier lot lisible qui n'apporte rien."""
+        """Lit les candidates d'un tour, les references serieuses d'abord.
+
+        Chaque groupe est lu jusqu'a sa propre saturation : des articles qui ne
+        repondent plus n'arretent pas la lecture des autres pages, ils passent
+        seulement avant elles. Toutes a egalite : un seul groupe, dans l'ordre
+        de la fusion.
+        """
         trouvees: list[SourceTrouvee] = []
+        if self.serieuses_d_abord:
+            natures = {id(c): nature_reconnue(c) for c in candidates}
+            groupes = [
+                [c for c in candidates if natures[id(c)] is not None],
+                [c for c in candidates if natures[id(c)] is None],
+            ]
+        else:
+            groupes = [candidates]
+        for groupe in groupes:
+            if self.delai_atteint:
+                break
+            await self._lire_jusqu_a_saturation(groupe, tour, trouvees)
+        self.journal.pertinentes_par_tour.append(len(trouvees))
+        return trouvees
+
+    async def _lire_jusqu_a_saturation(
+        self, candidates: list[Candidate], tour: int, trouvees: list[SourceTrouvee]
+    ) -> None:
+        """Lit par lots, jusqu'au premier lot lisible qui n'apporte rien."""
         for debut in range(0, len(candidates), self.lot):
             restant = self.echeance - time.monotonic()
             if restant <= 0:
@@ -365,6 +435,7 @@ class _Etat:
                         tour=tour,
                         texte_complet=complet,
                         source_id=self.deja.get(cle),
+                        reference=nature_reconnue(candidate),
                     )
                     self.pertinentes[cle] = source
                     trouvees.append(source)
@@ -372,8 +443,6 @@ class _Etat:
                 self.journal.courbe.append(len(self.pertinentes))
             if self.delai_atteint or (lisibles and not nouvelles):
                 break
-        self.journal.pertinentes_par_tour.append(len(trouvees))
-        return trouvees
 
 
 async def _borner[T](coroutine: Awaitable[T], etat: _Etat) -> T | None:
@@ -514,12 +583,14 @@ async def rechercher_sous_question(
     expansion: bool = True,
     lot: int = LOT_LECTURE,
     delai: float = DELAI_RECHERCHE,
+    serieuses_d_abord: bool = True,
 ) -> Recherche:
     """La recherche complete d'une sous-question. Ne leve pas pour un corpus ou une page en panne.
 
     `deja` : identites (voir `fusion_candidates.identite`) des sources deja posees
     sur la fiche, vers leur identifiant. `exclure` : identites a ne jamais lire
     (le banc y met la revue dont les references servent de reference).
+    `serieuses_d_abord` : les references serieuses lues et rendues en tete.
     """
     debut = time.monotonic()
     corpus = corpus if corpus is not None else corpus_configures()
@@ -527,7 +598,15 @@ async def rechercher_sous_question(
         dict.fromkeys(q.strip() for q in [*requetes, *requetes_contradiction] if q.strip())
     )
     contradictions = [q.strip() for q in requetes_contradiction if q.strip()]
-    etat = _Etat(sous_question, contradictions, deja or {}, exclure, lot, debut + delai)
+    etat = _Etat(
+        sous_question,
+        contradictions,
+        deja or {},
+        exclure,
+        lot,
+        debut + delai,
+        serieuses_d_abord=serieuses_d_abord,
+    )
 
     taches = [(nom, formulation) for formulation in formulations for nom in corpus]
     etat.journal.requetes = len(taches)
@@ -596,7 +675,10 @@ async def rechercher_sous_question(
     )
     for source in trouvees_toutes:
         source.passages.sort(key=lambda p: -p.classement)
-    sources = sorted(trouvees_toutes, key=lambda s: (-s.meilleur, s.tour))
+    sources = sorted(
+        trouvees_toutes,
+        key=lambda s: (serieuses_d_abord and s.reference is None, -s.meilleur, s.tour),
+    )
     etat.journal.duree_s = round(time.monotonic() - debut, 1)
     return Recherche(
         id=uuid4().hex[:12],
