@@ -81,17 +81,52 @@ async def proposer(
         return rendus
 
     passages, cibles = vecteurs[: len(morceaux)], vecteurs[len(morceaux) :]
+    # Chaque passage n'est rendu qu'une fois, sous la question qu'il eclaire le
+    # mieux : le meme paragraphe propose pour trois questions devenait trois
+    # extraits identiques dans la fiche.
+    meilleurs: list[tuple[int, float]] = []
+    for vecteur in passages:
+        notes = [_similarite(vecteur, cible) for cible in cibles]
+        rang = max(range(len(notes)), key=notes.__getitem__)
+        meilleurs.append((rang, notes[rang]))
+
+    # Extraction exhaustive : une page qui repond a la majorite des questions
+    # porte une grande part de la fiche. Tous ses passages au-dessus du seuil
+    # sont rendus, pas seulement les premiers de chaque question.
+    repondues = {rang for rang, score in meilleurs if score >= SEUIL_SENS}
+    dense = len(questions) > 1 and len(repondues) * 2 > len(questions)
+    limite = len(morceaux) if dense else par_question
+
     rendus = []
-    for question, cible in zip(questions, cibles, strict=True):
-        notes = sorted(
-            ((_similarite(v, cible), m) for v, m in zip(passages, morceaux, strict=True)),
+    for rang, question in enumerate(questions):
+        retenus = sorted(
+            (
+                (score, morceau)
+                for (meilleur, score), morceau in zip(meilleurs, morceaux, strict=True)
+                if meilleur == rang and score >= SEUIL_SENS
+            ),
             key=lambda note: note[0],
             reverse=True,
-        )
-        for score, morceau in notes[:par_question]:
-            if score < SEUIL_SENS:
-                break
+        )[:limite]
+        for score, morceau in retenus:
             texte = _borner(page_text[morceau.start : morceau.end].strip())
             debut = page_text.find(texte, morceau.start)
             rendus.append(Candidat(question, texte, debut, round(score, 3), "sens"))
     return rendus
+
+
+#: Debut de la question de reserve ajoutee d'office a chaque exploration.
+PREFIXE_RESERVE = "Limites, réserves ou résultats contraires : "
+
+
+def questions_avec_reserve(questions: list[str]) -> list[str]:
+    """Les questions, plus une question de reserve sur la premiere.
+
+    Mesure du 2026-09-13 : laisse libre, l'agent ne cherchait jamais ce qui
+    nuance. Poser la question de reserve cote serveur rend la recherche de
+    nuance systematique, source par source, sans dependre du modele.
+    """
+    propres = [q.strip() for q in questions if q and q.strip()]
+    if not propres:
+        return []
+    return [*propres, f"{PREFIXE_RESERVE}{propres[0]}"]

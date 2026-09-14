@@ -967,10 +967,12 @@ async def propose_passages(
     est une tranche exacte de la page : retiens tous ceux qui repondent
     vraiment, ceux qui nuancent compris, et passe-les tels quels dans
     `add_source(..., excerpts=[...])`. `questions` : la question de la fiche,
-    et les aspects que cette source peut eclairer. Ne pose rien.
+    et les aspects que cette source peut eclairer. Une question de reserve
+    (limites, reserves, resultats contraires) est ajoutee d'office : ses
+    passages sont ceux qui nuancent. Ne pose rien.
     """
     from app.services import excerpt_insertion
-    from app.services.passages_candidats import proposer
+    from app.services.passages_candidats import proposer, questions_avec_reserve
 
     adresse = (url or "").strip()
     if not adresse:
@@ -985,7 +987,7 @@ async def propose_passages(
             "(depot en acces libre, version de l'editeur), sinon passe a la candidate "
             "suivante."
         )
-    candidats = await proposer(page_text, questions)
+    candidats = await proposer(page_text, questions_avec_reserve(questions))
     resultat: dict[str, Any] = {
         "url": adresse,
         "texte_complet": complet,

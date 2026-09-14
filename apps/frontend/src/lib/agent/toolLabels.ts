@@ -149,6 +149,10 @@ const ACTIONS: Record<
     action: 'Cherche le passage exact dans',
     objet: (_a, r) => titreDepuisResultat(r) ?? 'cette source',
   },
+  definir_plan: {
+    action: 'Pose le plan de la fiche',
+    objet: (a) => (typeof a.slug === 'string' ? a.slug : null),
+  },
   propose_passages: {
     action: 'Cherche les passages utiles dans',
     objet: (a) => (typeof a.url === 'string' ? a.url : 'une page'),

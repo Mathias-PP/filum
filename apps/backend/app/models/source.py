@@ -7,8 +7,9 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
+from app.core.champs_bibliographiques import auteurs_bibliographiques, titre_bibliographique
 from app.db.database import Base
 
 if TYPE_CHECKING:
@@ -235,6 +236,28 @@ class Source(Base):
         cascade="all, delete-orphan",
         order_by="SourceExcerpt.position",
     )
+
+    # La regle des titres et des auteurs, appliquee a chaque affectation : aucun
+    # chemin d'ecriture ORM ne peut plus inscrire un titre de page anti-bot, un
+    # segment d'adresse ou un profil en guise d'auteur (cf.
+    # core/champs_bibliographiques.py). Un `update(Source).values(title=...)`
+    # contournerait les validateurs : aucun n'ecrit ces deux champs aujourd'hui.
+    @validates("title")
+    def _valider_titre(self, _cle: str, valeur: str | None) -> str | None:
+        return titre_bibliographique(valeur, self.url)
+
+    @validates("authors")
+    def _valider_auteurs(self, _cle: str, valeur: str | None) -> str | None:
+        return auteurs_bibliographiques(valeur)
+
+    @validates("url")
+    def _revalider_titre_a_l_adresse(self, _cle: str, valeur: str) -> str:
+        # Le titre a pu etre affecte avant l'adresse : c'est en tenant les deux
+        # qu'on reconnait un titre qui n'est qu'un segment de l'adresse.
+        titre = self.__dict__.get("title")
+        if titre is not None and titre_bibliographique(titre, valeur) is None:
+            self.title = None
+        return valeur
 
     def __repr__(self) -> str:
         return f"<Source {self.title or self.url[:30]}>"

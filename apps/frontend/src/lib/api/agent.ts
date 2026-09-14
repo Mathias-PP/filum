@@ -279,7 +279,25 @@ export interface ChatInput {
   signal?: AbortSignal;
 }
 
+/** Une sous-question du plan d'une fiche, et les extraits qui l'éclairent. */
+export interface SousQuestionCouverture {
+  texte: string;
+  extraits: number;
+  sources: number;
+}
+
+export interface CouvertureFiche {
+  slug: string;
+  sous_questions: SousQuestionCouverture[];
+  sources_sans_extrait: number;
+  extraits: number;
+}
+
 export const agentApi = {
+  fiche: {
+    couverture: (slug: string) =>
+      request<CouvertureFiche>(`/agent/fiche/${encodeURIComponent(slug)}/couverture`),
+  },
   providers: {
     meta: () => request<AgentProviderMeta>('/agent/providers/meta'),
     list: () => request<AgentProvider[]>('/agent/providers'),

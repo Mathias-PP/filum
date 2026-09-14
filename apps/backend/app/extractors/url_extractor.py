@@ -21,6 +21,7 @@ from urllib.parse import quote, urlparse
 import httpx
 from bs4 import BeautifulSoup
 
+from app.core.champs_bibliographiques import auteurs_bibliographiques, titre_bibliographique
 from app.core.url_safety import SAFE_REDIRECT_HOOKS
 from app.extractors.semantic_scholar import SemanticScholarRef
 
@@ -1146,5 +1147,9 @@ async def extract(url: str) -> ExtractedMetadata:
             result.category = llm_meta.category.value if llm_meta.category else None
             result.author_kind = llm_meta.author_kind.value if llm_meta.author_kind else None
 
+    # La meme regle que `Source` applique a l'ecriture : l'apercu d'un import ne
+    # montre pas au createur un titre que la fiche refuserait d'inscrire.
+    result.title = titre_bibliographique(result.title, url)
+    result.authors = auteurs_bibliographiques(result.authors)
     result.page_text = None
     return result
