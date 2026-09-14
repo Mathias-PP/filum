@@ -2132,7 +2132,9 @@ async def get_youtube_transcript(db: AsyncSession, user: User, *, url: str) -> d
 
     Aucun controle proprietaire : tout transcript public est accessible.
     """
-    from app.extractors.youtube_transcript import fetch_youtube_transcript
+    # `app.extractors.youtube_transcript` n'a jamais existe : l'outil levait
+    # ModuleNotFoundError a chaque appel (constate le 2026-09-14 en production).
+    from app.extractors.youtube_oracle import fetch_youtube_transcript
 
     transcript = await fetch_youtube_transcript(url)
     if transcript is None:

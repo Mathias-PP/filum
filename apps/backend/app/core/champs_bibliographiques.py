@@ -74,8 +74,19 @@ _OBSTACLE_TITRE_ENTIER = frozenset(
 )
 
 
+#: Balise ouvrante collee a un mot et suivie d'une majuscule : dans
+#: « Slices<i>In Vitro</i> », la retirer sans espace collait « SlicesIn ».
+_BALISE_COLLEE = re.compile(r"(?<=[^\W\d_])<(?!/)[^>]+>(?=[A-Z])")
+
+#: Lettre isolee que la mise en page a detachee de son trait d'union :
+#: « by\n<i>N</i>\n-Ethylmaleimide » devenait « N -Ethylmaleimide ».
+_TRAIT_DETACHE = re.compile(r"(?<=\b\w) -(?=\w)")
+
+
 def _normaliser(texte: str) -> str:
-    return " ".join(html.unescape(_BALISE.sub("", texte)).split())
+    sans_balises = _BALISE.sub("", _BALISE_COLLEE.sub(" ", texte))
+    propre = " ".join(html.unescape(sans_balises).split())
+    return _TRAIT_DETACHE.sub("-", propre)
 
 
 def _segments_d_adresse(url: str | None) -> set[str]:
