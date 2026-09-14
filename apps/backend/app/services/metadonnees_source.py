@@ -18,12 +18,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.extractors.lecture_page import metadonnees_de_la_page
 from app.extractors.openalex_metadonnees import chercher_par_doi as openalex_par_doi
 from app.extractors.url_extractor import (
     ExtractedMetadata,
     crossref_lookup,
     resolve_doi_from_pubmed,
-    scraper_la_page,
 )
 from app.models.source import MetadataOrigin
 
@@ -73,16 +73,18 @@ async def resoudre(origine: str, *, url: str | None, doi: str | None) -> Extract
                 "L'origine 'page' demande une url. Donnez-en une, ou choisissez "
                 "'crossref' ou 'openalex' si vous avez un doi."
             )
-        metadonnees = await scraper_la_page(adresse)
-        if metadonnees is None or metadonnees.access_blocked:
-            # PubMed et PMC servent un reCAPTCHA aux IP de serveur, par
-            # intermittence : mesure du 2026-09-13, la meme adresse lue a une
-            # minute, refusee a la suivante. Leur identifiant donne le DOI, et
-            # le DOI la notice Crossref, sans passer par la page.
-            doi_ncbi = await resolve_doi_from_pubmed(adresse)
-            notice = await crossref_lookup(doi_ncbi) if doi_ncbi else None
-            if notice is not None and notice.title:
-                return notice
+        # PubMed et PMC servent un reCAPTCHA aux IP de serveur, par
+        # intermittence : mesure du 2026-09-13, la meme adresse lue a une
+        # minute, refusee a la suivante. Leur identifiant donne le DOI, et le
+        # DOI la notice Crossref, sans passer par la page ni attendre le relais
+        # et l'archive. Rend None aussitot pour tout autre hebergeur.
+        doi_ncbi = await resolve_doi_from_pubmed(adresse)
+        notice = await crossref_lookup(doi_ncbi) if doi_ncbi else None
+        if notice is not None and notice.title:
+            return notice
+        # La meme lecture que l'apercu d'import : page directe, relais, archive,
+        # et ce que le modele propose seulement s'il figure dans la page.
+        metadonnees = await metadonnees_de_la_page(adresse)
         if metadonnees is not None and metadonnees.access_blocked:
             raise OrigineIndisponibleError(
                 "Cette page refuse la lecture automatique : ses metadonnees ne "

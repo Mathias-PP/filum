@@ -159,7 +159,18 @@ def texte_de_la_capture(html: str) -> str | None:
 
 
 async def texte_archive(url: str | None) -> str | None:
-    """L'URL lue dans l'archive du web, ou None. Ne leve jamais.
+    """Le texte de l'URL lue dans l'archive du web, ou None. Ne leve jamais."""
+    capture = await html_archive(url)
+    return texte_de_la_capture(capture) if capture else None
+
+
+async def html_archive(url: str | None) -> str | None:
+    """Le HTML de la derniere capture de l'URL, s'il porte un article. Ne leve jamais.
+
+    Rendu entier plutot que reduit a son texte : le titre, les balises
+    `citation_*` et le JSON-LD de la capture nomment la source quand la page
+    elle-meme refuse de repondre. Mesure du 2026-09-14 : ameli.fr repond 403 a
+    la VM et au relais, l'archive rend la page et son titre.
 
     L'URL est resolue avant d'etre cherchee : l'archive d'un resolveur
     (``doi.org``, un raccourcisseur, un « linking hub » d'editeur) n'a que des
@@ -196,7 +207,7 @@ async def texte_archive(url: str | None) -> str | None:
         return None
     if reponse.status_code != 200 or "html" not in reponse.headers.get("content-type", ""):
         return None
-    texte = texte_de_la_capture(reponse.text)
-    if texte:
-        logger.info("Lu par l'archive url=%s capture=%s", cible, horodatage)
-    return texte
+    if texte_de_la_capture(reponse.text) is None:
+        return None
+    logger.info("Lu par l'archive url=%s capture=%s", cible, horodatage)
+    return reponse.text

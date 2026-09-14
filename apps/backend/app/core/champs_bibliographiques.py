@@ -39,6 +39,8 @@ _OBSTACLE_DANS_LE_TITRE = (
     "ddos protection by",
     "unusual traffic from your computer",
     "vérification de votre navigateur",
+    "vérification de sécurité",
+    "prouver que vous êtes un être humain",
     "incapsula incident",
     "pardon our interruption",
     "confirm you are a human",

@@ -61,14 +61,15 @@ class TestExtractorLlmStage:
 
         async def fake_scrape(url):
             return url_extractor.ExtractedMetadata(
-                title="Titre heuristique", page_text="corps de page"
+                title="Titre heuristique", page_text="corps de page, par Doe J."
             )
 
         async def fake_llm(page_text, url):
-            assert page_text == "corps de page"
+            assert page_text == "corps de page, par Doe J."
             return LlmSourceMetadata(
                 title="Titre LLM (ne doit pas gagner)",
-                authors="Doe J.",
+                # « Invente X. » ne figure pas dans la page : il ne doit pas entrer.
+                authors="Doe J., Invente X.",
                 category="blog",
                 author_kind="individu",
                 format="texte",
@@ -80,7 +81,7 @@ class TestExtractorLlmStage:
 
         meta = await url_extractor.extract("https://example.org/post")
         assert meta.title == "Titre heuristique"  # heuristique prioritaire
-        assert meta.authors == "Doe J."  # complété par le LLM
+        assert meta.authors == "Doe J."  # complété par le LLM, seulement de ce que la page porte
         assert meta.category == "blog"
         assert meta.author_kind == "individu"
         assert meta.page_text is None  # jamais exposé

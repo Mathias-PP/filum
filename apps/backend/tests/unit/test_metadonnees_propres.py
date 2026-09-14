@@ -98,7 +98,7 @@ async def test_une_page_pubmed_bloquee_est_resolue_par_son_doi(monkeypatch):
         assert identifiant == "10.1093/humrep/dey117"
         return ExtractedMetadata(title="Early life abuse and risk of endometriosis")
 
-    monkeypatch.setattr(metadonnees_source, "scraper_la_page", bloquee)
+    monkeypatch.setattr(metadonnees_source, "metadonnees_de_la_page", bloquee)
     monkeypatch.setattr(metadonnees_source, "resolve_doi_from_pubmed", doi)
     monkeypatch.setattr(metadonnees_source, "crossref_lookup", notice)
 
@@ -117,7 +117,7 @@ async def test_une_page_bloquee_hors_ncbi_reste_un_refus(monkeypatch):
     async def aucun_doi(url):
         return None
 
-    monkeypatch.setattr(metadonnees_source, "scraper_la_page", bloquee)
+    monkeypatch.setattr(metadonnees_source, "metadonnees_de_la_page", bloquee)
     monkeypatch.setattr(metadonnees_source, "resolve_doi_from_pubmed", aucun_doi)
 
     with pytest.raises(metadonnees_source.OrigineIndisponibleError):

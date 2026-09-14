@@ -138,6 +138,16 @@ def clean_title(title: str, site_name: str | None, url: str) -> str:
         if m and _segment_matches_site(m.group(2), candidates):
             cleaned = m.group(1).strip()
             changed = True
+    # Le nom du site suivi d'une rubrique : « Douleurs pendant les regles ... ? |
+    # ameli.fr | Assure », mesure du 2026-09-14. Le dernier segment ne nomme pas
+    # le site, la boucle ci-dessus s'arretait donc sans rien retirer. On coupe au
+    # premier segment qui le nomme, tout ce qui suit etant du chrome de site.
+    separateurs = list(re.finditer(_TITLE_SEP, cleaned))
+    for rang, separateur in enumerate(separateurs):
+        fin = separateurs[rang + 1].start() if rang + 1 < len(separateurs) else len(cleaned)
+        if _segment_matches_site(cleaned[separateur.end() : fin], candidates):
+            cleaned = cleaned[: separateur.start()].strip()
+            break
     return cleaned if len(cleaned) >= 8 else title
 
 
@@ -374,6 +384,11 @@ _CHALLENGE_STRONG = (
     "request blocked",
     "unusual traffic from your computer",
     "vérification de votre navigateur",
+    # Le mur d'ameli.fr, mesure le 2026-09-14 depuis la VM et depuis le relais :
+    # HTTP 403, titre « Vérification de sécurité ». Rendu en texte par le relais,
+    # il passait pour un article de 293 caracteres.
+    "vérification de sécurité",
+    "prouver que vous êtes un être humain",
     # Famille Radware / Akamai / Imperva : le titre est le seul contenu de la
     # page, le corps n'étant qu'un script. Aucun article ne s'intitule ainsi.
     "client challenge",
@@ -979,85 +994,84 @@ async def _html_scrape(url: str) -> ExtractedMetadata | None:
         # n'obtenait ni « lu » ni « refuse » mais rien du tout.
         if not (200 <= r.status_code < 300) or "text/html" not in r.headers.get("content-type", ""):
             return None
-        soup = BeautifulSoup(r.text, "lxml")
-
-        def _meta(prop: str) -> str | None:
-            tag = soup.find("meta", property=prop) or soup.find("meta", attrs={"name": prop})
-            return tag.get("content", "").strip() if tag else None  # type: ignore[union-attr]
-
-        title = (
-            _meta("og:title")
-            or _meta("twitter:title")
-            or (soup.find("title") and soup.find("title").get_text(strip=True))  # type: ignore[union-attr]
-        )
-        description = (
-            _meta("og:description") or _meta("description") or _meta("twitter:description")
-        )
-        # Balises Highwire (`citation_*`) d'abord : c'est la convention
-        # d'indexation de Google Scholar, servie par arXiv, PubMed, PLOS,
-        # bioRxiv et la plupart des revues, et elle est faite pour porter une
-        # identite bibliographique -- la ou `og:` sert au partage social et ne
-        # porte presque jamais auteurs ni date. Philum les emet deja sur ses
-        # propres fiches et lit deja `citation_doi` : les lire ici couvre tous
-        # ces hebergeurs d'un coup, sans une branche par site.
-        citation_authors = [
-            content
-            for tag in soup.find_all("meta", attrs={"name": re.compile(r"^citation_author$", re.I)})
-            if (content := str(tag.get("content", "")).strip())
-        ]
-        authors_raw = (
-            "; ".join(citation_authors)
-            or auteur_lisible(_meta("author"))
-            or auteur_lisible(_meta("article:author"))
-            or None
-        )
-        # `citation_online_date` est la derniere revision de la page (2023 chez
-        # arXiv pour un article de 2017), pas la parution de l'oeuvre : la
-        # prendre ferait glisser l'article sur la frise chronologique.
-        published_at_raw = (
-            _meta("citation_publication_date")
-            or _meta("citation_date")
-            or _meta("article:published_time")
-            or _meta("datePublished")
-        )
-        published_at = _iso_date_prefix(published_at_raw)
-
-        # Supplement with JSON-LD structured data (richer, same HTTP response)
-        jsonld_meta = _parse_jsonld_metadata(soup)
-        if jsonld_meta:
-            title = title or jsonld_meta.title
-            description = description or jsonld_meta.description
-            published_at = published_at or jsonld_meta.published_at
-            if authors_raw is None:
-                authors_raw = auteur_lisible(jsonld_meta.authors)
-
-        page_text = soup.get_text(separator=" ", strip=True) or None
-        if _looks_like_challenge_page(str(title) if title else None, page_text):
-            logger.info("challenge_page_detected url=%s title=%r", url, title)
-            return ExtractedMetadata(access_blocked=True)
-
-        if title:
-            title = clean_title(title, _meta("og:site_name"), url)
-
-        return ExtractedMetadata(
-            title=title or None,
-            authors=authors_raw or None,
-            published_at=published_at,
-            description=description or None,
-            page_text=page_text,
-        )
+        return _metadonnees_du_html(r.text, url)
     except Exception as e:
         logger.debug("HTML scrape failed for url=%s: %s", url, e)
         return None
 
 
-#: Le scrape seul, sans l'etage LLM que `extract()` ajoute ensuite.
-#:
-#: L'origine `page` de `metadata_from` promet des metadonnees lues sur la page,
-#: pas redigees d'apres elle. `extract()` ne convient donc pas : il termine par
-#: `llm.extract_metadata`, qui comble un titre absent en le formulant. Ce que ce
-#: scrape ne trouve pas doit rester vide.
-scraper_la_page = _html_scrape
+def _metadonnees_du_html(page_html: str, url: str) -> ExtractedMetadata:
+    """Titre, auteurs, date et texte d'une page HTML, ou un refus si c'est un obstacle.
+
+    Separe du telechargement pour s'appliquer a tout HTML de la page, quelle que
+    soit la voie qui l'a rendu : la page directe, ou sa capture dans l'archive du
+    web quand la page refuse de repondre a la VM.
+    """
+    soup = BeautifulSoup(page_html, "lxml")
+
+    def _meta(prop: str) -> str | None:
+        tag = soup.find("meta", property=prop) or soup.find("meta", attrs={"name": prop})
+        return tag.get("content", "").strip() if tag else None  # type: ignore[union-attr]
+
+    title = (
+        _meta("og:title")
+        or _meta("twitter:title")
+        or (soup.find("title") and soup.find("title").get_text(strip=True))  # type: ignore[union-attr]
+    )
+    description = _meta("og:description") or _meta("description") or _meta("twitter:description")
+    # Balises Highwire (`citation_*`) d'abord : c'est la convention
+    # d'indexation de Google Scholar, servie par arXiv, PubMed, PLOS,
+    # bioRxiv et la plupart des revues, et elle est faite pour porter une
+    # identite bibliographique -- la ou `og:` sert au partage social et ne
+    # porte presque jamais auteurs ni date. Philum les emet deja sur ses
+    # propres fiches et lit deja `citation_doi` : les lire ici couvre tous
+    # ces hebergeurs d'un coup, sans une branche par site.
+    citation_authors = [
+        content
+        for tag in soup.find_all("meta", attrs={"name": re.compile(r"^citation_author$", re.I)})
+        if (content := str(tag.get("content", "")).strip())
+    ]
+    authors_raw = (
+        "; ".join(citation_authors)
+        or auteur_lisible(_meta("author"))
+        or auteur_lisible(_meta("article:author"))
+        or None
+    )
+    # `citation_online_date` est la derniere revision de la page (2023 chez
+    # arXiv pour un article de 2017), pas la parution de l'oeuvre : la
+    # prendre ferait glisser l'article sur la frise chronologique.
+    published_at_raw = (
+        _meta("citation_publication_date")
+        or _meta("citation_date")
+        or _meta("article:published_time")
+        or _meta("datePublished")
+    )
+    published_at = _iso_date_prefix(published_at_raw)
+
+    # Supplement with JSON-LD structured data (richer, same HTTP response)
+    jsonld_meta = _parse_jsonld_metadata(soup)
+    if jsonld_meta:
+        title = title or jsonld_meta.title
+        description = description or jsonld_meta.description
+        published_at = published_at or jsonld_meta.published_at
+        if authors_raw is None:
+            authors_raw = auteur_lisible(jsonld_meta.authors)
+
+    page_text = soup.get_text(separator=" ", strip=True) or None
+    if _looks_like_challenge_page(str(title) if title else None, page_text):
+        logger.info("challenge_page_detected url=%s title=%r", url, title)
+        return ExtractedMetadata(access_blocked=True)
+
+    if title:
+        title = clean_title(title, _meta("og:site_name"), url)
+
+    return ExtractedMetadata(
+        title=title or None,
+        authors=authors_raw or None,
+        published_at=published_at,
+        description=description or None,
+        page_text=page_text,
+    )
 
 
 async def extract(url: str) -> ExtractedMetadata:
@@ -1068,9 +1082,6 @@ async def extract(url: str) -> ExtractedMetadata:
     taxonomie format/category/author_kind. Les stages 1-2 restent la source
     de vérité : le LLM ne remplace jamais une valeur déjà trouvée.
     """
-    # Import local : évite un cycle app.services ↔ app.extractors.
-    from app.services import llm
-
     result = ExtractedMetadata()
 
     crossref_meta: ExtractedMetadata | None = None
@@ -1120,32 +1131,27 @@ async def extract(url: str) -> ExtractedMetadata:
         result.category = "article-scientifique"
         result.author_kind = "chercheur"
 
-    page_text: str | None = None
     if result.title is None or result.authors is None:
-        html_meta = await _html_scrape(url)
-        if html_meta:
-            result.title = result.title or html_meta.title
-            result.authors = result.authors or html_meta.authors
-            result.published_at = result.published_at or html_meta.published_at
-            result.description = result.description or html_meta.description
-            page_text = html_meta.page_text
+        # La meme lecture que l'origine `page` : page directe, relais, archive,
+        # et ce que le modele propose seulement s'il figure dans la page. Deux
+        # lecteurs donnaient deux verites sur la meme page (dossier Inserm,
+        # 2026-09-14) ; il n'y en a plus qu'un.
+        from app.extractors.lecture_page import metadonnees_de_la_page
+
+        page = await metadonnees_de_la_page(url)
+        if page:
+            result.title = result.title or page.title
+            result.authors = result.authors or page.authors
+            result.published_at = result.published_at or page.published_at
+            result.description = result.description or page.description
+            result.format = result.format or page.format
+            result.category = result.category or page.category
+            result.author_kind = result.author_kind or page.author_kind
             # Un refus n'est signalé que s'il a réellement privé la fiche de
             # quelque chose : quand Crossref a déjà tout donné, le blocage de la
             # page d'éditeur n'a aucune conséquence et l'annoncer inquiéterait
             # pour rien.
-            result.access_blocked = html_meta.access_blocked and result.title is None
-
-    if page_text:
-        llm_meta = await llm.extract_metadata(page_text, url)
-        if llm_meta:
-            if result.title is None and llm_meta.title:
-                result.title = clean_title(llm_meta.title, None, url)
-            result.authors = result.authors or llm_meta.authors
-            result.published_at = result.published_at or llm_meta.published_at
-            result.description = result.description or llm_meta.description
-            result.format = llm_meta.format.value if llm_meta.format else None
-            result.category = llm_meta.category.value if llm_meta.category else None
-            result.author_kind = llm_meta.author_kind.value if llm_meta.author_kind else None
+            result.access_blocked = page.access_blocked and result.title is None
 
     # La meme regle que `Source` applique a l'ecriture : l'apercu d'un import ne
     # montre pas au createur un titre que la fiche refuserait d'inscrire.

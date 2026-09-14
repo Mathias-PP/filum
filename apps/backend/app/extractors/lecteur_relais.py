@@ -156,7 +156,7 @@ def _titre_et_texte(corps: str) -> tuple[str | None, str]:
     return (titre or None), soup.get_text(separator=" ", strip=True)
 
 
-async def _lire(gabarit: str, url: str, *, premier: bool) -> str | None:
+async def _lire(gabarit: str, url: str, *, premier: bool) -> tuple[str | None, str] | None:
     from app.extractors.url_extractor import _looks_like_challenge_page
 
     adresse = _adresse(gabarit, url)
@@ -195,7 +195,24 @@ async def _lire(gabarit: str, url: str, *, premier: bool) -> str | None:
     # une lecture, tandis que se tromper dans l'autre coute un extrait faux.
     if _looks_like_challenge_page(titre, texte) or len(texte) < _TAILLE_MINIMALE:
         return None
-    return texte
+    return titre, texte
+
+
+async def page_par_relais(url: str | None) -> tuple[str | None, str] | None:
+    """(titre, texte) de la page vue par un relais de la chaine, ou None. Ne leve jamais.
+
+    Le titre sert a nommer la source quand la page directe refuse de repondre :
+    le lecteur de metadonnees passe par la meme chaine que le lecteur de texte.
+    """
+    propre = (url or "").strip()
+    if not propre:
+        return None
+    for rang, gabarit in enumerate(_gabarits()):
+        page = await _lire(gabarit, propre, premier=rang == 0)
+        if page:
+            logger.info("Lu par le relais rang=%s url=%s caracteres=%s", rang, propre, len(page[1]))
+            return page
+    return None
 
 
 async def texte_par_relais(url: str | None) -> str | None:
@@ -205,12 +222,5 @@ async def texte_par_relais(url: str | None) -> str | None:
     et une chaine entierement en panne. C'est pourquoi l'appelant enchaine sur
     l'archive au lieu de conclure quoi que ce soit.
     """
-    propre = (url or "").strip()
-    if not propre:
-        return None
-    for rang, gabarit in enumerate(_gabarits()):
-        texte = await _lire(gabarit, propre, premier=rang == 0)
-        if texte:
-            logger.info("Lu par le relais rang=%s url=%s caracteres=%s", rang, propre, len(texte))
-            return texte
-    return None
+    page = await page_par_relais(url)
+    return page[1] if page else None

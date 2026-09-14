@@ -115,7 +115,7 @@ class TestResoudre:
         async def _bloquee(_url):
             return ExtractedMetadata(access_blocked=True)
 
-        monkeypatch.setattr(metadonnees_source, "scraper_la_page", _bloquee)
+        monkeypatch.setattr(metadonnees_source, "metadonnees_de_la_page", _bloquee)
         with pytest.raises(metadonnees_source.OrigineIndisponibleError) as capture:
             await metadonnees_source.resoudre("page", url="https://mur.test", doi=None)
         message = str(capture.value)

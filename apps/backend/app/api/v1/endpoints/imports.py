@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field
 
 from app.api.v1.endpoints.cards import get_current_user
+from app.core.nature_source import nature_corrigee
 from app.core.url_safety import SAFE_REDIRECT_HOOKS, UnsafeUrlError, assert_url_is_safe
 from app.extractors.body_links import extract_body_links
 from app.extractors.grobid import extract_pdf_references
@@ -112,14 +113,24 @@ class ImportParseResponse(BaseModel):
 
 
 def _to_draft(ref: ImportedRef) -> ImportedSourceDraft:
+    # La meme regle que `Source` applique a l'enregistrement : l'apercu montre
+    # la nature que la fiche inscrira, pas une valeur par defaut qu'elle corrigera.
+    nature = nature_corrigee(
+        url=ref.url,
+        doi=ref.doi,
+        journal=ref.journal,
+        format=_FORMAT_BY_CATEGORY.get(ref.category, "texte"),
+        category=ref.category,
+        author_kind=_AUTHOR_KIND_BY_CATEGORY.get(ref.category, "individu"),
+    )
     return ImportedSourceDraft(
         url=ref.url,
         title=ref.title,
         authors=ref.authors,
         published_at=f"{ref.year}-01-01T00:00:00Z" if ref.year else None,
-        format=_FORMAT_BY_CATEGORY.get(ref.category, "texte"),
-        category=ref.category,
-        author_kind=_AUTHOR_KIND_BY_CATEGORY.get(ref.category, "individu"),
+        format=nature.format,
+        category=nature.category,
+        author_kind=nature.author_kind,
         journal=ref.journal,
         volume=ref.volume,
         pages=ref.pages,
