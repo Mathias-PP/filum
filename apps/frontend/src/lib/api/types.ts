@@ -48,6 +48,11 @@ export interface Card {
   format: SourceFormat | null;
   category: SourceCategory | null;
   author_kind: AuthorKind | null;
+  /**
+   * Synthèse ancrée : chaque phrase finit par `[extrait:<id>]`, vérifié avant
+   * pose. Absente tant que l'agent ne l'a pas écrite.
+   */
+  synthese?: string | null;
 }
 
 export interface CardDetail extends Card {

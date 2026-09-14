@@ -37,6 +37,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent_tools.couverture import OUTILS_COUVERTURE
+from app.agent_tools.litterature import OUTILS_LITTERATURE
 from app.agent_tools.objectif import OUTILS_OBJECTIF
 from app.agent_tools.philum import OUTILS_QUI_ECRIVENT, est_sensible
 from app.agent_tools.registry import construire_registre, executer, filtrer, registre_api
@@ -1206,6 +1207,8 @@ LECTURES_REPRISES: frozenset[str] = frozenset(
         "get_url_metadata",
         "find_passage",
         "propose_passages",
+        "chercher_sources",
+        "references",
         "verify_excerpts",
         "web_search",
         "fetch_url",
@@ -1257,7 +1260,7 @@ class MemoireAppels:
 #: ensembles répondent à deux questions différentes, les confondre casserait
 #: silencieusement l'un des deux.
 OUTILS_NON_PARALLELISABLES: frozenset[str] = (
-    OUTILS_QUI_ECRIVENT | OUTILS_OBJECTIF | OUTILS_COUVERTURE
+    OUTILS_QUI_ECRIVENT | OUTILS_OBJECTIF | OUTILS_COUVERTURE | OUTILS_LITTERATURE
 )
 
 

@@ -13,6 +13,7 @@ from typing import Any
 
 from app.agent_tools.couverture import couverture_tools
 from app.agent_tools.fiche import fiche_tools
+from app.agent_tools.litterature import litterature_tools
 from app.agent_tools.objectif import objectif_tools
 from app.agent_tools.philum import est_sensible, philum_tools
 from app.agent_tools.tool import AgentTool, ToolContext
@@ -30,6 +31,7 @@ def construire_registre() -> dict[str, AgentTool]:
         + fiche_tools()
         + objectif_tools()
         + couverture_tools()
+        + litterature_tools()
     ):
         outils[outil.name] = outil
     return outils

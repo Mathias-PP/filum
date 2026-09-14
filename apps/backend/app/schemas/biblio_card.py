@@ -225,6 +225,8 @@ class CardResponse(BaseModel):
     card_kind: CardKind = CardKind.CONTENU
     content_url: str | None
     content_text: str | None = None
+    #: Synthese ancree, phrase par phrase renvoyee a ses extraits `[extrait:<id>]`.
+    synthese: str | None = None
     content_authors: str | None = None
     platform: Platform | None = None
     content_type: ContentType | None = None

@@ -149,6 +149,18 @@ const ACTIONS: Record<
     action: 'Cherche le passage exact dans',
     objet: (_a, r) => titreDepuisResultat(r) ?? 'cette source',
   },
+  poser_synthese: {
+    action: 'Écrit la synthèse vérifiée de',
+    objet: (a) => (typeof a.card_slug === 'string' ? a.card_slug : 'la fiche'),
+  },
+  chercher_sources: {
+    action: 'Cherche des sources sur',
+    objet: (a) => (typeof a.requete === 'string' ? a.requete : null),
+  },
+  references: {
+    action: 'Suit les citations de',
+    objet: (a) => (typeof a.doi === 'string' ? a.doi : null),
+  },
   definir_plan: {
     action: 'Pose le plan de la fiche',
     objet: (a) => (typeof a.slug === 'string' ? a.slug : null),

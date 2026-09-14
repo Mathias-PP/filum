@@ -6215,6 +6215,17 @@
             ],
             "title": "Content Text"
           },
+          "synthese": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Synthese"
+          },
           "content_authors": {
             "anyOf": [
               {
@@ -6442,6 +6453,17 @@
               }
             ],
             "title": "Content Text"
+          },
+          "synthese": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Synthese"
           },
           "content_authors": {
             "anyOf": [
