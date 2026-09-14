@@ -1168,7 +1168,7 @@
               <span class="h-px flex-1 bg-border"></span>
             </div>
           {:else if item.kind === 'etape'}
-            <!-- Le deroule guide d'une fiche sujet : cinq etapes tenues par le
+            <!-- Le deroule guide d'une fiche sujet : des etapes tenues par le
              serveur. Le dire ici, sinon le createur voit l'agent changer de
              travail sans savoir pourquoi. -->
             <div class="flex items-center gap-3 py-1 text-xs font-medium text-ink-secondary">

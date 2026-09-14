@@ -19,7 +19,7 @@ import logging
 
 import httpx
 
-from app.extractors.openalex_client import parametres_openalex
+from app.extractors.openalex_client import entetes_openalex
 from app.extractors.url_extractor import ExtractedMetadata
 
 logger = logging.getLogger(__name__)
@@ -104,10 +104,10 @@ async def chercher_par_doi(doi: str | None) -> ExtractedMetadata | None:
     if not propre:
         return None
     try:
-        async with httpx.AsyncClient(headers=_HEADERS, timeout=_TIMEOUT) as client:
-            r = await client.get(
-                f"https://api.openalex.org/works/doi:{propre}", params=parametres_openalex()
-            )
+        async with httpx.AsyncClient(
+            headers={**_HEADERS, **entetes_openalex()}, timeout=_TIMEOUT
+        ) as client:
+            r = await client.get(f"https://api.openalex.org/works/doi:{propre}")
         if r.status_code != 200:
             return None
         return parser_work_openalex(r.json())

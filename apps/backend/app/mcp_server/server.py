@@ -22,7 +22,9 @@ mcp = FastMCP(
         "L'ecriture (create_card, add_source, add_excerpt, verify_excerpts, "
         "publish_card) exige un compte : sur /mcp-account/ le client ouvre la page "
         "d'autorisation au premier appel, sans token a copier. whoami verifie "
-        "l'identite du porteur."
+        "l'identite du porteur. Une source ajoutee doit porter au moins un extrait "
+        "retrouve dans sa page : propose_passages(url, questions) rend les passages "
+        "exacts a passer dans add_source(..., excerpts=[...])."
     ),
 )
 
@@ -243,6 +245,8 @@ async def add_source(
             published_at=published_at,
             archive_url=archive_url,
             excerpts=excerpts,
+            # Un client MCP est une IA : pas de source sans extrait retrouve.
+            exiger_extrait=True,
         )
 
 
@@ -597,6 +601,19 @@ async def find_passage(source_id: str, query: str) -> dict[str, Any]:
 
 
 @outil()
+async def propose_passages(url: str, questions: list[str]) -> dict[str, Any]:
+    """Propose, pour chaque question, les passages exacts d'une page les plus
+    proches par le sens, prets a passer dans `add_source(..., excerpts=...)`.
+
+    A appeler sur une adresse candidate AVANT de l'ajouter : une source n'entre
+    qu'avec au moins un extrait retrouve. Ne pose rien.
+    """
+    async with _session() as db:
+        user = await exiger_utilisateur(db)
+        return await tools_write.propose_passages(db, user, url=url, questions=questions)
+
+
+@outil()
 async def suggest_excerpts(
     source_id: str,
     provided_text: str | None = None,
@@ -734,14 +751,17 @@ async def list_deleted_cards(limit: int = 50) -> list[dict[str, Any]]:
 async def add_sources_batch(card_slug: str, sources: list[dict[str, Any]]) -> dict[str, Any]:
     """Ajoute plusieurs sources a une fiche en un appel.
 
-    Chaque entree suit la meme signature que `add_source`, `metadata_from`
-    compris : une entree porte sa propre origine, si bien qu'un lot melangeant
-    des articles a DOI et des pages web n'a pas a etre coupe en deux. Utile
-    pour les fiches longues : un seul commit au lieu de N.
+    Chaque entree suit la meme signature que `add_source`, `metadata_from` et
+    `excerpts` compris : une entree porte sa propre origine, si bien qu'un lot
+    melangeant des articles a DOI et des pages web n'a pas a etre coupe en
+    deux. Une entree sans extrait retrouve dans sa page part dans `failed`,
+    sauf un lien vers une autre fiche Philum.
     """
     async with _session() as db:
         user = await exiger_utilisateur(db)
-        return await tools_write.add_sources_batch(db, user, card_slug=card_slug, sources=sources)
+        return await tools_write.add_sources_batch(
+            db, user, card_slug=card_slug, sources=sources, exiger_extrait=True
+        )
 
 
 @outil()

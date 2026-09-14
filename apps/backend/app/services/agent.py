@@ -1204,6 +1204,7 @@ LECTURES_REPRISES: frozenset[str] = frozenset(
         "search_my_excerpts",
         "get_url_metadata",
         "find_passage",
+        "propose_passages",
         "verify_excerpts",
         "web_search",
         "fetch_url",

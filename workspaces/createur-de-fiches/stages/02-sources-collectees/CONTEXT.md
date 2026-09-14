@@ -26,7 +26,7 @@ Collecter, enrichir et poser les sources de la fiche, sans les annoter (annotati
    - Bibliographie collée : `mcp__philum__parse_biblio(text)` pour la parser en refs structurées.
 2. **Enrichissement** : compléter les métadonnées manquantes. `mcp__philum__get_url_metadata(url)` pour titre/description/auteurs. Crossref pour DOI et référence complète.
 3. **Filtrage éditorial** : retirer les sources sans rapport avec la thèse ou en doublon. Consigner dans `<slug>-rejetees.md` pourquoi.
-4. **Pose côté prod** : pour un lot de 5+ sources, `mcp__philum__add_sources_batch(card_slug, sources)` en un appel (dedup automatique). Sinon `mcp__philum__add_source` un à un. NE PAS poser `stance` ni `annotation` maintenant.
+4. **Pose côté prod** : pour chaque candidate, `mcp__philum__propose_passages(url, questions)` d'abord. Seules les sources dont au moins un passage répond entrent, avec leurs `excerpts` : `mcp__philum__add_source` une à une, ou `mcp__philum__add_sources_batch(card_slug, sources)` pour un lot (dedup automatique). Une entrée sans extrait retrouvé est refusée. NE PAS poser `stance` ni `annotation` maintenant.
 5. **Pivots** : marquer en `is_pivot=True` autant de sources que la thèse en compte réellement, sans plafond arbitraire. Via `mcp__philum__update_source(source_id, is_pivot=True)`. Chaque pan distinct de la thèse mérite son pivot si un papier différent le porte. Voir `shared/principes-editoriaux.md`.
 6. **Graphe déjà là** : pour chaque source, `mcp__philum__find_cards_citing(url)` et noter dans `<slug>-sources.md` pour l'étape 05.
 7. **Vérification** : `mcp__philum__list_sources(card_slug)` pour lire l'état côté serveur et récupérer les UUID à réutiliser.
