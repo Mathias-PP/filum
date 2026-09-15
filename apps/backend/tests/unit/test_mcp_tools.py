@@ -129,6 +129,71 @@ async def test_get_source_of_draft_card_returns_none(db_session, test_user):
     assert await get_source(db_session, source_id=str(source.id)) is None
 
 
+async def _source_en_brouillon(db_session, user):
+    from app.models.biblio_card import BiblioCard
+    from app.models.source import Source
+
+    brouillon = BiblioCard(
+        id=uuid4(),
+        user_id=user.id,
+        slug="harness-brouillon",
+        title="Harness en brouillon",
+        content_type="video",
+        platform="youtube",
+        status="draft",
+    )
+    db_session.add(brouillon)
+    await db_session.flush()
+    source = Source(
+        id=uuid4(),
+        biblio_card_id=brouillon.id,
+        position=0,
+        url="https://example.org/harness",
+        title="Etude harness",
+        format="texte",
+        category="article-scientifique",
+        author_kind="chercheur",
+    )
+    db_session.add(source)
+    await db_session.commit()
+    return source
+
+
+@pytest.mark.asyncio
+async def test_le_createur_relit_les_sources_de_son_brouillon_et_personne_d_autre(
+    db_session, test_user
+):
+    """Mesure du 2026-09-15 : relire sa fiche en brouillon echouait sur chaque source."""
+    from app.mcp_server.tools import get_source
+    from app.models.user import User
+
+    source = await _source_en_brouillon(db_session, test_user)
+    autre = User(id=uuid4(), email="autre@example.org", username="autre")
+
+    detail = await get_source(db_session, source_id=str(source.id), lecteur=test_user)
+    assert detail is not None and detail["title"] == "Etude harness"
+    assert await get_source(db_session, source_id=str(source.id), lecteur=autre) is None
+    assert await get_source(db_session, source_id=str(source.id)) is None
+
+
+@pytest.mark.asyncio
+async def test_l_agent_relit_les_sources_de_sa_fiche_en_brouillon(db_session, test_user):
+    from app.agent_tools.philum import philum_tools
+    from app.agent_tools.tool import ToolContext
+
+    source = await _source_en_brouillon(db_session, test_user)
+    outil = next(o for o in philum_tools() if o.name == "get_source")
+
+    # Le lecteur vient du contexte : le modele ne peut ni le voir ni le choisir.
+    assert "lecteur" not in outil.parameters["properties"]
+    rendu = await outil.execute(
+        ToolContext(db=db_session, user=test_user, creator_id=test_user.id),
+        {"source_id": str(source.id)},
+    )
+    assert "error" not in rendu, rendu
+    assert rendu["id"] == str(source.id)
+
+
 @pytest_asyncio.fixture
 async def private_published_card(db_session, test_user):
     """Fiche publiee mais gardee privee : le web public ne doit jamais la voir.

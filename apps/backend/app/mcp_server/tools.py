@@ -135,24 +135,34 @@ async def get_card(db: AsyncSession, creator: str, slug: str) -> dict[str, Any] 
     }
 
 
-async def get_source(db: AsyncSession, source_id: str) -> dict[str, Any] | None:
-    """Lit une source d'une fiche PUBLIQUE avec tous ses extraits verbatim.
+async def get_source(
+    db: AsyncSession, source_id: str, *, lecteur: User | None = None
+) -> dict[str, Any] | None:
+    """Lit une source avec tous ses extraits verbatim : fiche publique, ou fiche de l'utilisateur.
 
     `source_id` est l'UUID rendu par `get_card` ou `list_sources`. C'est le seul
     outil qui donne le texte des extraits, leur contexte et leur etat de
     verification. Chaque extrait porte son UUID dans `id` : c'est la valeur a
     passer en `excerpt_id` a `update_excerpt` ou `delete_excerpt` (jamais la
-    position, qui n'est qu'un ordre d'affichage). Rend `null` si la source est
-    supprimee ou si sa fiche n'est pas publique.
+    position, qui n'est qu'un ordre d'affichage). Un utilisateur identifie lit
+    aussi les sources de ses propres fiches, brouillons compris. Rend `null` si
+    la source est supprimee ou si sa fiche n'est ni publique ni a lui.
     """
     try:
         sid = UUID(source_id)
     except ValueError:
         return None
+    # Le createur relit ses brouillons avec le meme outil : `get_my_card` y
+    # renvoie, et un agent qui relisait sa fiche echouait sur chaque source.
+    visible = (
+        or_(_PUBLIC, (BiblioCard.user_id == lecteur.id) & BiblioCard.deleted_at.is_(None))
+        if lecteur is not None
+        else _PUBLIC
+    )
     source = await db.scalar(
         select(Source)
         .join(BiblioCard, Source.biblio_card_id == BiblioCard.id)
-        .where(_PUBLIC, Source.id == sid, Source.deleted_at.is_(None))
+        .where(visible, Source.id == sid, Source.deleted_at.is_(None))
         .options(
             selectinload(Source.excerpts),
             selectinload(Source.linked_card).selectinload(BiblioCard.user),

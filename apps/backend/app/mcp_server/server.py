@@ -106,7 +106,9 @@ async def get_source(source_id: str) -> dict[str, Any] | None:
     ou `null`.
     """
     async with _session() as db:
-        return await tools.get_source(db, source_id=source_id)
+        # Identifie, l'utilisateur relit aussi les sources de ses brouillons.
+        lecteur = await utilisateur_courant(db)
+        return await tools.get_source(db, source_id=source_id, lecteur=lecteur)
 
 
 @outil()

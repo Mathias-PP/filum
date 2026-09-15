@@ -79,6 +79,17 @@ _PARAMETRES_IMPOSES: dict[str, dict[str, Any]] = {
     "add_sources_batch": {"exiger_extrait": True},
 }
 
+#: Lectures qui recoivent le createur du contexte, hors de portee du modele.
+#:
+#: Mesure du 2026-09-15 (conversation « harness ») : pour relire les extraits de
+#: sa fiche en brouillon, l'agent appelait `get_source` sur chaque source, comme
+#: le conseille `get_my_card`. `get_source` ne lisait que les fiches publiques :
+#: chaque appel echouait sur une source differente, et la conversation tournait
+#: en rond. Le createur lit desormais ses propres sources, brouillon compris.
+_PARAMETRES_DU_LECTEUR: dict[str, str] = {
+    "get_source": "lecteur",
+}
+
 #: Actions sensibles : toujours soumises à validation humaine (approbation
 #: hybride). Leur exécution ne se fait qu'après un feu vert explicite.
 SENSITIVE_TOOLS: frozenset[str] = frozenset(
@@ -253,8 +264,8 @@ _VIDE_PAR_OUTIL: dict[str, str] = {
         "du createur, brouillon compris, appelle get_my_card(slug)."
     ),
     "get_source": (
-        "Aucune source publique sous cet identifiant. Pour une source d'une fiche du "
-        "createur, list_sources(card_slug) donne les identifiants valides."
+        "Aucune source sous cet identifiant, ni dans une fiche publique ni dans une fiche "
+        "du createur. list_sources(card_slug) donne les identifiants valides d'une fiche."
     ),
     "search_cards": (
         "Aucune fiche publique ne correspond. Les brouillons du createur ne sont pas "
@@ -309,10 +320,11 @@ def _envelopper(fonction, *, avec_utilisateur: bool) -> tuple[dict[str, Any], An
     """Schéma JSON des paramètres + execute qui délègue à la fonction MCP."""
     hints = get_type_hints(fonction)
     masques = _PARAMETRES_MASQUES.get(fonction.__name__, frozenset())
+    lecteur = _PARAMETRES_DU_LECTEUR.get(fonction.__name__)
     proprietes: dict[str, Any] = {}
     requis: list[str] = []
     for nom, param in inspect.signature(fonction).parameters.items():
-        if nom in ("db", "user") or nom in masques:
+        if nom in ("db", "user") or nom in masques or nom == lecteur:
             continue
         props = _json_schema(hints.get(nom, str))
         if nom in _ENUMS_PAR_PARAMETRE and props.get("type") == "string":
@@ -353,6 +365,8 @@ def _envelopper(fonction, *, avec_utilisateur: bool) -> tuple[dict[str, Any], An
         except ValueError as exc:
             return {"error": str(exc)}
         kwargs |= _PARAMETRES_IMPOSES.get(fonction.__name__, {})
+        if lecteur:
+            kwargs[lecteur] = ctx.user
         try:
             resultat = (
                 await fonction(ctx.db, ctx.user, **kwargs)

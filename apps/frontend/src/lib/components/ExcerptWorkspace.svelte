@@ -25,7 +25,8 @@
     SourceExcerpt,
     SuggestedExcerpt,
   } from '$lib/api/types';
-  import { CLASSES_VERDICT, lireVerdict } from '$lib/utils/excerpt-verdict';
+  import { lireVerdict } from '$lib/utils/excerpt-verdict';
+  import VerdictExtrait from '$lib/components/VerdictExtrait.svelte';
   import {
     CLASSES_FIDELITE,
     lireFidelite,
@@ -354,10 +355,7 @@
                 sur la fiche publique, y compris « Jamais relu ». Sans cela
                 l'auteur·ice ignorerait ce que sa fiche affirme en son nom.
               -->
-                {@const p = lireVerdict(excerpt)}
-                <span class="text-xs not-italic {CLASSES_VERDICT[p.ton]}" title={p.detail}
-                  >{p.label}</span
-                >
+                <VerdictExtrait verdict={lireVerdict(excerpt)} />
               {/if}
             </p>
             {#if excerpt.context}
