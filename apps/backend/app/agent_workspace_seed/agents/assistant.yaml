@@ -36,6 +36,7 @@ tools:
   - add_excerpt
   - update_excerpt
   - delete_excerpt
+  - delete_excerpts
   - annotate_excerpt
   - verify_excerpts
   - archive_sources

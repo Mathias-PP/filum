@@ -176,6 +176,13 @@ const ACTIONS: Record<
     action: 'Demande une précision :',
     objet: (a) => texteArg(a, 'question'),
   },
+  delete_excerpts: {
+    action: 'Supprime des extraits :',
+    objet: (a) =>
+      Array.isArray(a.excerpt_ids)
+        ? `${a.excerpt_ids.length} extrait${a.excerpt_ids.length > 1 ? 's' : ''}`
+        : null,
+  },
   demander_sources: {
     action: 'Demande quelles sources privilégier',
   },

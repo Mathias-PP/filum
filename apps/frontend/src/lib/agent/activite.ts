@@ -115,6 +115,7 @@ const ECRITURES: Record<string, Compte> = {
   delete_card: SUPPRESSION,
   delete_source: SUPPRESSION,
   delete_excerpt: SUPPRESSION,
+  delete_excerpts: SUPPRESSION,
 };
 
 /** « Bilan : 2 sources ajoutées, 3 extraits posés, 5 extraits refusés. »
@@ -131,6 +132,11 @@ export function bilanDesAppels(appels: AppelOutil[]): string | null {
   for (const appel of appels) {
     const compte = ECRITURES[appel.name];
     if (!compte || appel.result === null) continue;
+    if (appel.name === 'delete_excerpts' && typeof appel.result.deleted_count === 'number') {
+      // Une validation, plusieurs extraits : le serveur compte ce qu'il a retiré.
+      if (appel.result.deleted_count) ajouter(SUPPRESSION, appel.result.deleted_count);
+      continue;
+    }
     if (appel.name === 'retenir') {
       // Un appel pose plusieurs sources et extraits : le serveur les compte.
       const nombre = (valeur: unknown) => (typeof valeur === 'number' ? valeur : 0);
