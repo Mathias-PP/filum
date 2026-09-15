@@ -98,6 +98,7 @@ SENSITIVE_TOOLS: frozenset[str] = frozenset(
         "delete_card",
         "delete_source",
         "delete_excerpt",
+        "delete_excerpts",
         "create_content_attestation",
         "archive_sources",
     }
@@ -130,6 +131,7 @@ OUTILS_QUI_ECRIVENT: frozenset[str] = frozenset(
         "delete_card",
         "delete_source",
         "delete_excerpt",
+        "delete_excerpts",
         "import_from_content_url",
         "archive_sources",
         "create_content_attestation",
@@ -400,6 +402,7 @@ _ECRITURE = (
     "delete_card",
     "delete_source",
     "delete_excerpt",
+    "delete_excerpts",
     "update_excerpt",
     "suggest_excerpts",
     "find_passage",

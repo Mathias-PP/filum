@@ -22,10 +22,12 @@ from __future__ import annotations
 
 import asyncio
 import email.utils
+import hashlib
 import json
 import logging
 import random
 import re
+import string
 import time
 from collections.abc import Awaitable, Callable, Sequence
 from datetime import UTC, datetime
@@ -444,6 +446,48 @@ async def _etat_avant_publication(db: AsyncSession, user: User, slug: str) -> st
     return f"Publier « {card.title} » et la rendre visible publiquement ? {etat}"
 
 
+#: Extraits nommes dans une demande de suppression groupee. Borne de lisibilite
+#: de la carte de validation ; les identifiants complets restent dans les arguments.
+_EXTRAITS_MONTRES = 12
+
+
+async def _resume_suppression_extraits(db: AsyncSession, user: User, ids: Any) -> str:
+    """Les extraits qu'une validation va supprimer, nommes par le debut de leur texte.
+
+    Mesure du 2026-09-15 : une validation par extrait, chacune expirant en cinq
+    minutes, rendait le nettoyage d'une fiche impossible. Une seule validation
+    couvre la liste ; encore faut-il que la personne voie ce qu'elle supprime.
+    """
+    from app.models.biblio_card import BiblioCard
+    from app.models.source import Source
+    from app.models.source_excerpt import SourceExcerpt
+
+    valides: list[UUID] = []
+    for ident in ids if isinstance(ids, list) else []:
+        try:
+            valides.append(UUID(str(ident)))
+        except ValueError:
+            continue
+    lignes = (
+        await db.execute(
+            select(SourceExcerpt.text, Source.title)
+            .join(Source, SourceExcerpt.source_id == Source.id)
+            .join(BiblioCard, Source.biblio_card_id == BiblioCard.id)
+            .where(SourceExcerpt.id.in_(valides), BiblioCard.user_id == user.id)
+        )
+    ).all()
+    n = len(lignes)
+    if not n:
+        return "Supprimer des extraits ? Aucun identifiant demandé ne désigne un extrait de vos fiches."
+    debuts = " ; ".join(
+        f"« {' '.join((texte or '').split())[:80]}… » ({titre or 'source sans titre'})"
+        for texte, titre in lignes[:_EXTRAITS_MONTRES]
+    )
+    reste = n - _EXTRAITS_MONTRES
+    suite = f", et {reste} autre{'s' if reste > 1 else ''}" if reste > 0 else ""
+    return f"Supprimer {n} extrait{'s' if n > 1 else ''} : {debuts}{suite} ?"
+
+
 async def _resume_approbation(
     db: AsyncSession,
     user: User,
@@ -465,6 +509,8 @@ async def _resume_approbation(
         if tool_name == "delete_excerpt":
             titre, _ = await _titre_source(db, str(args.get("source_id", "")))
             return f"Supprimer un extrait de la source « {titre} » ?"
+        if tool_name == "delete_excerpts":
+            return await _resume_suppression_extraits(db, user, args.get("excerpt_ids"))
         if tool_name == "delete_card":
             titre = await _titre_fiche(db, user, str(args.get("slug", "")))
             return f"Envoyer la fiche « {titre} » et toutes ses sources à la corbeille ?"
@@ -877,9 +923,20 @@ async def _traiter_reponse_flux(
         )
     if r.status_code == 400:
         await r.aread()
-        logger.info("stream=True refuse (400) par %s, repli bloquant", provider.model)
+        # Le motif du refus est journalise : le 2026-09-15, cinq messages ont echoue
+        # en 400 chez Mistral sans que rien ne dise pourquoi.
+        logger.info(
+            "stream=True refuse (400) par %s, repli bloquant : %s", provider.model, r.text[:300]
+        )
         payload_bloquant = {k: v for k, v in payload.items() if k != "stream"}
         r_bloquant = await client.post(url, json=payload_bloquant, headers=headers)
+        if r_bloquant.status_code != 200:
+            logger.warning(
+                "Mode bloquant refuse aussi par %s (HTTP %s) : %s",
+                provider.model,
+                r_bloquant.status_code,
+                r_bloquant.text[:500],
+            )
         return await _emettre_en_un_bloc(_parse_blocking_response(r_bloquant, provider), on_delta)
     if r.status_code != 200:
         await r.aread()
@@ -984,7 +1041,87 @@ def _nettoyer_messages(
             logger.info("message tool orphelin filtre (tool_call_id inconnu)")
             continue
         propres.append(propre)
-    return propres
+    return _reparer_appels(propres, provider_kind)
+
+
+#: Rendu a un appel d'outil dont le resultat n'a pas ete garde dans l'historique.
+_RESULTAT_PERDU = (
+    '{"error": "Le résultat de cet appel n\'a pas été conservé dans l\'historique : '
+    "ne t'appuie pas dessus, refais l'appel si besoin.\"}"
+)
+
+_ID_MISTRAL = re.compile(r"[A-Za-z0-9]{9}")
+_ALPHABET_ID = string.ascii_letters + string.digits
+
+
+def _id_mistral(ident: str) -> str:
+    """L'identifiant d'appel au format de Mistral, 9 caracteres alphanumeriques. Fonction pure.
+
+    Le meme identifiant rend toujours le meme resultat : l'appel et sa reponse
+    restent apparies.
+    """
+    if _ID_MISTRAL.fullmatch(ident):
+        return ident
+    nombre = int.from_bytes(hashlib.sha256(ident.encode()).digest()[:8], "big")
+    lettres = []
+    for _ in range(9):
+        nombre, reste = divmod(nombre, len(_ALPHABET_ID))
+        lettres.append(_ALPHABET_ID[reste])
+    return "".join(lettres)
+
+
+def _reparer_appels(
+    messages: list[dict[str, Any]], provider_kind: str | None
+) -> list[dict[str, Any]]:
+    """Chaque appel d'outil suivi de toutes ses reponses, et d'elles seules. Fonction pure.
+
+    Mesure du 2026-09-15 (conversation « harness ») : les messages d'une etape du
+    deroule portaient la meme heure ; relus dans l'ordre de l'heure, onze appels
+    n'etaient plus suivis de leurs reponses et un n'en avait plus. Mistral refuse
+    un tel historique en 400, et exige des identifiants de 9 caracteres
+    alphanumeriques quand OpenAI, Z.ai et Gemini en rendent d'autres : chaque
+    message suivant de la conversation echouait. Les reponses sont replacees
+    derriere leur appel, un appel sans reponse en recoit une qui le dit, une
+    reponse sans appel est retiree, et les identifiants sont traduits pour Mistral.
+    """
+    reponses: dict[str, dict[str, Any]] = {}
+    for m in messages:
+        if isinstance(m, dict) and m.get("role") == "tool" and m.get("tool_call_id"):
+            reponses.setdefault(str(m["tool_call_id"]), m)
+
+    def traduire(ident: str) -> str:
+        return _id_mistral(ident) if provider_kind == "mistral" else ident
+
+    repares: list[dict[str, Any]] = []
+    for rang, m in enumerate(messages):
+        if not isinstance(m, dict):
+            repares.append(m)
+            continue
+        if m.get("role") == "tool":
+            continue
+        appels = m.get("tool_calls")
+        if not isinstance(appels, list) or not appels:
+            repares.append(m)
+            continue
+        idents = [str(tc.get("id") or f"appel-{rang}-{n}") for n, tc in enumerate(appels)]
+        repares.append(
+            {
+                **m,
+                "tool_calls": [
+                    {**tc, "id": traduire(ident)} for tc, ident in zip(appels, idents, strict=True)
+                ],
+            }
+        )
+        for tc, ident in zip(appels, idents, strict=True):
+            reponse = reponses.pop(ident, None)
+            if reponse is None:
+                reponse = {
+                    "role": "tool",
+                    "content": _RESULTAT_PERDU,
+                    "name": (tc.get("function") or {}).get("name") or "",
+                }
+            repares.append({**reponse, "tool_call_id": traduire(ident)})
+    return repares
 
 
 async def _appel_provider(

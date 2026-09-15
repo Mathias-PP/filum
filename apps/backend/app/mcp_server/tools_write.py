@@ -1378,6 +1378,62 @@ async def delete_source(db: AsyncSession, user: User, *, source_id: str) -> dict
     return {"id": str(source.id), "deleted": True}
 
 
+async def delete_excerpts(
+    db: AsyncSession, user: User, *, excerpt_ids: list[str]
+) -> dict[str, Any]:
+    """Supprime physiquement plusieurs extraits des fiches de l'utilisateur, en une seule validation.
+
+    Pour nettoyer une fiche : relire ses extraits avec `get_my_card`, puis passer
+    ici les identifiants de tous ceux qui n'ont rien a y faire. Chaque extrait
+    suit les regles de `delete_excerpt` (irreversible). Un identifiant invalide,
+    inconnu ou d'une fiche d'autrui est rendu dans `refuses` sans bloquer les autres.
+    """
+    demandes = list(dict.fromkeys(str(i).strip() for i in excerpt_ids or [] if str(i).strip()))
+    if not demandes:
+        raise ToolError(
+            "delete_excerpts attend excerpt_ids : les identifiants des extraits a supprimer, "
+            "tels que get_my_card ou get_source les rendent."
+        )
+    refuses: list[dict[str, str]] = []
+    valides: list[UUID] = []
+    for ident in demandes:
+        try:
+            valides.append(UUID(ident))
+        except ValueError:
+            refuses.append({"excerpt_id": ident, "raison": "identifiant invalide"})
+    trouves = (
+        await db.execute(
+            select(SourceExcerpt.id, SourceExcerpt.source_id)
+            .join(Source, SourceExcerpt.source_id == Source.id)
+            .join(BiblioCard, Source.biblio_card_id == BiblioCard.id)
+            .where(
+                SourceExcerpt.id.in_(valides),
+                Source.deleted_at.is_(None),
+                BiblioCard.user_id == user.id,
+                BiblioCard.deleted_at.is_(None),
+            )
+        )
+    ).all()
+    connus: dict[UUID, UUID] = {ligne[0]: ligne[1] for ligne in trouves}
+    supprimes: list[str] = []
+    for excerpt_id in valides:
+        if excerpt_id not in connus:
+            refuses.append({"excerpt_id": str(excerpt_id), "raison": "aucun extrait a ce nom"})
+            continue
+        try:
+            await delete_excerpt(
+                db, user, source_id=str(connus[excerpt_id]), excerpt_id=str(excerpt_id)
+            )
+        except ToolError as exc:
+            refuses.append({"excerpt_id": str(excerpt_id), "raison": str(exc)})
+            continue
+        supprimes.append(str(excerpt_id))
+    rendu: dict[str, Any] = {"deleted": supprimes, "deleted_count": len(supprimes)}
+    if refuses:
+        rendu["refuses"] = refuses
+    return rendu
+
+
 async def delete_excerpt(
     db: AsyncSession, user: User, *, source_id: str, excerpt_id: str
 ) -> dict[str, Any]:
@@ -1761,8 +1817,10 @@ async def get_my_card(db: AsyncSession, user: User, *, card_slug: str) -> dict[s
     nature du contenu, la description, le transcript et le recapitulatif des
     sources avec leur nombre d'extraits. `content_text` est tronque a 20 000
     caracteres, `content_text_tronque` le dit et `content_text_longueur` donne la
-    taille reelle. Pour le detail d'une source et le verbatim de ses extraits,
-    enchainez sur `list_sources` puis `get_source`.
+    taille reelle. Chaque source porte ses extraits (identifiant, verbatim,
+    contexte, verdict de relecture) : toute la fiche se relit en un appel, et
+    `delete_excerpts` retire d'un coup ceux qui n'ont rien a y faire. Pour le
+    detail complet d'une source (retractation, archive, acces libre), `get_source`.
     """
     card = await _fiche_du_createur(db, user, card_slug)
     sources = (
@@ -1806,6 +1864,17 @@ async def get_my_card(db: AsyncSession, user: User, *, card_slug: str) -> dict[s
                 "excerpts_unreadable": sum(
                     1 for e in s.excerpts if e.verified_status == "unreadable"
                 ),
+                # Mesure du 2026-09-15 : pour relire les extraits de sa fiche,
+                # l'agent n'avait que leur nombre et devait ouvrir chaque source.
+                "excerpts": [
+                    {
+                        "id": str(e.id),
+                        "text": e.text,
+                        "context": e.context,
+                        "verified_status": e.verified_status,
+                    }
+                    for e in sorted(s.excerpts, key=lambda e: e.position)
+                ],
             }
             for s in sources
         ],

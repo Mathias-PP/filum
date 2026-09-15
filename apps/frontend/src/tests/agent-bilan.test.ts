@@ -34,6 +34,13 @@ describe('bilan d’un tour', () => {
     expect(bilan).toBe('Bilan : 2 sources ajoutées, 5 extraits posés, 1 écriture en échec.');
   });
 
+  it('compte les extraits retirés par une seule suppression groupée', () => {
+    const bilan = bilanDesAppels([
+      outil('delete_excerpts', { deleted: ['a', 'b', 'c'], deleted_count: 3 }),
+    ]);
+    expect(bilan).toBe('Bilan : 3 suppressions.');
+  });
+
   it('ne dit rien d’un tour qui n’a rien tenté d’écrire', () => {
     expect(bilanDesAppels([outil('get_source'), outil('web_search')])).toBeNull();
   });

@@ -25,7 +25,7 @@ from __future__ import annotations
 import contextlib
 import json
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -636,6 +636,23 @@ def _texte_interrompu(texte: str) -> str:
     return f"{texte}\n\n[Réponse interrompue : le tour a été arrêté avant la fin.]"
 
 
+def heures_croissantes(heures: list[datetime], nombre: int) -> list[datetime]:
+    """Une heure par message du tour, strictement croissante. Fonction pure.
+
+    L'historique se relit trie par heure. Mesure du 2026-09-15 : le deroule
+    donnait a tous les messages d'une etape l'heure de sa fin ; relus dans un
+    ordre quelconque, appels et reponses d'outils se separaient, et Mistral
+    refusait chaque message suivant de la conversation.
+    """
+    rendues: list[datetime] = []
+    for rang in range(nombre):
+        heure = heures[rang] if rang < len(heures) else datetime.now(UTC).replace(tzinfo=None)
+        if rendues and heure <= rendues[-1]:
+            heure = rendues[-1] + timedelta(microseconds=1)
+        rendues.append(heure)
+    return rendues
+
+
 async def _persister_tour(
     creator_id: UUID,
     session_id: UUID,
@@ -658,9 +675,9 @@ async def _persister_tour(
     """
     async with async_session_maker() as db:
         session = await agent_sessions.obtenir(db, creator_id, session_id)
-        heures = heures or []
+        heures = heures_croissantes(heures or [], len(ajouts))
         for rang, message in enumerate(ajouts):
-            heure = heures[rang] if rang < len(heures) else None
+            heure = heures[rang]
             # Le prompt systeme est reconstruit en tete a chaque tour. Un message
             # systeme ecrit ici serait rejoue en second, et Gemini refuse un
             # historique qui en porte deux. La boucle en insere un quand elle

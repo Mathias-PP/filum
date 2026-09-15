@@ -1544,3 +1544,52 @@ async def test_annotate_accepte_le_texte_fourni_par_le_createur(
     )
     assert result["context"] == "Une phrase."
     assert vus == ["Le paragraphe entier, colle par le createur."]
+
+
+@pytest.mark.asyncio
+async def test_relire_toute_la_fiche_puis_supprimer_plusieurs_extraits_d_un_coup(
+    db_session, test_user, fiche_brouillon
+):
+    """Mesure du 2026-09-15 : l'agent ne voyait que le nombre d'extraits, et chaque
+    suppression demandait sa propre validation, expiree avant la suivante."""
+    from app.agent_tools.philum import est_sensible, philum_tools
+    from app.mcp_server.tools_write import delete_excerpts
+
+    await ajouter_source(
+        db_session,
+        test_user,
+        card_slug="fiche-en-cours",
+        url="https://example.org/article",
+        title="Article cite",
+        excerpts=[
+            {"text": "Le passage exact que la source contient.", "context": "Mesure"},
+            {"text": "Cela ameliore la memoire de 12 %.", "context": "Effet mesure"},
+        ],
+    )
+    fiche = await get_my_card(db_session, test_user, card_slug="fiche-en-cours")
+    extraits = fiche["sources"][0]["excerpts"]
+    assert len(extraits) == 2 and all(e["text"] and e["id"] for e in extraits)
+
+    inconnu = str(uuid4())
+    rendu = await delete_excerpts(
+        db_session,
+        test_user,
+        excerpt_ids=[extraits[0]["id"], extraits[1]["id"], "pas-un-identifiant", inconnu],
+    )
+
+    assert rendu["deleted_count"] == 2
+    assert {r["excerpt_id"] for r in rendu["refuses"]} == {"pas-un-identifiant", inconnu}
+    relue = await get_my_card(db_session, test_user, card_slug="fiche-en-cours")
+    assert relue["sources"][0]["excerpts"] == []
+    # Une seule validation couvre la liste, et le modele la voit comme telle.
+    assert est_sensible("delete_excerpts", {"excerpt_ids": []})
+    outil = next(o for o in philum_tools() if o.name == "delete_excerpts")
+    assert outil.parameters["properties"]["excerpt_ids"]["type"] == "array"
+
+
+@pytest.mark.asyncio
+async def test_supprimer_des_extraits_sans_identifiant_est_refuse(db_session, test_user):
+    from app.mcp_server.tools_write import delete_excerpts
+
+    with pytest.raises(ToolError, match="excerpt_ids"):
+        await delete_excerpts(db_session, test_user, excerpt_ids=[])
